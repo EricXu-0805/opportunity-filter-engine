@@ -6,6 +6,8 @@ Run with: streamlit run src/app/streamlit_app.py
 import streamlit as st
 import json
 import sys
+import pandas as pd
+from datetime import datetime, timedelta
 from pathlib import Path
 from collections import Counter
 
@@ -141,6 +143,170 @@ def _render_result_card(opp: dict, result: MatchResult):
 
         effort = opp.get("application", {}).get("application_effort", "unknown")
         st.caption(f"Application effort: {effort}")
+
+
+def _render_dashboard(opportunities: list):
+    """Render the Dashboard tab with charts and stats."""
+    st.subheader("Overview Stats")
+
+    # Key metrics
+    total = len(opportunities)
+    active = sum(1 for o in opportunities if o.get("metadata", {}).get("is_active", True))
+    paid_count = sum(1 for o in opportunities if o.get("paid") in ("yes", "stipend"))
+    intl_count = sum(1 for o in opportunities if o.get("eligibility", {}).get("international_friendly") == "yes")
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Opportunities", total)
+    m2.metric("Active", active)
+    m3.metric("Paid / Stipend", paid_count)
+    m4.metric("International Friendly", intl_count)
+
+    st.divider()
+
+    # Charts side by side
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.subheader("By Type")
+        type_counts = Counter(o.get("opportunity_type", "unknown") for o in opportunities)
+        type_df = pd.DataFrame(
+            list(type_counts.items()),
+            columns=["Type", "Count"]
+        ).sort_values("Count", ascending=False)
+        st.bar_chart(type_df.set_index("Type"))
+
+    with col_right:
+        st.subheader("By Research Area / Department")
+        # Collect keywords and departments
+        area_counter = Counter()
+        for opp in opportunities:
+            keywords = opp.get("keywords", [])
+            dept = opp.get("department", "")
+            if keywords:
+                for kw in keywords:
+                    if kw.strip():
+                        area_counter[kw.strip()] += 1
+            elif dept:
+                area_counter[dept] += 1
+            else:
+                area_counter["Unspecified"] += 1
+
+        top_areas = area_counter.most_common(12)
+        area_df = pd.DataFrame(top_areas, columns=["Area", "Count"])
+        st.bar_chart(area_df.set_index("Area"))
+
+    st.divider()
+
+    # Source breakdown
+    st.subheader("By Source")
+    source_counts = Counter(o.get("source", "unknown") for o in opportunities)
+    source_df = pd.DataFrame(
+        list(source_counts.items()),
+        columns=["Source", "Count"]
+    ).sort_values("Count", ascending=False)
+    st.bar_chart(source_df.set_index("Source"))
+
+    st.divider()
+
+    # International / Paid breakdown
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.subheader("International Eligibility")
+        intl_counts = Counter(
+            o.get("eligibility", {}).get("international_friendly", "unknown")
+            for o in opportunities
+        )
+        intl_df = pd.DataFrame(
+            [(k, v) for k, v in intl_counts.items()],
+            columns=["Status", "Count"]
+        )
+        st.bar_chart(intl_df.set_index("Status"))
+
+    with col_b:
+        st.subheader("Paid Status")
+        paid_counts = Counter(o.get("paid", "unknown") for o in opportunities)
+        paid_df = pd.DataFrame(
+            [(k, v) for k, v in paid_counts.items()],
+            columns=["Status", "Count"]
+        )
+        st.bar_chart(paid_df.set_index("Status"))
+
+    st.divider()
+
+    # Deadline timeline (upcoming 3 months)
+    st.subheader("Upcoming Deadlines (Next 3 Months)")
+    today = datetime.now()
+    three_months = today + timedelta(days=90)
+
+    deadline_opps = []
+    for opp in opportunities:
+        deadline_str = opp.get("deadline")
+        if not deadline_str:
+            continue
+        # Try parsing various date formats
+        parsed = None
+        for fmt in ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y", "%B %d %Y"]:
+            try:
+                parsed = datetime.strptime(deadline_str.strip(), fmt)
+                break
+            except ValueError:
+                continue
+        if parsed and today <= parsed <= three_months:
+            deadline_opps.append({
+                "Title": opp.get("title", "")[:50],
+                "Deadline": parsed.strftime("%Y-%m-%d"),
+                "Type": opp.get("opportunity_type", "unknown"),
+                "Paid": opp.get("paid", "unknown"),
+            })
+
+    if deadline_opps:
+        deadline_df = pd.DataFrame(deadline_opps).sort_values("Deadline")
+        st.dataframe(deadline_df, use_container_width=True, hide_index=True)
+
+        # Bar chart of deadlines by week
+        deadline_df["Week"] = pd.to_datetime(deadline_df["Deadline"]).dt.isocalendar().week
+        week_counts = deadline_df.groupby("Week").size().reset_index(name="Count")
+        week_counts["Week"] = "Week " + week_counts["Week"].astype(str)
+        st.bar_chart(week_counts.set_index("Week"))
+    else:
+        st.info("No opportunities with parseable deadlines in the next 3 months.")
+
+
+def _render_about():
+    """Render the About tab."""
+    st.subheader("About Opportunity Filter Engine")
+
+    st.markdown("""
+**Opportunity Filter Engine** is a personalized research and internship matching tool
+built for UIUC undergraduates. It helps students discover opportunities that match
+their skills, interests, and eligibility.
+
+**How it works:**
+1. **Data Collection** - Aggregates opportunities from multiple sources:
+   - UIUC Office of Undergraduate Research (RSS feed)
+   - UIUC Summer Research Opportunities Database (web scraping)
+   - Manually curated opportunities
+2. **Smart Matching** - A three-layer scoring engine evaluates each opportunity:
+   - **Eligibility (45%)** - Year, major, skills, citizenship match
+   - **Readiness (35%)** - Resume, experience, coursework preparedness
+   - **Upside (20%)** - Compensation, prestige, mentorship potential
+3. **Personalized Results** - Opportunities are ranked and categorized into
+   High Priority, Good Match, Reach, and Low Fit buckets
+
+**Key Features:**
+- International student friendly filtering
+- Deep scraping for richer opportunity data
+- LLM-enhanced auto-tagging for missing fields
+- Rule-based fallback when no API key is available
+
+**Tech Stack:** Python, Streamlit, BeautifulSoup, pandas
+
+**Source:** Built as an educational project at UIUC.
+    """)
+
+    st.divider()
+    st.caption("V1 MVP — Opportunity Filter Engine")
 
 
 # ────────────────────────────────────────
@@ -298,12 +464,8 @@ elif sort_by == "Organization (A-Z)":
 
 
 # ────────────────────────────────────────
-# Display Results
+# Display Results with Dashboard and About tabs
 # ────────────────────────────────────────
-
-if not results:
-    st.info("No matching opportunities found with current filters. Try adjusting your profile or filters.")
-    st.stop()
 
 # Summary metrics
 high = [r for r in results if r.bucket == "high_priority"]
@@ -311,39 +473,56 @@ good = [r for r in results if r.bucket == "good_match"]
 reach = [r for r in results if r.bucket == "reach"]
 low = [r for r in results if r.bucket == "low_fit"]
 
-m1, m2, m3, m4, m5 = st.columns(5)
-m1.metric("Total Shown", len(results))
-m2.metric("\U0001f7e2 High Priority", len(high))
-m3.metric("\U0001f535 Good Match", len(good))
-m4.metric("\U0001f7e1 Reach", len(reach))
-m5.metric("\U0001f534 Low Fit", len(low))
-
-st.divider()
-
-# Tab-based display
-tab_all, tab_high, tab_good, tab_reach = st.tabs([
-    f"All ({len(results)})",
-    f"\U0001f7e2 High Priority ({len(high)})",
-    f"\U0001f535 Good Match ({len(good)})",
-    f"\U0001f7e1 Reach ({len(reach)})",
+# Main navigation tabs
+tab_matches, tab_dashboard, tab_about = st.tabs([
+    "\U0001f50d Matches",
+    "\U0001f4ca Dashboard",
+    "\u2139\ufe0f About",
 ])
 
-def _render_list(result_list):
-    if not result_list:
-        st.info("No opportunities in this category.")
-        return
-    for result in result_list:
-        opp = next((o for o in opportunities if o["id"] == result.opportunity_id), {})
-        _render_result_card(opp, result)
+with tab_matches:
+    if not results:
+        st.info("No matching opportunities found with current filters. Try adjusting your profile or filters.")
+    else:
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("Total Shown", len(results))
+        m2.metric("\U0001f7e2 High Priority", len(high))
+        m3.metric("\U0001f535 Good Match", len(good))
+        m4.metric("\U0001f7e1 Reach", len(reach))
+        m5.metric("\U0001f534 Low Fit", len(low))
 
-with tab_all:
-    _render_list(results)
+        st.divider()
 
-with tab_high:
-    _render_list(high)
+        # Tab-based display
+        sub_all, sub_high, sub_good, sub_reach = st.tabs([
+            f"All ({len(results)})",
+            f"\U0001f7e2 High Priority ({len(high)})",
+            f"\U0001f535 Good Match ({len(good)})",
+            f"\U0001f7e1 Reach ({len(reach)})",
+        ])
 
-with tab_good:
-    _render_list(good)
+        def _render_list(result_list):
+            if not result_list:
+                st.info("No opportunities in this category.")
+                return
+            for result in result_list:
+                opp = next((o for o in opportunities if o["id"] == result.opportunity_id), {})
+                _render_result_card(opp, result)
 
-with tab_reach:
-    _render_list(reach)
+        with sub_all:
+            _render_list(results)
+
+        with sub_high:
+            _render_list(high)
+
+        with sub_good:
+            _render_list(good)
+
+        with sub_reach:
+            _render_list(reach)
+
+with tab_dashboard:
+    _render_dashboard(opportunities)
+
+with tab_about:
+    _render_about()
