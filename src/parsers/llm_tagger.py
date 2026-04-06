@@ -90,11 +90,36 @@ YEAR_KEYWORDS = {
 }
 
 
+def _build_full_text(opp: dict) -> str:
+    """Build searchable text from all available fields, not just description."""
+    parts = []
+    # Core text fields
+    parts.append(opp.get("description_raw", "") or "")
+    parts.append(opp.get("description_clean", "") or "")
+    parts.append(opp.get("eligibility", {}).get("eligibility_text_raw", "") or "")
+    # Title and organizational fields
+    parts.append(opp.get("title", "") or "")
+    parts.append(opp.get("lab_or_program", "") or "")
+    parts.append(opp.get("department", "") or "")
+    parts.append(opp.get("organization", "") or "")
+    # Extract meaningful words from URL path
+    url = opp.get("url", "") or ""
+    if url:
+        from urllib.parse import urlparse
+        path = urlparse(url).path
+        # Convert '/opportunity/chemistry-reu-colorado-state' -> 'chemistry reu colorado state'
+        path_words = path.replace("/", " ").replace("-", " ").replace("_", " ")
+        parts.append(path_words)
+    # Keywords list
+    keywords = opp.get("keywords", [])
+    if keywords:
+        parts.append(" ".join(keywords))
+    return " ".join(parts)
+
+
 def rule_based_tag(opp: dict) -> dict:
     """Apply rule-based heuristics to extract structured fields."""
-    desc = (opp.get("description_raw", "") or "") + " " + (opp.get("description_clean", "") or "")
-    elig_text = opp.get("eligibility", {}).get("eligibility_text_raw", "")
-    full_text = desc + " " + elig_text
+    full_text = _build_full_text(opp)
     lower = full_text.lower()
     updates = {}
 
@@ -103,6 +128,28 @@ def rule_based_tag(opp: dict) -> dict:
     for skill, pattern in SKILL_PATTERNS.items():
         if re.search(pattern, full_text, re.IGNORECASE):
             skills_found.append(skill)
+
+    # Domain-based skill inference from research area keywords
+    DOMAIN_SKILLS = {
+        r"\b(data science|data analysis|data mining|big data)\b": ["Python", "SQL", "pandas"],
+        r"\b(machine learning|deep learning|artificial intelligence|neural network)\b": ["Python", "PyTorch"],
+        r"\b(bioinformatics|computational biology|genomics)\b": ["Python", "R"],
+        r"\b(statistics|statistical)\b": ["R", "Python"],
+        r"\b(computer vision|image processing|image analysis)\b": ["Python", "OpenCV"],
+        r"\b(web development|web app|full.?stack)\b": ["JavaScript", "React"],
+        r"\b(robotics|embedded|microcontroller)\b": ["C++", "Python"],
+        r"\b(database|sql server|relational)\b": ["SQL"],
+        r"\b(gis|geospatial|geographic)\b": ["GIS", "Python"],
+        r"\b(chemistry|chemical)\b": ["Python", "MATLAB"],
+        r"\b(physics|astrophysics|astronomy)\b": ["Python", "MATLAB"],
+        r"\b(engineering simulation|finite element|cfd)\b": ["MATLAB", "Python"],
+        r"\b(natural language processing|nlp|text mining)\b": ["Python"],
+    }
+    for pattern, domain_skills in DOMAIN_SKILLS.items():
+        if re.search(pattern, lower):
+            for s in domain_skills:
+                if s not in skills_found:
+                    skills_found.append(s)
 
     if skills_found:
         existing_req = opp.get("eligibility", {}).get("skills_required", [])
