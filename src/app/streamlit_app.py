@@ -16,6 +16,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.matcher.ranker import rank_all, MatchResult
+from src.recommender.cold_email import generate_cold_email
+from src.recommender.resume_advisor import analyze_gaps
 
 
 # ────────────────────────────────────────
@@ -78,7 +80,7 @@ def _bucket_label(bucket: str) -> str:
     }.get(bucket, "Unknown")
 
 
-def _render_result_card(opp: dict, result: MatchResult):
+def _render_result_card(opp: dict, result: MatchResult, profile: dict = None):
     """Render a single opportunity result card."""
     icon = _bucket_icon(result.bucket)
     label = _bucket_label(result.bucket)
@@ -140,6 +142,31 @@ def _render_result_card(opp: dict, result: MatchResult):
             st.markdown("**\U0001f4cb Next steps:**")
             for i, step in enumerate(result.next_steps, 1):
                 st.markdown(f"{i}. {step}")
+
+        # Cold Email and Resume Tips sections
+        if profile:
+            col_email, col_resume = st.columns(2)
+            with col_email:
+                with st.expander("\U0001f4e7 Cold Email"):
+                    email_text = generate_cold_email(profile, opp)
+                    st.code(email_text, language=None)
+            with col_resume:
+                with st.expander("\U0001f4cb Resume Tips"):
+                    gaps = analyze_gaps(profile, opp)
+                    if gaps["missing_skills"]:
+                        st.markdown(f"**Missing skills:** {', '.join(gaps['missing_skills'])}")
+                    if gaps["suggested_coursework"]:
+                        st.markdown(f"**Suggested courses:** {', '.join(gaps['suggested_coursework'])}")
+                    if gaps["resume_tips"]:
+                        for tip in gaps["resume_tips"]:
+                            st.markdown(f"- {tip}")
+                    if gaps["preparation_timeline"]:
+                        st.markdown("**Preparation timeline:**")
+                        for item in gaps["preparation_timeline"]:
+                            icon = "\U0001f534" if item["priority"] == "high" else "\U0001f7e1"
+                            st.markdown(f"- {icon} **{item['skill']}**: {item['estimated_time']}")
+                    if not any([gaps["missing_skills"], gaps["resume_tips"]]):
+                        st.success("You're well-prepared for this opportunity!")
 
         effort = opp.get("application", {}).get("application_effort", "unknown")
         st.caption(f"Application effort: {effort}")
@@ -507,7 +534,7 @@ with tab_matches:
                 return
             for result in result_list:
                 opp = next((o for o in opportunities if o["id"] == result.opportunity_id), {})
-                _render_result_card(opp, result)
+                _render_result_card(opp, result, profile=profile)
 
         with sub_all:
             _render_list(results)
