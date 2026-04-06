@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Data (keep structure, ignore large files)
+data/raw/*.html
+data/raw/*.json
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/manual_entries/.gitkeep
+
+# Database
+*.db
+*.sqlite3
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+logs/

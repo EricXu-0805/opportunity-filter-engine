@@ -1,0 +1,42 @@
+{
+  "id": "profile-001",
+  "name": "Sample Student A",
+  "school": "UIUC",
+  "year": "freshman",
+  "major": "Computer Engineering",
+  "secondary_interests": ["CS", "STAT", "Data Science"],
+  "international_student": true,
+  "citizenship": "China",
+  "work_authorization_notes": "F-1 visa, first year — not yet CPT eligible",
+  "seeking_type": ["research", "summer_program"],
+  "desired_fields": ["AI", "ML", "computer vision", "data science"],
+  "hard_skills": ["Python", "Java", "C++", "pandas"],
+  "coursework": ["CS 124", "STAT 107", "ECE 120", "PHYS 214"],
+  "projects": [
+    {
+      "name": "OpenEd",
+      "description": "Co-founded educational platform using Flask/FastAPI",
+      "skills_demonstrated": ["Python", "Flask", "FastAPI", "full-stack"]
+    },
+    {
+      "name": "News Aggregator",
+      "description": "Chinese news aggregation system with multi-provider AI scoring",
+      "skills_demonstrated": ["Python", "API integration", "web scraping"]
+    }
+  ],
+  "publications": 2,
+  "prior_research": true,
+  "research_description": "VLM bias analysis, Video Scene Graph Generation",
+  "experience_level": "some",
+  "resume_ready": true,
+  "linkedin_ready": true,
+  "can_cold_email": true,
+  "preferred_location": "either",
+  "time_availability": "flexible",
+  "preferences": {
+    "min_match_threshold": 50,
+    "show_reach_opportunities": true,
+    "prioritize_paid": true,
+    "exclude_citizenship_restricted": true
+  }
+}

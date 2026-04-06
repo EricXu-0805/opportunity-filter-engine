@@ -1,0 +1,77 @@
+# Scraper Registry Configuration
+# Adding a new source = add entry here + implement collector class in src/collectors/
+
+sources:
+  uiuc_our_rss:
+    name: "UIUC Office of Undergraduate Research"
+    type: rss
+    url: "https://blogs.illinois.edu/xml/6204/rss.xml"
+    schedule: daily
+    enabled: true
+    collector: uiuc_our_rss
+    default_tags:
+      source_type: uiuc_research
+      on_campus: true
+      international_friendly: "yes"
+      location: "Champaign, IL"
+
+  uiuc_sro:
+    name: "UIUC Summer Research Opportunities Database"
+    type: html_scrape
+    base_url: "https://researchops.web.illinois.edu/"
+    pagination:
+      type: query_param
+      param: page
+      start: 0
+      end: 11
+    schedule: weekly
+    enabled: true
+    collector: uiuc_sro
+    default_tags:
+      source_type: summer_program
+      opportunity_type: summer_program
+
+  nsf_reu:
+    name: "NSF REU Awards"
+    type: rest_api
+    base_url: "https://api.nsf.gov/services/v1/awards.json"
+    schedule: weekly
+    enabled: false
+    collector: nsf_reu
+    default_tags:
+      source_type: external_reu
+      international_friendly: "no"  # Default for federal; override per-program
+      paid: "yes"
+
+  usajobs:
+    name: "USAJobs Federal Internships"
+    type: rest_api
+    base_url: "https://data.usajobs.gov/api/Search"
+    requires_api_key: true
+    api_key_env: "USAJOBS_API_KEY"
+    schedule: weekly
+    enabled: false
+    collector: usajobs
+    default_tags:
+      source_type: federal
+      international_friendly: "no"
+      paid: "yes"
+
+  manual:
+    name: "Manual Entries"
+    type: manual
+    enabled: true
+    collector: null
+    notes: "Entered via admin interface or CSV import"
+
+# Rate limiting defaults
+rate_limits:
+  default_delay_seconds: 5
+  max_retries: 3
+  timeout_seconds: 30
+
+# Scrape run logging
+logging:
+  log_every_run: true
+  alert_on_count_drop_pct: 50
+  store_raw_html: false  # Set true for debugging

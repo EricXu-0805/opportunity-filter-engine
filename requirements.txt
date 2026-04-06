@@ -1,0 +1,33 @@
+# Core
+fastapi>=0.110.0
+uvicorn>=0.27.0
+pydantic>=2.0
+
+# Data collection
+feedparser>=6.0
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+
+# Database
+# psycopg2-binary>=2.9      # Uncomment for PostgreSQL
+# pgvector>=0.2              # Uncomment for vector search
+
+# Frontend (MVP)
+streamlit>=1.30
+
+# Data processing
+pandas>=2.0
+
+# LLM (optional - for V2 structured extraction)
+# openai>=1.0
+# instructor>=0.5
+
+# Testing
+pytest>=7.0
+
+# Scheduling (for automated collection)
+# apscheduler>=3.10
+
+# Config
+pyyaml>=6.0
