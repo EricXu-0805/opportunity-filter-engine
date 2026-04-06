@@ -1,4 +1,4 @@
-.PHONY: install test run collect lint clean
+.PHONY: install test run collect lint clean refresh
 
 # Install dependencies
 install:
@@ -18,6 +18,14 @@ collect-our:
 
 collect-sro:
 	python -m src.collectors.uiuc_sro
+
+# Refresh all data sources (deep scrape by default)
+refresh:
+	python -m src.collectors.refresh_all
+
+# Refresh without deep scraping (faster)
+refresh-quick:
+	python -m src.collectors.refresh_all --no-deep
 
 # Clean
 clean:
