@@ -40,3 +40,9 @@ data/raw/*.json
 # Logs
 *.log
 logs/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
