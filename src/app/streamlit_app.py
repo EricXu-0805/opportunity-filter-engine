@@ -387,6 +387,11 @@ with st.sidebar:
         value="CS 124, ECE 120, STAT 107",
     )
 
+    desired_fields = st.text_input(
+        "Research Interests (comma-separated)",
+        value="AI, data science, machine learning, systems",
+    )
+
     experience = st.select_slider(
         "Experience Level",
         options=["none", "beginner", "some", "strong"],
@@ -405,6 +410,12 @@ with st.sidebar:
     )
 
     show_paid_only = st.checkbox("Show paid opportunities only", value=False)
+
+    min_confidence = st.slider(
+        "Minimum data confidence",
+        min_value=0.0, max_value=1.0, value=0.0, step=0.1,
+        help="Filter out opportunities with incomplete data (higher = stricter)"
+    )
 
     sort_by = st.selectbox(
         "Sort by",
@@ -428,7 +439,7 @@ profile = {
     "secondary_interests": secondary,
     "international_student": international,
     "seeking_type": seeking,
-    "desired_fields": [],
+    "desired_fields": [f.strip() for f in desired_fields.split(",") if f.strip()],
     "hard_skills": skills,
     "coursework": [c.strip() for c in coursework.split(",") if c.strip()],
     "experience_level": experience,
@@ -475,6 +486,10 @@ if seeking:
     type_ids = {o["id"] for o in opportunities if o.get("opportunity_type") in seeking}
     results = [r for r in results if r.opportunity_id in type_ids]
 
+# Apply confidence filter
+if min_confidence > 0:
+    conf_ids = {o["id"] for o in opportunities if o.get("metadata", {}).get("confidence_score", 0) >= min_confidence}
+    results = [r for r in results if r.opportunity_id in conf_ids]
 # Apply sorting
 if sort_by == "Deadline (soonest)":
     def _deadline_key(r):

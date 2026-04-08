@@ -48,7 +48,7 @@ def _normalize_major(major: str) -> str:
 
 def _major_match_score(student_majors: list[str], required_majors: list[str]) -> float:
     if not required_majors:
-        return 60.0  # No requirement = open but not a strong signal of fit
+        return 40.0  # No requirement = open, but no signal of good fit
 
     s_normalized = {_normalize_major(m) for m in student_majors}
     r_normalized = {_normalize_major(m) for m in required_majors}
@@ -63,12 +63,12 @@ def _major_match_score(student_majors: list[str], required_majors: list[str]) ->
         if any(r in r_normalized for r in related):
             return 70.0
 
-    return 20.0
+    return 15.0
 
 
 def _skill_overlap_score(student_skills: list[str], required_skills: list[str]) -> float:
     if not required_skills:
-        return 60.0  # No requirement = open but not a strong signal of fit
+        return 40.0  # No requirement = open, but no signal of good fit
 
     s_lower = {s.lower().strip() for s in student_skills}
     r_lower = {s.lower().strip() for s in required_skills}
@@ -79,7 +79,7 @@ def _skill_overlap_score(student_skills: list[str], required_skills: list[str]) 
 
 def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
     if not preferred_years or "unknown" in preferred_years:
-        return 55.0  # Unknown year pref = neutral, not a positive signal
+        return 40.0  # Unknown year pref = can't tell if it fits
 
     year_order = ["freshman", "sophomore", "junior", "senior"]
     student_year_lower = student_year.lower().strip()
@@ -98,6 +98,27 @@ def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
         pass
 
     return 0.0
+
+
+def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
+    """Score how well the opportunity type matches user preferences."""
+    if not seeking_types:
+        return 60.0  # No preference stated
+    if opp_type in seeking_types:
+        return 100.0
+    type_affinity = {
+        ("research", "summer_program"): 70.0,
+        ("summer_program", "research"): 70.0,
+        ("internship", "summer_program"): 60.0,
+        ("summer_program", "internship"): 60.0,
+        ("research", "internship"): 50.0,
+        ("internship", "research"): 50.0,
+    }
+    for st in seeking_types:
+        score = type_affinity.get((st, opp_type))
+        if score:
+            return score
+    return 30.0  # Completely different type
 
 
 # --- Scoring layers ---
@@ -126,7 +147,7 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
     elif major_score < 50:
         reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
 
-    # International eligibility (25%)
+    # International eligibility (20%)
     intl_score = 100.0
     if profile.get("international_student"):
         friendly = elig.get("international_friendly", "unknown")
@@ -134,12 +155,12 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
             intl_score = 0.0
             reasons_gap.append("Requires US citizenship or permanent residency")
         elif friendly == "unknown":
-            intl_score = 50.0
+            intl_score = 35.0  # Significant penalty for uncertainty
             reasons_gap.append("International eligibility unclear — verify before applying")
         else:
             reasons_fit.append("Open to international students")
 
-    # Skill overlap (20%)
+    # Skill overlap (15%)
     skill_score = _skill_overlap_score(
         profile.get("hard_skills", []),
         elig.get("skills_required", [])
@@ -152,7 +173,17 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
         if missing:
             reasons_gap.append(f"Missing skills: {', '.join(missing)}")
 
-    total = 0.30 * year_score + 0.25 * major_score + 0.25 * intl_score + 0.20 * skill_score
+    # Type preference match (10%)
+    type_score = _type_preference_score(
+        profile.get("seeking_type", []),
+        opportunity.get("opportunity_type", "")
+    )
+    if type_score >= 80:
+        reasons_fit.append(f"Matches your interest in {opportunity.get('opportunity_type', '')}")
+    elif type_score < 50:
+        reasons_gap.append(f"This is a {opportunity.get('opportunity_type', '')} — not your primary target type")
+
+    total = 0.30 * year_score + 0.20 * major_score + 0.20 * intl_score + 0.15 * skill_score + 0.15 * type_score
     return total, reasons_fit, reasons_gap
 
 
@@ -208,14 +239,14 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
     reasons_gap = []
 
     # Paid (20%)
-    paid_map = {"yes": 100, "stipend": 70, "unknown": 50, "no": 30}
+    paid_map = {"yes": 100, "stipend": 80, "unknown": 40, "no": 25}
     paid_score = paid_map.get(opportunity.get("paid", "unknown"), 50)
     if paid_score >= 70:
         reasons_fit.append("Paid opportunity" if paid_score == 100 else "Includes stipend")
 
     # First-experience friendly (25%)
     elig = opportunity.get("eligibility", {})
-    first_exp_score = 50.0  # Default neutral — only boost if explicitly freshman-friendly
+    first_exp_score = 40.0  # Default: no signal of freshman-friendliness
     if "freshman" in [y.lower() for y in elig.get("preferred_year", [])]:
         first_exp_score = 100.0
         reasons_fit.append("Explicitly welcomes first-time researchers")
@@ -249,8 +280,18 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
         pathway_score = 90.0
         reasons_fit.append("Potential for publication or long-term involvement")
 
-    total = 0.20 * paid_score + 0.25 * first_exp_score + 0.10 * campus_score + \
-            0.15 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score
+    # Keyword/field relevance (10%) — does the opp topic match student interests?
+    keyword_score = 40.0  # Default neutral
+    opp_keywords = set(k.lower() for k in opportunity.get("keywords", []))
+    desired = set(f.lower() for f in profile.get("desired_fields", []))
+    if opp_keywords and desired:
+        overlap = opp_keywords & desired
+        if overlap:
+            keyword_score = min(100.0, 50.0 + len(overlap) * 25)
+            reasons_fit.append(f"Matches your interests: {', '.join(overlap)}")
+
+    total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \
+            0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.10 * keyword_score
     return total, reasons_fit, reasons_gap
 
 

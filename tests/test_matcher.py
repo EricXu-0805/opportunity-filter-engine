@@ -119,11 +119,11 @@ class TestYearMatching:
 
     def test_no_requirement(self):
         score = _year_match_score("freshman", [])
-        assert score == 55.0
+        assert score == 40.0  # Unknown = penalized, not neutral
 
     def test_unknown_requirement(self):
         score = _year_match_score("freshman", ["unknown"])
-        assert score == 55.0
+        assert score == 40.0  # Unknown = penalized, not neutral
 
 
 class TestSkillOverlap:
@@ -138,7 +138,7 @@ class TestSkillOverlap:
         assert _skill_overlap_score(["R"], ["Python", "Java"]) == 0.0
 
     def test_no_requirements(self):
-        assert _skill_overlap_score(["Python"], []) == 60.0
+        assert _skill_overlap_score(["Python"], []) == 40.0  # No requirement = penalized
 
     def test_case_insensitive(self):
         score = _skill_overlap_score(["python", "JAVA"], ["Python", "Java"])
@@ -161,7 +161,7 @@ class TestMajorMatching:
         assert score <= 30.0
 
     def test_open_requirement(self):
-        assert _major_match_score(["ECE"], []) == 60.0
+        assert _major_match_score(["ECE"], []) == 40.0  # No requirement = penalized
 
 
 # ── Unit Tests: Scoring Layers ────────────────
