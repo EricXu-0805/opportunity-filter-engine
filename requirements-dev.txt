@@ -1,0 +1,4 @@
+# Full dev dependencies (includes heavy packages not needed in production)
+-r requirements.txt
+streamlit>=1.30
+pandas>=2.0
