@@ -26,6 +26,7 @@ export default function ColdEmailModal({
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [copied, setCopied] = useState(false);
+  const [recipient, setRecipient] = useState('');
 
   const fetchEmail = useCallback(async () => {
     setLoading(true);
@@ -35,6 +36,7 @@ export default function ColdEmailModal({
       setEmail(data);
       setSubject(data.subject);
       setBody(data.body);
+      setRecipient(data.recipient ?? '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate email');
     } finally {
@@ -73,10 +75,10 @@ export default function ColdEmailModal({
   }
 
   function getMailtoLink(): string {
-    if (email?.mailto_link) return email.mailto_link;
+    const to = recipient || '';
     const encodedSubject = encodeURIComponent(subject);
     const encodedBody = encodeURIComponent(body);
-    return `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
+    return `mailto:${to}?subject=${encodedSubject}&body=${encodedBody}`;
   }
 
   if (!isOpen) return null;
@@ -137,7 +139,20 @@ export default function ColdEmailModal({
 
           {!loading && !error && (
             <div className="space-y-5">
-              {/* Subject */}
+              {/* Recipient */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  To (Recipient Email)
+                </label>
+                <input
+                  type="email"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="professor@illinois.edu"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                   Subject Line
@@ -186,13 +201,14 @@ export default function ColdEmailModal({
                 </>
               )}
             </button>
-            <a
-              href={getMailtoLink()}
+            <button
+              type="button"
+              onClick={() => { window.location.href = getMailtoLink(); }}
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow transition-all"
             >
               <ExternalLink className="w-4 h-4" />
               Open in Email
-            </a>
+            </button>
           </div>
         )}
       </div>

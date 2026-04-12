@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   GraduationCap,
@@ -16,6 +16,7 @@ import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
 import ResumeUpload from '@/components/ResumeUpload';
 import type { ProfileData, ResumeParseResponse } from '@/lib/types';
+import { getStats } from '@/lib/api';
 import { COLLEGES, COLLEGE_MAJORS, GRADES } from '@/lib/colleges';
 
 const DEFAULT_PROFILE: ProfileData = {
@@ -33,6 +34,11 @@ export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [searchWeight, setSearchWeight] = useState(50);
+  const [oppCount, setOppCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    getStats().then(s => setOppCount(s.total)).catch(() => {});
+  }, []);
 
   function update<K extends keyof ProfileData>(key: K, value: ProfileData[K]) {
     setProfile((prev) => ({ ...prev, [key]: key === 'college' ? value : value, ...(key === 'college' ? { major: '' } : {}) }));
@@ -339,7 +345,7 @@ export default function HomePage() {
                 Live Database
               </span>
             </div>
-            <p className="text-3xl font-extrabold">58+</p>
+            <p className="text-3xl font-extrabold">{oppCount ?? '...'}</p>
             <p className="text-sm text-blue-200 mt-1">
               Active research & internship opportunities at UIUC
             </p>

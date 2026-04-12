@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
-import { uploadResume } from '@/lib/api';
+import { parseResumePDF } from '@/lib/pdf-parser';
 import type { ResumeParseResponse } from '@/lib/types';
 
 interface ResumeUploadProps {
@@ -43,15 +43,20 @@ export default function ResumeUpload({ onParsed }: ResumeUploadProps) {
       }, 300);
 
       try {
-        const data = await uploadResume(file);
+        const data = await parseResumePDF(file);
         clearInterval(progressInterval);
         setProgress(100);
-        setState('success');
-        onParsed(data);
+        if (data.success) {
+          setState('success');
+          onParsed(data);
+        } else {
+          setError(data.message || 'Could not parse PDF');
+          setState('error');
+        }
       } catch (err) {
         clearInterval(progressInterval);
         setProgress(0);
-        setError(err instanceof Error ? err.message : 'Upload failed');
+        setError(err instanceof Error ? err.message : 'Failed to parse resume');
         setState('error');
       }
     },

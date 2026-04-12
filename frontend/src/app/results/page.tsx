@@ -52,6 +52,8 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // Cold email modal state
   const [emailModal, setEmailModal] = useState<{
@@ -100,18 +102,29 @@ export default function ResultsPage() {
     };
   }, [profile]);
 
-  // Filter by tab
+  // Filter by tab (hide low_fit from "all")
   const filtered = useMemo(() => {
     if (!data?.results) return [];
-    if (activeTab === 'all') return data.results;
+    if (activeTab === 'all') return data.results.filter((m) => m.bucket !== 'low_fit');
     return data.results.filter((m) => m.bucket === activeTab);
   }, [data, activeTab]);
+
+  // Paginate
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
+
+  // Reset page when tab changes
+  useEffect(() => { setPage(1); }, [activeTab]);
 
   // Bucket counts — use the pre-computed counts from the API response
   const counts = useMemo(() => {
     if (!data) return { all: 0, high_priority: 0, good_match: 0, reach: 0 };
+    const withoutLowFit = data.total - data.low_fit;
     return {
-      all: data.results.length,
+      all: withoutLowFit,
       high_priority: data.high_priority,
       good_match: data.good_match,
       reach: data.reach,
@@ -249,13 +262,39 @@ export default function ResultsPage() {
               </p>
             </div>
           ) : (
-            filtered.map((match: MatchResult) => (
-              <MatchCard
-                key={match.opportunity.id}
-                match={match}
-                onDraftEmail={openEmailModal}
-              />
-            ))
+            <>
+              {paginated.map((match: MatchResult) => (
+                <MatchCard
+                  key={match.opportunity.id}
+                  match={match}
+                  onDraftEmail={openEmailModal}
+                />
+              ))}
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-4">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-500 tabular-nums px-3">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages}
+                    onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
