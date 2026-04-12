@@ -25,21 +25,18 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <Header />
 
-        {/* Spacer for fixed header */}
-        <div className="h-16" />
+        <div className="h-12" />
 
         <main className="flex-1">{children}</main>
 
-        {/* Footer */}
-        <footer className="border-t border-gray-200 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-gray-400">
+        <footer className="border-t border-black/[0.04] mt-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p className="text-[12px] text-gray-400">
                 © {new Date().getFullYear()} OpportunityEngine
               </p>
-              <p className="text-xs text-gray-400 text-center">
-                Not officially affiliated with the University of Illinois
-                Urbana-Champaign. This is an independent student project.
+              <p className="text-[11px] text-gray-400 text-center">
+                Not affiliated with UIUC. Independent student project.
               </p>
             </div>
           </div>

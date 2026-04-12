@@ -67,22 +67,21 @@ export default function HomePage() {
   const isValid = profile.college && profile.major && profile.grade;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Hero */}
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm font-medium mb-5">
-          <Sparkles className="w-4 h-4" />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="text-center mb-16">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/[0.08] text-blue-600 text-[13px] font-medium mb-6">
+          <Sparkles className="w-3.5 h-3.5" />
           AI-Powered Opportunity Matching
         </div>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight">
+        <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1]">
           Find Your Perfect{' '}
           <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
             Research Match
           </span>
         </h1>
-        <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
-          Tell us about your background and interests. Our engine matches you
-          with research positions, internships, and opportunities at UIUC.
+        <p className="mt-5 text-lg text-gray-400 max-w-xl mx-auto leading-relaxed">
+          Tell us about yourself. We match you with research, internships,
+          and opportunities at UIUC.
         </p>
       </div>
 
@@ -133,7 +132,7 @@ export default function HomePage() {
                     id="college"
                     value={profile.college}
                     onChange={(e) => update('college', e.target.value)}
-                    className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all pr-10"
+                    className="w-full appearance-none px-4 py-3.5 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
                   >
                     <option value="">Select your college...</option>
                     {COLLEGES.map((c) => (
@@ -160,7 +159,7 @@ export default function HomePage() {
                     value={profile.major}
                     onChange={(e) => update('major', e.target.value)}
                     disabled={!profile.college}
-                    className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all pr-10 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    className="w-full appearance-none px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     <option value="">
                       {profile.college
@@ -190,7 +189,7 @@ export default function HomePage() {
                     id="grade"
                     value={profile.grade}
                     onChange={(e) => update('grade', e.target.value)}
-                    className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all pr-10"
+                    className="w-full appearance-none px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
                   >
                     <option value="">Select grade level...</option>
                     {GRADES.map((g) => (
@@ -249,7 +248,7 @@ export default function HomePage() {
                   }
                   rows={4}
                   placeholder="e.g., I'm interested in machine learning applications in healthcare, particularly medical image analysis using deep learning. I've taken courses in probability, data structures, and intro ML..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all resize-y leading-relaxed"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 resize-y leading-relaxed"
                 />
               </div>
 
@@ -353,31 +352,20 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* CTA Button */}
-      <div className="flex justify-center mt-12">
+      <div className="flex justify-center mt-16">
         <button
           type="button"
           disabled={!isValid}
           onClick={handleSubmit}
-          className="group relative inline-flex items-center gap-3 px-10 py-4 text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:from-blue-700 hover:to-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+          className="group inline-flex items-center gap-2.5 px-8 py-3.5 text-[15px] font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_12px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_20px_rgba(37,99,235,0.35)]"
         >
-          <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
           Generate Matches
-          <span className="absolute -top-2 -right-2 flex h-5 w-5">
-            {isValid && (
-              <>
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-5 w-5 bg-blue-500 items-center justify-center">
-                  <CheckCircle2 className="w-3 h-3 text-white" />
-                </span>
-              </>
-            )}
-          </span>
         </button>
       </div>
 
       {!isValid && (
-        <p className="text-center text-sm text-gray-400 mt-3">
+        <p className="text-center text-[13px] text-gray-400 mt-4">
           Please select your college, major, and grade to continue
         </p>
       )}
