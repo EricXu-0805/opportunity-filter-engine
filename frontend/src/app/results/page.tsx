@@ -155,70 +155,47 @@ export default function ResultsPage() {
         Back to Profile
       </button>
 
-      {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+      <div className="mb-10">
+        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
           Your Matches
         </h1>
-        <p className="mt-2 text-gray-500">
+        <p className="mt-2 text-[15px] text-gray-400">
           {loading
-            ? 'Analyzing your profile against available opportunities...'
+            ? 'Analyzing your profile...'
             : data
-              ? `Found ${data.total} opportunities ranked for you`
+              ? `${counts.all} opportunities ranked for you`
               : 'Loading...'}
         </p>
       </div>
 
-      {/* Summary bar */}
       {!loading && data && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <SummaryCard
-            label="Total"
-            count={counts.all}
-            color="bg-gray-50 text-gray-900"
-            borderColor="border-gray-200"
-          />
-          <SummaryCard
-            label="High Priority"
-            count={counts.high_priority}
-            color="bg-emerald-50 text-emerald-700"
-            borderColor="border-emerald-200"
-          />
-          <SummaryCard
-            label="Good Match"
-            count={counts.good_match}
-            color="bg-blue-50 text-blue-700"
-            borderColor="border-blue-200"
-          />
-          <SummaryCard
-            label="Reach"
-            count={counts.reach}
-            color="bg-amber-50 text-amber-700"
-            borderColor="border-amber-200"
-          />
+        <div className="grid grid-cols-4 gap-3 mb-10">
+          <SummaryCard label="Total" count={counts.all} />
+          <SummaryCard label="High Priority" count={counts.high_priority} accent="emerald" />
+          <SummaryCard label="Good Match" count={counts.good_match} accent="blue" />
+          <SummaryCard label="Reach" count={counts.reach} accent="amber" />
         </div>
       )}
 
-      {/* Tabs */}
       {!loading && data && (
-        <div className="flex items-center gap-1 mb-8 overflow-x-auto pb-1">
+        <div className="inline-flex items-center bg-black/[0.04] rounded-full p-1 mb-10">
           {TABS.map(({ key, label, icon: Icon, color }) => (
             <button
               key={key}
               type="button"
               onClick={() => setActiveTab(key)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-300
                 ${
                   activeTab === key
-                    ? 'bg-white border border-gray-200 shadow-sm text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
-              <Icon className={`w-4 h-4 ${activeTab === key ? color : ''}`} />
+              <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} />
               {label}
               <span
-                className={`ml-1 text-xs font-bold tabular-nums ${
-                  activeTab === key ? 'text-gray-500' : 'text-gray-400'
+                className={`text-[11px] font-semibold tabular-nums ${
+                  activeTab === key ? 'text-gray-400' : 'text-gray-400'
                 }`}
               >
                 {counts[key]}
@@ -301,9 +278,9 @@ export default function ResultsPage() {
 
       {/* Loading bar at top while fetching */}
       {loading && (
-        <div className="fixed top-16 left-0 right-0 z-40">
-          <div className="h-1 bg-blue-100">
-            <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-r-full animate-pulse" style={{ width: '60%' }} />
+        <div className="fixed top-12 left-0 right-0 z-40">
+          <div className="h-[2px] bg-black/[0.03]">
+            <div className="h-full bg-blue-500 rounded-r-full animate-pulse" style={{ width: '60%' }} />
           </div>
         </div>
       )}
@@ -324,24 +301,23 @@ export default function ResultsPage() {
   );
 }
 
-// ── Summary Card mini-component ──────────────────────────────────────
 function SummaryCard({
   label,
   count,
-  color,
-  borderColor,
+  accent,
 }: {
   label: string;
   count: number;
-  color: string;
-  borderColor: string;
+  accent?: 'emerald' | 'blue' | 'amber';
 }) {
+  const textColor = accent
+    ? { emerald: 'text-emerald-600', blue: 'text-blue-600', amber: 'text-amber-600' }[accent]
+    : 'text-gray-900';
+
   return (
-    <div
-      className={`rounded-2xl border ${borderColor} ${color} px-5 py-4`}
-    >
-      <p className="text-2xl font-extrabold tabular-nums">{count}</p>
-      <p className="text-xs font-medium mt-1 opacity-70">{label}</p>
+    <div className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] px-5 py-5">
+      <p className={`text-3xl font-bold tabular-nums tracking-tight ${textColor}`}>{count}</p>
+      <p className="text-[11px] font-medium text-gray-400 mt-1 uppercase tracking-wider">{label}</p>
     </div>
   );
 }
