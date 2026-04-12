@@ -1,20 +1,41 @@
-# Opportunity Filter Engine
+# OpportunityEngine
 
-> 帮低年级本科生更快找到"自己现在有机会拿到"的 research / internship / summer program，而不是只帮他们搜到一堆职位。
+A personalized research and internship matching engine for UIUC undergraduates. Automatically collects 330+ opportunities from multiple sources, then ranks and explains each match based on your profile.
 
-## What This Is
-
-An **Opportunity Decision Engine** for UIUC undergraduate students — especially international freshmen and sophomores in ECE, CS, STAT, and Data Science — that automatically collects, normalizes, and ranks opportunities based on three questions:
-
+Not a job board. A decision engine that answers three questions:
 1. **Can I apply?** (Eligibility)
 2. **Should I apply?** (Readiness)
 3. **What should I do next?** (Actionable Guidance)
 
-This is **not a job board**. It is a personalized filter that turns scattered, intimidating listings into an explained, prioritized, actionable list.
+<!-- TODO: Uncomment when deployed
+> **[Live Demo](https://opportunity-filter-engine.vercel.app)**
+-->
 
-## Why This Matters
+## Screenshots
 
-UIUC scatters opportunities across **7+ platforms** with no unified view:
+### Profile Builder
+Two-column form with college/major cascading dropdowns, international student filtering, resume upload with auto-skill extraction, and a research interest/experience balance slider.
+
+![Profile Page](docs/screenshots/01-profile.png)
+
+### Ranked Results
+Every opportunity is scored (Eligibility 0.45 + Readiness 0.35 + Upside 0.20) and bucketed into High Priority, Good Match, or Reach. Each card explains *why it fits* and *what gaps you have*.
+
+![Results Page](docs/screenshots/02-results.png)
+
+### Cold Email Generator
+One-click draft with pre-filled subject line and body, personalized to your profile and the specific opportunity. Copy to clipboard or open directly in your email client.
+
+![Cold Email Modal](docs/screenshots/03-cold-email.png)
+
+### Opportunity Dashboard
+Live stats across all scraped sources: total opportunities, paid positions, international-friendly count, breakdowns by type and source.
+
+![Dashboard](docs/screenshots/04-dashboard.png)
+
+## Why This Exists
+
+UIUC scatters opportunities across 7+ platforms with no unified view:
 
 | Source | What it has | Problem |
 |--------|------------|---------|
@@ -26,143 +47,99 @@ UIUC scatters opportunities across **7+ platforms** with no unified view:
 | Department pages | Lab-specific openings | Scattered across 50+ faculty sites |
 | External REUs | 500+ NSF-funded programs | Requires knowing where to look |
 
-**The result:** students — especially international freshmen — can't tell what's realistic, what's worth their time, or where to even start.
-
-## Core Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   DATA SOURCES                       │
-│  OUR RSS · SRO Scraper · NSF API · USAJobs API      │
-│  SerpApi · Manual Entries · URL Parser               │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              NORMALIZATION PIPELINE                   │
-│  Raw text → Structured fields → Tagging              │
-│  (LLM extraction for ambiguous fields)               │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              OPPORTUNITY DATABASE                     │
-│  PostgreSQL + pgvector                               │
-│  Standardized schema · Full-text search              │
-│  Semantic embeddings · International tags            │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              MATCHING ENGINE                          │
-│  Eligibility (0.45) + Readiness (0.35) + Upside (0.20)│
-│  Rule-based first → Semantic matching later          │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              USER INTERFACE                           │
-│  Profile input → Ranked results + Explanations       │
-│  "Best Matches Now" / "Worth Stretching For"         │
-│  Cold email guidance · Resume direction              │
-└─────────────────────────────────────────────────────┘
-```
-
-## V1 Scope
-
-### Included
-- UIUC on-campus research opportunities (auto-collected)
-- UIUC summer programs
-- Selected external REUs and summer research programs
-- Semi-automatic data pipeline (scrape + manual curation)
-- Profile-based three-layer scoring
-- Explained recommendations with next-step guidance
-- International-student-aware filtering
-
-### Excluded from V1
-- Mass auto-apply
-- Full LinkedIn automation
-- Browser extension
-- Nationwide scraping at scale
-- Social/community features
-- Automated resume rewriting
+International freshmen have it worst: they can't tell what's realistic, what requires citizenship, or where to even start.
 
 ## Tech Stack
 
-| Layer | V1 Choice | Why |
-|-------|-----------|-----|
-| Backend | FastAPI (Python) | Async-native, auto OpenAPI docs, Pydantic validation |
-| Database | PostgreSQL + pgvector | Relational + FTS + vector search in one DB |
-| Frontend | Streamlit (MVP) → Next.js (v2) | Fast iteration now, production-ready later |
-| Scraping | requests + BeautifulSoup + feedparser | Covers RSS + static HTML |
-| LLM | OpenAI API (gpt-4o-mini) | Structured field extraction + explanations |
-| Deployment | Railway ($5/mo) | PostgreSQL + FastAPI in one place |
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
+| Backend | FastAPI, Python 3.11, Pydantic v2 |
+| Data Collection | BeautifulSoup, feedparser, requests |
+| Matching | Rule-based three-layer scoring engine |
+| Testing | pytest (33 integration tests) |
+
+## Architecture
+
+```
+Data Sources (OUR RSS, SRO Scraper, Manual Entries)
+        │
+        ▼
+Normalization Pipeline (raw text → structured fields → LLM tagging)
+        │
+        ▼
+Opportunity Database (330+ normalized records, JSON)
+        │
+        ▼
+Matching Engine (eligibility × readiness × upside scoring)
+        │
+        ▼
+Web Interface (Next.js + FastAPI)
+  ├── Profile form with resume parsing
+  ├── Ranked results with explanations
+  ├── Cold email generator with mailto: links
+  └── Dashboard with live stats
+```
+
+## Run Locally
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+
+### Backend
+```bash
+pip install -r requirements.txt
+uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. The frontend proxies API requests to the backend automatically.
+
+### Tests
+```bash
+pytest tests/ -v
+```
 
 ## Project Structure
 
 ```
 opportunity-filter-engine/
-├── README.md
-├── docs/
-│   ├── product_scope.md          # What we build and don't build
-│   ├── data_sources.md           # Every source with access method
-│   ├── user_profile_schema.md    # Profile fields and logic
-│   ├── opportunity_schema.md     # Opportunity fields and tagging
-│   ├── matching_logic.md         # Three-layer scoring system
-│   ├── international_logic.md    # International student considerations
-│   ├── roadmap.md                # Phase plan with milestones
-│   └── future_features.md        # Post-V1 expansion
-├── config/
-│   └── sources.yaml              # Scraper registry configuration
+├── backend/                  # FastAPI REST API
+│   ├── main.py               # App entry, CORS, routing
+│   ├── schemas.py            # Pydantic request/response models
+│   └── routes/
+│       ├── matches.py        # POST /api/matches
+│       ├── opportunities.py  # GET /api/opportunities
+│       ├── cold_email.py     # POST /api/cold-email
+│       └── resume.py         # POST /api/resume/upload
+├── frontend/                 # Next.js 14 app
+│   └── src/
+│       ├── app/              # Pages (home, results, dashboard, about)
+│       ├── components/       # MatchCard, ColdEmailModal, ResumeUpload, etc.
+│       └── lib/              # API client, types, college data
+├── src/                      # Core Python engine
+│   ├── collectors/           # Source-specific scrapers
+│   ├── parsers/              # LLM tagger + rule-based fallback
+│   ├── normalizers/          # Raw → standardized schema
+│   ├── matcher/              # Three-layer scoring engine
+│   └── recommender/          # Cold email + resume gap advisor
 ├── data/
-│   ├── raw/                      # Unprocessed scraped data
-│   ├── processed/                # Normalized records
-│   └── manual_entries/           # Hand-curated opportunities
-├── src/
-│   ├── collectors/               # Source-specific scrapers
-│   │   ├── base.py               # Abstract scraper interface
-│   │   ├── uiuc_our_rss.py       # OUR Blog RSS feed parser
-│   │   ├── uiuc_sro.py           # Summer Research Ops scraper
-│   │   ├── nsf_reu.py            # NSF Award Search API
-│   │   ├── usajobs.py            # USAJobs API client
-│   │   └── url_parser.py         # Parse any pasted URL into record
-│   ├── parsers/                  # Text → structured field extraction
-│   ├── normalizers/              # Raw → standardized schema
-│   ├── matcher/                  # Scoring engine
-│   │   ├── eligibility.py
-│   │   ├── readiness.py
-│   │   ├── upside.py
-│   │   └── ranker.py
-│   ├── recommender/              # Explanation + next-step generation
-│   └── app/                      # Streamlit / FastAPI app
-├── examples/
-│   ├── sample_profile.json
-│   └── sample_opportunities.json
-└── tests/
+│   ├── processed/            # 330+ normalized opportunities
+│   └── manual_entries/       # Hand-curated entries
+└── tests/                    # 33 integration tests
 ```
-
-## Phase Plan
-
-| Phase | Goal | Duration | Key Deliverable |
-|-------|------|----------|-----------------|
-| 1 | Product definition | Done | README + schemas + matching logic |
-| 2 | Build opportunity dataset | 1-2 weeks | 50-100 normalized opportunities |
-| 3 | Matching engine | 1-2 weeks | Scoring functions + explanations |
-| 4 | MVP interface | 1 week | Streamlit app with profile → results |
-| 5 | Application assistance | 1-2 weeks | Cold email generator + resume tips |
-
-## V1 Success Criteria
-
-**Product:** 50+ standardized opportunities, 3-5 real student profiles tested, recommendations meaningfully faster than manual search
-
-**UX:** Profile setup < 3 minutes, user immediately understands why a result is recommended, user can take at least one concrete action (apply / cold email / revise resume)
-
-**Technical:** 2-3 stable auto-collection sources, incremental data updates, stable schemas
-
-## License
-
-TBD
 
 ## Author
 
-Guoyi Xu — UIUC Computer Engineering
+Guoyi Xu (Eric) - UIUC Electrical & Computer Engineering
+
+## License
+
+MIT
