@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss, merge_into_processed as merge_rss
 from .uiuc_sro import fetch_and_normalize as fetch_sro, merge_into_processed as merge_sro
+from .nsf_reu import fetch_and_normalize as fetch_reu, merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,26 @@ def refresh_all(deep: bool = True) -> dict:
         logger.error(f"SRO collection failed: {e}")
         summary["sources"]["uiuc_sro"] = {"status": "error", "error": str(e)}
 
-    # 3. PI enrichment pass
+    # 3. NSF REU database
+    logger.info("=" * 50)
+    logger.info("Collecting from NSF REU Awards API...")
+    try:
+        reu_opps = fetch_reu(max_results=500)
+        added, updated = merge_reu(reu_opps)
+        summary["sources"]["nsf_reu"] = {
+            "fetched": len(reu_opps),
+            "new": added,
+            "updated": updated,
+            "status": "ok",
+        }
+        summary["total_new"] += added
+        summary["total_updated"] += updated
+        logger.info(f"NSF REU: {len(reu_opps)} fetched, {added} new, {updated} updated")
+    except Exception as e:
+        logger.error(f"NSF REU collection failed: {e}")
+        summary["sources"]["nsf_reu"] = {"status": "error", "error": str(e)}
+
+    # 4. PI enrichment pass
     logger.info("=" * 50)
     logger.info("Running PI / contact email enrichment...")
     if PROCESSED_FILE.exists():
