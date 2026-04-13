@@ -11,12 +11,15 @@ import {
   ChevronDown,
   CheckCircle2,
   Upload,
+  Github,
+  Linkedin,
+  Loader2,
 } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
 import ResumeUpload from '@/components/ResumeUpload';
-import type { ProfileData, ResumeParseResponse } from '@/lib/types';
-import { getStats } from '@/lib/api';
+import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
+import { getStats, parseGitHubProfile } from '@/lib/api';
 import { saveProfile, loadProfile } from '@/lib/supabase';
 import { COLLEGES, COLLEGE_MAJORS, GRADES } from '@/lib/colleges';
 
@@ -36,13 +39,19 @@ export default function HomePage() {
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [searchWeight, setSearchWeight] = useState(50);
   const [oppCount, setOppCount] = useState<number | null>(null);
+  const [ghLoading, setGhLoading] = useState(false);
+  const [ghStatus, setGhStatus] = useState<string | null>(null);
 
   useEffect(() => {
     getStats().then(s => setOppCount(s.total)).catch(() => {});
     loadProfile().then(saved => {
       if (saved) {
-        setProfile(prev => ({ ...prev, ...saved } as ProfileData));
-        if (typeof saved.search_weight === 'number') setSearchWeight(saved.search_weight);
+        const raw = saved as Record<string, unknown>;
+        if (Array.isArray(raw.skills) && raw.skills.length > 0 && typeof raw.skills[0] === 'string') {
+          raw.skills = (raw.skills as string[]).map((name) => ({ name, level: 'beginner' as const }));
+        }
+        setProfile(prev => ({ ...prev, ...raw } as ProfileData));
+        if (typeof raw.search_weight === 'number') setSearchWeight(raw.search_weight);
       }
     }).catch(() => {});
   }, []);
@@ -55,15 +64,45 @@ export default function HomePage() {
 
   const handleResumeParsed = useCallback(
     (data: ResumeParseResponse) => {
-      setProfile((prev) => ({
-        ...prev,
-        skills: Array.from(new Set([...prev.skills, ...data.extracted_skills])),
-        resume_text: data.raw_text,
-        coursework: data.extracted_coursework,
-      }));
+      setProfile((prev) => {
+        const existingNames = new Set(prev.skills.map((s) => s.name));
+        const newSkills: SkillWithLevel[] = data.extracted_skills
+          .filter((name) => !existingNames.has(name))
+          .map((name) => ({ name, level: 'experienced' as const }));
+        return {
+          ...prev,
+          skills: [...prev.skills, ...newSkills],
+          resume_text: data.raw_text,
+          coursework: data.extracted_coursework,
+        };
+      });
     },
     [],
   );
+
+  async function handleGitHubImport() {
+    const url = profile.github_url?.trim();
+    if (!url) return;
+    const match = url.match(/github\.com\/([^/\s?#]+)/);
+    const username = match ? match[1] : url;
+    setGhLoading(true);
+    setGhStatus(null);
+    try {
+      const data = await parseGitHubProfile(username);
+      setProfile((prev) => {
+        const existingNames = new Set(prev.skills.map((s) => s.name));
+        const newSkills: SkillWithLevel[] = data.extracted_skills
+          .filter((name) => !existingNames.has(name))
+          .map((name) => ({ name, level: 'experienced' as const }));
+        return { ...prev, skills: [...prev.skills, ...newSkills] };
+      });
+      setGhStatus(`Imported ${data.extracted_skills.length} skills from ${data.repo_count} repos`);
+    } catch {
+      setGhStatus('Could not fetch GitHub profile');
+    } finally {
+      setGhLoading(false);
+    }
+  }
 
   function handleSubmit() {
     const profileToSave = { ...profile, search_weight: searchWeight };
@@ -352,6 +391,66 @@ export default function HomePage() {
                 Your resume is processed locally and used only for matching.
                 It&apos;s never stored permanently.
               </p>
+            </div>
+          </Card>
+
+          {/* Online Profiles */}
+          <Card>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Online Profiles</h2>
+                <p className="text-sm text-gray-400">Optional — helps enrich your match</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="linkedin_url" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+                  <Linkedin className="w-4 h-4 text-[#0A66C2]" />
+                  LinkedIn
+                </label>
+                <input
+                  id="linkedin_url"
+                  type="url"
+                  value={profile.linkedin_url ?? ''}
+                  onChange={(e) => update('linkedin_url', e.target.value)}
+                  placeholder="https://linkedin.com/in/your-profile"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="github_url" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+                  <Github className="w-4 h-4" />
+                  GitHub
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="github_url"
+                    type="url"
+                    value={profile.github_url ?? ''}
+                    onChange={(e) => update('github_url', e.target.value)}
+                    placeholder="https://github.com/username"
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300"
+                  />
+                  <button
+                    type="button"
+                    disabled={!profile.github_url?.trim() || ghLoading}
+                    onClick={handleGitHubImport}
+                    className="px-4 py-3 text-sm font-medium text-white bg-gray-800 rounded-2xl hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                  >
+                    {ghLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Import'}
+                  </button>
+                </div>
+                {ghStatus && (
+                  <p className={`mt-2 text-xs ${ghStatus.startsWith('Could not') ? 'text-red-500' : 'text-emerald-600'}`}>
+                    {ghStatus}
+                  </p>
+                )}
+              </div>
             </div>
           </Card>
 

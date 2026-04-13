@@ -1,13 +1,16 @@
-"""Pydantic models for API request/response validation."""
-
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Union
+
+from pydantic import BaseModel, Field, field_validator
+
+
+class SkillItem(BaseModel):
+    name: str
+    level: str = "beginner"
 
 
 class ProfileRequest(BaseModel):
-    """Student profile submitted from frontend."""
-
     name: str = ""
     school: str = "UIUC"
     year: str = "freshman"
@@ -17,7 +20,7 @@ class ProfileRequest(BaseModel):
     international_student: bool = True
     seeking_type: list[str] = Field(default_factory=lambda: ["research", "summer_program"])
     desired_fields: list[str] = Field(default_factory=list)
-    hard_skills: list[str] = Field(default_factory=list)
+    hard_skills: list[Union[SkillItem, str]] = Field(default_factory=list)
     coursework: list[str] = Field(default_factory=list)
     experience_level: str = "beginner"
     resume_ready: bool = False
@@ -26,7 +29,28 @@ class ProfileRequest(BaseModel):
     preferred_location: str = "on-campus"
     time_availability: str = "summer"
     research_interests_text: str = ""
+    linkedin_url: str = ""
+    github_url: str = ""
     preferences: ProfilePreferences = None
+
+    @field_validator("hard_skills", mode="before")
+    @classmethod
+    def normalize_skills(cls, v: list) -> list:
+        result = []
+        for item in v:
+            if isinstance(item, str):
+                result.append(SkillItem(name=item, level="beginner"))
+            elif isinstance(item, dict):
+                result.append(SkillItem(**item))
+            else:
+                result.append(item)
+        return result
+
+    def skill_names(self) -> list[str]:
+        return [s.name if isinstance(s, SkillItem) else s for s in self.hard_skills]
+
+    def skills_with_levels(self) -> list[SkillItem]:
+        return [s if isinstance(s, SkillItem) else SkillItem(name=s) for s in self.hard_skills]
 
     class Config:
         json_schema_extra = {
@@ -36,7 +60,11 @@ class ProfileRequest(BaseModel):
                 "major": "ECE",
                 "college": "Grainger College of Engineering",
                 "international_student": True,
-                "hard_skills": ["Python", "Java", "C++"],
+                "hard_skills": [
+                    {"name": "Python", "level": "experienced"},
+                    {"name": "Java", "level": "beginner"},
+                    {"name": "C++", "level": "expert"},
+                ],
                 "seeking_type": ["research", "summer_program"],
             }
         }

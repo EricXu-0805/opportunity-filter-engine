@@ -9,7 +9,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException
 
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
-from src.recommender.cold_email import generate_cold_email
+from src.recommender.cold_email import generate_cold_email, generate_variants
 
 router = APIRouter()
 
@@ -93,3 +93,30 @@ async def generate_email(request: ColdEmailRequest):
         recipient_email=recipient_email,
         mailto_link=mailto_link,
     )
+
+
+@router.post("/cold-email/variants")
+async def generate_email_variants(request: ColdEmailRequest):
+    opportunities = _load_opportunities()
+    opp = next((o for o in opportunities if o["id"] == request.opportunity_id), None)
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+
+    profile_dict = request.profile.model_dump()
+    raw_variants = generate_variants(profile_dict, opp)
+
+    recipient_email = opp.get("contact_email", "")
+
+    results = []
+    for v in raw_variants:
+        subject, body = _extract_subject_and_body(v["text"])
+        results.append({
+            "id": v["id"],
+            "label": v["label"],
+            "subject": subject,
+            "body": body,
+            "recipient_email": recipient_email,
+            "mailto_link": _build_mailto_link(recipient_email, subject, body),
+        })
+
+    return {"variants": results}

@@ -66,15 +66,35 @@ def _major_match_score(student_majors: list[str], required_majors: list[str]) ->
     return 15.0
 
 
-def _skill_overlap_score(student_skills: list[str], required_skills: list[str]) -> float:
-    if not required_skills:
-        return 40.0  # No requirement = open, but no signal of good fit
+PROFICIENCY_WEIGHTS = {"expert": 1.0, "experienced": 0.75, "beginner": 0.5}
 
-    s_lower = {s.lower().strip() for s in student_skills}
+
+def _parse_skills(student_skills: list) -> dict[str, float]:
+    result: dict[str, float] = {}
+    for s in student_skills:
+        if isinstance(s, dict):
+            name = s.get("name", "").lower().strip()
+            level = s.get("level", "beginner")
+            result[name] = PROFICIENCY_WEIGHTS.get(level, 0.5)
+        elif isinstance(s, str):
+            result[s.lower().strip()] = 0.5
+        else:
+            name = getattr(s, "name", "").lower().strip()
+            level = getattr(s, "level", "beginner")
+            result[name] = PROFICIENCY_WEIGHTS.get(level, 0.5)
+    return result
+
+
+def _skill_overlap_score(student_skills: list, required_skills: list[str]) -> float:
+    if not required_skills:
+        return 40.0
+
+    skill_weights = _parse_skills(student_skills)
     r_lower = {s.lower().strip() for s in required_skills}
 
-    matched = len(s_lower & r_lower)
-    return min(100.0, (matched / len(r_lower)) * 100)
+    weighted_sum = sum(skill_weights.get(r, 0.0) for r in r_lower)
+    max_possible = len(r_lower) * 1.0
+    return min(100.0, (weighted_sum / max_possible) * 100)
 
 
 def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
@@ -142,8 +162,10 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
     # Major match (25%)
     student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])
     major_score = _major_match_score(student_majors, elig.get("majors", []))
-    if major_score >= 70:
-        reasons_fit.append("Your major/interests align with requirements")
+    if major_score >= 100:
+        reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
+    elif major_score >= 70:
+        reasons_fit.append(f"Your major ({profile.get('major', '')}) is closely related to requirements")
     elif major_score < 50:
         reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
 
@@ -165,13 +187,17 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
         profile.get("hard_skills", []),
         elig.get("skills_required", [])
     )
-    if skill_score >= 70:
-        reasons_fit.append("Your skills match the requirements")
-    elif skill_score < 40:
-        missing = set(s.lower() for s in elig.get("skills_required", [])) - \
-                  set(s.lower() for s in profile.get("hard_skills", []))
-        if missing:
-            reasons_gap.append(f"Missing skills: {', '.join(missing)}")
+    student_skill_map = _parse_skills(profile.get("hard_skills", []))
+    required_lower = [s.lower().strip() for s in elig.get("skills_required", [])]
+    matched_skills = [r for r in required_lower if r in student_skill_map]
+    missing_skills = [r for r in required_lower if r not in student_skill_map]
+
+    if skill_score >= 70 and matched_skills:
+        reasons_fit.append(f"Tech stack overlap: {', '.join(matched_skills)} ({len(matched_skills)}/{len(required_lower)} required)")
+    elif skill_score >= 40 and matched_skills:
+        reasons_fit.append(f"Partial skill match: {', '.join(matched_skills)}")
+    if missing_skills:
+        reasons_gap.append(f"Missing skills: {', '.join(missing_skills)}")
 
     # Type preference match (10%)
     type_score = _type_preference_score(
@@ -280,8 +306,7 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
         pathway_score = 90.0
         reasons_fit.append("Potential for publication or long-term involvement")
 
-    # Keyword/field relevance (10%) — does the opp topic match student interests?
-    keyword_score = 40.0  # Default neutral
+    keyword_score = 40.0
     opp_keywords = set(k.lower() for k in opportunity.get("keywords", []))
     desired = set(f.lower() for f in profile.get("desired_fields", []))
     if opp_keywords and desired:
@@ -289,6 +314,21 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
         if overlap:
             keyword_score = min(100.0, 50.0 + len(overlap) * 25)
             reasons_fit.append(f"Matches your interests: {', '.join(overlap)}")
+
+    research_text = profile.get("research_interests_text", "").lower()
+    if research_text and opp_keywords:
+        text_overlap = [kw for kw in opp_keywords if kw in research_text]
+        if text_overlap and keyword_score < 80:
+            keyword_score = min(100.0, keyword_score + len(text_overlap) * 15)
+            reasons_fit.append(f"Research interest alignment: {', '.join(text_overlap)}")
+
+    opp_desc = (opportunity.get("description_clean") or opportunity.get("description_raw") or "").lower()
+    if research_text and opp_desc and keyword_score < 60:
+        interest_words = [w for w in research_text.split() if len(w) > 4]
+        desc_hits = [w for w in interest_words if w in opp_desc]
+        if len(desc_hits) >= 3:
+            keyword_score = min(100.0, keyword_score + 20)
+            reasons_fit.append("Opportunity description aligns with your research interests")
 
     total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \
             0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.10 * keyword_score

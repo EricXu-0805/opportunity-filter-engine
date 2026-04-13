@@ -60,17 +60,16 @@ SKILL_TIMELINE = {
 }
 
 
+def _skill_name(s) -> str:
+    if isinstance(s, dict):
+        return s.get("name", "")
+    if isinstance(s, str):
+        return s
+    return getattr(s, "name", str(s))
+
+
 def analyze_gaps(profile: dict, opportunity: dict) -> dict:
-    """Analyze gaps between a student profile and an opportunity.
-
-    Args:
-        profile: Student profile with hard_skills, coursework, experience_level, etc.
-        opportunity: Opportunity dict with eligibility.skills_required/preferred, etc.
-
-    Returns:
-        dict with: missing_skills, suggested_coursework, resume_tips, preparation_timeline
-    """
-    student_skills = {s.lower() for s in profile.get("hard_skills", [])}
+    student_skills = {_skill_name(s).lower() for s in profile.get("hard_skills", [])}
     elig = opportunity.get("eligibility", {})
 
     required = elig.get("skills_required", []) or []
@@ -130,10 +129,9 @@ def _generate_resume_tips(profile: dict, opportunity: dict,
             f"Consider picking up {', '.join(missing_pref)} to strengthen your application."
         )
 
-    # Match existing skills
-    student_skills = profile.get("hard_skills", [])
+    student_skill_names = {_skill_name(s).lower() for s in profile.get("hard_skills", [])}
     required = elig.get("skills_required", []) or []
-    matched = [s for s in required if s.lower() in {sk.lower() for sk in student_skills}]
+    matched = [s for s in required if s.lower() in student_skill_names]
     if matched:
         tips.append(
             f"Highlight your experience with {', '.join(matched)} prominently on your resume."

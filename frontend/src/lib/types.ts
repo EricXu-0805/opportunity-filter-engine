@@ -1,3 +1,11 @@
+// ── Skill Proficiency ────────────────────────────────────────────────
+export type SkillLevel = 'beginner' | 'experienced' | 'expert';
+
+export interface SkillWithLevel {
+  name: string;
+  level: SkillLevel;
+}
+
 // ── Frontend Profile (form state) ────────────────────────────────────
 export interface ProfileData {
   institution: string;
@@ -6,10 +14,12 @@ export interface ProfileData {
   grade: string;
   is_international: boolean;
   research_interests: string;
-  skills: string[];
+  skills: SkillWithLevel[];
   resume_text?: string;
   coursework?: string[];
-  search_weight?: number; // 0 = research interests, 100 = resume
+  search_weight?: number;
+  linkedin_url?: string;
+  github_url?: string;
 }
 
 // ── Backend Profile Request ──────────────────────────────────────────
@@ -23,12 +33,14 @@ export interface ProfileRequest {
   international_student: boolean;
   seeking_type: string[];
   desired_fields: string[];
-  hard_skills: string[];
+  hard_skills: SkillWithLevel[];
   coursework: string[];
   experience_level: string;
   resume_ready: boolean;
   can_cold_email: boolean;
   research_interests_text: string;
+  linkedin_url: string;
+  github_url: string;
 }
 
 // ── Opportunity (backend shape) ──────────────────────────────────────
@@ -102,6 +114,19 @@ export interface ColdEmailResponse {
   body: string;
   mailto_link: string;
   recipient?: string;
+}
+
+export interface EmailVariant {
+  id: string;
+  label: string;
+  subject: string;
+  body: string;
+  recipient_email: string;
+  mailto_link: string;
+}
+
+export interface EmailVariantsResponse {
+  variants: EmailVariant[];
 }
 
 // ── Resume ───────────────────────────────────────────────────────────

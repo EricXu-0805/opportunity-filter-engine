@@ -16,7 +16,7 @@ import MatchCard from '@/components/MatchCard';
 import ColdEmailModal from '@/components/ColdEmailModal';
 import { getMatches } from '@/lib/api';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
-import type { ProfileData, MatchResult, MatchesResponse, MatchBucket } from '@/lib/types';
+import type { ProfileData, MatchResult, MatchesResponse, MatchBucket, SkillWithLevel } from '@/lib/types';
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 
@@ -87,8 +87,11 @@ export default function ResultsPage() {
       return;
     }
     try {
-      const parsed = JSON.parse(raw) as ProfileData;
-      setProfile(parsed);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.skills) && parsed.skills.length > 0 && typeof parsed.skills[0] === 'string') {
+        parsed.skills = (parsed.skills as string[]).map((name: string) => ({ name, level: 'beginner' as const }));
+      }
+      setProfile(parsed as ProfileData);
     } catch {
       router.replace('/');
     }

@@ -4,6 +4,7 @@ import type {
   MatchesResponse,
   OpportunitiesResponse,
   ColdEmailResponse,
+  EmailVariantsResponse,
   ResumeParseResponse,
   StatsResponse,
 } from './types';
@@ -22,7 +23,6 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Transform frontend ProfileData into the backend ProfileRequest format */
 function toProfileRequest(profile: ProfileData): ProfileRequest {
   return {
     name: '',
@@ -34,12 +34,14 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     international_student: profile.is_international,
     seeking_type: ['research', 'summer_program'],
     desired_fields: [],
-    hard_skills: profile.skills,
+    hard_skills: profile.skills.map((s) => ({ name: s.name, level: s.level })),
     coursework: profile.coursework ?? [],
     experience_level: 'beginner',
     resume_ready: !!profile.resume_text,
     can_cold_email: true,
     research_interests_text: profile.research_interests,
+    linkedin_url: profile.linkedin_url ?? '',
+    github_url: profile.github_url ?? '',
   };
 }
 
@@ -67,6 +69,16 @@ export async function generateColdEmail(
   });
 }
 
+export async function getEmailVariants(
+  profile: ProfileData,
+  opportunityId: string,
+): Promise<EmailVariantsResponse> {
+  return request<EmailVariantsResponse>('/cold-email/variants', {
+    method: 'POST',
+    body: JSON.stringify({ profile: toProfileRequest(profile), opportunity_id: opportunityId }),
+  });
+}
+
 /** POST /api/resume/upload — upload & parse a resume PDF */
 export async function uploadResume(file: File): Promise<ResumeParseResponse> {
   const formData = new FormData();
@@ -81,6 +93,18 @@ export async function uploadResume(file: File): Promise<ResumeParseResponse> {
     throw new Error(`API ${res.status}: ${errBody}`);
   }
   return res.json() as Promise<ResumeParseResponse>;
+}
+
+export interface GitHubParseResponse {
+  username: string;
+  extracted_skills: string[];
+  topics: string[];
+  repo_count: number;
+  top_repos: string[];
+}
+
+export async function parseGitHubProfile(username: string): Promise<GitHubParseResponse> {
+  return request<GitHubParseResponse>(`/resume/github/${encodeURIComponent(username)}`);
 }
 
 /** GET /api/opportunities/stats/summary — dashboard stats */
