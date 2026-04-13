@@ -17,6 +17,7 @@ import SkillTags from '@/components/SkillTags';
 import ResumeUpload from '@/components/ResumeUpload';
 import type { ProfileData, ResumeParseResponse } from '@/lib/types';
 import { getStats } from '@/lib/api';
+import { saveProfile, loadProfile } from '@/lib/supabase';
 import { COLLEGES, COLLEGE_MAJORS, GRADES } from '@/lib/colleges';
 
 const DEFAULT_PROFILE: ProfileData = {
@@ -38,6 +39,12 @@ export default function HomePage() {
 
   useEffect(() => {
     getStats().then(s => setOppCount(s.total)).catch(() => {});
+    loadProfile().then(saved => {
+      if (saved) {
+        setProfile(prev => ({ ...prev, ...saved } as ProfileData));
+        if (typeof saved.search_weight === 'number') setSearchWeight(saved.search_weight);
+      }
+    }).catch(() => {});
   }, []);
 
   function update<K extends keyof ProfileData>(key: K, value: ProfileData[K]) {
@@ -61,6 +68,7 @@ export default function HomePage() {
   function handleSubmit() {
     const profileToSave = { ...profile, search_weight: searchWeight };
     localStorage.setItem('ofe_profile', JSON.stringify(profileToSave));
+    saveProfile(profileToSave).catch(() => {});
     router.push('/results');
   }
 
