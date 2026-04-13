@@ -74,32 +74,37 @@ def _infer_majors(title: str, abstract: str, program: str) -> list[str]:
 def _detect_international(abstract: str) -> str:
     lower = abstract.lower()
     if any(kw in lower for kw in [
-        "u.s. citizen", "us citizen", "citizenship required",
-        "permanent resident", "must be a u.s.", "u.s. citizenship",
-    ]):
-        return "no"
-    if any(kw in lower for kw in [
-        "international students", "open to all", "regardless of citizenship",
+        "international students welcome", "international students are eligible",
+        "international students are encouraged", "open to international",
+        "regardless of citizenship", "all students regardless",
     ]):
         return "yes"
-    return "unknown"
+    # NSF-funded REU programs typically require US citizenship/permanent residency
+    return "no"
+
+
+KEYWORD_BANK = [
+    "machine learning", "deep learning", "computer vision", "robotics",
+    "natural language processing", "data science", "cybersecurity",
+    "quantum", "nanotechnology", "materials science", "renewable energy",
+    "neuroscience", "genomics", "bioinformatics", "ecology",
+    "climate", "sustainability", "astrophysics", "chemistry",
+    "signal processing", "embedded systems", "networks",
+    "artificial intelligence", "internet of things", "blockchain",
+    "autonomous", "biomedical", "drug discovery", "proteomics",
+    "remote sensing", "geophysics", "hydrology", "marine biology",
+    "organic chemistry", "polymer", "semiconductor", "photonics",
+    "fluid dynamics", "thermodynamics", "structural engineering",
+    "epidemiology", "public health", "cognitive science",
+    "human-computer interaction", "software engineering",
+    "parallel computing", "high performance computing",
+    "graph theory", "optimization", "stochastic",
+]
 
 
 def _extract_keywords(title: str, abstract: str) -> list[str]:
     combined = (title + " " + abstract).lower()
-    candidates = []
-    keyword_list = [
-        "machine learning", "deep learning", "computer vision", "robotics",
-        "natural language processing", "data science", "cybersecurity",
-        "quantum", "nanotechnology", "materials science", "renewable energy",
-        "neuroscience", "genomics", "bioinformatics", "ecology",
-        "climate", "sustainability", "astrophysics", "chemistry",
-        "signal processing", "embedded systems", "networks",
-    ]
-    for kw in keyword_list:
-        if kw in combined:
-            candidates.append(kw)
-    return candidates[:8]
+    return [kw for kw in KEYWORD_BANK if kw in combined][:8]
 
 
 def fetch_reu_awards(max_results: int = 500) -> list[dict]:
@@ -224,6 +229,25 @@ def normalize_award(award: dict) -> dict:
     }
 
 
+def _dedup_collaborative(opps: list[dict]) -> list[dict]:
+    seen_titles = {}
+    result = []
+    for o in opps:
+        base = re.sub(r"^REU:\s*", "", o["title"])
+        base = re.sub(r"Collaborative Research:\s*", "", base)
+        base = base[:60].strip().lower()
+        if base not in seen_titles:
+            seen_titles[base] = o
+            result.append(o)
+        else:
+            existing = seen_titles[base]
+            if len(o.get("description_raw", "")) > len(existing.get("description_raw", "")):
+                result.remove(existing)
+                seen_titles[base] = o
+                result.append(o)
+    return result
+
+
 def fetch_and_normalize(max_results: int = 500) -> list[dict]:
     raw = fetch_reu_awards(max_results=max_results)
     reu_only = [a for a in raw if _is_reu_site(a)]
@@ -235,6 +259,11 @@ def fetch_and_normalize(max_results: int = 500) -> list[dict]:
             normalized.append(normalize_award(a))
         except Exception as e:
             logger.error(f"Failed to normalize NSF award {a.get('id')}: {e}")
+
+    before = len(normalized)
+    normalized = _dedup_collaborative(normalized)
+    if before != len(normalized):
+        logger.info(f"Deduped collaborative entries: {before} → {len(normalized)}")
 
     return normalized
 

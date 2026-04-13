@@ -495,9 +495,9 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
 WEIGHTS = {"eligibility": 0.45, "readiness": 0.35, "upside": 0.20}
 
 BUCKET_THRESHOLDS = [
-    (80, "high_priority"),
-    (65, "good_match"),
-    (45, "reach"),
+    (82, "high_priority"),
+    (72, "good_match"),
+    (55, "reach"),
     (0,  "low_fit"),
 ]
 
