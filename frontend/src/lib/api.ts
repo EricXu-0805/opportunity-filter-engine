@@ -95,6 +95,16 @@ export async function uploadResume(file: File): Promise<ResumeParseResponse> {
   return res.json() as Promise<ResumeParseResponse>;
 }
 
+export async function refineEmail(
+  currentBody: string,
+  instruction: string,
+): Promise<{ body: string; method: string }> {
+  return request<{ body: string; method: string }>('/cold-email/refine', {
+    method: 'POST',
+    body: JSON.stringify({ current_body: currentBody, instruction: instruction }),
+  });
+}
+
 export interface GitHubParseResponse {
   username: string;
   extracted_skills: string[];

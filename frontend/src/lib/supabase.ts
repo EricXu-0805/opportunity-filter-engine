@@ -68,3 +68,47 @@ export async function toggleFavorite(opportunityId: string, isFaved: boolean): P
     return true;
   }
 }
+
+export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing';
+
+export async function trackInteraction(
+  opportunityId: string,
+  type: InteractionType,
+): Promise<void> {
+  const deviceId = getDeviceId();
+  if (!deviceId) return;
+
+  await supabase.from('interactions').upsert(
+    {
+      device_id: deviceId,
+      opportunity_id: opportunityId,
+      interaction_type: type,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'device_id,opportunity_id' },
+  );
+}
+
+export async function getInteractions(): Promise<Map<string, InteractionType>> {
+  const deviceId = getDeviceId();
+  if (!deviceId) return new Map();
+
+  const { data, error } = await supabase
+    .from('interactions')
+    .select('opportunity_id, interaction_type')
+    .eq('device_id', deviceId);
+
+  if (error || !data) return new Map();
+  return new Map(
+    data.map((r: { opportunity_id: string; interaction_type: InteractionType }) => [
+      r.opportunity_id,
+      r.interaction_type,
+    ]),
+  );
+}
+
+export async function removeInteraction(opportunityId: string): Promise<void> {
+  const deviceId = getDeviceId();
+  if (!deviceId) return;
+  await supabase.from('interactions').delete().eq('device_id', deviceId).eq('opportunity_id', opportunityId);
+}

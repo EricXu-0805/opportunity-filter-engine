@@ -1,12 +1,12 @@
-"""Cold email generation with mailto: link support."""
-
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.recommender.cold_email import generate_cold_email, generate_variants
@@ -120,3 +120,62 @@ async def generate_email_variants(request: ColdEmailRequest):
         })
 
     return {"variants": results}
+
+
+class EmailRefineRequest(BaseModel):
+    current_body: str
+    instruction: str
+    subject: str = ""
+
+
+@router.post("/cold-email/refine")
+async def refine_email(request: EmailRefineRequest):
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return _local_refine(request.current_body, request.instruction)
+
+    try:
+        import openai
+        client = openai.OpenAI(api_key=api_key)
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": (
+                    "You are an email editor for a student writing cold emails to professors. "
+                    "Edit the email according to the user's instruction. "
+                    "Return ONLY the edited email body, no explanations."
+                )},
+                {"role": "user", "content": (
+                    f"Current email:\n\n{request.current_body}\n\n"
+                    f"Instruction: {request.instruction}\n\n"
+                    "Return the edited email body only."
+                )},
+            ],
+            temperature=0.7,
+            max_tokens=800,
+        )
+        edited = resp.choices[0].message.content.strip()
+        return {"body": edited, "method": "llm"}
+    except Exception as e:
+        return _local_refine(request.current_body, request.instruction)
+
+
+def _local_refine(body: str, instruction: str) -> dict:
+    lower = instruction.lower()
+    edited = body
+
+    if any(kw in lower for kw in ["formal", "professional"]):
+        edited = edited.replace("I would love", "I would greatly appreciate")
+        edited = edited.replace("I am a fast learner", "I am committed to continuous professional development")
+        edited = edited.replace("Best regards", "Respectfully")
+    elif any(kw in lower for kw in ["short", "concise", "brief"]):
+        lines = edited.split("\n")
+        edited = "\n".join(l for l in lines
+                          if "fast learner" not in l and "eager to pick up" not in l)
+    elif any(kw in lower for kw in ["enthus", "excit", "energy"]):
+        edited = edited.replace("I am very interested", "I am truly excited about")
+        edited = edited.replace("I really enjoyed", "I was fascinated by")
+        edited = edited.replace("I would love the chance", "I would be thrilled at the opportunity")
+
+    method = "local"
+    return {"body": edited, "method": method}

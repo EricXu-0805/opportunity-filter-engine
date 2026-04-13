@@ -15,7 +15,8 @@ import {
 import MatchCard from '@/components/MatchCard';
 import ColdEmailModal from '@/components/ColdEmailModal';
 import { getMatches } from '@/lib/api';
-import { getFavorites, toggleFavorite } from '@/lib/supabase';
+import { getFavorites, toggleFavorite, getInteractions, trackInteraction, removeInteraction } from '@/lib/supabase';
+import type { InteractionType } from '@/lib/supabase';
 import type { ProfileData, MatchResult, MatchesResponse, MatchBucket, SkillWithLevel } from '@/lib/types';
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
@@ -75,7 +76,11 @@ export default function ResultsPage() {
   }>({ open: false, opportunityId: '', opportunityTitle: '' });
 
   const [favs, setFavs] = useState<Set<string>>(new Set());
-  useEffect(() => { getFavorites().then(setFavs).catch(() => {}); }, []);
+  const [interactions, setInteractions] = useState<Map<string, InteractionType>>(new Map());
+  useEffect(() => {
+    getFavorites().then(setFavs).catch(() => {});
+    getInteractions().then(setInteractions).catch(() => {});
+  }, []);
 
   const handleToggleFav = useCallback(async (oppId: string) => {
     const wasFaved = favs.has(oppId);
@@ -362,6 +367,17 @@ export default function ResultsPage() {
                   onDraftEmail={openEmailModal}
                   isFavorited={favs.has(match.opportunity.id)}
                   onToggleFavorite={handleToggleFav}
+                  interaction={interactions.get(match.opportunity.id)}
+                  onTrackInteraction={(oppId, type) => {
+                    const current = interactions.get(oppId);
+                    if (current === type) {
+                      removeInteraction(oppId).catch(() => {});
+                      setInteractions((prev) => { const n = new Map(prev); n.delete(oppId); return n; });
+                    } else {
+                      trackInteraction(oppId, type).catch(() => {});
+                      setInteractions((prev) => new Map(prev).set(oppId, type));
+                    }
+                  }}
                 />
               ))}
 

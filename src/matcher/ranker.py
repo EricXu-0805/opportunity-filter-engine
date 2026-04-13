@@ -3,6 +3,9 @@ Three-layer matching engine.
 Scores opportunities against a student profile.
 """
 
+import math
+import re
+from collections import Counter
 from dataclasses import dataclass
 
 
@@ -112,6 +115,49 @@ def _major_match_score(student_majors: list[str], required_majors: list[str]) ->
             return 70.0
 
     return 15.0
+
+
+_STOP_WORDS = frozenset({
+    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+    "of", "with", "by", "from", "as", "is", "was", "are", "were", "be",
+    "been", "being", "have", "has", "had", "do", "does", "did", "will",
+    "would", "could", "should", "may", "might", "can", "shall", "this",
+    "that", "these", "those", "it", "its", "they", "their", "them", "we",
+    "our", "you", "your", "i", "me", "my", "he", "she", "his", "her",
+    "not", "no", "all", "each", "every", "both", "few", "more", "most",
+    "other", "some", "such", "than", "too", "very", "also", "about",
+    "into", "through", "during", "before", "after", "above", "below",
+    "between", "under", "over", "out", "up", "down", "off", "then",
+    "so", "if", "when", "where", "how", "what", "which", "who", "whom",
+    "while", "just", "only", "even", "here", "there", "much", "many",
+    "well", "use", "used", "using", "will", "work", "working", "new",
+    "including", "include", "includes", "provide", "provides",
+    "students", "student", "program", "research", "university",
+    "opportunity", "opportunities", "experience", "summer",
+})
+
+
+def _tokenize(text: str) -> list[str]:
+    return [w for w in re.findall(r"[a-z]{2,}", text.lower()) if w not in _STOP_WORDS]
+
+
+def _text_similarity(text_a: str, text_b: str) -> float:
+    tokens_a = _tokenize(text_a)
+    tokens_b = _tokenize(text_b)
+    if not tokens_a or not tokens_b:
+        return 0.0
+
+    all_tokens = set(tokens_a) | set(tokens_b)
+    count_a = Counter(tokens_a)
+    count_b = Counter(tokens_b)
+
+    dot = sum(count_a.get(t, 0) * count_b.get(t, 0) for t in all_tokens)
+    mag_a = math.sqrt(sum(v * v for v in count_a.values()))
+    mag_b = math.sqrt(sum(v * v for v in count_b.values()))
+
+    if mag_a == 0 or mag_b == 0:
+        return 0.0
+    return dot / (mag_a * mag_b)
 
 
 PROFICIENCY_WEIGHTS = {"expert": 1.0, "experienced": 0.75, "beginner": 0.5}
@@ -464,25 +510,33 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
 
     research_text = profile.get("research_interests_text", "").lower()
     lab = opportunity.get("lab_or_program", "")
-    if research_text and opp_keywords:
+    opp_desc = (opportunity.get("description_raw") or opportunity.get("description_clean") or "").lower()
+
+    if research_text and opp_desc:
+        sim = _text_similarity(research_text, opp_desc)
+        if sim > 0.15 and keyword_score < 90:
+            boost = min(50.0, sim * 200)
+            keyword_score = min(100.0, keyword_score + boost)
+            generic_kw = {"undergraduate", "research", "summer", "program", "internship", "opportunity", "student"}
+            specific_kw = [kw for kw in opp_keywords if kw not in generic_kw]
+            where = f" in {lab}" if lab else ""
+            if specific_kw:
+                reasons_fit.append(
+                    f"Your interest in {research_text[:60].rstrip('.')} closely matches their work on {', '.join(specific_kw[:3])}{where}"
+                )
+            else:
+                reasons_fit.append(
+                    f"Opportunity description aligns with your research interests{where}"
+                )
+    elif research_text and opp_keywords:
         generic_kw = {"undergraduate", "research", "summer", "program", "internship", "opportunity"}
         specific_kw = [kw for kw in opp_keywords if kw not in generic_kw]
         text_overlap = [kw for kw in specific_kw if kw in research_text]
-        if text_overlap and keyword_score < 80:
+        if text_overlap:
             keyword_score = min(100.0, keyword_score + len(text_overlap) * 15)
             where = f" in {lab}" if lab else ""
             reasons_fit.append(
                 f"Your interest in {', '.join(text_overlap)} connects to their work{where}"
-            )
-
-    opp_desc = (opportunity.get("description_clean") or opportunity.get("description_raw") or "").lower()
-    if research_text and opp_desc and keyword_score < 60:
-        interest_words = [w for w in research_text.split() if len(w) > 4]
-        desc_hits = [w for w in interest_words if w in opp_desc]
-        if len(desc_hits) >= 3:
-            keyword_score = min(100.0, keyword_score + 20)
-            reasons_fit.append(
-                f"Opportunity involves {', '.join(desc_hits[:3])} — overlaps with your research interests"
             )
 
     total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \

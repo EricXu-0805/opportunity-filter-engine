@@ -12,7 +12,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { getEmailVariants } from '@/lib/api';
+import { getEmailVariants, refineEmail } from '@/lib/api';
 import type { ProfileData, EmailVariant } from '@/lib/types';
 
 interface ColdEmailModalProps {
@@ -178,37 +178,35 @@ export default function ColdEmailModal({
     setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
   }
 
-  function handleChatSubmit() {
+  async function handleChatSubmit() {
     const msg = chatInput.trim();
     if (!msg) return;
     setChatInput('');
     setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    setChatMessages((prev) => [...prev, { role: 'assistant', content: 'Editing...' }]);
 
-    const lower = msg.toLowerCase();
-    if (lower.includes('formal') || lower.includes('professional')) {
-      const { body: b, reply } = applyQuickEdit(body, 'formal', profile);
-      setBody(b);
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-    } else if (lower.includes('short') || lower.includes('concise') || lower.includes('brief')) {
-      const { body: b, reply } = applyQuickEdit(body, 'shorter', profile);
-      setBody(b);
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-    } else if (lower.includes('enthus') || lower.includes('excit') || lower.includes('energy')) {
-      const { body: b, reply } = applyQuickEdit(body, 'enthusiastic', profile);
-      setBody(b);
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-    } else if (lower.includes('course') || lower.includes('class')) {
-      const { body: b, reply } = applyQuickEdit(body, 'coursework', profile);
-      setBody(b);
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-    } else {
-      setChatMessages((prev) => [
-        ...prev,
-        {
+    try {
+      const result = await refineEmail(body, msg);
+      setBody(result.body);
+      setChatMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
           role: 'assistant',
-          content: 'Try the quick actions below, or ask to make it "more formal", "shorter", "more enthusiastic", or "add coursework". Full AI editing coming soon!',
-        },
-      ]);
+          content: result.method === 'llm'
+            ? 'Done! Email updated with AI.'
+            : 'Applied edit. (Set OPENAI_API_KEY for full AI editing)',
+        };
+        return updated;
+      });
+    } catch {
+      setChatMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: 'Failed to edit. Try a quick action instead.',
+        };
+        return updated;
+      });
     }
   }
 

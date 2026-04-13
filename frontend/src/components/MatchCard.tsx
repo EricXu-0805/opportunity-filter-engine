@@ -18,12 +18,15 @@ import {
 import Badge from './Badge';
 import ScoreBar from './ScoreBar';
 import type { MatchResult } from '@/lib/types';
+import type { InteractionType } from '@/lib/supabase';
 
 interface MatchCardProps {
   match: MatchResult;
   onDraftEmail: (opportunityId: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: (opportunityId: string) => void;
+  interaction?: InteractionType;
+  onTrackInteraction?: (opportunityId: string, type: InteractionType) => void;
 }
 
 function getBucketLabel(bucket: string): { label: string; variant: 'green' | 'blue' | 'yellow' | 'gray' } {
@@ -55,7 +58,16 @@ function getPaidBadge(
   return { label: 'Unpaid', variant: 'gray' };
 }
 
-export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFavorite }: MatchCardProps) {
+const INTERACTION_LABELS: Record<InteractionType, { label: string; color: string }> = {
+  applied: { label: 'Applied', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  replied: { label: 'Got Reply', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  interviewing: { label: 'Interviewing', color: 'bg-violet-50 text-violet-700 border-violet-200' },
+  rejected: { label: 'Rejected', color: 'bg-gray-100 text-gray-500 border-gray-200' },
+};
+
+const INTERACTION_OPTIONS: InteractionType[] = ['applied', 'replied', 'interviewing', 'rejected'];
+
+export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const { opportunity: opp } = match;
@@ -123,8 +135,8 @@ export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFa
           </div>
         </div>
 
-        {opp.url && (
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {opp.url && (
             <a
               href={opp.application?.application_url || opp.url}
               target="_blank"
@@ -134,16 +146,36 @@ export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFa
               <FileText className="w-3.5 h-3.5" />
               {opp.application?.application_url ? 'Apply Now' : 'View & Apply'}
             </a>
-            <button
-              type="button"
-              onClick={() => onDraftEmail(opp.id)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              Draft Email
-            </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={() => onDraftEmail(opp.id)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            Draft Email
+          </button>
+          {onTrackInteraction && (
+            <div className="flex items-center gap-1 ml-auto">
+              {INTERACTION_OPTIONS.map((type) => {
+                const cfg = INTERACTION_LABELS[type];
+                const isActive = interaction === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onTrackInteraction(opp.id, type); }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all duration-200 ${
+                      isActive ? cfg.color : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                    }`}
+                  >
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="border-t border-black/[0.04]">
