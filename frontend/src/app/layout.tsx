@@ -13,6 +13,18 @@ export const metadata: Metadata = {
   title: 'OpportunityEngine — UIUC Research & Internship Matching',
   description:
     'AI-powered matching engine connecting UIUC students with research positions and internship opportunities.',
+  metadataBase: new URL('https://frontend-wine-pi-63.vercel.app'),
+  openGraph: {
+    title: 'OpportunityEngine',
+    description: 'Find research and internship opportunities at UIUC that match your background.',
+    siteName: 'OpportunityEngine',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'OpportunityEngine',
+    description: 'AI-powered UIUC research & internship matching.',
+  },
 };
 
 export default function RootLayout({

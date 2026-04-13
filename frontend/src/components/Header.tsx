@@ -36,7 +36,7 @@ export default function Header() {
                 <Link
                   key={href}
                   href={href}
-                  className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-300
+                  className={`px-2.5 sm:px-3.5 py-1.5 rounded-full text-[12px] sm:text-[13px] font-medium transition-all duration-300
                     ${
                       isActive
                         ? 'bg-black/[0.06] text-gray-900'
