@@ -9,10 +9,12 @@ import {
   Target,
   TrendingUp,
   AlertCircle,
+  Search,
 } from 'lucide-react';
 import MatchCard from '@/components/MatchCard';
 import ColdEmailModal from '@/components/ColdEmailModal';
 import { getMatches } from '@/lib/api';
+import { getFavorites, toggleFavorite } from '@/lib/supabase';
 import type { ProfileData, MatchResult, MatchesResponse, MatchBucket } from '@/lib/types';
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach';
@@ -52,15 +54,28 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
-  // Cold email modal state
   const [emailModal, setEmailModal] = useState<{
     open: boolean;
     opportunityId: string;
     opportunityTitle: string;
   }>({ open: false, opportunityId: '', opportunityTitle: '' });
+
+  const [favs, setFavs] = useState<Set<string>>(new Set());
+  useEffect(() => { getFavorites().then(setFavs).catch(() => {}); }, []);
+
+  const handleToggleFav = useCallback(async (oppId: string) => {
+    const wasFaved = favs.has(oppId);
+    const nowFaved = await toggleFavorite(oppId, wasFaved);
+    setFavs(prev => {
+      const next = new Set(prev);
+      nowFaved ? next.add(oppId) : next.delete(oppId);
+      return next;
+    });
+  }, [favs]);
 
   // Load profile from localStorage
   useEffect(() => {
@@ -105,9 +120,20 @@ export default function ResultsPage() {
   // Filter by tab (hide low_fit from "all")
   const filtered = useMemo(() => {
     if (!data?.results) return [];
-    if (activeTab === 'all') return data.results.filter((m) => m.bucket !== 'low_fit');
-    return data.results.filter((m) => m.bucket === activeTab);
-  }, [data, activeTab]);
+    let results = activeTab === 'all'
+      ? data.results.filter((m) => m.bucket !== 'low_fit')
+      : data.results.filter((m) => m.bucket === activeTab);
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      results = results.filter((m) =>
+        m.opportunity.title.toLowerCase().includes(q) ||
+        m.opportunity.organization?.toLowerCase().includes(q) ||
+        m.opportunity.opportunity_type?.toLowerCase().includes(q)
+      );
+    }
+    return results;
+  }, [data, activeTab, searchQuery]);
 
   // Paginate
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -117,7 +143,7 @@ export default function ResultsPage() {
   );
 
   // Reset page when tab changes
-  useEffect(() => { setPage(1); }, [activeTab]);
+  useEffect(() => { setPage(1); }, [activeTab, searchQuery]);
 
   // Bucket counts — use the pre-computed counts from the API response
   const counts = useMemo(() => {
@@ -205,6 +231,19 @@ export default function ResultsPage() {
         </div>
       )}
 
+      {!loading && data && (
+        <div className="relative mb-8">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search opportunities..."
+            className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
+          />
+        </div>
+      )}
+
       {/* Loading skeleton */}
       {loading && (
         <div className="space-y-6">
@@ -245,6 +284,8 @@ export default function ResultsPage() {
                   key={match.opportunity.id}
                   match={match}
                   onDraftEmail={openEmailModal}
+                  isFavorited={favs.has(match.opportunity.id)}
+                  onToggleFavorite={handleToggleFav}
                 />
               ))}
 

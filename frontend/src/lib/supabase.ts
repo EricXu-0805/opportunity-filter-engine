@@ -42,3 +42,29 @@ export async function loadProfile(): Promise<Record<string, unknown> | null> {
   if (error || !data) return null;
   return data.profile_data as Record<string, unknown>;
 }
+
+export async function getFavorites(): Promise<Set<string>> {
+  const deviceId = getDeviceId();
+  if (!deviceId) return new Set();
+
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('opportunity_id')
+    .eq('device_id', deviceId);
+
+  if (error || !data) return new Set();
+  return new Set(data.map((r: { opportunity_id: string }) => r.opportunity_id));
+}
+
+export async function toggleFavorite(opportunityId: string, isFaved: boolean): Promise<boolean> {
+  const deviceId = getDeviceId();
+  if (!deviceId) return isFaved;
+
+  if (isFaved) {
+    await supabase.from('favorites').delete().eq('device_id', deviceId).eq('opportunity_id', opportunityId);
+    return false;
+  } else {
+    await supabase.from('favorites').insert({ device_id: deviceId, opportunity_id: opportunityId });
+    return true;
+  }
+}

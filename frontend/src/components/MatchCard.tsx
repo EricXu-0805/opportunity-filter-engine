@@ -12,6 +12,7 @@ import {
   Building2,
   Globe,
   DollarSign,
+  Star,
 } from 'lucide-react';
 import Badge from './Badge';
 import ScoreBar from './ScoreBar';
@@ -20,6 +21,8 @@ import type { MatchResult } from '@/lib/types';
 interface MatchCardProps {
   match: MatchResult;
   onDraftEmail: (opportunityId: string) => void;
+  isFavorited?: boolean;
+  onToggleFavorite?: (opportunityId: string) => void;
 }
 
 function getBucketLabel(bucket: string): { label: string; variant: 'green' | 'blue' | 'yellow' | 'gray' } {
@@ -51,7 +54,7 @@ function getPaidBadge(
   return { label: 'Unpaid', variant: 'gray' };
 }
 
-export default function MatchCard({ match, onDraftEmail }: MatchCardProps) {
+export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFavorite }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const { opportunity: opp } = match;
@@ -63,7 +66,17 @@ export default function MatchCard({ match, onDraftEmail }: MatchCardProps) {
     <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300 overflow-hidden">
       <div className="p-6">
         <div className="flex items-start justify-between gap-4 mb-3">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-start gap-2">
+            {onToggleFavorite && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite(opp.id); }}
+                className="mt-0.5 shrink-0 p-1 -ml-1 rounded-lg hover:bg-amber-50 transition-colors duration-200"
+                aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Star className={`w-4 h-4 transition-colors duration-200 ${isFavorited ? 'fill-amber-400 text-amber-400' : 'text-gray-300 hover:text-amber-300'}`} />
+              </button>
+            )}
             <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
               {opp.title}
             </h3>
