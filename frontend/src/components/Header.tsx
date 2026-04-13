@@ -6,6 +6,7 @@ import { Sparkles } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Find Matches' },
+  { href: '/favorites', label: 'Favorites' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/about', label: 'About' },
 ] as const;

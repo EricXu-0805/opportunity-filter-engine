@@ -10,6 +10,7 @@ import {
   TrendingUp,
   AlertCircle,
   Search,
+  Star,
 } from 'lucide-react';
 import MatchCard from '@/components/MatchCard';
 import ColdEmailModal from '@/components/ColdEmailModal';
@@ -17,13 +18,14 @@ import { getMatches } from '@/lib/api';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
 import type { ProfileData, MatchResult, MatchesResponse, MatchBucket } from '@/lib/types';
 
-type Tab = 'all' | 'high_priority' | 'good_match' | 'reach';
+type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 
 const TABS: { key: Tab; label: string; icon: React.ElementType; color: string }[] = [
   { key: 'all', label: 'All', icon: Filter, color: 'text-gray-600' },
   { key: 'high_priority', label: 'High Priority', icon: Zap, color: 'text-emerald-600' },
   { key: 'good_match', label: 'Good Match', icon: Target, color: 'text-blue-600' },
   { key: 'reach', label: 'Reach', icon: TrendingUp, color: 'text-amber-600' },
+  { key: 'starred', label: 'Starred', icon: Star, color: 'text-amber-500' },
 ];
 
 function SkeletonCard() {
@@ -120,9 +122,15 @@ export default function ResultsPage() {
   // Filter by tab (hide low_fit from "all")
   const filtered = useMemo(() => {
     if (!data?.results) return [];
-    let results = activeTab === 'all'
-      ? data.results.filter((m) => m.bucket !== 'low_fit')
-      : data.results.filter((m) => m.bucket === activeTab);
+    let results: MatchResult[];
+
+    if (activeTab === 'starred') {
+      results = data.results.filter((m) => favs.has(m.opportunity.id));
+    } else if (activeTab === 'all') {
+      results = data.results.filter((m) => m.bucket !== 'low_fit');
+    } else {
+      results = data.results.filter((m) => m.bucket === activeTab);
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -133,7 +141,7 @@ export default function ResultsPage() {
       );
     }
     return results;
-  }, [data, activeTab, searchQuery]);
+  }, [data, activeTab, searchQuery, favs]);
 
   // Paginate
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -147,15 +155,16 @@ export default function ResultsPage() {
 
   // Bucket counts — use the pre-computed counts from the API response
   const counts = useMemo(() => {
-    if (!data) return { all: 0, high_priority: 0, good_match: 0, reach: 0 };
+    if (!data) return { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 } as Record<Tab, number>;
     const withoutLowFit = data.total - data.low_fit;
     return {
       all: withoutLowFit,
       high_priority: data.high_priority,
       good_match: data.good_match,
       reach: data.reach,
-    };
-  }, [data]);
+      starred: favs.size,
+    } as Record<Tab, number>;
+  }, [data, favs]);
 
   const openEmailModal = useCallback(
     (opportunityId: string) => {
