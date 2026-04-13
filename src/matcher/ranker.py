@@ -274,10 +274,27 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
         else:
             missing_skills.append(r)
 
-    if skill_score >= 70 and matched_skills:
-        reasons_fit.append(f"Tech stack overlap: {', '.join(matched_skills)} ({len(matched_skills)}/{len(required_raw)} required)")
-    elif skill_score >= 40 and matched_skills:
-        reasons_fit.append(f"Partial skill match: {', '.join(matched_skills)}")
+    if matched_skills:
+        skill_detail_parts = []
+        raw_skills = profile.get("hard_skills", [])
+        level_map = {}
+        for s in raw_skills:
+            if isinstance(s, dict):
+                level_map[s.get("name", "").lower()] = s.get("level", "beginner")
+            elif hasattr(s, "name"):
+                level_map[getattr(s, "name", "").lower()] = getattr(s, "level", "beginner")
+
+        for r in matched_skills:
+            lvl = level_map.get(r.lower(), level_map.get(_canonicalize_skill(r), ""))
+            if lvl == "expert":
+                skill_detail_parts.append(f"{r} (expert)")
+            elif lvl == "experienced":
+                skill_detail_parts.append(f"{r} (experienced)")
+            else:
+                skill_detail_parts.append(r)
+
+        label = "Tech stack overlap" if skill_score >= 70 else "Partial skill match"
+        reasons_fit.append(f"{label}: {', '.join(skill_detail_parts)} — {len(matched_skills)}/{len(required_raw)} required")
     if missing_skills:
         reasons_gap.append(f"Missing skills: {', '.join(missing_skills)}")
 
@@ -398,11 +415,17 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
             reasons_fit.append(f"Matches your interests: {', '.join(overlap)}")
 
     research_text = profile.get("research_interests_text", "").lower()
+    lab = opportunity.get("lab_or_program", "")
     if research_text and opp_keywords:
-        text_overlap = [kw for kw in opp_keywords if kw in research_text]
+        generic_kw = {"undergraduate", "research", "summer", "program", "internship", "opportunity"}
+        specific_kw = [kw for kw in opp_keywords if kw not in generic_kw]
+        text_overlap = [kw for kw in specific_kw if kw in research_text]
         if text_overlap and keyword_score < 80:
             keyword_score = min(100.0, keyword_score + len(text_overlap) * 15)
-            reasons_fit.append(f"Research interest alignment: {', '.join(text_overlap)}")
+            where = f" in {lab}" if lab else ""
+            reasons_fit.append(
+                f"Your interest in {', '.join(text_overlap)} connects to their work{where}"
+            )
 
     opp_desc = (opportunity.get("description_clean") or opportunity.get("description_raw") or "").lower()
     if research_text and opp_desc and keyword_score < 60:
@@ -410,7 +433,9 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
         desc_hits = [w for w in interest_words if w in opp_desc]
         if len(desc_hits) >= 3:
             keyword_score = min(100.0, keyword_score + 20)
-            reasons_fit.append("Opportunity description aligns with your research interests")
+            reasons_fit.append(
+                f"Opportunity involves {', '.join(desc_hits[:3])} — overlaps with your research interests"
+            )
 
     total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \
             0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.10 * keyword_score

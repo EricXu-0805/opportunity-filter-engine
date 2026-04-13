@@ -73,6 +73,8 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
     skills = _extract_skill_names(profile.get("hard_skills", []))
     skill_levels = _extract_skill_levels(profile.get("hard_skills", []))
     research_interests = profile.get("research_interests_text", "")
+    linkedin_url = profile.get("linkedin_url", "")
+    github_url = profile.get("github_url", "")
 
     pi_name = opportunity.get("pi_name", "")
     lab = opportunity.get("lab_or_program", "")
@@ -91,6 +93,7 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
         name=name, year=year, major=major, school=school,
         skills=skills, skill_levels=skill_levels,
         research_interests=research_interests,
+        linkedin_url=linkedin_url, github_url=github_url,
         pi_name=pi_name, lab=lab, title=title,
         research_area=research_area, research_topic=research_topic,
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
@@ -119,6 +122,15 @@ def _subject(p: dict, style: str = "") -> str:
     return f"Subject: {p['year'].capitalize()} {p['major']} student — interest in {ctx}"
 
 
+def _closing(p: dict) -> str:
+    lines = [f"\n\nBest regards,\n{p['name']}"]
+    if p.get("linkedin_url"):
+        lines.append(f"LinkedIn: {p['linkedin_url']}")
+    if p.get("github_url"):
+        lines.append(f"GitHub: {p['github_url']}")
+    return "\n".join(lines)
+
+
 def _build_balanced(p: dict) -> str:
     subject = _subject(p)
     greeting = f"Dear {p['recipient']},"
@@ -134,7 +146,7 @@ def _build_balanced(p: dict) -> str:
         "\n\nWould you be open to a short meeting?"
         " I am happy to work around your availability."
     )
-    closing = f"\n\nBest regards,\n{p['name']}"
+    closing = _closing(p)
     body = f"{greeting}\n\n{intro}{skills_para}{ask}{closing}"
     return f"{subject}\n\n{body}"
 
@@ -184,7 +196,7 @@ def _build_skills_focus(p: dict) -> str:
         " could support your current projects."
         "\n\nWould you have 15 minutes for a brief conversation?"
     )
-    closing = f"\n\nBest regards,\n{p['name']}"
+    closing = _closing(p)
     body = f"{greeting}\n\n{intro}{skills_para}{ask}{closing}"
     return f"{subject}\n\n{body}"
 
@@ -207,7 +219,7 @@ def _build_concise(p: dict) -> str:
 
     ask = " Would you be open to a brief conversation about potential opportunities in your lab?"
 
-    closing = f"\n\nBest,\n{p['name']}"
+    closing = _closing(p)
     body = f"{greeting}\n\n{core}{ask}{closing}"
     return f"{subject}\n\n{body}"
 

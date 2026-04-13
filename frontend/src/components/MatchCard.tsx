@@ -208,27 +208,20 @@ export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFa
               </div>
             )}
 
-            <div className="flex items-center gap-3 pt-1">
-              {opp.url && (
-                <a
-                  href={opp.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-gray-600 bg-black/[0.03] rounded-xl hover:bg-black/[0.06] transition-colors duration-300"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  View Posting
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => onDraftEmail(opp.id)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors duration-300"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                Draft Cold Email
-              </button>
-            </div>
+            {opp.eligibility.skills_required.length > 0 && (
+              <div className="pt-1">
+                <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2">
+                  Required skills
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {opp.eligibility.skills_required.map((skill) => (
+                    <span key={skill} className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[12px] font-medium">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -60,6 +60,9 @@ SKILL_TIMELINE = {
 }
 
 
+from src.matcher.ranker import _parse_skills, _canonicalize_skill
+
+
 def _skill_name(s) -> str:
     if isinstance(s, dict):
         return s.get("name", "")
@@ -69,15 +72,16 @@ def _skill_name(s) -> str:
 
 
 def analyze_gaps(profile: dict, opportunity: dict) -> dict:
-    student_skills = {_skill_name(s).lower() for s in profile.get("hard_skills", [])}
+    student_skill_map = _parse_skills(profile.get("hard_skills", []))
+    student_skills = set(student_skill_map.keys())
     elig = opportunity.get("eligibility", {})
 
     required = elig.get("skills_required", []) or []
     preferred = elig.get("skills_preferred", []) or []
 
     # Missing skills
-    missing_required = [s for s in required if s.lower() not in student_skills]
-    missing_preferred = [s for s in preferred if s.lower() not in student_skills]
+    missing_required = [s for s in required if _canonicalize_skill(s) not in student_skills and s.lower() not in student_skills]
+    missing_preferred = [s for s in preferred if _canonicalize_skill(s) not in student_skills and s.lower() not in student_skills]
     missing_skills = missing_required + missing_preferred
 
     # Suggested coursework
@@ -129,9 +133,9 @@ def _generate_resume_tips(profile: dict, opportunity: dict,
             f"Consider picking up {', '.join(missing_pref)} to strengthen your application."
         )
 
-    student_skill_names = {_skill_name(s).lower() for s in profile.get("hard_skills", [])}
+    all_student_skills = set(_parse_skills(profile.get("hard_skills", [])).keys())
     required = elig.get("skills_required", []) or []
-    matched = [s for s in required if s.lower() in student_skill_names]
+    matched = [s for s in required if _canonicalize_skill(s) in all_student_skills or s.lower() in all_student_skills]
     if matched:
         tips.append(
             f"Highlight your experience with {', '.join(matched)} prominently on your resume."

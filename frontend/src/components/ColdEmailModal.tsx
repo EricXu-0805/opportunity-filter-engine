@@ -287,13 +287,20 @@ export default function ColdEmailModal({
 
                 <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">To</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      To
+                      {!recipient && (
+                        <span className="ml-2 text-amber-500 normal-case tracking-normal font-normal">
+                          — find the PI&apos;s email on their lab page or department directory
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="email"
                       value={recipient}
                       onChange={(e) => setRecipient(e.target.value)}
-                      placeholder="professor@illinois.edu"
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all"
+                      placeholder="e.g. professor@illinois.edu — check the posting or lab website"
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
                   </div>
                   <div>
