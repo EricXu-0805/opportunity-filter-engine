@@ -103,6 +103,48 @@ def _infer_pi_from_lab(lab_name: str) -> str | None:
     return None
 
 
+NOISE_EMAILS = {
+    "ugresearch@illinois.edu", "webmaster@illinois.edu",
+    "admissions@illinois.edu", "registrar@illinois.edu",
+    "engineering@illinois.edu", "grainger@illinois.edu",
+}
+
+
+def _extract_contact_from_generic_page(soup: BeautifulSoup) -> dict:
+    result = {}
+    text = soup.get_text()
+
+    illinois_emails = re.findall(r"[a-zA-Z0-9_.+-]+@illinois\.edu", text)
+    personal = [e for e in illinois_emails if e not in NOISE_EMAILS]
+    if personal:
+        result["contact_email"] = personal[0]
+
+    if "contact_email" not in result:
+        for tag in soup.select("a[href^='mailto:']"):
+            href = tag.get("href", "")
+            email = href.replace("mailto:", "").split("?")[0].strip()
+            if email and "@" in email and email not in NOISE_EMAILS:
+                result["contact_email"] = email
+                break
+
+    for el in soup.select("h2, h3, h4, .field__label, dt, strong, b"):
+        label = el.get_text(strip=True).lower()
+        if any(kw in label for kw in ["contact", "advisor", "mentor",
+                                       "faculty", "pi", "director", "coordinator"]):
+            sibling = el.find_next_sibling()
+            if sibling:
+                stext = sibling.get_text(strip=True)
+                se = re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", stext)
+                if se:
+                    result.setdefault("contact_email", se[0])
+                name_part = re.sub(r"[^a-zA-Z\s.'-]", "", stext).strip()
+                if (name_part and 3 < len(name_part) < 50
+                        and "@" not in name_part and name_part[0].isupper()):
+                    result.setdefault("pi_name", name_part.split("\n")[0].strip())
+
+    return result
+
+
 def enrich_opportunities(opps: list[dict], save: bool = False) -> dict:
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
              "scraped": 0, "inferred_pi": 0, "failed": 0}
@@ -113,12 +155,24 @@ def enrich_opportunities(opps: list[dict], save: bool = False) -> dict:
             continue
 
         enriched = False
+        url = opp.get("url", "")
 
-        if opp.get("source") == "uiuc_sro" and opp.get("url", "").startswith("https://researchops"):
-            soup = _fetch_soup(opp["url"])
+        if opp.get("source") == "uiuc_sro" and url.startswith("https://researchops"):
+            soup = _fetch_soup(url)
             stats["scraped"] += 1
             if soup:
                 info = _extract_contact_from_sro(soup)
+                if info.get("contact_email"):
+                    opp["contact_email"] = info["contact_email"]
+                    enriched = True
+                if info.get("pi_name") and not opp.get("pi_name"):
+                    opp["pi_name"] = info["pi_name"]
+            time.sleep(DELAY)
+        elif url and ("illinois.edu" in url or "nsf.gov" in url):
+            soup = _fetch_soup(url)
+            stats["scraped"] += 1
+            if soup:
+                info = _extract_contact_from_generic_page(soup)
                 if info.get("contact_email"):
                     opp["contact_email"] = info["contact_email"]
                     enriched = True

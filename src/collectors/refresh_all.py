@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss, merge_into_processed as merge_rss
 from .uiuc_sro import fetch_and_normalize as fetch_sro, merge_into_processed as merge_sro
+from .pi_enricher import enrich_opportunities as enrich_pi
 
 logger = logging.getLogger(__name__)
 
@@ -74,11 +75,25 @@ def refresh_all(deep: bool = True) -> dict:
         logger.error(f"SRO collection failed: {e}")
         summary["sources"]["uiuc_sro"] = {"status": "error", "error": str(e)}
 
-    # Count total opportunities in file
+    # 3. PI enrichment pass
+    logger.info("=" * 50)
+    logger.info("Running PI / contact email enrichment...")
     if PROCESSED_FILE.exists():
         with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
             all_opps = json.load(f)
+
+        pi_stats = enrich_pi(all_opps, save=True)
+        summary["sources"]["pi_enricher"] = {
+            "scraped": pi_stats["scraped"],
+            "enriched": pi_stats["enriched"],
+            "already_had": pi_stats["already_has_email"],
+            "status": "ok",
+        }
+        logger.info(f"PI enricher: {pi_stats['enriched']} new emails found")
+
         summary["total_in_file"] = len(all_opps)
+    else:
+        summary["total_in_file"] = 0
 
     return summary
 

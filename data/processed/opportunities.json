@@ -70,7 +70,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Based on typical ECE lab posting patterns"
-    }
+    },
+    "contact_email": "265-4317nslack@illinois.edu"
   },
   {
     "id": "uiuc-ece-photonics",
@@ -81,7 +82,7 @@
     "organization": "University of Illinois at Urbana-Champaign",
     "department": "Electrical and Computer Engineering",
     "lab_or_program": "Photonic Systems Laboratory",
-    "pi_name": null,
+    "pi_name": "Learn More",
     "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
     "location": "Champaign, IL",
     "on_campus": true,
@@ -141,7 +142,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Confirmed from ECE undergrad research page"
-    }
+    },
+    "contact_email": "265-4317nslack@illinois.edu"
   },
   {
     "id": "uiuc-ece-arch",
@@ -152,7 +154,7 @@
     "organization": "University of Illinois at Urbana-Champaign",
     "department": "Electrical and Computer Engineering",
     "lab_or_program": "Computer Architecture Group",
-    "pi_name": null,
+    "pi_name": "Learn More",
     "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
     "location": "Champaign, IL",
     "on_campus": true,
@@ -213,7 +215,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": ""
-    }
+    },
+    "contact_email": "265-4317nslack@illinois.edu"
   },
   {
     "id": "uiuc-siebel-srp-2026",
@@ -285,7 +288,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Deadline may have passed; keep for reference"
-    }
+    },
+    "contact_email": "Communicationsgrainger-marcom@illinois.edu"
   },
   {
     "id": "uiuc-isgc-urop-2026",
@@ -358,7 +362,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Deadline passed Feb 2; keep for 2027 tracking"
-    }
+    },
+    "contact_email": "Consortium217-300-0151hbjerke2@illinois.edu"
   },
   {
     "id": "uiuc-physics-reu-2026",
@@ -369,7 +374,7 @@
     "organization": "University of Illinois at Urbana-Champaign",
     "department": "Physics",
     "lab_or_program": "NSF REU in Physics",
-    "pi_name": null,
+    "pi_name": "Keep in Touch",
     "url": "https://physics.illinois.edu/research/reu",
     "location": "Champaign, IL",
     "on_campus": true,
@@ -428,7 +433,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "US citizens only — will be filtered for international students"
-    }
+    },
+    "contact_email": "jn0508@illinois.edu"
   },
   {
     "id": "uiuc-isrp-2026",
@@ -490,7 +496,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "US citizens only"
-    }
+    },
+    "contact_email": "GradDiversity@illinois.edu"
   },
   {
     "id": "uiuc-grainger-surf",
@@ -634,7 +641,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Umbrella listing — cold email individual faculty"
-    }
+    },
+    "contact_email": "Communicationsgrainger-marcom@illinois.edu"
   },
   {
     "id": "uiuc-ischool-nlp",
@@ -710,7 +718,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Typical iSchool NLP lab profile"
-    }
+    },
+    "contact_email": "ischool@illinois.edu"
   },
   {
     "id": "uiuc-stat-data-lab",
@@ -1202,7 +1211,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "From ECE undergrad research page"
-    }
+    },
+    "contact_email": "265-4317nslack@illinois.edu"
   },
   {
     "id": "uiuc-career-center-ugr",
@@ -1261,7 +1271,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Resource page, not a specific position"
-    }
+    },
+    "contact_email": "careercenter@illinois.edu"
   },
   {
     "id": "reufinder-freshmen",
@@ -1335,7 +1346,7 @@
     "organization": "University of Illinois at Urbana-Champaign",
     "department": "Electrical and Computer Engineering",
     "lab_or_program": "ML Systems Lab",
-    "pi_name": null,
+    "pi_name": "Learn More",
     "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
     "location": "Champaign, IL",
     "on_campus": true,
@@ -1398,7 +1409,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": ""
-    }
+    },
+    "contact_email": "265-4317nslack@illinois.edu"
   },
   {
     "id": "uiuc-data-systems-lab",
@@ -1473,7 +1485,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": ""
-    }
+    },
+    "contact_email": "Communicationsgrainger-marcom@illinois.edu"
   },
   {
     "id": "rss-our-7b7684c6",
@@ -1534,7 +1547,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "lsurber2@illinois.edu"
   },
   {
     "id": "rss-our-6172cb1b",
@@ -1652,7 +1666,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "mhensle1@illinois.edu"
   },
   {
     "id": "rss-our-88a4dd72",
@@ -1713,7 +1728,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "mmw3@illinois.edu"
   },
   {
     "id": "rss-our-80c155ee",
@@ -1774,7 +1790,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "lsurber2@illinois.edu"
   },
   {
     "id": "rss-our-96f3eaa8",
@@ -1894,7 +1911,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "mb5886@illinois.edu"
   },
   {
     "id": "rss-our-b89c8939",
@@ -2352,7 +2370,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "kashefi2@illinois.edu"
   },
   {
     "id": "rss-our-6cb394c6",
@@ -2411,7 +2430,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "yahya2@illinois.edu"
   },
   {
     "id": "rss-our-f57491f6",
@@ -2472,7 +2492,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "jthemans@illinois.edu"
   },
   {
     "id": "rss-our-f986f102",
@@ -2582,7 +2603,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "firstgen@illinois.edu"
   },
   {
     "id": "rss-our-7ff82bb1",
@@ -2638,7 +2660,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "yuqunwu2@illinois.edu"
   },
   {
     "id": "rss-our-5ef1b954",
@@ -2694,7 +2717,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "bmaciasr@illinois.edu"
   },
   {
     "id": "rss-our-b96c1be5",
@@ -2806,7 +2830,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "mmw3@illinois.edu"
   },
   {
     "id": "rss-our-1ce39ef9",
@@ -2865,7 +2890,8 @@
       "is_active": true,
       "manually_reviewed": false,
       "notes": "Auto-imported from UIUC OUR RSS feed"
-    }
+    },
+    "contact_email": "annamend@illinois.edu"
   },
   {
     "id": "rss-our-14240b68",
@@ -3483,7 +3509,8 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": ""
-    }
+    },
+    "contact_email": "kindrat2@illinois.edu"
   },
   {
     "id": "ext-umich-sure",
