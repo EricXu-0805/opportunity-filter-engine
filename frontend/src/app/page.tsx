@@ -190,7 +190,7 @@ export default function HomePage() {
                   htmlFor="grade"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Current Grade
+                  Anticipated Grade When Starting
                 </label>
                 <div className="relative">
                   <select
@@ -199,7 +199,7 @@ export default function HomePage() {
                     onChange={(e) => update('grade', e.target.value)}
                     className="w-full appearance-none px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
                   >
-                    <option value="">Select grade level...</option>
+                    <option value="">Grade when you'd start...</option>
                     {GRADES.map((g) => (
                       <option key={g} value={g}>
                         {g}
@@ -240,7 +240,61 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Research Interests */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferred Opportunity Type
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['research', 'summer_program', 'internship', 'fellowship'].map((type) => {
+                    const selected = ((profile as unknown as Record<string, unknown>).seeking_types as string[]) || [];
+                    const isSelected = selected.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          const prev = ((profile as unknown as Record<string, unknown>).seeking_types as string[]) || [];
+                          const next = isSelected ? prev.filter((t: string) => t !== type) : [...prev, type];
+                          setProfile(p => ({ ...p, seeking_types: next } as ProfileData));
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                          isSelected
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
+                        }`}
+                      >
+                        {type.replace('_', ' ')}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Format Preference
+                </label>
+                <div className="flex gap-2">
+                  {['any', 'in-person', 'remote'].map((fmt) => {
+                    const current = ((profile as unknown as Record<string, unknown>).format_preference as string) || 'any';
+                    return (
+                      <button
+                        key={fmt}
+                        type="button"
+                        onClick={() => setProfile(p => ({ ...p, format_preference: fmt } as ProfileData))}
+                        className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                          current === fmt
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
+                        }`}
+                      >
+                        {fmt === 'any' ? 'No preference' : fmt === 'remote' ? 'Remote / Online' : 'In-person'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label
                   htmlFor="research_interests"

@@ -78,7 +78,7 @@ export default function ColdEmailModal({
     const to = recipient || '';
     const encodedSubject = encodeURIComponent(subject);
     const encodedBody = encodeURIComponent(body);
-    return `mailto:${to}?subject=${encodedSubject}&body=${encodedBody}`;
+    return `https://outlook.office365.com/mail/deeplink/compose?to=${encodeURIComponent(to)}&subject=${encodedSubject}&body=${encodedBody}`;
   }
 
   if (!isOpen) return null;

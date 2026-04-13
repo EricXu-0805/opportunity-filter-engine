@@ -9,46 +9,62 @@ def generate_cold_email(profile: dict, opportunity: dict) -> str:
     pi_name = opportunity.get("pi_name", "")
     lab = opportunity.get("lab_or_program", "")
     title = opportunity.get("title", "")
+    dept = opportunity.get("department", "")
     research_area = _infer_research_area(opportunity)
+    opp_desc = opportunity.get("description", "")
 
     recipient = pi_name or "Professor"
     if pi_name and not pi_name.lower().startswith(("prof", "dr")):
         recipient = f"Professor {pi_name}"
 
     subject_context = lab or research_area or title or "research"
-    subject = f"Subject: {year.capitalize()} {major} student interested in {subject_context}"
+    subject = f"{year.capitalize()} {major} student — interest in {subject_context}"
 
+    # P1: Personal intro + what caught your attention about THEIR work
     greeting = f"Dear {recipient},"
-    intro = f"I'm a {year} {major} student at {school}."
+    intro = f"My name is {name}, and I am a {year} studying {major} at {school}."
 
-    hook = ""
+    interest_hook = ""
     if research_area and research_interests:
-        hook = (
-            f" I came across your work in {research_area} and it caught my attention"
-            f" because I've been exploring {research_interests[:120].rstrip('.')}."
+        interest_hook = (
+            f" I am very interested in {research_interests[:100].rstrip('.')}."
+            f" I really enjoyed learning about your work on {research_area}"
+            f" and would love to contribute."
         )
     elif research_area:
-        hook = f" I found your work in {research_area} and it resonates with what I want to pursue."
+        interest_hook = (
+            f" I am very interested in {research_area}."
+            f" I really enjoyed learning about your research in this area."
+        )
     elif lab or title:
-        target = lab or title
-        hook = f" I came across {target} and would love to learn more about getting involved."
+        interest_hook = f" I came across {lab or title} and it aligns closely with what I want to explore."
 
-    background = ""
+    # P2: Your specific skills and how they match
+    skills_para = ""
     if skills:
-        skill_str = ", ".join(skills[:4])
-        if len(skills) > 4:
-            skill_str += f", and {len(skills) - 4} more"
-        background = f" I've been working with {skill_str} through coursework and personal projects."
+        top = skills[:4]
+        skill_str = " and ".join([", ".join(top[:-1]), top[-1]]) if len(top) > 1 else top[0]
+        skills_para = (
+            f"\n\nI have experience with {skill_str}."
+        )
+        if opp_desc:
+            desc_lower = opp_desc.lower()
+            matching = [s for s in skills if s.lower() in desc_lower]
+            if matching:
+                skills_para += f" In particular, my background in {', '.join(matching)} seems directly relevant to this position."
+        skills_para += " I am a fast learner and eager to pick up new tools as needed."
 
+    # P3-P4: Express desire + ask for meeting
     ask = (
-        "\n\nWould you have 15 minutes in the coming weeks to chat about"
-        " potential opportunities in your group? I'd be happy to send my resume"
-        " and share more about my background."
+        "\n\nI would love the chance to contribute to your lab"
+        " and to learn more about your research."
+        "\n\nWould you be open to a short meeting?"
+        " I am happy to work around your availability."
     )
 
-    closing = f"\n\nThank you for your time,\n{name}"
+    closing = f"\n\nBest regards,\n{name}"
 
-    body = f"{greeting}\n\n{intro}{hook}{background}{ask}{closing}"
+    body = f"{greeting}\n\n{intro}{interest_hook}{skills_para}{ask}{closing}"
 
     return f"{subject}\n\n{body}"
 

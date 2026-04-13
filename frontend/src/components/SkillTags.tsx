@@ -4,21 +4,21 @@ import { useState, useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 
 const ALL_SKILLS = [
-  'Python',
-  'Java',
-  'C++',
-  'C',
-  'JavaScript',
-  'R',
-  'MATLAB',
-  'PyTorch',
-  'TensorFlow',
-  'pandas',
-  'SQL',
-  'Git',
-  'Linux',
-  'React',
-  'Docker',
+  'Python', 'Java', 'C++', 'C', 'C#', 'JavaScript', 'TypeScript',
+  'R', 'MATLAB', 'Rust', 'Go', 'Kotlin', 'Swift', 'Ruby', 'PHP',
+  'SQL', 'NoSQL', 'HTML/CSS',
+  'PyTorch', 'TensorFlow', 'scikit-learn', 'Keras', 'HuggingFace',
+  'pandas', 'NumPy', 'SciPy', 'OpenCV', 'NLTK', 'spaCy',
+  'React', 'Next.js', 'Vue', 'Angular', 'Node.js', 'Express',
+  'Flask', 'Django', 'FastAPI', 'Spring Boot',
+  'AWS', 'GCP', 'Azure', 'Firebase',
+  'Docker', 'Kubernetes', 'Git', 'Linux', 'Bash',
+  'Figma', 'Adobe Suite', 'Unity', 'Unreal Engine',
+  'ROS', 'Arduino', 'Raspberry Pi', 'FPGA', 'Verilog', 'VHDL',
+  'Solidworks', 'AutoCAD', 'ANSYS', 'COMSOL',
+  'LaTeX', 'Excel', 'Tableau', 'Power BI',
+  'SPSS', 'SAS', 'Stata', 'Mathematica',
+  'Blender', 'Maya', 'Photoshop', 'Illustrator',
 ] as const;
 
 interface SkillTagsProps {
