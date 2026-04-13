@@ -13,6 +13,7 @@ import {
   Globe,
   DollarSign,
   Star,
+  FileText,
 } from 'lucide-react';
 import Badge from './Badge';
 import ScoreBar from './ScoreBar';
@@ -113,7 +114,7 @@ export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFa
           {opp.source && <Badge variant="gray">{opp.source}</Badge>}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <span className="text-xs font-medium text-gray-400 uppercase tracking-wider w-14 shrink-0">
             Match
           </span>
@@ -121,6 +122,28 @@ export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFa
             <ScoreBar score={match.final_score} size="md" />
           </div>
         </div>
+
+        {opp.url && (
+          <div className="flex items-center gap-2">
+            <a
+              href={opp.application?.application_url || opp.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors duration-200"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {opp.application?.application_url ? 'Apply Now' : 'View & Apply'}
+            </a>
+            <button
+              type="button"
+              onClick={() => onDraftEmail(opp.id)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              Draft Email
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-black/[0.04]">

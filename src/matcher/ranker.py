@@ -68,6 +68,66 @@ def _major_match_score(student_majors: list[str], required_majors: list[str]) ->
 
 PROFICIENCY_WEIGHTS = {"expert": 1.0, "experienced": 0.75, "beginner": 0.5}
 
+SKILL_SYNONYMS: dict[str, set[str]] = {
+    "machine learning":  {"ml", "machine learning", "machine-learning"},
+    "deep learning":     {"dl", "deep learning", "deep-learning", "neural networks", "neural network", "nn"},
+    "natural language processing": {"nlp", "natural language processing", "text mining"},
+    "computer vision":   {"cv", "computer vision", "image processing", "image recognition"},
+    "data science":      {"data science", "data analysis", "data analytics"},
+    "python":            {"python", "python3"},
+    "javascript":        {"javascript", "js"},
+    "typescript":        {"typescript", "ts"},
+    "c++":               {"c++", "cpp"},
+    "c#":                {"c#", "csharp", "c sharp"},
+    "pytorch":           {"pytorch", "torch"},
+    "tensorflow":        {"tensorflow", "tf"},
+    "scikit-learn":      {"scikit-learn", "sklearn", "scikit learn"},
+    "react":             {"react", "reactjs", "react.js"},
+    "next.js":           {"next.js", "nextjs", "next"},
+    "node.js":           {"node.js", "nodejs", "node"},
+    "sql":               {"sql", "mysql", "postgresql", "postgres", "sqlite"},
+    "nosql":             {"nosql", "mongodb", "mongo", "dynamodb", "redis"},
+    "aws":               {"aws", "amazon web services"},
+    "gcp":               {"gcp", "google cloud", "google cloud platform"},
+    "docker":            {"docker", "containerization"},
+    "kubernetes":        {"kubernetes", "k8s"},
+    "linux":             {"linux", "unix", "bash", "shell"},
+    "r":                 {"r", "r language", "rstudio"},
+    "matlab":            {"matlab"},
+    "statistics":        {"statistics", "statistical analysis", "stat", "stats"},
+}
+
+SKILL_IMPLIES: dict[str, list[str]] = {
+    "pytorch":       ["deep learning", "machine learning", "python"],
+    "tensorflow":    ["deep learning", "machine learning", "python"],
+    "scikit-learn":  ["machine learning", "python"],
+    "opencv":        ["computer vision", "python"],
+    "keras":         ["deep learning", "python"],
+    "huggingface":   ["natural language processing", "deep learning", "python"],
+    "pandas":        ["data science", "python"],
+    "numpy":         ["python"],
+    "react":         ["javascript"],
+    "next.js":       ["react", "javascript"],
+    "flask":         ["python"],
+    "django":        ["python"],
+    "fastapi":       ["python"],
+    "express":       ["javascript", "node.js"],
+}
+
+
+def _build_synonym_lookup() -> dict[str, str]:
+    lookup: dict[str, str] = {}
+    for canonical, aliases in SKILL_SYNONYMS.items():
+        for alias in aliases:
+            lookup[alias] = canonical
+    return lookup
+
+_SYNONYM_LOOKUP = _build_synonym_lookup()
+
+
+def _canonicalize_skill(name: str) -> str:
+    return _SYNONYM_LOOKUP.get(name.lower().strip(), name.lower().strip())
+
 
 def _parse_skills(student_skills: list) -> dict[str, float]:
     result: dict[str, float] = {}
@@ -75,13 +135,23 @@ def _parse_skills(student_skills: list) -> dict[str, float]:
         if isinstance(s, dict):
             name = s.get("name", "").lower().strip()
             level = s.get("level", "beginner")
-            result[name] = PROFICIENCY_WEIGHTS.get(level, 0.5)
+            weight = PROFICIENCY_WEIGHTS.get(level, 0.5)
         elif isinstance(s, str):
-            result[s.lower().strip()] = 0.5
+            name = s.lower().strip()
+            weight = 0.5
         else:
             name = getattr(s, "name", "").lower().strip()
             level = getattr(s, "level", "beginner")
-            result[name] = PROFICIENCY_WEIGHTS.get(level, 0.5)
+            weight = PROFICIENCY_WEIGHTS.get(level, 0.5)
+
+        canonical = _canonicalize_skill(name)
+        result[canonical] = max(result.get(canonical, 0), weight)
+        result[name] = max(result.get(name, 0), weight)
+
+        for implied in SKILL_IMPLIES.get(canonical, []):
+            impl_canon = _canonicalize_skill(implied)
+            result[impl_canon] = max(result.get(impl_canon, 0), weight * 0.6)
+
     return result
 
 
@@ -90,11 +160,17 @@ def _skill_overlap_score(student_skills: list, required_skills: list[str]) -> fl
         return 40.0
 
     skill_weights = _parse_skills(student_skills)
-    r_lower = {s.lower().strip() for s in required_skills}
 
-    weighted_sum = sum(skill_weights.get(r, 0.0) for r in r_lower)
-    max_possible = len(r_lower) * 1.0
-    return min(100.0, (weighted_sum / max_possible) * 100)
+    total_weight = 0.0
+    for r in required_skills:
+        canon = _canonicalize_skill(r)
+        w = skill_weights.get(canon, 0.0)
+        if w == 0.0:
+            w = skill_weights.get(r.lower().strip(), 0.0)
+        total_weight += w
+
+    max_possible = len(required_skills) * 1.0
+    return min(100.0, (total_weight / max_possible) * 100)
 
 
 def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
@@ -188,12 +264,18 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
         elig.get("skills_required", [])
     )
     student_skill_map = _parse_skills(profile.get("hard_skills", []))
-    required_lower = [s.lower().strip() for s in elig.get("skills_required", [])]
-    matched_skills = [r for r in required_lower if r in student_skill_map]
-    missing_skills = [r for r in required_lower if r not in student_skill_map]
+    required_raw = elig.get("skills_required", [])
+    matched_skills = []
+    missing_skills = []
+    for r in required_raw:
+        canon = _canonicalize_skill(r)
+        if canon in student_skill_map or r.lower().strip() in student_skill_map:
+            matched_skills.append(r)
+        else:
+            missing_skills.append(r)
 
     if skill_score >= 70 and matched_skills:
-        reasons_fit.append(f"Tech stack overlap: {', '.join(matched_skills)} ({len(matched_skills)}/{len(required_lower)} required)")
+        reasons_fit.append(f"Tech stack overlap: {', '.join(matched_skills)} ({len(matched_skills)}/{len(required_raw)} required)")
     elif skill_score >= 40 and matched_skills:
         reasons_fit.append(f"Partial skill match: {', '.join(matched_skills)}")
     if missing_skills:
@@ -347,8 +429,29 @@ BUCKET_THRESHOLDS = [
 ]
 
 
+def _summarize_research(opportunity: dict) -> str:
+    lab = opportunity.get("lab_or_program", "")
+    desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
+    keywords = opportunity.get("keywords", [])
+
+    generic = {"undergraduate", "research", "summer", "program", "internship",
+               "opportunity", "assistant", "student", "uiuc", "illinois"}
+    specific_kw = [kw for kw in keywords if kw.lower() not in generic]
+
+    if lab and specific_kw:
+        return f"{lab} — {', '.join(specific_kw[:3])}"
+    if lab:
+        return lab
+    if specific_kw:
+        return ", ".join(specific_kw[:3])
+    if desc:
+        first_sentence = desc.split(".")[0].strip()
+        if len(first_sentence) > 15:
+            return first_sentence[:80]
+    return ""
+
+
 def rank_opportunity(profile: dict, opportunity: dict) -> MatchResult:
-    """Score and rank a single opportunity against a profile."""
     elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
     up_score, up_fit, up_gap = score_upside(profile, opportunity)
@@ -368,7 +471,10 @@ def rank_opportunity(profile: dict, opportunity: dict) -> MatchResult:
     all_fit = elig_fit + ready_fit + up_fit
     all_gap = elig_gap + ready_gap + up_gap
 
-    # Generate next steps
+    research_summary = _summarize_research(opportunity)
+    if research_summary and bucket in ("high_priority", "good_match"):
+        all_fit.insert(0, f"This lab focuses on {research_summary}")
+
     next_steps = _generate_next_steps(profile, opportunity, all_gap)
 
     return MatchResult(

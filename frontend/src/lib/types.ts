@@ -56,6 +56,7 @@ export interface OpportunityApplication {
   application_effort: string;
   requires_resume: string;
   contact_method: string;
+  application_url?: string;
 }
 
 export interface OpportunityMetadata {
