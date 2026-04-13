@@ -229,7 +229,7 @@ export default function ColdEmailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-5xl mx-4 bg-white rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in">
+      <div className="relative w-full max-w-5xl mx-2 sm:mx-4 bg-white rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
@@ -264,9 +264,8 @@ export default function ColdEmailModal({
         {/* Two-panel layout */}
         {!loading && !error && (
           <>
-            <div className="flex-1 flex min-h-0">
-              {/* Left: Email editor */}
-              <div className="flex-1 flex flex-col border-r border-gray-100 min-w-0">
+            <div className="flex-1 flex flex-col md:flex-row min-h-0">
+              <div className="flex-1 flex flex-col md:border-r border-gray-100 min-w-0">
                 {/* Variant tabs */}
                 <div className="flex items-center gap-1 px-5 pt-4 pb-2 shrink-0">
                   {variants.map((v, i) => (
@@ -324,8 +323,7 @@ export default function ColdEmailModal({
                 </div>
               </div>
 
-              {/* Right: Chat panel */}
-              <div className="w-72 lg:w-80 flex flex-col bg-gray-50/60 min-w-0">
+              <div className="w-full md:w-72 lg:w-80 flex flex-col bg-gray-50/60 min-w-0 border-t md:border-t-0 border-gray-100">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
                   <Sparkles className="w-4 h-4 text-indigo-500" />
                   <span className="text-sm font-semibold text-gray-700">Refine</span>

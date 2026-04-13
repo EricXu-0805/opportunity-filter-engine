@@ -20,6 +20,13 @@ import type { ProfileData, MatchResult, MatchesResponse, MatchBucket, SkillWithL
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 
+interface Filters {
+  paid: '' | 'yes' | 'no';
+  intl: '' | 'yes' | 'no';
+  source: '' | 'uiuc_sro' | 'nsf_reu' | 'manual' | 'uiuc_our_rss';
+  onCampus: '' | 'yes' | 'no';
+}
+
 const TABS: { key: Tab; label: string; icon: React.ElementType; color: string }[] = [
   { key: 'all', label: 'All', icon: Filter, color: 'text-gray-600' },
   { key: 'high_priority', label: 'High Priority', icon: Zap, color: 'text-emerald-600' },
@@ -57,6 +64,7 @@ export default function ResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<Filters>({ paid: '', intl: '', source: '', onCampus: '' });
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
@@ -135,16 +143,39 @@ export default function ResultsPage() {
       results = data.results.filter((m) => m.bucket === activeTab);
     }
 
+    if (filters.paid) {
+      results = results.filter((m) =>
+        filters.paid === 'yes'
+          ? m.opportunity.paid === 'yes' || m.opportunity.paid === 'stipend'
+          : m.opportunity.paid === 'no' || m.opportunity.paid === 'unknown',
+      );
+    }
+    if (filters.intl) {
+      results = results.filter((m) =>
+        filters.intl === 'yes'
+          ? m.opportunity.eligibility.international_friendly === 'yes'
+          : m.opportunity.eligibility.international_friendly !== 'no',
+      );
+    }
+    if (filters.source) {
+      results = results.filter((m) => m.opportunity.source === filters.source);
+    }
+    if (filters.onCampus) {
+      results = results.filter((m) =>
+        filters.onCampus === 'yes' ? m.opportunity.on_campus : !m.opportunity.on_campus,
+      );
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       results = results.filter((m) =>
         m.opportunity.title.toLowerCase().includes(q) ||
         m.opportunity.organization?.toLowerCase().includes(q) ||
-        m.opportunity.opportunity_type?.toLowerCase().includes(q)
+        m.opportunity.keywords?.some((k) => k.toLowerCase().includes(q))
       );
     }
     return results;
-  }, [data, activeTab, searchQuery, favs]);
+  }, [data, activeTab, searchQuery, filters, favs]);
 
   // Paginate
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -154,7 +185,7 @@ export default function ResultsPage() {
   );
 
   // Reset page when tab changes
-  useEffect(() => { setPage(1); }, [activeTab, searchQuery]);
+  useEffect(() => { setPage(1); }, [activeTab, searchQuery, filters]);
 
   // Bucket counts — use the pre-computed counts from the API response
   const counts = useMemo(() => {
@@ -244,15 +275,48 @@ export default function ResultsPage() {
       )}
 
       {!loading && data && (
-        <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search opportunities..."
-            className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
-          />
+        <div className="space-y-3 mb-8">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by title, school, or research area..."
+              className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterSelect
+              value={filters.paid}
+              onChange={(v) => setFilters((f) => ({ ...f, paid: v as Filters['paid'] }))}
+              options={[['', 'Paid / Unpaid'], ['yes', 'Paid only'], ['no', 'Unpaid']]}
+            />
+            <FilterSelect
+              value={filters.intl}
+              onChange={(v) => setFilters((f) => ({ ...f, intl: v as Filters['intl'] }))}
+              options={[['', 'International status'], ['yes', 'Intl friendly'], ['no', 'Incl. US-only']]}
+            />
+            <FilterSelect
+              value={filters.source}
+              onChange={(v) => setFilters((f) => ({ ...f, source: v as Filters['source'] }))}
+              options={[['', 'All sources'], ['uiuc_sro', 'UIUC SRO'], ['nsf_reu', 'NSF REU'], ['manual', 'UIUC Labs'], ['uiuc_our_rss', 'OUR RSS']]}
+            />
+            <FilterSelect
+              value={filters.onCampus}
+              onChange={(v) => setFilters((f) => ({ ...f, onCampus: v as Filters['onCampus'] }))}
+              options={[['', 'Any location'], ['yes', 'On campus'], ['no', 'Off campus / Remote']]}
+            />
+            {Object.values(filters).some(Boolean) && (
+              <button
+                type="button"
+                onClick={() => setFilters({ paid: '', intl: '', source: '', onCampus: '' })}
+                className="px-3 py-1.5 text-[12px] font-medium text-red-500 hover:text-red-700 transition-colors"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -351,6 +415,32 @@ export default function ResultsPage() {
         />
       )}
     </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: [string, string][];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer outline-none ${
+        value
+          ? 'bg-blue-50 border-blue-200 text-blue-700'
+          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+      }`}
+    >
+      {options.map(([val, label]) => (
+        <option key={val} value={val}>{label}</option>
+      ))}
+    </select>
   );
 }
 

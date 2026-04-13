@@ -86,17 +86,23 @@ def _extract_contact_from_sro(soup: BeautifulSoup) -> dict:
 
 def _infer_pi_from_lab(lab_name: str) -> str | None:
     patterns = [
-        r"(?:Prof(?:essor)?\.?\s+)?(\w+(?:\s+\w+)?)\s+(?:Lab|Group|Research Group)",
-        r"(\w+(?:\s+\w+)?)\s+(?:Lab|Group|Research Group)",
+        r"(?:Prof(?:essor)?\.?\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+(?:Lab|Group|Research Group|Laboratory)",
+        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:Lab|Group|Research Group|Laboratory)\b",
+        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)'s\s+(?:Lab|Group|Research)",
     ]
+    generic = {"research", "computing", "computer", "advanced", "applied",
+               "center", "institute", "systems", "data", "machine",
+               "science", "undergraduate", "engineering", "physics",
+               "chemistry", "biology", "summer", "program", "national",
+               "photonic", "cognitive", "language", "quantum", "medical",
+               "visual", "autonomous", "intelligent", "computational",
+               "parallel", "distributed", "interactive", "information",
+               "social", "natural", "human", "signal", "control", "power",
+               "digital", "analog", "wireless", "optical", "network"}
     for p in patterns:
-        m = re.search(p, lab_name, re.IGNORECASE)
+        m = re.search(p, lab_name)
         if m:
             candidate = m.group(1).strip()
-            generic = {"research", "computing", "computer", "advanced", "applied",
-                       "center", "institute", "systems", "data", "machine",
-                       "science", "undergraduate", "engineering", "physics",
-                       "chemistry", "biology", "summer", "program", "national"}
             words = candidate.lower().split()
             if all(w not in generic for w in words) and len(candidate) > 2:
                 return candidate

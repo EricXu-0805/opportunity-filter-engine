@@ -1,8 +1,7 @@
-"""Match opportunities against a student profile."""
-
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -20,14 +19,21 @@ router = APIRouter()
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "processed"
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "examples"
 
+_opp_cache: list[dict] = []
+_opp_cache_mtime: float = 0
+
 
 def _load_opportunities() -> list[dict]:
+    global _opp_cache, _opp_cache_mtime
+
     processed = DATA_DIR / "opportunities.json"
     if processed.exists():
-        with open(processed, encoding="utf-8") as f:
-            data = json.load(f)
-            if data:
-                return data
+        mtime = processed.stat().st_mtime
+        if mtime != _opp_cache_mtime or not _opp_cache:
+            with open(processed, encoding="utf-8") as f:
+                _opp_cache = json.load(f)
+            _opp_cache_mtime = mtime
+        return _opp_cache
 
     examples = EXAMPLES_DIR / "sample_opportunities.json"
     if examples.exists():
