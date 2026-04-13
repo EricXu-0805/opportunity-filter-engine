@@ -1,4 +1,7 @@
 export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'Division of General Studies (DGS)': [
+    'Undeclared / Exploring',
+  ],
   'Grainger College of Engineering': [
     'Aerospace Engineering',
     'Bioengineering',
@@ -6,6 +9,20 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'Civil & Environmental Engineering',
     'Computer Engineering',
     'Computer Science',
+    'Computer Science + Advertising',
+    'Computer Science + Animal Sciences',
+    'Computer Science + Anthropology',
+    'Computer Science + Astronomy',
+    'Computer Science + Bioengineering',
+    'Computer Science + Chemistry',
+    'Computer Science + Crop Sciences',
+    'Computer Science + Economics',
+    'Computer Science + Education',
+    'Computer Science + Geography & GIS',
+    'Computer Science + Linguistics',
+    'Computer Science + Music',
+    'Computer Science + Philosophy',
+    'Computer Science + Physics',
     'Electrical & Computer Engineering (ECE)',
     'Engineering Mechanics',
     'Engineering Physics',
@@ -66,6 +83,9 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'Spanish',
     'Statistics',
     'Statistics & Computer Science',
+    'Individual Plans of Study',
+    'Interdisciplinary Studies',
+    'Liberal Studies',
   ],
   'Gies College of Business': [
     'Accountancy',

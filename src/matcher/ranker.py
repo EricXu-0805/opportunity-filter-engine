@@ -22,7 +22,15 @@ class MatchResult:
 # --- Field matching utilities ---
 
 MAJOR_GROUPS = {
-    "CS": {"CS", "Computer Science", "Computer Engineering", "Mathematics & Computer Science", "Statistics & Computer Science"},
+    "CS": {"CS", "Computer Science", "Computer Engineering", "Mathematics & Computer Science",
+           "Statistics & Computer Science",
+           "Computer Science + Advertising", "Computer Science + Animal Sciences",
+           "Computer Science + Anthropology", "Computer Science + Astronomy",
+           "Computer Science + Bioengineering", "Computer Science + Chemistry",
+           "Computer Science + Crop Sciences", "Computer Science + Economics",
+           "Computer Science + Education", "Computer Science + Geography & GIS",
+           "Computer Science + Linguistics", "Computer Science + Music",
+           "Computer Science + Philosophy", "Computer Science + Physics"},
     "ECE": {"ECE", "Electrical Engineering", "Computer Engineering", "Electrical & Computer Engineering",
             "Electrical and Computer Engineering", "Neural Engineering"},
     "STAT": {"STAT", "Statistics", "Data Science", "Statistics & Computer Science", "Actuarial Science",
