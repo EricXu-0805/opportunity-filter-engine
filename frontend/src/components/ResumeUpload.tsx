@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import { parseResumePDF } from '@/lib/pdf-parser';
 import type { ResumeParseResponse } from '@/lib/types';
@@ -13,8 +13,15 @@ interface ResumeUploadProps {
 type UploadState = 'idle' | 'uploading' | 'success' | 'error';
 
 export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUploadProps) {
-  const [state, setState] = useState<UploadState>(alreadyUploaded ? 'success' : 'idle');
-  const [fileName, setFileName] = useState<string | null>(alreadyUploaded ? 'Resume (saved)' : null);
+  const [state, setState] = useState<UploadState>('idle');
+  const [fileName, setFileName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (alreadyUploaded && state === 'idle') {
+      setState('success');
+      setFileName('Resume (saved)');
+    }
+  }, [alreadyUploaded]);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
