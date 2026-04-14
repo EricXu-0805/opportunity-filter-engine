@@ -414,7 +414,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <ResumeUpload onParsed={handleResumeParsed} />
+            <ResumeUpload onParsed={handleResumeParsed} alreadyUploaded={!!profile.resume_text} />
 
             <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50/60">
               <Upload className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />

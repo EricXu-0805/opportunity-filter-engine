@@ -89,6 +89,8 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
     if pi_name and not pi_name.lower().startswith(("prof", "dr")):
         recipient = f"Professor {pi_name}"
 
+    coursework = profile.get("coursework", [])
+
     return dict(
         name=name, year=year, major=major, school=school,
         skills=skills, skill_levels=skill_levels,
@@ -98,6 +100,7 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
         research_area=research_area, research_topic=research_topic,
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
+        coursework=coursework,
     )
 
 
@@ -189,7 +192,9 @@ def _build_skills_focus(p: dict) -> str:
             if have:
                 skills_para += f" I already work with {', '.join(have)} which this role requires."
 
-    skills_para += " I am a fast learner and eager to pick up new tools as needed."
+    coursework = p.get("coursework", [])
+    if coursework:
+        skills_para += f" Relevant coursework includes {', '.join(coursework[:3])}."
 
     ask = (
         "\n\nI would welcome the opportunity to discuss how my skills"
@@ -230,25 +235,38 @@ def _p1_research_hook(p: dict) -> str:
     lab = p["lab"]
     interests = p["research_interests"]
 
+    if interests and research_topic and lab:
+        return (
+            f" I am writing because your work on {research_topic}"
+            f" in the {lab} strongly resonates with my interest in"
+            f" {interests[:80].rstrip('.')}."
+        )
     if interests and research_topic:
         return (
-            f" I am very interested in {interests[:100].rstrip('.')}."
-            f" I really enjoyed learning about your work on {research_topic}"
-            f" and would love to contribute."
+            f" I am writing because your research on {research_topic}"
+            f" closely aligns with my interest in {interests[:80].rstrip('.')}."
+        )
+    if interests and research_area and lab:
+        return (
+            f" I came across the {lab} and your work in {research_area},"
+            f" which aligns closely with my interest in {interests[:80].rstrip('.')}."
         )
     if interests and research_area:
         return (
-            f" I am very interested in {interests[:100].rstrip('.')}."
-            f" I really enjoyed learning about your work on {research_area}"
-            f" and would love to contribute."
+            f" I am reaching out because your work in {research_area}"
+            f" aligns with my interest in {interests[:80].rstrip('.')}."
         )
     if research_topic:
         return (
-            f" I am very interested in {research_area or research_topic}."
-            f" I really enjoyed learning about your work on {research_topic}."
+            f" I came across your research on {research_topic}"
+            f" and would like to learn more about opportunities"
+            f" to contribute."
         )
     if lab:
-        return f" I came across the {lab} and it aligns closely with what I want to explore."
+        return (
+            f" I came across the {lab} and am very interested"
+            f" in contributing to your research."
+        )
     return ""
 
 
@@ -302,9 +320,11 @@ def _p2_skills_applied(p: dict) -> str:
     if matching and len(matching) >= 2:
         para += (
             f" In particular, my background in {', '.join(matching[:3])}"
-            f" seems directly relevant to this position."
+            f" directly applies to this role."
         )
 
-    para += " I am a fast learner and eager to pick up new tools as needed."
+    coursework = p.get("coursework", [])
+    if coursework:
+        para += f" Relevant coursework includes {', '.join(coursework[:3])}."
 
     return para

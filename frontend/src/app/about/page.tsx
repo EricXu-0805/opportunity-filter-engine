@@ -13,7 +13,7 @@ const STEPS = [
     icon: Sparkles,
     title: 'AI Matching',
     description:
-      '330+ opportunities scored on eligibility, readiness, and upside. Personalized to you.',
+      '1800+ opportunities from 6 sources, scored on eligibility, readiness, and upside with TF-IDF semantic matching.',
   },
   {
     num: '03',
@@ -29,8 +29,10 @@ const STACK = [
   { label: 'Tailwind CSS', category: 'Frontend' },
   { label: 'FastAPI', category: 'Backend' },
   { label: 'Python 3.11', category: 'Backend' },
+  { label: 'Supabase', category: 'Database' },
   { label: 'Vercel', category: 'Deploy' },
   { label: 'GitHub Actions', category: 'CI/CD' },
+  { label: 'scikit-learn', category: 'ML' },
 ] as const;
 
 export default function AboutPage() {

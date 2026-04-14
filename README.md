@@ -1,6 +1,6 @@
 # OpportunityEngine
 
-A personalized research and internship matching engine for UIUC undergraduates. Automatically collects 330+ opportunities from multiple sources, then ranks and explains each match based on your profile.
+A personalized research and internship matching engine for UIUC undergraduates. Automatically collects 1800+ opportunities from 6 sources (UIUC SRO, NSF REU, faculty directories, Handshake, OUR RSS, manual entries), then ranks and explains each match based on your profile.
 
 Not a job board. A decision engine that answers three questions:
 1. **Can I apply?** (Eligibility)
@@ -35,15 +35,14 @@ Live stats across all scraped sources: total opportunities, paid positions, inte
 
 UIUC scatters opportunities across 7+ platforms with no unified view:
 
-| Source | What it has | Problem |
-|--------|------------|---------|
-| OUR Blog | Faculty-posted research positions | RSS feed exists but nobody parses it |
-| SRO Database | 279+ external summer programs | 12 pages of unfiltered Drupal listings |
-| Handshake | Jobs + some research | Login-gated, mixes everything together |
-| CS Opportunities | CS/ECE research | NetID required, ~70 listings/year |
-| Research Park | 800+ intern positions/year | Separate site, not linked to research |
-| Department pages | Lab-specific openings | Scattered across 50+ faculty sites |
-| External REUs | 500+ NSF-funded programs | Requires knowing where to look |
+| Source | What it has | Problem | Our solution |
+|--------|------------|---------|------|
+| OUR Blog | Faculty-posted research positions | RSS feed exists but nobody parses it | ✅ Auto-parsed |
+| SRO Database | 272+ external summer programs | 12 pages of unfiltered Drupal listings | ✅ 272 scraped |
+| Handshake | Jobs + some research | Login-gated, mixes everything together | ✅ Cookie-auth collector |
+| Department pages | Lab-specific openings | Scattered across 50+ faculty sites | ✅ 924 faculty from 10 depts |
+| External REUs | 500+ NSF-funded programs | Requires knowing where to look | ✅ 476 from NSF API |
+| Research Park | 800+ intern positions/year | Separate site, not linked to research | 🔜 Planned |
 
 International freshmen have it worst: they can't tell what's realistic, what requires citizenship, or where to even start.
 
@@ -53,30 +52,32 @@ International freshmen have it worst: they can't tell what's realistic, what req
 |-------|-----------|
 | Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
 | Backend | FastAPI, Python 3.11, Pydantic v2 |
-| Data Collection | BeautifulSoup, feedparser, requests |
-| Matching | Rule-based three-layer scoring engine |
-| Testing | pytest (33 integration tests) |
+| Database | Supabase (profiles, favorites, interactions, version history) |
+| Data Collection | BeautifulSoup, feedparser, requests, NSF Awards API |
+| Matching | Three-layer scoring (eligibility × readiness × upside) + TF-IDF semantic similarity |
+| LLM | OpenRouter / OpenAI for email refinement |
+| Deploy | Vercel (frontend + backend), GitHub Actions (Mon/Thu auto-refresh) |
 
 ## Architecture
 
 ```
-Data Sources (OUR RSS, SRO Scraper, Manual Entries)
+Data Sources (6 collectors: SRO, NSF REU, Faculty Dirs, Handshake, OUR RSS, Manual)
         │
         ▼
-Normalization Pipeline (raw text → structured fields → LLM tagging)
+Normalization Pipeline (raw text → structured fields → skill/keyword inference)
         │
         ▼
-Opportunity Database (330+ normalized records, JSON)
+Opportunity Database (1800+ normalized records, auto-refreshed Mon/Thu)
         │
         ▼
-Matching Engine (eligibility × readiness × upside scoring)
+Matching Engine (eligibility × readiness × upside + TF-IDF semantic similarity)
         │
         ▼
-Web Interface (Next.js + FastAPI)
-  ├── Profile form with resume parsing
-  ├── Ranked results with explanations
-  ├── Cold email generator with mailto: links
-  └── Dashboard with live stats
+Web Interface (Next.js + FastAPI + Supabase)
+  ├── Profile form with resume parsing, GitHub import, auto-save
+  ├── Ranked results with lab-specific explanations + filters
+  ├── Cold email generator (3 variants + LLM refinement)
+  └── Dashboard with live stats + user feedback tracking
 ```
 
 ## Run Locally
@@ -123,15 +124,20 @@ opportunity-filter-engine/
 │       ├── components/       # MatchCard, ColdEmailModal, ResumeUpload, etc.
 │       └── lib/              # API client, types, college data
 ├── src/                      # Core Python engine
-│   ├── collectors/           # Source-specific scrapers
-│   ├── parsers/              # LLM tagger + rule-based fallback
-│   ├── normalizers/          # Raw → standardized schema
-│   ├── matcher/              # Three-layer scoring engine
+│   ├── collectors/           # 6 source-specific scrapers
+│   │   ├── uiuc_sro.py       # SRO database (272 opportunities)
+│   │   ├── nsf_reu.py        # NSF REU Awards API (476)
+│   │   ├── uiuc_faculty.py   # Faculty directories, 10 depts (924)
+│   │   ├── handshake.py      # Handshake with cookie auth (75+)
+│   │   └── uiuc_our_rss.py   # OUR RSS feed (25)
+│   ├── matcher/              # Three-layer scoring + TF-IDF
+│   │   ├── ranker.py         # Eligibility × readiness × upside
+│   │   └── embeddings.py     # Semantic similarity (TF-IDF / OpenAI)
 │   └── recommender/          # Cold email + resume gap advisor
 ├── data/
-│   ├── processed/            # 330+ normalized opportunities
+│   ├── processed/            # 1800+ normalized opportunities
 │   └── manual_entries/       # Hand-curated entries
-└── tests/                    # 33 integration tests
+└── tests/                    # Integration tests
 ```
 
 ## Author

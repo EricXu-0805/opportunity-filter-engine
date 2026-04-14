@@ -521,32 +521,39 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
     lab = opportunity.get("lab_or_program", "")
     opp_desc = (opportunity.get("description_raw") or opportunity.get("description_clean") or "").lower()
 
+    generic_kw = {"undergraduate", "research", "summer", "program", "internship", "opportunity", "student"}
+    specific_kw = [kw for kw in opp_keywords if kw not in generic_kw]
+    lab_label = lab if lab else opportunity.get("department", "")
+
     if research_text and opp_desc:
         sim = _text_similarity(research_text, opp_desc)
         if sim > 0.15 and keyword_score < 90:
             boost = min(50.0, sim * 200)
             keyword_score = min(100.0, keyword_score + boost)
-            generic_kw = {"undergraduate", "research", "summer", "program", "internship", "opportunity", "student"}
-            specific_kw = [kw for kw in opp_keywords if kw not in generic_kw]
-            where = f" in {lab}" if lab else ""
-            if specific_kw:
+            if specific_kw and lab_label:
                 reasons_fit.append(
-                    f"Your interest in {research_text[:60].rstrip('.')} closely matches their work on {', '.join(specific_kw[:3])}{where}"
+                    f"Your interest in {research_text[:50].rstrip('.')} closely matches {lab_label}'s work on {', '.join(specific_kw[:3])}"
                 )
-            else:
+            elif specific_kw:
                 reasons_fit.append(
-                    f"Opportunity description aligns with your research interests{where}"
+                    f"Your interest in {research_text[:50].rstrip('.')} closely matches their work on {', '.join(specific_kw[:3])}"
                 )
-    elif research_text and opp_keywords:
-        generic_kw = {"undergraduate", "research", "summer", "program", "internship", "opportunity"}
-        specific_kw = [kw for kw in opp_keywords if kw not in generic_kw]
+            elif lab_label:
+                reasons_fit.append(
+                    f"Your research background aligns with {lab_label}'s focus area"
+                )
+    elif research_text and specific_kw:
         text_overlap = [kw for kw in specific_kw if kw in research_text]
         if text_overlap:
             keyword_score = min(100.0, keyword_score + len(text_overlap) * 15)
-            where = f" in {lab}" if lab else ""
-            reasons_fit.append(
-                f"Your interest in {', '.join(text_overlap)} connects to their work{where}"
-            )
+            if lab_label:
+                reasons_fit.append(
+                    f"Your interest in {', '.join(text_overlap)} connects to {lab_label}'s research"
+                )
+            else:
+                reasons_fit.append(
+                    f"Your interest in {', '.join(text_overlap)} connects to this position"
+                )
 
     total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \
             0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.10 * keyword_score
@@ -608,7 +615,7 @@ def rank_opportunity(profile: dict, opportunity: dict) -> MatchResult:
     all_gap = elig_gap + ready_gap + up_gap
 
     research_summary = _summarize_research(opportunity)
-    if research_summary and bucket in ("high_priority", "good_match"):
+    if research_summary:
         all_fit.insert(0, f"This lab focuses on {research_summary}")
 
     next_steps = _generate_next_steps(profile, opportunity, all_gap)

@@ -7,13 +7,14 @@ import type { ResumeParseResponse } from '@/lib/types';
 
 interface ResumeUploadProps {
   onParsed: (data: ResumeParseResponse) => void;
+  alreadyUploaded?: boolean;
 }
 
 type UploadState = 'idle' | 'uploading' | 'success' | 'error';
 
-export default function ResumeUpload({ onParsed }: ResumeUploadProps) {
-  const [state, setState] = useState<UploadState>('idle');
-  const [fileName, setFileName] = useState<string | null>(null);
+export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUploadProps) {
+  const [state, setState] = useState<UploadState>(alreadyUploaded ? 'success' : 'idle');
+  const [fileName, setFileName] = useState<string | null>(alreadyUploaded ? 'Resume (saved)' : null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
