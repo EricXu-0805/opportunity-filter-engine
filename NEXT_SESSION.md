@@ -1,31 +1,39 @@
 # Next Session TODO
 
 ## Completed (this session)
-- [x] Skill Proficiency Tags: beginner/experienced/expert toggle per skill, weighted matching
-- [x] Email Editor: two-panel layout (left: editable email + variant tabs, right: chat refinement panel)
-- [x] LinkedIn/GitHub Integration: URL fields in profile, GitHub repo language parsing + skill import
-- [x] Why It Fits: specific skill overlap, proficiency-weighted matching, research interest alignment
+- [x] **UIUC Faculty Collector**: 10 departments, 924 new opportunities from CS/ECE/Physics/Chemistry/MechSE/BioE/MatSE/STAT/Math/iSchool faculty directories
+- [x] **Embedding Semantic Matching**: Upgraded from token-count cosine to scikit-learn TF-IDF (with ngrams + sublinear TF). OpenAI/OpenRouter embedding support ready when API key added.
+- [x] **OpenRouter LLM Support**: Email editor now supports OpenRouter (free tier) in addition to OpenAI for chat-based email refinement
+- [x] **Profile Auto-Save**: Debounced 1.5s auto-save to Supabase + localStorage on every profile change. Save status indicator ("Saving..." / "Profile saved")
+- [x] **Profile Version History**: New `profile_versions` Supabase table tracks every save (migration: 003_profile_versions.sql)
+- [x] **OpenAI dependency**: Added `openai>=1.0` to requirements.txt for Vercel deployment
+- [x] **Frontend filter**: Added "Faculty Research" as filterable source in results page
 
-## Priority 1: LLM Chat-Based Email Editing
-- Wire up OpenAI API for the chat panel in ColdEmailModal
-- Currently uses local text transformations (formal/shorter/enthusiastic/coursework)
-- Add streaming responses for a real chat experience
-- Requires OPENAI_API_KEY env var setup
+## Stats After This Session
+- Total opportunities: **1730** (was 806)
+- Data sources: **5** (was 4) — added `uiuc_faculty`
+- Faculty departments scraped: 10
+- Frontend build: passing
 
-## Priority 2: GitHub Deep Integration
-- Parse repo READMEs for project descriptions
-- Use GitHub contribution graph as experience signal
-- Auto-infer proficiency level from commit frequency per language
+## Priority 1: Deploy & Verify
+- Run migration `003_profile_versions.sql` in Supabase Dashboard (SQL Editor → paste & run)
+- Set `OPENROUTER_API_KEY` on Vercel backend (Settings → Environment Variables)
+- Push & deploy, verify email editor LLM works
 
-## Priority 3: Richer Opportunity Data
-- Enrich opportunities with PI research descriptions
-- Scrape faculty pages for current research topics
-- Match against student research_interests_text with semantic similarity
+## Priority 2: Faculty Enrichment
+- Run `python -m src.collectors.uiuc_faculty --save` (WITH enrichment, ~15min) to get emails + research keywords for all 924 faculty
+- Or wait for Monday GitHub Action deep scrape
 
-## Priority 4: Profile Persistence
-- Sync profile changes to Supabase in real-time (debounced)
-- Add profile versioning / history
-- Share profile via URL
+## Priority 3: Handshake Data Source
+- Needs login authentication (UIUC SSO)
+- Complex scraper engineering
+- Consider using browser automation (Playwright)
+
+## Priority 4: More Upgrades
+- Semantic matching with OpenAI embeddings (needs API key on Vercel)
+- UIUC department-specific "open positions" pages (not just faculty directories)
+- Profile sharing via URL
+- Notification when new opportunities match your profile
 
 ## Current State
 - Live: https://frontend-wine-pi-63.vercel.app

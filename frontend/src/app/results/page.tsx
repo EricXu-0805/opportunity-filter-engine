@@ -24,7 +24,7 @@ type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 interface Filters {
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
-  source: '' | 'uiuc_sro' | 'nsf_reu' | 'manual' | 'uiuc_our_rss';
+  source: '' | 'uiuc_sro' | 'nsf_reu' | 'manual' | 'uiuc_our_rss' | 'uiuc_faculty';
   onCampus: '' | 'yes' | 'no';
 }
 
@@ -305,7 +305,7 @@ export default function ResultsPage() {
             <FilterSelect
               value={filters.source}
               onChange={(v) => setFilters((f) => ({ ...f, source: v as Filters['source'] }))}
-              options={[['', 'All sources'], ['uiuc_sro', 'UIUC SRO'], ['nsf_reu', 'NSF REU'], ['manual', 'UIUC Labs'], ['uiuc_our_rss', 'OUR RSS']]}
+              options={[['', 'All sources'], ['uiuc_sro', 'UIUC SRO'], ['nsf_reu', 'NSF REU'], ['uiuc_faculty', 'Faculty Research'], ['manual', 'UIUC Labs'], ['uiuc_our_rss', 'OUR RSS']]}
             />
             <FilterSelect
               value={filters.onCampus}

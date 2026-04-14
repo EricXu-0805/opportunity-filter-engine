@@ -142,6 +142,15 @@ def _tokenize(text: str) -> list[str]:
 
 
 def _text_similarity(text_a: str, text_b: str) -> float:
+    try:
+        from .embeddings import semantic_similarity
+        return semantic_similarity(text_a, text_b)
+    except Exception:
+        pass
+    return _token_cosine_similarity(text_a, text_b)
+
+
+def _token_cosine_similarity(text_a: str, text_b: str) -> float:
     tokens_a = _tokenize(text_a)
     tokens_b = _tokenize(text_b)
     if not tokens_a or not tokens_b:

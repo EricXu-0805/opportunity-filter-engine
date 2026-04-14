@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   GraduationCap,
@@ -14,6 +14,8 @@ import {
   Github,
   Linkedin,
   Loader2,
+  Cloud,
+  CloudOff,
 } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
@@ -42,6 +44,10 @@ export default function HomePage() {
   const [ghLoading, setGhLoading] = useState(false);
   const [ghStatus, setGhStatus] = useState<string | null>(null);
 
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialLoad = useRef(true);
+
   useEffect(() => {
     getStats().then(s => setOppCount(s.total)).catch(() => {});
     loadProfile().then(saved => {
@@ -53,8 +59,32 @@ export default function HomePage() {
         setProfile(prev => ({ ...prev, ...raw } as ProfileData));
         if (typeof raw.search_weight === 'number') setSearchWeight(raw.search_weight);
       }
-    }).catch(() => {});
+      setTimeout(() => { isInitialLoad.current = false; }, 500);
+    }).catch(() => {
+      isInitialLoad.current = false;
+    });
   }, []);
+
+  useEffect(() => {
+    if (isInitialLoad.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    setSaveStatus('saving');
+    saveTimerRef.current = setTimeout(() => {
+      const toSave = { ...profile, search_weight: searchWeight };
+      localStorage.setItem('ofe_profile', JSON.stringify(toSave));
+      saveProfile(toSave)
+        .then(() => {
+          setSaveStatus('saved');
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        })
+        .catch(() => setSaveStatus('idle'));
+    }, 1500);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [profile, searchWeight]);
 
   function update<K extends keyof ProfileData>(key: K, value: ProfileData[K]) {
     setProfile((prev) => ({ ...prev, [key]: key === 'college' ? value : value, ...(key === 'college' ? { major: '' } : {}) }));
@@ -105,6 +135,7 @@ export default function HomePage() {
   }
 
   function handleSubmit() {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     const profileToSave = { ...profile, search_weight: searchWeight };
     localStorage.setItem('ofe_profile', JSON.stringify(profileToSave));
     saveProfile(profileToSave).catch(() => {});
@@ -525,10 +556,25 @@ export default function HomePage() {
         </button>
       </div>
 
-      {!isValid && (
+      {!isValid ? (
         <p className="text-center text-[13px] text-gray-400 mt-4">
           Please select your college, major, and grade to continue
         </p>
+      ) : (
+        <div className="flex justify-center items-center gap-2 mt-4 h-5">
+          {saveStatus === 'saving' && (
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-400 animate-pulse">
+              <Cloud className="w-3.5 h-3.5" />
+              Saving...
+            </span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-emerald-500">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Profile saved
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

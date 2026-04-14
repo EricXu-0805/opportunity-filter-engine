@@ -19,14 +19,25 @@ export async function saveProfile(profileData: Record<string, unknown>): Promise
   const id = getDeviceId();
   if (!id) return;
 
+  const now = new Date().toISOString();
+
   const { error } = await supabase
     .from('profiles')
     .upsert(
-      { id, profile_data: profileData, updated_at: new Date().toISOString() },
+      { id, profile_data: profileData, updated_at: now },
       { onConflict: 'id' },
     );
 
   if (error) console.warn('Failed to sync profile:', error.message);
+
+  supabase
+    .from('profile_versions')
+    .insert({ device_id: id, profile_data: profileData, created_at: now })
+    .then(({ error: vErr }) => {
+      if (vErr && !vErr.message.includes('does not exist')) {
+        console.warn('Failed to save profile version:', vErr.message);
+      }
+    });
 }
 
 export async function loadProfile(): Promise<Record<string, unknown> | null> {

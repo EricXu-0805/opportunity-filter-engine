@@ -128,17 +128,33 @@ class EmailRefineRequest(BaseModel):
     subject: str = ""
 
 
+def _get_llm_client():
+    """Return (client, model) tuple for the best available LLM provider."""
+    import openai
+
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if openai_key:
+        return openai.OpenAI(api_key=openai_key), "gpt-4o-mini"
+
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if openrouter_key:
+        return openai.OpenAI(
+            api_key=openrouter_key,
+            base_url="https://openrouter.ai/api/v1",
+        ), "google/gemini-2.0-flash-lite-001"
+
+    return None, None
+
+
 @router.post("/cold-email/refine")
 async def refine_email(request: EmailRefineRequest):
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
+    client, model = _get_llm_client()
+    if not client:
         return _local_refine(request.current_body, request.instruction)
 
     try:
-        import openai
-        client = openai.OpenAI(api_key=api_key)
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[
                 {"role": "system", "content": (
                     "You are an email editor for a student writing cold emails to professors. "
@@ -156,7 +172,7 @@ async def refine_email(request: EmailRefineRequest):
         )
         edited = resp.choices[0].message.content.strip()
         return {"body": edited, "method": "llm"}
-    except Exception as e:
+    except Exception:
         return _local_refine(request.current_body, request.instruction)
 
 
