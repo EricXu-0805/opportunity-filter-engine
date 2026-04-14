@@ -39,7 +39,7 @@ PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 COOKIE_FILE = PROJECT_ROOT / "data" / "handshake_cookies.json"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-BASE_URL = "https://app.joinhandshake.com"
+BASE_URL = "https://illinois.joinhandshake.com"
 SEARCH_URL = f"{BASE_URL}/stu/postings"
 
 HEADERS = {
@@ -51,6 +51,7 @@ HEADERS = {
     "Accept": "application/json, text/javascript, */*; q=0.01",
     "X-Requested-With": "XMLHttpRequest",
     "Referer": f"{BASE_URL}/stu/postings",
+    "Origin": BASE_URL,
 }
 
 SEARCH_PARAMS = {
@@ -209,47 +210,35 @@ def search_postings(session: requests.Session,
         return {}
 
 
-def _parse_posting(posting: dict) -> Optional[dict]:
-    """Parse a single Handshake posting into a raw opportunity dict."""
-    title = posting.get("title", "").strip()
+def _parse_posting(result: dict) -> Optional[dict]:
+    """Parse a Handshake search result (result.job nested structure)."""
+    job = result.get("job", {}) or {}
+    title = job.get("title", "").strip()
     if not title:
         return None
 
-    employer = posting.get("employer", {}) or {}
-    employer_name = employer.get("name", "Unknown")
-    posting_id = str(posting.get("id", ""))
+    posting_id = str(result.get("id", ""))
+    employer_name = job.get("employer_name", "Unknown")
 
-    location_parts = []
-    if posting.get("city"):
-        location_parts.append(posting["city"])
-    if posting.get("state"):
-        location_parts.append(posting["state"])
-    location = ", ".join(location_parts) or "Unknown"
+    cities = job.get("location_cities", [])
+    states = job.get("location_states", [])
+    location = f"{cities[0]}, {states[0]}" if cities and states else "Unknown"
 
-    deadline = posting.get("expiration_date")
-    start_date = posting.get("start_date")
-    posted = posting.get("created_at")
+    deadline = result.get("expiration_date")
+    start_date = job.get("start_date")
+    posted = result.get("created_at")
 
-    job_type = posting.get("job_type_name", "")
+    job_type = job.get("job_type_name", "")
     is_internship = "intern" in job_type.lower() if job_type else False
 
     salary_info = ""
-    if posting.get("salary_type"):
-        low = posting.get("salary_low", 0) or 0
-        high = posting.get("salary_high", 0) or 0
-        if low or high:
-            salary_info = f"${low/100:.0f}-${high/100:.0f} ({posting['salary_type']})"
+    sal_min = job.get("salary_min_raw", "")
+    sal_max = job.get("salary_max_raw", "")
+    pay_schedule = (job.get("pay_schedule") or {}).get("friendly_name", "")
+    if sal_min or sal_max:
+        salary_info = f"${sal_min}-${sal_max} {pay_schedule}".strip()
 
-    description = posting.get("description_text", "") or posting.get("description", "") or ""
-
-    qualifications = posting.get("desired_qualifications", "") or ""
-    description_full = f"{description}\n\n{qualifications}".strip()
-
-    work_auth = posting.get("work_auth_required", None)
-    sponsor = posting.get("will_sponsor", None)
-    intl_friendly = "yes"
-    if work_auth:
-        intl_friendly = "no" if not sponsor else "unknown"
+    paid = job.get("salary_type_behavior_identifier", "")
 
     return {
         "handshake_id": posting_id,
@@ -260,12 +249,16 @@ def _parse_posting(posting: dict) -> Optional[dict]:
         "deadline": deadline,
         "start_date": start_date,
         "posted_date": posted,
-        "description": description_full[:2000],
+        "description": "",
         "salary": salary_info,
         "is_internship": is_internship,
-        "international_friendly": intl_friendly,
+        "paid": "yes" if paid == "Paid" else "unknown",
+        "international_friendly": "unknown",
         "url": f"{BASE_URL}/stu/postings/{posting_id}",
-        "apply_url": posting.get("application_url", ""),
+        "apply_url": "",
+        "remote": job.get("remote", False),
+        "on_site": job.get("on_site", False),
+        "employer_id": job.get("employer_id"),
     }
 
 
@@ -278,9 +271,7 @@ def normalize_posting(raw: dict) -> dict:
     desc = raw.get("description", "")
     keywords = _extract_keywords(desc)
 
-    paid = "unknown"
-    if raw.get("salary"):
-        paid = "yes"
+    paid = raw.get("paid", "unknown")
 
     return {
         "id": opp_id,
