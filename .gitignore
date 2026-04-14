@@ -23,9 +23,11 @@ Thumbs.db
 .env
 .env.local
 
-# Data (keep structure, ignore large files)
+# Data (keep structure, ignore large/sensitive files)
 data/raw/*.html
 data/raw/*.json
+data/handshake_cookies.json
+data/processed/embedding_cache.json
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/manual_entries/.gitkeep
