@@ -89,6 +89,7 @@ export interface Opportunity {
   compensation_details?: string;
   duration?: string;
   start_date?: string;
+  posted_date?: string;
   remote_option?: string;
   eligibility: OpportunityEligibility;
   application: OpportunityApplication;

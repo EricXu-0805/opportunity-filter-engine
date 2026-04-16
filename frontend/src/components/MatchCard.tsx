@@ -73,6 +73,13 @@ const INTERACTION_LABELS: Record<InteractionType, { label: string; color: string
 
 const INTERACTION_OPTIONS: InteractionType[] = ['applied', 'replied', 'interviewing', 'rejected'];
 
+function isNewPosting(opp: MatchResult['opportunity']): boolean {
+  const posted = opp.posted_date;
+  if (!posted) return false;
+  const diff = Date.now() - new Date(posted).getTime();
+  return diff < 14 * 86400000;
+}
+
 export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
@@ -124,6 +131,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 mb-5">
+          {isNewPosting(opp) && <Badge variant="green" dot>New</Badge>}
           <Badge variant="indigo">{opp.opportunity_type}</Badge>
           <Badge variant={intl.variant} dot>
             <Globe className="w-3 h-3" />

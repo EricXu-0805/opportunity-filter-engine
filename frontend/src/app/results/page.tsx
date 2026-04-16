@@ -149,6 +149,10 @@ function ResultsContent() {
     source: (searchParams.get('source') || '') as Filters['source'],
     onCampus: (searchParams.get('loc') || '') as Filters['onCampus'],
   });
+  type SortKey = 'score' | 'deadline' | 'newest';
+  const [sortBy, setSortBy] = useState<SortKey>(
+    (searchParams.get('sort') as SortKey) || 'score',
+  );
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
@@ -174,6 +178,7 @@ function ResultsContent() {
     if (filters.intl) params.set('intl', filters.intl);
     if (filters.source) params.set('source', filters.source);
     if (filters.onCampus) params.set('loc', filters.onCampus);
+    if (sortBy !== 'score') params.set('sort', sortBy);
     const qs = params.toString();
     const newUrl = qs ? `/results?${qs}` : '/results';
     window.history.replaceState(null, '', newUrl);
@@ -302,8 +307,23 @@ function ResultsContent() {
         );
       });
     }
+
+    if (sortBy === 'deadline') {
+      results.sort((a, b) => {
+        const da = a.opportunity.deadline || '9999';
+        const db = b.opportunity.deadline || '9999';
+        return da.localeCompare(db);
+      });
+    } else if (sortBy === 'newest') {
+      results.sort((a, b) => {
+        const pa = (a.opportunity as unknown as { posted_date?: string }).posted_date || '';
+        const pb = (b.opportunity as unknown as { posted_date?: string }).posted_date || '';
+        return pb.localeCompare(pa);
+      });
+    }
+
     return results;
-  }, [data, activeTab, debouncedQuery, filters, favs]);
+  }, [data, activeTab, debouncedQuery, filters, favs, sortBy]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = useMemo(
@@ -311,7 +331,7 @@ function ResultsContent() {
     [filtered, page],
   );
 
-  useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters]);
+  useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy]);
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 } as Record<Tab, number>;
@@ -437,6 +457,11 @@ function ResultsContent() {
               value={filters.onCampus}
               onChange={(v) => setFilters((f) => ({ ...f, onCampus: v as Filters['onCampus'] }))}
               options={[['', 'Any location'], ['yes', 'On campus'], ['no', 'Off campus / Remote']]}
+            />
+            <FilterSelect
+              value={sortBy}
+              onChange={(v) => setSortBy(v as SortKey)}
+              options={[['score', 'Sort: Best match'], ['deadline', 'Sort: Deadline soonest'], ['newest', 'Sort: Recently posted']]}
             />
             {activeFilterCount > 0 && (
               <button
