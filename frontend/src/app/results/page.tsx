@@ -446,6 +446,7 @@ function ResultsContent() {
                 <MemoizedMatchCard
                   key={match.opportunity.id}
                   match={match}
+                  profile={profile}
                   onDraftEmail={openEmailModal}
                   isFavorited={favs.has(match.opportunity.id)}
                   onToggleFavorite={handleToggleFav}
@@ -519,7 +520,8 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.match.opportunity.id === next.match.opportunity.id &&
     prev.match.final_score === next.match.final_score &&
     prev.isFavorited === next.isFavorited &&
-    prev.interaction === next.interaction
+    prev.interaction === next.interaction &&
+    prev.profile === next.profile
   );
 });
 MemoizedMatchCard.displayName = 'MemoizedMatchCard';

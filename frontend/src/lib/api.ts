@@ -58,6 +58,20 @@ export async function getOpportunities(): Promise<OpportunitiesResponse> {
   return request<OpportunitiesResponse>('/opportunities');
 }
 
+export interface GapAnalysis {
+  missing_skills: string[];
+  suggested_coursework: string[];
+  resume_tips: string[];
+  preparation_timeline: { skill: string; estimated_time: string; priority: string }[];
+}
+
+export async function getGapAnalysis(profile: ProfileData, opportunityId: string): Promise<GapAnalysis> {
+  return request<GapAnalysis>(`/matches/${encodeURIComponent(opportunityId)}/gaps`, {
+    method: 'POST',
+    body: JSON.stringify(toProfileRequest(profile)),
+  });
+}
+
 export async function getOpportunityById(id: string): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>(`/opportunities/${encodeURIComponent(id)}`);
 }

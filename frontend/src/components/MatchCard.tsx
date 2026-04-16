@@ -15,14 +15,19 @@ import {
   Star,
   FileText,
   Clock,
+  BookOpen,
+  Loader2,
 } from 'lucide-react';
 import Badge from './Badge';
 import ScoreBar from './ScoreBar';
-import type { MatchResult } from '@/lib/types';
+import { getGapAnalysis } from '@/lib/api';
+import type { GapAnalysis } from '@/lib/api';
+import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
 
 interface MatchCardProps {
   match: MatchResult;
+  profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: (opportunityId: string) => void;
@@ -68,8 +73,10 @@ const INTERACTION_LABELS: Record<InteractionType, { label: string; color: string
 
 const INTERACTION_OPTIONS: InteractionType[] = ['applied', 'replied', 'interviewing', 'rejected'];
 
-export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction }: MatchCardProps) {
+export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [gaps, setGaps] = useState<GapAnalysis | null>(null);
+  const [gapLoading, setGapLoading] = useState(false);
 
   const { opportunity: opp } = match;
   const tier = getBucketLabel(match.bucket);
@@ -273,6 +280,95 @@ export default function MatchCard({ match, onDraftEmail, isFavorited, onToggleFa
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {profile && !gaps && (
+              <button
+                type="button"
+                disabled={gapLoading}
+                onClick={async () => {
+                  setGapLoading(true);
+                  try {
+                    const data = await getGapAnalysis(profile, opp.id);
+                    setGaps(data);
+                  } catch { /* best effort */ }
+                  finally { setGapLoading(false); }
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 text-[12px] font-medium text-teal-700 bg-teal-50 rounded-xl hover:bg-teal-100 transition-colors"
+              >
+                {gapLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BookOpen className="w-3.5 h-3.5" />}
+                {gapLoading ? 'Analyzing...' : 'Show preparation plan'}
+              </button>
+            )}
+
+            {gaps && (
+              <div className="space-y-4 pt-1">
+                {gaps.missing_skills.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-2">
+                      Skills to learn
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {gaps.missing_skills.map((s) => (
+                        <span key={s} className="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-[12px] font-medium">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {gaps.suggested_coursework.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-teal-600 uppercase tracking-widest mb-2">
+                      Recommended UIUC courses
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {gaps.suggested_coursework.map((c) => (
+                        <span key={c} className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 text-[12px] font-medium">{c}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {gaps.preparation_timeline.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-violet-600 uppercase tracking-widest mb-2">
+                      Preparation timeline
+                    </h4>
+                    <div className="space-y-1.5">
+                      {gaps.preparation_timeline.map((item) => (
+                        <div key={item.skill} className="flex items-center gap-3 text-[13px]">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.priority === 'high' ? 'bg-red-400' : 'bg-amber-400'}`} />
+                          <span className="font-medium text-gray-700">{item.skill}</span>
+                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-500">{item.estimated_time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {gaps.resume_tips.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-widest mb-2">
+                      Resume tips
+                    </h4>
+                    <ul className="space-y-1.5">
+                      {gaps.resume_tips.map((tip, i) => (
+                        <li key={i} className="text-[13px] text-gray-600 leading-relaxed pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-orange-400">
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {gaps.missing_skills.length === 0 && gaps.suggested_coursework.length === 0 && (
+                  <p className="text-[13px] text-emerald-600 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Your profile already covers the requirements for this position.
+                  </p>
+                )}
               </div>
             )}
           </div>
