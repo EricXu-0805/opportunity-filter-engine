@@ -13,7 +13,7 @@ const STEPS = [
     icon: Sparkles,
     title: 'AI Matching',
     description:
-      '1800+ opportunities from 6 sources, scored on eligibility, readiness, and upside with TF-IDF semantic matching.',
+      '1700+ opportunities from 6 sources, scored on eligibility, readiness, and upside with TF-IDF semantic matching.',
   },
   {
     num: '03',
