@@ -123,8 +123,8 @@ async def upload_resume(file: UploadFile = File(...)):
 
     try:
         raw_text = _extract_text_from_pdf(tmp_path)
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Failed to parse PDF: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=422, detail="Failed to parse PDF. The file may be corrupted or password-protected.")
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -164,6 +164,9 @@ GITHUB_LANG_TO_SKILL = {
 
 @router.get("/resume/github/{username}")
 async def parse_github_profile(username: str):
+    if not re.match(r"^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$", username):
+        raise HTTPException(status_code=400, detail="Invalid GitHub username format")
+
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(

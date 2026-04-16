@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -8,6 +8,13 @@ from pydantic import BaseModel, Field, field_validator
 class SkillItem(BaseModel):
     name: str
     level: str = "beginner"
+
+
+class ProfilePreferences(BaseModel):
+    min_match_threshold: float = 25
+    show_reach_opportunities: bool = True
+    prioritize_paid: bool = True
+    exclude_citizenship_restricted: bool = True
 
 
 class ProfileRequest(BaseModel):
@@ -31,16 +38,45 @@ class ProfileRequest(BaseModel):
     research_interests_text: str = ""
     linkedin_url: str = ""
     github_url: str = ""
-    preferences: ProfilePreferences = None
+    search_weight: int = 50
+    preferences: Optional[ProfilePreferences] = None
+
+    @field_validator("research_interests_text")
+    @classmethod
+    def cap_research_text(cls, v: str) -> str:
+        return v[:2000]
+
+    @field_validator("name")
+    @classmethod
+    def cap_name(cls, v: str) -> str:
+        return v[:100]
+
+    @field_validator("linkedin_url", "github_url")
+    @classmethod
+    def cap_url(cls, v: str) -> str:
+        return v[:300]
+
+    @field_validator("coursework")
+    @classmethod
+    def cap_coursework(cls, v: list) -> list:
+        return [str(c)[:20] for c in v[:50]]
+
+    @field_validator("seeking_type", "desired_fields", "secondary_interests")
+    @classmethod
+    def cap_string_lists(cls, v: list) -> list:
+        return [str(x)[:100] for x in v[:20]]
 
     @field_validator("hard_skills", mode="before")
     @classmethod
-    def normalize_skills(cls, v: list) -> list:
+    def normalize_skills(cls, v) -> list:
+        if not isinstance(v, list):
+            return []
         result = []
-        for item in v:
+        for item in v[:50]:
             if isinstance(item, str):
-                result.append(SkillItem(name=item, level="beginner"))
+                result.append(SkillItem(name=item[:50], level="beginner"))
             elif isinstance(item, dict):
+                item["name"] = str(item.get("name", ""))[:50]
                 result.append(SkillItem(**item))
             else:
                 result.append(item)
@@ -68,13 +104,6 @@ class ProfileRequest(BaseModel):
                 "seeking_type": ["research", "summer_program"],
             }
         }
-
-
-class ProfilePreferences(BaseModel):
-    min_match_threshold: float = 25
-    show_reach_opportunities: bool = True
-    prioritize_paid: bool = True
-    exclude_citizenship_restricted: bool = True
 
 
 class MatchResultResponse(BaseModel):
@@ -133,4 +162,3 @@ class OpportunityListResponse(BaseModel):
     sources: dict[str, int]
 
 
-ProfileRequest.model_rebuild()
