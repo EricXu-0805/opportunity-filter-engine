@@ -407,8 +407,44 @@ def _enrich_faculty_from_profile(person: dict) -> dict:
     return person
 
 
+_PAGE_NOISE = re.compile(
+    r"(award|fellow|committee|ranked|excellent|teacher|chair|director|"
+    r"member|subcommittee|advisory|incomplete list|associate in|pc member|"
+    r"best paper|nomination|distinguished|present\)|2[0-9]{3})",
+    re.IGNORECASE,
+)
+
+
+def _scrape_individual_page_keywords(url: str) -> list[str]:
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=8, verify=False)
+        resp.raise_for_status()
+        html = resp.text
+    except Exception:
+        return []
+
+    topics = set()
+    for pattern in [
+        r"(?:Research\s+(?:Interests?|Areas?|Focus))[\s:]*</(?:h[2-6]|strong|b|dt|p)>\s*(.{10,800}?)(?:<(?:h[2-6]|div\s+class=\"field)|$)",
+    ]:
+        for m in re.finditer(pattern, html, re.IGNORECASE | re.DOTALL):
+            block = re.sub(r"<[^>]+>", "|", m.group(1))
+            for chunk in block.split("|"):
+                chunk = re.sub(r"\s+", " ", chunk).strip()
+                if 8 < len(chunk) < 80 and not _PAGE_NOISE.search(chunk):
+                    topics.add(chunk.lower())
+
+    main = re.search(r"<main[^>]*>(.*?)</main>", html, re.DOTALL | re.IGNORECASE)
+    if main:
+        for li in re.finditer(r"<li[^>]*>\s*([^<]{8,80})\s*</li>", main.group(1)):
+            text = li.group(1).strip()
+            if 8 < len(text) < 80 and not _PAGE_NOISE.search(text):
+                topics.add(text.lower())
+
+    return list(topics)[:5]
+
+
 def _extract_research_keywords(person: dict, dept_config: dict) -> list[str]:
-    """Extract specific research keywords from faculty info."""
     text = " ".join([
         person.get("research_areas", ""),
         person.get("research_description", ""),
@@ -436,6 +472,14 @@ def _extract_research_keywords(person: dict, dept_config: dict) -> list[str]:
     ]
 
     found = [kw for kw in KEYWORD_BANK if kw in text]
+
+    if not found:
+        profile_url = person.get("profile_url", "")
+        if profile_url:
+            scraped = _scrape_individual_page_keywords(profile_url)
+            if scraped:
+                return scraped
+
     if not found:
         found = dept_config.get("keywords", [])[:3]
 
