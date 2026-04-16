@@ -21,7 +21,7 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
       setState('success');
       setFileName('Resume (saved)');
     }
-  }, [alreadyUploaded]);
+  }, [alreadyUploaded, state]);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
