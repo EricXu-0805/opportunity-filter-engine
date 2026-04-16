@@ -20,6 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CACHE_DIR = PROJECT_ROOT / "data" / "processed"
 EMBEDDING_CACHE_FILE = CACHE_DIR / "embedding_cache.json"
 
+MAX_CACHE_SIZE = 5000
 _cache: dict[str, list[float]] = {}
 _cache_loaded = False
 
@@ -93,6 +94,9 @@ def embed_text(text: str, api_key: str = None) -> Optional[list[float]]:
 
     result = _get_openai_embeddings([text], api_key)
     if result:
+        if len(_cache) >= MAX_CACHE_SIZE:
+            oldest_key = next(iter(_cache))
+            del _cache[oldest_key]
         _cache[key] = result[0]
         _save_cache()
         return result[0]
@@ -143,27 +147,42 @@ def semantic_similarity(text_a: str, text_b: str, api_key: str = None) -> float:
     return _tfidf_similarity(text_a, text_b)
 
 
+_tfidf_vectorizer = None
+_tfidf_corpus_hashes: set[str] = set()
+
+
+def _get_tfidf_vectorizer():
+    global _tfidf_vectorizer
+    if _tfidf_vectorizer is None:
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            _tfidf_vectorizer = TfidfVectorizer(
+                stop_words="english",
+                max_features=5000,
+                ngram_range=(1, 2),
+                sublinear_tf=True,
+            )
+        except ImportError:
+            pass
+    return _tfidf_vectorizer
+
+
 def _tfidf_similarity(text_a: str, text_b: str) -> float:
-    """TF-IDF cosine similarity fallback using scikit-learn."""
     try:
-        from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
 
         if not text_a.strip() or not text_b.strip():
             return 0.0
 
-        vectorizer = TfidfVectorizer(
-            stop_words="english",
-            max_features=5000,
-            ngram_range=(1, 2),
-            sublinear_tf=True,
-        )
+        vectorizer = _get_tfidf_vectorizer()
+        if vectorizer is None:
+            return 0.0
+
         tfidf_matrix = vectorizer.fit_transform([text_a, text_b])
         sim = sklearn_cosine(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
         return float(max(0.0, sim))
     except ImportError:
-        from .ranker import _text_similarity
-        return _text_similarity(text_a, text_b)
+        return 0.0
 
 
 def precompute_opportunity_embeddings(opportunities: list[dict],

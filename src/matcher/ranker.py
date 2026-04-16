@@ -72,7 +72,7 @@ RELATED_MAJORS = {
     "IS": ["CS", "STAT", "COMM"],
     "MATH": ["CS", "STAT", "PHYS", "ECON"],
     "PHYS": ["ECE", "MATH", "CHEME", "AE", "NPRE", "ATMS"],
-    "CHEME": {"CHEM", "BIOE", "MSE", "PHYS"},
+    "CHEME": ["CHEM", "BIOE", "MSE", "PHYS"],
     "BIOE": ["CS", "CHEME", "BIO", "ECE"],
     "MECHSE": ["AE", "CEE", "MSE", "ECE"],
     "CEE": ["MECHSE", "ATMS", "AGE"],
@@ -328,7 +328,7 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
     reasons_fit = []
     reasons_gap = []
 
-    # Year match (30%)
+    # Year match (30% weight)
     year_score = _year_match_score(
         profile.get("year", ""),
         elig.get("preferred_year", [])
@@ -338,7 +338,7 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
     elif year_score < 50:
         reasons_gap.append(f"Typically targets {', '.join(elig.get('preferred_year', []))}")
 
-    # Major match (25%)
+    # Major match (20% weight)
     student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])
     major_score = _major_match_score(student_majors, elig.get("majors", []))
     if major_score >= 100:
@@ -361,7 +361,7 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
         else:
             reasons_fit.append("Open to international students")
 
-    # Skill overlap (15%)
+    # Skill overlap (15% weight)
     skill_score = _skill_overlap_score(
         profile.get("hard_skills", []),
         elig.get("skills_required", [])
@@ -396,12 +396,18 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
             else:
                 skill_detail_parts.append(r)
 
-        label = "Tech stack overlap" if skill_score >= 70 else "Partial skill match"
+        expert_count = sum(1 for r in matched_skills if level_map.get(r.lower(), level_map.get(_canonicalize_skill(r), "")) in ("expert", "experienced"))
+        if expert_count >= 2 and skill_score >= 70:
+            label = "Strong tech stack fit"
+        elif skill_score >= 70:
+            label = "Tech stack overlap"
+        else:
+            label = "Partial skill match"
         reasons_fit.append(f"{label}: {', '.join(skill_detail_parts)} — {len(matched_skills)}/{len(required_raw)} required")
     if missing_skills:
         reasons_gap.append(f"Missing skills: {', '.join(missing_skills)}")
 
-    # Type preference match (10%)
+    # Type preference match (15% weight)
     type_score = _type_preference_score(
         profile.get("seeking_type", []),
         opportunity.get("opportunity_type", "")
@@ -519,11 +525,12 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
 
     research_text = profile.get("research_interests_text", "").lower()
     lab = opportunity.get("lab_or_program", "")
+    pi_name = opportunity.get("pi_name", "")
     opp_desc = (opportunity.get("description_raw") or opportunity.get("description_clean") or "").lower()
 
-    generic_kw = {"undergraduate", "research", "summer", "program", "internship", "opportunity", "student"}
-    specific_kw = [kw for kw in opp_keywords if kw not in generic_kw]
-    lab_label = lab if lab else opportunity.get("department", "")
+    specific_kw = [kw for kw in opp_keywords if kw not in _GENERIC_KEYWORDS]
+    clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
+    lab_label = clean_pi and f"Prof. {clean_pi}" or lab or opportunity.get("department", "")
 
     if research_text and opp_desc:
         sim = _text_similarity(research_text, opp_desc)
@@ -555,14 +562,19 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
                     f"Your interest in {', '.join(text_overlap)} connects to this position"
                 )
 
-    total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \
-            0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.10 * keyword_score
+    has_skill_signal = bool(opportunity.get("eligibility", {}).get("skills_required"))
+    if has_skill_signal:
+        total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \
+                0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.10 * keyword_score
+    else:
+        total = 0.15 * paid_score + 0.15 * first_exp_score + 0.10 * campus_score + \
+                0.10 * brand_score + 0.15 * mentor_score + 0.10 * pathway_score + 0.25 * keyword_score
     return total, reasons_fit, reasons_gap
 
 
 # --- Combined ranker ---
 
-WEIGHTS = {"eligibility": 0.45, "readiness": 0.35, "upside": 0.20}
+WEIGHTS_DEFAULT = {"eligibility": 0.45, "readiness": 0.35, "upside": 0.20}
 
 BUCKET_THRESHOLDS = [
     (82, "high_priority"),
@@ -572,38 +584,127 @@ BUCKET_THRESHOLDS = [
 ]
 
 
-def _summarize_research(opportunity: dict) -> str:
-    lab = opportunity.get("lab_or_program", "")
-    desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
+def _compute_weights(search_weight: int) -> dict[str, float]:
+    """Blend scoring weights based on the search_weight slider (0-100).
+
+    0   = pure research interests  → boost upside (keyword/interest matching)
+    50  = balanced (default)
+    100 = pure resume/experience   → boost readiness (skills, resume, coursework)
+    """
+    sw = max(0, min(100, search_weight))
+    t = sw / 100.0  # 0.0 → 1.0
+
+    elig = 0.45 - 0.05 * abs(t - 0.5) * 2
+    readiness = 0.25 + 0.20 * t
+    upside = 1.0 - elig - readiness
+    return {"eligibility": elig, "readiness": readiness, "upside": max(0.05, upside)}
+
+
+_GENERIC_KEYWORDS = frozenset({
+    "undergraduate", "research", "summer", "program", "internship",
+    "opportunity", "assistant", "student", "uiuc", "illinois",
+    "computer science", "artificial intelligence", "machine learning",
+    "engineering", "science", "technology", "department",
+})
+
+
+def _extract_specific_keywords(opportunity: dict) -> list[str]:
     keywords = opportunity.get("keywords", [])
+    return [kw for kw in keywords if kw.lower() not in _GENERIC_KEYWORDS]
 
-    generic = {"undergraduate", "research", "summer", "program", "internship",
-               "opportunity", "assistant", "student", "uiuc", "illinois"}
-    specific_kw = [kw for kw in keywords if kw.lower() not in generic]
 
+def _extract_research_focus_from_desc(desc: str) -> str:
+    if not desc or len(desc) < 30:
+        return ""
+    noise_prefixes = (
+        "research opportunity with",
+        "seeking undergraduate",
+        "looking for",
+        "we are",
+        "this position",
+        "contact the professor",
+        "the program",
+        "this program",
+        "apply",
+    )
+    noise_content = ("$", "stipend", "housing", "travel", "compensation", "salary")
+    for sentence in desc.split("."):
+        s = sentence.strip()
+        if len(s) < 15:
+            continue
+        s_lower = s.lower()
+        if any(s_lower.startswith(p) for p in noise_prefixes):
+            continue
+        if any(n in s_lower for n in noise_content):
+            continue
+        return s[:100]
+    return ""
+
+
+_BAD_PI_NAMES = frozenset({"learn more", "none", "n/a", "and robotics", "unknown", ""})
+
+
+def _summarize_research(opportunity: dict) -> str:
+    pi = opportunity.get("pi_name") or ""
+    if pi.lower().strip() in _BAD_PI_NAMES:
+        pi = ""
+    lab = opportunity.get("lab_or_program", "")
+    dept = opportunity.get("department", "")
+    desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
+
+    specific_kw = _extract_specific_keywords(opportunity)
+    desc_focus = _extract_research_focus_from_desc(desc)
+
+    lab_has_pi = pi and pi.split()[-1].lower() in lab.lower()
+
+    if pi and lab and specific_kw:
+        prefix = lab if lab_has_pi else f"Prof. {pi}'s {lab}"
+        return f"{prefix} — {', '.join(specific_kw[:3])}"
+    if pi and specific_kw:
+        return f"Prof. {pi} ({dept or 'UIUC'}) — {', '.join(specific_kw[:3])}"
+    if pi and lab:
+        prefix = lab if lab_has_pi else f"Prof. {pi}'s {lab}"
+        if desc_focus:
+            return f"{prefix}: {desc_focus}"
+        return f"{prefix} ({dept})" if dept and dept not in prefix else prefix
+    if pi and desc_focus:
+        return f"Prof. {pi}: {desc_focus}"
     if lab and specific_kw:
         return f"{lab} — {', '.join(specific_kw[:3])}"
     if lab:
         return lab
     if specific_kw:
         return ", ".join(specific_kw[:3])
-    if desc:
-        first_sentence = desc.split(".")[0].strip()
-        if len(first_sentence) > 15:
-            return first_sentence[:80]
+    if desc_focus:
+        return desc_focus
     return ""
 
 
-def rank_opportunity(profile: dict, opportunity: dict) -> MatchResult:
+def rank_opportunity(profile: dict, opportunity: dict, weights: dict[str, float] | None = None) -> MatchResult:
     elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
     up_score, up_fit, up_gap = score_upside(profile, opportunity)
 
+    w = weights or WEIGHTS_DEFAULT
     final = (
-        WEIGHTS["eligibility"] * elig_score +
-        WEIGHTS["readiness"] * ready_score +
-        WEIGHTS["upside"] * up_score
+        w["eligibility"] * elig_score +
+        w["readiness"] * ready_score +
+        w["upside"] * up_score
     )
+
+    deadline = opportunity.get("deadline", "")
+    if deadline and len(deadline) >= 8 and deadline[4] == "-":
+        try:
+            from datetime import date
+            dl = date.fromisoformat(deadline)
+            days_left = (dl - date.today()).days
+            if days_left < 0:
+                final *= 0.7
+                elig_gap.append("Deadline has passed — verify if still accepting applications")
+            elif days_left <= 7:
+                elig_fit.append(f"Deadline in {days_left} days — apply soon")
+        except ValueError:
+            pass
 
     bucket = "low_fit"
     for threshold, label in BUCKET_THRESHOLDS:
@@ -616,7 +717,11 @@ def rank_opportunity(profile: dict, opportunity: dict) -> MatchResult:
 
     research_summary = _summarize_research(opportunity)
     if research_summary:
-        all_fit.insert(0, f"This lab focuses on {research_summary}")
+        pi = opportunity.get("pi_name", "")
+        if pi and pi in research_summary:
+            all_fit.insert(0, research_summary)
+        else:
+            all_fit.insert(0, f"This lab focuses on {research_summary}")
 
     next_steps = _generate_next_steps(profile, opportunity, all_gap)
 
@@ -660,21 +765,63 @@ def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> l
 
 def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     """Rank all opportunities for a profile. Returns sorted by final_score desc."""
+    search_weight = profile.get("search_weight", 50)
+    weights = _compute_weights(search_weight)
+
+    seeking = set(profile.get("seeking_type", []))
+    student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
+
     results = []
     for opp in opportunities:
-        # Hard filters
         if profile.get("international_student"):
             elig = opp.get("eligibility", {})
             if elig.get("international_friendly") == "no":
                 if profile.get("preferences", {}).get("exclude_citizenship_restricted", True):
                     continue
 
-        result = rank_opportunity(profile, opp)
+        opp_type = opp.get("opportunity_type", "")
+        if seeking and opp_type and opp_type not in seeking:
+            opp_majors = opp.get("eligibility", {}).get("majors", [])
+            if opp_majors:
+                opp_majors_norm = {_normalize_major(m) for m in opp_majors}
+                if not (student_majors_norm & opp_majors_norm):
+                    all_related = set()
+                    for sm in student_majors_norm:
+                        all_related.update(RELATED_MAJORS.get(sm, []))
+                    if not (all_related & opp_majors_norm):
+                        continue
 
-        # Apply minimum threshold
         min_threshold = profile.get("preferences", {}).get("min_match_threshold", 0)
+        if min_threshold > 0:
+            elig_score, _, _ = score_eligibility(profile, opp)
+            max_possible = weights["eligibility"] * elig_score + (weights["readiness"] + weights["upside"]) * 100
+            if max_possible < min_threshold:
+                continue
+
+        result = rank_opportunity(profile, opp, weights)
         if result.final_score >= min_threshold:
             results.append(result)
 
     results.sort(key=lambda r: r.final_score, reverse=True)
+
+    if len(results) >= 10:
+        scores = [r.final_score for r in results]
+        p90 = scores[max(0, len(scores) // 10)]
+        p50 = scores[len(scores) // 2]
+        p80 = scores[max(0, len(scores) // 5)]
+
+        hp_threshold = max(82, p90)
+        gm_threshold = max(72, p80)
+        reach_threshold = max(55, p50)
+
+        for r in results:
+            if r.final_score >= hp_threshold:
+                r.bucket = "high_priority"
+            elif r.final_score >= gm_threshold:
+                r.bucket = "good_match"
+            elif r.final_score >= reach_threshold:
+                r.bucket = "reach"
+            else:
+                r.bucket = "low_fit"
+
     return results
