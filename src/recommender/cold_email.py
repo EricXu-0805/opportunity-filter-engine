@@ -22,28 +22,54 @@ def _extract_skill_levels(raw_skills: list) -> dict[str, str]:
     return result
 
 
+_EMAIL_GENERIC_KW = frozenset({
+    "undergraduate", "research", "summer", "program", "internship",
+    "opportunity", "assistant", "student", "uiuc", "illinois",
+    "computer science", "artificial intelligence", "machine learning",
+    "engineering", "science", "technology", "science & technology",
+    "natural sciences", "social sciences & behavior", "department",
+})
+
+
+def _clean_research_interests(text: str) -> str:
+    if not text:
+        return ""
+    import re
+    text = re.sub(
+        r"^(?:I am interested in|I'm interested in|my interest is in|interested in)\s*",
+        "", text.strip(), flags=re.IGNORECASE,
+    )
+    return text.strip().rstrip(".")
+
+
 def _infer_research_topic(opportunity: dict) -> str:
     desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
     keywords = opportunity.get("keywords", [])
-    generic = {"undergraduate", "research", "summer", "program", "internship",
-               "opportunity", "assistant", "student", "uiuc", "illinois"}
-    specific = [kw for kw in keywords if kw.lower() not in generic]
+    specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
 
     if specific:
-        return " and ".join(specific[:2]) if len(specific) <= 2 else ", ".join(specific[:2]) + f", and {specific[2]}"
+        if len(specific) <= 2:
+            return " and ".join(specific[:2])
+        return ", ".join(specific[:2]) + f", and {specific[2]}"
     if desc:
-        first_sentence = desc.split(".")[0].strip()
-        noise = {"seeking", "looking for", "we are", "this position", "the lab"}
-        if len(first_sentence) > 20 and not any(n in first_sentence.lower() for n in noise):
-            return first_sentence[:80]
+        noise = {"seeking", "looking for", "we are", "this position", "the lab",
+                 "research opportunity with", "contact the professor"}
+        for sentence in desc.split("."):
+            s = sentence.strip()
+            if len(s) < 20:
+                continue
+            if any(n in s.lower() for n in noise):
+                continue
+            if "$" in s:
+                continue
+            return s[:80]
     return ""
 
 
 def _infer_research_area(opportunity: dict) -> str:
     keywords = opportunity.get("keywords", [])
     if keywords:
-        generic = {"undergraduate", "research", "summer", "program", "internship", "opportunity"}
-        specific = [kw for kw in keywords if kw.lower() not in generic]
+        specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
         if specific:
             return specific[0]
     dept = opportunity.get("department", "")
@@ -58,11 +84,15 @@ def _infer_research_area(opportunity: dict) -> str:
     return ""
 
 
-def _match_skills_to_tasks(skills: list[str], desc: str) -> list[str]:
-    if not desc:
-        return []
-    desc_lower = desc.lower()
-    return [s for s in skills if s.lower() in desc_lower]
+def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
+    desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
+    required = [s.lower() for s in opp.get("eligibility", {}).get("skills_required", [])]
+    matched = []
+    for s in skills:
+        sl = s.lower()
+        if sl in desc or sl in required:
+            matched.append(s)
+    return matched
 
 
 def _common_parts(profile: dict, opportunity: dict) -> dict:
@@ -72,22 +102,28 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
     school = profile.get("school", "UIUC")
     skills = _extract_skill_names(profile.get("hard_skills", []))
     skill_levels = _extract_skill_levels(profile.get("hard_skills", []))
-    research_interests = profile.get("research_interests_text", "")
+    research_interests = _clean_research_interests(
+        profile.get("research_interests_text", "")
+    )
     linkedin_url = profile.get("linkedin_url", "")
     github_url = profile.get("github_url", "")
 
-    pi_name = opportunity.get("pi_name", "")
+    pi_name = opportunity.get("pi_name") or ""
     lab = opportunity.get("lab_or_program", "")
     title = opportunity.get("title", "")
+    opp_type = opportunity.get("opportunity_type", "")
     research_area = _infer_research_area(opportunity)
     research_topic = _infer_research_topic(opportunity)
     opp_desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
     opp_skills_required = opportunity.get("eligibility", {}).get("skills_required", [])
-    matching_skills = _match_skills_to_tasks(skills, opp_desc)
+    matching_skills = _match_skills_to_tasks(skills, opportunity)
 
-    recipient = pi_name or "Professor"
-    if pi_name and not pi_name.lower().startswith(("prof", "dr")):
-        recipient = f"Professor {pi_name}"
+    if pi_name and pi_name.lower() not in ("learn more", "none", "and robotics", "unknown"):
+        recipient = f"Professor {pi_name}" if not pi_name.lower().startswith(("prof", "dr")) else pi_name
+    elif opp_type == "summer_program":
+        recipient = "Program Coordinator"
+    else:
+        recipient = "Professor"
 
     coursework = profile.get("coursework", [])
 
@@ -119,9 +155,18 @@ def generate_variants(profile: dict, opportunity: dict) -> list[dict]:
 
 
 def _subject(p: dict, style: str = "") -> str:
-    ctx = p["lab"] or p["research_area"] or p["title"] or "research"
+    lab = p["lab"]
+    area = p["research_area"]
+
     if style == "concise":
+        ctx = lab or area or p["title"] or "research"
         return f"Subject: {p['major']} student — {ctx}"
+
+    if lab and "Prof" in lab:
+        return f"Subject: {p['year'].capitalize()} {p['major']} student interested in joining {lab}"
+    if area:
+        return f"Subject: Research inquiry — {p['year']} {p['major']} student, background in {area}"
+    ctx = lab or p["title"] or "your research"
     return f"Subject: {p['year'].capitalize()} {p['major']} student — interest in {ctx}"
 
 
@@ -235,20 +280,23 @@ def _p1_research_hook(p: dict) -> str:
     lab = p["lab"]
     interests = p["research_interests"]
 
-    if interests and research_topic and lab:
+    is_short_topic = research_topic and len(research_topic) < 50 and " " in research_topic
+
+    if interests and is_short_topic and lab:
         return (
             f" I am writing because your work on {research_topic}"
             f" in the {lab} strongly resonates with my interest in"
             f" {interests[:80].rstrip('.')}."
         )
-    if interests and research_topic:
+    if interests and is_short_topic:
         return (
             f" I am writing because your research on {research_topic}"
             f" closely aligns with my interest in {interests[:80].rstrip('.')}."
         )
     if interests and research_area and lab:
+        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
         return (
-            f" I came across the {lab} and your work in {research_area},"
+            f" I came across {lab_ref} and your work in {research_area},"
             f" which aligns closely with my interest in {interests[:80].rstrip('.')}."
         )
     if interests and research_area:
@@ -256,15 +304,22 @@ def _p1_research_hook(p: dict) -> str:
             f" I am reaching out because your work in {research_area}"
             f" aligns with my interest in {interests[:80].rstrip('.')}."
         )
-    if research_topic:
+    if interests and lab:
+        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
+        return (
+            f" I came across {lab_ref} and am very interested in"
+            f" contributing, as my background in {interests[:60].rstrip('.')} is closely related."
+        )
+    if is_short_topic:
         return (
             f" I came across your research on {research_topic}"
             f" and would like to learn more about opportunities"
             f" to contribute."
         )
     if lab:
+        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
         return (
-            f" I came across the {lab} and am very interested"
+            f" I came across {lab_ref} and am very interested"
             f" in contributing to your research."
         )
     return ""

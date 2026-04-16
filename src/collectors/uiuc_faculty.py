@@ -484,6 +484,10 @@ def normalize_faculty(person: dict, dept_config: dict) -> Optional[dict]:
         return None
 
     email = person.get("email", "")
+    if not email and person.get("url", ""):
+        netid_match = re.search(r"/([a-z][a-z0-9]{1,10})/?$", person.get("url", ""))
+        if netid_match:
+            email = f"{netid_match.group(1)}@illinois.edu"
     dept_short = dept_config["short"]
     dept_name = dept_config["name"]
     profile_url = person.get("url", "")
