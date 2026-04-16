@@ -138,6 +138,7 @@ export default function HomePage() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     const profileToSave = { ...profile, search_weight: searchWeight };
     localStorage.setItem('ofe_profile', JSON.stringify(profileToSave));
+    sessionStorage.removeItem('ofe_match_results');
     saveProfile(profileToSave).catch(() => {});
     router.push('/results');
   }
@@ -316,16 +317,16 @@ export default function HomePage() {
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {['research', 'summer_program', 'internship', 'fellowship'].map((type) => {
-                    const selected = ((profile as unknown as Record<string, unknown>).seeking_types as string[]) || [];
+                    const selected = profile.seeking_types ?? [];
                     const isSelected = selected.includes(type);
                     return (
                       <button
                         key={type}
                         type="button"
                         onClick={() => {
-                          const prev = ((profile as unknown as Record<string, unknown>).seeking_types as string[]) || [];
-                          const next = isSelected ? prev.filter((t: string) => t !== type) : [...prev, type];
-                          setProfile(p => ({ ...p, seeking_types: next } as ProfileData));
+                          const prev = profile.seeking_types ?? [];
+                          const next = isSelected ? prev.filter((t) => t !== type) : [...prev, type];
+                          update('seeking_types', next);
                         }}
                         className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
                           isSelected
@@ -346,12 +347,12 @@ export default function HomePage() {
                 </label>
                 <div className="flex gap-2">
                   {['any', 'in-person', 'remote'].map((fmt) => {
-                    const current = ((profile as unknown as Record<string, unknown>).format_preference as string) || 'any';
+                    const current = profile.format_preference ?? 'any';
                     return (
                       <button
                         key={fmt}
                         type="button"
-                        onClick={() => setProfile(p => ({ ...p, format_preference: fmt } as ProfileData))}
+                        onClick={() => update('format_preference', fmt)}
                         className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
                           current === fmt
                             ? 'bg-blue-600 text-white'

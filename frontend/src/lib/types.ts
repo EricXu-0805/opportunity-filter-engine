@@ -20,6 +20,10 @@ export interface ProfileData {
   search_weight?: number;
   linkedin_url?: string;
   github_url?: string;
+  seeking_types?: string[];
+  format_preference?: string;
+  name?: string;
+  experience_level?: string;
 }
 
 // ── Backend Profile Request ──────────────────────────────────────────
@@ -41,6 +45,7 @@ export interface ProfileRequest {
   research_interests_text: string;
   linkedin_url: string;
   github_url: string;
+  search_weight: number;  // 0-100: 0=pure interests, 100=pure experience
 }
 
 // ── Opportunity (backend shape) ──────────────────────────────────────

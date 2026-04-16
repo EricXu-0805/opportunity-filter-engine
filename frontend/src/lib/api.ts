@@ -25,23 +25,24 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 function toProfileRequest(profile: ProfileData): ProfileRequest {
   return {
-    name: '',
+    name: profile.name ?? '',
     school: 'UIUC',
     year: profile.grade.toLowerCase(),
     major: profile.major,
     college: profile.college,
     secondary_interests: [],
     international_student: profile.is_international,
-    seeking_type: ['research', 'summer_program'],
+    seeking_type: profile.seeking_types ?? ['research', 'summer_program'],
     desired_fields: [],
     hard_skills: profile.skills.map((s) => ({ name: s.name, level: s.level })),
     coursework: profile.coursework ?? [],
-    experience_level: 'beginner',
+    experience_level: profile.experience_level ?? 'beginner',
     resume_ready: !!profile.resume_text,
     can_cold_email: true,
     research_interests_text: profile.research_interests,
     linkedin_url: profile.linkedin_url ?? '',
     github_url: profile.github_url ?? '',
+    search_weight: profile.search_weight ?? 50,
   };
 }
 
@@ -53,9 +54,19 @@ export async function getMatches(profile: ProfileData): Promise<MatchesResponse>
   });
 }
 
-/** GET /api/opportunities — list all opportunities */
 export async function getOpportunities(): Promise<OpportunitiesResponse> {
   return request<OpportunitiesResponse>('/opportunities');
+}
+
+export async function getOpportunityById(id: string): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>(`/opportunities/${encodeURIComponent(id)}`);
+}
+
+export async function getOpportunitiesByIds(ids: string[]): Promise<Record<string, unknown>[]> {
+  const results = await Promise.allSettled(ids.map(id => getOpportunityById(id)));
+  return results
+    .filter((r): r is PromiseFulfilledResult<Record<string, unknown>> => r.status === 'fulfilled')
+    .map(r => r.value);
 }
 
 /** POST /api/cold-email — generate a cold email draft */
