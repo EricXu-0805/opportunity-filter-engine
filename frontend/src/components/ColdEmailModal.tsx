@@ -216,9 +216,13 @@ export default function ColdEmailModal({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function getMailtoLink(): string {
+  function getMailtoLink(provider: 'default' | 'gmail' | 'outlook' = 'default'): string {
     const to = recipient || '';
-    return `https://outlook.office365.com/mail/deeplink/compose?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const subj = encodeURIComponent(subject);
+    const b = encodeURIComponent(body);
+    if (provider === 'gmail') return `https://mail.google.com/mail/?view=cm&to=${to}&su=${subj}&body=${b}`;
+    if (provider === 'outlook') return `https://outlook.office365.com/mail/deeplink/compose?to=${encodeURIComponent(to)}&subject=${subj}&body=${b}`;
+    return `mailto:${to}?subject=${subj}&body=${b}`;
   }
 
   if (!isOpen) return null;
@@ -399,14 +403,33 @@ export default function ColdEmailModal({
                   <><Copy className="w-4 h-4" />Copy</>
                 )}
               </button>
-              <button
-                type="button"
-                onClick={() => { window.location.href = getMailtoLink(); }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow transition-all"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Open in Email
-              </button>
+              <div className="flex items-center rounded-xl overflow-hidden shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => { window.open(getMailtoLink('default'), '_blank'); }}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open in Email
+                </button>
+                <div className="w-px h-6 bg-blue-400" />
+                <button
+                  type="button"
+                  onClick={() => { window.open(getMailtoLink('gmail'), '_blank'); }}
+                  className="px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
+                  title="Open in Gmail"
+                >
+                  Gmail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { window.open(getMailtoLink('outlook'), '_blank'); }}
+                  className="px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
+                  title="Open in Outlook"
+                >
+                  Outlook
+                </button>
+              </div>
             </div>
           </>
         )}

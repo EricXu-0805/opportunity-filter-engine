@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Star, ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
-import { getOpportunities } from '@/lib/api';
+import { getOpportunitiesByIds } from '@/lib/api';
 
 interface Opportunity {
   id: string;
@@ -16,17 +16,20 @@ interface Opportunity {
 
 export default function FavoritesPage() {
   const router = useRouter();
-  const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [favSet, oppsData] = await Promise.all([getFavorites(), getOpportunities()]);
-        setFavIds(favSet);
-        const allOpps = oppsData.opportunities || [];
-        setOpportunities(allOpps.filter((o: Opportunity) => favSet.has(o.id)));
+        const favSet = await getFavorites();
+        const ids = Array.from(favSet);
+        if (ids.length === 0) {
+          setLoading(false);
+          return;
+        }
+        const opps = await getOpportunitiesByIds(ids);
+        setOpportunities(opps as unknown as Opportunity[]);
       } catch {
         /* ignore */
       } finally {
@@ -38,7 +41,6 @@ export default function FavoritesPage() {
 
   const handleRemove = useCallback(async (oppId: string) => {
     await toggleFavorite(oppId, true);
-    setFavIds(prev => { const n = new Set(prev); n.delete(oppId); return n; });
     setOpportunities(prev => prev.filter(o => o.id !== oppId));
   }, []);
 
