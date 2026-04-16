@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback, useRef, memo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Filter,
@@ -11,13 +11,14 @@ import {
   AlertCircle,
   Search,
   Star,
+  X,
 } from 'lucide-react';
 import MatchCard from '@/components/MatchCard';
 import ColdEmailModal from '@/components/ColdEmailModal';
 import { getMatches } from '@/lib/api';
 import { getFavorites, toggleFavorite, getInteractions, trackInteraction, removeInteraction } from '@/lib/supabase';
 import type { InteractionType } from '@/lib/supabase';
-import type { ProfileData, MatchResult, MatchesResponse, MatchBucket, SkillWithLevel } from '@/lib/types';
+import type { ProfileData, MatchResult, MatchesResponse, SkillWithLevel } from '@/lib/types';
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 
@@ -56,16 +57,60 @@ function SkeletonCard() {
   );
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function ResultsPage() {
+  return (
+    <Suspense fallback={<ResultsLoading />}>
+      <ResultsContent />
+    </Suspense>
+  );
+}
+
+function ResultsLoading() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="mb-10">
+        <div className="skeleton h-10 w-64 mb-3" />
+        <div className="skeleton h-5 w-48" />
+      </div>
+      <div className="space-y-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ResultsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<Filters>({ paid: '', intl: '', source: '', onCampus: '' });
+
+  const [activeTab, setActiveTab] = useState<Tab>(
+    (searchParams.get('tab') as Tab) || 'all',
+  );
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const debouncedQuery = useDebounce(searchQuery, 250);
+
+  const [filters, setFilters] = useState<Filters>({
+    paid: (searchParams.get('paid') || '') as Filters['paid'],
+    intl: (searchParams.get('intl') || '') as Filters['intl'],
+    source: (searchParams.get('source') || '') as Filters['source'],
+    onCampus: (searchParams.get('loc') || '') as Filters['onCampus'],
+  });
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
@@ -82,6 +127,20 @@ export default function ResultsPage() {
     getInteractions().then(setInteractions).catch(() => {});
   }, []);
 
+  // Sync filters to URL (non-blocking)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activeTab !== 'all') params.set('tab', activeTab);
+    if (debouncedQuery) params.set('q', debouncedQuery);
+    if (filters.paid) params.set('paid', filters.paid);
+    if (filters.intl) params.set('intl', filters.intl);
+    if (filters.source) params.set('source', filters.source);
+    if (filters.onCampus) params.set('loc', filters.onCampus);
+    const qs = params.toString();
+    const newUrl = qs ? `/results?${qs}` : '/results';
+    window.history.replaceState(null, '', newUrl);
+  }, [activeTab, debouncedQuery, filters]);
+
   const handleToggleFav = useCallback(async (oppId: string) => {
     const wasFaved = favs.has(oppId);
     const nowFaved = await toggleFavorite(oppId, wasFaved);
@@ -92,7 +151,6 @@ export default function ResultsPage() {
     });
   }, [favs]);
 
-  // Load profile from localStorage
   useEffect(() => {
     const raw = localStorage.getItem('ofe_profile');
     if (!raw) {
@@ -105,14 +163,24 @@ export default function ResultsPage() {
         parsed.skills = (parsed.skills as string[]).map((name: string) => ({ name, level: 'beginner' as const }));
       }
       setProfile(parsed as ProfileData);
+
+      const cached = sessionStorage.getItem('ofe_match_results');
+      if (cached) {
+        try {
+          const cachedData = JSON.parse(cached) as MatchesResponse;
+          setData(cachedData);
+          setLoading(false);
+        } catch {
+          // corrupt cache — will re-fetch
+        }
+      }
     } catch {
       router.replace('/');
     }
   }, [router]);
 
-  // Fetch matches
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || data) return;
     let cancelled = false;
 
     async function fetchMatches() {
@@ -120,7 +188,10 @@ export default function ResultsPage() {
       setError(null);
       try {
         const result = await getMatches(profile!);
-        if (!cancelled) setData(result);
+        if (!cancelled) {
+          setData(result);
+          try { sessionStorage.setItem('ofe_match_results', JSON.stringify(result)); } catch { /* quota */ }
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load matches');
@@ -130,12 +201,20 @@ export default function ResultsPage() {
       }
     }
     fetchMatches();
-    return () => {
-      cancelled = true;
-    };
-  }, [profile]);
+    return () => { cancelled = true; };
+  }, [profile, data]);
 
-  // Filter by tab (hide low_fit from "all")
+  // Keyboard: Escape closes email modal
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && emailModal.open) {
+        setEmailModal({ open: false, opportunityId: '', opportunityTitle: '' });
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [emailModal.open]);
+
   const filtered = useMemo(() => {
     if (!data?.results) return [];
     let results: MatchResult[];
@@ -159,7 +238,7 @@ export default function ResultsPage() {
       results = results.filter((m) =>
         filters.intl === 'yes'
           ? m.opportunity.eligibility.international_friendly === 'yes'
-          : m.opportunity.eligibility.international_friendly !== 'no',
+          : true,
       );
     }
     if (filters.source) {
@@ -171,8 +250,8 @@ export default function ResultsPage() {
       );
     }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    if (debouncedQuery.trim()) {
+      const q = debouncedQuery.toLowerCase();
       results = results.filter((m) =>
         m.opportunity.title.toLowerCase().includes(q) ||
         m.opportunity.organization?.toLowerCase().includes(q) ||
@@ -180,19 +259,16 @@ export default function ResultsPage() {
       );
     }
     return results;
-  }, [data, activeTab, searchQuery, filters, favs]);
+  }, [data, activeTab, debouncedQuery, filters, favs]);
 
-  // Paginate
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [filtered, page],
   );
 
-  // Reset page when tab changes
-  useEffect(() => { setPage(1); }, [activeTab, searchQuery, filters]);
+  useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters]);
 
-  // Bucket counts — use the pre-computed counts from the API response
   const counts = useMemo(() => {
     if (!data) return { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 } as Record<Tab, number>;
     const withoutLowFit = data.total - data.low_fit;
@@ -217,9 +293,10 @@ export default function ResultsPage() {
     [data],
   );
 
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Back link */}
       <button
         type="button"
         onClick={() => router.push('/')}
@@ -267,11 +344,7 @@ export default function ResultsPage() {
             >
               <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} />
               {label}
-              <span
-                className={`text-[11px] font-semibold tabular-nums ${
-                  activeTab === key ? 'text-gray-400' : 'text-gray-400'
-                }`}
-              >
+              <span className="text-[11px] font-semibold tabular-nums text-gray-400">
                 {counts[key]}
               </span>
             </button>
@@ -288,8 +361,17 @@ export default function ResultsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by title, school, or research area..."
-              className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
+              className="w-full pl-11 pr-10 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <FilterSelect
@@ -300,7 +382,7 @@ export default function ResultsPage() {
             <FilterSelect
               value={filters.intl}
               onChange={(v) => setFilters((f) => ({ ...f, intl: v as Filters['intl'] }))}
-              options={[['', 'International status'], ['yes', 'Intl friendly'], ['no', 'Incl. US-only']]}
+              options={[['', 'International status'], ['yes', 'Intl friendly only'], ['no', 'Show all (incl. US-only)']]}
             />
             <FilterSelect
               value={filters.source}
@@ -312,20 +394,19 @@ export default function ResultsPage() {
               onChange={(v) => setFilters((f) => ({ ...f, onCampus: v as Filters['onCampus'] }))}
               options={[['', 'Any location'], ['yes', 'On campus'], ['no', 'Off campus / Remote']]}
             />
-            {Object.values(filters).some(Boolean) && (
+            {activeFilterCount > 0 && (
               <button
                 type="button"
                 onClick={() => setFilters({ paid: '', intl: '', source: '', onCampus: '' })}
                 className="px-3 py-1.5 text-[12px] font-medium text-red-500 hover:text-red-700 transition-colors"
               >
-                Clear filters
+                Clear {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading && (
         <div className="space-y-6">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -334,7 +415,6 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* Error state */}
       {error && (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <AlertCircle className="w-10 h-10 text-red-500" />
@@ -349,19 +429,21 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* Results */}
       {!loading && !error && data && (
         <div className="space-y-6">
           {filtered.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-gray-400 text-lg">
-                No matches in this category.
-              </p>
-            </div>
+            <EmptyState
+              hasFilters={activeFilterCount > 0 || !!debouncedQuery.trim()}
+              tab={activeTab}
+              onClearFilters={() => {
+                setFilters({ paid: '', intl: '', source: '', onCampus: '' });
+                setSearchQuery('');
+              }}
+            />
           ) : (
             <>
               {paginated.map((match: MatchResult) => (
-                <MatchCard
+                <MemoizedMatchCard
                   key={match.opportunity.id}
                   match={match}
                   onDraftEmail={openEmailModal}
@@ -409,7 +491,6 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* Loading bar at top while fetching */}
       {loading && (
         <div className="fixed top-12 left-0 right-0 z-40">
           <div className="h-[2px] bg-black/[0.03]">
@@ -418,7 +499,6 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* Cold Email Modal */}
       {profile && (
         <ColdEmailModal
           isOpen={emailModal.open}
@@ -430,6 +510,58 @@ export default function ResultsPage() {
           opportunityTitle={emailModal.opportunityTitle}
         />
       )}
+    </div>
+  );
+}
+
+const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
+  return (
+    prev.match.opportunity.id === next.match.opportunity.id &&
+    prev.match.final_score === next.match.final_score &&
+    prev.isFavorited === next.isFavorited &&
+    prev.interaction === next.interaction
+  );
+});
+MemoizedMatchCard.displayName = 'MemoizedMatchCard';
+
+function EmptyState({
+  hasFilters,
+  tab,
+  onClearFilters,
+}: {
+  hasFilters: boolean;
+  tab: Tab;
+  onClearFilters: () => void;
+}) {
+  if (hasFilters) {
+    return (
+      <div className="text-center py-16 space-y-3">
+        <p className="text-gray-500 text-lg">No matches with these filters.</p>
+        <p className="text-gray-400 text-sm">Try broadening your search or removing some filters.</p>
+        <button
+          type="button"
+          onClick={onClearFilters}
+          className="mt-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
+        >
+          Clear all filters
+        </button>
+      </div>
+    );
+  }
+
+  if (tab === 'starred') {
+    return (
+      <div className="text-center py-16 space-y-2">
+        <Star className="w-8 h-8 text-gray-300 mx-auto" />
+        <p className="text-gray-500 text-lg">No starred opportunities yet.</p>
+        <p className="text-gray-400 text-sm">Click the star icon on any match to save it here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center py-16">
+      <p className="text-gray-400 text-lg">No matches in this category.</p>
     </div>
   );
 }
