@@ -448,6 +448,20 @@ function ResultsContent() {
               </button>
             )}
           </div>
+          {(debouncedQuery.trim() || activeFilterCount > 0) && (
+            <p className="text-[13px] text-gray-400 mt-2">
+              {filtered.length === 0
+                ? 'No results'
+                : `${filtered.length} result${filtered.length > 1 ? 's' : ''}`}
+              {debouncedQuery.trim() && (
+                <span> for <span className="font-medium text-gray-600">&ldquo;{debouncedQuery}&rdquo;</span>
+                  {SEARCH_ALIASES[debouncedQuery.toLowerCase()] && (
+                    <span className="text-gray-300"> (also matching: {SEARCH_ALIASES[debouncedQuery.toLowerCase()]?.join(', ')})</span>
+                  )}
+                </span>
+              )}
+            </p>
+          )}
         </div>
       )}
 

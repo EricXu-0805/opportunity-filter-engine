@@ -545,7 +545,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="flex justify-center mt-16">
+      {isValid && (
+        <ProfileStrength profile={profile} hasResume={!!profile.resume_text} />
+      )}
+
+      <div className="flex justify-center mt-8">
         <button
           type="button"
           disabled={!isValid}
@@ -577,6 +581,47 @@ export default function HomePage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+
+function ProfileStrength({ profile, hasResume }: { profile: ProfileData; hasResume: boolean }) {
+  const checks = [
+    { done: !!profile.college && !!profile.major && !!profile.grade, label: 'Academic info' },
+    { done: profile.skills.length >= 2, label: '2+ skills' },
+    { done: !!profile.research_interests?.trim(), label: 'Research interests' },
+    { done: hasResume, label: 'Resume uploaded' },
+    { done: !!(profile.seeking_types && profile.seeking_types.length > 0), label: 'Opportunity type' },
+  ];
+
+  const completed = checks.filter((c) => c.done).length;
+  const total = checks.length;
+  const pct = Math.round((completed / total) * 100);
+  const color = pct >= 80 ? 'emerald' : pct >= 60 ? 'blue' : 'amber';
+
+  const colorMap = { emerald: 'bg-emerald-400', blue: 'bg-blue-400', amber: 'bg-amber-400' };
+  const textMap = { emerald: 'text-emerald-600', blue: 'text-blue-600', amber: 'text-amber-600' };
+
+  if (completed === total) return null;
+
+  return (
+    <div className="max-w-md mx-auto mt-12 px-6 py-5 bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)]">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[13px] font-semibold text-gray-700">Profile strength</span>
+        <span className={`text-[13px] font-bold tabular-nums ${textMap[color]}`}>{completed}/{total}</span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-3">
+        <div
+          className={`h-full rounded-full ${colorMap[color]} transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {checks.filter((c) => !c.done).map((c) => (
+          <span key={c.label} className="text-[11px] text-gray-400">+ {c.label}</span>
+        ))}
+      </div>
     </div>
   );
 }
