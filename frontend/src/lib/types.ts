@@ -60,6 +60,8 @@ export interface OpportunityEligibility {
 export interface OpportunityApplication {
   application_effort: string;
   requires_resume: string;
+  requires_recommendation?: string;
+  requires_cover_letter?: string;
   contact_method: string;
   application_url?: string;
 }
@@ -75,7 +77,7 @@ export interface Opportunity {
   organization: string;
   department?: string;
   opportunity_type: string;
-  paid: string; // "yes" | "no" | "stipend"
+  paid: string;
   location: string;
   url?: string;
   source: string;
@@ -84,6 +86,10 @@ export interface Opportunity {
   description_raw?: string;
   keywords: string[];
   deadline?: string;
+  compensation_details?: string;
+  duration?: string;
+  start_date?: string;
+  remote_option?: string;
   eligibility: OpportunityEligibility;
   application: OpportunityApplication;
   metadata: OpportunityMetadata;
