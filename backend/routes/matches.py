@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import json
-import time
-from pathlib import Path
-
 from fastapi import APIRouter, HTTPException
 
+from backend.data_loader import load_opportunities
 from backend.schemas import (
     MatchesResponse,
     MatchResultResponse,
@@ -16,37 +13,13 @@ from src.recommender.resume_advisor import analyze_gaps
 
 router = APIRouter()
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "processed"
-EXAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "examples"
-
-_opp_cache: list[dict] = []
-_opp_cache_mtime: float = 0
-
-
-def _load_opportunities() -> list[dict]:
-    global _opp_cache, _opp_cache_mtime
-
-    processed = DATA_DIR / "opportunities.json"
-    if processed.exists():
-        mtime = processed.stat().st_mtime
-        if mtime != _opp_cache_mtime or not _opp_cache:
-            with open(processed, encoding="utf-8") as f:
-                _opp_cache = json.load(f)
-            _opp_cache_mtime = mtime
-        return _opp_cache
-
-    examples = EXAMPLES_DIR / "sample_opportunities.json"
-    if examples.exists():
-        with open(examples, encoding="utf-8") as f:
-            return json.load(f)
-
-    return []
+_REDACTED_FIELDS = frozenset({"contact_email", "pi_email"})
 
 
 @router.post("/matches", response_model=MatchesResponse)
 async def get_matches(profile: ProfileRequest):
     """Score and rank all opportunities for the given profile."""
-    opportunities = _load_opportunities()
+    opportunities = load_opportunities()
     if not opportunities:
         raise HTTPException(status_code=503, detail="No opportunity data available")
 
@@ -69,6 +42,7 @@ async def get_matches(profile: ProfileRequest):
     response_results = []
     for r in results:
         opp = opp_lookup.get(r.opportunity_id, {})
+        safe_opp = {k: v for k, v in opp.items() if k not in _REDACTED_FIELDS}
         response_results.append(
             MatchResultResponse(
                 opportunity_id=r.opportunity_id,
@@ -80,7 +54,7 @@ async def get_matches(profile: ProfileRequest):
                 reasons_fit=r.reasons_fit,
                 reasons_gap=r.reasons_gap,
                 next_steps=r.next_steps,
-                opportunity=opp,
+                opportunity=safe_opp,
             )
         )
 
@@ -88,20 +62,23 @@ async def get_matches(profile: ProfileRequest):
     for r in response_results:
         buckets[r.bucket] = buckets.get(r.bucket, 0) + 1
 
+    visible_results = [r for r in response_results if r.bucket != "low_fit"]
+
     return MatchesResponse(
         total=len(response_results),
         high_priority=buckets["high_priority"],
         good_match=buckets["good_match"],
         reach=buckets["reach"],
         low_fit=buckets["low_fit"],
-        results=response_results,
+        results=visible_results,
     )
 
 
 @router.post("/matches/{opportunity_id}/gaps")
 async def get_gap_analysis(opportunity_id: str, profile: ProfileRequest):
-    """Get detailed gap analysis for a specific opportunity."""
-    opportunities = _load_opportunities()
+    if len(opportunity_id) > 100:
+        raise HTTPException(status_code=400, detail="Invalid opportunity ID")
+    opportunities = load_opportunities()
     opp = next((o for o in opportunities if o["id"] == opportunity_id), None)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
