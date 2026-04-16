@@ -20,6 +20,44 @@ import { getFavorites, toggleFavorite, getInteractions, trackInteraction, remove
 import type { InteractionType } from '@/lib/supabase';
 import type { ProfileData, MatchResult, MatchesResponse, SkillWithLevel } from '@/lib/types';
 
+const SEARCH_ALIASES: Record<string, string[]> = {
+  ml: ['machine learning'],
+  ai: ['artificial intelligence'],
+  nlp: ['natural language processing'],
+  cv: ['computer vision'],
+  dl: ['deep learning'],
+  hci: ['human computer interaction', 'human-computer interaction'],
+  rl: ['reinforcement learning'],
+  ds: ['data science'],
+  se: ['software engineering'],
+  pl: ['programming languages'],
+  os: ['operating systems'],
+  db: ['database'],
+  ece: ['electrical', 'computer engineering'],
+  cs: ['computer science'],
+  ee: ['electrical engineering'],
+  me: ['mechanical engineering'],
+  ce: ['civil engineering'],
+  cheme: ['chemical engineering'],
+  matsci: ['materials science'],
+  neuro: ['neuroscience'],
+  bioinfo: ['bioinformatics'],
+};
+
+function expandSearchAliases(query: string): string[] {
+  const terms = [query];
+  const aliases = SEARCH_ALIASES[query];
+  if (aliases) terms.push(...aliases);
+  for (const [abbr, expansions] of Object.entries(SEARCH_ALIASES)) {
+    if (query.includes(abbr) && query !== abbr) {
+      for (const exp of expansions) {
+        terms.push(query.replace(abbr, exp));
+      }
+    }
+  }
+  return terms;
+}
+
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 
 interface Filters {
@@ -252,11 +290,17 @@ function ResultsContent() {
 
     if (debouncedQuery.trim()) {
       const q = debouncedQuery.toLowerCase();
-      results = results.filter((m) =>
-        m.opportunity.title.toLowerCase().includes(q) ||
-        m.opportunity.organization?.toLowerCase().includes(q) ||
-        m.opportunity.keywords?.some((k) => k.toLowerCase().includes(q))
-      );
+      const expanded = expandSearchAliases(q);
+      results = results.filter((m) => {
+        const title = m.opportunity.title.toLowerCase();
+        const org = m.opportunity.organization?.toLowerCase() ?? '';
+        const kws = m.opportunity.keywords ?? [];
+        return expanded.some((term) =>
+          title.includes(term) ||
+          org.includes(term) ||
+          kws.some((k) => k.toLowerCase().includes(term))
+        );
+      });
     }
     return results;
   }, [data, activeTab, debouncedQuery, filters, favs]);
