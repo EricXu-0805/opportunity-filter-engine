@@ -76,11 +76,15 @@ export interface Opportunity {
   title: string;
   organization: string;
   department?: string;
+  lab_or_program?: string;
+  pi_name?: string | null;
   opportunity_type: string;
   paid: string;
   location: string;
   url?: string;
-  source: string;
+  source?: string;
+  source_url?: string;
+  source_type?: string;
   on_campus: boolean;
   description_clean: string;
   description_raw?: string;

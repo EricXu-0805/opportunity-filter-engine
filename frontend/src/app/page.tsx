@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   GraduationCap,
   Globe,
@@ -15,15 +15,31 @@ import {
   Linkedin,
   Loader2,
   Cloud,
-  CloudOff,
+  Share2,
+  Check,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useT } from '@/i18n/client';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
-import ResumeUpload from '@/components/ResumeUpload';
+
+const ResumeUpload = dynamic(() => import('@/components/ResumeUpload'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-24 rounded-xl bg-gray-50 border border-dashed border-gray-200 animate-pulse" />
+  ),
+});
 import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { getStats, parseGitHubProfile } from '@/lib/api';
 import { saveProfile, loadProfile } from '@/lib/supabase';
 import { COLLEGES, COLLEGE_MAJORS, GRADES } from '@/lib/colleges';
+import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
+
+function translateKey(t: (p: string) => string, namespace: string, name: string): string {
+  const key = `${namespace}.${name}`;
+  const out = t(key);
+  return out === key ? name : out;
+}
 
 const DEFAULT_PROFILE: ProfileData = {
   institution: 'UIUC - University of Illinois Urbana-Champaign',
@@ -37,12 +53,24 @@ const DEFAULT_PROFILE: ProfileData = {
 };
 
 export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomePageInner />
+    </Suspense>
+  );
+}
+
+function HomePageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { t } = useT();
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [searchWeight, setSearchWeight] = useState(50);
   const [oppCount, setOppCount] = useState<number | null>(null);
   const [ghLoading, setGhLoading] = useState(false);
   const [ghStatus, setGhStatus] = useState<string | null>(null);
+  const [sharedBanner, setSharedBanner] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,6 +78,19 @@ export default function HomePage() {
 
   useEffect(() => {
     getStats().then(s => setOppCount(s.total)).catch(() => {});
+
+    const shareParam = searchParams.get('share');
+    if (shareParam) {
+      const shared = decodeProfile(shareParam);
+      if (shared) {
+        setProfile(prev => ({ ...prev, ...shared } as ProfileData));
+        if (typeof shared.search_weight === 'number') setSearchWeight(shared.search_weight);
+        setSharedBanner(t('home.sharedBanner'));
+        setTimeout(() => { isInitialLoad.current = false; }, 500);
+        return;
+      }
+    }
+
     loadProfile().then(saved => {
       if (saved) {
         const raw = saved as Record<string, unknown>;
@@ -63,7 +104,18 @@ export default function HomePage() {
     }).catch(() => {
       isInitialLoad.current = false;
     });
-  }, []);
+  }, [searchParams, t]);
+
+  const handleShare = useCallback(async () => {
+    const url = buildShareUrl({ ...profile, search_weight: searchWeight });
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this share URL:', url);
+    }
+  }, [profile, searchWeight]);
 
   useEffect(() => {
     if (isInitialLoad.current) return;
@@ -126,9 +178,9 @@ export default function HomePage() {
           .map((name) => ({ name, level: 'experienced' as const }));
         return { ...prev, skills: [...prev.skills, ...newSkills] };
       });
-      setGhStatus(`Imported ${data.extracted_skills.length} skills from ${data.repo_count} repos`);
+      setGhStatus(t('home.form.githubImportSuccess', { skills: data.extracted_skills.length, repos: data.repo_count }));
     } catch {
-      setGhStatus('Could not fetch GitHub profile');
+      setGhStatus('__fail__' + t('home.form.githubImportFail'));
     } finally {
       setGhLoading(false);
     }
@@ -145,22 +197,38 @@ export default function HomePage() {
 
   const isValid = profile.college && profile.major && profile.grade;
 
+  useEffect(() => {
+    if (isValid) router.prefetch('/results');
+  }, [isValid, router]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {sharedBanner && (
+        <div className="max-w-3xl mx-auto mb-8 flex items-start gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+          <Share2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+          <p className="text-[13px] text-blue-800 leading-relaxed">{sharedBanner}</p>
+          <button
+            type="button"
+            onClick={() => setSharedBanner(null)}
+            className="text-blue-600 hover:text-blue-800 text-[12px] font-medium shrink-0"
+          >
+            {t('common.dismiss')}
+          </button>
+        </div>
+      )}
       <div className="text-center mb-16">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/[0.08] text-blue-600 text-[13px] font-medium mb-6">
           <Sparkles className="w-3.5 h-3.5" />
-          AI-Powered Opportunity Matching
+          {t('home.hero.tagline')}
         </div>
         <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1]">
-          Find Your Perfect{' '}
+          {t('home.hero.title')}{' '}
           <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-            Research Match
+            {t('home.hero.titleAccent')}
           </span>
         </h1>
         <p className="mt-5 text-lg text-gray-400 max-w-xl mx-auto leading-relaxed">
-          Tell us about yourself. We match you with research, internships,
-          and opportunities at UIUC.
+          {t('home.hero.subtitle')}
         </p>
       </div>
 
@@ -175,10 +243,10 @@ export default function HomePage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  Academic Profile
+                  {t('home.cards.academicTitle')}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  Build your profile for personalized matching
+                  {t('home.cards.academicSubtitle')}
                 </p>
               </div>
             </div>
@@ -187,12 +255,12 @@ export default function HomePage() {
               {/* Institution (locked) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Institution
+                  {t('home.form.institutionLabel')}
                 </label>
                 <div className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl bg-gray-50">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-sm font-medium text-gray-700">
-                    UIUC — University of Illinois Urbana-Champaign
+                    {t('home.form.institutionLocked')}
                   </span>
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-auto" />
                 </div>
@@ -204,7 +272,7 @@ export default function HomePage() {
                   htmlFor="college"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  College
+                  {t('home.form.collegeLabel')}
                 </label>
                 <div className="relative">
                   <select
@@ -213,10 +281,10 @@ export default function HomePage() {
                     onChange={(e) => update('college', e.target.value)}
                     className="w-full appearance-none px-4 py-3.5 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
                   >
-                    <option value="">Select your college...</option>
+                    <option value="">{t('home.form.collegePlaceholder')}</option>
                     {COLLEGES.map((c) => (
                       <option key={c} value={c}>
-                        {c}
+                        {translateKey(t, 'colleges', c)}
                       </option>
                     ))}
                   </select>
@@ -230,7 +298,7 @@ export default function HomePage() {
                   htmlFor="major"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Major / Department
+                  {t('home.form.majorLabel')}
                 </label>
                 <div className="relative">
                   <select
@@ -242,8 +310,8 @@ export default function HomePage() {
                   >
                     <option value="">
                       {profile.college
-                        ? 'Select your major...'
-                        : 'Choose a college first'}
+                        ? t('home.form.majorPlaceholder')
+                        : t('home.form.majorPlaceholderNoCollege')}
                     </option>
                     {majors.map((m) => (
                       <option key={m} value={m}>
@@ -261,7 +329,7 @@ export default function HomePage() {
                   htmlFor="grade"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Anticipated Grade When Starting
+                  {t('home.form.gradeLabel')}
                 </label>
                 <div className="relative">
                   <select
@@ -270,10 +338,10 @@ export default function HomePage() {
                     onChange={(e) => update('grade', e.target.value)}
                     className="w-full appearance-none px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
                   >
-                    <option value="">Grade when you'd start...</option>
+                    <option value="">{t('home.form.gradePlaceholder')}</option>
                     {GRADES.map((g) => (
                       <option key={g} value={g}>
-                        {g}
+                        {translateKey(t, 'grades', g)}
                       </option>
                     ))}
                   </select>
@@ -287,10 +355,10 @@ export default function HomePage() {
                   <Globe className="w-5 h-5 text-gray-400" />
                   <div>
                     <span className="text-sm font-medium text-gray-700">
-                      International Student
+                      {t('home.form.internationalLabel')}
                     </span>
                     <p className="text-xs text-gray-400">
-                      We&apos;ll filter for visa-friendly positions
+                      {t('home.form.internationalHint')}
                     </p>
                   </div>
                 </div>
@@ -313,19 +381,25 @@ export default function HomePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Preferred Opportunity Type
+                  {t('home.form.seekingLabel')}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {['research', 'summer_program', 'internship', 'fellowship'].map((type) => {
+                  {(['research', 'summer_program', 'internship', 'fellowship'] as const).map((type) => {
                     const selected = profile.seeking_types ?? [];
                     const isSelected = selected.includes(type);
+                    const labelKey = {
+                      research: 'home.form.seekingResearch',
+                      summer_program: 'home.form.seekingSummer',
+                      internship: 'home.form.seekingInternship',
+                      fellowship: 'home.form.seekingFellowship',
+                    }[type];
                     return (
                       <button
                         key={type}
                         type="button"
                         onClick={() => {
                           const prev = profile.seeking_types ?? [];
-                          const next = isSelected ? prev.filter((t) => t !== type) : [...prev, type];
+                          const next = isSelected ? prev.filter((tp) => tp !== type) : [...prev, type];
                           update('seeking_types', next);
                         }}
                         className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
@@ -334,7 +408,7 @@ export default function HomePage() {
                             : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
                         }`}
                       >
-                        {type.replace('_', ' ')}
+                        {t(labelKey)}
                       </button>
                     );
                   })}
@@ -343,11 +417,12 @@ export default function HomePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Format Preference
+                  {t('home.form.formatLabel')}
                 </label>
                 <div className="flex gap-2">
-                  {['any', 'in-person', 'remote'].map((fmt) => {
+                  {(['any', 'in-person', 'remote'] as const).map((fmt) => {
                     const current = profile.format_preference ?? 'any';
+                    const labelKey = { any: 'home.form.formatAny', 'in-person': 'home.form.formatInPerson', remote: 'home.form.formatRemote' }[fmt];
                     return (
                       <button
                         key={fmt}
@@ -359,7 +434,7 @@ export default function HomePage() {
                             : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
                         }`}
                       >
-                        {fmt === 'any' ? 'No preference' : fmt === 'remote' ? 'Remote / Online' : 'In-person'}
+                        {t(labelKey)}
                       </button>
                     );
                   })}
@@ -371,7 +446,7 @@ export default function HomePage() {
                   htmlFor="research_interests"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Research Interests
+                  {t('home.form.interestsLabel')}
                 </label>
                 <textarea
                   id="research_interests"
@@ -380,7 +455,7 @@ export default function HomePage() {
                     update('research_interests', e.target.value)
                   }
                   rows={4}
-                  placeholder="e.g., I'm interested in machine learning applications in healthcare, particularly medical image analysis using deep learning. I've taken courses in probability, data structures, and intro ML..."
+                  placeholder={t('home.form.interestsPlaceholder')}
                   className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 resize-y leading-relaxed"
                 />
               </div>
@@ -388,7 +463,7 @@ export default function HomePage() {
               {/* Technical Skills */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Technical Skills
+                  {t('home.form.skillsLabel')}
                 </label>
                 <SkillTags
                   selected={profile.skills}
@@ -408,9 +483,9 @@ export default function HomePage() {
                 <FileText className="w-5 h-5 text-uiuc-orange" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Documents</h2>
+                <h2 className="text-xl font-bold text-gray-900">{t('home.cards.documentsTitle')}</h2>
                 <p className="text-sm text-gray-400">
-                  Upload for automatic skill extraction
+                  {t('home.cards.documentsSubtitle')}
                 </p>
               </div>
             </div>
@@ -420,8 +495,7 @@ export default function HomePage() {
             <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50/60">
               <Upload className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
               <p className="text-xs text-blue-600 leading-relaxed">
-                Your resume is processed locally and used only for matching.
-                It&apos;s never stored permanently.
+                {t('home.cards.resumePrivacy')}
               </p>
             </div>
           </Card>
@@ -433,8 +507,8 @@ export default function HomePage() {
                 <Globe className="w-5 h-5 text-gray-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Online Profiles</h2>
-                <p className="text-sm text-gray-400">Optional — helps enrich your match</p>
+                <h2 className="text-xl font-bold text-gray-900">{t('home.cards.onlineProfilesTitle')}</h2>
+                <p className="text-sm text-gray-400">{t('home.cards.onlineProfilesSubtitle')}</p>
               </div>
             </div>
 
@@ -442,14 +516,14 @@ export default function HomePage() {
               <div>
                 <label htmlFor="linkedin_url" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
                   <Linkedin className="w-4 h-4 text-[#0A66C2]" />
-                  LinkedIn
+                  {t('home.form.linkedinLabel')}
                 </label>
                 <input
                   id="linkedin_url"
                   type="url"
                   value={profile.linkedin_url ?? ''}
                   onChange={(e) => update('linkedin_url', e.target.value)}
-                  placeholder="https://linkedin.com/in/your-profile"
+                  placeholder={t('home.form.linkedinPlaceholder')}
                   className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300"
                 />
               </div>
@@ -465,7 +539,7 @@ export default function HomePage() {
                     type="url"
                     value={profile.github_url ?? ''}
                     onChange={(e) => update('github_url', e.target.value)}
-                    placeholder="https://github.com/username"
+                    placeholder={t('home.form.githubPlaceholder')}
                     className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300"
                   />
                   <button
@@ -474,12 +548,12 @@ export default function HomePage() {
                     onClick={handleGitHubImport}
                     className="px-4 py-3 text-sm font-medium text-white bg-gray-800 rounded-2xl hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                   >
-                    {ghLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Import'}
+                    {ghLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('home.form.githubImport')}
                   </button>
                 </div>
                 {ghStatus && (
-                  <p className={`mt-2 text-xs ${ghStatus.startsWith('Could not') ? 'text-red-500' : 'text-emerald-600'}`}>
-                    {ghStatus}
+                  <p className={`mt-2 text-xs ${ghStatus.startsWith('__fail__') ? 'text-red-500' : 'text-emerald-600'}`}>
+                    {ghStatus.replace(/^__fail__/, '')}
                   </p>
                 )}
               </div>
@@ -494,10 +568,10 @@ export default function HomePage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  Search Focus
+                  {t('home.cards.searchFocusTitle')}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  Balance between interests & experience
+                  {t('home.cards.searchFocusSubtitle')}
                 </p>
               </div>
             </div>
@@ -505,10 +579,10 @@ export default function HomePage() {
             <div>
               <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-3">
                 <span className={searchWeight < 50 ? 'text-blue-600 font-semibold' : ''}>
-                  Research Interests
+                  {t('home.form.searchWeightLeft')}
                 </span>
                 <span className={searchWeight > 50 ? 'text-blue-600 font-semibold' : ''}>
-                  Resume / Experience
+                  {t('home.form.searchWeightRight')}
                 </span>
               </div>
               <input
@@ -521,10 +595,10 @@ export default function HomePage() {
               />
               <p className="mt-2 text-xs text-gray-400 text-center">
                 {searchWeight < 40
-                  ? 'Prioritizing your research interests'
+                  ? t('home.form.searchWeightInterests')
                   : searchWeight > 60
-                    ? 'Prioritizing your resume & experience'
-                    : 'Balanced between interests & experience'}
+                    ? t('home.form.searchWeightExperience')
+                    : t('home.form.searchWeightBalanced')}
               </p>
             </div>
           </Card>
@@ -534,49 +608,69 @@ export default function HomePage() {
             <div className="flex items-center gap-3 mb-3">
               <Sparkles className="w-5 h-5 text-blue-200" />
               <span className="text-sm font-semibold text-blue-100">
-                Live Database
+                {t('home.cards.liveDatabase')}
               </span>
             </div>
             <p className="text-3xl font-extrabold">{oppCount ?? '...'}</p>
             <p className="text-sm text-blue-200 mt-1">
-              Active research & internship opportunities at UIUC
+              {t('home.cards.liveDatabaseHint')}
             </p>
           </Card>
         </div>
       </div>
 
       {isValid && (
-        <ProfileStrength profile={profile} hasResume={!!profile.resume_text} />
+        <ProfileStrength profile={profile} hasResume={!!profile.resume_text} t={t} />
       )}
 
-      <div className="flex justify-center mt-8">
+      <div className="flex flex-col sm:flex-row items-center justify-center mt-8 gap-3">
         <button
           type="button"
           disabled={!isValid}
           onClick={handleSubmit}
-          className="group inline-flex items-center gap-2.5 px-8 py-3.5 text-[15px] font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_12px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_20px_rgba(37,99,235,0.35)]"
+          className="group inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-3.5 text-[15px] font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_12px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_20px_rgba(37,99,235,0.35)]"
         >
           <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
-          Generate Matches
+          {t('home.actions.generate')}
         </button>
+        {isValid && (
+          <button
+            type="button"
+            onClick={handleShare}
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3.5 text-[13px] font-medium text-gray-600 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors"
+            title={t('home.actions.shareProfile')}
+          >
+            {shareCopied ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-500" />
+                {t('home.actions.shareCopied')}
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4" />
+                {t('home.actions.shareProfile')}
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {!isValid ? (
         <p className="text-center text-[13px] text-gray-400 mt-4">
-          Please select your college, major, and grade to continue
+          {t('home.validation.requiredFields')}
         </p>
       ) : (
-        <div className="flex justify-center items-center gap-2 mt-4 h-5">
+        <div className="flex justify-center items-center gap-2 mt-4 h-5" role="status" aria-live="polite">
           {saveStatus === 'saving' && (
             <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-400 animate-pulse">
-              <Cloud className="w-3.5 h-3.5" />
-              Saving...
+              <Cloud className="w-3.5 h-3.5" aria-hidden="true" />
+              {t('common.saving')}
             </span>
           )}
           {saveStatus === 'saved' && (
             <span className="inline-flex items-center gap-1.5 text-[12px] text-emerald-500">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Profile saved
+              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+              {t('home.actions.profileSaved')}
             </span>
           )}
         </div>
@@ -586,13 +680,21 @@ export default function HomePage() {
 }
 
 
-function ProfileStrength({ profile, hasResume }: { profile: ProfileData; hasResume: boolean }) {
+function ProfileStrength({
+  profile,
+  hasResume,
+  t,
+}: {
+  profile: ProfileData;
+  hasResume: boolean;
+  t: (path: string, vars?: Record<string, string | number>) => string;
+}) {
   const checks = [
-    { done: !!profile.college && !!profile.major && !!profile.grade, label: 'Academic info' },
-    { done: profile.skills.length >= 2, label: '2+ skills' },
-    { done: !!profile.research_interests?.trim(), label: 'Research interests' },
-    { done: hasResume, label: 'Resume uploaded' },
-    { done: !!(profile.seeking_types && profile.seeking_types.length > 0), label: 'Opportunity type' },
+    { done: !!profile.college && !!profile.major && !!profile.grade, label: t('home.cards.checkAcademic') },
+    { done: profile.skills.length >= 2, label: t('home.cards.checkSkills') },
+    { done: !!profile.research_interests?.trim(), label: t('home.cards.checkInterests') },
+    { done: hasResume, label: t('home.cards.checkResume') },
+    { done: !!(profile.seeking_types && profile.seeking_types.length > 0), label: t('home.cards.checkType') },
   ];
 
   const completed = checks.filter((c) => c.done).length;
@@ -608,7 +710,7 @@ function ProfileStrength({ profile, hasResume }: { profile: ProfileData; hasResu
   return (
     <div className="max-w-md mx-auto mt-12 px-6 py-5 bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)]">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[13px] font-semibold text-gray-700">Profile strength</span>
+        <span className="text-[13px] font-semibold text-gray-700">{t('home.cards.profileStrength')}</span>
         <span className={`text-[13px] font-bold tabular-nums ${textMap[color]}`}>{completed}/{total}</span>
       </div>
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-3">

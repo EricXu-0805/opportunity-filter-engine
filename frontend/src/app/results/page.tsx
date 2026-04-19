@@ -12,51 +12,44 @@ import {
   Search,
   Star,
   X,
+  Download,
+  EyeOff,
+  Bookmark,
+  BookmarkPlus,
+  Trash2,
+  Sparkles,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import MatchCard from '@/components/MatchCard';
-import ColdEmailModal from '@/components/ColdEmailModal';
+
+const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
+  ssr: false,
+});
 import { getMatches } from '@/lib/api';
 import { getFavorites, toggleFavorite, getInteractions, trackInteraction, removeInteraction } from '@/lib/supabase';
 import type { InteractionType } from '@/lib/supabase';
-import type { ProfileData, MatchResult, MatchesResponse, SkillWithLevel } from '@/lib/types';
+import type { ProfileData, MatchResult, MatchesResponse } from '@/lib/types';
+import {
+  daysUntil,
+  expandSearchAliases,
+  matchesToCSV,
+  hashProfile as hashProfileUtil,
+} from '@/lib/match-utils';
+import {
+  loadPresets,
+  savePresets,
+  upsertPreset,
+  removePreset,
+} from '@/lib/filter-presets';
+import type { FilterPreset } from '@/lib/filter-presets';
+import { useT } from '@/i18n/client';
 
-const SEARCH_ALIASES: Record<string, string[]> = {
-  ml: ['machine learning'],
-  ai: ['artificial intelligence'],
-  nlp: ['natural language processing'],
-  cv: ['computer vision'],
-  dl: ['deep learning'],
-  hci: ['human computer interaction', 'human-computer interaction'],
-  rl: ['reinforcement learning'],
-  ds: ['data science'],
-  se: ['software engineering'],
-  pl: ['programming languages'],
-  os: ['operating systems'],
-  db: ['database'],
-  ece: ['electrical', 'computer engineering'],
-  cs: ['computer science'],
-  ee: ['electrical engineering'],
-  me: ['mechanical engineering'],
-  ce: ['civil engineering'],
-  cheme: ['chemical engineering'],
-  matsci: ['materials science'],
-  neuro: ['neuroscience'],
-  bioinfo: ['bioinformatics'],
+const SEARCH_ALIASES_FOR_HINT: Record<string, string[]> = {
+  ml: ['machine learning'], ai: ['artificial intelligence'], nlp: ['natural language processing'],
+  cv: ['computer vision'], dl: ['deep learning'], rl: ['reinforcement learning'],
+  ds: ['data science'], se: ['software engineering'], db: ['database'],
+  hci: ['human computer interaction'], cs: ['computer science'], ece: ['electrical'],
 };
-
-function expandSearchAliases(query: string): string[] {
-  const terms = [query];
-  const aliases = SEARCH_ALIASES[query];
-  if (aliases) terms.push(...aliases);
-  for (const [abbr, expansions] of Object.entries(SEARCH_ALIASES)) {
-    if (query.includes(abbr) && query !== abbr) {
-      for (const exp of expansions) {
-        terms.push(query.replace(abbr, exp));
-      }
-    }
-  }
-  return terms;
-}
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 
@@ -65,14 +58,25 @@ interface Filters {
   intl: '' | 'yes' | 'no';
   source: '' | 'uiuc_sro' | 'nsf_reu' | 'manual' | 'uiuc_our_rss' | 'uiuc_faculty' | 'handshake';
   onCampus: '' | 'yes' | 'no';
+  deadline: '' | '7' | '14' | '30' | 'passed';
+  minScore: number;
 }
 
-const TABS: { key: Tab; label: string; icon: React.ElementType; color: string }[] = [
-  { key: 'all', label: 'All', icon: Filter, color: 'text-gray-600' },
-  { key: 'high_priority', label: 'High Priority', icon: Zap, color: 'text-emerald-600' },
-  { key: 'good_match', label: 'Good Match', icon: Target, color: 'text-blue-600' },
-  { key: 'reach', label: 'Reach', icon: TrendingUp, color: 'text-amber-600' },
-  { key: 'starred', label: 'Starred', icon: Star, color: 'text-amber-500' },
+const DEFAULT_FILTERS: Filters = {
+  paid: '',
+  intl: '',
+  source: '',
+  onCampus: '',
+  deadline: '',
+  minScore: 0,
+};
+
+const TABS: { key: Tab; labelKey: string; icon: React.ElementType; color: string }[] = [
+  { key: 'all', labelKey: 'results.tabs.all', icon: Filter, color: 'text-gray-600' },
+  { key: 'high_priority', labelKey: 'results.tabs.highPriority', icon: Zap, color: 'text-emerald-600' },
+  { key: 'good_match', labelKey: 'results.tabs.goodMatch', icon: Target, color: 'text-blue-600' },
+  { key: 'reach', labelKey: 'results.tabs.reach', icon: TrendingUp, color: 'text-amber-600' },
+  { key: 'starred', labelKey: 'results.tabs.starred', icon: Star, color: 'text-amber-500' },
 ];
 
 function SkeletonCard() {
@@ -104,6 +108,20 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+const hashProfile = hashProfileUtil;
+
+function downloadCSV(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+
+
 export default function ResultsPage() {
   return (
     <Suspense fallback={<ResultsLoading />}>
@@ -131,6 +149,7 @@ function ResultsLoading() {
 function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useT();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [data, setData] = useState<MatchesResponse | null>(null);
@@ -148,13 +167,27 @@ function ResultsContent() {
     intl: (searchParams.get('intl') || '') as Filters['intl'],
     source: (searchParams.get('source') || '') as Filters['source'],
     onCampus: (searchParams.get('loc') || '') as Filters['onCampus'],
+    deadline: (searchParams.get('dl') || '') as Filters['deadline'],
+    minScore: Number(searchParams.get('min') || 0),
   });
   type SortKey = 'score' | 'deadline' | 'newest';
   const [sortBy, setSortBy] = useState<SortKey>(
     (searchParams.get('sort') as SortKey) || 'score',
   );
+  const [showDismissed, setShowDismissed] = useState(false);
+  const [semanticRerank, setSemanticRerank] = useState<boolean>(() => {
+    const p = searchParams.get('ai');
+    if (p === '1') return true;
+    if (p === '0') return false;
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('ofe_semantic_rerank') === '1';
+  });
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
+
+  const [presets, setPresets] = useState<FilterPreset[]>([]);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  useEffect(() => { setPresets(loadPresets()); }, []);
 
   const [emailModal, setEmailModal] = useState<{
     open: boolean;
@@ -169,7 +202,6 @@ function ResultsContent() {
     getInteractions().then(setInteractions).catch(() => {});
   }, []);
 
-  // Sync filters to URL (non-blocking)
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeTab !== 'all') params.set('tab', activeTab);
@@ -178,21 +210,49 @@ function ResultsContent() {
     if (filters.intl) params.set('intl', filters.intl);
     if (filters.source) params.set('source', filters.source);
     if (filters.onCampus) params.set('loc', filters.onCampus);
+    if (filters.deadline) params.set('dl', filters.deadline);
+    if (filters.minScore > 0) params.set('min', String(filters.minScore));
     if (sortBy !== 'score') params.set('sort', sortBy);
+    if (semanticRerank) params.set('ai', '1');
     const qs = params.toString();
     const newUrl = qs ? `/results?${qs}` : '/results';
     window.history.replaceState(null, '', newUrl);
-  }, [activeTab, debouncedQuery, filters]);
+  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank]);
 
   const handleToggleFav = useCallback(async (oppId: string) => {
-    const wasFaved = favs.has(oppId);
-    const nowFaved = await toggleFavorite(oppId, wasFaved);
     setFavs(prev => {
       const next = new Set(prev);
-      nowFaved ? next.add(oppId) : next.delete(oppId);
+      if (next.has(oppId)) next.delete(oppId);
+      else next.add(oppId);
       return next;
     });
+    try {
+      const wasFaved = favs.has(oppId);
+      await toggleFavorite(oppId, wasFaved);
+    } catch {
+      setFavs(prev => {
+        const next = new Set(prev);
+        if (next.has(oppId)) next.delete(oppId);
+        else next.add(oppId);
+        return next;
+      });
+    }
   }, [favs]);
+
+  const handleTrackInteraction = useCallback((oppId: string, type: InteractionType) => {
+    setInteractions(prev => {
+      const current = prev.get(oppId);
+      const next = new Map(prev);
+      if (current === type) {
+        next.delete(oppId);
+        removeInteraction(oppId).catch(() => {});
+      } else {
+        next.set(oppId, type);
+        trackInteraction(oppId, type).catch(() => {});
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const raw = localStorage.getItem('ofe_profile');
@@ -205,21 +265,36 @@ function ResultsContent() {
       if (Array.isArray(parsed.skills) && parsed.skills.length > 0 && typeof parsed.skills[0] === 'string') {
         parsed.skills = (parsed.skills as string[]).map((name: string) => ({ name, level: 'beginner' as const }));
       }
-      setProfile(parsed as ProfileData);
+      const loadedProfile = parsed as ProfileData;
+      setProfile(loadedProfile);
 
-      const cached = sessionStorage.getItem('ofe_match_results');
-      if (cached) {
+      const cachedRaw = sessionStorage.getItem('ofe_match_results');
+      if (cachedRaw) {
         try {
-          const cachedData = JSON.parse(cached) as MatchesResponse;
-          setData(cachedData);
-          setLoading(false);
+          const cached = JSON.parse(cachedRaw) as {
+            hash: string;
+            semantic?: boolean;
+            data: MatchesResponse;
+          };
+          const hashOk = cached.hash === hashProfile(loadedProfile);
+          const semanticOk = (cached.semantic ?? false) === semanticRerank;
+          if (hashOk && semanticOk) {
+            setData(cached.data);
+            setLoading(false);
+          } else {
+            sessionStorage.removeItem('ofe_match_results');
+          }
         } catch {
-          // corrupt cache — will re-fetch
+          sessionStorage.removeItem('ofe_match_results');
         }
       }
     } catch {
       router.replace('/');
     }
+    // semanticRerank is intentionally read but not in deps: this effect
+    // should only run on mount to load profile + any matching cache, not
+    // refire every time the toggle flips.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   useEffect(() => {
@@ -230,10 +305,19 @@ function ResultsContent() {
       setLoading(true);
       setError(null);
       try {
-        const result = await getMatches(profile!);
+        const result = await getMatches(profile!, { semantic: semanticRerank });
         if (!cancelled) {
           setData(result);
-          try { sessionStorage.setItem('ofe_match_results', JSON.stringify(result)); } catch { /* quota */ }
+          try {
+            sessionStorage.setItem(
+              'ofe_match_results',
+              JSON.stringify({
+                hash: hashProfile(profile!),
+                semantic: semanticRerank,
+                data: result,
+              }),
+            );
+          } catch { /* quota */ }
         }
       } catch (err) {
         if (!cancelled) {
@@ -245,18 +329,19 @@ function ResultsContent() {
     }
     fetchMatches();
     return () => { cancelled = true; };
-  }, [profile, data]);
+  }, [profile, data, semanticRerank]);
 
-  // Keyboard: Escape closes email modal
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && emailModal.open) {
-        setEmailModal({ open: false, opportunityId: '', opportunityTitle: '' });
-      }
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [emailModal.open]);
+  const toggleSemantic = useCallback((next: boolean) => {
+    setSemanticRerank(next);
+    try { localStorage.setItem('ofe_semantic_rerank', next ? '1' : '0'); } catch { /* quota */ }
+    setData(null);
+    setPage(1);
+  }, []);
+
+  const [focusedIdx, setFocusedIdx] = useState(-1);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => { setFocusedIdx(-1); }, [activeTab, debouncedQuery, filters, sortBy, page]);
 
   const filtered = useMemo(() => {
     if (!data?.results) return [];
@@ -268,6 +353,10 @@ function ResultsContent() {
       results = data.results.filter((m) => m.bucket !== 'low_fit');
     } else {
       results = data.results.filter((m) => m.bucket === activeTab);
+    }
+
+    if (!showDismissed) {
+      results = results.filter((m) => interactions.get(m.opportunity.id) !== 'dismissed');
     }
 
     if (filters.paid) {
@@ -292,6 +381,17 @@ function ResultsContent() {
         filters.onCampus === 'yes' ? m.opportunity.on_campus : !m.opportunity.on_campus,
       );
     }
+    if (filters.deadline) {
+      results = results.filter((m) => {
+        const d = daysUntil(m.opportunity.deadline);
+        if (filters.deadline === 'passed') return d !== null && d < 0;
+        if (d === null || d < 0) return false;
+        return d <= Number(filters.deadline);
+      });
+    }
+    if (filters.minScore > 0) {
+      results = results.filter((m) => m.final_score >= filters.minScore);
+    }
 
     if (debouncedQuery.trim()) {
       const q = debouncedQuery.toLowerCase();
@@ -300,30 +400,36 @@ function ResultsContent() {
         const title = m.opportunity.title.toLowerCase();
         const org = m.opportunity.organization?.toLowerCase() ?? '';
         const kws = m.opportunity.keywords ?? [];
+        const desc = (m.opportunity.description_clean ?? m.opportunity.description_raw ?? '').toLowerCase();
+        const dept = m.opportunity.department?.toLowerCase() ?? '';
+        const reasons = m.reasons_fit.join(' ').toLowerCase();
         return expanded.some((term) =>
           title.includes(term) ||
           org.includes(term) ||
-          kws.some((k) => k.toLowerCase().includes(term))
+          dept.includes(term) ||
+          kws.some((k) => k.toLowerCase().includes(term)) ||
+          desc.includes(term) ||
+          reasons.includes(term)
         );
       });
     }
 
     if (sortBy === 'deadline') {
-      results.sort((a, b) => {
+      results = [...results].sort((a, b) => {
         const da = a.opportunity.deadline || '9999';
         const db = b.opportunity.deadline || '9999';
         return da.localeCompare(db);
       });
     } else if (sortBy === 'newest') {
-      results.sort((a, b) => {
-        const pa = (a.opportunity as unknown as { posted_date?: string }).posted_date || '';
-        const pb = (b.opportunity as unknown as { posted_date?: string }).posted_date || '';
+      results = [...results].sort((a, b) => {
+        const pa = a.opportunity.posted_date || '';
+        const pb = b.opportunity.posted_date || '';
         return pb.localeCompare(pa);
       });
     }
 
     return results;
-  }, [data, activeTab, debouncedQuery, filters, favs, sortBy]);
+  }, [data, activeTab, debouncedQuery, filters, favs, sortBy, interactions, showDismissed]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = useMemo(
@@ -332,6 +438,11 @@ function ResultsContent() {
   );
 
   useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy]);
+
+  const dismissedCount = useMemo(
+    () => Array.from(interactions.values()).filter(v => v === 'dismissed').length,
+    [interactions],
+  );
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 } as Record<Tab, number>;
@@ -357,7 +468,103 @@ function ResultsContent() {
     [data],
   );
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilterCount =
+    (filters.paid ? 1 : 0) +
+    (filters.intl ? 1 : 0) +
+    (filters.source ? 1 : 0) +
+    (filters.onCampus ? 1 : 0) +
+    (filters.deadline ? 1 : 0) +
+    (filters.minScore > 0 ? 1 : 0);
+
+  const handleSavePreset = useCallback(() => {
+    const name = window.prompt('Name this filter preset:', '')?.trim();
+    if (!name) return;
+    const preset: FilterPreset = {
+      id: `p_${Date.now().toString(36)}`,
+      name: name.slice(0, 50),
+      filters: { ...filters },
+      sortBy,
+      tab: activeTab,
+    };
+    const next = upsertPreset(presets, preset);
+    setPresets(next);
+    savePresets(next);
+    setActivePresetId(preset.id);
+  }, [filters, sortBy, activeTab, presets]);
+
+  const handleApplyPreset = useCallback((preset: FilterPreset) => {
+    setFilters(preset.filters as typeof DEFAULT_FILTERS);
+    setSortBy(preset.sortBy);
+    setActiveTab(preset.tab as Tab);
+    setActivePresetId(preset.id);
+  }, []);
+
+  const handleDeletePreset = useCallback((id: string) => {
+    const next = removePreset(presets, id);
+    setPresets(next);
+    savePresets(next);
+    if (activePresetId === id) setActivePresetId(null);
+  }, [presets, activePresetId]);
+
+  const handleExport = useCallback(() => {
+    const rows = activeTab === 'starred'
+      ? filtered
+      : filtered.filter(m => favs.has(m.opportunity.id));
+    if (rows.length === 0) return;
+    downloadCSV(`opportunities-${new Date().toISOString().slice(0, 10)}.csv`, matchesToCSV(rows));
+  }, [filtered, favs, activeTab]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && emailModal.open) {
+        setEmailModal({ open: false, opportunityId: '', opportunityTitle: '' });
+        return;
+      }
+      const target = e.target as HTMLElement;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isTyping) return;
+
+      if (e.key === '/') {
+        e.preventDefault();
+        document.getElementById('results-search-input')?.focus();
+        return;
+      }
+
+      if (paginated.length === 0) return;
+
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedIdx(i => {
+          const next = Math.min(paginated.length - 1, i < 0 ? 0 : i + 1);
+          document.getElementById(`match-card-${paginated[next]?.opportunity.id}`)
+            ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          return next;
+        });
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedIdx(i => {
+          const next = Math.max(0, i <= 0 ? 0 : i - 1);
+          document.getElementById(`match-card-${paginated[next]?.opportunity.id}`)
+            ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          return next;
+        });
+      } else if (e.key === 's' && focusedIdx >= 0) {
+        e.preventDefault();
+        const match = paginated[focusedIdx];
+        if (match) handleToggleFav(match.opportunity.id);
+      } else if (e.key === 'Enter' && focusedIdx >= 0) {
+        e.preventDefault();
+        const match = paginated[focusedIdx];
+        const url = match?.opportunity.application?.application_url || match?.opportunity.url;
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      } else if (e.key === '?' && e.shiftKey) {
+        e.preventDefault();
+        setHelpOpen(true);
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [emailModal.open, paginated, focusedIdx, handleToggleFav]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -367,52 +574,119 @@ function ResultsContent() {
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-8 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Profile
+        {t('results.backToProfile')}
       </button>
 
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
-          Your Matches
-        </h1>
-        <p className="mt-2 text-[15px] text-gray-400">
-          {loading
-            ? 'Analyzing your profile...'
-            : data
-              ? `${counts.all} opportunities ranked for you`
-              : 'Loading...'}
-        </p>
+      <div className="mb-8 sm:mb-10 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+            {t('results.title')}
+          </h1>
+          <p className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-400">
+            {loading
+              ? semanticRerank
+                ? t('results.analyzingAi')
+                : t('results.analyzing')
+              : data
+                ? (
+                  <>
+                    {t('results.rankedFor', { count: counts.all })}
+                    {semanticRerank && (
+                      <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 align-middle">
+                        <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
+                        {t('results.aiBadge')}
+                      </span>
+                    )}
+                  </>
+                )
+                : 'Loading...'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <SemanticToggle value={semanticRerank} onChange={toggleSemantic} disabled={loading} />
+          {!loading && data && (
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="hidden md:inline-flex items-center justify-center h-6 px-2 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+              aria-label="Show keyboard shortcuts"
+              title="Keyboard shortcuts (press ?)"
+            >
+              ?
+            </button>
+          )}
+          {!loading && data && favs.size > 0 && (
+            <button
+              type="button"
+              onClick={handleExport}
+              className="inline-flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              title={activeTab === 'starred' ? 'Export filtered results' : 'Export starred'}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export {activeTab === 'starred' ? 'filtered' : `${favs.size} starred`} CSV
+            </button>
+          )}
+        </div>
       </div>
 
-      {!loading && data && (
-        <div className="grid grid-cols-4 gap-3 mb-10">
-          <SummaryCard label="Total" count={counts.all} />
-          <SummaryCard label="High Priority" count={counts.high_priority} accent="emerald" />
-          <SummaryCard label="Good Match" count={counts.good_match} accent="blue" />
-          <SummaryCard label="Reach" count={counts.reach} accent="amber" />
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 sm:mb-10">
+        {!loading && data ? (
+          <>
+            <SummaryCard label={t('results.summary.total')} count={counts.all} />
+            <SummaryCard label={t('results.summary.highPriority')} count={counts.high_priority} accent="emerald" />
+            <SummaryCard label={t('results.summary.goodMatch')} count={counts.good_match} accent="blue" />
+            <SummaryCard label={t('results.summary.reach')} count={counts.reach} accent="amber" />
+          </>
+        ) : (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] px-5 py-5">
+              <div className="skeleton h-9 w-14 mb-2" />
+              <div className="skeleton h-3 w-20" />
+            </div>
+          ))
+        )}
+      </div>
+
+      {(loading || !data) && (
+        <div className="mb-8 sm:mb-10 h-[44px]" aria-hidden="true" />
       )}
 
       {!loading && data && (
-        <div className="inline-flex items-center bg-black/[0.04] rounded-full p-1 mb-10">
-          {TABS.map(({ key, label, icon: Icon, color }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveTab(key)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-300
-                ${
-                  activeTab === key
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} />
-              {label}
-              <span className="text-[11px] font-semibold tabular-nums text-gray-400">
-                {counts[key]}
-              </span>
-            </button>
-          ))}
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-8 sm:mb-10 no-scrollbar">
+          <div className="inline-flex items-center bg-black/[0.04] rounded-full p-1" role="tablist" aria-label="Match category">
+            {TABS.map(({ key, labelKey, icon: Icon, color }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === key}
+                onClick={() => setActiveTab(key)}
+                className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-[12px] sm:text-[13px] font-medium whitespace-nowrap transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+                  ${
+                    activeTab === key
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} aria-hidden="true" />
+                {t(labelKey)}
+                <span className="text-[11px] font-semibold tabular-nums text-gray-400" aria-label={`${counts[key]} results`}>
+                  {counts[key]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(loading || !data) && (
+        <div className="space-y-3 mb-8">
+          <div className="skeleton h-11 rounded-xl" />
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton h-7 w-28 rounded-lg" />
+            ))}
+          </div>
         </div>
       )}
 
@@ -421,23 +695,52 @@ function ResultsContent() {
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
+              id="results-search-input"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title, school, or research area..."
-              className="w-full pl-11 pr-10 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
+              placeholder={t('results.search.placeholder')}
+              className="w-full pl-11 pr-24 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
             />
+            <kbd className="absolute right-10 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center justify-center h-5 px-1.5 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded">
+              /
+            </kbd>
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Clear search"
               >
                 <X className="w-3.5 h-3.5 text-gray-400" />
               </button>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {(presets.length > 0 || activeFilterCount > 0 || !!debouncedQuery.trim()) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {presets.map(p => (
+                <PresetPill
+                  key={p.id}
+                  preset={p}
+                  active={p.id === activePresetId}
+                  onApply={handleApplyPreset}
+                  onDelete={handleDeletePreset}
+                />
+              ))}
+              {(activeFilterCount > 0 || !!debouncedQuery.trim()) && (
+                <button
+                  type="button"
+                  onClick={handleSavePreset}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                  title="Save current filters as preset"
+                >
+                  <BookmarkPlus className="w-3 h-3" />
+                  Save preset
+                </button>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2 -mx-4 px-4 sm:mx-0 sm:px-0">
             <FilterSelect
               value={filters.paid}
               onChange={(v) => setFilters((f) => ({ ...f, paid: v as Filters['paid'] }))}
@@ -459,14 +762,38 @@ function ResultsContent() {
               options={[['', 'Any location'], ['yes', 'On campus'], ['no', 'Off campus / Remote']]}
             />
             <FilterSelect
+              value={filters.deadline}
+              onChange={(v) => setFilters((f) => ({ ...f, deadline: v as Filters['deadline'] }))}
+              options={[['', 'Any deadline'], ['7', 'Due in 7 days'], ['14', 'Due in 14 days'], ['30', 'Due in 30 days'], ['passed', 'Past deadline']]}
+            />
+            <FilterSelect
               value={sortBy}
               onChange={(v) => setSortBy(v as SortKey)}
               options={[['score', 'Sort: Best match'], ['deadline', 'Sort: Deadline soonest'], ['newest', 'Sort: Recently posted']]}
             />
+            <MinScoreFilter
+              value={filters.minScore}
+              onChange={(v) => setFilters((f) => ({ ...f, minScore: v }))}
+            />
+            {dismissedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowDismissed(s => !s)}
+                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${
+                  showDismissed
+                    ? 'bg-gray-100 border-gray-300 text-gray-700'
+                    : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                }`}
+                title={showDismissed ? 'Hiding dismissed opportunities' : 'Showing dismissed opportunities'}
+              >
+                <EyeOff className="w-3 h-3" />
+                {showDismissed ? 'Hide' : 'Show'} {dismissedCount} dismissed
+              </button>
+            )}
             {activeFilterCount > 0 && (
               <button
                 type="button"
-                onClick={() => setFilters({ paid: '', intl: '', source: '', onCampus: '' })}
+                onClick={() => setFilters(DEFAULT_FILTERS)}
                 className="px-3 py-1.5 text-[12px] font-medium text-red-500 hover:text-red-700 transition-colors"
               >
                 Clear {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
@@ -480,8 +807,8 @@ function ResultsContent() {
                 : `${filtered.length} result${filtered.length > 1 ? 's' : ''}`}
               {debouncedQuery.trim() && (
                 <span> for <span className="font-medium text-gray-600">&ldquo;{debouncedQuery}&rdquo;</span>
-                  {SEARCH_ALIASES[debouncedQuery.toLowerCase()] && (
-                    <span className="text-gray-300"> (also matching: {SEARCH_ALIASES[debouncedQuery.toLowerCase()]?.join(', ')})</span>
+                  {SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()] && (
+                    <span className="text-gray-300"> (also matching: {SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()]?.join(', ')})</span>
                   )}
                 </span>
               )}
@@ -519,32 +846,28 @@ function ResultsContent() {
               hasFilters={activeFilterCount > 0 || !!debouncedQuery.trim()}
               tab={activeTab}
               onClearFilters={() => {
-                setFilters({ paid: '', intl: '', source: '', onCampus: '' });
+                setFilters(DEFAULT_FILTERS);
                 setSearchQuery('');
               }}
             />
           ) : (
             <>
-              {paginated.map((match: MatchResult) => (
-                <MemoizedMatchCard
+              {paginated.map((match: MatchResult, idx: number) => (
+                <div
                   key={match.opportunity.id}
-                  match={match}
-                  profile={profile}
-                  onDraftEmail={openEmailModal}
-                  isFavorited={favs.has(match.opportunity.id)}
-                  onToggleFavorite={handleToggleFav}
-                  interaction={interactions.get(match.opportunity.id)}
-                  onTrackInteraction={(oppId, type) => {
-                    const current = interactions.get(oppId);
-                    if (current === type) {
-                      removeInteraction(oppId).catch(() => {});
-                      setInteractions((prev) => { const n = new Map(prev); n.delete(oppId); return n; });
-                    } else {
-                      trackInteraction(oppId, type).catch(() => {});
-                      setInteractions((prev) => new Map(prev).set(oppId, type));
-                    }
-                  }}
-                />
+                  id={`match-card-${match.opportunity.id}`}
+                  className={`transition-all ${focusedIdx === idx ? 'ring-2 ring-blue-500/40 rounded-2xl' : ''}`}
+                >
+                  <MemoizedMatchCard
+                    match={match}
+                    profile={profile}
+                    onDraftEmail={openEmailModal}
+                    isFavorited={favs.has(match.opportunity.id)}
+                    onToggleFavorite={handleToggleFav}
+                    interaction={interactions.get(match.opportunity.id)}
+                    onTrackInteraction={handleTrackInteraction}
+                  />
+                </div>
               ))}
 
               {totalPages > 1 && (
@@ -594,6 +917,72 @@ function ResultsContent() {
           opportunityTitle={emailModal.opportunityTitle}
         />
       )}
+
+      {helpOpen && <KeyboardHelpDialog onClose={() => setHelpOpen(false)} />}
+    </div>
+  );
+}
+
+function KeyboardHelpDialog({ onClose }: { onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const shortcuts: Array<[string, string]> = [
+    ['/', 'Focus search box'],
+    ['j  or  ↓', 'Next match'],
+    ['k  or  ↑', 'Previous match'],
+    ['s', 'Star the focused match'],
+    ['Enter', 'Open the focused match in a new tab'],
+    ['Esc', 'Close dialog'],
+    ['?', 'Show this help'],
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="kbd-help-title"
+    >
+      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 id="kbd-help-title" className="text-[15px] font-semibold text-gray-900">Keyboard shortcuts</h2>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="p-2 -mr-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label="Close shortcuts dialog"
+          >
+            <X className="w-4 h-4 text-gray-400" aria-hidden="true" />
+          </button>
+        </div>
+        <dl className="divide-y divide-gray-50">
+          {shortcuts.map(([keys, desc]) => (
+            <div key={keys} className="flex items-center justify-between px-6 py-3">
+              <dt className="text-[13px] text-gray-600">{desc}</dt>
+              <dd>
+                <kbd className="inline-flex items-center justify-center h-6 px-2 text-[11px] font-mono font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded">
+                  {keys}
+                </kbd>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }
@@ -604,7 +993,10 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.match.final_score === next.match.final_score &&
     prev.isFavorited === next.isFavorited &&
     prev.interaction === next.interaction &&
-    prev.profile === next.profile
+    prev.profile === next.profile &&
+    prev.onDraftEmail === next.onDraftEmail &&
+    prev.onToggleFavorite === next.onToggleFavorite &&
+    prev.onTrackInteraction === next.onTrackInteraction
   );
 });
 MemoizedMatchCard.displayName = 'MemoizedMatchCard';
@@ -674,6 +1066,137 @@ function FilterSelect({
         <option key={val} value={val}>{label}</option>
       ))}
     </select>
+  );
+}
+
+function MinScoreFilter({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const active = value > 0;
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer outline-none ${
+          active
+            ? 'bg-blue-50 border-blue-200 text-blue-700'
+            : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+        }`}
+      >
+        {active ? `Min score: ${value}` : 'Min score'}
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-2 right-0 bg-white rounded-xl shadow-lg border border-gray-200 p-4 w-64">
+          <div className="flex items-center justify-between text-[11px] text-gray-500 mb-2">
+            <span>Minimum match score</span>
+            <span className="font-semibold tabular-nums text-gray-700">{value}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="w-full accent-blue-600"
+          />
+          <div className="flex justify-between mt-3">
+            <button
+              type="button"
+              onClick={() => onChange(0)}
+              className="text-[11px] text-gray-500 hover:text-gray-700"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SemanticToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      aria-label="AI semantic ranking"
+      disabled={disabled}
+      onClick={() => onChange(!value)}
+      title={
+        value
+          ? 'AI ranking on — top 50 results re-ranked by semantic similarity'
+          : 'AI ranking off — rule-based score only'
+      }
+      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+        value
+          ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white border-transparent shadow-sm'
+          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+      }`}
+    >
+      <Sparkles className={`w-3.5 h-3.5 ${value ? 'text-white' : 'text-gray-400'}`} aria-hidden="true" />
+      <span className="hidden sm:inline">AI ranking</span>
+      <span className={`text-[10px] font-semibold tracking-wider uppercase ${value ? 'opacity-90' : 'opacity-60'}`}>
+        {value ? 'on' : 'off'}
+      </span>
+    </button>
+  );
+}
+
+function PresetPill({
+  preset,
+  active,
+  onApply,
+  onDelete,
+}: {
+  preset: FilterPreset;
+  active: boolean;
+  onApply: (p: FilterPreset) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full text-[11px] font-medium border transition-colors ${
+      active
+        ? 'bg-blue-600 border-blue-600 text-white'
+        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+    }`}>
+      <button
+        type="button"
+        onClick={() => onApply(preset)}
+        className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1"
+        aria-label={`Apply preset ${preset.name}`}
+      >
+        <Bookmark className={`w-2.5 h-2.5 ${active ? 'fill-white' : ''}`} aria-hidden="true" />
+        {preset.name}
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (window.confirm(`Delete preset "${preset.name}"?`)) onDelete(preset.id);
+        }}
+        className={`pr-2 py-1 ${active ? 'text-white/70 hover:text-white' : 'text-gray-300 hover:text-red-500'}`}
+        aria-label={`Delete ${preset.name}`}
+      >
+        <Trash2 className="w-2.5 h-2.5" />
+      </button>
+    </span>
   );
 }
 

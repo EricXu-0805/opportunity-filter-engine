@@ -19,16 +19,18 @@ from pathlib import Path
 from typing import Optional
 
 import ssl
+import urllib.error
 import urllib.request
 
 import feedparser
 
 from .base import BaseCollector, RawOpportunity
 
-# UIUC blogs use a self-signed intermediate cert; allow unverified for RSS only
-_SSL_CTX = ssl.create_default_context()
-_SSL_CTX.check_hostname = False
-_SSL_CTX.verify_mode = ssl.CERT_NONE
+_VERIFIED_SSL_CTX = ssl.create_default_context()
+
+_UNVERIFIED_SSL_CTX = ssl.create_default_context()
+_UNVERIFIED_SSL_CTX.check_hostname = False
+_UNVERIFIED_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 logger = logging.getLogger(__name__)
 
@@ -51,17 +53,29 @@ class UIUCOURRSSCollector(BaseCollector):
     def collect(self) -> list[RawOpportunity]:
         """Parse RSS feed and return raw opportunities."""
         self.logger.info(f"Fetching RSS feed: {self.RSS_URL}")
-        # Use custom SSL context to bypass UIUC's cert chain issue
-        handler = urllib.request.HTTPSHandler(context=_SSL_CTX)
-        opener = urllib.request.build_opener(handler)
-        resp = opener.open(self.RSS_URL, timeout=30)
-        feed_data = resp.read()
+        feed_data = self._fetch_feed_bytes()
         feed = feedparser.parse(feed_data)
 
         if feed.bozo:
             self.logger.warning(f"Feed parsing issue: {feed.bozo_exception}")
+        opportunities: list[RawOpportunity] = []
+        return self._entries_to_opportunities(feed, opportunities)
 
-        opportunities = []
+    def _fetch_feed_bytes(self) -> bytes:
+        try:
+            handler = urllib.request.HTTPSHandler(context=_VERIFIED_SSL_CTX)
+            opener = urllib.request.build_opener(handler)
+            return opener.open(self.RSS_URL, timeout=30).read()
+        except (ssl.SSLError, urllib.error.URLError) as e:
+            self.logger.warning(
+                "Verified TLS fetch failed (%s); retrying without cert verification "
+                "(UIUC blogs have a known cert chain issue)", e,
+            )
+            handler = urllib.request.HTTPSHandler(context=_UNVERIFIED_SSL_CTX)
+            opener = urllib.request.build_opener(handler)
+            return opener.open(self.RSS_URL, timeout=30).read()
+
+    def _entries_to_opportunities(self, feed, opportunities: list[RawOpportunity]) -> list[RawOpportunity]:
         for entry in feed.entries:
             opp = self._parse_entry(entry)
             if opp:

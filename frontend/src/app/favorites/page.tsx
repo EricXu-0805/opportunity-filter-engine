@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Loader2,
   Mail,
-  ExternalLink,
   Globe,
   DollarSign,
   MapPin,
@@ -14,12 +13,19 @@ import {
   Clock,
   ChevronDown,
   FileText,
+  GitCompare,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
 import { getOpportunitiesByIds } from '@/lib/api';
 import Badge from '@/components/Badge';
-import ColdEmailModal from '@/components/ColdEmailModal';
+import { useT } from '@/i18n/client';
+
+const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
+  ssr: false,
+});
 import type { ProfileData } from '@/lib/types';
 
 interface Opp {
@@ -56,15 +62,31 @@ function DeadlineBadge({ deadline }: { deadline?: string }) {
   return <Badge variant="gray"><Clock className="w-3 h-3" />{deadline}</Badge>;
 }
 
+const MAX_COMPARE = 4;
+
 export default function FavoritesPage() {
   const router = useRouter();
+  const { t } = useT();
   const [opportunities, setOpportunities] = useState<Opp[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string }>({
     open: false, id: '', title: '',
   });
+
+  const toggleCompareSelection = useCallback((id: string) => {
+    setSelectedForCompare((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < MAX_COMPARE) {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const raw = localStorage.getItem('ofe_profile');
@@ -104,7 +126,7 @@ export default function FavoritesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-        <p className="text-[13px] text-gray-400">Loading favorites...</p>
+        <p className="text-[13px] text-gray-400">{t('favorites.loading')}</p>
       </div>
     );
   }
@@ -120,13 +142,25 @@ export default function FavoritesPage() {
         Back
       </button>
 
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Favorites</h1>
-        <p className="mt-2 text-[15px] text-gray-400">
-          {opportunities.length === 0
-            ? 'No favorites yet.'
-            : `${opportunities.length} saved opportunity${opportunities.length > 1 ? 'ies' : ''}`}
-        </p>
+      <div className="mb-10 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 tracking-tight">{t('favorites.title')}</h1>
+          <p className="mt-2 text-[15px] text-gray-400">
+            {opportunities.length === 0 ? t('favorites.empty') : t('favorites.count', { count: opportunities.length })}
+          </p>
+          {opportunities.length >= 2 && (
+            <p className="mt-1 text-[12px] text-gray-400">{t('favorites.compareHint')}</p>
+          )}
+        </div>
+        {selectedForCompare.size >= 2 && (
+          <Link
+            href={`/compare?ids=${Array.from(selectedForCompare).map(encodeURIComponent).join(',')}`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 transition-colors shrink-0 shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
+          >
+            <GitCompare className="w-4 h-4" aria-hidden="true" />
+            {t('favorites.compareSelected', { count: selectedForCompare.size })}
+          </Link>
+        )}
       </div>
 
       {opportunities.length === 0 ? (
@@ -162,7 +196,12 @@ export default function FavoritesPage() {
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
-                        {opp.title}
+                        <a
+                          href={`/opportunities/${encodeURIComponent(opp.id)}`}
+                          className="hover:text-blue-600 focus:outline-none focus-visible:underline decoration-blue-500 underline-offset-4 transition-colors"
+                        >
+                          {opp.title}
+                        </a>
                       </h3>
                       <div className="flex items-center gap-3 mt-2 text-[13px] text-gray-400">
                         {opp.organization && (
@@ -179,14 +218,27 @@ export default function FavoritesPage() {
                         )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(opp.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0"
-                      aria-label="Remove from favorites"
-                    >
-                      <Star className="w-4.5 h-4.5 fill-amber-400 text-amber-400" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium text-gray-500 hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedForCompare.has(opp.id)}
+                          disabled={!selectedForCompare.has(opp.id) && selectedForCompare.size >= MAX_COMPARE}
+                          onChange={() => toggleCompareSelection(opp.id)}
+                          className="w-3.5 h-3.5 rounded accent-blue-600"
+                          aria-label={t('favorites.selectAria')}
+                        />
+                        <span>{t('favorites.compare')}</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(opp.id)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                        aria-label={t('favorites.removeAria')}
+                      >
+                        <Star className="w-4.5 h-4.5 fill-amber-400 text-amber-400" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 mb-4">

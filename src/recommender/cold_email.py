@@ -310,6 +310,12 @@ def _p1_research_hook(p: dict) -> str:
             f" I came across {lab_ref} and am very interested in"
             f" contributing, as my background in {interests[:60].rstrip('.')} is closely related."
         )
+    if is_short_topic and lab:
+        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
+        return (
+            f" I came across {lab_ref} and your work on {research_topic},"
+            f" and would like to learn more about opportunities to contribute."
+        )
     if is_short_topic:
         return (
             f" I came across your research on {research_topic}"

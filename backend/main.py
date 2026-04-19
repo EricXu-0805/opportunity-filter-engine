@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from collections import defaultdict
@@ -14,10 +15,10 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.routes import matches, opportunities, cold_email, resume
+from backend.routes import matches, opportunities, cold_email, resume, push
 
+API_VERSION = "2.2.0"
 
-# ── Simple in-memory rate limiter ─────────────────────────────────────
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 
 RATE_LIMITS: dict[str, tuple[int, int]] = {
@@ -34,10 +35,26 @@ DEFAULT_RATE = (60, 60)
 _last_purge = 0.0
 
 
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real = request.headers.get("x-real-ip", "")
+    if real:
+        return real.strip()
+    return request.client.host if request.client else "unknown"
+
+
+RATE_LIMIT_DISABLED = os.environ.get("OFE_DISABLE_RATE_LIMIT") == "1"
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if RATE_LIMIT_DISABLED:
+            return await call_next(request)
+
         global _last_purge
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = _client_ip(request)
         path = request.url.path
         now = time.time()
 
@@ -86,7 +103,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app = FastAPI(
     title="Opportunity Filter Engine API",
     description="Personalized research & internship matching for UIUC undergrads",
-    version="2.2.0",
+    version=API_VERSION,
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
@@ -101,7 +118,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
-    allow_origin_regex=r"https://frontend-wine-pi-63\.vercel\.app",
+    allow_origin_regex=r"^https://([a-z0-9-]+\.)*vercel\.app$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
@@ -111,8 +128,9 @@ app.include_router(matches.router, prefix="/api", tags=["matches"])
 app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
+app.include_router(push.router, prefix="/api", tags=["push"])
 
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "version": "2.1.0"}
+    return {"status": "ok", "version": API_VERSION}

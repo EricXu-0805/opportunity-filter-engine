@@ -69,9 +69,10 @@ const INTERACTION_LABELS: Record<InteractionType, { label: string; color: string
   replied: { label: 'Got Reply', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   interviewing: { label: 'Interviewing', color: 'bg-violet-50 text-violet-700 border-violet-200' },
   rejected: { label: 'Rejected', color: 'bg-gray-100 text-gray-500 border-gray-200' },
+  dismissed: { label: 'Not interested', color: 'bg-gray-100 text-gray-400 border-gray-200' },
 };
 
-const INTERACTION_OPTIONS: InteractionType[] = ['applied', 'replied', 'interviewing', 'rejected'];
+const INTERACTION_OPTIONS: InteractionType[] = ['applied', 'replied', 'interviewing', 'rejected', 'dismissed'];
 
 function isNewPosting(opp: MatchResult['opportunity']): boolean {
   const posted = opp.posted_date;
@@ -79,6 +80,23 @@ function isNewPosting(opp: MatchResult['opportunity']): boolean {
   const diff = Date.now() - new Date(posted).getTime();
   return diff < 14 * 86400000;
 }
+
+function getDeadlineUrgency(deadline: string | undefined): 'passed' | 'urgent' | 'soon' | 'later' | null {
+  if (!deadline) return null;
+  const dl = new Date(deadline + 'T00:00:00');
+  if (isNaN(dl.getTime())) return null;
+  const days = Math.ceil((dl.getTime() - Date.now()) / 86400000);
+  if (days < 0) return 'passed';
+  if (days <= 7) return 'urgent';
+  if (days <= 30) return 'soon';
+  return 'later';
+}
+
+const URGENCY_BORDER: Record<string, string> = {
+  urgent: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-red-400 before:rounded-l-2xl',
+  soon: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-amber-400 before:rounded-l-2xl',
+  passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
+};
 
 export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -89,10 +107,12 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const tier = getBucketLabel(match.bucket);
   const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown');
   const paid = getPaidBadge(opp.paid);
+  const urgency = getDeadlineUrgency(opp.deadline);
+  const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';
 
   return (
-    <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300 overflow-hidden">
-      <div className="p-6">
+    <div className={`relative bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300 overflow-hidden ${urgencyBorder}`}>
+      <div className="p-4 sm:p-6">
           <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2">
@@ -107,20 +127,26 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 </button>
               )}
               <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
-                {opp.title}
+                <a
+                  href={`/opportunities/${encodeURIComponent(opp.id)}`}
+                  onClick={e => e.stopPropagation()}
+                  className="hover:text-blue-600 focus:outline-none focus-visible:underline decoration-blue-500 underline-offset-4 transition-colors"
+                >
+                  {opp.title}
+                </a>
               </h3>
             </div>
-            <div className="flex items-center gap-3 mt-2 text-[13px] text-gray-400">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[12px] sm:text-[13px] text-gray-400">
               {opp.organization && (
-                <span className="inline-flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5" />
-                  {opp.organization}
+                <span className="inline-flex items-center gap-1 min-w-0">
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate max-w-[180px] sm:max-w-none">{opp.organization}</span>
                 </span>
               )}
               {opp.location && (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {opp.location}
+                <span className="inline-flex items-center gap-1 min-w-0">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate max-w-[160px] sm:max-w-none">{opp.location}</span>
                 </span>
               )}
             </div>
@@ -226,7 +252,11 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             </a>
           )}
           {onTrackInteraction && (
-            <div className="flex items-center gap-1 ml-auto">
+            <div
+              className="flex items-center gap-1 w-full sm:w-auto sm:ml-auto overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0"
+              role="group"
+              aria-label={`Track status for ${opp.title}`}
+            >
               {INTERACTION_OPTIONS.map((type) => {
                 const cfg = INTERACTION_LABELS[type];
                 const isActive = interaction === type;
@@ -234,8 +264,9 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                   <button
                     key={type}
                     type="button"
+                    aria-pressed={isActive}
                     onClick={(e) => { e.stopPropagation(); onTrackInteraction(opp.id, type); }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all duration-200 ${
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border whitespace-nowrap transition-all duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                       isActive ? cfg.color : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
                     }`}
                   >
@@ -252,7 +283,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center justify-between w-full px-6 py-3 text-[13px] font-medium text-gray-400 hover:text-gray-600 transition-colors duration-300"
+          className="flex items-center justify-between w-full px-4 sm:px-6 py-3 text-[13px] font-medium text-gray-400 hover:text-gray-600 transition-colors duration-300"
         >
           <span>{expanded ? 'Hide details' : 'View details'}</span>
           <ChevronDown
@@ -261,7 +292,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         </button>
 
         {expanded && (
-          <div className="px-6 pb-6 space-y-5 animate-in">
+          <div className="px-4 sm:px-6 pb-5 sm:pb-6 space-y-5 animate-in">
             {match.reasons_fit.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-emerald-600 uppercase tracking-widest mb-2.5">

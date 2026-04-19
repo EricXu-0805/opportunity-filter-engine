@@ -88,8 +88,8 @@ class ProfileRequest(BaseModel):
     def skills_with_levels(self) -> list[SkillItem]:
         return [s if isinstance(s, SkillItem) else SkillItem(name=s) for s in self.hard_skills]
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "name": "Eric",
                 "year": "freshman",
@@ -102,8 +102,9 @@ class ProfileRequest(BaseModel):
                     {"name": "C++", "level": "expert"},
                 ],
                 "seeking_type": ["research", "summer_program"],
-            }
-        }
+            },
+        },
+    }
 
 
 class MatchResultResponse(BaseModel):

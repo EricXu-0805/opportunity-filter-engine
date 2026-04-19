@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import tempfile
 from pathlib import Path
@@ -8,6 +9,9 @@ import httpx
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from backend.schemas import ResumeParseResponse
+
+MAX_RESUME_BYTES = 5 * 1024 * 1024
+RESUME_CHUNK_SIZE = 64 * 1024
 
 router = APIRouter()
 
@@ -111,15 +115,22 @@ async def upload_resume(file: UploadFile = File(...)):
             detail="Only PDF files are supported. Please upload a .pdf file.",
         )
 
-    # Validate file size (max 5MB)
-    contents = await file.read()
-    if len(contents) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
-
-    # Save to temp file and parse
+    total = 0
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        tmp.write(contents)
         tmp_path = tmp.name
+        while True:
+            chunk = await file.read(RESUME_CHUNK_SIZE)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_RESUME_BYTES:
+                tmp.close()
+                Path(tmp_path).unlink(missing_ok=True)
+                raise HTTPException(
+                    status_code=400,
+                    detail="File too large. Maximum size is 5MB.",
+                )
+            tmp.write(chunk)
 
     try:
         raw_text = _extract_text_from_pdf(tmp_path)
@@ -167,15 +178,26 @@ async def parse_github_profile(username: str):
     if not re.match(r"^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$", username):
         raise HTTPException(status_code=400, detail="Invalid GitHub username format")
 
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    gh_token = os.environ.get("GITHUB_TOKEN")
+    if gh_token:
+        headers["Authorization"] = f"Bearer {gh_token}"
+
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
                 f"https://api.github.com/users/{username}/repos",
                 params={"per_page": 30, "sort": "updated"},
-                headers={"Accept": "application/vnd.github.v3+json"},
+                headers=headers,
             )
             if resp.status_code == 404:
                 raise HTTPException(status_code=404, detail="GitHub user not found")
+            if resp.status_code == 403:
+                reset = resp.headers.get("X-RateLimit-Reset", "")
+                detail = "GitHub API rate limit exceeded"
+                if reset:
+                    detail += f" (resets at unix ts {reset})"
+                raise HTTPException(status_code=429, detail=detail)
             if resp.status_code != 200:
                 raise HTTPException(status_code=502, detail="GitHub API error")
             repos = resp.json()

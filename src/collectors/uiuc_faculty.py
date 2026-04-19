@@ -420,7 +420,7 @@ def _scrape_individual_page_keywords(url: str) -> list[str]:
         resp = requests.get(url, headers=HEADERS, timeout=8, verify=False)
         resp.raise_for_status()
         html = resp.text
-    except Exception:
+    except requests.RequestException:
         return []
 
     topics = set()

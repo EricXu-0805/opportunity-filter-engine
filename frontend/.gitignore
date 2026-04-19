@@ -1,1 +1,12 @@
 .vercel
+
+playwright-report/
+playwright/.cache/
+test-results/
+blob-report/
+coverage/
+
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+.next/
+node_modules/

@@ -6,7 +6,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
-from backend.data_loader import load_opportunities
+from backend.data_loader import load_opportunities_by_id
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.recommender.cold_email import generate_cold_email, generate_variants
 
@@ -48,8 +48,7 @@ def _build_mailto_link(to: str, subject: str, body: str) -> str:
 @router.post("/cold-email", response_model=ColdEmailResponse)
 async def generate_email(request: ColdEmailRequest):
     """Generate a cold email for a specific opportunity with mailto: link."""
-    opportunities = load_opportunities()
-    opp = next((o for o in opportunities if o["id"] == request.opportunity_id), None)
+    opp = load_opportunities_by_id().get(request.opportunity_id)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -77,8 +76,7 @@ async def generate_email(request: ColdEmailRequest):
 
 @router.post("/cold-email/variants")
 async def generate_email_variants(request: ColdEmailRequest):
-    opportunities = load_opportunities()
-    opp = next((o for o in opportunities if o["id"] == request.opportunity_id), None)
+    opp = load_opportunities_by_id().get(request.opportunity_id)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -171,19 +169,24 @@ async def refine_email(request: EmailRefineRequest):
 def _local_refine(body: str, instruction: str) -> dict:
     lower = instruction.lower()
     edited = body
+    applied: list[str] = []
 
     if any(kw in lower for kw in ["formal", "professional"]):
         edited = edited.replace("I would love", "I would greatly appreciate")
         edited = edited.replace("I am a fast learner", "I am committed to continuous professional development")
         edited = edited.replace("Best regards", "Respectfully")
-    elif any(kw in lower for kw in ["short", "concise", "brief"]):
+        applied.append("formal")
+
+    if any(kw in lower for kw in ["short", "concise", "brief", "trim"]):
         lines = edited.split("\n")
         edited = "\n".join(l for l in lines
-                          if "fast learner" not in l and "eager to pick up" not in l)
-    elif any(kw in lower for kw in ["enthus", "excit", "energy"]):
+                           if "fast learner" not in l and "eager to pick up" not in l)
+        applied.append("concise")
+
+    if any(kw in lower for kw in ["enthus", "excit", "energy", "passion"]):
         edited = edited.replace("I am very interested", "I am truly excited about")
         edited = edited.replace("I really enjoyed", "I was fascinated by")
         edited = edited.replace("I would love the chance", "I would be thrilled at the opportunity")
+        applied.append("enthusiastic")
 
-    method = "local"
-    return {"body": edited, "method": method}
+    return {"body": edited, "method": "local", "applied": applied}

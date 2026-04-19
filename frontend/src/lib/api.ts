@@ -47,8 +47,12 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
 }
 
 /** POST /api/matches — get ranked opportunities for a profile */
-export async function getMatches(profile: ProfileData): Promise<MatchesResponse> {
-  return request<MatchesResponse>('/matches', {
+export async function getMatches(
+  profile: ProfileData,
+  options: { semantic?: boolean } = {},
+): Promise<MatchesResponse> {
+  const qs = options.semantic ? '?semantic=true' : '';
+  return request<MatchesResponse>(`/matches${qs}`, {
     method: 'POST',
     body: JSON.stringify(toProfileRequest(profile)),
   });
@@ -77,10 +81,17 @@ export async function getOpportunityById(id: string): Promise<Record<string, unk
 }
 
 export async function getOpportunitiesByIds(ids: string[]): Promise<Record<string, unknown>[]> {
-  const results = await Promise.allSettled(ids.map(id => getOpportunityById(id)));
-  return results
-    .filter((r): r is PromiseFulfilledResult<Record<string, unknown>> => r.status === 'fulfilled')
-    .map(r => r.value);
+  if (ids.length === 0) return [];
+  const uniq = Array.from(new Set(ids));
+  const chunks: string[][] = [];
+  for (let i = 0; i < uniq.length; i += 200) chunks.push(uniq.slice(i, i + 200));
+  const responses = await Promise.all(chunks.map(chunk =>
+    request<{ opportunities: Record<string, unknown>[] }>('/opportunities/batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids: chunk }),
+    }),
+  ));
+  return responses.flatMap(r => r.opportunities);
 }
 
 /** POST /api/cold-email — generate a cold email draft */
@@ -145,4 +156,26 @@ export async function parseGitHubProfile(username: string): Promise<GitHubParseR
 /** GET /api/opportunities/stats/summary — dashboard stats */
 export async function getStats(): Promise<StatsResponse> {
   return request<StatsResponse>('/opportunities/stats/summary');
+}
+
+export interface UpcomingDeadline {
+  id: string;
+  title: string;
+  organization?: string;
+  deadline: string;
+  days_left: number;
+  opportunity_type: string;
+  paid: string;
+  url?: string;
+  source?: string;
+}
+
+export interface UpcomingResponse {
+  total: number;
+  opportunities: UpcomingDeadline[];
+  days: number;
+}
+
+export async function getUpcomingDeadlines(days = 30): Promise<UpcomingResponse> {
+  return request<UpcomingResponse>(`/opportunities/upcoming?days=${days}`);
 }

@@ -102,9 +102,24 @@ npm run dev
 Open http://localhost:3000. The frontend proxies API requests to the backend automatically.
 
 ### Tests
+
 ```bash
+# Backend: pytest — 98 unit + integration + API tests
 pytest tests/ -v
+
+# Frontend unit tests: vitest — 63 tests over lib/ modules
+cd frontend
+npm test
+
+# Frontend E2E: playwright — 24 tests, real browser, runs both servers
+cd frontend
+npx playwright install chromium       # one-time browser download
+npm run test:e2e                      # headless
+npm run test:e2e:ui                   # watch/debug UI
 ```
+
+All three suites run automatically in CI on every push/PR (see
+`.github/workflows/ci.yml`).
 
 ## Project Structure
 

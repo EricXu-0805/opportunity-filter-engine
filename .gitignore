@@ -49,3 +49,4 @@ node_modules/
 out/
 next-env.d.ts
 .vercel
+.vapid-keys.local

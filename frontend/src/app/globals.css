@@ -69,4 +69,33 @@
 
   /* Apple-style smooth scroll */
   html { scroll-behavior: smooth; }
+
+  /* Hide scrollbar but keep scrollability — for horizontal pill rows */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Safe area insets for modern phones */
+  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.75rem); }
+
+  /* Visually hidden but still read by screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

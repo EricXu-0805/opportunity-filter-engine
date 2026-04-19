@@ -6,6 +6,10 @@ python-multipart>=0.0.6
 httpx>=0.27.0
 pyyaml>=6.0
 
+# Web Push (optional — only needed for /api/cron/reminders push delivery)
+pywebpush>=2.0.0
+cryptography>=42.0
+
 # Data collection (used by scrapers + GitHub Action)
 feedparser>=6.0
 requests>=2.31

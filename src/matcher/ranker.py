@@ -25,7 +25,9 @@ class MatchResult:
 # --- Field matching utilities ---
 
 MAJOR_GROUPS = {
-    "CS": {"CS", "Computer Science", "Computer Engineering", "Mathematics & Computer Science",
+    "ECE": {"ECE", "Electrical Engineering", "Computer Engineering", "Electrical & Computer Engineering",
+            "Electrical and Computer Engineering", "Neural Engineering"},
+    "CS": {"CS", "Computer Science", "Mathematics & Computer Science",
            "Statistics & Computer Science",
            "Computer Science + Advertising", "Computer Science + Animal Sciences",
            "Computer Science + Anthropology", "Computer Science + Astronomy",
@@ -34,8 +36,6 @@ MAJOR_GROUPS = {
            "Computer Science + Education", "Computer Science + Geography & GIS",
            "Computer Science + Linguistics", "Computer Science + Music",
            "Computer Science + Philosophy", "Computer Science + Physics"},
-    "ECE": {"ECE", "Electrical Engineering", "Computer Engineering", "Electrical & Computer Engineering",
-            "Electrical and Computer Engineering", "Neural Engineering"},
     "STAT": {"STAT", "Statistics", "Data Science", "Statistics & Computer Science", "Actuarial Science",
              "Econometrics & Quantitative Economics"},
     "IS": {"IS", "Information Sciences", "iSchool", "Information Sciences + Data Science", "Information Systems"},
@@ -145,9 +145,10 @@ def _text_similarity(text_a: str, text_b: str) -> float:
     try:
         from .embeddings import semantic_similarity
         return semantic_similarity(text_a, text_b)
-    except Exception:
-        pass
-    return _token_cosine_similarity(text_a, text_b)
+    except ImportError:
+        return _token_cosine_similarity(text_a, text_b)
+    except (ValueError, RuntimeError):
+        return _token_cosine_similarity(text_a, text_b)
 
 
 def _token_cosine_similarity(text_a: str, text_b: str) -> float:
@@ -237,15 +238,15 @@ def _parse_skills(student_skills: list) -> dict[str, float]:
     for s in student_skills:
         if isinstance(s, dict):
             name = s.get("name", "").lower().strip()
-            level = s.get("level", "beginner")
-            weight = PROFICIENCY_WEIGHTS.get(level, 0.5)
+            level = s.get("level", "experienced")
+            weight = PROFICIENCY_WEIGHTS.get(level, 0.75)
         elif isinstance(s, str):
             name = s.lower().strip()
-            weight = 0.5
+            weight = 1.0
         else:
             name = getattr(s, "name", "").lower().strip()
-            level = getattr(s, "level", "beginner")
-            weight = PROFICIENCY_WEIGHTS.get(level, 0.5)
+            level = getattr(s, "level", "experienced")
+            weight = PROFICIENCY_WEIGHTS.get(level, 0.75)
 
         canonical = _canonicalize_skill(name)
         result[canonical] = max(result.get(canonical, 0), weight)
@@ -680,8 +681,16 @@ def _summarize_research(opportunity: dict) -> str:
     return ""
 
 
-def rank_opportunity(profile: dict, opportunity: dict, weights: dict[str, float] | None = None) -> MatchResult:
-    elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
+def rank_opportunity(
+    profile: dict,
+    opportunity: dict,
+    weights: dict[str, float] | None = None,
+    precomputed_eligibility: tuple[float, list[str], list[str]] | None = None,
+) -> MatchResult:
+    if precomputed_eligibility is not None:
+        elig_score, elig_fit, elig_gap = precomputed_eligibility
+    else:
+        elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
     up_score, up_fit, up_gap = score_upside(profile, opportunity)
 
@@ -763,6 +772,84 @@ def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> l
     return steps
 
 
+def _profile_query_text(profile: dict) -> str:
+    parts: list[str] = []
+    interests = profile.get("research_interests_text") or profile.get("research_interests", "")
+    if interests:
+        parts.append(str(interests))
+    major = profile.get("major", "")
+    if major:
+        parts.append(f"major: {major}")
+    for s in profile.get("hard_skills", []) or []:
+        if isinstance(s, dict) and s.get("name"):
+            parts.append(s["name"])
+        elif isinstance(s, str):
+            parts.append(s)
+    for kw in profile.get("secondary_interests", []) or []:
+        parts.append(str(kw))
+    return " ".join(parts).strip()
+
+
+def _opportunity_query_text(opp: dict) -> str:
+    parts = [
+        opp.get("title", ""),
+        opp.get("lab_or_program", "") or "",
+        " ".join(opp.get("keywords", []) or []),
+        opp.get("description_clean") or opp.get("description_raw") or "",
+    ]
+    return " ".join(p for p in parts if p)
+
+
+def semantic_rerank(
+    profile: dict,
+    results: list[MatchResult],
+    opportunities_by_id: dict[str, dict],
+    top_k: int = 50,
+    semantic_weight: float = 0.3,
+) -> list[MatchResult]:
+    """Re-rank the top ``top_k`` results using semantic similarity.
+
+    Blend: ``final = (1 - w) * rule_score + w * semantic_score * 100``
+    where w = semantic_weight (default 0.3). Only the top slice is
+    re-scored to bound embedding cost; the tail keeps its rule score.
+
+    Falls back gracefully to TF-IDF (corpus-fitted) when no OpenAI key
+    is available, so this function never raises on missing deps.
+
+    Mutates ``results`` in place AND returns the re-sorted list.
+    """
+    if not results or top_k <= 0 or semantic_weight <= 0:
+        return results
+
+    try:
+        from .embeddings import semantic_similarity_batch
+    except ImportError:
+        return results
+
+    query = _profile_query_text(profile)
+    if not query:
+        return results
+
+    slice_end = min(top_k, len(results))
+    top_slice = results[:slice_end]
+
+    candidate_texts: list[str] = []
+    for r in top_slice:
+        opp = opportunities_by_id.get(r.opportunity_id)
+        candidate_texts.append(_opportunity_query_text(opp) if opp else "")
+
+    sims = semantic_similarity_batch(query, candidate_texts)
+
+    w = max(0.0, min(1.0, semantic_weight))
+    for r, sim in zip(top_slice, sims):
+        rule = r.final_score
+        blended = (1.0 - w) * rule + w * float(sim) * 100.0
+        r.final_score = round(max(0.0, min(100.0, blended)), 2)
+
+    results.sort(key=lambda r: r.final_score, reverse=True)
+    return results
+
+
 def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     """Rank all opportunities for a profile. Returns sorted by final_score desc."""
     search_weight = profile.get("search_weight", 50)
@@ -791,14 +878,17 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
                     if not (all_related & opp_majors_norm):
                         continue
 
+        elig_triple = score_eligibility(profile, opp)
         min_threshold = profile.get("preferences", {}).get("min_match_threshold", 0)
         if min_threshold > 0:
-            elig_score, _, _ = score_eligibility(profile, opp)
-            max_possible = weights["eligibility"] * elig_score + (weights["readiness"] + weights["upside"]) * 100
+            max_possible = (
+                weights["eligibility"] * elig_triple[0]
+                + (weights["readiness"] + weights["upside"]) * 100
+            )
             if max_possible < min_threshold:
                 continue
 
-        result = rank_opportunity(profile, opp, weights)
+        result = rank_opportunity(profile, opp, weights, precomputed_eligibility=elig_triple)
         if result.final_score >= min_threshold:
             results.append(result)
 

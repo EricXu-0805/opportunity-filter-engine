@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import time
 from collections import Counter
+from datetime import date, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.data_loader import load_opportunities
+from backend.data_loader import load_opportunities, load_opportunities_by_id
 
 router = APIRouter()
 
@@ -51,13 +52,138 @@ async def list_opportunities(
     }
 
 
+@router.post("/opportunities/batch")
+async def get_opportunities_batch(request: dict):
+    """Return multiple opportunities by ID in a single request.
+
+    Body: {"ids": ["id1", "id2", ...]} — capped at 200 to bound work.
+    Missing IDs are silently skipped so the caller can always iterate
+    the response alongside its own list.
+    """
+    ids = request.get("ids") if isinstance(request, dict) else None
+    if not isinstance(ids, list):
+        raise HTTPException(status_code=400, detail="Body must be {ids: string[]}")
+    if len(ids) > 200:
+        raise HTTPException(status_code=400, detail="At most 200 IDs per request")
+
+    lookup = load_opportunities_by_id()
+    results = []
+    for oid in ids:
+        if not isinstance(oid, str) or len(oid) > 100:
+            continue
+        opp = lookup.get(oid)
+        if opp is not None:
+            results.append(_redact(opp))
+    return {"opportunities": results, "requested": len(ids), "found": len(results)}
+
+
+@router.get("/opportunities/upcoming")
+async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
+    """Opportunities with deadlines within the next ``days`` days, sorted ascending.
+
+    Useful for building a calendar / "what's due soon" widget without
+    re-ranking the full corpus per request.
+    """
+    opportunities = load_opportunities()
+    today = date.today()
+    cutoff = today + timedelta(days=days)
+    upcoming = []
+    for o in opportunities:
+        deadline = o.get("deadline", "")
+        if not deadline or len(deadline) < 10 or deadline[4] != "-":
+            continue
+        try:
+            dl = date.fromisoformat(deadline[:10])
+        except ValueError:
+            continue
+        if today <= dl <= cutoff:
+            upcoming.append({
+                "id": o.get("id"),
+                "title": o.get("title"),
+                "organization": o.get("organization"),
+                "deadline": deadline,
+                "days_left": (dl - today).days,
+                "opportunity_type": o.get("opportunity_type"),
+                "paid": o.get("paid"),
+                "url": o.get("url"),
+                "source": o.get("source"),
+            })
+    upcoming.sort(key=lambda o: o["deadline"])
+    return {"total": len(upcoming), "opportunities": upcoming, "days": days}
+
+
+@router.get("/opportunities/{opportunity_id}/similar")
+async def get_similar_opportunities(
+    opportunity_id: str,
+    limit: int = Query(default=5, ge=1, le=20),
+):
+    """Return opportunities similar to the given one.
+
+    Similarity is the weighted sum of:
+      * shared keyword count  (primary signal)
+      * same opportunity_type (small bonus)
+      * shared majors         (small bonus)
+      * same organization     (small bonus for "more from this lab")
+    The source opportunity is always excluded.
+    """
+    if len(opportunity_id) > 100:
+        raise HTTPException(status_code=400, detail="Invalid opportunity ID")
+
+    lookup = load_opportunities_by_id()
+    source = lookup.get(opportunity_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+
+    source_keywords = {k.lower() for k in (source.get("keywords") or []) if isinstance(k, str)}
+    source_majors = {m.lower() for m in (source.get("eligibility") or {}).get("majors", []) if isinstance(m, str)}
+    source_type = source.get("opportunity_type")
+    source_org = (source.get("organization") or "").lower()
+
+    scored: list[tuple[float, dict]] = []
+    for opp in load_opportunities():
+        if opp.get("id") == opportunity_id:
+            continue
+        if not opp.get("metadata", {}).get("is_active", True):
+            continue
+
+        kws = {k.lower() for k in (opp.get("keywords") or []) if isinstance(k, str)}
+        majors = {m.lower() for m in (opp.get("eligibility") or {}).get("majors", []) if isinstance(m, str)}
+
+        shared_keywords = len(source_keywords & kws)
+        shared_majors = len(source_majors & majors)
+
+        score = 0.0
+        if source_keywords:
+            score += shared_keywords * 3.0
+        if source_type and opp.get("opportunity_type") == source_type:
+            score += 1.0
+        if source_majors:
+            score += shared_majors * 0.5
+        if source_org and (opp.get("organization") or "").lower() == source_org:
+            score += 0.5
+
+        if score <= 0:
+            continue
+        scored.append((score, opp))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:limit]
+    return {
+        "source_id": opportunity_id,
+        "total": len(top),
+        "opportunities": [
+            {**_redact(o), "_similarity": round(s, 2)}
+            for s, o in top
+        ],
+    }
+
+
 @router.get("/opportunities/{opportunity_id}")
 async def get_opportunity(opportunity_id: str):
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
 
-    opportunities = load_opportunities()
-    opp = next((o for o in opportunities if o["id"] == opportunity_id), None)
+    opp = load_opportunities_by_id().get(opportunity_id)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     return _redact(opp)
