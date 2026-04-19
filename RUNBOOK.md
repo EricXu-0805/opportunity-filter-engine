@@ -166,6 +166,43 @@ If anything goes wrong:
   subscribe UI disappears, no new subscriptions happen, existing
   subscriptions sit inert until the cron runs.
 
+## Live environment (as of Apr 2026)
+
+| Service | URL | Notes |
+|---|---|---|
+| Frontend | https://opportunity-filter-engine.vercel.app | Vercel Hobby, Next.js 14 |
+| Backend | https://opportunity-filter-engine-api.onrender.com | Render Free, FastAPI (cold starts ~30s) |
+| Database | https://mjpirkyduibkakvlbdko.supabase.co | Supabase Free |
+| Cron | `.github/workflows/daily-reminders.yml` | GitHub Actions, daily 13:00 UTC |
+
+### Environment variables deployed
+
+**Vercel (2):**
+- `BACKEND_URL` → Render URL
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+
+**Render (6):**
+- `CRON_SECRET`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (⚠️ bypasses RLS, keep secret)
+- `VAPID_PRIVATE_KEY`
+- `VAPID_PUBLIC_KEY`
+- `VAPID_SUBJECT`
+
+**GitHub Secrets (2):**
+- `BACKEND_URL`
+- `CRON_SECRET` (must match Render's value)
+
+### Applied Supabase migrations
+- 001 (pre-existing)
+- 002_interactions
+- 003_profile_versions
+- 005_interaction_notes (columns: notes, remind_at, last_contacted_at)
+- 006_anonymous_auth_rls (auth.uid()::text policies, supersedes 004)
+- 007_push_subscriptions
+
+Migration 004 was defined but superseded by 006 — do not apply.
+
 ## What this session deferred
 
 The following were initially planned but **not shipped** to keep the
