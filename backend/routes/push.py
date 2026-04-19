@@ -16,13 +16,17 @@ def _verify_cron_secret(secret: str | None) -> None:
         raise HTTPException(status_code=401, detail="Invalid cron secret")
 
 
-def _required_env(keys: list[str]) -> dict[str, str] | None:
+def _required_env(keys: list[str]) -> dict[str, str] | tuple[None, list[str]]:
     out = {}
+    missing = []
     for k in keys:
         v = os.environ.get(k)
         if not v:
-            return None
-        out[k] = v
+            missing.append(k)
+        else:
+            out[k] = v
+    if missing:
+        return (None, missing)
     return out
 
 
@@ -36,15 +40,17 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     """
     _verify_cron_secret(authorization)
 
-    env = _required_env([
+    env_result = _required_env([
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
         "VAPID_PRIVATE_KEY",
         "VAPID_PUBLIC_KEY",
         "VAPID_SUBJECT",
     ])
-    if env is None:
-        return {"status": "skipped", "reason": "push env not configured"}
+    if isinstance(env_result, tuple):
+        _, missing = env_result
+        return {"status": "skipped", "reason": "push env not configured", "missing": missing}
+    env = env_result
 
     try:
         import httpx
