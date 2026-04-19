@@ -7,7 +7,7 @@ Not a job board. A decision engine that answers three questions:
 2. **Should I apply?** (Readiness)
 3. **What should I do next?** (Actionable Guidance)
 
-**[Live Demo](https://frontend-wine-pi-63.vercel.app)** | **[API](https://opportunity-filter-engine.vercel.app/api/health)**
+**[Live Demo](https://opportunity-filter-engine.vercel.app)** | **[API](https://opportunity-filter-engine-api.onrender.com/api/health)**
 
 ## Screenshots
 
