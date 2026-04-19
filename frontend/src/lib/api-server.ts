@@ -3,9 +3,13 @@ import type { Opportunity } from './types';
 export type SimilarOpportunity = Opportunity & { _similarity: number };
 
 function serverApiBase(): string {
+  const isProduction = process.env.VERCEL_ENV === 'production'
+    || process.env.NODE_ENV === 'production';
   return process.env.BACKEND_URL
     || process.env.NEXT_PUBLIC_API_URL
-    || 'http://127.0.0.1:8000';
+    || (isProduction
+      ? 'https://opportunity-filter-engine-api.onrender.com'
+      : 'http://127.0.0.1:8000');
 }
 
 export async function fetchOpportunityServer(id: string): Promise<Opportunity | null> {

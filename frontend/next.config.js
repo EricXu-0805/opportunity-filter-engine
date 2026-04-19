@@ -4,9 +4,13 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
   async rewrites() {
+    const isProduction = process.env.VERCEL_ENV === "production"
+      || process.env.NODE_ENV === "production";
     const backendUrl = process.env.BACKEND_URL
       || process.env.NEXT_PUBLIC_API_URL
-      || "http://127.0.0.1:8000";
+      || (isProduction
+        ? "https://opportunity-filter-engine-api.onrender.com"
+        : "http://127.0.0.1:8000");
     return {
       fallback: [
         {
