@@ -54,6 +54,21 @@ class TestInferMajors:
         opp2 = _opp("Historical Research", "Archival historical research position")
         assert "History" in infer_majors(opp2)
 
+    def test_job_title_infers_cs_from_swe_intern(self):
+        # Handshake postings often have empty descriptions; title-level
+        # role words must still surface the right major.
+        opp = _opp("Software Engineer Intern", "")
+        assert "CS" in infer_majors(opp)
+
+    def test_job_title_infers_business_from_analyst_role(self):
+        opp = _opp("Business Analyst Intern", "")
+        assert "Business" in infer_majors(opp)
+
+    def test_job_title_infers_sustainability(self):
+        opp = _opp("Sustainability Communications Intern", "")
+        majors = infer_majors(opp)
+        assert "Atmospheric Sciences" in majors or "Communication" in majors
+
 
 class TestInferKeywords:
     def test_language_keywords(self):

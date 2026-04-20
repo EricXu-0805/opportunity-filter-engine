@@ -78,7 +78,67 @@ MAJOR_PATTERNS: dict[str, list[str]] = {
     "Urban Planning": [r"\burban planning\b", r"\bregional planning\b"],
     "Business": [r"\bbusiness\b", r"\bmanagement\b", r"\bmarketing\b", r"\bfinance\b"],
     "Accountancy": [r"\baccountancy\b", r"\baccounting\b"],
-    "Education": [r"\beducation research\b", r"\bpedagogy\b", r"\bcurriculum\b"],
+    "Education": [r"\beducation research\b", r"\bpedagogy\b", r"\bcurriculum\b", r"\bteacher\b", r"\btutor\b"],
+}
+
+
+# Job-title -> major inference. Applied in addition to MAJOR_PATTERNS when
+# the opportunity comes from a job board (e.g. Handshake) that ships the
+# title but little/no description. Titles like "Software Engineer Intern"
+# strongly imply CS even when no keyword in desc matches. These are LESS
+# precise than full-text patterns — so they only fire for role-word matches.
+JOB_TITLE_MAJOR_PATTERNS: dict[str, list[str]] = {
+    "CS": [
+        r"\bsoftware engineer", r"\bswe\b", r"\bprogrammer\b",
+        r"\bweb developer\b", r"\bfull stack\b", r"\bbackend\b", r"\bfrontend\b",
+        r"\bmobile developer\b", r"\bios developer\b", r"\bandroid developer\b",
+        r"\bdevops\b", r"\bsite reliability\b", r"\bsre\b",
+        r"\bmachine learning engineer\b", r"\bml engineer\b",
+        r"\bdata engineer\b", r"\bai engineer\b",
+    ],
+    "ECE": [
+        r"\bhardware engineer\b", r"\belectrical engineer\b", r"\bfirmware\b",
+        r"\bembedded\b", r"\bcircuit design\b", r"\bsignal processing engineer\b",
+        r"\brf engineer\b",
+    ],
+    "Mechanical Engineering": [
+        r"\bmechanical engineer", r"\bcad (engineer|designer)\b", r"\bmanufacturing engineer\b",
+        r"\bprocess engineer\b", r"\btest engineer\b", r"\brobotics engineer\b",
+    ],
+    "Civil Engineering": [
+        r"\bcivil engineer", r"\bstructural engineer\b", r"\btransportation engineer\b",
+        r"\bgeotechnical\b", r"\burban planner\b", r"\bfield intern\b",
+    ],
+    "Chemical Engineering": [
+        r"\bchemical engineer", r"\bprocess development\b", r"\brefinery\b",
+    ],
+    "Data Science": [
+        r"\bdata scientist\b", r"\bdata analyst\b", r"\banalytics\b", r"\bquantitative analyst\b",
+        r"\bquant\b", r"\bresearch analyst\b",
+    ],
+    "Statistics": [
+        r"\bstatistician\b", r"\bbiostatistician\b", r"\bactuarial\b",
+    ],
+    "Business": [
+        r"\bbusiness analyst\b", r"\bconsultant\b", r"\boperations\b",
+        r"\bstrategy\b", r"\bproduct manager\b", r"\bpm intern\b",
+        r"\bmarketing\b", r"\bsales\b", r"\bhuman resources\b", r"\bhr intern\b",
+        r"\bsupply chain\b", r"\blogistics\b", r"\bprocurement\b",
+    ],
+    "Finance": [
+        r"\bfinancial analyst\b", r"\bfinance intern\b", r"\binvestment\b",
+        r"\bbanking\b", r"\bportfolio\b", r"\btrader\b", r"\brevenue\b",
+    ],
+    "Accountancy": [r"\baccountant\b", r"\baudit\b", r"\btax (intern|analyst)\b"],
+    "Journalism": [r"\bjournalist\b", r"\breporter\b", r"\beditor(ial)?\b", r"\bcontent writer\b"],
+    "Communication": [r"\bcommunications?\b", r"\bpr (intern|manager)\b", r"\bpublic relations\b"],
+    "Advertising": [r"\bcopywriter\b", r"\bbrand manager\b", r"\bdigital marketing\b"],
+    "Art": [r"\bgraphic designer\b", r"\billustrator\b", r"\bui designer\b", r"\bux designer\b"],
+    "Psychology": [r"\bclinical (intern|assistant)\b", r"\bbehavioral (analyst|research)\b"],
+    "Education": [r"\bteacher\b", r"\btutor\b", r"\binstructor\b", r"\bteaching assistant\b"],
+    "Biology": [r"\blab technician\b", r"\bresearch technician\b", r"\bfield biologist\b"],
+    "Political Science": [r"\bpolicy (analyst|intern)\b", r"\blegislative\b", r"\bgovernment (intern|affairs)\b"],
+    "Atmospheric Sciences": [r"\benvironmental (analyst|intern|scientist)\b", r"\bsustainability (intern|analyst)\b"],
 }
 
 # Keywords to surface for search indexing. Separate from majors; more granular.
@@ -134,6 +194,16 @@ def infer_majors(opp: dict) -> list[str]:
             if re.search(p, text):
                 found.append(major)
                 break
+
+    title_text = (opp.get("title") or "").lower()
+    if title_text:
+        for major, patterns in JOB_TITLE_MAJOR_PATTERNS.items():
+            if major in found:
+                continue
+            for p in patterns:
+                if re.search(p, title_text):
+                    found.append(major)
+                    break
     return found
 
 

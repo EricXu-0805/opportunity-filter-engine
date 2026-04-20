@@ -15,7 +15,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.routes import matches, opportunities, cold_email, resume, push
+from backend.routes import matches, opportunities, cold_email, resume, push, admin
 
 API_VERSION = "2.2.0"
 
@@ -129,6 +129,7 @@ app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
+app.include_router(admin.router, prefix="/api", tags=["admin"])
 
 
 @app.get("/api/health")
