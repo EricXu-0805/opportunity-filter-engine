@@ -78,7 +78,26 @@ MAJOR_PATTERNS: dict[str, list[str]] = {
     "Urban Planning": [r"\burban planning\b", r"\bregional planning\b"],
     "Business": [r"\bbusiness\b", r"\bmanagement\b", r"\bmarketing\b", r"\bfinance\b"],
     "Accountancy": [r"\baccountancy\b", r"\baccounting\b"],
-    "Education": [r"\beducation research\b", r"\bpedagogy\b", r"\bcurriculum\b", r"\bteacher\b", r"\btutor\b"],
+    "Education": [r"\beducation research\b", r"\bpedagogy\b", r"\bcurriculum\b", r"\bteacher\b", r"\btutor\b",
+                  r"\binstructional design", r"\bclassroom assistant"],
+    "Natural Resources & Environmental Sciences": [
+        r"\bsustainab", r"\benvironmental\b", r"\bconservation\b", r"\bwildlife\b",
+        r"\becology\b", r"\bnatural resources\b", r"\bpark ranger\b", r"\bparks intern\b",
+        r"\bforestry\b", r"\bclimate (change|action)\b",
+    ],
+    "Food Science": [r"\bfood science\b", r"\bfood safety\b", r"\bfood systems\b",
+                     r"\bnutrition(al)? science", r"\bdietetics?\b"],
+    "Crop Sciences": [r"\bcrop sciences?\b", r"\bagronomy\b", r"\bsustainable agriculture\b",
+                      r"\bplant protection\b", r"\bplant biotech"],
+    "Agricultural & Biological Engineering": [
+        r"\bagricultural (engineer|engineering|intern)\b", r"\bfarm\b", r"\bagricultural sciences\b",
+    ],
+    "Geology": [r"\bgeology\b", r"\bgeologic", r"\bfossil", r"\bpaleontolog"],
+    "Marine Science": [r"\bmarine (science|biolog|research|intern)\b", r"\bocean(ograph)?\b", r"\baquatic\b"],
+    "Hospitality": [r"\bhospitality\b", r"\brestaurant management\b", r"\bculinary\b",
+                    r"\bfood (and|&) beverage\b", r"\btourism\b", r"\bhotel management\b"],
+    "Human Resources": [r"\bhuman resources\b", r"\bhr intern\b", r"\btalent acquisition\b", r"\brecruitment\b"],
+    "Library & Information Science": [r"\blibrary (intern|page|worker|assistant)\b", r"\barchival\b", r"\bdigitization\b"],
 }
 
 
@@ -138,7 +157,26 @@ JOB_TITLE_MAJOR_PATTERNS: dict[str, list[str]] = {
     "Education": [r"\bteacher\b", r"\btutor\b", r"\binstructor\b", r"\bteaching assistant\b"],
     "Biology": [r"\blab technician\b", r"\bresearch technician\b", r"\bfield biologist\b"],
     "Political Science": [r"\bpolicy (analyst|intern)\b", r"\blegislative\b", r"\bgovernment (intern|affairs)\b"],
-    "Atmospheric Sciences": [r"\benvironmental (analyst|intern|scientist)\b", r"\bsustainability (intern|analyst)\b"],
+    "Atmospheric Sciences": [r"\benvironmental (analyst|scientist)\b", r"\batmospheric (scientist|analyst)\b"],
+    "Natural Resources & Environmental Sciences": [
+        r"\benvironmental intern\b", r"\bsustainability (intern|crew|coordinator|associate)\b",
+        r"\bconservation (intern|coordinator)\b", r"\bparks? intern\b",
+        r"\bwildlife (intern|biologist|technician)\b", r"\bnatural resources (intern|technician)\b",
+        r"\bpark ranger\b", r"\bfield (intern|technician|biologist)\b",
+        r"\becologist\b", r"\bseasonal (intern|technician|biologist)\b",
+    ],
+    "Marine Science": [r"\bmarine (intern|biologist|scientist|educator)\b"],
+    "Geology": [r"\bgeology (intern|technician)\b", r"\bfossil (intern|technician)\b",
+                r"\bdigitizer\b", r"\bpaleontology intern\b"],
+    "Food Science": [r"\bfood (safety|quality|science) (intern|assistant|analyst)\b"],
+    "Crop Sciences": [r"\bagricultur(e|al) (intern|agent|technician)\b", r"\bfarm\b"],
+    "Hospitality": [r"\b(food|beverage|culinary|hotel) intern\b"],
+    "Human Resources": [r"\bhr\b.*\b(intern|internship|analyst|coordinator)\b",
+                        r"\b(intern|internship)\b.*\bhr\b",
+                        r"\brecruitment (intern|coordinator)\b"],
+    "Library & Information Science": [
+        r"\blibrary (page|cafe worker|intern|assistant)\b", r"\barchives? (intern|technician)\b",
+    ],
 }
 
 # Keywords to surface for search indexing. Separate from majors; more granular.
@@ -233,11 +271,54 @@ def _is_unsorted(keywords: Iterable[str]) -> bool:
     return all(k.strip().lower() in _UNSORTED_SENTINELS for k in cleaned)
 
 
+# Titles that look like announcements/events/newsletters rather than actual
+# openings. These should not be matched against student profiles — they
+# pollute the ranking and confuse users. Detected at enrichment time and
+# flagged via metadata.is_active=False so the matcher silently skips them.
+_NON_OPPORTUNITY_TITLE_PATTERNS: list[str] = [
+    r"\bsymposium\b.*\b(winner|award|recap|showcase|invited|completed)\b",
+    r"\b(winner|award|recap|showcase)s?\b.*\bsymposium\b",
+    r"\bapply to.*\b(symposium|competition|showcase)\b",
+    r"\bless than.*\bmonth left\b",
+    r"\bcall for applications\b",
+    r"\bnew office sticker\b",
+    r"\bstay connected\b",
+    r"\bnewsletter\b",
+    r"\bundergraduate research week\b",
+    r"\bfamilies, you'?re invited\b",
+    r"\bis here!\b",
+    r"\bworkshops?\b$",
+    r"\bimage of research\b",
+    r"\b(you'?re|you are) invited\b",
+]
+
+_NON_OPPORTUNITY_COMPILED = [re.compile(p, re.IGNORECASE) for p in _NON_OPPORTUNITY_TITLE_PATTERNS]
+
+
+def is_likely_non_opportunity(opp: dict) -> bool:
+    """Heuristic: does this record look like an event announcement,
+    newsletter, or general PR post rather than a real research/intern
+    opportunity someone can apply to?
+
+    Returns True when the title matches known non-opportunity patterns.
+    Conservative — prefers false negatives over dropping real openings.
+    """
+    title = (opp.get("title") or "").strip()
+    if not title:
+        return False
+    for pattern in _NON_OPPORTUNITY_COMPILED:
+        if pattern.search(title):
+            return True
+    return False
+
+
 def enrich_opportunity(opp: dict) -> dict:
     """Backfill majors + keywords in-place when upstream is empty.
+    Also flags non-opportunities (events, announcements) as inactive.
 
     Returns the same dict (mutated). Safe to call multiple times —
-    non-empty upstream fields are never overwritten.
+    non-empty upstream fields are never overwritten, except when the
+    non-opportunity heuristic matches (then is_active is forced False).
     """
     elig = opp.setdefault("eligibility", {})
     if not elig.get("majors"):
@@ -250,6 +331,14 @@ def enrich_opportunity(opp: dict) -> dict:
         inferred_kws = infer_keywords(opp)
         if inferred_kws:
             opp["keywords"] = inferred_kws
+
+    if is_likely_non_opportunity(opp):
+        meta = opp.setdefault("metadata", {})
+        meta["is_active"] = False
+        meta_notes = meta.get("notes", "")
+        marker = "[auto-flagged: non-opportunity]"
+        if marker not in meta_notes:
+            meta["notes"] = (meta_notes + " " + marker).strip()
 
     return opp
 

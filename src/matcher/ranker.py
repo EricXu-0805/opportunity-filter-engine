@@ -1025,6 +1025,9 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
 
     results = []
     for opp in opportunities:
+        if opp.get("metadata", {}).get("is_active") is False:
+            continue
+
         if profile.get("international_student"):
             elig = opp.get("eligibility", {})
             if elig.get("international_friendly") == "no":

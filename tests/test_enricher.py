@@ -67,7 +67,56 @@ class TestInferMajors:
     def test_job_title_infers_sustainability(self):
         opp = _opp("Sustainability Communications Intern", "")
         majors = infer_majors(opp)
-        assert "Atmospheric Sciences" in majors or "Communication" in majors
+        assert "Natural Resources & Environmental Sciences" in majors or "Communication" in majors
+
+    def test_environmental_intern_infers_nres(self):
+        opp = _opp("Environmental Intern Summer 2026", "")
+        assert "Natural Resources & Environmental Sciences" in infer_majors(opp)
+
+    def test_park_ranger_infers_nres(self):
+        opp = _opp("Park Ranger Internship", "")
+        assert "Natural Resources & Environmental Sciences" in infer_majors(opp)
+
+    def test_library_page_infers_library_science(self):
+        opp = _opp("Library Page/Cafe Worker", "")
+        assert "Library & Information Science" in infer_majors(opp)
+
+    def test_fossil_intern_infers_geology(self):
+        opp = _opp("Geology Undergraduate Internship: Linton Fossils", "")
+        assert "Geology" in infer_majors(opp)
+
+    def test_hr_intern_infers_hr(self):
+        opp = _opp("FutureLab HR Spring/Summer 2026 Internship", "")
+        assert "Human Resources" in infer_majors(opp)
+
+
+class TestNonOpportunityDetection:
+    def test_symposium_award_is_non_opportunity(self):
+        from src.normalizers.enricher import is_likely_non_opportunity
+        opp = _opp("2025 Undergraduate Research Symposium Award Winners!")
+        assert is_likely_non_opportunity(opp) is True
+
+    def test_office_sticker_is_non_opportunity(self):
+        from src.normalizers.enricher import is_likely_non_opportunity
+        opp = _opp("OUR's New Office Sticker")
+        assert is_likely_non_opportunity(opp) is True
+
+    def test_newsletter_phrase_is_non_opportunity(self):
+        from src.normalizers.enricher import is_likely_non_opportunity
+        opp = _opp("Stay Connected with Undergraduate Research at Illinois")
+        assert is_likely_non_opportunity(opp) is True
+
+    def test_real_research_opp_is_kept(self):
+        from src.normalizers.enricher import is_likely_non_opportunity
+        opp = _opp("RESEARCH OPPORTUNITY: Food Science - Fiber Structure and Mechanics in Foods")
+        assert is_likely_non_opportunity(opp) is False
+
+    def test_enrich_flags_non_opportunity_inactive(self):
+        opp = _opp("2025 Undergraduate Research Symposium Award Winners!")
+        opp["metadata"] = {"is_active": True, "notes": ""}
+        enrich_opportunity(opp)
+        assert opp["metadata"]["is_active"] is False
+        assert "auto-flagged" in opp["metadata"]["notes"]
 
 
 class TestInferKeywords:
