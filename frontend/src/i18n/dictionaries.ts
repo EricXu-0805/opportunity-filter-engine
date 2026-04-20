@@ -452,6 +452,8 @@ export const en = {
     },
     fields: {
       deadline: 'Deadline',
+      deadlineEstimate: '(estimated)',
+      rollingBasis: 'Rolling — no fixed deadline',
       startDate: 'Start date',
       duration: 'Duration',
       compensation: 'Compensation',
@@ -1157,6 +1159,8 @@ export const zh = {
     },
     fields: {
       deadline: '截止日期',
+      deadlineEstimate: '（估算）',
+      rollingBasis: '滚动招生 —— 无固定截止',
       startDate: '开始日期',
       duration: '时长',
       compensation: '薪酬',

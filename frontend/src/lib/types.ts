@@ -90,6 +90,8 @@ export interface Opportunity {
   description_raw?: string;
   keywords: string[];
   deadline?: string;
+  deadline_is_estimate?: boolean;
+  is_rolling?: boolean;
   compensation_details?: string;
   duration?: string;
   start_date?: string;

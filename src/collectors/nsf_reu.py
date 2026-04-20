@@ -51,6 +51,46 @@ STEM_KEYWORDS = {
 }
 
 
+def _estimate_reu_deadline(start_date: str) -> str | None:
+    """Estimate a reasonable application deadline for an NSF REU program.
+
+    NSF REU Sites typically accept applications in late fall (Oct-Nov)
+    through late winter (Feb-Mar), with a final deadline ~2-3 months
+    before the program start. Since the NSF award API doesn't expose
+    per-year application deadlines, this is a best-effort heuristic so
+    students see *something* actionable in the deadline field. The
+    `deadline_is_estimate` flag lets the UI surface this as an estimate.
+
+    Returns ISO 8601 date string (YYYY-MM-DD) or None.
+    """
+    if not start_date or "/" not in start_date:
+        return None
+    try:
+        parts = start_date.split("/")
+        if len(parts) != 3:
+            return None
+        month = int(parts[0])
+        year = int(parts[2])
+    except (ValueError, IndexError):
+        return None
+
+    if year < 2024 or year > 2100:
+        return None
+
+    # Map start month -> typical deadline month (end-of-month)
+    # Summer starts (May/June) -> Feb/Mar deadlines
+    # Fall/academic starts -> earlier estimate is fuzzier; default to Feb
+    if month in (5, 6, 7):
+        deadline_month, deadline_day = 3, 1   # March 1
+    elif month == 8:
+        deadline_month, deadline_day = 4, 1   # April 1
+    else:
+        # Off-cycle or unknown — use Feb 15 as conservative default
+        deadline_month, deadline_day = 2, 15
+
+    return f"{year:04d}-{deadline_month:02d}-{deadline_day:02d}"
+
+
 def _extract_skills_from_abstract(abstract: str) -> list[str]:
     known = [
         "Python", "Java", "C++", "C", "R", "MATLAB", "SQL",
@@ -170,6 +210,11 @@ def normalize_award(award: dict) -> dict:
 
     clean_title = re.sub(r"^REU\s+Site:\s*", "", title, flags=re.IGNORECASE).strip()
 
+    # NSF REU summer program applications typically open in fall and
+    # close Feb/March for a May/June start. Estimate the next deadline
+    # from start_date (start_month - 3 months, capped at Feb/Mar window).
+    estimated_deadline = _estimate_reu_deadline(start)
+
     return {
         "id": opp_id,
         "source": "nsf_reu",
@@ -188,7 +233,8 @@ def normalize_award(award: dict) -> dict:
         "opportunity_type": "summer_program",
         "paid": "yes",
         "compensation_details": "NSF-funded stipend (typically $6,000-$7,000 for 10 weeks)",
-        "deadline": None,
+        "deadline": estimated_deadline,
+        "deadline_is_estimate": bool(estimated_deadline),
         "posted_date": start[:10] if start else None,
         "start_date": start[:10] if start else None,
         "duration": "Summer (8-10 weeks)",

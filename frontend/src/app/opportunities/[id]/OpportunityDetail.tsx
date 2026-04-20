@@ -282,7 +282,20 @@ export default function OpportunityDetail({
       <Section title={t('detail.sections.atGlance')}>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
           {opp.deadline && (
-            <DetailRow icon={<Calendar />} label={t('detail.fields.deadline')} value={opp.deadline} />
+            <DetailRow
+              icon={<Calendar />}
+              label={t('detail.fields.deadline')}
+              value={opp.deadline_is_estimate
+                ? `${opp.deadline} ${t('detail.fields.deadlineEstimate')}`
+                : opp.deadline}
+            />
+          )}
+          {!opp.deadline && opp.is_rolling && (
+            <DetailRow
+              icon={<Calendar />}
+              label={t('detail.fields.deadline')}
+              value={t('detail.fields.rollingBasis')}
+            />
           )}
           {opp.start_date && (
             <DetailRow icon={<Calendar />} label={t('detail.fields.startDate')} value={opp.start_date} />
