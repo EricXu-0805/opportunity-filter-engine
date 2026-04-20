@@ -13,20 +13,48 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'OpportunityEngine — UIUC Research & Internship Matching',
+  title: {
+    default: 'OpportunityEngine — UIUC Research & Internship Matching',
+    template: '%s · OpportunityEngine',
+  },
   description:
-    'AI-powered matching engine connecting UIUC students with research positions and internship opportunities.',
+    'AI-powered matching engine connecting UIUC undergraduates with 1,700+ research positions, internships, and summer programs that actually fit their background.',
   metadataBase: new URL('https://opportunity-filter-engine.vercel.app'),
+  applicationName: 'OpportunityEngine',
+  authors: [{ name: 'Eric Xu', url: 'https://github.com/EricXu-0805' }],
+  keywords: [
+    'UIUC research', 'UIUC internships', 'undergraduate research',
+    'REU', 'research matching', 'Illinois research opportunities',
+    'Grainger Engineering', 'summer programs', 'AI opportunity matching',
+  ],
   openGraph: {
-    title: 'OpportunityEngine',
-    description: 'Find research and internship opportunities at UIUC that match your background.',
+    title: 'OpportunityEngine — UIUC Research & Internship Matching',
+    description:
+      'Find research and internship opportunities at UIUC that actually match your background. AI-powered, free, built by students.',
     siteName: 'OpportunityEngine',
     type: 'website',
+    locale: 'en_US',
+    alternateLocale: 'zh_CN',
+    url: 'https://opportunity-filter-engine.vercel.app',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'OpportunityEngine',
-    description: 'AI-powered UIUC research & internship matching.',
+    title: 'OpportunityEngine — UIUC Research Matching',
+    description:
+      'AI-powered matching engine for 1,700+ UIUC research positions and internships.',
+    creator: '@EricXu_0805',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
+  },
+  alternates: {
+    canonical: 'https://opportunity-filter-engine.vercel.app',
+    languages: {
+      'en': 'https://opportunity-filter-engine.vercel.app?lang=en',
+      'zh': 'https://opportunity-filter-engine.vercel.app?lang=zh',
+    },
   },
 };
 

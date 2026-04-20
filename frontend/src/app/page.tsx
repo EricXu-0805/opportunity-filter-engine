@@ -329,7 +329,7 @@ function HomePageInner() {
                     </option>
                     {majors.map((m) => (
                       <option key={m} value={m}>
-                        {m}
+                        {translateKey(t, 'majors', m)}
                       </option>
                     ))}
                   </select>

@@ -17,7 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.routes import matches, opportunities, cold_email, resume, push, admin
 
-API_VERSION = "2.5.0"
+API_VERSION = "2.6.0"
 
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 
