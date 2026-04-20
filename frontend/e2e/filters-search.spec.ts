@@ -16,8 +16,10 @@ test.describe('Filters, search, sort', () => {
     const search = page.getByPlaceholder(/Search by title/i);
     await search.fill('research');
     await expect(page).toHaveURL(/q=research/, { timeout: 2_000 });
-    // Debounce is ~300ms; give the result-count paragraph up to 3s
-    await expect(page.getByText(/result(s)? for/i)).toBeVisible({ timeout: 3_000 });
+    // After debounce (~300ms), the search echo "…research" shows up in
+    // the quoted span. Match the quoted query instead of "result(s)? for"
+    // because the "for" prefix is split into its own i18n span.
+    await expect(page.getByText(/\u201Cresearch\u201D/)).toBeVisible({ timeout: 3_000 });
   });
 
   test('tabs switch and persist to URL', async ({ page }) => {
