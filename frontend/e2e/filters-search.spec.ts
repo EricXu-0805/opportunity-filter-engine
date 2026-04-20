@@ -16,7 +16,8 @@ test.describe('Filters, search, sort', () => {
     const search = page.getByPlaceholder(/Search by title/i);
     await search.fill('research');
     await expect(page).toHaveURL(/q=research/, { timeout: 2_000 });
-    await expect(page.getByText(/result(s)? for/i)).toBeVisible();
+    // Debounce is ~300ms; give the result-count paragraph up to 3s
+    await expect(page.getByText(/result(s)? for/i)).toBeVisible({ timeout: 3_000 });
   });
 
   test('tabs switch and persist to URL', async ({ page }) => {
