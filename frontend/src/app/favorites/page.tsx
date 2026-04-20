@@ -19,9 +19,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
-import { getOpportunitiesByIds } from '@/lib/api';
+import { getOpportunitiesByIds, sendFavoritesEmail } from '@/lib/api';
+import { getInteractionsFull } from '@/lib/supabase';
 import Badge from '@/components/Badge';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
+import EmailMeButton from '@/components/EmailMeButton';
 import { useT } from '@/i18n/client';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
@@ -155,15 +157,38 @@ export default function FavoritesPage() {
             <p className="mt-1 text-[12px] text-gray-400">{t('favorites.compareHint')}</p>
           )}
         </div>
-        {selectedForCompare.size >= 2 && (
-          <Link
-            href={`/compare?ids=${Array.from(selectedForCompare).map(encodeURIComponent).join(',')}`}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 transition-colors shrink-0 shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
-          >
-            <GitCompare className="w-4 h-4" aria-hidden="true" />
-            {t('favorites.compareSelected', { count: selectedForCompare.size })}
-          </Link>
-        )}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {opportunities.length > 0 && (
+            <EmailMeButton
+              label={t('email.sendFavorites')}
+              title={t('email.subtitle')}
+              onSend={async (emailAddr) => {
+                const interactions = await getInteractionsFull().catch(() => new Map());
+                const items = opportunities.slice(0, 50).map((o) => {
+                  const rec = interactions.get(o.id);
+                  return {
+                    title: o.title,
+                    url: o.url || '',
+                    source: o.source || '',
+                    deadline: o.deadline || null,
+                    notes: rec?.notes || '',
+                    status: rec?.type || '',
+                  };
+                });
+                return sendFavoritesEmail(emailAddr, items);
+              }}
+            />
+          )}
+          {selectedForCompare.size >= 2 && (
+            <Link
+              href={`/compare?ids=${Array.from(selectedForCompare).map(encodeURIComponent).join(',')}`}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 transition-colors shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
+            >
+              <GitCompare className="w-4 h-4" aria-hidden="true" />
+              {t('favorites.compareSelected', { count: selectedForCompare.size })}
+            </Link>
+          )}
+        </div>
       </div>
 
       {opportunities.length === 0 ? (

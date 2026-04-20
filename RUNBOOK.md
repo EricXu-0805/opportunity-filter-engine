@@ -235,6 +235,30 @@ Rules are regex-based and conservative — never overwrites real upstream
 data. Extend `MAJOR_PATTERNS` / `KEYWORD_PATTERNS` in the enricher when
 new domains (e.g. a new humanities source) are added.
 
+## Email endpoints (Resend)
+
+Three new endpoints under `/api/email/*`:
+
+- `POST /api/email/send-matches` — send top-50 filtered matches to an email
+- `POST /api/email/send-favorites` — send saved opportunities + notes
+- `POST /api/email/restore-link` — send a signed URL that verifies on `/restore`
+
+All three return **503** when env vars are unset — the UI falls back
+gracefully. To enable:
+
+1. Sign up at [resend.com](https://resend.com) (100 emails/day free).
+2. Verify a sending domain or use the built-in `onboarding@resend.dev`
+   for testing (not for production — Resend throttles).
+3. Add to **Render** env vars:
+   ```
+   RESEND_API_KEY=re_xxx
+   RESEND_FROM_EMAIL=OpportunityEngine <hello@yourdomain.com>
+   ```
+4. For restore links to work, also set `RESTORE_LINK_SECRET` (or reuse
+   `ADMIN_TOKEN`). HMAC-signed, 30-day TTL.
+
+Rate-limits: 3 per IP per hour, enforced in `backend/main.py`.
+
 ## What this session deferred
 
 The following were initially planned but **not shipped** to keep the

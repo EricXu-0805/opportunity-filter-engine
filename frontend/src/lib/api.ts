@@ -200,3 +200,60 @@ export interface UpcomingResponse {
 export async function getUpcomingDeadlines(days = 30): Promise<UpcomingResponse> {
   return request<UpcomingResponse>(`/opportunities/upcoming?days=${days}`);
 }
+
+export interface EmailMatchItem {
+  title: string;
+  url?: string;
+  score?: number;
+  source?: string;
+  deadline?: string | null;
+  organization?: string;
+}
+
+export async function sendMatchesEmail(
+  email: string,
+  items: EmailMatchItem[],
+  subjectHint = '',
+): Promise<{ ok: boolean; count: number }> {
+  return request('/email/send-matches', {
+    method: 'POST',
+    body: JSON.stringify({ email, items, subject_hint: subjectHint }),
+  });
+}
+
+export interface EmailFavoriteItem {
+  title: string;
+  url?: string;
+  score?: number;
+  source?: string;
+  deadline?: string | null;
+  notes?: string;
+  status?: string;
+}
+
+export async function sendFavoritesEmail(
+  email: string,
+  items: EmailFavoriteItem[],
+): Promise<{ ok: boolean; count: number }> {
+  return request('/email/send-favorites', {
+    method: 'POST',
+    body: JSON.stringify({ email, items }),
+  });
+}
+
+export async function sendRestoreLink(
+  email: string,
+  deviceId: string,
+): Promise<{ ok: boolean; note?: string }> {
+  return request('/email/restore-link', {
+    method: 'POST',
+    body: JSON.stringify({ email, device_id: deviceId }),
+  });
+}
+
+export async function verifyRestoreLink(
+  params: { d: string; t: string; s: string },
+): Promise<{ ok: boolean; device_id: string }> {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/email/verify-restore?${qs}`);
+}

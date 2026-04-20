@@ -547,3 +547,92 @@ class TestStatsFreshness:
         # data file should exist in tests (either real or example)
         if body.get("total", 0) > 0:
             assert "last_updated_at" in body
+
+
+class TestEmailEndpoints:
+    def test_send_matches_503_when_unconfigured(self, monkeypatch):
+        monkeypatch.delenv("RESEND_API_KEY", raising=False)
+        monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
+        r = client.post("/api/email/send-matches", json={
+            "email": "test@example.com",
+            "items": [{"title": "x", "url": "https://example.com"}],
+        })
+        assert r.status_code == 503
+
+    def test_send_matches_422_invalid_email(self, monkeypatch):
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        r = client.post("/api/email/send-matches", json={
+            "email": "not-an-email",
+            "items": [{"title": "x"}],
+        })
+        assert r.status_code == 422
+
+    def test_send_matches_400_empty_items(self, monkeypatch):
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        r = client.post("/api/email/send-matches", json={
+            "email": "test@example.com",
+            "items": [],
+        })
+        assert r.status_code == 400
+
+    def test_send_matches_422_too_many(self, monkeypatch):
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        r = client.post("/api/email/send-matches", json={
+            "email": "test@example.com",
+            "items": [{"title": f"opp{i}"} for i in range(51)],
+        })
+        assert r.status_code == 422
+
+    def test_restore_link_ok_disabled_when_no_secret(self, monkeypatch):
+        monkeypatch.delenv("RESTORE_LINK_SECRET", raising=False)
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        r = client.post("/api/email/restore-link", json={
+            "email": "test@example.com",
+            "device_id": "abcd1234",
+        })
+        assert r.status_code == 200
+        assert r.json().get("note") == "disabled"
+
+    def test_verify_restore_rejects_invalid_device_id(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-xyz")
+        r = client.get("/api/email/verify-restore?d=%21&t=123&s=abc")
+        assert r.status_code == 400
+
+    def test_verify_restore_rejects_expired(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-xyz")
+        r = client.get("/api/email/verify-restore?d=abcd1234&t=1&s=abc")
+        assert r.status_code == 400
+
+    def test_verify_restore_roundtrip(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-roundtrip")
+        from backend.routes.email import _sign_restore_payload
+        import time as _time
+        ts = int(_time.time())
+        sig = _sign_restore_payload("abcd1234", ts)
+        r = client.get(f"/api/email/verify-restore?d=abcd1234&t={ts}&s={sig}")
+        assert r.status_code == 200
+        assert r.json()["device_id"] == "abcd1234"
+
+
+class TestEmailRenderers:
+    def test_match_email_html_contains_title_and_link(self):
+        from backend.routes.email import _render_match_email, MatchItem
+        subject, html, text = _render_match_email([
+            MatchItem(title="Test Lab", url="https://example.com/a", score=85.5,
+                      source="uiuc_faculty", deadline="2026-03-01", organization="UIUC"),
+        ], "")
+        assert "Test Lab" in html
+        assert "https://example.com/a" in html
+        assert "86% match" in html  # banker's rounding 85.5 -> 86
+        assert "Test Lab" in text
+
+    def test_match_email_escapes_html(self):
+        from backend.routes.email import _render_match_email, MatchItem
+        _, html, _ = _render_match_email([
+            MatchItem(title="<script>alert(1)</script>", url="https://x.com"),
+        ], "")
+        assert "<script>alert(1)</script>" not in html
+        assert "&lt;script&gt;" in html

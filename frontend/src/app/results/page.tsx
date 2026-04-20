@@ -22,11 +22,12 @@ import {
 import dynamic from 'next/dynamic';
 import MatchCard from '@/components/MatchCard';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
+import EmailMeButton from '@/components/EmailMeButton';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
   ssr: false,
 });
-import { getMatches } from '@/lib/api';
+import { getMatches, sendMatchesEmail } from '@/lib/api';
 import { getFavorites, toggleFavorite, getInteractions, trackInteraction, removeInteraction } from '@/lib/supabase';
 import type { InteractionType } from '@/lib/supabase';
 import type { ProfileData, MatchResult, MatchesResponse } from '@/lib/types';
@@ -636,6 +637,25 @@ function ResultsContent() {
             >
               ?
             </button>
+          )}
+          {!loading && data && filtered.length > 0 && (
+            <EmailMeButton
+              label={t('email.sendMatches')}
+              title={t('email.subtitle')}
+              onSend={async (emailAddr) => {
+                const top = filtered.slice(0, 50);
+                const items = top.map((m) => ({
+                  title: m.opportunity.title,
+                  url: m.opportunity.url || m.opportunity.source_url || '',
+                  score: m.final_score,
+                  source: m.opportunity.source || '',
+                  deadline: m.opportunity.deadline || null,
+                  organization: m.opportunity.organization || '',
+                }));
+                const hint = t('email.subjectMatches', { count: items.length });
+                return sendMatchesEmail(emailAddr, items, hint);
+              }}
+            />
           )}
           {!loading && data && favs.size > 0 && (
             <button

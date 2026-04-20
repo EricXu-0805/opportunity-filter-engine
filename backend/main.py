@@ -15,9 +15,9 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.routes import matches, opportunities, cold_email, resume, push, admin
+from backend.routes import matches, opportunities, cold_email, resume, push, admin, email as email_routes
 
-API_VERSION = "2.6.0"
+API_VERSION = "2.7.0"
 
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 
@@ -28,6 +28,9 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/cold-email/variants": (15, 60),
     "/api/resume/upload": (5, 60),
     "/api/resume/github": (10, 60),
+    "/api/email/send-matches": (3, 3600),
+    "/api/email/send-favorites": (3, 3600),
+    "/api/email/restore-link": (3, 3600),
 }
 DEFAULT_RATE = (60, 60)
 
@@ -130,6 +133,7 @@ app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])
+app.include_router(email_routes.router, prefix="/api", tags=["email"])
 
 
 @app.get("/api/health")
