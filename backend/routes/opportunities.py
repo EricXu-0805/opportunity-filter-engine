@@ -210,6 +210,15 @@ async def get_stats():
     paid_total = sum(1 for o in opportunities if o.get("paid") in ("yes", "stipend"))
     intl_total = sum(1 for o in opportunities if o.get("eligibility", {}).get("international_friendly") == "yes")
 
+    from pathlib import Path
+    from datetime import datetime, timezone
+    data_path = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
+    last_updated_at = None
+    if data_path.exists():
+        last_updated_at = datetime.fromtimestamp(
+            data_path.stat().st_mtime, tz=timezone.utc
+        ).isoformat()
+
     result = {
         "total": len(opportunities),
         "active": active,
@@ -219,6 +228,7 @@ async def get_stats():
         "by_source": source_counts,
         "by_paid": paid_counts,
         "by_international": intl_counts,
+        "last_updated_at": last_updated_at,
     }
     _stats_cache = result
     _stats_cache_time = now

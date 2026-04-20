@@ -166,6 +166,7 @@ export interface StatsResponse {
   by_source: Record<string, number>;
   by_paid: Record<string, number>;
   by_international: Record<string, number>;
+  last_updated_at?: string | null;
 }
 
 // ── Opportunities list ───────────────────────────────────────────────

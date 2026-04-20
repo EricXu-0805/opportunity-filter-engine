@@ -35,6 +35,16 @@ import { saveProfile, loadProfile } from '@/lib/supabase';
 import { COLLEGES, COLLEGE_MAJORS, GRADES } from '@/lib/colleges';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
 
+function formatRelativeAge(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (diffSec < 60) return 'just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
+}
+
 function translateKey(t: (p: string) => string, namespace: string, name: string): string {
   const key = `${namespace}.${name}`;
   const out = t(key);
@@ -67,6 +77,7 @@ function HomePageInner() {
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [searchWeight, setSearchWeight] = useState(50);
   const [oppCount, setOppCount] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [ghLoading, setGhLoading] = useState(false);
   const [ghStatus, setGhStatus] = useState<string | null>(null);
   const [sharedBanner, setSharedBanner] = useState<string | null>(null);
@@ -77,7 +88,10 @@ function HomePageInner() {
   const isInitialLoad = useRef(true);
 
   useEffect(() => {
-    getStats().then(s => setOppCount(s.total)).catch(() => {});
+    getStats().then(s => {
+      setOppCount(s.total);
+      setLastUpdated(s.last_updated_at ?? null);
+    }).catch(() => {});
 
     const shareParam = searchParams.get('share');
     if (shareParam) {
@@ -615,6 +629,11 @@ function HomePageInner() {
             <p className="text-sm text-blue-200 mt-1">
               {t('home.cards.liveDatabaseHint')}
             </p>
+            {lastUpdated && (
+              <p className="text-[11px] text-blue-200/70 mt-1.5">
+                {t('home.cards.updatedPrefix')} {formatRelativeAge(lastUpdated)}
+              </p>
+            )}
           </Card>
         </div>
       </div>

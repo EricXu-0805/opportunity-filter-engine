@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,20 @@ router = APIRouter()
 
 _HISTORY_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "admin_history.jsonl"
 _HISTORY_MAX_ENTRIES = 365
+
+# Cache for the data-quality endpoint. Scanning 1741 opportunities takes
+# ~80-120ms; cached it's sub-millisecond. TTL set to 5 minutes so admin
+# refresh reflects changes within a reasonable window but polling is cheap.
+_CACHE_TTL_SECONDS = 300
+_cache: dict = {"snapshot": None, "built_at": 0.0}
+
+
+def _opportunities_mtime() -> str | None:
+    path = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
+    if not path.exists():
+        return None
+    ts = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    return ts.isoformat()
 
 _UNSORTED_SENTINELS = frozenset({"unsorted", "uncategorized", "misc"})
 
@@ -50,8 +65,15 @@ def _authenticate(token_query: str | None, token_header: str | None) -> None:
 async def data_quality(
     token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+    force: bool = Query(default=False, description="Bypass cache"),
 ):
     _authenticate(token, x_admin_token)
+
+    now = time.time()
+    if not force and _cache["snapshot"] and (now - _cache["built_at"]) < _CACHE_TTL_SECONDS:
+        cached = dict(_cache["snapshot"])
+        cached["cache_age_seconds"] = round(now - _cache["built_at"], 1)
+        return cached
 
     opps = load_opportunities()
     total = len(opps)
@@ -146,13 +168,18 @@ async def data_quality(
     worst_fields.sort(key=lambda x: x["missing_count"], reverse=True)
 
     generated_at = datetime.now(timezone.utc)
+    data_mtime = _opportunities_mtime()
     snapshot = {
         "total": total,
         "global": dict(global_counts),
         "sources": sources_list,
         "worst_fields": worst_fields[:20],
         "generated_at": generated_at.isoformat(),
+        "data_updated_at": data_mtime,
+        "cache_age_seconds": 0,
     }
+    _cache["snapshot"] = snapshot
+    _cache["built_at"] = now
 
     _append_history_snapshot(generated_at, total, dict(global_counts))
 

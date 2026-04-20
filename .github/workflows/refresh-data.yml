@@ -48,6 +48,9 @@ jobs:
             python -m src.collectors.refresh_all --no-deep
           fi
 
+      - name: Retroactive enricher pass
+        run: python -m src.normalizers.enrich_processed --save
+
       - name: Check for changes
         id: changes
         run: |
@@ -61,6 +64,7 @@ jobs:
           git add data/processed/opportunities.json
           TOTAL=$(python3 -c "import json; print(len(json.load(open('data/processed/opportunities.json'))))")
           EMAILS=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('contact_email')))")
+          INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
           MODE="${{ steps.mode.outputs.deep == 'true' && 'deep' || 'quick' }}"
-          git commit -m "chore: auto-refresh opportunity data ($TOTAL total, $EMAILS with email, $MODE mode)"
+          git commit -m "chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode)"
           git push

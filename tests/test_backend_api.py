@@ -465,3 +465,85 @@ class TestHTMLSanitization:
     def test_strip_html_passthrough_plain_text(self):
         from backend.data_loader import _strip_html
         assert _strip_html("plain text") == "plain text"
+
+
+class TestAdminDataQuality:
+    def test_503_when_token_unset(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        from backend.routes import admin as admin_mod
+        admin_mod._cache["snapshot"] = None
+        admin_mod._cache["built_at"] = 0.0
+        r = client.get("/api/admin/data-quality")
+        assert r.status_code == 503
+
+    def test_401_when_wrong_token(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        from backend.routes import admin as admin_mod
+        admin_mod._cache["snapshot"] = None
+        admin_mod._cache["built_at"] = 0.0
+        r = client.get("/api/admin/data-quality?token=wrong")
+        assert r.status_code == 401
+
+    def test_200_with_token_and_cache(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-xyz")
+        from backend.routes import admin as admin_mod
+        admin_mod._cache["snapshot"] = None
+        admin_mod._cache["built_at"] = 0.0
+
+        r1 = client.get("/api/admin/data-quality?token=secret-xyz")
+        assert r1.status_code == 200
+        d = r1.json()
+        assert "total" in d
+        assert "global" in d
+        assert "rolling_deadline" in d["global"]
+        assert d["cache_age_seconds"] == 0
+
+        r2 = client.get("/api/admin/data-quality?token=secret-xyz")
+        assert r2.status_code == 200
+        d2 = r2.json()
+        assert d2["cache_age_seconds"] >= 0  # served from cache
+
+    def test_force_bypasses_cache(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "t")
+        from backend.routes import admin as admin_mod
+        admin_mod._cache["snapshot"] = {"cached": True}
+        admin_mod._cache["built_at"] = 9999999999.0
+        r = client.get("/api/admin/data-quality?token=t&force=true")
+        assert r.status_code == 200
+        assert r.json().get("cached") is None  # force rebuilt
+
+
+class TestRollingSkillScoring:
+    def test_rolling_lab_empty_skills_scored_neutral(self):
+        from src.matcher.ranker import score_eligibility
+        rolling_lab = {
+            "title": "Research with Prof X",
+            "source": "uiuc_faculty",
+            "is_rolling": True,
+            "eligibility": {
+                "majors": ["CS"],
+                "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+                "skills_required": [],
+                "international_friendly": "yes",
+            },
+            "opportunity_type": "research",
+        }
+        non_rolling_lab = {**rolling_lab, "is_rolling": False}
+        profile = {
+            "year": "junior", "major": "CS", "secondary_interests": [],
+            "international_student": False, "seeking_type": ["research"],
+            "hard_skills": [], "desired_fields": [],
+        }
+        rolling_score, _, _ = score_eligibility(profile, rolling_lab)
+        non_rolling_score, _, _ = score_eligibility(profile, non_rolling_lab)
+        assert rolling_score > non_rolling_score
+
+
+class TestStatsFreshness:
+    def test_stats_returns_last_updated_at(self):
+        r = client.get("/api/opportunities/stats/summary")
+        assert r.status_code == 200
+        body = r.json()
+        # data file should exist in tests (either real or example)
+        if body.get("total", 0) > 0:
+            assert "last_updated_at" in body

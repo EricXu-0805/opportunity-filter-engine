@@ -482,11 +482,19 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
         else:
             reasons_fit.append("Open to international students")
 
-    # Skill overlap (15% weight)
-    skill_score = _skill_overlap_score(
-        profile.get("hard_skills", []),
-        elig.get("skills_required", [])
-    )
+    # Skill overlap (15% weight). Rolling-basis postings (faculty labs,
+    # SRO entries) typically don't list fixed skill requirements because
+    # they adapt to whoever applies. Treat their empty skills as neutral
+    # (60) rather than penalized (35) so research-curious students don't
+    # get marked down for lab postings that explicitly don't screen on skills.
+    required_skills_list = elig.get("skills_required", []) or []
+    if not required_skills_list and opportunity.get("is_rolling"):
+        skill_score = 60.0
+    else:
+        skill_score = _skill_overlap_score(
+            profile.get("hard_skills", []),
+            required_skills_list
+        )
     student_skill_map = _parse_skills(profile.get("hard_skills", []))
     required_raw = elig.get("skills_required", [])
     matched_skills = []
