@@ -214,6 +214,27 @@ If anything goes wrong:
 
 Migration 004 was defined but superseded by 006 — do not apply.
 
+## Data quality — majors/keywords enricher
+
+`src/normalizers/enricher.py` backfills `eligibility.majors` and
+`keywords` for opportunities whose upstream source left them empty or
+tagged `"Unsorted"`. Wired into `uiuc_our_rss`, `handshake`, and
+`manual_importer` normalizers, so new entries are enriched on ingestion.
+
+To retroactively enrich the current dataset:
+
+```bash
+# Preview changes
+python3 -m src.normalizers.enrich_processed --dry-run
+
+# Persist
+python3 -m src.normalizers.enrich_processed --save
+```
+
+Rules are regex-based and conservative — never overwrites real upstream
+data. Extend `MAJOR_PATTERNS` / `KEYWORD_PATTERNS` in the enricher when
+new domains (e.g. a new humanities source) are added.
+
 ## What this session deferred
 
 The following were initially planned but **not shipped** to keep the

@@ -64,10 +64,12 @@ def create_opportunity(
     Create a single opportunity record in the normalized schema.
     This is the canonical way to add manual entries.
     """
+    from src.normalizers.enricher import enrich_opportunity
+
     opp_id = kwargs.get("id") or f"manual-{uuid.uuid4().hex[:8]}"
     now = datetime.utcnow().isoformat()
 
-    return {
+    opp = {
         "id": opp_id,
         "source": source,
         "source_url": url,
@@ -121,6 +123,7 @@ def create_opportunity(
             "notes": kwargs.get("notes", ""),
         },
     }
+    return enrich_opportunity(opp)
 
 
 def load_from_json(filepath: str) -> list[dict]:

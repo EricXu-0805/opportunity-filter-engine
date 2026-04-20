@@ -159,18 +159,19 @@ def _detect_international_friendly(text: str) -> str:
 
 def raw_to_normalized(raw: RawOpportunity) -> dict:
     """Convert a RawOpportunity from RSS into the normalized nested schema."""
+    from src.normalizers.enricher import enrich_opportunity
+
     desc_clean = _strip_html(raw.description_raw)
     opp_type = _detect_opportunity_type(raw.title, desc_clean)
     deadline = _detect_deadline(desc_clean)
     intl = _detect_international_friendly(desc_clean)
 
-    # Generate stable ID from URL
     url_hash = hashlib.md5(raw.url.encode()).hexdigest()[:8]
     opp_id = f"rss-our-{url_hash}"
 
     now = datetime.utcnow().isoformat()
 
-    return {
+    opp = {
         "id": opp_id,
         "source": "uiuc_our_rss",
         "source_url": raw.url,
@@ -224,6 +225,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
             "notes": "Auto-imported from UIUC OUR RSS feed",
         },
     }
+    return enrich_opportunity(opp)
 
 
 def fetch_and_normalize() -> list[dict]:

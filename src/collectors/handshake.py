@@ -264,6 +264,8 @@ def _parse_posting(result: dict) -> Optional[dict]:
 
 def normalize_posting(raw: dict) -> dict:
     """Normalize a parsed Handshake posting to the opportunity schema."""
+    from src.normalizers.enricher import enrich_opportunity
+
     pid = raw["handshake_id"]
     opp_id = f"handshake-{hashlib.md5(pid.encode()).hexdigest()[:8]}"
     now = datetime.utcnow().isoformat()
@@ -273,7 +275,7 @@ def normalize_posting(raw: dict) -> dict:
 
     paid = raw.get("paid", "unknown")
 
-    return {
+    opp = {
         "id": opp_id,
         "source": "handshake",
         "source_url": raw["url"],
@@ -329,6 +331,7 @@ def normalize_posting(raw: dict) -> dict:
             "handshake_id": pid,
         },
     }
+    return enrich_opportunity(opp)
 
 
 def _extract_keywords(text: str) -> list[str]:
