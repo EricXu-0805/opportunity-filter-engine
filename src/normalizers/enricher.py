@@ -213,6 +213,84 @@ KEYWORD_PATTERNS: dict[str, list[str]] = {
 }
 
 
+# Skill patterns with strict word boundaries. Used to backfill
+# eligibility.skills_required when upstream didn't extract any.
+# These intentionally require clear context (e.g. "R programming"
+# not "R" because "R" alone collides with words like "Research").
+SKILL_PATTERNS: dict[str, list[str]] = {
+    "Python": [r"\bpython\b"],
+    "PyTorch": [r"\bpytorch\b"],
+    "TensorFlow": [r"\btensorflow\b|\btensor flow\b"],
+    "scikit-learn": [r"\bscikit[- ]learn\b|\bsklearn\b"],
+    "NumPy": [r"\bnumpy\b"],
+    "pandas": [r"\bpandas\b"],
+    "MATLAB": [r"\bmatlab\b"],
+    "R": [r"\bR\s+programming\b", r"\bR\s+language\b", r"\bR\s+statistical\b",
+          r"\bR\s+(?:package|library|script)\b"],
+    "SAS": [r"\bSAS\s+(?:software|programming|analytics)\b"],
+    "Stata": [r"\bStata\b"],
+    "SPSS": [r"\bSPSS\b"],
+    "SQL": [r"\bSQL\b"],
+    "Java": [r"\bJava\s+programming\b", r"\bin\s+Java\b(?!script)"],
+    "C++": [r"C\+\+"],
+    "C": [r"\bC\s+programming\b"],
+    "JavaScript": [r"\bjavascript\b"],
+    "TypeScript": [r"\btypescript\b"],
+    "HTML/CSS": [r"\bHTML(?:\s*/\s*CSS)?\b", r"\bCSS\b"],
+    "Git": [r"\bgit\b|\bgithub\b|\bgitlab\b"],
+    "Docker": [r"\bdocker\b|\bcontainer"],
+    "Linux": [r"\blinux\b|\bunix\b|\bbash\s+scripting\b"],
+    "AWS": [r"\bAWS\b|\bamazon web services\b"],
+    "GCP": [r"\bGCP\b|\bgoogle cloud\b"],
+    "Azure": [r"\bmicrosoft azure\b"],
+    "LaTeX": [r"\bLaTeX\b"],
+    # ECE / hardware
+    "LabVIEW": [r"\blabview\b"],
+    "Verilog": [r"\bverilog\b|\bsystemverilog\b"],
+    "VHDL": [r"\bvhdl\b"],
+    "FPGA": [r"\bfpga\b"],
+    "PCB design": [r"\bpcb\s+design\b"],
+    # Mechanical / materials
+    "CAD": [r"\bCAD\b|\bAutoCAD\b|\bSolidWorks\b|\bFusion\s+360\b"],
+    "FEA": [r"\bFEA\b|\bfinite element\b|\bANSYS\b|\bAbaqus\b"],
+    "3D printing": [r"\b3D\s+printing\b|\badditive manufacturing\b"],
+    # Chemistry / biology wet-lab
+    "PCR": [r"\bPCR\b|\bqPCR\b"],
+    "microscopy": [r"\b(confocal |fluorescence |electron )?microscopy\b"],
+    "HPLC": [r"\bHPLC\b|\bLC[- ]MS\b|\bGC[- ]MS\b"],
+    "cell culture": [r"\bcell culture\b|\btissue culture\b"],
+    "spectroscopy": [r"\b(NMR|IR|UV[- ]Vis|Raman)\s+spectroscopy\b", r"\bmass spectrometry\b"],
+    # Statistical / data science
+    "machine learning": [r"\bmachine learning\b"],
+    "deep learning": [r"\bdeep learning\b|\bneural networks?\b"],
+    "statistical analysis": [r"\bstatistical analysis\b|\bregression analysis\b"],
+    "data analysis": [r"\bdata analysis\b|\bdata analytics\b"],
+}
+
+# Non-substring contexts that block a skill match even when the pattern
+# matches. Prevents e.g. "R" in "Research" from surfacing.
+_SKILL_BLOCKLIST_CONTEXTS: dict[str, list[str]] = {
+    "R": [r"\bresearch\b", r"\bReview\b", r"\bResume\b"],
+}
+
+
+def _extract_skills_from_text(text: str) -> list[str]:
+    found = []
+    for skill, patterns in SKILL_PATTERNS.items():
+        matched = False
+        for p in patterns:
+            if re.search(p, text, re.IGNORECASE):
+                matched = True
+                break
+        if not matched:
+            continue
+        blocklist = _SKILL_BLOCKLIST_CONTEXTS.get(skill)
+        if blocklist and any(re.search(b, text, re.IGNORECASE) for b in blocklist):
+            continue
+        found.append(skill)
+    return found
+
+
 def _combined_text(opp: dict) -> str:
     title = (opp.get("title") or "").lower()
     desc = (opp.get("description_clean") or opp.get("description_raw") or "").lower()
@@ -312,6 +390,51 @@ def is_likely_non_opportunity(opp: dict) -> bool:
     return False
 
 
+# Sources whose postings are, by default, year-round research positions
+# without a fixed deadline. Displaying "missing deadline" for these is
+# misleading — they accept students any time (rolling basis).
+_ROLLING_BY_SOURCE: frozenset = frozenset({
+    "uiuc_faculty",  # professor research pages — contact anytime
+    "uiuc_sro",      # SRO lab index — most are rolling
+})
+
+_ROLLING_TEXT_PATTERNS: list[str] = [
+    r"\brolling\s+(basis|admission|application)",
+    r"\bopen\s+until\s+filled\b",
+    r"\bapplications?\s+accepted\s+(on a |)rolling",
+    r"\baccepted\s+year[- ]round\b",
+    r"\bcontact\s+(the\s+)?(pi|professor|faculty)\s+(directly|anytime)",
+    r"\bno\s+(fixed\s+)?deadline\b",
+    r"\bongoing\s+recruitment\b",
+]
+
+_ROLLING_TEXT_COMPILED = [re.compile(p, re.IGNORECASE) for p in _ROLLING_TEXT_PATTERNS]
+
+
+def is_rolling_deadline(opp: dict) -> bool:
+    """Return True when the opportunity accepts applicants on a rolling
+    basis (no fixed deadline). Uses source defaults plus explicit
+    textual signals in title/description.
+
+    Used by the matcher/UI to differentiate "truly missing data" from
+    "legitimately has no deadline" — the latter should not appear as a
+    data-quality issue.
+    """
+    if opp.get("deadline"):
+        return False
+    source = opp.get("source", "")
+    if source in _ROLLING_BY_SOURCE:
+        return True
+    text = " ".join([
+        (opp.get("title") or ""),
+        (opp.get("description_clean") or opp.get("description_raw") or ""),
+    ])
+    for pattern in _ROLLING_TEXT_COMPILED:
+        if pattern.search(text):
+            return True
+    return False
+
+
 def enrich_opportunity(opp: dict) -> dict:
     """Backfill majors + keywords in-place when upstream is empty.
     Also flags non-opportunities (events, announcements) as inactive.
@@ -326,6 +449,13 @@ def enrich_opportunity(opp: dict) -> dict:
         if inferred:
             elig["majors"] = inferred
 
+    if not elig.get("skills_required"):
+        desc = opp.get("description_raw") or opp.get("description_clean") or ""
+        if desc and len(desc) >= 80:
+            inferred_skills = _extract_skills_from_text(desc)
+            if inferred_skills:
+                elig["skills_required"] = inferred_skills
+
     kws = opp.get("keywords") or []
     if _is_unsorted(kws):
         inferred_kws = infer_keywords(opp)
@@ -339,6 +469,9 @@ def enrich_opportunity(opp: dict) -> dict:
         marker = "[auto-flagged: non-opportunity]"
         if marker not in meta_notes:
             meta["notes"] = (meta_notes + " " + marker).strip()
+
+    if "is_rolling" not in opp and is_rolling_deadline(opp):
+        opp["is_rolling"] = True
 
     return opp
 
