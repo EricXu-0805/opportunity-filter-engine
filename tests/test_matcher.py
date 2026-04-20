@@ -135,10 +135,10 @@ class TestSkillOverlap:
         assert 40 <= score <= 60
 
     def test_no_match(self):
-        assert _skill_overlap_score(["R"], ["Python", "Java"]) == 0.0
+        assert _skill_overlap_score(["R"], ["Python", "Java"]) == 10.0
 
     def test_no_requirements(self):
-        assert _skill_overlap_score(["Python"], []) == 40.0  # No requirement = penalized
+        assert _skill_overlap_score(["Python"], []) == 35.0  # No requirement = penalized
 
     def test_case_insensitive(self):
         score = _skill_overlap_score(["python", "JAVA"], ["Python", "Java"])
@@ -161,7 +161,14 @@ class TestMajorMatching:
         assert score <= 30.0
 
     def test_open_requirement(self):
-        assert _major_match_score(["ECE"], []) == 40.0  # No requirement = penalized
+        assert _major_match_score(["ECE"], []) == 30.0  # No requirement = penalized
+
+    def test_cross_domain_mismatch_harder(self):
+        # Humanities student ↔ STEM-only opp is worse than same-domain mismatch
+        humanities_vs_stem = _major_match_score(["Spanish"], ["CS"])
+        same_domain = _major_match_score(["Biology"], ["CS"])
+        assert humanities_vs_stem < same_domain
+        assert humanities_vs_stem <= 10.0
 
 
 # ── Unit Tests: Scoring Layers ────────────────
@@ -241,10 +248,14 @@ class TestRankOpportunity:
         result = rank_opportunity(sample_profile, good_match_opportunity)
         assert isinstance(result, MatchResult)
 
-    def test_score_is_weighted_sum(self, sample_profile, good_match_opportunity):
+    def test_score_is_stretched_weighted_sum(self, sample_profile, good_match_opportunity):
         result = rank_opportunity(sample_profile, good_match_opportunity)
-        expected = 0.45 * result.eligibility_score + 0.35 * result.readiness_score + 0.20 * result.upside_score
-        assert abs(result.final_score - expected) < 0.5
+        raw = 0.45 * result.eligibility_score + 0.35 * result.readiness_score + 0.20 * result.upside_score
+        assert 0.0 <= result.final_score <= 100.0
+        if raw >= 70:
+            assert result.final_score >= raw - 0.5
+        elif raw <= 45:
+            assert result.final_score <= raw + 0.5
 
     def test_bucket_assigned(self, sample_profile, good_match_opportunity):
         result = rank_opportunity(sample_profile, good_match_opportunity)

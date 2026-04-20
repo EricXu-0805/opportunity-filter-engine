@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { getEmailVariants, refineEmail } from '@/lib/api';
 import type { ProfileData, EmailVariant } from '@/lib/types';
+import { useT } from '@/i18n/client';
 
 interface ColdEmailModalProps {
   isOpen: boolean;
@@ -28,14 +29,17 @@ interface ChatMessage {
   content: string;
 }
 
-const QUICK_ACTIONS = [
-  { label: 'More formal', prompt: 'formal' },
-  { label: 'Shorter', prompt: 'shorter' },
-  { label: 'More enthusiastic', prompt: 'enthusiastic' },
-  { label: 'Add coursework', prompt: 'coursework' },
-] as const;
+const QUICK_ACTION_KEYS = ['formal', 'shorter', 'enthusiastic', 'coursework'] as const;
+type QuickActionKey = typeof QUICK_ACTION_KEYS[number];
 
-function applyQuickEdit(body: string, action: string, profile: ProfileData): { body: string; reply: string } {
+type Replier = (path: string, vars?: Record<string, string | number>) => string;
+
+function applyQuickEdit(
+  body: string,
+  action: QuickActionKey,
+  profile: ProfileData,
+  t: Replier,
+): { body: string; reply: string } {
   switch (action) {
     case 'formal': {
       let updated = body
@@ -47,7 +51,7 @@ function applyQuickEdit(body: string, action: string, profile: ProfileData): { b
         .replace(/Best regards/g, 'Respectfully')
         .replace(/Best,/g, 'Respectfully,');
       if (updated === body) updated = body.replace(/I really enjoyed/g, 'I was greatly impressed by');
-      return { body: updated, reply: 'Made the tone more formal and professional.' };
+      return { body: updated, reply: t('coldEmail.replies.formal') };
     }
     case 'shorter': {
       const lines = body.split('\n').filter((l) => l.trim());
@@ -57,7 +61,7 @@ function applyQuickEdit(body: string, action: string, profile: ProfileData): { b
           !l.includes('I am confident I can') &&
           !l.includes('always eager'),
       );
-      return { body: filtered.join('\n'), reply: 'Trimmed filler sentences to make it more concise.' };
+      return { body: filtered.join('\n'), reply: t('coldEmail.replies.shorter') };
     }
     case 'enthusiastic': {
       const updated = body
@@ -65,28 +69,29 @@ function applyQuickEdit(body: string, action: string, profile: ProfileData): { b
         .replace(/I really enjoyed learning/g, 'I was fascinated by')
         .replace(/I would love the chance/g, 'I would be thrilled at the opportunity')
         .replace(/I would greatly appreciate the chance/g, 'I would be thrilled at the opportunity');
-      return { body: updated, reply: 'Added more enthusiasm and energy to the tone.' };
+      return { body: updated, reply: t('coldEmail.replies.enthusiastic') };
     }
     case 'coursework': {
       const courses = profile.coursework ?? [];
       if (courses.length === 0) {
-        return { body, reply: 'No coursework found in your profile. Add courses on the main page first.' };
+        return { body, reply: t('coldEmail.replies.courseworkNone') };
       }
       const courseStr = courses.slice(0, 4).join(', ');
       const insertion = `\n\nI have completed relevant coursework including ${courseStr}.`;
       const closingIdx = body.lastIndexOf('\n\nBest');
       const respectIdx = body.lastIndexOf('\n\nRespectfully');
       const insertAt = Math.max(closingIdx, respectIdx);
+      const reply = t('coldEmail.replies.courseworkAdded', { list: courseStr });
       if (insertAt > 0) {
         return {
           body: body.slice(0, insertAt) + insertion + body.slice(insertAt),
-          reply: `Added coursework: ${courseStr}`,
+          reply,
         };
       }
-      return { body: body + insertion, reply: `Added coursework: ${courseStr}` };
+      return { body: body + insertion, reply };
     }
     default:
-      return { body, reply: 'No changes applied.' };
+      return { body, reply: t('coldEmail.replies.noChanges') };
   }
 }
 
@@ -97,6 +102,7 @@ export default function ColdEmailModal({
   opportunityId,
   opportunityTitle,
 }: ColdEmailModalProps) {
+  const { t } = useT();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [variants, setVariants] = useState<EmailVariant[]>([]);
@@ -127,14 +133,14 @@ export default function ColdEmailModal({
         setActiveVariant(0);
       }
       setChatMessages([
-        { role: 'assistant', content: `Generated ${data.variants.length} variants. Pick one as your base, then use quick actions or type a request to refine it.` },
+        { role: 'assistant', content: t('coldEmail.generated', { count: data.variants.length }) },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate email');
+      setError(err instanceof Error ? err.message : t('coldEmail.failedGenerate'));
     } finally {
       setLoading(false);
     }
-  }, [profile, opportunityId]);
+  }, [profile, opportunityId, t]);
 
   useEffect(() => {
     if (isOpen) fetchVariants();
@@ -212,15 +218,14 @@ export default function ColdEmailModal({
     setRecipient(v.recipient_email);
     setChatMessages((prev) => [
       ...prev,
-      { role: 'assistant', content: `Switched to "${v.label}" variant.` },
+      { role: 'assistant', content: t('coldEmail.switched', { label: v.label }) },
     ]);
   }
 
-  function handleQuickAction(prompt: string) {
-    const action = QUICK_ACTIONS.find((a) => a.prompt === prompt);
-    if (!action) return;
-    setChatMessages((prev) => [...prev, { role: 'user', content: action.label }]);
-    const { body: newBody, reply } = applyQuickEdit(body, prompt, profile);
+  function handleQuickAction(key: QuickActionKey) {
+    const label = t(`coldEmail.quickActions.${key}`);
+    setChatMessages((prev) => [...prev, { role: 'user', content: label }]);
+    const { body: newBody, reply } = applyQuickEdit(body, key, profile, t);
     setBody(newBody);
     setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
   }
@@ -230,7 +235,7 @@ export default function ColdEmailModal({
     if (!msg) return;
     setChatInput('');
     setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
-    setChatMessages((prev) => [...prev, { role: 'assistant', content: 'Editing...' }]);
+    setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.editing') }]);
 
     try {
       const result = await refineEmail(body, msg);
@@ -239,9 +244,7 @@ export default function ColdEmailModal({
         const updated = [...prev];
         updated[updated.length - 1] = {
           role: 'assistant',
-          content: result.method === 'llm'
-            ? 'Done! Email updated with AI.'
-            : 'Applied edit. (Set OPENAI_API_KEY for full AI editing)',
+          content: result.method === 'llm' ? t('coldEmail.doneLlm') : t('coldEmail.doneFallback'),
         };
         return updated;
       });
@@ -250,7 +253,7 @@ export default function ColdEmailModal({
         const updated = [...prev];
         updated[updated.length - 1] = {
           role: 'assistant',
-          content: 'Failed to edit. Try a quick action instead.',
+          content: t('coldEmail.editFailed'),
         };
         return updated;
       });
@@ -294,7 +297,7 @@ export default function ColdEmailModal({
               <Mail className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 id="email-modal-title" className="text-lg font-bold text-gray-900">Email Editor</h2>
+              <h2 id="email-modal-title" className="text-lg font-bold text-gray-900">{t('coldEmail.title')}</h2>
               <p className="text-sm text-gray-500 truncate max-w-md">{opportunityTitle}</p>
             </div>
           </div>
@@ -302,7 +305,7 @@ export default function ColdEmailModal({
             type="button"
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
-            aria-label="Close email editor"
+            aria-label={t('coldEmail.closeAria')}
           >
             <X className="w-5 h-5 text-gray-400" aria-hidden="true" />
           </button>
@@ -312,14 +315,14 @@ export default function ColdEmailModal({
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-            <p className="text-sm text-gray-500">Generating email variants...</p>
+            <p className="text-sm text-gray-500">{t('coldEmail.generating')}</p>
           </div>
         )}
         {error && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <AlertCircle className="w-8 h-8 text-red-500" />
             <p className="text-sm text-red-600">{error}</p>
-            <button type="button" onClick={fetchVariants} className="text-sm text-blue-600 underline hover:text-blue-700">Try again</button>
+            <button type="button" onClick={fetchVariants} className="text-sm text-blue-600 underline hover:text-blue-700">{t('coldEmail.tryAgain')}</button>
           </div>
         )}
 
@@ -349,10 +352,10 @@ export default function ColdEmailModal({
                 <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      To
+                      {t('coldEmail.to')}
                       {!recipient && (
                         <span className="ml-2 text-amber-500 normal-case tracking-normal font-normal">
-                          — find the PI&apos;s email on their lab page or department directory
+                          {t('coldEmail.toHint')}
                         </span>
                       )}
                     </label>
@@ -360,12 +363,12 @@ export default function ColdEmailModal({
                       type="email"
                       value={recipient}
                       onChange={(e) => setRecipient(e.target.value)}
-                      placeholder="e.g. professor@illinois.edu — check the posting or lab website"
+                      placeholder={t('coldEmail.toPlaceholder')}
                       className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Subject</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('coldEmail.subject')}</label>
                     <input
                       type="text"
                       value={subject}
@@ -374,7 +377,7 @@ export default function ColdEmailModal({
                     />
                   </div>
                   <div className="flex-1 flex flex-col">
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Body</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('coldEmail.body')}</label>
                     <textarea
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
@@ -388,7 +391,7 @@ export default function ColdEmailModal({
               <div className="w-full md:w-72 lg:w-80 flex flex-col bg-gray-50/60 min-w-0 border-t md:border-t-0 border-gray-100">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
                   <Sparkles className="w-4 h-4 text-indigo-500" />
-                  <span className="text-sm font-semibold text-gray-700">Refine</span>
+                  <span className="text-sm font-semibold text-gray-700">{t('coldEmail.refine')}</span>
                 </div>
 
                 {/* Chat messages */}
@@ -412,14 +415,14 @@ export default function ColdEmailModal({
                 {/* Quick actions */}
                 <div className="px-4 pb-2 shrink-0">
                   <div className="flex flex-wrap gap-1.5">
-                    {QUICK_ACTIONS.map((action) => (
+                    {QUICK_ACTION_KEYS.map((key) => (
                       <button
-                        key={action.prompt}
+                        key={key}
                         type="button"
-                        onClick={() => handleQuickAction(action.prompt)}
+                        onClick={() => handleQuickAction(key)}
                         className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors"
                       >
-                        {action.label}
+                        {t(`coldEmail.quickActions.${key}`)}
                       </button>
                     ))}
                   </div>
@@ -435,7 +438,7 @@ export default function ColdEmailModal({
                       type="text"
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Type a request..."
+                      placeholder={t('coldEmail.refinePlaceholder')}
                       className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                     />
                     <button
@@ -458,9 +461,9 @@ export default function ColdEmailModal({
                 className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 {copied ? (
-                  <><CheckCircle className="w-4 h-4 text-emerald-500" />Copied!</>
+                  <><CheckCircle className="w-4 h-4 text-emerald-500" />{t('coldEmail.copied')}</>
                 ) : (
-                  <><Copy className="w-4 h-4" />Copy</>
+                  <><Copy className="w-4 h-4" />{t('coldEmail.copy')}</>
                 )}
               </button>
               <div className="flex items-center rounded-xl overflow-hidden shadow-sm">
@@ -470,24 +473,24 @@ export default function ColdEmailModal({
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 transition-all"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Open in Email
+                  {t('coldEmail.openInEmail')}
                 </button>
                 <div className="w-px h-6 bg-blue-400" />
                 <button
                   type="button"
                   onClick={() => { window.open(getMailtoLink('gmail'), '_blank'); }}
                   className="px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
-                  title="Open in Gmail"
+                  title={t('coldEmail.openGmailTitle')}
                 >
-                  Gmail
+                  {t('coldEmail.gmail')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { window.open(getMailtoLink('outlook'), '_blank'); }}
                   className="px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
-                  title="Open in Outlook"
+                  title={t('coldEmail.openOutlookTitle')}
                 >
-                  Outlook
+                  {t('coldEmail.outlook')}
                 </button>
               </div>
             </div>

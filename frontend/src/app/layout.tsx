@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Header from '@/components/Header';
+import BackendWaker from '@/components/BackendWaker';
 import { getServerLocale, tServer } from '@/i18n/server';
 import { LanguageProvider } from '@/i18n/client';
 import './globals.css';
@@ -46,6 +47,7 @@ export default function RootLayout({
     <html lang={locale} className={inter.variable}>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <LanguageProvider initialLocale={locale}>
+          <BackendWaker />
           <a
             href="#main-content"
             className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:border focus:border-blue-500 focus:rounded-lg focus:text-sm focus:font-medium focus:text-blue-700 focus:shadow-lg"

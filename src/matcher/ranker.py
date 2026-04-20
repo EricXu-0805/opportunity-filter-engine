@@ -4,6 +4,7 @@ Scores opportunities against a student profile.
 """
 
 import math
+import os
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -60,9 +61,33 @@ MAJOR_GROUPS = {
     "SOC": {"Sociology", "SOC", "Social Work"},
     "POLS": {"Political Science", "POLS", "Global Studies", "Latin American Studies"},
     "COMM": {"Communication", "COMM", "Journalism", "Advertising", "Media & Cinema Studies", "Sports Media"},
-    "LING": {"Linguistics", "LING"},
+    "LING": {"Linguistics", "LING", "Applied Linguistics", "TESOL",
+             "Second Language Acquisition & Teacher Education", "SLATE"},
     "AGE": {"Agricultural & Biological Engineering", "ABE", "Agronomy", "Crop Sciences",
             "Natural Resources & Environmental Sciences"},
+    "SPAN": {"Spanish", "SPAN", "Spanish, Italian & Portuguese", "SIP",
+             "Hispanic Studies", "Latin American & Caribbean Studies"},
+    "FREN": {"French", "FREN", "French & Francophone Studies"},
+    "GERM": {"German", "GERM", "Germanic Languages & Literatures"},
+    "EALC": {"East Asian Languages & Cultures", "EALC", "Japanese", "Chinese", "Korean"},
+    "SLAV": {"Slavic Languages & Literatures", "SLAV", "Russian"},
+    "CWL": {"Comparative & World Literature", "CWL", "Comparative Literature"},
+    "ENGL": {"English", "ENGL", "English Literature", "Creative Writing", "Rhetoric & Composition"},
+    "HIST": {"History", "HIST", "Medieval Studies"},
+    "PHIL": {"Philosophy", "PHIL"},
+    "REL": {"Religion", "REL", "Religious Studies"},
+    "CLASS": {"Classics", "CLASS", "Classical Civilization"},
+    "ART": {"Art", "Studio Art", "Fine Arts"},
+    "ARTH": {"Art History", "ARTH"},
+    "MUS": {"Music", "MUS", "Music Composition", "Music Education"},
+    "JOUR": {"Journalism", "JOUR"},
+    "ADV": {"Advertising", "ADV"},
+    "GEOG": {"Geography", "GEOG", "Geography & GIS"},
+    "GWS": {"Gender & Women's Studies", "GWS"},
+    "AFRO": {"African American Studies", "AFRO"},
+    "AAS": {"Asian American Studies", "AAS"},
+    "LAS": {"Latina/Latino Studies", "LAS"},
+    "URB": {"Urban & Regional Planning", "URB"},
 }
 
 RELATED_MAJORS = {
@@ -85,7 +110,33 @@ RELATED_MAJORS = {
     "PSYCH": ["BIO", "SOC", "LING"],
     "ACCY": ["ECON", "IS"],
     "AGE": ["CEE", "BIO", "CHEM"],
-    "COMM": ["IS", "SOC", "POLS"],
+    "COMM": ["IS", "SOC", "POLS", "JOUR", "ADV"],
+    "SPAN": ["LING", "FREN", "CWL", "LAS", "ANTH", "HIST"],
+    "FREN": ["LING", "SPAN", "CWL", "HIST"],
+    "GERM": ["LING", "CWL", "HIST", "PHIL"],
+    "EALC": ["LING", "CWL", "HIST", "ANTH"],
+    "SLAV": ["LING", "CWL", "HIST"],
+    "CWL": ["ENGL", "LING", "SPAN", "FREN", "GERM", "EALC", "SLAV", "PHIL"],
+    "ENGL": ["CWL", "LING", "JOUR", "COMM", "PHIL", "HIST"],
+    "HIST": ["POLS", "ANTH", "SOC", "CLASS", "PHIL", "REL"],
+    "PHIL": ["ENGL", "HIST", "REL", "CLASS", "POLS", "CWL"],
+    "REL": ["PHIL", "HIST", "CLASS", "ANTH"],
+    "CLASS": ["HIST", "LING", "PHIL", "ARTH"],
+    "LING": ["CS", "PSYCH", "SPAN", "FREN", "GERM", "EALC", "SLAV", "CWL", "ENGL"],
+    "ART": ["ARTH", "CINE", "COMM"],
+    "ARTH": ["ART", "HIST", "CLASS"],
+    "MUS": ["ART", "COMM"],
+    "JOUR": ["COMM", "ENGL", "POLS", "ADV"],
+    "ADV": ["COMM", "JOUR", "PSYCH"],
+    "GEOG": ["ATMS", "URB", "CEE", "ANTH"],
+    "GWS": ["SOC", "PSYCH", "ANTH", "HIST"],
+    "AFRO": ["HIST", "ANTH", "SOC", "POLS"],
+    "AAS": ["HIST", "ANTH", "SOC", "EALC"],
+    "LAS": ["HIST", "ANTH", "SPAN", "POLS"],
+    "URB": ["CEE", "GEOG", "SOC", "POLS"],
+    "POLS": ["ECON", "HIST", "SOC", "COMM"],
+    "SOC": ["PSYCH", "ANTH", "POLS", "COMM", "GWS"],
+    "ANTH": ["SOC", "HIST", "LING", "PSYCH"],
 }
 
 
@@ -97,22 +148,50 @@ def _normalize_major(major: str) -> str:
     return major_upper
 
 
+_STEM_MAJORS = frozenset({
+    "CS", "ECE", "STAT", "IS", "MATH", "PHYS", "CHEME", "BIOE", "MECHSE",
+    "CEE", "MSE", "AE", "IE", "NPRE", "CHEM", "BIO", "ATMS", "AGE",
+})
+_HUMANITIES_MAJORS = frozenset({
+    "SPAN", "ENGL", "LING", "HIST", "PHIL", "REL", "CLASS", "FREN", "GERM",
+    "EALC", "SLAV", "SAME", "CWL", "TESOL", "ART", "ARTH", "MUS", "DANC",
+    "THEA", "CINE", "COMM", "JOUR", "ADV",
+})
+_SOCIAL_SCIENCE_MAJORS = frozenset({
+    "PSYCH", "SOC", "ANTH", "POLS", "ECON", "GEOG", "GWS", "AFRO", "AAS",
+    "LAS", "URB",
+})
+
+
 def _major_match_score(student_majors: list[str], required_majors: list[str]) -> float:
     if not required_majors:
-        return 40.0  # No requirement = open, but no signal of good fit
+        return 30.0  # No requirement = open, but no signal of good fit
 
     s_normalized = {_normalize_major(m) for m in student_majors}
     r_normalized = {_normalize_major(m) for m in required_majors}
 
-    # Exact match
     if s_normalized & r_normalized:
         return 100.0
 
-    # Related match
     for sm in s_normalized:
         related = RELATED_MAJORS.get(sm, [])
         if any(r in r_normalized for r in related):
             return 70.0
+
+    # Cross-domain mismatch (humanities student ↔ STEM-only opp) is worse
+    # than same-domain mismatch (CS ↔ ECE w/o related edge). Penalize harder
+    # so a Spanish major doesn't get the same 15 points for a CS-only lab
+    # as a CS major gets for a MechSE-only lab.
+    def _domain(m: str) -> str:
+        if m in _STEM_MAJORS: return "stem"
+        if m in _HUMANITIES_MAJORS: return "hum"
+        if m in _SOCIAL_SCIENCE_MAJORS: return "soc"
+        return "other"
+
+    s_domains = {_domain(m) for m in s_normalized}
+    r_domains = {_domain(m) for m in r_normalized}
+    if s_domains and r_domains and not (s_domains & r_domains):
+        return 8.0
 
     return 15.0
 
@@ -168,6 +247,44 @@ def _token_cosine_similarity(text_a: str, text_b: str) -> float:
     if mag_a == 0 or mag_b == 0:
         return 0.0
     return dot / (mag_a * mag_b)
+
+
+def _interest_bonus(profile: dict, opportunity: dict) -> float:
+    """Bonus up to +8 points when stated research_interests_text
+    tokens show strong literal overlap with opportunity title+keywords.
+
+    Rewards users who write specific interests (e.g. "language study")
+    by surfacing postings whose title/keywords contain those tokens,
+    even when the eligibility/major score is weak. Capped at +8 so it
+    refines ordering without overriding hard eligibility signals.
+    """
+    interests = str(profile.get("research_interests_text") or "").strip()
+    if len(interests) < 4:
+        return 0.0
+
+    signal_text = " ".join(filter(None, [
+        opportunity.get("title", ""),
+        " ".join(opportunity.get("keywords", []) or []),
+        opportunity.get("lab_or_program", "") or "",
+    ])).lower()
+    if not signal_text:
+        return 0.0
+
+    tokens = [t for t in _tokenize(interests) if t not in _GENERIC_INTEREST_WORDS]
+    if not tokens:
+        return 0.0
+
+    hits = sum(1 for t in set(tokens) if t in signal_text)
+    if hits == 0:
+        return 0.0
+    return min(8.0, hits * 3.0)
+
+
+_GENERIC_INTEREST_WORDS = frozenset({
+    "research", "study", "studies", "interested", "interest", "learning",
+    "field", "work", "general", "related", "area", "topic", "stuff",
+    "things", "various", "different", "many", "some",
+})
 
 
 PROFICIENCY_WEIGHTS = {"expert": 1.0, "experienced": 0.75, "beginner": 0.5}
@@ -261,7 +378,7 @@ def _parse_skills(student_skills: list) -> dict[str, float]:
 
 def _skill_overlap_score(student_skills: list, required_skills: list[str]) -> float:
     if not required_skills:
-        return 40.0
+        return 35.0
 
     skill_weights = _parse_skills(student_skills)
 
@@ -274,7 +391,10 @@ def _skill_overlap_score(student_skills: list, required_skills: list[str]) -> fl
         total_weight += w
 
     max_possible = len(required_skills) * 1.0
-    return min(100.0, (total_weight / max_possible) * 100)
+    ratio = total_weight / max_possible if max_possible > 0 else 0.0
+    if ratio <= 0.0:
+        return 10.0
+    return min(100.0, ratio * 100)
 
 
 def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
@@ -503,19 +623,18 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
     elif "uiuc" in org or "illinois" in org:
         brand_score = 70.0
 
-    # Mentorship signal (15%)
     desc = (opportunity.get("description_raw") or "").lower()
-    mentor_keywords = ["mentor", "training", "learn", "guided", "supervision"]
-    mentor_score = 80.0 if any(k in desc for k in mentor_keywords) else 50.0
+    mentor_keywords = ["mentor", "training", "learn", "guided", "supervision", "teach", "onboard"]
+    mentor_hits = sum(1 for k in mentor_keywords if k in desc)
+    mentor_score = 35.0 + min(55.0, mentor_hits * 20.0)
 
-    # Future pathway (15%)
-    pathway_score = 60.0
-    pathway_keywords = ["publication", "paper", "co-author", "return", "continue"]
-    if any(k in desc for k in pathway_keywords):
-        pathway_score = 90.0
+    pathway_keywords = ["publication", "paper", "co-author", "return", "continue", "conference", "thesis"]
+    pathway_hits = sum(1 for k in pathway_keywords if k in desc)
+    pathway_score = 40.0 + min(55.0, pathway_hits * 18.0)
+    if pathway_hits >= 2:
         reasons_fit.append("Potential for publication or long-term involvement")
 
-    keyword_score = 40.0
+    keyword_score = 25.0
     opp_keywords = set(k.lower() for k in opportunity.get("keywords", []))
     desired = set(f.lower() for f in profile.get("desired_fields", []))
     if opp_keywords and desired:
@@ -533,11 +652,16 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
     clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
     lab_label = clean_pi and f"Prof. {clean_pi}" or lab or opportunity.get("department", "")
 
-    if research_text and opp_desc:
-        sim = _text_similarity(research_text, opp_desc)
-        if sim > 0.15 and keyword_score < 90:
-            boost = min(50.0, sim * 200)
-            keyword_score = min(100.0, keyword_score + boost)
+    if research_text and (opp_desc or specific_kw):
+        opp_corpus = " ".join(filter(None, [
+            opportunity.get("title", ""),
+            lab,
+            " ".join(specific_kw),
+            opp_desc,
+        ]))
+        sim = _text_similarity(research_text, opp_corpus)
+        keyword_score = max(keyword_score, min(100.0, 15.0 + sim * 400))
+        if sim > 0.15:
             if specific_kw and lab_label:
                 reasons_fit.append(
                     f"Your interest in {research_text[:50].rstrip('.')} closely matches {lab_label}'s work on {', '.join(specific_kw[:3])}"
@@ -565,11 +689,11 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
 
     has_skill_signal = bool(opportunity.get("eligibility", {}).get("skills_required"))
     if has_skill_signal:
-        total = 0.20 * paid_score + 0.20 * first_exp_score + 0.10 * campus_score + \
-                0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.10 * keyword_score
-    else:
         total = 0.15 * paid_score + 0.15 * first_exp_score + 0.10 * campus_score + \
-                0.10 * brand_score + 0.15 * mentor_score + 0.10 * pathway_score + 0.25 * keyword_score
+                0.10 * brand_score + 0.15 * mentor_score + 0.15 * pathway_score + 0.20 * keyword_score
+    else:
+        total = 0.10 * paid_score + 0.10 * first_exp_score + 0.10 * campus_score + \
+                0.10 * brand_score + 0.15 * mentor_score + 0.10 * pathway_score + 0.35 * keyword_score
     return total, reasons_fit, reasons_gap
 
 
@@ -578,11 +702,29 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
 WEIGHTS_DEFAULT = {"eligibility": 0.45, "readiness": 0.35, "upside": 0.20}
 
 BUCKET_THRESHOLDS = [
-    (82, "high_priority"),
-    (72, "good_match"),
-    (55, "reach"),
+    (78, "high_priority"),
+    (62, "good_match"),
+    (42, "reach"),
     (0,  "low_fit"),
 ]
+
+
+def _stretch_score(raw: float) -> float:
+    """Widen the score distribution so matches spread out visibly.
+
+    The weighted-sum raw score tends to cluster in 45-75 because every
+    sub-score has a ~40 default floor for unknowns. We mostly preserve
+    raw, but apply a gentle sigmoid pull (strong at the extremes, weak
+    in the middle) plus a subtract-midpoint amplification so signal
+    differences in the 70-90 zone aren't compressed.
+    """
+    x = max(0.0, min(100.0, raw))
+    k = 0.07
+    midpoint = 55.0
+    sig = 1.0 / (1.0 + math.exp(-k * (x - midpoint)))
+    stretched = sig * 100.0
+    blended = 0.55 * x + 0.45 * stretched
+    return max(0.0, min(100.0, blended))
 
 
 def _compute_weights(search_weight: int) -> dict[str, float]:
@@ -695,11 +837,26 @@ def rank_opportunity(
     up_score, up_fit, up_gap = score_upside(profile, opportunity)
 
     w = weights or WEIGHTS_DEFAULT
-    final = (
+    raw = (
         w["eligibility"] * elig_score +
         w["readiness"] * ready_score +
         w["upside"] * up_score
     )
+
+    interest_bonus = _interest_bonus(profile, opportunity)
+    raw = min(100.0, raw + interest_bonus)
+
+    elig = opportunity.get("eligibility", {})
+    required_majors = elig.get("majors", [])
+    if required_majors:
+        student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])
+        mm_score = _major_match_score(student_majors, required_majors)
+        if mm_score <= 10.0:
+            raw *= 0.75
+        elif mm_score <= 20.0:
+            raw *= 0.88
+
+    final = _stretch_score(raw)
 
     deadline = opportunity.get("deadline", "")
     if deadline and len(deadline) >= 8 and deadline[4] == "-":
@@ -804,13 +961,13 @@ def semantic_rerank(
     profile: dict,
     results: list[MatchResult],
     opportunities_by_id: dict[str, dict],
-    top_k: int = 50,
-    semantic_weight: float = 0.3,
+    top_k: int = 200,
+    semantic_weight: float = 0.5,
 ) -> list[MatchResult]:
     """Re-rank the top ``top_k`` results using semantic similarity.
 
     Blend: ``final = (1 - w) * rule_score + w * semantic_score * 100``
-    where w = semantic_weight (default 0.3). Only the top slice is
+    where w = semantic_weight (default 0.5). Only the top slice is
     re-scored to bound embedding cost; the tail keeps its rule score.
 
     Falls back gracefully to TF-IDF (corpus-fitted) when no OpenAI key
@@ -840,7 +997,15 @@ def semantic_rerank(
 
     sims = semantic_similarity_batch(query, candidate_texts)
 
-    w = max(0.0, min(1.0, semantic_weight))
+    # When falling back to TF-IDF (no OpenAI/OpenRouter key), similarity
+    # signal is noisier — it matches generic corpus keywords like "REU" or
+    # "undergraduate" and can demote truly relevant labs. Detect fallback
+    # by probing the env, and cap the blend weight so rule-based signal
+    # dominates. Production has OPENAI_API_KEY set → full weight applies.
+    has_api = bool(os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY"))
+    effective_weight = semantic_weight if has_api else min(semantic_weight, 0.2)
+
+    w = max(0.0, min(1.0, effective_weight))
     for r, sim in zip(top_slice, sims):
         rule = r.final_score
         blended = (1.0 - w) * rule + w * float(sim) * 100.0
@@ -897,12 +1062,12 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     if len(results) >= 10:
         scores = [r.final_score for r in results]
         p90 = scores[max(0, len(scores) // 10)]
-        p50 = scores[len(scores) // 2]
-        p80 = scores[max(0, len(scores) // 5)]
+        p70 = scores[max(0, (len(scores) * 3) // 10)]
+        p40 = scores[max(0, (len(scores) * 6) // 10)]
 
-        hp_threshold = max(82, p90)
-        gm_threshold = max(72, p80)
-        reach_threshold = max(55, p50)
+        hp_threshold = max(78, p90)
+        gm_threshold = max(62, p70)
+        reach_threshold = max(42, p40)
 
         for r in results:
             if r.final_score >= hp_threshold:

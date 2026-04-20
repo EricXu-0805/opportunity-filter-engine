@@ -158,6 +158,27 @@ export async function getStats(): Promise<StatsResponse> {
   return request<StatsResponse>('/opportunities/stats/summary');
 }
 
+/**
+ * Fire-and-forget ping to wake a sleeping Render free-tier backend.
+ * First cold-start can take 20-40s; calling this on app mount means the
+ * backend is usually warm by the time the user hits "Generate Matches".
+ * Swallows errors — purely an optimization.
+ */
+export async function wakeBackend(): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    try {
+      await fetch(`${API_BASE}/health`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch { /* swallow */ }
+}
+
 export interface UpcomingDeadline {
   id: string;
   title: string;

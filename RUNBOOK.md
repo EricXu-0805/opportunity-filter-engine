@@ -3,13 +3,24 @@
 This session shipped infrastructure that needs one-time operator setup
 before the features go live. Work through the sections in order.
 
-## 1. Supabase — enable Anonymous Sign-ins
+## 1. Supabase — enable Anonymous Sign-ins  ⚠️ REQUIRED
 
 Dashboard → **Authentication → Sign In / Providers → Anonymous Sign-Ins → Enable**.
 
-Without this, users can't save profiles/favorites/interactions after
-migration 006. The app degrades gracefully (operations silently fail in
-the console) but nothing persists.
+Without this, `signInAnonymously()` returns HTTP 422 (`anonymous_provider_disabled`)
+and users can't save profiles/favorites/interactions. The app now degrades
+gracefully: favorites are written to `localStorage` (`ofe_favs_fallback`)
+and an amber **"Saved locally only"** banner appears on Results/Favorites
+pages. When you flip the switch on, the next `getFavorites()` call will
+backfill any local-only favorites into Supabase automatically.
+
+To verify it's enabled, run:
+
+```bash
+curl -sS -X POST "https://<project-ref>.supabase.co/auth/v1/signup" \
+  -H "apikey: <anon-key>" -H "Content-Type: application/json" -d '{}'
+# Success → {"user": {...}}    Disabled → {"error_code":"anonymous_provider_disabled"}
+```
 
 ## 2. Supabase — apply migrations 006 and 007
 

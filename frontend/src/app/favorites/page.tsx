@@ -21,6 +21,7 @@ import dynamic from 'next/dynamic';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
 import { getOpportunitiesByIds } from '@/lib/api';
 import Badge from '@/components/Badge';
+import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
@@ -141,6 +142,8 @@ export default function FavoritesPage() {
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
+
+      <StorageStatusBanner />
 
       <div className="mb-10 flex items-start justify-between gap-4 flex-wrap">
         <div>

@@ -53,7 +53,13 @@ async def get_matches(
     opp_lookup = load_opportunities_by_id()
 
     if semantic:
-        results = semantic_rerank(profile_dict, results, opp_lookup, top_k=50)
+        results = semantic_rerank(
+            profile_dict,
+            results,
+            opp_lookup,
+            top_k=200,
+            semantic_weight=0.5,
+        )
 
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
     visible_results = []

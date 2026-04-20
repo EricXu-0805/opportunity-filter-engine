@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import { parseResumePDF } from '@/lib/pdf-parser';
 import type { ResumeParseResponse } from '@/lib/types';
+import { useT } from '@/i18n/client';
 
 interface ResumeUploadProps {
   onParsed: (data: ResumeParseResponse) => void;
@@ -13,15 +14,16 @@ interface ResumeUploadProps {
 type UploadState = 'idle' | 'uploading' | 'success' | 'error';
 
 export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUploadProps) {
+  const { t } = useT();
   const [state, setState] = useState<UploadState>('idle');
   const [fileName, setFileName] = useState<string | null>(null);
 
   useEffect(() => {
     if (alreadyUploaded && state === 'idle') {
       setState('success');
-      setFileName('Resume (saved)');
+      setFileName(t('resume.savedFallback'));
     }
-  }, [alreadyUploaded, state]);
+  }, [alreadyUploaded, state, t]);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -29,14 +31,13 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
 
   const processFile = useCallback(
     async (file: File) => {
-      // Validate
       if (file.type !== 'application/pdf') {
-        setError('Only PDF files are accepted');
+        setError(t('resume.errOnlyPdf'));
         setState('error');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setError('File must be under 5 MB');
+        setError(t('resume.errTooBig'));
         setState('error');
         return;
       }
@@ -45,7 +46,6 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
       setState('uploading');
       setError(null);
 
-      // Simulate progress while uploading
       const progressInterval = setInterval(() => {
         setProgress((p) => Math.min(p + 15, 85));
       }, 300);
@@ -58,17 +58,17 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
           setState('success');
           onParsed(data);
         } else {
-          setError(data.message || 'Could not parse PDF');
+          setError(data.message || t('resume.errParse'));
           setState('error');
         }
       } catch (err) {
         clearInterval(progressInterval);
         setProgress(0);
-        setError(err instanceof Error ? err.message : 'Failed to parse resume');
+        setError(err instanceof Error ? err.message : t('resume.errFailed'));
         setState('error');
       }
     },
-    [onParsed],
+    [onParsed, t],
   );
 
   const handleDrop = useCallback(
@@ -134,10 +134,10 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-gray-700">
-                Drop your resume here, or{' '}
-                <span className="text-blue-600">browse</span>
+                {t('resume.dropHere')}{' '}
+                <span className="text-blue-600">{t('resume.browse')}</span>
               </p>
-              <p className="mt-1 text-xs text-gray-400">PDF only · Max 5 MB</p>
+              <p className="mt-1 text-xs text-gray-400">{t('resume.pdfOnly')}</p>
             </div>
           </>
         )}
@@ -172,7 +172,7 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
               <CheckCircle className="w-4 h-4 text-emerald-500" />
             </div>
             <p className="text-xs text-emerald-600">
-              Parsed successfully · Skills auto-populated
+              {t('resume.success')}
             </p>
             <button
               type="button"
@@ -181,7 +181,7 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
                 reset();
               }}
               className="absolute top-2 right-2 p-1 rounded-lg hover:bg-emerald-100 transition-colors"
-              aria-label="Remove file"
+              aria-label={t('resume.removeAria')}
             >
               <X className="w-4 h-4 text-emerald-500" />
             </button>
@@ -200,7 +200,7 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
               }}
               className="text-xs text-red-500 underline hover:text-red-700"
             >
-              Try again
+              {t('resume.tryAgain')}
             </button>
           </>
         )}

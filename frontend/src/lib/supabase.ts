@@ -12,20 +12,67 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+const FAV_FALLBACK_KEY = 'ofe_favs_fallback';
+
+export type StorageStatus = 'synced' | 'local-only' | 'unknown';
+
+let lastStorageStatus: StorageStatus = 'unknown';
+let lastStorageError: string | null = null;
+const storageListeners = new Set<() => void>();
+
+function setStorageStatus(next: StorageStatus, error?: string | null) {
+  if (lastStorageStatus === next && lastStorageError === (error ?? null)) return;
+  lastStorageStatus = next;
+  lastStorageError = error ?? null;
+  storageListeners.forEach(fn => { try { fn(); } catch { /* ignore */ } });
+}
+
+export function getStorageStatus(): { status: StorageStatus; error: string | null } {
+  return { status: lastStorageStatus, error: lastStorageError };
+}
+
+export function onStorageStatusChange(cb: () => void): () => void {
+  storageListeners.add(cb);
+  return () => { storageListeners.delete(cb); };
+}
+
+function readFavFallback(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(FAV_FALLBACK_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? new Set(arr as string[]) : new Set();
+  } catch { return new Set(); }
+}
+
+function writeFavFallback(set: Set<string>): void {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(FAV_FALLBACK_KEY, JSON.stringify(Array.from(set))); } catch { /* quota */ }
+}
+
 let anonSignInPromise: Promise<string | null> | null = null;
 
 async function ensureAnonSession(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user?.id) return session.user.id;
+  if (session?.user?.id) {
+    setStorageStatus('synced');
+    return session.user.id;
+  }
   if (anonSignInPromise) return anonSignInPromise;
   anonSignInPromise = (async () => {
     const { data, error } = await supabase.auth.signInAnonymously();
     if (error) {
+      const hint = error.message?.toLowerCase().includes('anonymous')
+        ? 'Anonymous sign-ins are disabled for this Supabase project.'
+        : error.message;
       console.warn('[ofe] anonymous sign-in failed:', error.message);
+      setStorageStatus('local-only', hint || error.message);
       anonSignInPromise = null;
       return null;
     }
+    setStorageStatus('synced');
     return data.user?.id ?? null;
   })();
   const result = await anonSignInPromise;
@@ -62,9 +109,20 @@ export async function saveProfile(profileData: Record<string, unknown>): Promise
     });
 }
 
+function readLocalProfile(): Record<string, unknown> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('ofe_profile');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch { return null; }
+}
+
 export async function loadProfile(): Promise<Record<string, unknown> | null> {
+  const local = readLocalProfile();
   const id = await ensureAnonSession();
-  if (!id) return null;
+  if (!id) return local;
 
   const { data, error } = await supabase
     .from('profiles')
@@ -72,34 +130,84 @@ export async function loadProfile(): Promise<Record<string, unknown> | null> {
     .eq('id', id)
     .single();
 
-  if (error || !data) return null;
-  return data.profile_data as Record<string, unknown>;
+  if (error || !data) return local;
+  return (data.profile_data as Record<string, unknown>) ?? local;
 }
 
 export async function getFavorites(): Promise<Set<string>> {
+  const local = readFavFallback();
   const deviceId = await ensureAnonSession();
-  if (!deviceId) return new Set();
+  if (!deviceId) {
+    return local;
+  }
 
   const { data, error } = await supabase
     .from('favorites')
     .select('opportunity_id')
     .eq('device_id', deviceId);
 
-  if (error || !data) return new Set();
-  return new Set(data.map((r: { opportunity_id: string }) => r.opportunity_id));
+  if (error || !data) {
+    console.warn('[ofe] getFavorites failed, using local fallback:', error?.message);
+    setStorageStatus('local-only', error?.message ?? null);
+    return local;
+  }
+
+  const remote = new Set(data.map((r: { opportunity_id: string }) => r.opportunity_id));
+
+  const toPush = Array.from(local).filter(id => !remote.has(id));
+  if (toPush.length > 0) {
+    const rows = toPush.map(opportunity_id => ({ device_id: deviceId, opportunity_id }));
+    const { error: insErr } = await supabase.from('favorites').insert(rows);
+    if (!insErr) {
+      toPush.forEach(id => remote.add(id));
+      writeFavFallback(new Set());
+    } else {
+      console.warn('[ofe] favorites backfill failed:', insErr.message);
+    }
+  } else if (local.size > 0) {
+    writeFavFallback(new Set());
+  }
+
+  writeFavFallback(remote);
+  setStorageStatus('synced');
+  return remote;
 }
 
 export async function toggleFavorite(opportunityId: string, isFaved: boolean): Promise<boolean> {
+  const local = readFavFallback();
+  if (isFaved) local.delete(opportunityId); else local.add(opportunityId);
+  writeFavFallback(local);
+
   const deviceId = await ensureAnonSession();
-  if (!deviceId) return isFaved;
+  if (!deviceId) {
+    return !isFaved;
+  }
 
   if (isFaved) {
-    await supabase.from('favorites').delete().eq('device_id', deviceId).eq('opportunity_id', opportunityId);
+    const { error } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('device_id', deviceId)
+      .eq('opportunity_id', opportunityId);
+    if (error) {
+      console.warn('[ofe] favorite delete failed:', error.message);
+      setStorageStatus('local-only', error.message);
+    } else {
+      setStorageStatus('synced');
+    }
     return false;
-  } else {
-    await supabase.from('favorites').insert({ device_id: deviceId, opportunity_id: opportunityId });
-    return true;
   }
+
+  const { error } = await supabase
+    .from('favorites')
+    .insert({ device_id: deviceId, opportunity_id: opportunityId });
+  if (error) {
+    console.warn('[ofe] favorite insert failed:', error.message);
+    setStorageStatus('local-only', error.message);
+  } else {
+    setStorageStatus('synced');
+  }
+  return true;
 }
 
 export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';

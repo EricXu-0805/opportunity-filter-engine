@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import MatchCard from '@/components/MatchCard';
+import StorageStatusBanner from '@/components/StorageStatusBanner';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
   ssr: false,
@@ -155,6 +156,7 @@ function ResultsContent() {
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSlowHint, setShowSlowHint] = useState(false);
 
   const [activeTab, setActiveTab] = useState<Tab>(
     (searchParams.get('tab') as Tab) || 'all',
@@ -179,8 +181,11 @@ function ResultsContent() {
     const p = searchParams.get('ai');
     if (p === '1') return true;
     if (p === '0') return false;
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('ofe_semantic_rerank') === '1';
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem('ofe_semantic_rerank');
+    if (stored === '0') return false;
+    if (stored === '1') return true;
+    return true;
   });
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -213,7 +218,7 @@ function ResultsContent() {
     if (filters.deadline) params.set('dl', filters.deadline);
     if (filters.minScore > 0) params.set('min', String(filters.minScore));
     if (sortBy !== 'score') params.set('sort', sortBy);
-    if (semanticRerank) params.set('ai', '1');
+    if (!semanticRerank) params.set('ai', '0');
     const qs = params.toString();
     const newUrl = qs ? `/results?${qs}` : '/results';
     window.history.replaceState(null, '', newUrl);
@@ -298,6 +303,15 @@ function ResultsContent() {
   }, [router]);
 
   useEffect(() => {
+    if (!loading) {
+      setShowSlowHint(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSlowHint(true), 8000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  useEffect(() => {
     if (!profile || data) return;
     let cancelled = false;
 
@@ -321,7 +335,7 @@ function ResultsContent() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load matches');
+          setError(err instanceof Error ? err.message : t('results.loadFailed'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -329,7 +343,7 @@ function ResultsContent() {
     }
     fetchMatches();
     return () => { cancelled = true; };
-  }, [profile, data, semanticRerank]);
+  }, [profile, data, semanticRerank, t]);
 
   const toggleSemantic = useCallback((next: boolean) => {
     setSemanticRerank(next);
@@ -462,10 +476,10 @@ function ResultsContent() {
       setEmailModal({
         open: true,
         opportunityId,
-        opportunityTitle: match?.opportunity.title ?? 'Opportunity',
+        opportunityTitle: match?.opportunity.title ?? t('results.opportunityFallback'),
       });
     },
-    [data],
+    [data, t],
   );
 
   const activeFilterCount =
@@ -477,7 +491,7 @@ function ResultsContent() {
     (filters.minScore > 0 ? 1 : 0);
 
   const handleSavePreset = useCallback(() => {
-    const name = window.prompt('Name this filter preset:', '')?.trim();
+    const name = window.prompt(t('results.presets.namePrompt'), '')?.trim();
     if (!name) return;
     const preset: FilterPreset = {
       id: `p_${Date.now().toString(36)}`,
@@ -490,7 +504,7 @@ function ResultsContent() {
     setPresets(next);
     savePresets(next);
     setActivePresetId(preset.id);
-  }, [filters, sortBy, activeTab, presets]);
+  }, [filters, sortBy, activeTab, presets, t]);
 
   const handleApplyPreset = useCallback((preset: FilterPreset) => {
     setFilters(preset.filters as typeof DEFAULT_FILTERS);
@@ -577,6 +591,8 @@ function ResultsContent() {
         {t('results.backToProfile')}
       </button>
 
+      <StorageStatusBanner />
+
       <div className="mb-8 sm:mb-10 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
@@ -599,18 +615,24 @@ function ResultsContent() {
                     )}
                   </>
                 )
-                : 'Loading...'}
+                : t('common.loading')}
           </p>
+          {loading && showSlowHint && (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
+              {t('results.slowHint')}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <SemanticToggle value={semanticRerank} onChange={toggleSemantic} disabled={loading} />
+          <SemanticToggle value={semanticRerank} onChange={toggleSemantic} disabled={loading} t={t} />
           {!loading && data && (
             <button
               type="button"
               onClick={() => setHelpOpen(true)}
               className="hidden md:inline-flex items-center justify-center h-6 px-2 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
-              aria-label="Show keyboard shortcuts"
-              title="Keyboard shortcuts (press ?)"
+              aria-label={t('results.keyboardHelp.open_aria_show')}
+              title={t('results.keyboardHelp.open_title')}
             >
               ?
             </button>
@@ -620,10 +642,12 @@ function ResultsContent() {
               type="button"
               onClick={handleExport}
               className="inline-flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              title={activeTab === 'starred' ? 'Export filtered results' : 'Export starred'}
+              title={activeTab === 'starred' ? t('results.exportFilteredTitle') : t('results.exportStarredTitle')}
             >
               <Download className="w-3.5 h-3.5" />
-              Export {activeTab === 'starred' ? 'filtered' : `${favs.size} starred`} CSV
+              {activeTab === 'starred'
+                ? t('results.exportLabelFiltered')
+                : t('results.exportLabelStarred', { count: favs.size })}
             </button>
           )}
         </div>
@@ -653,7 +677,7 @@ function ResultsContent() {
 
       {!loading && data && (
         <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-8 sm:mb-10 no-scrollbar">
-          <div className="inline-flex items-center bg-black/[0.04] rounded-full p-1" role="tablist" aria-label="Match category">
+          <div className="inline-flex items-center bg-black/[0.04] rounded-full p-1" role="tablist" aria-label={t('results.matchCategoryAria')}>
             {TABS.map(({ key, labelKey, icon: Icon, color }) => (
               <button
                 key={key}
@@ -670,7 +694,7 @@ function ResultsContent() {
               >
                 <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} aria-hidden="true" />
                 {t(labelKey)}
-                <span className="text-[11px] font-semibold tabular-nums text-gray-400" aria-label={`${counts[key]} results`}>
+                <span className="text-[11px] font-semibold tabular-nums text-gray-400" aria-label={t('results.countResultsAria', { count: counts[key] })}>
                   {counts[key]}
                 </span>
               </button>
@@ -710,7 +734,7 @@ function ResultsContent() {
                 type="button"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="Clear search"
+                aria-label={t('results.clearSearchAria')}
               >
                 <X className="w-3.5 h-3.5 text-gray-400" />
               </button>
@@ -725,6 +749,7 @@ function ResultsContent() {
                   active={p.id === activePresetId}
                   onApply={handleApplyPreset}
                   onDelete={handleDeletePreset}
+                  t={t}
                 />
               ))}
               {(activeFilterCount > 0 || !!debouncedQuery.trim()) && (
@@ -732,10 +757,10 @@ function ResultsContent() {
                   type="button"
                   onClick={handleSavePreset}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
-                  title="Save current filters as preset"
+                  title={t('results.savePresetTitle')}
                 >
                   <BookmarkPlus className="w-3 h-3" />
-                  Save preset
+                  {t('results.savePresetButton')}
                 </button>
               )}
             </div>
@@ -744,36 +769,37 @@ function ResultsContent() {
             <FilterSelect
               value={filters.paid}
               onChange={(v) => setFilters((f) => ({ ...f, paid: v as Filters['paid'] }))}
-              options={[['', 'Paid / Unpaid'], ['yes', 'Paid only'], ['no', 'Unpaid']]}
+              options={[['', t('results.filters.paidAll')], ['yes', t('results.filters.paidYes')], ['no', t('results.filters.paidNo')]]}
             />
             <FilterSelect
               value={filters.intl}
               onChange={(v) => setFilters((f) => ({ ...f, intl: v as Filters['intl'] }))}
-              options={[['', 'International status'], ['yes', 'Intl friendly only'], ['no', 'Show all (incl. US-only)']]}
+              options={[['', t('results.filters.intlAll')], ['yes', t('results.filters.intlYes')], ['no', t('results.filters.intlNo')]]}
             />
             <FilterSelect
               value={filters.source}
               onChange={(v) => setFilters((f) => ({ ...f, source: v as Filters['source'] }))}
-              options={[['', 'All sources'], ['uiuc_sro', 'UIUC SRO'], ['nsf_reu', 'NSF REU'], ['uiuc_faculty', 'Faculty Research'], ['handshake', 'Handshake'], ['manual', 'UIUC Labs'], ['uiuc_our_rss', 'OUR RSS']]}
+              options={[['', t('results.filters.sourceAll')], ['uiuc_sro', t('results.filters.sourceUiucSro')], ['nsf_reu', t('results.filters.sourceNsfReu')], ['uiuc_faculty', t('results.filters.sourceUiucFaculty')], ['handshake', t('results.filters.sourceHandshake')], ['manual', t('results.filters.sourceManual')], ['uiuc_our_rss', t('results.filters.sourceOurRss')]]}
             />
             <FilterSelect
               value={filters.onCampus}
               onChange={(v) => setFilters((f) => ({ ...f, onCampus: v as Filters['onCampus'] }))}
-              options={[['', 'Any location'], ['yes', 'On campus'], ['no', 'Off campus / Remote']]}
+              options={[['', t('results.filters.locAll')], ['yes', t('results.filters.locYes')], ['no', t('results.filters.locNo')]]}
             />
             <FilterSelect
               value={filters.deadline}
               onChange={(v) => setFilters((f) => ({ ...f, deadline: v as Filters['deadline'] }))}
-              options={[['', 'Any deadline'], ['7', 'Due in 7 days'], ['14', 'Due in 14 days'], ['30', 'Due in 30 days'], ['passed', 'Past deadline']]}
+              options={[['', t('results.filters.deadlineAll')], ['7', t('results.filters.deadline7')], ['14', t('results.filters.deadline14')], ['30', t('results.filters.deadline30')], ['passed', t('results.filters.deadlinePassed')]]}
             />
             <FilterSelect
               value={sortBy}
               onChange={(v) => setSortBy(v as SortKey)}
-              options={[['score', 'Sort: Best match'], ['deadline', 'Sort: Deadline soonest'], ['newest', 'Sort: Recently posted']]}
+              options={[['score', t('results.filters.sortScore')], ['deadline', t('results.filters.sortDeadline')], ['newest', t('results.filters.sortNewest')]]}
             />
             <MinScoreFilter
               value={filters.minScore}
               onChange={(v) => setFilters((f) => ({ ...f, minScore: v }))}
+              t={t}
             />
             {dismissedCount > 0 && (
               <button
@@ -784,10 +810,12 @@ function ResultsContent() {
                     ? 'bg-gray-100 border-gray-300 text-gray-700'
                     : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
                 }`}
-                title={showDismissed ? 'Hiding dismissed opportunities' : 'Showing dismissed opportunities'}
+                title={showDismissed ? t('results.hideDismissedTitle') : t('results.showDismissedTitle')}
               >
                 <EyeOff className="w-3 h-3" />
-                {showDismissed ? 'Hide' : 'Show'} {dismissedCount} dismissed
+                {showDismissed
+                  ? t('results.hideDismissedLabel', { count: dismissedCount })
+                  : t('results.showDismissedLabel', { count: dismissedCount })}
               </button>
             )}
             {activeFilterCount > 0 && (
@@ -796,19 +824,21 @@ function ResultsContent() {
                 onClick={() => setFilters(DEFAULT_FILTERS)}
                 className="px-3 py-1.5 text-[12px] font-medium text-red-500 hover:text-red-700 transition-colors"
               >
-                Clear {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+                {activeFilterCount > 1
+                  ? t('results.clearNFilters', { count: activeFilterCount })
+                  : t('results.clearNFilter', { count: activeFilterCount })}
               </button>
             )}
           </div>
           {(debouncedQuery.trim() || activeFilterCount > 0) && (
             <p className="text-[13px] text-gray-400 mt-2">
               {filtered.length === 0
-                ? 'No results'
-                : `${filtered.length} result${filtered.length > 1 ? 's' : ''}`}
+                ? t('results.search.noResults')
+                : t('results.search.resultsFound', { count: filtered.length })}
               {debouncedQuery.trim() && (
-                <span> for <span className="font-medium text-gray-600">&ldquo;{debouncedQuery}&rdquo;</span>
+                <span> {t('results.resultsForPrefix')} <span className="font-medium text-gray-600">&ldquo;{debouncedQuery}&rdquo;</span>
                   {SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()] && (
-                    <span className="text-gray-300"> (also matching: {SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()]?.join(', ')})</span>
+                    <span className="text-gray-300"> ({t('results.alsoMatching', { terms: SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()]?.join(', ') ?? '' })})</span>
                   )}
                 </span>
               )}
@@ -834,7 +864,7 @@ function ResultsContent() {
             onClick={() => window.location.reload()}
             className="text-sm text-blue-600 underline hover:text-blue-700"
           >
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       )}
@@ -849,6 +879,7 @@ function ResultsContent() {
                 setFilters(DEFAULT_FILTERS);
                 setSearchQuery('');
               }}
+              t={t}
             />
           ) : (
             <>
@@ -878,7 +909,7 @@ function ResultsContent() {
                     onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    Previous
+                    {t('results.pagination.previous')}
                   </button>
                   <span className="text-sm text-gray-500 tabular-nums px-3">
                     {page} / {totalPages}
@@ -889,7 +920,7 @@ function ResultsContent() {
                     onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next
+                    {t('results.pagination.next')}
                   </button>
                 </div>
               )}
@@ -918,12 +949,18 @@ function ResultsContent() {
         />
       )}
 
-      {helpOpen && <KeyboardHelpDialog onClose={() => setHelpOpen(false)} />}
+      {helpOpen && <KeyboardHelpDialog onClose={() => setHelpOpen(false)} t={t} />}
     </div>
   );
 }
 
-function KeyboardHelpDialog({ onClose }: { onClose: () => void }) {
+function KeyboardHelpDialog({
+  onClose,
+  t,
+}: {
+  onClose: () => void;
+  t: (path: string, vars?: Record<string, string | number>) => string;
+}) {
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     closeRef.current?.focus();
@@ -940,13 +977,13 @@ function KeyboardHelpDialog({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   const shortcuts: Array<[string, string]> = [
-    ['/', 'Focus search box'],
-    ['j  or  ↓', 'Next match'],
-    ['k  or  ↑', 'Previous match'],
-    ['s', 'Star the focused match'],
-    ['Enter', 'Open the focused match in a new tab'],
-    ['Esc', 'Close dialog'],
-    ['?', 'Show this help'],
+    ['/', t('results.keyboardHelp.focusSearch')],
+    ['j  or  \u2193', t('results.keyboardHelp.next')],
+    ['k  or  \u2191', t('results.keyboardHelp.prev')],
+    ['s', t('results.keyboardHelp.star')],
+    ['Enter', t('results.keyboardHelp.open')],
+    ['Esc', t('results.keyboardHelp.closeDialog')],
+    ['?', t('results.keyboardHelp.showHelp')],
   ];
 
   return (
@@ -959,13 +996,13 @@ function KeyboardHelpDialog({ onClose }: { onClose: () => void }) {
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 id="kbd-help-title" className="text-[15px] font-semibold text-gray-900">Keyboard shortcuts</h2>
+          <h2 id="kbd-help-title" className="text-[15px] font-semibold text-gray-900">{t('results.keyboardHelp.title')}</h2>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
             className="p-2 -mr-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            aria-label="Close shortcuts dialog"
+            aria-label={t('results.keyboardHelp.closeAria')}
           >
             <X className="w-4 h-4 text-gray-400" aria-hidden="true" />
           </button>
@@ -1005,22 +1042,24 @@ function EmptyState({
   hasFilters,
   tab,
   onClearFilters,
+  t,
 }: {
   hasFilters: boolean;
   tab: Tab;
   onClearFilters: () => void;
+  t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
   if (hasFilters) {
     return (
       <div className="text-center py-16 space-y-3">
-        <p className="text-gray-500 text-lg">No matches with these filters.</p>
-        <p className="text-gray-400 text-sm">Try broadening your search or removing some filters.</p>
+        <p className="text-gray-500 text-lg">{t('results.empty.withFilters')}</p>
+        <p className="text-gray-400 text-sm">{t('results.empty.withFiltersHint')}</p>
         <button
           type="button"
           onClick={onClearFilters}
           className="mt-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
         >
-          Clear all filters
+          {t('results.empty.clearAll')}
         </button>
       </div>
     );
@@ -1030,15 +1069,15 @@ function EmptyState({
     return (
       <div className="text-center py-16 space-y-2">
         <Star className="w-8 h-8 text-gray-300 mx-auto" />
-        <p className="text-gray-500 text-lg">No starred opportunities yet.</p>
-        <p className="text-gray-400 text-sm">Click the star icon on any match to save it here.</p>
+        <p className="text-gray-500 text-lg">{t('results.empty.starred')}</p>
+        <p className="text-gray-400 text-sm">{t('results.empty.starredHint')}</p>
       </div>
     );
   }
 
   return (
     <div className="text-center py-16">
-      <p className="text-gray-400 text-lg">No matches in this category.</p>
+      <p className="text-gray-400 text-lg">{t('results.empty.category')}</p>
     </div>
   );
 }
@@ -1069,7 +1108,15 @@ function FilterSelect({
   );
 }
 
-function MinScoreFilter({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function MinScoreFilter({
+  value,
+  onChange,
+  t,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  t: (path: string, vars?: Record<string, string | number>) => string;
+}) {
   const [open, setOpen] = useState(false);
   const active = value > 0;
   return (
@@ -1083,12 +1130,12 @@ function MinScoreFilter({ value, onChange }: { value: number; onChange: (v: numb
             : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
         }`}
       >
-        {active ? `Min score: ${value}` : 'Min score'}
+        {active ? t('results.minScore.buttonActive', { value }) : t('results.minScore.button')}
       </button>
       {open && (
         <div className="absolute z-20 mt-2 right-0 bg-white rounded-xl shadow-lg border border-gray-200 p-4 w-64">
           <div className="flex items-center justify-between text-[11px] text-gray-500 mb-2">
-            <span>Minimum match score</span>
+            <span>{t('results.minScore.label')}</span>
             <span className="font-semibold tabular-nums text-gray-700">{value}</span>
           </div>
           <input
@@ -1106,14 +1153,14 @@ function MinScoreFilter({ value, onChange }: { value: number; onChange: (v: numb
               onClick={() => onChange(0)}
               className="text-[11px] text-gray-500 hover:text-gray-700"
             >
-              Reset
+              {t('results.minScore.reset')}
             </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
             >
-              Done
+              {t('results.minScore.done')}
             </button>
           </div>
         </div>
@@ -1126,24 +1173,22 @@ function SemanticToggle({
   value,
   onChange,
   disabled,
+  t,
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={value}
-      aria-label="AI semantic ranking"
+      aria-label={t('results.semantic.aria')}
       disabled={disabled}
       onClick={() => onChange(!value)}
-      title={
-        value
-          ? 'AI ranking on — top 50 results re-ranked by semantic similarity'
-          : 'AI ranking off — rule-based score only'
-      }
+      title={value ? t('results.semantic.titleOn') : t('results.semantic.titleOff')}
       className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
         value
           ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white border-transparent shadow-sm'
@@ -1151,9 +1196,9 @@ function SemanticToggle({
       }`}
     >
       <Sparkles className={`w-3.5 h-3.5 ${value ? 'text-white' : 'text-gray-400'}`} aria-hidden="true" />
-      <span className="hidden sm:inline">AI ranking</span>
+      <span className="hidden sm:inline">{t('results.semantic.label')}</span>
       <span className={`text-[10px] font-semibold tracking-wider uppercase ${value ? 'opacity-90' : 'opacity-60'}`}>
-        {value ? 'on' : 'off'}
+        {value ? t('results.semantic.on') : t('results.semantic.off')}
       </span>
     </button>
   );
@@ -1164,11 +1209,13 @@ function PresetPill({
   active,
   onApply,
   onDelete,
+  t,
 }: {
   preset: FilterPreset;
   active: boolean;
   onApply: (p: FilterPreset) => void;
   onDelete: (id: string) => void;
+  t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
   return (
     <span className={`inline-flex items-center gap-1 rounded-full text-[11px] font-medium border transition-colors ${
@@ -1180,7 +1227,7 @@ function PresetPill({
         type="button"
         onClick={() => onApply(preset)}
         className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1"
-        aria-label={`Apply preset ${preset.name}`}
+        aria-label={t('results.presets.applyLabel', { name: preset.name })}
       >
         <Bookmark className={`w-2.5 h-2.5 ${active ? 'fill-white' : ''}`} aria-hidden="true" />
         {preset.name}
@@ -1189,10 +1236,10 @@ function PresetPill({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          if (window.confirm(`Delete preset "${preset.name}"?`)) onDelete(preset.id);
+          if (window.confirm(t('results.presets.deleteConfirm', { name: preset.name }))) onDelete(preset.id);
         }}
         className={`pr-2 py-1 ${active ? 'text-white/70 hover:text-white' : 'text-gray-300 hover:text-red-500'}`}
-        aria-label={`Delete ${preset.name}`}
+        aria-label={t('results.presets.deleteLabel', { name: preset.name })}
       >
         <Trash2 className="w-2.5 h-2.5" />
       </button>
