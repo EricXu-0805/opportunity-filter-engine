@@ -86,8 +86,12 @@ first E2E run post-deploy.
 - **Tracker v2** (markdown notes, Supabase Storage attachments, timeline
   view, status-triggered remind_at suggestions). Current v1 (plain
   textarea + date-only remind_at) still works.
-- **/admin dashboard** for data-quality monitoring (1741 records across
-  `opportunities.json`). Operator-only view, no end-user value.
+- ~~**/admin dashboard** for data-quality monitoring~~ — actually
+  shipped in a later session. Backend exposes `/api/admin/data-quality`
+  + `/api/admin/data-quality/history` (see `backend/routes/admin.py`),
+  frontend has `/admin` page (`frontend/src/app/admin/page.tsx`, 405
+  lines). Both gated by `ADMIN_TOKEN`. Set `ADMIN_TOKEN` on Render to
+  enable.
 - **Results page / ColdEmailModal / About / ResumeUpload i18n** — these
   components still have some inline English; the LanguageSwitcher still
   works but these sections fall back to English.
