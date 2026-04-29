@@ -14,7 +14,7 @@ Never overwrites real upstream data — only fills gaps or replaces the
 from __future__ import annotations
 
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 # Canonical major name -> list of regex patterns (lowercase, word-boundary-aware).
 # Title-prefix patterns (ending in ":" or appearing at start) get stronger weight.

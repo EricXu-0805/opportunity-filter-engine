@@ -10,13 +10,12 @@ from typing import Optional
 
 
 def normalize(raw: dict, source_defaults: dict = None) -> dict:
-    """
-    Convert a raw opportunity dict into the standardized schema.
-    
+    """Convert a raw opportunity dict into the standardized schema.
+
     Args:
         raw: Raw scraped data (flexible keys)
         source_defaults: Default tags from sources.yaml config
-    
+
     Returns:
         Normalized opportunity dict matching opportunity_schema.md
     """

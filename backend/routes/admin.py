@@ -14,7 +14,7 @@ import json
 import os
 import time
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -37,7 +37,7 @@ def _opportunities_mtime() -> str | None:
     path = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
     if not path.exists():
         return None
-    ts = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    ts = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
     return ts.isoformat()
 
 _UNSORTED_SENTINELS = frozenset({"unsorted", "uncategorized", "misc"})
@@ -86,7 +86,7 @@ async def data_quality(
         flagged_inactive=0,
     )
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     for o in opps:
         src = o.get("source", "?")
         b = by_source.setdefault(src, Counter(total=0))
@@ -131,7 +131,7 @@ async def data_quality(
         if last_verified:
             try:
                 lv = datetime.fromisoformat(str(last_verified).replace("Z", "+00:00"))
-                if (datetime.now(timezone.utc) - lv).days > 60:
+                if (datetime.now(UTC) - lv).days > 60:
                     b["stale_verify"] += 1
                     global_counts["stale_verify"] += 1
             except (ValueError, TypeError):
@@ -167,7 +167,7 @@ async def data_quality(
             })
     worst_fields.sort(key=lambda x: x["missing_count"], reverse=True)
 
-    generated_at = datetime.now(timezone.utc)
+    generated_at = datetime.now(UTC)
     data_mtime = _opportunities_mtime()
     snapshot = {
         "total": total,

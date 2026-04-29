@@ -4,10 +4,11 @@ Accepts a pasted URL, fetches the page, and extracts opportunity fields.
 V1: Basic HTML extraction. V2: LLM-powered structured extraction.
 """
 
+import re
+from typing import Optional
+
 import requests
 from bs4 import BeautifulSoup
-from typing import Optional
-import re
 
 from .base import RawOpportunity
 
@@ -22,7 +23,7 @@ def parse_url(url: str) -> Optional[RawOpportunity]:
             "User-Agent": "OpportunityFilterEngine/1.0"
         })
         resp.raise_for_status()
-    except Exception as e:
+    except Exception:
         return None
 
     soup = BeautifulSoup(resp.text, "html.parser")

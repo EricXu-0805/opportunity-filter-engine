@@ -59,11 +59,11 @@ def _extract_text_from_pdf(file_path: str) -> str:
 
             with pdfplumber.open(file_path) as pdf:
                 return "\n".join(page.extract_text() or "" for page in pdf.pages)
-        except ImportError:
+        except ImportError as e:
             raise HTTPException(
                 status_code=500,
                 detail="No PDF parsing library available. Install PyPDF2 or pdfplumber.",
-            )
+            ) from e
 
 
 def _extract_skills(text: str) -> list[str]:
@@ -134,8 +134,8 @@ async def upload_resume(file: UploadFile = File(...)):
 
     try:
         raw_text = _extract_text_from_pdf(tmp_path)
-    except Exception:
-        raise HTTPException(status_code=422, detail="Failed to parse PDF. The file may be corrupted or password-protected.")
+    except Exception as e:
+        raise HTTPException(status_code=422, detail="Failed to parse PDF. The file may be corrupted or password-protected.") from e
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -201,8 +201,8 @@ async def parse_github_profile(username: str):
             if resp.status_code != 200:
                 raise HTTPException(status_code=502, detail="GitHub API error")
             repos = resp.json()
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="GitHub API timeout")
+    except httpx.TimeoutException as e:
+        raise HTTPException(status_code=504, detail="GitHub API timeout") from e
 
     skills: set[str] = set()
     topics: set[str] = set()

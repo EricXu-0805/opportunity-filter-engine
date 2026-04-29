@@ -13,12 +13,12 @@ Usage:
     python -m src.collectors.manual_importer --validate data/processed/opportunities.json
 """
 
-import json
 import csv
-import uuid
+import json
+import logging
 import os
 import sys
-import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -128,7 +128,7 @@ def create_opportunity(
 
 def load_from_json(filepath: str) -> list[dict]:
     """Load opportunities from a JSON file. Accepts list or single object."""
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         data = json.load(f)
 
     if isinstance(data, dict):
@@ -155,7 +155,7 @@ def load_from_csv(filepath: str) -> list[dict]:
     List fields (majors, skills_required) use semicolons as delimiters.
     """
     results = []
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             # Parse list fields
@@ -197,7 +197,7 @@ def save_opportunities(opportunities: list[dict], filepath: str = None):
     # Load existing
     existing = []
     if os.path.exists(filepath):
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             existing = json.load(f)
 
     # Build index by ID
@@ -252,7 +252,7 @@ def validate_opportunity(opp: dict) -> list[str]:
 
 def validate_file(filepath: str):
     """Validate all opportunities in a JSON file."""
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         data = json.load(f)
 
     total_issues = 0

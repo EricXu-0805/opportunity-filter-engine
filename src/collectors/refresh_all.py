@@ -13,11 +13,15 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from .uiuc_our_rss import fetch_and_normalize as fetch_rss, merge_into_processed as merge_rss
-from .uiuc_sro import fetch_and_normalize as fetch_sro, merge_into_processed as merge_sro
-from .nsf_reu import fetch_and_normalize as fetch_reu, merge_into_processed as merge_reu
-from .uiuc_faculty import fetch_and_normalize as fetch_faculty, merge_into_processed as merge_faculty
+from .nsf_reu import fetch_and_normalize as fetch_reu
+from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
+from .uiuc_faculty import fetch_and_normalize as fetch_faculty
+from .uiuc_faculty import merge_into_processed as merge_faculty
+from .uiuc_our_rss import fetch_and_normalize as fetch_rss
+from .uiuc_our_rss import merge_into_processed as merge_rss
+from .uiuc_sro import fetch_and_normalize as fetch_sro
+from .uiuc_sro import merge_into_processed as merge_sro
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +124,7 @@ def refresh_all(deep: bool = True) -> dict:
     logger.info("=" * 50)
     logger.info("Running PI / contact email enrichment...")
     if PROCESSED_FILE.exists():
-        with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
+        with open(PROCESSED_FILE, encoding="utf-8") as f:
             all_opps = json.load(f)
 
         pi_stats = enrich_pi(all_opps, save=True)

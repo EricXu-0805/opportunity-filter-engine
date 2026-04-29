@@ -9,17 +9,16 @@ Run with: pytest tests/test_integration.py -v
 import json
 import os
 import sys
-import copy
+
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.matcher.ranker import rank_all, rank_opportunity
 from src.normalizers.normalizer import normalize
-from src.parsers.llm_tagger import rule_based_tag, apply_updates, needs_tagging, _build_full_text
-from src.matcher.ranker import rank_all, rank_opportunity, MatchResult
+from src.parsers.llm_tagger import _build_full_text, apply_updates, needs_tagging, rule_based_tag
 from src.recommender.cold_email import generate_cold_email
 from src.recommender.resume_advisor import analyze_gaps
-
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
 

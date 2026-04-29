@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from collections import Counter
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -210,13 +210,13 @@ async def get_stats():
     paid_total = sum(1 for o in opportunities if o.get("paid") in ("yes", "stipend"))
     intl_total = sum(1 for o in opportunities if o.get("eligibility", {}).get("international_friendly") == "yes")
 
+    from datetime import datetime
     from pathlib import Path
-    from datetime import datetime, timezone
     data_path = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
     last_updated_at = None
     if data_path.exists():
         last_updated_at = datetime.fromtimestamp(
-            data_path.stat().st_mtime, tz=timezone.utc
+            data_path.stat().st_mtime, tz=UTC
         ).isoformat()
 
     result = {

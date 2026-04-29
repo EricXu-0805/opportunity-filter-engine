@@ -337,8 +337,6 @@ def _p2_skills_applied(p: dict) -> str:
         return ""
 
     matching = p["matching_skills"]
-    levels = p["skill_levels"]
-    opp_desc = p["opp_desc"].lower()
 
     task_keywords = {
         "Python":     "data processing, analysis, and scripting",

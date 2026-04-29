@@ -9,18 +9,17 @@ Usage:
     python -m src.collectors.uiuc_our_rss --save       # fetch & merge into processed data
 """
 
-import re
-import json
 import hashlib
+import json
 import logging
+import re
+import ssl
+import urllib.error
+import urllib.request
 from datetime import datetime
 from html import unescape
 from pathlib import Path
 from typing import Optional
-
-import ssl
-import urllib.error
-import urllib.request
 
 import feedparser
 
@@ -251,7 +250,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
 
     existing = []
     if Path(filepath).exists():
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             existing = json.load(f)
 
     index = {opp["id"]: opp for opp in existing}

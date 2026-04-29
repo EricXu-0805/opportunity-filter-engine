@@ -14,7 +14,6 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ def load_opportunities() -> list[dict]:
     """Load processed opportunities."""
     if not PROCESSED_FILE.exists():
         return []
-    with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
+    with open(PROCESSED_FILE, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -523,16 +522,15 @@ def tag_all(use_llm: bool = True, dry_run: bool = False) -> dict:
             logger.info(f"LLM tagging batch {batch_start // LLM_BATCH_SIZE + 1} ({len(batch)} items)...")
             updates_list = llm_tag_batch(batch_opps)
 
-            for (idx, opp), updates in zip(batch, updates_list):
+            for (_idx, opp), updates in zip(batch, updates_list, strict=False):
                 if updates and not dry_run:
                     if apply_updates(opp, updates):
                         tagged_count += 1
                 elif updates and dry_run:
                     tagged_count += 1
     else:
-        # Rule-based fallback
         logger.info("Using rule-based tagging...")
-        for idx, opp in to_tag:
+        for _idx, opp in to_tag:
             updates = rule_based_tag(opp)
             if updates and not dry_run:
                 if apply_updates(opp, updates):
@@ -658,7 +656,7 @@ if __name__ == "__main__":
 
     if args.recompute_confidence:
         result = recompute_all_confidence()
-        print(f"\nConfidence Recompute Results")
+        print("\nConfidence Recompute Results")
         print("=" * 40)
         print(f"Total opps:  {result['total']}")
         print(f"Updated:     {result['updated']}")

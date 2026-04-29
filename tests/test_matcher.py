@@ -9,23 +9,23 @@ Run with: pytest tests/test_matcher.py -v
 import json
 import os
 import sys
+
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.matcher.ranker import (
-    rank_opportunity,
+    BUCKET_THRESHOLDS,
+    MatchResult,
+    _major_match_score,
+    _skill_overlap_score,
+    _year_match_score,
     rank_all,
+    rank_opportunity,
     score_eligibility,
     score_readiness,
     score_upside,
-    MatchResult,
-    _year_match_score,
-    _skill_overlap_score,
-    _major_match_score,
-    BUCKET_THRESHOLDS,
 )
-
 
 # ── Fixtures ──────────────────────────────────
 

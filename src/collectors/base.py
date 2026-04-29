@@ -3,12 +3,12 @@ Base collector interface for all opportunity sources.
 Every new data source implements this interface.
 """
 
+import logging
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
-import logging
-import time
 
 logger = logging.getLogger(__name__)
 

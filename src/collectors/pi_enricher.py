@@ -219,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=None, help="Max opportunities to process")
     args = parser.parse_args()
 
-    with open(PROCESSED_FILE, "r", encoding="utf-8") as f:
+    with open(PROCESSED_FILE, encoding="utf-8") as f:
         opps = json.load(f)
 
     if args.limit:

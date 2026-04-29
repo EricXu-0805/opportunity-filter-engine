@@ -60,7 +60,7 @@ SKILL_TIMELINE = {
 }
 
 
-from src.matcher.ranker import _parse_skills, _canonicalize_skill
+from src.matcher.ranker import _canonicalize_skill, _parse_skills
 
 
 def _skill_name(s) -> str:

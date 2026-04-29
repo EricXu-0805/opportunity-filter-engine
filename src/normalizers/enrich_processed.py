@@ -19,7 +19,6 @@ from pathlib import Path
 
 from src.normalizers.enricher import enrich_all
 
-
 DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
 
 

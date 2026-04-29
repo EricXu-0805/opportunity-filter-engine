@@ -9,10 +9,10 @@ Usage:
     python -m src.collectors.uiuc_sro --deep       # deep scrape detail pages
 """
 
-import re
-import json
 import hashlib
+import json
 import logging
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -480,7 +480,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
 
     existing = []
     if Path(filepath).exists():
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             existing = json.load(f)
 
     index = {opp["id"]: opp for opp in existing}

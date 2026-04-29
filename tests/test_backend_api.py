@@ -8,21 +8,17 @@ Covers features added across recent iterations:
   * TF-IDF corpus fitting
 """
 
-import json
 import os
 import sys
-from datetime import date, timedelta
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from backend.main import app
 from backend import data_loader
+from backend.main import app
 from backend.routes.cold_email import _local_refine
-
 
 client = TestClient(app)
 
@@ -197,8 +193,8 @@ class TestSemanticRerank:
         assert set(baseline_ids) == set(reranked_ids[:len(baseline_ids)]) or baseline_ids != reranked_ids
 
     def test_semantic_unit_call_direct(self):
-        from src.matcher.ranker import semantic_rerank, MatchResult
         from backend import data_loader
+        from src.matcher.ranker import MatchResult, semantic_rerank
         opps = data_loader.load_opportunities()
         lookup = data_loader.load_opportunities_by_id()
         fake_results = [
@@ -222,8 +218,8 @@ class TestSemanticRerank:
         assert out == []
 
     def test_zero_weight_is_noop(self):
-        from src.matcher.ranker import semantic_rerank, MatchResult
         from backend import data_loader
+        from src.matcher.ranker import MatchResult, semantic_rerank
         lookup = data_loader.load_opportunities_by_id()
         opps = data_loader.load_opportunities()
         results = [
@@ -608,8 +604,9 @@ class TestEmailEndpoints:
 
     def test_verify_restore_roundtrip(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "secret-roundtrip")
-        from backend.routes.email import _sign_restore_payload
         import time as _time
+
+        from backend.routes.email import _sign_restore_payload
         ts = int(_time.time())
         sig = _sign_restore_payload("abcd1234", ts)
         r = client.get(f"/api/email/verify-restore?d=abcd1234&t={ts}&s={sig}")
@@ -619,7 +616,7 @@ class TestEmailEndpoints:
 
 class TestEmailRenderers:
     def test_match_email_html_contains_title_and_link(self):
-        from backend.routes.email import _render_match_email, MatchItem
+        from backend.routes.email import MatchItem, _render_match_email
         subject, html, text = _render_match_email([
             MatchItem(title="Test Lab", url="https://example.com/a", score=85.5,
                       source="uiuc_faculty", deadline="2026-03-01", organization="UIUC"),
@@ -630,7 +627,7 @@ class TestEmailRenderers:
         assert "Test Lab" in text
 
     def test_match_email_escapes_html(self):
-        from backend.routes.email import _render_match_email, MatchItem
+        from backend.routes.email import MatchItem, _render_match_email
         _, html, _ = _render_match_email([
             MatchItem(title="<script>alert(1)</script>", url="https://x.com"),
         ], "")

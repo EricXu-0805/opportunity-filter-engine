@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend (pytest)
+    name: Backend (lint + pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +26,16 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Install lint/audit tools
+        run: pip install ruff==0.7.4 pip-audit==2.7.3
+
+      - name: Lint (ruff)
+        run: ruff check backend src tests --output-format=github
+
+      - name: Dependency audit (pip-audit)
+        run: pip-audit --requirement requirements.txt --strict --ignore-vuln GHSA-4xh5-x5gv-qwph
+        continue-on-error: true
 
       - name: Run pytest
         run: pytest tests/ -v --tb=short
@@ -53,6 +63,10 @@ jobs:
 
       - name: Lint
         run: npm run lint --if-present
+
+      - name: Dependency audit (npm)
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
 
       - name: Unit tests
         run: npm test

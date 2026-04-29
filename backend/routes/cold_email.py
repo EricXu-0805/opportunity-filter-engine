@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
 from backend.data_loader import load_opportunities_by_id
-from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
+from backend.schemas import ColdEmailRequest, ColdEmailResponse
 from src.recommender.cold_email import generate_cold_email, generate_variants
 
 router = APIRouter()
@@ -57,12 +57,7 @@ async def generate_email(request: ColdEmailRequest):
 
     subject, body = _extract_subject_and_body(email_text)
 
-    # Try to find PI email
-    recipient_email = ""
-    pi_name = opp.get("pi_name", "")
-    contact_email = opp.get("contact_email", "")
-    if contact_email:
-        recipient_email = contact_email
+    recipient_email = opp.get("contact_email", "") or ""
 
     mailto_link = _build_mailto_link(recipient_email, subject, body)
 
