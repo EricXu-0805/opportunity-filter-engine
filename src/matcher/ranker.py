@@ -1,6 +1,9 @@
-"""
-Three-layer matching engine.
-Scores opportunities against a student profile.
+"""Three-layer matching engine. Scores opportunities against a student profile.
+
+Tunable scoring knobs live in `src/matcher/config.py` (importable as
+constants here). Hardcoded taxonomies (MAJOR_GROUPS, RELATED_MAJORS,
+SKILL_SYNONYMS, SKILL_IMPLIES) still live in this file because they're
+data, not policy — moving them to YAML is a separate refactor.
 """
 
 import math
@@ -8,6 +11,27 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass
+
+from .config import (
+    BUCKET_THRESHOLDS,
+    COURSEWORK_MAX_FROM_COUNT,
+    COURSEWORK_PER_COURSE,
+    COURSEWORK_RELEVANCE_BONUS,
+    DEADLINE_PASSED_PENALTY,
+    INTEREST_BONUS_CAP,
+    INTEREST_BONUS_PER_HIT,
+    INTL_UNKNOWN_SCORE,
+    MAJOR_PENALTY_HARD,
+    MAJOR_PENALTY_HARD_AT,
+    MAJOR_PENALTY_SOFT,
+    MAJOR_PENALTY_SOFT_AT,
+    PROFICIENCY_WEIGHTS,
+    SEMANTIC_RERANK_FALLBACK_CAP,
+    STRETCH_BLEND,
+    STRETCH_MIDPOINT,
+    STRETCH_SIGMOID_K,
+    WEIGHTS_DEFAULT,
+)
 
 
 @dataclass
@@ -209,7 +233,7 @@ _STOP_WORDS = frozenset({
     "between", "under", "over", "out", "up", "down", "off", "then",
     "so", "if", "when", "where", "how", "what", "which", "who", "whom",
     "while", "just", "only", "even", "here", "there", "much", "many",
-    "well", "use", "used", "using", "will", "work", "working", "new",
+    "well", "use", "used", "using", "work", "working", "new",
     "including", "include", "includes", "provide", "provides",
     "students", "student", "program", "research", "university",
     "opportunity", "opportunities", "experience", "summer",
@@ -277,7 +301,7 @@ def _interest_bonus(profile: dict, opportunity: dict) -> float:
     hits = sum(1 for t in set(tokens) if t in signal_text)
     if hits == 0:
         return 0.0
-    return min(8.0, hits * 3.0)
+    return min(INTEREST_BONUS_CAP, hits * INTEREST_BONUS_PER_HIT)
 
 
 _GENERIC_INTEREST_WORDS = frozenset({
@@ -286,8 +310,6 @@ _GENERIC_INTEREST_WORDS = frozenset({
     "things", "various", "different", "many", "some",
 })
 
-
-PROFICIENCY_WEIGHTS = {"expert": 1.0, "experienced": 0.75, "beginner": 0.5}
 
 SKILL_SYNONYMS: dict[str, set[str]] = {
     "machine learning":  {"ml", "machine learning", "machine-learning"},
@@ -397,6 +419,41 @@ def _skill_overlap_score(student_skills: list, required_skills: list[str]) -> fl
     return min(100.0, ratio * 100)
 
 
+def _coursework_score(student_courses: set[str], opportunity: dict) -> float:
+    """Score coursework on count + relevance to the opportunity.
+
+    Count alone caps at COURSEWORK_MAX_FROM_COUNT (70) so a student who
+    listed 7 generic courses doesn't get a perfect score; relevant courses
+    (course code prefix matches an opportunity keyword/skill, e.g. CS473
+    → 'cs' tag, or BIOL420 → biology lab) earn an additional bonus on top.
+    """
+    if not student_courses:
+        return 30.0
+
+    count_score = min(COURSEWORK_MAX_FROM_COUNT, len(student_courses) * COURSEWORK_PER_COURSE)
+
+    keywords = [k.lower() for k in opportunity.get("keywords", []) or [] if isinstance(k, str)]
+    skills = [s.lower() for s in opportunity.get("eligibility", {}).get("skills_required", []) or [] if isinstance(s, str)]
+    signals = set(keywords) | set(skills)
+    if not signals:
+        return count_score
+
+    course_tokens: set[str] = set()
+    for c in student_courses:
+        cl = c.lower()
+        course_tokens.add(cl)
+        prefix = "".join(ch for ch in cl if ch.isalpha())
+        if prefix:
+            course_tokens.add(prefix)
+
+    overlap = sum(1 for sig in signals if any(sig in tok or tok in sig for tok in course_tokens if len(tok) >= 2))
+    if overlap == 0:
+        return count_score
+
+    relevance = min(COURSEWORK_RELEVANCE_BONUS, overlap * 10.0)
+    return min(100.0, count_score + relevance)
+
+
 def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
     if not preferred_years or "unknown" in preferred_years:
         return 40.0  # Unknown year pref = can't tell if it fits
@@ -469,7 +526,6 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
     elif major_score < 50:
         reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
 
-    # International eligibility (20%)
     intl_score = 100.0
     if profile.get("international_student"):
         friendly = elig.get("international_friendly", "unknown")
@@ -477,7 +533,7 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
             intl_score = 0.0
             reasons_gap.append("Requires US citizenship or permanent residency")
         elif friendly == "unknown":
-            intl_score = 35.0  # Significant penalty for uncertainty
+            intl_score = INTL_UNKNOWN_SCORE
             reasons_gap.append("International eligibility unclear — verify before applying")
         else:
             reasons_fit.append("Open to international students")
@@ -572,10 +628,8 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
     elif exp_score <= 30:
         reasons_gap.append("Limited prior experience — position may be competitive")
 
-    # Coursework (20%)
     student_courses = set(c.upper().strip() for c in profile.get("coursework", []))
-    # Simple heuristic: more courses = more prepared
-    course_score = min(100.0, len(student_courses) * 15)
+    course_score = _coursework_score(student_courses, opportunity)
 
     # Cold email (15%)
     email_score = 100.0 if profile.get("can_cold_email") else 40.0
@@ -705,18 +759,6 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
     return total, reasons_fit, reasons_gap
 
 
-# --- Combined ranker ---
-
-WEIGHTS_DEFAULT = {"eligibility": 0.45, "readiness": 0.35, "upside": 0.20}
-
-BUCKET_THRESHOLDS = [
-    (78, "high_priority"),
-    (62, "good_match"),
-    (42, "reach"),
-    (0,  "low_fit"),
-]
-
-
 def _stretch_score(raw: float) -> float:
     """Widen the score distribution so matches spread out visibly.
 
@@ -724,14 +766,12 @@ def _stretch_score(raw: float) -> float:
     sub-score has a ~40 default floor for unknowns. We mostly preserve
     raw, but apply a gentle sigmoid pull (strong at the extremes, weak
     in the middle) plus a subtract-midpoint amplification so signal
-    differences in the 70-90 zone aren't compressed.
+    differences in the 70-90 zone aren't compressed. Knobs in config.py.
     """
     x = max(0.0, min(100.0, raw))
-    k = 0.07
-    midpoint = 55.0
-    sig = 1.0 / (1.0 + math.exp(-k * (x - midpoint)))
+    sig = 1.0 / (1.0 + math.exp(-STRETCH_SIGMOID_K * (x - STRETCH_MIDPOINT)))
     stretched = sig * 100.0
-    blended = 0.55 * x + 0.45 * stretched
+    blended = (1.0 - STRETCH_BLEND) * x + STRETCH_BLEND * stretched
     return max(0.0, min(100.0, blended))
 
 
@@ -743,10 +783,10 @@ def _compute_weights(search_weight: int) -> dict[str, float]:
     100 = pure resume/experience   → boost readiness (skills, resume, coursework)
     """
     sw = max(0, min(100, search_weight))
-    t = sw / 100.0  # 0.0 → 1.0
+    t = sw / 100.0
 
-    elig = 0.45 - 0.05 * abs(t - 0.5) * 2
-    readiness = 0.25 + 0.20 * t
+    elig = WEIGHTS_DEFAULT.eligibility - 0.05 * abs(t - 0.5) * 2
+    readiness = (WEIGHTS_DEFAULT.readiness - 0.10) + 0.20 * t
     upside = 1.0 - elig - readiness
     return {"eligibility": elig, "readiness": readiness, "upside": max(0.05, upside)}
 
@@ -844,7 +884,11 @@ def rank_opportunity(
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
     up_score, up_fit, up_gap = score_upside(profile, opportunity)
 
-    w = weights or WEIGHTS_DEFAULT
+    w = weights or {
+        "eligibility": WEIGHTS_DEFAULT.eligibility,
+        "readiness": WEIGHTS_DEFAULT.readiness,
+        "upside": WEIGHTS_DEFAULT.upside,
+    }
     raw = (
         w["eligibility"] * elig_score +
         w["readiness"] * ready_score +
@@ -859,10 +903,10 @@ def rank_opportunity(
     if required_majors:
         student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])
         mm_score = _major_match_score(student_majors, required_majors)
-        if mm_score <= 10.0:
-            raw *= 0.75
-        elif mm_score <= 20.0:
-            raw *= 0.88
+        if mm_score <= MAJOR_PENALTY_HARD_AT:
+            raw *= MAJOR_PENALTY_HARD
+        elif mm_score <= MAJOR_PENALTY_SOFT_AT:
+            raw *= MAJOR_PENALTY_SOFT
 
     final = _stretch_score(raw)
 
@@ -873,7 +917,7 @@ def rank_opportunity(
             dl = date.fromisoformat(deadline)
             days_left = (dl - date.today()).days
             if days_left < 0:
-                final *= 0.7
+                final *= DEADLINE_PASSED_PENALTY
                 elig_gap.append("Deadline has passed — verify if still accepting applications")
             elif days_left <= 7:
                 elig_fit.append(f"Deadline in {days_left} days — apply soon")
@@ -882,7 +926,7 @@ def rank_opportunity(
 
     bucket = "low_fit"
     for threshold, label in BUCKET_THRESHOLDS:
-        if final >= threshold:
+        if final >= float(threshold):
             bucket = label
             break
 
@@ -1011,10 +1055,10 @@ def semantic_rerank(
     # by probing the env, and cap the blend weight so rule-based signal
     # dominates. Production has OPENAI_API_KEY set → full weight applies.
     has_api = bool(os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY"))
-    effective_weight = semantic_weight if has_api else min(semantic_weight, 0.2)
+    effective_weight = semantic_weight if has_api else min(semantic_weight, SEMANTIC_RERANK_FALLBACK_CAP)
 
     w = max(0.0, min(1.0, effective_weight))
-    for r, sim in zip(top_slice, sims):
+    for r, sim in zip(top_slice, sims, strict=False):
         rule = r.final_score
         blended = (1.0 - w) * rule + w * float(sim) * 100.0
         r.final_score = round(max(0.0, min(100.0, blended)), 2)
@@ -1076,9 +1120,12 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
         p70 = scores[max(0, (len(scores) * 3) // 10)]
         p40 = scores[max(0, (len(scores) * 6) // 10)]
 
-        hp_threshold = max(78, p90)
-        gm_threshold = max(62, p70)
-        reach_threshold = max(42, p40)
+        floor_high = float(BUCKET_THRESHOLDS[0][0])
+        floor_good = float(BUCKET_THRESHOLDS[1][0])
+        floor_reach = float(BUCKET_THRESHOLDS[2][0])
+        hp_threshold = max(floor_high, p90)
+        gm_threshold = max(floor_good, p70)
+        reach_threshold = max(floor_reach, p40)
 
         for r in results:
             if r.final_score >= hp_threshold:

@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import os
+from collections import OrderedDict
 from pathlib import Path
 from typing import Optional
 
@@ -24,7 +25,7 @@ EMBEDDING_CACHE_FILE = CACHE_DIR / "embedding_cache.json"
 EMBEDDING_MODEL_VERSION = "v1-openai-3small"
 
 MAX_CACHE_SIZE = 5000
-_cache: dict[str, list[float]] = {}
+_cache: "OrderedDict[str, list[float]]" = OrderedDict()
 _cache_loaded = False
 _cache_dirty = False
 
@@ -35,27 +36,29 @@ def _load_cache() -> None:
         return
     if EMBEDDING_CACHE_FILE.exists():
         try:
-            with open(EMBEDDING_CACHE_FILE, "r", encoding="utf-8") as f:
+            with open(EMBEDDING_CACHE_FILE, encoding="utf-8") as f:
                 raw = json.load(f)
             if isinstance(raw, dict) and "__version__" in raw:
                 if raw.get("__version__") == EMBEDDING_MODEL_VERSION:
-                    _cache = {k: v for k, v in raw.items() if not k.startswith("__")}
+                    _cache = OrderedDict(
+                        (k, v) for k, v in raw.items() if not k.startswith("__")
+                    )
                 else:
                     stale_count = len([k for k in raw if not k.startswith("__")])
                     logger.info(
                         "Embedding cache version changed %s → %s; discarding %d stale entries",
                         raw.get("__version__"), EMBEDDING_MODEL_VERSION, stale_count,
                     )
-                    _cache = {}
+                    _cache = OrderedDict()
             elif isinstance(raw, dict):
-                _cache = raw
+                _cache = OrderedDict(raw)
             else:
                 logger.warning("Embedding cache had unexpected type %s; ignoring", type(raw))
-                _cache = {}
+                _cache = OrderedDict()
             logger.info("Loaded %d cached embeddings", len(_cache))
         except (OSError, json.JSONDecodeError, ValueError) as e:
             logger.warning("Failed to load embedding cache: %s — starting empty", e)
-            _cache = {}
+            _cache = OrderedDict()
     _cache_loaded = True
 
 
@@ -78,6 +81,24 @@ def _text_hash(text: str) -> str:
     return hashlib.md5(text.strip().lower().encode()).hexdigest()[:16]
 
 
+def _resolve_embedding_provider(explicit_key: str | None) -> tuple[str, str, str] | None:
+    """Pick an embedding provider, in order:
+       1. explicit_key argument (treated as OpenAI direct)
+       2. OPENAI_API_KEY env var
+       3. OPENROUTER_API_KEY env var (gives broader model choice)
+    Returns (api_key, base_url, model) or None if no key is configured.
+    """
+    if explicit_key:
+        return explicit_key, "", "text-embedding-3-small"
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if openai_key:
+        return openai_key, "", "text-embedding-3-small"
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if openrouter_key:
+        return openrouter_key, "https://openrouter.ai/api/v1", "openai/text-embedding-3-small"
+    return None
+
+
 def _get_openai_embeddings(texts: list[str], api_key: str) -> Optional[list[list[float]]]:
     try:
         import openai
@@ -85,16 +106,11 @@ def _get_openai_embeddings(texts: list[str], api_key: str) -> Optional[list[list
         logger.warning("openai package not installed; embeddings disabled")
         return None
 
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
-    if openrouter_key and not api_key:
-        client = openai.OpenAI(
-            api_key=openrouter_key,
-            base_url="https://openrouter.ai/api/v1",
-        )
-        model = "openai/text-embedding-3-small"
-    else:
-        client = openai.OpenAI(api_key=api_key)
-        model = "text-embedding-3-small"
+    provider = _resolve_embedding_provider(api_key)
+    if provider is None:
+        return None
+    key, base_url, model = provider
+    client = openai.OpenAI(api_key=key, base_url=base_url) if base_url else openai.OpenAI(api_key=key)
 
     try:
         resp = client.embeddings.create(model=model, input=texts)
@@ -120,8 +136,7 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 
 def _evict_if_needed() -> None:
     while len(_cache) >= MAX_CACHE_SIZE:
-        oldest_key = next(iter(_cache))
-        del _cache[oldest_key]
+        _cache.popitem(last=False)
 
 
 def embed_text(text: str, api_key: str = None) -> Optional[list[float]]:
@@ -130,6 +145,7 @@ def embed_text(text: str, api_key: str = None) -> Optional[list[float]]:
     _load_cache()
     key = _text_hash(text)
     if key in _cache:
+        _cache.move_to_end(key)
         return _cache[key]
 
     api_key = api_key or os.environ.get("OPENAI_API_KEY")
@@ -159,6 +175,7 @@ def embed_batch(texts: list[str], api_key: str = None) -> list[Optional[list[flo
     for i, text in enumerate(texts):
         key = _text_hash(text)
         if key in _cache:
+            _cache.move_to_end(key)
             results[i] = _cache[key]
         else:
             uncached_indices.append(i)
@@ -171,7 +188,7 @@ def embed_batch(texts: list[str], api_key: str = None) -> list[Optional[list[flo
             batch_indices = uncached_indices[batch_start:batch_start + BATCH_SIZE]
             embeddings = _get_openai_embeddings(batch, api_key)
             if embeddings:
-                for idx, emb in zip(batch_indices, embeddings):
+                for idx, emb in zip(batch_indices, embeddings, strict=False):
                     _evict_if_needed()
                     results[idx] = emb
                     _cache[_text_hash(texts[idx])] = emb
