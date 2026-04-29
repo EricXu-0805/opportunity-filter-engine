@@ -19,12 +19,12 @@ class ProfilePreferences(BaseModel):
 
 class ProfileRequest(BaseModel):
     name: str = ""
-    school: str = "UIUC"
-    year: str = "freshman"
-    major: str = "ECE"
+    school: str = ""
+    year: str = ""
+    major: str = ""
     college: str = ""
     secondary_interests: list[str] = Field(default_factory=list)
-    international_student: bool = True
+    international_student: bool = False
     seeking_type: list[str] = Field(default_factory=lambda: ["research", "summer_program"])
     desired_fields: list[str] = Field(default_factory=list)
     hard_skills: list[Union[SkillItem, str]] = Field(default_factory=list)

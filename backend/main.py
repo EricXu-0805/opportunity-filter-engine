@@ -15,7 +15,8 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.routes import matches, opportunities, cold_email, resume, push, admin, email as email_routes
+from backend.routes import admin, cold_email, matches, opportunities, push, resume
+from backend.routes import email as email_routes
 
 API_VERSION = "2.7.0"
 
@@ -100,6 +101,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        # Force HTTPS for one year, including subdomains. The backend is only
+        # ever served over HTTPS in production (Render), so this prevents a
+        # MitM downgrade attack from an attacker on the user's network.
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # Minimal CSP for an API server: refuse to be embedded in any frame
+        # and disallow loading anything cross-origin from API responses
+        # themselves. The frontend has its own (looser) CSP via next.config.js.
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        )
         return response
 
 

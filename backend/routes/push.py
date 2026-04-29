@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import hmac
 import os
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Header, HTTPException
 
@@ -12,7 +13,12 @@ def _verify_cron_secret(secret: str | None) -> None:
     expected = os.environ.get("CRON_SECRET")
     if not expected:
         raise HTTPException(status_code=503, detail="Push cron not configured (CRON_SECRET missing)")
-    if secret != f"Bearer {expected}":
+    # Use constant-time comparison to avoid timing attacks. The encode is required
+    # because hmac.compare_digest works on bytes; the strings are short so there's
+    # no allocation concern.
+    provided = (secret or "").encode("utf-8")
+    expected_bytes = f"Bearer {expected}".encode()
+    if not hmac.compare_digest(provided, expected_bytes):
         raise HTTPException(status_code=401, detail="Invalid cron secret")
 
 
@@ -54,7 +60,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
 
     try:
         import httpx
-        from pywebpush import webpush, WebPushException
+        from pywebpush import WebPushException, webpush
     except ImportError:
         return {
             "status": "skipped",
@@ -128,7 +134,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         "due": len(due),
         "sent": sent,
         "failed": failed,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 

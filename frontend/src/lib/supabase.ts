@@ -1,16 +1,39 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mjpirkyduibkakvlbdko.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qcGlya3lkdWlia2FrdmxiZGtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNDE5OTEsImV4cCI6MjA5MTYxNzk5MX0.EiXIL8YaWOqfGvAASkfzJcg9VvYdF_mS4Ftn8Eiv2aE';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storageKey: 'ofe_auth',
-    detectSessionInUrl: false,
+// In production these MUST be set via Vercel env vars. We don't ship
+// hardcoded fallbacks because (a) anyone cloning the repo would otherwise
+// silently write to production, and (b) anon keys can be hammered with
+// signInAnonymously() to flood the auth.users table.
+//
+// If the env vars are missing we still need a callable client so the rest
+// of the app's optional-chained Supabase usage doesn't crash at import
+// time — every method call is then a no-op that surfaces as 'local-only'
+// storage status, which the StorageStatusBanner picks up.
+const SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+if (!SUPABASE_CONFIGURED && typeof window !== 'undefined') {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[ofe] NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are not set; ' +
+    'profile/favorites/interactions will only persist in localStorage.',
+  );
+}
+
+export const supabase: SupabaseClient = createClient(
+  SUPABASE_URL || 'http://localhost:54321',
+  SUPABASE_ANON_KEY || 'public-anon-key-not-set',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storageKey: 'ofe_auth',
+      detectSessionInUrl: false,
+    },
   },
-});
+);
 
 const FAV_FALLBACK_KEY = 'ofe_favs_fallback';
 
