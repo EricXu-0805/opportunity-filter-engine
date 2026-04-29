@@ -85,6 +85,7 @@ function HomePageInner() {
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<ProfileData & { search_weight: number } | null>(null);
   const isInitialLoad = useRef(true);
 
   useEffect(() => {
@@ -135,9 +136,12 @@ function HomePageInner() {
     if (isInitialLoad.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
+    const toSave = { ...profile, search_weight: searchWeight };
+    pendingSaveRef.current = toSave;
     setSaveStatus('saving');
+
     saveTimerRef.current = setTimeout(() => {
-      const toSave = { ...profile, search_weight: searchWeight };
+      pendingSaveRef.current = null;
       localStorage.setItem('ofe_profile', JSON.stringify(toSave));
       saveProfile(toSave)
         .then(() => {
@@ -151,6 +155,18 @@ function HomePageInner() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [profile, searchWeight]);
+
+  useEffect(() => {
+    return () => {
+      const pending = pendingSaveRef.current;
+      if (!pending) return;
+      try {
+        localStorage.setItem('ofe_profile', JSON.stringify(pending));
+      } catch { /* quota or SSR */ }
+      saveProfile(pending as unknown as Record<string, unknown>).catch(() => {});
+      pendingSaveRef.current = null;
+    };
+  }, []);
 
   function update<K extends keyof ProfileData>(key: K, value: ProfileData[K]) {
     setProfile((prev) => ({ ...prev, [key]: key === 'college' ? value : value, ...(key === 'college' ? { major: '' } : {}) }));
