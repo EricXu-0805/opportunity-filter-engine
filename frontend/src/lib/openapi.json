@@ -1,0 +1,1721 @@
+{
+  "components": {
+    "schemas": {
+      "Body_upload_resume_api_resume_upload_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_resume_api_resume_upload_post",
+        "type": "object"
+      },
+      "ColdEmailRequest": {
+        "properties": {
+          "opportunity_id": {
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ProfileRequest"
+          }
+        },
+        "required": [
+          "profile",
+          "opportunity_id"
+        ],
+        "title": "ColdEmailRequest",
+        "type": "object"
+      },
+      "ColdEmailResponse": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "mailto_link": {
+            "title": "Mailto Link",
+            "type": "string"
+          },
+          "recipient_email": {
+            "title": "Recipient Email",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "body",
+          "recipient_email",
+          "mailto_link"
+        ],
+        "title": "ColdEmailResponse",
+        "type": "object"
+      },
+      "EmailRefineRequest": {
+        "properties": {
+          "current_body": {
+            "title": "Current Body",
+            "type": "string"
+          },
+          "instruction": {
+            "title": "Instruction",
+            "type": "string"
+          },
+          "subject": {
+            "default": "",
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_body",
+          "instruction"
+        ],
+        "title": "EmailRefineRequest",
+        "type": "object"
+      },
+      "FavoriteItem": {
+        "properties": {
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "source": {
+            "default": "",
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "default": "",
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "default": "",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "FavoriteItem",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MatchItem": {
+        "properties": {
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "organization": {
+            "default": "",
+            "title": "Organization",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "source": {
+            "default": "",
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "default": "",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "MatchItem",
+        "type": "object"
+      },
+      "MatchResultResponse": {
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "eligibility_score": {
+            "title": "Eligibility Score",
+            "type": "number"
+          },
+          "final_score": {
+            "title": "Final Score",
+            "type": "number"
+          },
+          "next_steps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Next Steps",
+            "type": "array"
+          },
+          "opportunity": {
+            "additionalProperties": true,
+            "title": "Opportunity",
+            "type": "object"
+          },
+          "opportunity_id": {
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "readiness_score": {
+            "title": "Readiness Score",
+            "type": "number"
+          },
+          "reasons_fit": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons Fit",
+            "type": "array"
+          },
+          "reasons_gap": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons Gap",
+            "type": "array"
+          },
+          "upside_score": {
+            "title": "Upside Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "opportunity_id",
+          "eligibility_score",
+          "readiness_score",
+          "upside_score",
+          "final_score",
+          "bucket",
+          "reasons_fit",
+          "reasons_gap",
+          "next_steps",
+          "opportunity"
+        ],
+        "title": "MatchResultResponse",
+        "type": "object"
+      },
+      "MatchesResponse": {
+        "properties": {
+          "good_match": {
+            "title": "Good Match",
+            "type": "integer"
+          },
+          "high_priority": {
+            "title": "High Priority",
+            "type": "integer"
+          },
+          "low_fit": {
+            "title": "Low Fit",
+            "type": "integer"
+          },
+          "reach": {
+            "title": "Reach",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/MatchResultResponse"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "high_priority",
+          "good_match",
+          "reach",
+          "low_fit",
+          "results"
+        ],
+        "title": "MatchesResponse",
+        "type": "object"
+      },
+      "ProfilePreferences": {
+        "properties": {
+          "exclude_citizenship_restricted": {
+            "default": true,
+            "title": "Exclude Citizenship Restricted",
+            "type": "boolean"
+          },
+          "min_match_threshold": {
+            "default": 25,
+            "title": "Min Match Threshold",
+            "type": "number"
+          },
+          "prioritize_paid": {
+            "default": true,
+            "title": "Prioritize Paid",
+            "type": "boolean"
+          },
+          "show_reach_opportunities": {
+            "default": true,
+            "title": "Show Reach Opportunities",
+            "type": "boolean"
+          }
+        },
+        "title": "ProfilePreferences",
+        "type": "object"
+      },
+      "ProfileRequest": {
+        "example": {
+          "college": "Grainger College of Engineering",
+          "hard_skills": [
+            {
+              "level": "experienced",
+              "name": "Python"
+            },
+            {
+              "level": "beginner",
+              "name": "Java"
+            },
+            {
+              "level": "expert",
+              "name": "C++"
+            }
+          ],
+          "international_student": true,
+          "major": "ECE",
+          "name": "Eric",
+          "seeking_type": [
+            "research",
+            "summer_program"
+          ],
+          "year": "freshman"
+        },
+        "properties": {
+          "can_cold_email": {
+            "default": true,
+            "title": "Can Cold Email",
+            "type": "boolean"
+          },
+          "college": {
+            "default": "",
+            "title": "College",
+            "type": "string"
+          },
+          "coursework": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coursework",
+            "type": "array"
+          },
+          "desired_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Desired Fields",
+            "type": "array"
+          },
+          "experience_level": {
+            "default": "beginner",
+            "title": "Experience Level",
+            "type": "string"
+          },
+          "github_url": {
+            "default": "",
+            "title": "Github Url",
+            "type": "string"
+          },
+          "hard_skills": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SkillItem"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "title": "Hard Skills",
+            "type": "array"
+          },
+          "international_student": {
+            "default": false,
+            "title": "International Student",
+            "type": "boolean"
+          },
+          "linkedin_ready": {
+            "default": false,
+            "title": "Linkedin Ready",
+            "type": "boolean"
+          },
+          "linkedin_url": {
+            "default": "",
+            "title": "Linkedin Url",
+            "type": "string"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfilePreferences"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preferred_location": {
+            "default": "on-campus",
+            "title": "Preferred Location",
+            "type": "string"
+          },
+          "research_interests_text": {
+            "default": "",
+            "title": "Research Interests Text",
+            "type": "string"
+          },
+          "resume_ready": {
+            "default": false,
+            "title": "Resume Ready",
+            "type": "boolean"
+          },
+          "school": {
+            "default": "",
+            "title": "School",
+            "type": "string"
+          },
+          "search_weight": {
+            "default": 50,
+            "title": "Search Weight",
+            "type": "integer"
+          },
+          "secondary_interests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Secondary Interests",
+            "type": "array"
+          },
+          "seeking_type": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Seeking Type",
+            "type": "array"
+          },
+          "time_availability": {
+            "default": "summer",
+            "title": "Time Availability",
+            "type": "string"
+          },
+          "year": {
+            "default": "",
+            "title": "Year",
+            "type": "string"
+          }
+        },
+        "title": "ProfileRequest",
+        "type": "object"
+      },
+      "RestoreLinkRequest": {
+        "properties": {
+          "device_id": {
+            "maxLength": 128,
+            "minLength": 4,
+            "title": "Device Id",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "device_id"
+        ],
+        "title": "RestoreLinkRequest",
+        "type": "object"
+      },
+      "ResumeParseResponse": {
+        "properties": {
+          "experience_level": {
+            "title": "Experience Level",
+            "type": "string"
+          },
+          "extracted_coursework": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Extracted Coursework",
+            "type": "array"
+          },
+          "extracted_skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Extracted Skills",
+            "type": "array"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "raw_text": {
+            "title": "Raw Text",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "extracted_skills",
+          "extracted_coursework",
+          "experience_level",
+          "raw_text",
+          "success"
+        ],
+        "title": "ResumeParseResponse",
+        "type": "object"
+      },
+      "SendFavoritesRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FavoriteItem"
+            },
+            "maxItems": 50,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "email",
+          "items"
+        ],
+        "title": "SendFavoritesRequest",
+        "type": "object"
+      },
+      "SendMatchesRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MatchItem"
+            },
+            "maxItems": 50,
+            "title": "Items",
+            "type": "array"
+          },
+          "subject_hint": {
+            "default": "",
+            "title": "Subject Hint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "items"
+        ],
+        "title": "SendMatchesRequest",
+        "type": "object"
+      },
+      "SkillItem": {
+        "properties": {
+          "level": {
+            "default": "beginner",
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SkillItem",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Personalized research & internship matching for UIUC undergrads",
+    "title": "Opportunity Filter Engine API",
+    "version": "2.7.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/admin/data-quality": {
+      "get": {
+        "operationId": "data_quality_api_admin_data_quality_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Token"
+            }
+          },
+          {
+            "description": "Bypass cache",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Bypass cache",
+              "title": "Force",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Data Quality",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/data-quality/history": {
+      "get": {
+        "operationId": "data_quality_history_api_admin_data_quality_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Token"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Data Quality History",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/cold-email": {
+      "post": {
+        "description": "Generate a cold email for a specific opportunity with mailto: link.",
+        "operationId": "generate_email_api_cold_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColdEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColdEmailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Email",
+        "tags": [
+          "cold-email"
+        ]
+      }
+    },
+    "/api/cold-email/refine": {
+      "post": {
+        "operationId": "refine_email_api_cold_email_refine_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRefineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refine Email",
+        "tags": [
+          "cold-email"
+        ]
+      }
+    },
+    "/api/cold-email/variants": {
+      "post": {
+        "operationId": "generate_email_variants_api_cold_email_variants_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColdEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Email Variants",
+        "tags": [
+          "cold-email"
+        ]
+      }
+    },
+    "/api/cron/reminders": {
+      "get": {
+        "description": "Invoked by an external scheduler (Vercel Cron / GitHub Actions).\n\nScans push_subscriptions joined with interactions.remind_at where\nremind_at <= today and status in ('applied','replied','interviewing'),\nsends a Web Push notification to each matching subscription.",
+        "operationId": "reminders_cron_api_cron_reminders_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reminders Cron",
+        "tags": [
+          "push"
+        ]
+      }
+    },
+    "/api/email/restore-link": {
+      "post": {
+        "description": "Emails a signed URL that lets a user recover their profile on a\nnew device. Returns {ok: true} even when Resend is unconfigured so\nthe frontend doesn't leak configuration state \u2014 just logs a warning.",
+        "operationId": "restore_link_api_email_restore_link_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Link",
+        "tags": [
+          "email"
+        ]
+      }
+    },
+    "/api/email/send-favorites": {
+      "post": {
+        "operationId": "send_favorites_api_email_send_favorites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendFavoritesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Favorites",
+        "tags": [
+          "email"
+        ]
+      }
+    },
+    "/api/email/send-matches": {
+      "post": {
+        "operationId": "send_matches_api_email_send_matches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMatchesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Matches",
+        "tags": [
+          "email"
+        ]
+      }
+    },
+    "/api/email/verify-restore": {
+      "get": {
+        "description": "Verify the signed restore link. The frontend calls this when\nthe user clicks the email link; we respond with the validated\ndevice_id so the app can load their profile.",
+        "operationId": "verify_restore_api_email_verify_restore_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "d",
+            "required": true,
+            "schema": {
+              "title": "D",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "title": "T",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "s",
+            "required": true,
+            "schema": {
+              "title": "S",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Restore",
+        "tags": [
+          "email"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_check_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check"
+      }
+    },
+    "/api/matches": {
+      "post": {
+        "description": "Score and rank opportunities for the given profile.\n\nThe full bucket counts are always returned so the client knows\nthe total picture. Only the slice [offset, offset+limit) of visible\n(non-low_fit) results is returned in ``results``.\n\nSet ``semantic=true`` to blend LLM/TF-IDF semantic similarity into\nthe top 50 results (30% weight). Adds ~200-800ms latency when\nOpenAI key is configured; free when falling back to TF-IDF.",
+        "operationId": "get_matches_api_matches_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "semantic",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Semantic",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Matches",
+        "tags": [
+          "matches"
+        ]
+      }
+    },
+    "/api/matches/{opportunity_id}/gaps": {
+      "post": {
+        "operationId": "get_gap_analysis_api_matches__opportunity_id__gaps_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Gap Analysis",
+        "tags": [
+          "matches"
+        ]
+      }
+    },
+    "/api/opportunities": {
+      "get": {
+        "operationId": "list_opportunities_api_opportunities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "opportunity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Opportunity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "paid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Paid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "international_friendly",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "International Friendly"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Opportunities",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/opportunities/batch": {
+      "post": {
+        "description": "Return multiple opportunities by ID in a single request.\n\nBody: {\"ids\": [\"id1\", \"id2\", ...]} \u2014 capped at 200 to bound work.\nMissing IDs are silently skipped so the caller can always iterate\nthe response alongside its own list.",
+        "operationId": "get_opportunities_batch_api_opportunities_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Opportunities Batch",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/opportunities/stats/summary": {
+      "get": {
+        "operationId": "get_stats_api_opportunities_stats_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Stats",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/opportunities/upcoming": {
+      "get": {
+        "description": "Opportunities with deadlines within the next ``days`` days, sorted ascending.\n\nUseful for building a calendar / \"what's due soon\" widget without\nre-ranking the full corpus per request.",
+        "operationId": "get_upcoming_deadlines_api_opportunities_upcoming_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Upcoming Deadlines",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/opportunities/{opportunity_id}": {
+      "get": {
+        "operationId": "get_opportunity_api_opportunities__opportunity_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Opportunity",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/opportunities/{opportunity_id}/similar": {
+      "get": {
+        "description": "Return opportunities similar to the given one.\n\nSimilarity is the weighted sum of:\n  * shared keyword count  (primary signal)\n  * same opportunity_type (small bonus)\n  * shared majors         (small bonus)\n  * same organization     (small bonus for \"more from this lab\")\nThe source opportunity is always excluded.",
+        "operationId": "get_similar_opportunities_api_opportunities__opportunity_id__similar_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Similar Opportunities",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/push/vapid-public-key": {
+      "get": {
+        "operationId": "get_vapid_public_key_api_push_vapid_public_key_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Vapid Public Key",
+        "tags": [
+          "push"
+        ]
+      }
+    },
+    "/api/resume/github/{username}": {
+      "get": {
+        "operationId": "parse_github_profile_api_resume_github__username__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "title": "Username",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Parse Github Profile",
+        "tags": [
+          "resume"
+        ]
+      }
+    },
+    "/api/resume/upload": {
+      "post": {
+        "description": "Upload and parse a PDF resume to extract profile data.",
+        "operationId": "upload_resume_api_resume_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_resume_api_resume_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeParseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Resume",
+        "tags": [
+          "resume"
+        ]
+      }
+    }
+  }
+}
