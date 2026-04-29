@@ -76,6 +76,26 @@ export async function getGapAnalysis(profile: ProfileData, opportunityId: string
   });
 }
 
+export interface MatchExplanationResponse {
+  explanation: string;
+  method: 'llm' | 'local';
+  final_score: number;
+  bucket: string;
+}
+
+export async function getMatchExplanation(
+  profile: ProfileData,
+  opportunityId: string,
+): Promise<MatchExplanationResponse> {
+  return request<MatchExplanationResponse>(
+    `/matches/${encodeURIComponent(opportunityId)}/explain`,
+    {
+      method: 'POST',
+      body: JSON.stringify(toProfileRequest(profile)),
+    },
+  );
+}
+
 export async function getOpportunityById(id: string): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>(`/opportunities/${encodeURIComponent(id)}`);
 }
