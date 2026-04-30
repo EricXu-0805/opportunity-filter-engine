@@ -166,9 +166,11 @@ def print_summary(summary: dict) -> None:
         status = info.get("status", "unknown")
         if status == "ok":
             print(f"  {source}:")
-            print(f"    Fetched: {info['fetched']}")
-            print(f"    New:     {info['new']}")
-            print(f"    Updated: {info['updated']}")
+            for label, key in (("Fetched", "fetched"), ("Scraped", "scraped"),
+                               ("New", "new"), ("Updated", "updated"),
+                               ("Enriched", "enriched")):
+                if key in info:
+                    print(f"    {label}: {info[key]}")
             if "deep" in info:
                 print(f"    Deep:    {info['deep']}")
         else:
@@ -191,10 +193,28 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     start = time.time()
-    summary = refresh_all(deep=not args.no_deep)
+    try:
+        summary = refresh_all(deep=not args.no_deep)
+    except Exception as e:
+        elapsed = time.time() - start
+        summary = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "sources": {},
+            "total_new": 0,
+            "total_updated": 0,
+            "total_in_file": 0,
+            "duration_seconds": round(elapsed, 1),
+            "fatal_error": str(e),
+        }
+        write_status(summary)
+        raise
+
     elapsed = time.time() - start
     summary["duration_seconds"] = round(elapsed, 1)
 
     write_status(summary)
-    print_summary(summary)
+    try:
+        print_summary(summary)
+    except Exception as e:
+        logger.warning("print_summary failed (non-fatal): %s", e)
     print(f"\nCompleted in {elapsed:.1f}s")
