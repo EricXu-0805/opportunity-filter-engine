@@ -1,0 +1,41 @@
+{
+  "duration_seconds": 983.8,
+  "sources": {
+    "nsf_reu": {
+      "fetched": 398,
+      "new": 60,
+      "status": "ok",
+      "updated": 338
+    },
+    "pi_enricher": {
+      "already_had": 1346,
+      "enriched": 366,
+      "scraped": 385,
+      "status": "ok"
+    },
+    "uiuc_faculty": {
+      "enriched": false,
+      "fetched": 1069,
+      "new": 6,
+      "status": "ok",
+      "updated": 1063
+    },
+    "uiuc_our_rss": {
+      "fetched": 25,
+      "new": 1,
+      "status": "ok",
+      "updated": 24
+    },
+    "uiuc_sro": {
+      "deep": false,
+      "fetched": 253,
+      "new": 8,
+      "status": "ok",
+      "updated": 245
+    }
+  },
+  "timestamp": "2026-04-30T03:04:10.825118",
+  "total_in_file": 1816,
+  "total_new": 75,
+  "total_updated": 1670
+}
