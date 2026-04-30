@@ -27,6 +27,17 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
+STATUS_FILE = PROJECT_ROOT / "data" / "processed" / "collector_status.json"
+
+
+def write_status(summary: dict) -> None:
+    """Persist a per-collector run summary for the admin dashboard."""
+    try:
+        STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with STATUS_FILE.open("w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, sort_keys=True)
+    except OSError as e:
+        logger.warning("Failed to write collector status: %s", e)
 
 
 def refresh_all(deep: bool = True) -> dict:
@@ -184,5 +195,6 @@ if __name__ == "__main__":
     elapsed = time.time() - start
     summary["duration_seconds"] = round(elapsed, 1)
 
+    write_status(summary)
     print_summary(summary)
     print(f"\nCompleted in {elapsed:.1f}s")
