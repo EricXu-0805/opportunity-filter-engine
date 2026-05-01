@@ -216,6 +216,11 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
             "method": "llm",
             "final_score": result.final_score,
             "bucket": result.bucket,
+            "reasons_fit": result.reasons_fit,
+            "reasons_gap": result.reasons_gap,
+            "eligibility_score": result.eligibility_score,
+            "readiness_score": result.readiness_score,
+            "upside_score": result.upside_score,
         }
 
     return {
@@ -223,4 +228,9 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
         "method": "local",
         "final_score": result.final_score,
         "bucket": result.bucket,
+        "reasons_fit": result.reasons_fit,
+        "reasons_gap": result.reasons_gap,
+        "eligibility_score": result.eligibility_score,
+        "readiness_score": result.readiness_score,
+        "upside_score": result.upside_score,
     }
