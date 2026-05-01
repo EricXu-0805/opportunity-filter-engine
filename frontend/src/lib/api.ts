@@ -81,6 +81,11 @@ export interface MatchExplanationResponse {
   method: 'llm' | 'local';
   final_score: number;
   bucket: string;
+  reasons_fit: string[];
+  reasons_gap: string[];
+  eligibility_score: number;
+  readiness_score: number;
+  upside_score: number;
 }
 
 export async function getMatchExplanation(
