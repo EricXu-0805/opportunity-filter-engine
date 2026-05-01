@@ -88,6 +88,35 @@ export interface MatchExplanationResponse {
   upside_score: number;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  method: 'llm' | 'local';
+}
+
+export async function chatWithOpportunity(
+  opportunityId: string,
+  message: string,
+  history: ChatMessage[],
+  profile: ProfileData | null,
+): Promise<ChatResponse> {
+  return request<ChatResponse>(
+    `/opportunities/${encodeURIComponent(opportunityId)}/chat`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        message,
+        history,
+        profile: profile ? toProfileRequest(profile) : null,
+      }),
+    },
+  );
+}
+
 export async function getMatchExplanation(
   profile: ProfileData,
   opportunityId: string,

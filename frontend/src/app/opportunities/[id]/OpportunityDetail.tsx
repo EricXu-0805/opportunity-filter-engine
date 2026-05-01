@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   StickyNote,
   BellRing,
+  Sparkles,
 } from 'lucide-react';
 import {
   getFavorites,
@@ -38,6 +39,7 @@ import { getDeadlineUrgency, daysUntil } from '@/lib/match-utils';
 import { useT } from '@/i18n/client';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ssr: false });
+const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
 
 const INTERACTION_PILL: Record<InteractionType, string> = {
   applied: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -61,6 +63,7 @@ export default function OpportunityDetail({
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
 
   const interaction = interactionDetail?.type;
 
@@ -154,7 +157,7 @@ export default function OpportunityDetail({
   const description = opp.description_raw || opp.description_clean || '';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       <Link
         href="/results"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
@@ -162,6 +165,9 @@ export default function OpportunityDetail({
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         {t('detail.backToMatches')}
       </Link>
+
+      <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
+      <main className="flex-1 min-w-0 lg:max-w-3xl">
 
       <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden mb-6">
         <div className="p-5 sm:p-8">
@@ -432,6 +438,43 @@ export default function OpportunityDetail({
           <p>{t('detail.lastVerified', { date: (opp.metadata as { last_verified?: string }).last_verified ?? '' })}</p>
         )}
       </div>
+
+      </main>
+
+      <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-6 lg:self-start lg:shrink-0">
+        <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
+          <OpportunityChatbot opportunity={opp} profile={profile} />
+        </div>
+      </aside>
+      </div>
+
+      {!chatDrawerOpen && (
+        <button
+          type="button"
+          onClick={() => setChatDrawerOpen(true)}
+          className="lg:hidden fixed bottom-6 right-6 z-30 inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-600 text-white shadow-[0_4px_20px_rgba(79,70,229,0.4)] hover:bg-indigo-700 active:scale-95 transition-all"
+          aria-label={t('chatbot.openAria')}
+        >
+          <Sparkles className="w-6 h-6" aria-hidden="true" />
+        </button>
+      )}
+
+      {chatDrawerOpen && (
+        <div className="lg:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+          <div
+            className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"
+            onClick={() => setChatDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[88vh] h-[88vh] animate-in">
+            <OpportunityChatbot
+              opportunity={opp}
+              profile={profile}
+              onClose={() => setChatDrawerOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {profile && (
         <ColdEmailModal
