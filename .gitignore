@@ -43,6 +43,9 @@ data/processed/embedding_cache.json
 *.log
 logs/
 
+# Local daemon PIDs
+*.pid
+
 # Node / Next.js
 node_modules/
 .next/
