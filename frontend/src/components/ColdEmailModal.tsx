@@ -466,7 +466,7 @@ export default function ColdEmailModal({
                   <><Copy className="w-4 h-4" />{t('coldEmail.copy')}</>
                 )}
               </button>
-              <div className="flex items-center rounded-xl overflow-hidden shadow-sm">
+              <div className="flex items-stretch rounded-xl overflow-hidden shadow-sm">
                 <button
                   type="button"
                   onClick={() => { window.open(getMailtoLink('default'), '_blank'); }}
@@ -475,11 +475,11 @@ export default function ColdEmailModal({
                   <ExternalLink className="w-4 h-4" />
                   {t('coldEmail.openInEmail')}
                 </button>
-                <div className="w-px h-6 bg-blue-400" />
+                <div className="w-px bg-blue-400" />
                 <button
                   type="button"
                   onClick={() => { window.open(getMailtoLink('gmail'), '_blank'); }}
-                  className="px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
                   title={t('coldEmail.openGmailTitle')}
                 >
                   {t('coldEmail.gmail')}
@@ -487,7 +487,7 @@ export default function ColdEmailModal({
                 <button
                   type="button"
                   onClick={() => { window.open(getMailtoLink('outlook'), '_blank'); }}
-                  className="px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
                   title={t('coldEmail.openOutlookTitle')}
                 >
                   {t('coldEmail.outlook')}
