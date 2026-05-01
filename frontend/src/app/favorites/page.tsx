@@ -14,8 +14,9 @@ import {
   ChevronDown,
   FileText,
   GitCompare,
+  Check,
+  X,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
@@ -55,6 +56,9 @@ interface Opp {
   };
 }
 
+const MIN_COMPARE = 2;
+const MAX_COMPARE = 3;
+
 function DeadlineBadge({ deadline }: { deadline?: string }) {
   if (!deadline) return null;
   const dl = new Date(deadline + 'T00:00:00');
@@ -65,36 +69,23 @@ function DeadlineBadge({ deadline }: { deadline?: string }) {
   return <Badge variant="gray"><Clock className="w-3 h-3" />{deadline}</Badge>;
 }
 
-const MAX_COMPARE = 4;
-
 export default function FavoritesPage() {
   const router = useRouter();
   const { t } = useT();
   const [opportunities, setOpportunities] = useState<Opp[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string }>({
     open: false, id: '', title: '',
   });
 
-  const toggleCompareSelection = useCallback((id: string) => {
-    setSelectedForCompare((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else if (next.size < MAX_COMPARE) {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
   useEffect(() => {
     const raw = localStorage.getItem('ofe_profile');
     if (raw) {
-      try { setProfile(JSON.parse(raw)); } catch { /* ignore */ }
+      try { setProfile(JSON.parse(raw)); } catch {}
     }
   }, []);
 
@@ -106,7 +97,7 @@ export default function FavoritesPage() {
         if (ids.length === 0) { setLoading(false); return; }
         const opps = await getOpportunitiesByIds(ids);
         setOpportunities(opps as unknown as Opp[]);
-      } catch { /* ignore */ }
+      } catch {}
       finally { setLoading(false); }
     }
     load();
@@ -120,10 +111,38 @@ export default function FavoritesPage() {
   const toggleExpand = useCallback((id: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }, []);
+
+  const enterSelectionMode = useCallback(() => {
+    setSelectionMode(true);
+    setSelected(new Set());
+  }, []);
+
+  const cancelSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelected(new Set());
+  }, []);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < MAX_COMPARE) {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const confirmCompare = useCallback(() => {
+    if (selected.size < MIN_COMPARE) return;
+    const ids = Array.from(selected).map(encodeURIComponent).join(',');
+    router.push(`/compare?ids=${ids}`);
+  }, [selected, router]);
 
   if (loading) {
     return (
@@ -134,8 +153,12 @@ export default function FavoritesPage() {
     );
   }
 
+  const selectedTitles = Array.from(selected)
+    .map((id) => opportunities.find((o) => o.id === id)?.title || '')
+    .filter(Boolean);
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 ${selectionMode ? 'pb-32' : ''}`}>
       <button
         type="button"
         onClick={() => router.back()}
@@ -153,12 +176,14 @@ export default function FavoritesPage() {
           <p className="mt-2 text-[15px] text-gray-400">
             {opportunities.length === 0 ? t('favorites.empty') : t('favorites.count', { count: opportunities.length })}
           </p>
-          {opportunities.length >= 2 && (
-            <p className="mt-1 text-[12px] text-gray-400">{t('favorites.compareHint')}</p>
+          {selectionMode && (
+            <p className="mt-1 text-[13px] text-blue-600 font-medium">
+              {t('favorites.selectionHint', { min: MIN_COMPARE, max: MAX_COMPARE })}
+            </p>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {opportunities.length > 0 && (
+          {!selectionMode && opportunities.length > 0 && (
             <EmailMeButton
               label={t('email.sendFavorites')}
               title={t('email.subtitle')}
@@ -179,14 +204,25 @@ export default function FavoritesPage() {
               }}
             />
           )}
-          {selectedForCompare.size >= 2 && (
-            <Link
-              href={`/compare?ids=${Array.from(selectedForCompare).map(encodeURIComponent).join(',')}`}
+          {!selectionMode && opportunities.length >= MIN_COMPARE && (
+            <button
+              type="button"
+              onClick={enterSelectionMode}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 transition-colors shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
             >
               <GitCompare className="w-4 h-4" aria-hidden="true" />
-              {t('favorites.compareSelected', { count: selectedForCompare.size })}
-            </Link>
+              {t('favorites.compare')}
+            </button>
+          )}
+          {selectionMode && (
+            <button
+              type="button"
+              onClick={cancelSelection}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 text-[13px] font-semibold hover:bg-gray-50 transition-colors"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+              {t('favorites.cancel')}
+            </button>
           )}
         </div>
       </div>
@@ -214,160 +250,226 @@ export default function FavoritesPage() {
             const isExpanded = expanded.has(opp.id);
             const intlFriendly = opp.eligibility?.international_friendly;
             const desc = opp.description_clean || opp.description_raw || '';
+            const isSelected = selected.has(opp.id);
+            const canSelect = !isSelected && selected.size < MAX_COMPARE;
 
             return (
-              <div
-                key={opp.id}
-                className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden transition-shadow hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
-              >
-                <div className="p-6">
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
-                        <a
-                          href={`/opportunities/${encodeURIComponent(opp.id)}`}
-                          className="hover:text-blue-600 focus:outline-none focus-visible:underline decoration-blue-500 underline-offset-4 transition-colors"
+              <div key={opp.id} className="relative">
+                <div
+                  className={`bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden transition-all ${
+                    selectionMode
+                      ? isSelected
+                        ? 'ring-2 ring-blue-500 shadow-[0_4px_20px_rgba(37,99,235,0.15)]'
+                        : canSelect
+                        ? 'hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]'
+                        : 'opacity-50'
+                      : 'hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]'
+                  }`}
+                >
+                  <div className="p-6">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
+                          {selectionMode ? (
+                            <span>{opp.title}</span>
+                          ) : (
+                            <a
+                              href={`/opportunities/${encodeURIComponent(opp.id)}`}
+                              className="hover:text-blue-600 focus:outline-none focus-visible:underline decoration-blue-500 underline-offset-4 transition-colors"
+                            >
+                              {opp.title}
+                            </a>
+                          )}
+                        </h3>
+                        <div className="flex items-center gap-3 mt-2 text-[13px] text-gray-400">
+                          {opp.organization && (
+                            <span className="inline-flex items-center gap-1">
+                              <Building2 className="w-3.5 h-3.5" />
+                              {opp.organization}
+                            </span>
+                          )}
+                          {opp.location && (
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {opp.location}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {!selectionMode && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(opp.id)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0"
+                          aria-label={t('favorites.removeAria')}
                         >
-                          {opp.title}
-                        </a>
-                      </h3>
-                      <div className="flex items-center gap-3 mt-2 text-[13px] text-gray-400">
-                        {opp.organization && (
-                          <span className="inline-flex items-center gap-1">
-                            <Building2 className="w-3.5 h-3.5" />
-                            {opp.organization}
-                          </span>
+                          <Star className="w-4.5 h-4.5 fill-amber-400 text-amber-400" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                      {opp.opportunity_type && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
+                      {intlFriendly && (
+                        <Badge variant={intlFriendly === 'yes' ? 'green' : intlFriendly === 'no' ? 'red' : 'orange'} dot>
+                          <Globe className="w-3 h-3" />
+                          {intlFriendly === 'yes' ? 'Intl OK' : intlFriendly === 'no' ? 'US Only' : 'Verify'}
+                        </Badge>
+                      )}
+                      {opp.paid && (
+                        <Badge variant={opp.paid === 'yes' || opp.paid === 'stipend' ? 'green' : 'gray'} dot>
+                          <DollarSign className="w-3 h-3" />
+                          {opp.paid === 'yes' ? 'Paid' : opp.paid === 'stipend' ? 'Stipend' : 'Unpaid'}
+                        </Badge>
+                      )}
+                      {opp.source && <Badge variant="gray">{opp.source}</Badge>}
+                      <DeadlineBadge deadline={opp.deadline} />
+                    </div>
+
+                    {!selectionMode && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {profile && (
+                          <button
+                            type="button"
+                            onClick={() => setEmailModal({ open: true, id: opp.id, title: opp.title })}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow transition-all duration-200"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            Draft Email
+                          </button>
                         )}
-                        {opp.location && (
-                          <span className="inline-flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" />
-                            {opp.location}
-                          </span>
+                        {opp.url && (
+                          <a
+                            href={opp.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            View Details
+                          </a>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <label className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium text-gray-500 hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={selectedForCompare.has(opp.id)}
-                          disabled={!selectedForCompare.has(opp.id) && selectedForCompare.size >= MAX_COMPARE}
-                          onChange={() => toggleCompareSelection(opp.id)}
-                          className="w-3.5 h-3.5 rounded accent-blue-600"
-                          aria-label={t('favorites.selectAria')}
-                        />
-                        <span>{t('favorites.compare')}</span>
-                      </label>
+                    )}
+                  </div>
+
+                  {!selectionMode && (
+                    <div className="border-t border-black/[0.04]">
                       <button
                         type="button"
-                        onClick={() => handleRemove(opp.id)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                        aria-label={t('favorites.removeAria')}
+                        onClick={() => toggleExpand(opp.id)}
+                        className="flex items-center justify-between w-full px-6 py-3 text-[13px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
                       >
-                        <Star className="w-4.5 h-4.5 fill-amber-400 text-amber-400" />
+                        <span>{isExpanded ? 'Hide details' : 'Show details'}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                       </button>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 mb-4">
-                    {opp.opportunity_type && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
-                    {intlFriendly && (
-                      <Badge variant={intlFriendly === 'yes' ? 'green' : intlFriendly === 'no' ? 'red' : 'orange'} dot>
-                        <Globe className="w-3 h-3" />
-                        {intlFriendly === 'yes' ? 'Intl OK' : intlFriendly === 'no' ? 'US Only' : 'Verify'}
-                      </Badge>
-                    )}
-                    {opp.paid && (
-                      <Badge variant={opp.paid === 'yes' || opp.paid === 'stipend' ? 'green' : 'gray'} dot>
-                        <DollarSign className="w-3 h-3" />
-                        {opp.paid === 'yes' ? 'Paid' : opp.paid === 'stipend' ? 'Stipend' : 'Unpaid'}
-                      </Badge>
-                    )}
-                    {opp.source && <Badge variant="gray">{opp.source}</Badge>}
-                    <DeadlineBadge deadline={opp.deadline} />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    {profile && (
-                      <button
-                        type="button"
-                        onClick={() => setEmailModal({ open: true, id: opp.id, title: opp.title })}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow transition-all duration-200"
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                        Draft Email
-                      </button>
-                    )}
-                    {opp.url && (
-                      <a
-                        href={opp.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        View Details
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                <div className="border-t border-black/[0.04]">
-                  <button
-                    type="button"
-                    onClick={() => toggleExpand(opp.id)}
-                    className="flex items-center justify-between w-full px-6 py-3 text-[13px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <span>{isExpanded ? 'Hide details' : 'Show details'}</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isExpanded && (
-                    <div className="px-6 pb-6 space-y-4 animate-in">
-                      {(opp.pi_name || opp.lab_or_program || opp.department) && (
-                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
-                          {opp.pi_name && (
-                            <span className="text-gray-500"><span className="font-medium text-gray-700">PI:</span> {opp.pi_name}</span>
+                      {isExpanded && (
+                        <div className="px-6 pb-6 space-y-4 animate-in">
+                          {(opp.pi_name || opp.lab_or_program || opp.department) && (
+                            <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+                              {opp.pi_name && (
+                                <span className="text-gray-500"><span className="font-medium text-gray-700">PI:</span> {opp.pi_name}</span>
+                              )}
+                              {opp.lab_or_program && (
+                                <span className="text-gray-500"><span className="font-medium text-gray-700">Lab:</span> {opp.lab_or_program}</span>
+                              )}
+                              {opp.department && (
+                                <span className="text-gray-500"><span className="font-medium text-gray-700">Dept:</span> {opp.department}</span>
+                              )}
+                            </div>
                           )}
-                          {opp.lab_or_program && (
-                            <span className="text-gray-500"><span className="font-medium text-gray-700">Lab:</span> {opp.lab_or_program}</span>
+
+                          {desc && (
+                            <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-4">
+                              {desc}
+                            </p>
                           )}
-                          {opp.department && (
-                            <span className="text-gray-500"><span className="font-medium text-gray-700">Dept:</span> {opp.department}</span>
+
+                          {opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
+                            <div>
+                              <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">Required skills</span>
+                              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                {opp.eligibility.skills_required.map((s) => (
+                                  <span key={s} className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[12px] font-medium">{s}</span>
+                                ))}
+                              </div>
+                            </div>
                           )}
-                        </div>
-                      )}
 
-                      {desc && (
-                        <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-4">
-                          {desc}
-                        </p>
-                      )}
-
-                      {opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
-                        <div>
-                          <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">Required skills</span>
-                          <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            {opp.eligibility.skills_required.map((s) => (
-                              <span key={s} className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[12px] font-medium">{s}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {opp.keywords && opp.keywords.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {opp.keywords.slice(0, 8).map((kw) => (
-                            <span key={kw} className="px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500">{kw}</span>
-                          ))}
+                          {opp.keywords && opp.keywords.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {opp.keywords.slice(0, 8).map((kw) => (
+                                <span key={kw} className="px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500">{kw}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
                 </div>
+
+                {selectionMode && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(opp.id)}
+                    disabled={!isSelected && !canSelect}
+                    aria-pressed={isSelected}
+                    aria-label={t('favorites.toggleSelectAria', { title: opp.title })}
+                    className={`absolute inset-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                      isSelected ? 'bg-blue-500/[0.05]' : canSelect ? 'hover:bg-blue-500/[0.03]' : 'cursor-not-allowed'
+                    }`}
+                  >
+                    <span className={`absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white'
+                        : canSelect
+                        ? 'bg-white border-2 border-gray-300'
+                        : 'bg-gray-100 border-2 border-gray-200'
+                    }`}>
+                      {isSelected && <Check className="w-4 h-4" aria-hidden="true" />}
+                    </span>
+                  </button>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {selectionMode && (
+        <div className="fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-gray-900">
+                {t('favorites.selectedCount', { current: selected.size, max: MAX_COMPARE })}
+              </p>
+              {selectedTitles.length > 0 && (
+                <p className="text-[12px] text-gray-500 truncate mt-0.5">
+                  {selectedTitles.join(' · ')}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={cancelSelection}
+                className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors"
+              >
+                {t('favorites.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmCompare}
+                disabled={selected.size < MIN_COMPARE}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
+              >
+                <GitCompare className="w-4 h-4" aria-hidden="true" />
+                {t('favorites.confirmCompare')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
