@@ -9,6 +9,7 @@ Run with: pytest tests/test_integration.py -v
 import json
 import os
 import sys
+from datetime import date, timedelta
 
 import pytest
 
@@ -67,7 +68,7 @@ def sample_opportunity():
         "on_campus": True,
         "opportunity_type": "research",
         "paid": "yes",
-        "deadline": "2026-05-15",
+        "deadline": (date.today() + timedelta(days=30)).isoformat(),
         "description_raw": "Looking for undergrads with Python and machine learning experience.",
         "description_clean": "Looking for undergrads with Python and ML experience.",
         "keywords": ["machine learning", "data science"],

@@ -483,6 +483,50 @@ don't introduce regressions.
 > One-line fix at each `open()` call would let the tests pass on
 > Windows too. Not blocking; not in scope for this CI fix.
 
+#### Round 2: pytest still red — time-bomb fixture
+
+After `a2388cb` landed, CI re-ran and the lint/typecheck steps both
+turned green (frontend whole job ✓). But `pytest` then failed on two
+ranker tests:
+
+```
+FAILED tests/test_matcher.py::TestRankOpportunity::test_score_is_stretched_weighted_sum
+  - assert 58.7 >= (81.56 - 0.5)
+FAILED tests/test_matcher.py::TestBucketClassification::test_high_priority_for_perfect_match
+  - assert 58.7 >= 80
+```
+
+Both expect a "perfect match" `final_score` close to or above the raw
+weighted sum (81.56). Got 58.7 — about 28% lower. Reproduced locally.
+
+**Bug #7 — time-bomb deadline in `good_match_opportunity` fixture**
+
+- **Symptom**: the two ranker tests above start failing on
+  `2026-05-01` and any later date.
+- **Root cause**: `tests/test_matcher.py:60` hardcodes
+  `"deadline": "2026-04-30"`. `src/matcher/config.py:62` defines
+  `DEADLINE_PASSED_PENALTY = 0.7` (env-tunable via `OFE_DEADLINE_PENALTY`).
+  Once today's date passes `2026-04-30`, ranker multiplies the final
+  score by 0.7 (≈ 81.56 × 0.7 = 57.09, plus stretch sigmoid ≈ 58.7).
+  Confirmed by `OFE_DEADLINE_PENALTY=1.0 pytest …` → both tests pass.
+- **Why it didn't show before**: last green CI run was 2026-04-30
+  03:03 UTC, when the deadline hadn't yet expired. ruff F541 then
+  blocked all subsequent runs from reaching pytest. The bug has been
+  latent for at least 9 commits.
+- **Fix**: replace the hardcoded ISO date with
+  `(date.today() + timedelta(days=30)).isoformat()` so the fixture
+  always lives 30 days into the future. Same fix applied to
+  `tests/test_integration.py:70` (`"2026-05-15"`) which was the next
+  time-bomb to go off (~2 weeks out).
+- **Files**: `tests/test_matcher.py`, `tests/test_integration.py`
+- **Verified**: `pytest tests/test_matcher.py` → 37 passed (3
+  pre-existing Windows-only `TestDataIntegrity` failures unrelated,
+  same cp1252 issue documented above). `ruff check` clean.
+
+**Lesson**: never hardcode future ISO dates in test fixtures. They're
+silent time bombs. Always derive from `date.today()` or use freezegun
+if absolute timestamps matter for a specific test.
+
 ---
 
 <!-- New session entries get appended below this line, newest first.

@@ -9,6 +9,7 @@ Run with: pytest tests/test_matcher.py -v
 import json
 import os
 import sys
+from datetime import date, timedelta
 
 import pytest
 
@@ -57,7 +58,7 @@ def good_match_opportunity():
         "on_campus": True,
         "opportunity_type": "research",
         "paid": "yes",
-        "deadline": "2026-04-30",
+        "deadline": (date.today() + timedelta(days=30)).isoformat(),
         "description_raw": "Seeking undergraduate research assistant for computer vision with mentorship and training. Python required.",
         "description_clean": "Seeking undergraduate research assistant for computer vision.",
         "eligibility": {
