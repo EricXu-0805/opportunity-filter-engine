@@ -366,7 +366,7 @@ def _local_chat_fallback(opp: dict, message: str) -> str:
     elig = opp.get("eligibility") or {}
     app = opp.get("application") or {}
     bits: list[str] = [
-        f"AI chat is not configured on this server, so here are the structured facts for this opportunity:",
+        "AI chat is not configured on this server, so here are the structured facts for this opportunity:",
         f"- {opp.get('title', '')}",
         f"- Type: {opp.get('opportunity_type', 'unknown')}; paid: {opp.get('paid', 'unknown')}; deadline: {opp.get('deadline') or 'not specified'}.",
         f"- Eligible majors: {', '.join(elig.get('majors') or []) or 'unspecified'}.",

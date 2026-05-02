@@ -172,7 +172,7 @@ function requirementBoolScore(v: string | undefined): number {
   return 55;
 }
 
-export const FIELD_SCORERS: Record<string, (opp: Opportunity, profile: ProfileData) => number> = {
+export const FIELD_SCORERS: Partial<Record<string, (opp: Opportunity, profile: ProfileData) => number>> = {
   paid: (o) => compensationScore(o.paid),
   compensation: (o) => compensationScore(o.paid),
   international: (o, p) => intlEligibilityScore(p.is_international, o.eligibility?.international_friendly),

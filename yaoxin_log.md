@@ -419,6 +419,70 @@ c8c5357 feat(favorites): rework compare selection UX
 - **Push** to `EricXu-0805/opportunity-filter-engine` was approved by
   Kenny on 2026-05-01 after the 6-commit batch landed locally.
 
+### 🐛 CI green-fix (after the 9-commit push hit `main`)
+
+The push of the 6-commit batch + 2 docs commits + the log-rename only
+triggered **one** CI workflow run (GitHub Actions runs on the push HEAD,
+not per-commit), so the lint/typecheck regressions accumulated across
+the feature commits all surfaced at once on `f4d232a`. Backend + frontend
+jobs both failed; E2E got skipped because it `needs:` them.
+
+**Bug #5 — `ruff F541` in chatbot fallback** (introduced by `3631d07`)
+
+- **Symptom**: `ruff check` exit 1: `backend/routes/opportunities.py:369:9: F541 f-string without any placeholders`
+- **Root cause**: `_local_chat_fallback` builds a list of strings; the
+  intro line was written as `f"AI chat is not configured..."` but never
+  interpolates anything. ruff's F541 forbids that.
+- **Fix**: drop the `f` prefix.
+- **File**: `backend/routes/opportunities.py:369`
+- **Verified**: `python -m ruff check backend src tests` → `All checks passed!`
+
+**Bug #6 — `TS2774 condition will always return true` in compare**
+(introduced by `2a8825b`)
+
+- **Symptom**: `tsc --noEmit` exit 2:
+  `src/app/compare/DifferencesSection.tsx(162,24): error TS2774: This condition will always return true since this function is always defined. Did you mean to call it instead?`
+- **Root cause**: `FIELD_SCORERS` was typed as
+  `Record<string, ScorerFn>`. TypeScript treats `Record<string, T>[key]`
+  as always returning `T`, never `undefined`. But at runtime
+  `FIELD_SCORERS` is sparse — fields like `type`, `organization`,
+  `duration`, `startDate`, `location`, `remote` from the `FIELDS` array
+  have no corresponding scorer, so `FIELD_SCORERS[field.key]` actually
+  returns `undefined`. The `if (scorer && profile && ...)` guard was
+  correct in spirit but the type lied to TS.
+- **Fix**: change the type to
+  `Partial<Record<string, ScorerFn>>` so the index access is `ScorerFn | undefined`.
+  Now `if (scorer)` is meaningful narrowing and TS stops complaining.
+- **File**: `frontend/src/app/compare/scores.ts:175`
+- **Verified**: `cmd /c npx tsc --noEmit` → exit 0.
+
+#### Why these escaped local dev
+
+- Kenny's Windows Python 312 didn't have `ruff` installed locally (had
+  to `pip install ruff==0.7.4` to repro). CI installs it fresh per run.
+- The `tsc --noEmit` script was just never run during the feature work
+  — `next dev` is permissive and the runtime guard masked the type
+  issue.
+- **Lesson**: before pushing a batch of feature commits, run at minimum
+  `python -m ruff check backend src tests` and
+  `cd frontend && npx tsc --noEmit` locally. The Makefile could grow a
+  `make ci-local` target wrapping these.
+
+#### pytest sanity check
+
+Ran `pytest tests/` to confirm no regression. **17 failures** showed up
+but **all pre-existing Windows-only `cp1252` `UnicodeDecodeError`** when
+loading `data/processed/opportunities.json` (file has non-ASCII chars,
+Python on Windows defaults to cp1252 instead of UTF-8). CI runs on
+Ubuntu where the locale is UTF-8 — these tests pass on the runner.
+Excluding the data-loading tests: **130 passed, 0 failed**. My fixes
+don't introduce regressions.
+
+> Followup (D10, optional): `tests/test_matcher.py` and
+> `tests/test_integration.py` open the JSON without `encoding='utf-8'`.
+> One-line fix at each `open()` call would let the tests pass on
+> Windows too. Not blocking; not in scope for this CI fix.
+
 ---
 
 <!-- New session entries get appended below this line, newest first.
