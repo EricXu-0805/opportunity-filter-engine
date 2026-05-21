@@ -16,12 +16,20 @@ from pathlib import Path
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
+from .uiuc_drp import fetch_and_normalize as fetch_drp
+from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss
 from .uiuc_our_rss import merge_into_processed as merge_rss
+from .uiuc_siebel import fetch_and_normalize as fetch_siebel
+from .uiuc_siebel import merge_into_processed as merge_siebel
 from .uiuc_sro import fetch_and_normalize as fetch_sro
 from .uiuc_sro import merge_into_processed as merge_sro
+from .uiuc_urap import fetch_and_normalize as fetch_urap
+from .uiuc_urap import merge_into_processed as merge_urap
+from .uiuc_ursa import fetch_and_normalize as fetch_ursa
+from .uiuc_ursa import merge_into_processed as merge_ursa
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +139,32 @@ def refresh_all(deep: bool = True) -> dict:
         logger.error(f"Faculty collection failed: {e}")
         summary["sources"]["uiuc_faculty"] = {"status": "error", "error": str(e)}
 
-    # 5. PI enrichment pass
+    # 5. UIUC small-list collectors (URAP, URSA, DRP, Siebel program overviews)
+    for source_name, fetch_fn, merge_fn in [
+        ("uiuc_urap", fetch_urap, merge_urap),
+        ("uiuc_ursa", fetch_ursa, merge_ursa),
+        ("uiuc_drp", fetch_drp, merge_drp),
+        ("uiuc_siebel", fetch_siebel, merge_siebel),
+    ]:
+        logger.info("=" * 50)
+        logger.info(f"Collecting from {source_name}...")
+        try:
+            new_opps = fetch_fn()
+            added, updated = merge_fn(new_opps)
+            summary["sources"][source_name] = {
+                "fetched": len(new_opps),
+                "new": added,
+                "updated": updated,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(f"{source_name}: {len(new_opps)} fetched, {added} new, {updated} updated")
+        except Exception as e:
+            logger.error(f"{source_name} collection failed: {e}")
+            summary["sources"][source_name] = {"status": "error", "error": str(e)}
+
+    # 6. PI enrichment pass
     logger.info("=" * 50)
     logger.info("Running PI / contact email enrichment...")
     if PROCESSED_FILE.exists():

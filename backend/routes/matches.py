@@ -130,14 +130,25 @@ def _llm_explanation(
     reasons_fit: list[str],
     reasons_gap: list[str],
 ) -> str | None:
-    """Try the configured LLM provider; return None if unavailable or failing."""
+    """Try the configured LLM provider; return None if unavailable or failing.
+
+    Provider order: OPENAI_API_KEY → GEMINI_API_KEY → OPENROUTER_API_KEY.
+    Gemini is reached via Google's OpenAI-compatible endpoint, so no new
+    SDK dependency is needed.
+    """
     api_key = os.environ.get("OPENAI_API_KEY")
     base_url = ""
     model = "gpt-4o-mini"
     if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+            model = "gemini-2.5-flash"
+    if not api_key:
         api_key = os.environ.get("OPENROUTER_API_KEY")
-        base_url = "https://openrouter.ai/api/v1"
-        model = "google/gemini-2.0-flash-lite-001"
+        if api_key:
+            base_url = "https://openrouter.ai/api/v1"
+            model = "google/gemini-2.0-flash-lite-001"
     if not api_key:
         return None
 
@@ -173,15 +184,18 @@ def _llm_explanation(
 
     try:
         client = openai.OpenAI(api_key=api_key, base_url=base_url) if base_url else openai.OpenAI(api_key=api_key)
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[
+        kwargs: dict = {
+            "model": model,
+            "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            temperature=0.4,
-            max_tokens=200,
-        )
+            "temperature": 0.4,
+            "max_tokens": 200,
+        }
+        if model.startswith("gemini-"):
+            kwargs["extra_body"] = {"reasoning_effort": "none"}
+        resp = client.chat.completions.create(**kwargs)
         text = (resp.choices[0].message.content or "").strip()
         return text or None
     except Exception:

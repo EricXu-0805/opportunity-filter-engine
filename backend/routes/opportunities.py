@@ -337,9 +337,15 @@ def _llm_chat_call(messages: list[dict]) -> str | None:
     base_url = ""
     model = "gpt-4o-mini"
     if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+            model = "gemini-2.5-flash"
+    if not api_key:
         api_key = os.environ.get("OPENROUTER_API_KEY")
-        base_url = "https://openrouter.ai/api/v1"
-        model = "google/gemini-2.0-flash-lite-001"
+        if api_key:
+            base_url = "https://openrouter.ai/api/v1"
+            model = "google/gemini-2.0-flash-lite-001"
     if not api_key:
         return None
 
@@ -350,12 +356,15 @@ def _llm_chat_call(messages: list[dict]) -> str | None:
 
     try:
         client = openai.OpenAI(api_key=api_key, base_url=base_url) if base_url else openai.OpenAI(api_key=api_key)
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=0.4,
-            max_tokens=400,
-        )
+        kwargs: dict = {
+            "model": model,
+            "messages": messages,
+            "temperature": 0.4,
+            "max_tokens": 400,
+        }
+        if model.startswith("gemini-"):
+            kwargs["extra_body"] = {"reasoning_effort": "none"}
+        resp = client.chat.completions.create(**kwargs)
         text = (resp.choices[0].message.content or "").strip()
         return text or None
     except Exception:
@@ -373,7 +382,7 @@ def _local_chat_fallback(opp: dict, message: str) -> str:
         f"- Required skills: {', '.join(elig.get('skills_required') or []) or 'none listed'}.",
         f"- International-friendly: {elig.get('international_friendly', 'unknown')}; citizenship required: {bool(elig.get('citizenship_required'))}.",
         f"- Apply at: {app.get('application_url') or opp.get('url') or 'see source'}.",
-        "Set OPENROUTER_API_KEY or OPENAI_API_KEY on the backend to enable AI chat.",
+        "Set OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY on the backend to enable AI chat.",
     ]
     return "\n".join(bits)
 

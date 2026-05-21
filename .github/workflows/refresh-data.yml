@@ -51,6 +51,9 @@ jobs:
       - name: Retroactive enricher pass
         run: python -m src.normalizers.enrich_processed --save
 
+      - name: Deactivate past-deadline opportunities
+        run: python -m src.normalizers.deactivate_past --save
+
       - name: Check for changes
         id: changes
         run: |

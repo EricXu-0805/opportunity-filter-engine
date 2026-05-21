@@ -12,6 +12,7 @@ pydantic==2.12.3
 python-multipart==0.0.24
 httpx==0.28.1
 pyyaml==6.0.3
+python-dotenv==1.0.1
 
 # Web Push (only needed for /api/cron/reminders push delivery; soft-pinned
 # because it isn't installed in dev/CI by default and we don't want
