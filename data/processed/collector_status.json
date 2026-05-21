@@ -1,41 +1,65 @@
 {
-  "duration_seconds": 1071.8,
+  "duration_seconds": 4544.9,
   "sources": {
     "nsf_reu": {
-      "fetched": 419,
-      "new": 12,
+      "fetched": 403,
+      "new": 2,
       "status": "ok",
-      "updated": 407
+      "updated": 401
     },
     "pi_enricher": {
-      "already_had": 1385,
-      "enriched": 393,
-      "scraped": 412,
+      "already_had": 1499,
+      "enriched": 298,
+      "scraped": 318,
       "status": "ok"
     },
-    "uiuc_faculty": {
-      "enriched": false,
-      "fetched": 1068,
-      "new": 1,
+    "uiuc_drp": {
+      "fetched": 2,
+      "new": 0,
       "status": "ok",
-      "updated": 1067
+      "updated": 2
+    },
+    "uiuc_faculty": {
+      "enriched": true,
+      "fetched": 1068,
+      "new": 0,
+      "status": "ok",
+      "updated": 1068
     },
     "uiuc_our_rss": {
       "fetched": 25,
-      "new": 1,
+      "new": 0,
       "status": "ok",
-      "updated": 24
+      "updated": 25
+    },
+    "uiuc_siebel": {
+      "fetched": 14,
+      "new": 4,
+      "status": "ok",
+      "updated": 0
     },
     "uiuc_sro": {
-      "deep": false,
+      "deep": true,
       "fetched": 278,
       "new": 0,
       "status": "ok",
       "updated": 278
+    },
+    "uiuc_urap": {
+      "fetched": 1,
+      "new": 0,
+      "status": "ok",
+      "updated": 0
+    },
+    "uiuc_ursa": {
+      "fetched": 1,
+      "new": 0,
+      "status": "ok",
+      "updated": 1
     }
   },
-  "timestamp": "2026-05-21T08:59:14.142162",
-  "total_in_file": 1882,
-  "total_new": 14,
-  "total_updated": 1776
+  "timestamp": "2026-05-21T17:27:13.926287",
+  "total_in_file": 1902,
+  "total_new": 6,
+  "total_updated": 1775
 }
