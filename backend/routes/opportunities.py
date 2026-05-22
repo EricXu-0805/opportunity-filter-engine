@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import time
 from collections import Counter
 from datetime import UTC, date, timedelta
@@ -10,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
+from backend.lib.llm import chat_completion
 from backend.schemas import ProfileRequest
 
 router = APIRouter()
@@ -333,42 +333,7 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
 
 
 def _llm_chat_call(messages: list[dict]) -> str | None:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    base_url = ""
-    model = "gpt-4o-mini"
-    if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if api_key:
-            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-            model = "gemini-2.5-flash"
-    if not api_key:
-        api_key = os.environ.get("OPENROUTER_API_KEY")
-        if api_key:
-            base_url = "https://openrouter.ai/api/v1"
-            model = "google/gemini-2.0-flash-lite-001"
-    if not api_key:
-        return None
-
-    try:
-        import openai
-    except ImportError:
-        return None
-
-    try:
-        client = openai.OpenAI(api_key=api_key, base_url=base_url) if base_url else openai.OpenAI(api_key=api_key)
-        kwargs: dict = {
-            "model": model,
-            "messages": messages,
-            "temperature": 0.4,
-            "max_tokens": 400,
-        }
-        if model.startswith("gemini-"):
-            kwargs["extra_body"] = {"reasoning_effort": "none"}
-        resp = client.chat.completions.create(**kwargs)
-        text = (resp.choices[0].message.content or "").strip()
-        return text or None
-    except Exception:
-        return None
+    return chat_completion(messages, max_tokens=400, temperature=0.4)
 
 
 def _local_chat_fallback(opp: dict, message: str) -> str:
