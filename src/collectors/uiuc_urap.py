@@ -78,6 +78,7 @@ class UIUCURAPCollector(BaseCollector):
                 "level": "program_overview",
                 "college": "All",
                 "is_rolling": False,
+                "_contact_email": "undergradresearch@illinois.edu",
             },
         )
 
@@ -133,6 +134,7 @@ def _hash_id(title: str, source: str) -> str:
 def _to_normalized(r: RawOpportunity) -> dict:
     now = datetime.utcnow().isoformat()
     is_overview = r.extra_fields.get("level") == "program_overview"
+    contact_email = r.extra_fields.pop("_contact_email", None)
     return {
         "id": _hash_id(r.title, r.source),
         "source": r.source,
@@ -146,6 +148,7 @@ def _to_normalized(r: RawOpportunity) -> dict:
         "deadline": None,
         "is_rolling": True if is_overview else False,
         "on_campus": True,
+        "contact_email": contact_email,
         "eligibility": {
             "majors": [],
             "preferred_year": ["freshman", "sophomore"],

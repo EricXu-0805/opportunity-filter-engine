@@ -136582,7 +136582,8 @@
     },
     "program": "URAP",
     "level": "program_overview",
-    "college": "All"
+    "college": "All",
+    "contact_email": "undergradresearch@illinois.edu"
   },
   {
     "id": "b27723bb1ca91202",
@@ -137293,7 +137294,8 @@
     "program_key": "las_research_hub",
     "college": "LAS",
     "status": "unknown",
-    "level": "program_overview"
+    "level": "program_overview",
+    "contact_email": "undergradresearch@illinois.edu"
   },
   {
     "id": "42c989ddcd967ca5",
@@ -137339,7 +137341,8 @@
     "program_key": "pursue_las",
     "college": "LAS",
     "status": "unknown",
-    "level": "program_overview"
+    "level": "program_overview",
+    "contact_email": "undergradresearch@illinois.edu"
   },
   {
     "id": "ddf5d307a90d7c5e",
@@ -137392,7 +137395,8 @@
     "program_key": "beckman_fellowships",
     "college": "LAS / Beckman",
     "status": "unknown",
-    "level": "program_overview"
+    "level": "program_overview",
+    "contact_email": "beckman-info@illinois.edu"
   },
   {
     "id": "d10e4c608e1f82de",
@@ -137439,7 +137443,8 @@
     "program_key": "grainger_isur",
     "college": "Grainger Engineering",
     "status": "open",
-    "level": "program_overview"
+    "level": "program_overview",
+    "contact_email": "isur@illinois.edu"
   },
   {
     "id": "b411df61efddcc28",
@@ -137487,7 +137492,8 @@
     "program_key": "grainger_opportunities_table",
     "college": "Grainger Engineering",
     "status": "unknown",
-    "level": "program_overview"
+    "level": "program_overview",
+    "contact_email": "graingerugresearch@illinois.edu"
   },
   {
     "id": "1a3e1fcfb2156a26",
@@ -137534,6 +137540,7 @@
     "program_key": "atlas_internship",
     "college": "LAS / ATLAS",
     "status": "unknown",
-    "level": "program_overview"
+    "level": "program_overview",
+    "contact_email": "atlas@illinois.edu"
   }
 ]

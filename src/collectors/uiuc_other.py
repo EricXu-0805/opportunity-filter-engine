@@ -50,6 +50,7 @@ PROGRAMS = [
         "majors": [],
         "preferred_year": ["freshman", "sophomore", "junior", "senior"],
         "paid": "unknown",
+        "contact_email": "undergradresearch@illinois.edu",
         "fallback_desc": (
             "Hub page for undergraduate research in the College of Liberal Arts "
             "and Sciences. Aggregates major-specific research pages (Astronomy, "
@@ -67,6 +68,7 @@ PROGRAMS = [
         "majors": [],
         "preferred_year": ["sophomore", "junior", "senior"],
         "paid": "stipend",
+        "contact_email": "undergradresearch@illinois.edu",
         "fallback_desc": (
             "PURSUE LAS funds LAS undergraduates conducting research with an LAS "
             "faculty mentor. Awards range from semester stipends to full summer "
@@ -83,6 +85,7 @@ PROGRAMS = [
         "majors": ["Bioengineering", "Chemistry", "Physics", "Psychology", "Neuroscience", "Computer Science"],
         "preferred_year": ["sophomore", "junior", "senior"],
         "paid": "stipend",
+        "contact_email": "beckman-info@illinois.edu",
         "fallback_desc": (
             "Beckman Institute hosts a handful of named undergraduate fellowships "
             "(Beckman Scholars Program, Engelbrecht Memorial Awards, Beckman "
@@ -100,6 +103,7 @@ PROGRAMS = [
         "majors": ["Engineering"],
         "preferred_year": ["sophomore", "junior"],
         "paid": "stipend",
+        "contact_email": "isur@illinois.edu",
         "fallback_desc": (
             "Two-semester structured undergraduate research apprenticeship in the "
             "Grainger College of Engineering. Each cohort of ~30–50 scholars "
@@ -117,6 +121,7 @@ PROGRAMS = [
         "majors": ["Engineering"],
         "preferred_year": ["sophomore", "junior", "senior"],
         "paid": "unknown",
+        "contact_email": "graingerugresearch@illinois.edu",
         "fallback_desc": (
             "Aggregated table of external scholarships, fellowships, and research "
             "programs for Grainger Engineering undergraduates (Sandia, ORISE, "
@@ -133,6 +138,7 @@ PROGRAMS = [
         "majors": [],
         "preferred_year": ["freshman", "sophomore", "junior", "senior"],
         "paid": "yes",
+        "contact_email": "atlas@illinois.edu",
         "fallback_desc": (
             "ATLAS Internship Program places LAS undergraduates with technology "
             "projects across UIUC and community organizations. Roles include "
@@ -192,6 +198,7 @@ class UIUCOtherCollector(BaseCollector):
                     "_majors": spec["majors"],
                     "_preferred_year": spec["preferred_year"],
                     "_paid": spec["paid"],
+                    "_contact_email": spec.get("contact_email"),
                 },
             ))
         return records
@@ -206,6 +213,7 @@ def _to_normalized(r: RawOpportunity) -> dict:
     majors = r.extra_fields.pop("_majors", [])
     preferred_year = r.extra_fields.pop("_preferred_year", ["sophomore", "junior"])
     paid = r.extra_fields.pop("_paid", "unknown")
+    contact_email = r.extra_fields.pop("_contact_email", None)
     program_key = r.extra_fields.get("program_key", "uiuc_other")
     return {
         "id": _hash_id(program_key, r.source),
@@ -220,6 +228,7 @@ def _to_normalized(r: RawOpportunity) -> dict:
         "deadline": None,
         "is_rolling": True,
         "on_campus": True,
+        "contact_email": contact_email,
         "eligibility": {
             "majors": majors,
             "preferred_year": preferred_year,
