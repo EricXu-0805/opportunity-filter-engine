@@ -17,20 +17,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
+from .deadlines import parse_to_date as _parse_deadline
+
 DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
-
-
-def _parse_deadline(value) -> date | None:
-    if not value:
-        return None
-    s = str(value).strip()[:10]
-    try:
-        return datetime.fromisoformat(s).date()
-    except (ValueError, TypeError):
-        return None
 
 
 def deactivate_past(opps: list[dict], today: date | None = None) -> dict:

@@ -25,6 +25,10 @@ feedparser==6.0.12
 requests==2.32.5
 beautifulsoup4==4.14.3
 lxml==6.0.2
+# Deadline normalization (src/normalizers/deadlines.py). dateutil's
+# fuzzy-but-strict mode is the only sane way to handle the MM/DD/YY,
+# season-name, and "Rolling/TBD" mix that scrapers produce.
+python-dateutil==2.9.0
 
 # LLM + embedding integration
 openai==2.29.0

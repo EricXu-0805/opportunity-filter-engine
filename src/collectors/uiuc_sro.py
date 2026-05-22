@@ -21,6 +21,8 @@ from typing import Optional
 import requests
 from bs4 import BeautifulSoup
 
+from src.normalizers.deadlines import normalize_deadline, to_legacy
+
 from .base import BaseCollector, RawOpportunity
 
 logger = logging.getLogger(__name__)
@@ -272,8 +274,12 @@ class UIUCSROCollector(BaseCollector):
             timing_td = row.select_one("td.views-field-field-timing")
             timing = timing_td.get_text(strip=True) if timing_td else ""
 
-            # Deadline
-            deadline_td = row.select_one("td.views-field-nothing, td.views-field-field-deadline-anticipated")
+            # Deadline. The earlier selector also matched `td.views-field-nothing`,
+            # which is Drupal's generic-purpose cell — when the SRO table layout
+            # included a "?" toggle column ("?Yes"/"?No") that selector swallowed
+            # the boolean instead of the deadline and corrupted 262/278 records.
+            # Use only the specific anticipated-deadline class.
+            deadline_td = row.select_one("td.views-field-field-deadline-anticipated")
             deadline_text = deadline_td.get_text(strip=True) if deadline_td else ""
 
             return RawOpportunity(
@@ -316,19 +322,14 @@ def _detect_international_friendly(text: str) -> str:
     return "unknown"
 
 
-def _parse_deadline(text: str) -> Optional[str]:
-    """Try to parse deadline text into ISO-ish date."""
-    if not text:
-        return None
-    # Remove "Anticipated" prefix
-    clean = re.sub(r"(?i)anticipated\s*", "", text).strip()
-    # Remove field label prefixes
-    for prefix in ["Deadline", "Application Deadline"]:
-        if clean.startswith(prefix):
-            clean = clean[len(prefix):].strip()
-    if not clean:
-        return None
-    return clean
+def _parse_deadline(text: str) -> tuple[Optional[str], bool]:
+    """Run a raw SRO deadline string through the central normalizer.
+
+    Returns ``(iso_string_or_None, is_rolling_bool)``. The label-stripping
+    that used to live here (``"Anticipated"``, ``"Deadline: "``) has moved
+    into ``src.normalizers.deadlines`` so every collector benefits.
+    """
+    return to_legacy(normalize_deadline(text))
 
 
 def _detect_paid_status(text: str) -> str:
@@ -374,8 +375,11 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
     citizenship_text = extra.get("citizenship_info", "") + " " + desc
     intl = _detect_international_friendly(citizenship_text)
 
-    # Use deep-scraped deadline if available
-    deadline = _parse_deadline(extra.get("deadline_raw", ""))
+    # Use deep-scraped deadline if available. _parse_deadline now returns
+    # both a normalized ISO string (or None) and a rolling flag, so the
+    # 3 historical "Rolling" string records correctly set is_rolling=True
+    # instead of getting silently dropped.
+    deadline, is_rolling = _parse_deadline(extra.get("deadline_raw", ""))
 
     research_area = extra.get("research_area", "")
     timing = extra.get("timing", "")
@@ -419,6 +423,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         "paid": paid,
         "compensation_details": extra.get("paid_info", ""),
         "deadline": deadline,
+        "is_rolling": is_rolling,
         "posted_date": None,
         "start_date": None,
         "duration": timing or "Summer",
