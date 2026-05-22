@@ -132,6 +132,14 @@ class MatchesResponse(BaseModel):
 class ColdEmailRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
+    engine: str = "template"
+
+    @field_validator("engine")
+    @classmethod
+    def valid_engine(cls, v: str) -> str:
+        if v not in ("template", "ai"):
+            raise ValueError("engine must be 'template' or 'ai'")
+        return v
 
 
 class ColdEmailResponse(BaseModel):
@@ -139,6 +147,7 @@ class ColdEmailResponse(BaseModel):
     body: str
     recipient_email: str
     mailto_link: str
+    method: str = "template"
 
 
 class GapAnalysisResponse(BaseModel):
