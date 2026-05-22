@@ -9,7 +9,7 @@
 fastapi==0.135.1
 uvicorn==0.42.0
 pydantic==2.12.3
-python-multipart==0.0.24
+python-multipart==0.0.26
 httpx==0.28.1
 pyyaml==6.0.3
 python-dotenv==1.0.1
@@ -18,13 +18,13 @@ python-dotenv==1.0.1
 # because it isn't installed in dev/CI by default and we don't want
 # pip-resolve to fail when a future patch ships).
 pywebpush>=2.0.0,<3.0.0
-cryptography==46.0.6
+cryptography==46.0.7
 
 # Data collection (used by scrapers + GitHub Action refresh-data.yml)
 feedparser==6.0.12
-requests==2.32.5
+requests==2.33.0
 beautifulsoup4==4.14.3
-lxml==6.0.2
+lxml==6.1.0
 # Deadline normalization (src/normalizers/deadlines.py). dateutil's
 # fuzzy-but-strict mode is the only sane way to handle the MM/DD/YY,
 # season-name, and "Rolling/TBD" mix that scrapers produce.
@@ -37,4 +37,4 @@ numpy==2.3.4
 
 # Testing (kept in production set so Render-built images can run /api/health
 # style smoke tests; very small footprint)
-pytest==9.0.2
+pytest==9.0.3
