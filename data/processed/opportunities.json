@@ -137243,181 +137243,122 @@
     },
     "program": "Symposium",
     "college": "Siebel CDS",
-    "level": "program_overview",
-    "contact_email": "admin@siebelschool.illinois.edu"
+    "level": "program_overview"
   },
   {
-    "id": "nsf-reu-2512876",
-    "source": "nsf_reu",
-    "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2512876",
-    "source_type": "summer_program",
-    "title": "REU: Collaborative Research: Gestational metabolism and preservation of reproductive success at high elevations",
-    "organization": "University of Nebraska-Lincoln",
-    "department": "Integrtv Ecological Physiology",
-    "lab_or_program": "Collaborative Research: Gestational metabolism and preservation of reproductive success at high elevations",
-    "pi_name": "Emily Moore",
-    "contact_email": "emoore28@nebraska.edu",
-    "url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2512876",
-    "location": "LINCOLN, NE",
+    "id": "754a895e8e647049",
+    "source": "uiuc_other",
+    "source_url": "https://las.illinois.edu/research/students",
+    "title": "LAS Research — College of Liberal Arts and Sciences",
+    "description": "Hub page for undergraduate research in the College of Liberal Arts and Sciences. Aggregates major-specific research pages (Astronomy, Biochem, Chemistry, Psychology, ...), institute openings (Beckman, IGB), and LAS-funded research programs. Start here if your major is in LAS and you want a directory of where to apply.\n\nFrom the program page: Student research opportunities | College of Liberal Arts & Sciences | Illinois College of Liberal Arts & Sciences Search Visit Apply Give About College mission, vision and values Departments, units, and programs College leadership Directory Fast facts Inclusive Excellence Public engagement in LAS Educational Excellence Faculty & staff resources Admissions Apply to LAS Liberal arts & sciences major",
+    "url": "https://las.illinois.edu/research/students",
+    "organization": "College of Liberal Arts and Sciences",
+    "opportunity_type": "research",
+    "paid": "unknown",
+    "deadline": null,
+    "is_rolling": true,
     "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "summer_program",
-    "paid": "yes",
-    "compensation_details": "NSF-funded stipend (typically $6,000-$7,000 for 10 weeks)",
-    "deadline": "2025-02-15",
-    "deadline_is_estimate": true,
-    "posted_date": "09/15/2025",
-    "start_date": "09/15/2025",
-    "duration": "Summer (8-10 weeks)",
     "eligibility": {
+      "majors": [],
       "preferred_year": [
         "freshman",
         "sophomore",
-        "junior"
+        "junior",
+        "senior"
       ],
-      "min_gpa": null,
-      "majors": [
-        "Biology",
-        "CS",
-        "ECE",
-        "Environmental Engineering"
-      ],
-      "skills_required": [
-        "C",
-        "R"
-      ],
-      "skills_preferred": [],
-      "citizenship_required": true,
-      "international_friendly": "no",
-      "work_auth_notes": "",
-      "eligibility_text_raw": "Low oxygen, as is common at high altitudes, poses major challenges to the body. These effects are well-described with respect to activities like exercise; however, low oxygen also challenges reproduction. Across mammals, low oxygen found at high altitudes leads to greater risk for pregnancy complications, especially low birth weight. Even though understanding how this happens could help us predict and prevent these poor outcomes, the processes by which low oxygen influences pregnancy and fetal g"
+      "skills_required": [],
+      "international_friendly": "yes",
+      "citizenship_required": false
     },
     "application": {
-      "contact_method": "online",
+      "application_url": "https://las.illinois.edu/research/students",
+      "application_effort": "medium",
       "requires_resume": "yes",
       "requires_cover_letter": "unknown",
-      "requires_transcript": "unknown",
-      "requires_recommendation": "yes",
-      "application_effort": "medium",
-      "application_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2512876"
+      "requires_recommendation": "unknown"
     },
-    "description_raw": "Low oxygen, as is common at high altitudes, poses major challenges to the body. These effects are well-described with respect to activities like exercise; however, low oxygen also challenges reproduction. Across mammals, low oxygen found at high altitudes leads to greater risk for pregnancy complications, especially low birth weight. Even though understanding how this happens could help us predict and prevent these poor outcomes, the processes by which low oxygen influences pregnancy and fetal growth trajectories remains poorly understood. This research will test the hypothesis that maternal metabolism and its response to low oxygen are important factors that determine pregnancy outcomes and fetal growth at high altitudes. The research uses a rodent model, the North American deer mouse, for which some populations have resided at high altitude for many generations and no longer experience birth weight reductions at high altitude. The research aims will compare how low oxygen alters the maternal physiology of high-altitude deer mice (that don’t experience birth weight reductions) versus low altitude-resident deer (which do experience birth weight reductions). The proposed experiments will also use advanced genetic and genomic tools to determine how the expression of key genes in the placenta influence maternal metabolism. This work will advance our basic understanding of how reproductive biology contributes to mammalian adaptation while also providing new perspectives on some of the most common pregnancy complications that are linked to low oxygen, like pre-eclampsia. \r\n\r\nThis research applies experimental approaches to determine how reproductive physiologies evolve and adapt to cope with challenging environments (specifically, low oxygen). The experiments aim to test two main hypotheses: (a) that adaptation to high elevations modifies or prevents hypoxia-dependent adjustments to maternal metabolism and glucose regulation, and (b) that these protective maternal metabolic changes are directed by adaptions in imprinted gene networks found in the placenta. To test these hypotheses, North American deer mice of high- and low-altitude ancestry will be experimentally acclimated to high elevation during pregnancy. The maternal and fetal contributions to the physiologies that shape gestational metabolism will be parsed by measuring maternal energy allocation, fuel use, and the metabolic gene networks that interact with genomic imprinting in the. The integrated, whole-organism approach will enable the identification of links between specific gene expression patterns in the placenta and the fetal and maternal metabolic traits that are associated with growth outcomes under environmental hypoxia.\r\n\r\nThis award reflects NSF's statutory mission and has been deemed worthy of support through evaluation using the Foundation's intellectual merit and broader impacts review criteria.",
-    "description_clean": "Low oxygen, as is common at high altitudes, poses major challenges to the body. These effects are well-described with respect to activities like exercise; however, low oxygen also challenges reproduction. Across mammals, low oxygen found at high altitudes leads to greater risk for pregnancy complications, especially low birth weight. Even though understanding how this happens could help us predict and prevent these poor outcomes, the processes by which low oxygen influences pregnancy and fetal g",
     "keywords": [
-      "climate",
-      "networks"
+      "research",
+      "program_overview",
+      "las_research_hub"
     ],
     "metadata": {
-      "confidence_score": 0.95,
-      "last_verified": "2026-05-21T17:42:45.827720",
-      "first_seen_at": "2026-05-21T17:42:45.827720",
-      "last_seen_at": "2026-05-21T17:42:45.827720",
-      "is_active": false,
-      "manually_reviewed": false,
-      "notes": "Auto-imported from NSF Awards API (Award #2512876)",
-      "nsf_award_id": "2512876",
-      "nsf_end_date": "08/31/2029",
-      "deactivated_at": "2026-05-21",
-      "deactivation_reason": "deadline_passed"
-    }
+      "is_active": true,
+      "scraped_at": "2026-05-22T16:46:42.051616",
+      "first_seen": "2026-05-22T16:46:42.051616"
+    },
+    "program_key": "las_research_hub",
+    "college": "LAS",
+    "status": "unknown",
+    "level": "program_overview"
   },
   {
-    "id": "nsf-reu-2509391",
-    "source": "nsf_reu",
-    "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2509391",
-    "source_type": "summer_program",
-    "title": "REU: Collaborative Research: Planning: AI-Ready: DHARMA.AI Digital Hardware + Analog-RF for Multifunctional Apertures with AI",
-    "organization": "Princeton University",
-    "department": "TIP-CHIPS KTA-1 AI-ML",
-    "lab_or_program": "Collaborative Research: Planning: AI-Ready: DHARMA.AI Digital Hardware + Analog-RF for Multifunctional Apertures with AI",
-    "pi_name": "Yasaman Ghasempour",
-    "contact_email": "ypour@princeton.edu",
-    "url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2509391",
-    "location": "PRINCETON, NJ",
+    "id": "42c989ddcd967ca5",
+    "source": "uiuc_other",
+    "source_url": "https://las.illinois.edu/research/resources/pursue",
+    "title": "PURSUE LAS — LAS Undergraduate Research Funding",
+    "description": "PURSUE LAS funds LAS undergraduates conducting research with an LAS faculty mentor. Awards range from semester stipends to full summer research support. Open to all LAS majors. Application cycles tied to LAS departmental cohorts.\n\nFrom the program page: PURSUE LAS | College of Liberal Arts & Sciences | Illinois College of Liberal Arts & Sciences Search Visit Apply Give About College mission, vision and values Departments, units, and programs College leadership Directory Fast facts Inclusive Excellence Public engagement in LAS Educational Excellence Faculty & staff resources Admissions Apply to LAS Liberal arts & sciences majors LAS Insider blog A",
+    "url": "https://las.illinois.edu/research/resources/pursue",
+    "organization": "College of Liberal Arts and Sciences",
+    "opportunity_type": "research",
+    "paid": "stipend",
+    "deadline": null,
+    "is_rolling": true,
     "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "summer_program",
-    "paid": "yes",
-    "compensation_details": "NSF-funded stipend (typically $6,000-$7,000 for 10 weeks)",
-    "deadline": "2025-04-01",
-    "deadline_is_estimate": true,
-    "posted_date": "08/15/2025",
-    "start_date": "08/15/2025",
-    "duration": "Summer (8-10 weeks)",
     "eligibility": {
+      "majors": [],
       "preferred_year": [
-        "freshman",
         "sophomore",
-        "junior"
+        "junior",
+        "senior"
       ],
-      "min_gpa": null,
+      "skills_required": [],
+      "international_friendly": "yes",
+      "citizenship_required": false
+    },
+    "application": {
+      "application_url": "https://las.illinois.edu/research/resources/pursue",
+      "application_effort": "medium",
+      "requires_resume": "yes",
+      "requires_cover_letter": "unknown",
+      "requires_recommendation": "unknown"
+    },
+    "keywords": [
+      "research",
+      "program_overview",
+      "pursue_las"
+    ],
+    "metadata": {
+      "is_active": true,
+      "scraped_at": "2026-05-22T16:46:42.051664",
+      "first_seen": "2026-05-22T16:46:42.051664"
+    },
+    "program_key": "pursue_las",
+    "college": "LAS",
+    "status": "unknown",
+    "level": "program_overview"
+  },
+  {
+    "id": "ddf5d307a90d7c5e",
+    "source": "uiuc_other",
+    "source_url": "https://beckman.illinois.edu/opportunities/guidelines-requirements-for-other-sponsored-awards-and-fellowships",
+    "title": "Beckman Institute — Undergraduate Fellowships",
+    "description": "Beckman Institute hosts a handful of named undergraduate fellowships (Beckman Scholars Program, Engelbrecht Memorial Awards, Beckman Summer Research) for students working with Beckman-affiliated faculty. Spring application; summer + academic-year stipends. Interdisciplinary research in biological/cognitive/imaging/nano.\n\nFrom the program page: Sponsored fellowships and awards | Beckman Institute Block I logo University of Illinois Urbana-Champaign Beckman Institute for Advanced Science and Technology About About Mission and core values Mission and core values Code of conduct Beckman policies Beckman leadership Committees Beckman Institute Executive Committee Coordinating Committee Beckman Connect and Engage Committee Program Advisory Co",
+    "url": "https://beckman.illinois.edu/opportunities/guidelines-requirements-for-other-sponsored-awards-and-fellowships",
+    "organization": "Beckman Institute for Advanced Science and Technology",
+    "opportunity_type": "internship",
+    "paid": "stipend",
+    "deadline": null,
+    "is_rolling": true,
+    "on_campus": true,
+    "eligibility": {
       "majors": [
-        "CS",
+        "Bioengineering",
         "Chemistry",
-        "ECE",
-        "Engineering",
-        "Materials Science",
-        "Mathematics",
-        "STAT"
-      ],
-      "skills_required": [
-        "C",
-        "R"
-      ],
-      "skills_preferred": [],
-      "citizenship_required": true,
-      "international_friendly": "no",
-      "work_auth_notes": "",
-      "eligibility_text_raw": "This planning project will integrate several existing wireless testbeds that encompass a wide range of radio frequency bands and communication techniques into a cohesive, software-defined virtual platform, offering novel capabilities. The project will create a strategic plan for testbed design, integration and workforce development. The base design of existing testbeds, once integrated, will form preliminary results for a highly scalable community infrastructure. By adapting existing testbeds as"
-    },
-    "application": {
-      "contact_method": "online",
-      "requires_resume": "yes",
-      "requires_cover_letter": "unknown",
-      "requires_transcript": "unknown",
-      "requires_recommendation": "yes",
-      "application_effort": "medium",
-      "application_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2509391"
-    },
-    "description_raw": "This planning project will integrate several existing wireless testbeds that encompass a wide range of radio frequency bands and communication techniques into a cohesive, software-defined virtual platform, offering novel capabilities. The project will create a strategic plan for testbed design, integration and workforce development. The base design of existing testbeds, once integrated, will form preliminary results for a highly scalable community infrastructure. By adapting existing testbeds as a prototype for incorporating AI-driven capabilities, the team expects new competencies to be spawned for US-based academic and industrial partners that build toward the national interests of economic development in emerging 6G and next-generation networking markets.\r\n\r\nThe proposed testbed will integrate wireless testbeds at collaborating institutions into a single ultra-broadband, multifunctional, and uniquely capable platform for emerging experiments under AI control. The overarching goal is enabling cross-level autonomy and cognition in wireless systems. During this project, the team will develop a plan that helps with long-term goals of a unified wireless testbed infrastructure, including creating software and hardware tools necessary to provide a single-stop solution for researchers to deploy and run multi-site experiments, and developing the tools necessary to run AI solutions both within and across individual network layers, and multi-site experiments with real-time data streaming and visualization capabilities. The team will engage in joint development of high-quality workforce development material, mentoring, education, and scientific outreach activities in a manner that benefits everyone interested in science, technology, engineering and mathematics fields with particular focus on AI and wireless systems.\r\n\r\nThis award reflects NSF's statutory mission and has been deemed worthy of support through evaluation using the Foundation's intellectual merit and broader impacts review criteria.",
-    "description_clean": "This planning project will integrate several existing wireless testbeds that encompass a wide range of radio frequency bands and communication techniques into a cohesive, software-defined virtual platform, offering novel capabilities. The project will create a strategic plan for testbed design, integration and workforce development. The base design of existing testbeds, once integrated, will form preliminary results for a highly scalable community infrastructure. By adapting existing testbeds as",
-    "keywords": [
-      "machine learning",
-      "artificial intelligence",
-      "undergraduate research"
-    ],
-    "metadata": {
-      "confidence_score": 0.95,
-      "last_verified": "2026-05-21T17:42:45.872294",
-      "first_seen_at": "2026-05-21T17:42:45.872294",
-      "last_seen_at": "2026-05-21T17:42:45.872294",
-      "is_active": false,
-      "manually_reviewed": false,
-      "notes": "Auto-imported from NSF Awards API (Award #2509391)",
-      "nsf_award_id": "2509391",
-      "nsf_end_date": "07/31/2027",
-      "deactivated_at": "2026-05-21",
-      "deactivation_reason": "deadline_passed"
-    }
-  },
-  {
-    "id": "5fff727c59e61527",
-    "source": "uiuc_siebel",
-    "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "title": "Research",
-    "description": "Research Areas Architecture, Compilers and Parallel Computing Artificial Intelligence Bioinformatics and Computational Biology Computers and Education Data and Intelligent Systems Interactive Computing Programming Languages, Formal Methods and Software Engineering Scientific Computing Security and Privacy Systems and Networking Theory and Algorithms Research Centers and Partnerships Illinois-Insper Partnership Collaborative Research Projects Summer Research Participants Speaker Series Corporate Partners Summer Research Undergraduate Research Opportunities Directed Reading Program Trick or Research Summer Research Program Summer Research Program Participants",
-    "url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "organization": "Siebel School of Computing and Data Science",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "deadline": null,
-    "is_rolling": true,
-    "on_campus": true,
-    "eligibility": {
-      "majors": [
-        "Computer Science",
-        "CS+X",
-        "Data Science"
+        "Physics",
+        "Psychology",
+        "Neuroscience",
+        "Computer Science"
       ],
       "preferred_year": [
         "sophomore",
@@ -137429,7 +137370,7 @@
       "citizenship_required": false
     },
     "application": {
-      "application_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+      "application_url": "https://beckman.illinois.edu/opportunities/guidelines-requirements-for-other-sponsored-awards-and-fellowships",
       "application_effort": "medium",
       "requires_resume": "yes",
       "requires_cover_letter": "unknown",
@@ -137437,28 +137378,74 @@
     },
     "keywords": [
       "research",
-      "computer_science",
-      "siebel",
-      "mentor"
+      "program_overview",
+      "beckman_fellowships"
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T18:31:15.204186",
-      "first_seen": "2026-05-21T18:31:15.204186"
+      "scraped_at": "2026-05-22T16:46:42.051670",
+      "first_seen": "2026-05-22T16:46:42.051670"
     },
-    "program": "Siebel-UG-Research",
-    "college": "Siebel CDS",
-    "level": "program_overview",
-    "contact_email": "admin@siebelschool.illinois.edu"
+    "program_key": "beckman_fellowships",
+    "college": "LAS / Beckman",
+    "status": "unknown",
+    "level": "program_overview"
   },
   {
-    "id": "bc513aa125fe7955",
-    "source": "uiuc_siebel",
-    "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "title": "Year Long Research",
-    "description": "CS Student Ambassador/Research Scholars (CS STARS ) is the school's program for undergraduate students interested in pursuing research while serving as department leaders and community builders. Illinois Scholars Undergraduate Research (ISUR) Program is a Grainger Engineering program with a research-focused seminar and paid undergraduate research programs. ISUR programs follow an apprenticeship model, where students work closely with faculty mentors such as: Clare Boothe Luce Research Scholars an ISUR-affiliated program supporting undergraduate women in research and teaching in science, mathematics, and engineering. Eight scholars are selected and funded each year. C3SR-Undergraduate Research in Artificial Intelligence is an IBM-Illinois and ISUR partnership funding undergraduate AI and cognitive computing research, from theory to practical application while working with a C3SR faculty mentor. The National Center for Supercomputing Applications (NCSA) SPIN is an academic internship pro",
-    "url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "organization": "Siebel School of Computing and Data Science",
+    "id": "d10e4c608e1f82de",
+    "source": "uiuc_other",
+    "source_url": "https://isur.engineering.illinois.edu/",
+    "title": "ISUR — Illinois Scholars Undergraduate Research (Grainger Engineering) (applications open)",
+    "description": "Two-semester structured undergraduate research apprenticeship in the Grainger College of Engineering. Each cohort of ~30–50 scholars identifies a faculty mentor, attends cohort workshops, and produces a research deliverable. Annual Spring recruitment; April deadline. Open to engineering sophomores and juniors. Includes a stipend.\n\nFrom the program page: Engineering Undergraduate Research | Discover research at Illinois! | Illinois Engineering Undergraduate Research Search Home Apply Eligibility Scholars Mentors Application Research Undergraduate Research Seminar Program Highlights Opportunities Clare Boothe Luce Research Scholars DaRin Butz Foundation Research Scholars ISUR Research Expo ISUR Research Expo Abstracts ISUR Research Expo FAQs Sponso",
+    "url": "https://isur.engineering.illinois.edu/",
+    "organization": "Grainger College of Engineering",
+    "opportunity_type": "research",
+    "paid": "stipend",
+    "deadline": null,
+    "is_rolling": true,
+    "on_campus": true,
+    "eligibility": {
+      "majors": [
+        "Engineering"
+      ],
+      "preferred_year": [
+        "sophomore",
+        "junior"
+      ],
+      "skills_required": [],
+      "international_friendly": "yes",
+      "citizenship_required": false
+    },
+    "application": {
+      "application_url": "https://isur.engineering.illinois.edu/",
+      "application_effort": "medium",
+      "requires_resume": "yes",
+      "requires_cover_letter": "unknown",
+      "requires_recommendation": "unknown"
+    },
+    "keywords": [
+      "research",
+      "program_overview",
+      "grainger_isur"
+    ],
+    "metadata": {
+      "is_active": true,
+      "scraped_at": "2026-05-22T16:46:42.051674",
+      "first_seen": "2026-05-22T16:46:42.051674"
+    },
+    "program_key": "grainger_isur",
+    "college": "Grainger Engineering",
+    "status": "open",
+    "level": "program_overview"
+  },
+  {
+    "id": "b411df61efddcc28",
+    "source": "uiuc_other",
+    "source_url": "https://one.illinois.edu/graingerugresearch/research-opportunities/",
+    "title": "Grainger Engineering — Undergraduate Research Opportunities Table",
+    "description": "Aggregated table of external scholarships, fellowships, and research programs for Grainger Engineering undergraduates (Sandia, ORISE, Army EOP, ISUR, NSF REUs, etc.) curated by the college's Undergrad Research office. Deadlines vary; refreshed each semester.\n\nFrom the program page: Research & Scholarship Opportunities - Grainger Undergraduate Research | University of Illinois Urbana-Champaign Home Explore Getting Started Why Research Research Areas Student Perspective Webinars CBL & DRB Events Calendar Engineering Undergraduate Research Newsletter Archive Operational Hours Programs Illinois Scholars Undergraduate Research (ISUR) Program Undergraduate Research in Scientific A",
+    "url": "https://one.illinois.edu/graingerugresearch/research-opportunities/",
+    "organization": "Grainger College of Engineering",
     "opportunity_type": "research",
     "paid": "unknown",
     "deadline": null,
@@ -137466,9 +137453,7 @@
     "on_campus": true,
     "eligibility": {
       "majors": [
-        "Computer Science",
-        "CS+X",
-        "Data Science"
+        "Engineering"
       ],
       "preferred_year": [
         "sophomore",
@@ -137480,7 +137465,7 @@
       "citizenship_required": false
     },
     "application": {
-      "application_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+      "application_url": "https://one.illinois.edu/graingerugresearch/research-opportunities/",
       "application_effort": "medium",
       "requires_resume": "yes",
       "requires_cover_letter": "unknown",
@@ -137488,40 +137473,36 @@
     },
     "keywords": [
       "research",
-      "computer_science",
-      "siebel",
-      "mentor"
+      "program_overview",
+      "grainger_opportunities_table"
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T18:31:15.204190",
-      "first_seen": "2026-05-21T18:31:15.204190"
+      "scraped_at": "2026-05-22T16:46:42.051679",
+      "first_seen": "2026-05-22T16:46:42.051679"
     },
-    "program": "Siebel-UG-Research",
-    "college": "Siebel CDS",
-    "level": "program_overview",
-    "contact_email": "admin@siebelschool.illinois.edu"
+    "program_key": "grainger_opportunities_table",
+    "college": "Grainger Engineering",
+    "status": "unknown",
+    "level": "program_overview"
   },
   {
-    "id": "ad7280698386bf4b",
-    "source": "uiuc_siebel",
-    "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "title": "Semester Long Research",
-    "description": "CS Job Portal is our department's employment opportunities with course assistant and undergraduate research positions. URSA (Undergraduate Research in Scientific Advancement) is a student-run research program connecting first-year and second-year students with graduate student mentors to jump-start their research careers. UR2PhD (Undergraduate Research to PhD) A virtual, 10-Week, synchronous undergraduate research training course that aims to support new undergraduate researchers during their first research experience using a mock research proposal for Zero-Hour CS397 course credit.  Participants will learn the fundamental skills and processes to conduct research. This course intends to serve as the first meaningful experience in a student's research journey. Participants must be a currently enrolled undergraduate student of Siebel School of Computing and Data Science. This program is offered during the fall and spring semesters.",
-    "url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "organization": "Siebel School of Computing and Data Science",
-    "opportunity_type": "research",
-    "paid": "unknown",
+    "id": "1a3e1fcfb2156a26",
+    "source": "uiuc_other",
+    "source_url": "https://atlas.illinois.edu/atlas-internship-program",
+    "title": "ATLAS — Applied Technologies for Learning in the Arts and Sciences",
+    "description": "ATLAS Internship Program places LAS undergraduates with technology projects across UIUC and community organizations. Roles include data analysis, web development, technical writing, social media, and software engineering. ~30–60 placements per semester (Fall + Summer). Paid; matched internally — individual project listings are not public. Apply through atlas.illinois.edu.\n\nFrom the program page: ATLAS Internship Program | Applied Technologies for Learning in the Arts & Sciences (ATLAS) | Illinois College of Liberal Arts & Sciences Applied Technologies for Learning in the Arts & Sciences (ATLAS) Search Services Computer & Device Assistance Learning Technologies & Support Digital Accessibility Support Data Reporting & Analysis App Development & Support Advanced Technical Consulting For Stud",
+    "url": "https://atlas.illinois.edu/atlas-internship-program",
+    "organization": "ATLAS — College of Liberal Arts and Sciences",
+    "opportunity_type": "internship",
+    "paid": "yes",
     "deadline": null,
     "is_rolling": true,
     "on_campus": true,
     "eligibility": {
-      "majors": [
-        "Computer Science",
-        "CS+X",
-        "Data Science"
-      ],
+      "majors": [],
       "preferred_year": [
+        "freshman",
         "sophomore",
         "junior",
         "senior"
@@ -137531,7 +137512,7 @@
       "citizenship_required": false
     },
     "application": {
-      "application_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
+      "application_url": "https://atlas.illinois.edu/atlas-internship-program",
       "application_effort": "medium",
       "requires_resume": "yes",
       "requires_cover_letter": "unknown",
@@ -137539,69 +137520,17 @@
     },
     "keywords": [
       "research",
-      "computer_science",
-      "siebel",
-      "mentor"
+      "program_overview",
+      "atlas_internship"
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T18:31:15.204194",
-      "first_seen": "2026-05-21T18:31:15.204194"
+      "scraped_at": "2026-05-22T16:46:42.051682",
+      "first_seen": "2026-05-22T16:46:42.051682"
     },
-    "program": "Siebel-UG-Research",
-    "college": "Siebel CDS",
-    "level": "program_overview",
-    "contact_email": "admin@siebelschool.illinois.edu"
-  },
-  {
-    "id": "1a9b3e9a47880955",
-    "source": "uiuc_siebel",
-    "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "title": "Summer Research",
-    "description": "DaRin Butz Research Scholars is an ISUR-affiliate program offering undergraduate women ten weeks of summer research program funding using a learning-by-apprenticeship model for innovative work in computer science, aerospace, engineering, physics, or astronomy. The National Center for Supercomputing Applications (NCSA) INCLUSION program is a 10-week program for students from underrepresented communities to work in pairs with mentors on research aimed toward social impact based around open-source software development. Summer Research Program for Undergraduates (SRP) students work on state-of-the-art research with university faculty while attending professional development programs aimed at making students strong researchers and graduate school candidates Mind in Vitro Undergraduate Summer Research Program undergraduate researchers work with faculty mentors and graduate students on projects related to Mind in Vitro while participating in the Illinois summer research program networking, so",
-    "url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "organization": "Siebel School of Computing and Data Science",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "deadline": null,
-    "is_rolling": true,
-    "on_campus": true,
-    "eligibility": {
-      "majors": [
-        "Computer Science",
-        "CS+X",
-        "Data Science"
-      ],
-      "preferred_year": [
-        "sophomore",
-        "junior",
-        "senior"
-      ],
-      "skills_required": [],
-      "international_friendly": "yes",
-      "citizenship_required": false
-    },
-    "application": {
-      "application_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-      "application_effort": "medium",
-      "requires_resume": "yes",
-      "requires_cover_letter": "unknown",
-      "requires_recommendation": "unknown"
-    },
-    "keywords": [
-      "research",
-      "computer_science",
-      "siebel",
-      "mentor"
-    ],
-    "metadata": {
-      "is_active": true,
-      "scraped_at": "2026-05-21T18:31:15.204197",
-      "first_seen": "2026-05-21T18:31:15.204197"
-    },
-    "program": "Siebel-UG-Research",
-    "college": "Siebel CDS",
-    "level": "program_overview",
-    "contact_email": "admin@siebelschool.illinois.edu"
+    "program_key": "atlas_internship",
+    "college": "LAS / ATLAS",
+    "status": "unknown",
+    "level": "program_overview"
   }
 ]

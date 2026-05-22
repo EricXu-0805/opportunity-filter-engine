@@ -20,6 +20,8 @@ from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
+from .uiuc_other import fetch_and_normalize as fetch_other
+from .uiuc_other import merge_into_processed as merge_other
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss
 from .uiuc_our_rss import merge_into_processed as merge_rss
 from .uiuc_siebel import fetch_and_normalize as fetch_siebel
@@ -145,6 +147,7 @@ def refresh_all(deep: bool = True) -> dict:
         ("uiuc_ursa", fetch_ursa, merge_ursa),
         ("uiuc_drp", fetch_drp, merge_drp),
         ("uiuc_siebel", fetch_siebel, merge_siebel),
+        ("uiuc_other", fetch_other, merge_other),
     ]:
         logger.info("=" * 50)
         logger.info(f"Collecting from {source_name}...")
