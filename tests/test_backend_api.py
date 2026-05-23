@@ -391,6 +391,73 @@ class TestLocalRefineCumulative:
         assert set(out["applied"]) == {"formal", "concise", "enthusiastic"}
 
 
+class TestColdEmailEngine:
+    """Contract for ``POST /api/cold-email`` ``engine`` parameter.
+
+    The frontend AI variant pill submits ``engine="ai"``; when no LLM
+    provider is configured (the default in CI) the route must fall back
+    to the deterministic template and tag ``method="template"`` so the
+    UI can surface a "fell back" hint instead of a generic success.
+    """
+
+    @pytest.fixture
+    def cold_email_body(self, sample_profile_req):
+        opps = data_loader.load_opportunities()
+        return {"profile": sample_profile_req, "opportunity_id": opps[0]["id"]}
+
+    def test_default_engine_is_template(self, cold_email_body, monkeypatch):
+        for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        resp = client.post("/api/cold-email", json=cold_email_body)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "template"
+        assert body["subject"]
+        assert body["body"]
+
+    def test_engine_ai_falls_back_when_unconfigured(self, cold_email_body, monkeypatch):
+        for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        payload = {**cold_email_body, "engine": "ai"}
+        resp = client.post("/api/cold-email", json=payload)
+        assert resp.status_code == 200
+        assert resp.json()["method"] == "template"
+
+    def test_engine_ai_marks_method_ai_when_llm_responds(self, cold_email_body, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+        monkeypatch.setattr(
+            ce_module,
+            "_ai_generate_email_text",
+            lambda profile, opp: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
+        )
+        payload = {**cold_email_body, "engine": "ai"}
+        resp = client.post("/api/cold-email", json=payload)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert body["subject"] == "A research fit"
+        assert body["body"].startswith("Dear Professor")
+
+    def test_engine_ai_falls_back_when_llm_returns_garbage(self, cold_email_body, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+        monkeypatch.setattr(
+            ce_module,
+            "_ai_generate_email_text",
+            lambda profile, opp: "I will not write that email.",
+        )
+        payload = {**cold_email_body, "engine": "ai"}
+        resp = client.post("/api/cold-email", json=payload)
+        assert resp.status_code == 200
+        assert resp.json()["method"] == "template"
+
+    def test_engine_rejects_unknown_value(self, cold_email_body):
+        payload = {**cold_email_body, "engine": "gpt5"}
+        resp = client.post("/api/cold-email", json=payload)
+        assert resp.status_code == 422
+
+
 class TestTfidfCorpusFit:
     def test_fit_with_corpus_enables_real_idf(self):
         from src.matcher import embeddings

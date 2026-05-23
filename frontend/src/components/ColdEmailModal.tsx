@@ -12,9 +12,11 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { getEmailVariants, refineEmail } from '@/lib/api';
+import { generateColdEmail, getEmailVariants, refineEmail } from '@/lib/api';
 import type { ProfileData, EmailVariant } from '@/lib/types';
 import { useT } from '@/i18n/client';
+
+const AI_VARIANT_ID = 'ai';
 
 interface ColdEmailModalProps {
   isOpen: boolean;
@@ -106,12 +108,16 @@ export default function ColdEmailModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [variants, setVariants] = useState<EmailVariant[]>([]);
+  const [aiVariant, setAiVariant] = useState<EmailVariant | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [activeVariant, setActiveVariant] = useState(0);
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [recipient, setRecipient] = useState('');
   const [copied, setCopied] = useState(false);
+
+  const allVariants: EmailVariant[] = aiVariant ? [...variants, aiVariant] : variants;
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -146,6 +152,8 @@ export default function ColdEmailModal({
     if (isOpen) fetchVariants();
     return () => {
       setVariants([]);
+      setAiVariant(null);
+      setAiLoading(false);
       setSubject('');
       setBody('');
       setCopied(false);
@@ -210,7 +218,7 @@ export default function ColdEmailModal({
   }, [chatMessages]);
 
   function selectVariant(idx: number) {
-    const v = variants[idx];
+    const v = allVariants[idx];
     if (!v) return;
     setActiveVariant(idx);
     setSubject(v.subject);
@@ -220,6 +228,53 @@ export default function ColdEmailModal({
       ...prev,
       { role: 'assistant', content: t('coldEmail.switched', { label: v.label }) },
     ]);
+  }
+
+  async function handleAiPillClick() {
+    if (aiLoading) return;
+    const aiIdx = variants.length;
+
+    if (aiVariant) {
+      selectVariant(aiIdx);
+      return;
+    }
+
+    setAiLoading(true);
+    setChatMessages((prev) => [
+      ...prev,
+      { role: 'assistant', content: t('coldEmail.aiGenerating') },
+    ]);
+
+    try {
+      const resp = await generateColdEmail(profile, opportunityId, { engine: 'ai' });
+      const v: EmailVariant = {
+        id: AI_VARIANT_ID,
+        label: t('coldEmail.aiVariantLabel'),
+        subject: resp.subject,
+        body: resp.body,
+        recipient_email: resp.recipient_email,
+        mailto_link: resp.mailto_link,
+      };
+      setAiVariant(v);
+      setActiveVariant(aiIdx);
+      setSubject(v.subject);
+      setBody(v.body);
+      setRecipient(v.recipient_email);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: resp.method === 'ai' ? t('coldEmail.aiGenerated') : t('coldEmail.aiFallback'),
+        },
+      ]);
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: t('coldEmail.aiFailed') },
+      ]);
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   function handleQuickAction(key: QuickActionKey) {
@@ -347,6 +402,22 @@ export default function ColdEmailModal({
                       {v.label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={handleAiPillClick}
+                    disabled={aiLoading}
+                    title={t('coldEmail.aiVariantTitle')}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
+                      activeVariant === variants.length && aiVariant
+                        ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-sm'
+                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                    }`}
+                  >
+                    {aiLoading ? (
+                      <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                    ) : null}
+                    {t('coldEmail.aiVariantLabel')}
+                  </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">

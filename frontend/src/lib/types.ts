@@ -128,12 +128,21 @@ export interface MatchesResponse {
 }
 
 // ── Cold Email ───────────────────────────────────────────────────────
+/**
+ * Mirrors `backend.schemas.ColdEmailResponse`. `method` reflects which
+ * generator ultimately produced the email: ``"ai"`` when an LLM provider
+ * was configured AND returned a usable draft, ``"template"`` otherwise
+ * (either no provider configured or the LLM call failed and we fell back).
+ */
 export interface ColdEmailResponse {
   subject: string;
   body: string;
+  recipient_email: string;
   mailto_link: string;
-  recipient?: string;
+  method: 'template' | 'ai';
 }
+
+export type ColdEmailEngine = 'template' | 'ai';
 
 export interface EmailVariant {
   id: string;
