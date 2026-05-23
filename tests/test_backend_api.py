@@ -8,6 +8,7 @@ Covers features added across recent iterations:
   * TF-IDF corpus fitting
 """
 
+import json
 import os
 import sys
 
@@ -574,6 +575,123 @@ class TestAdminDataQuality:
         r = client.get("/api/admin/data-quality?token=t&force=true")
         assert r.status_code == 200
         assert r.json().get("cached") is None  # force rebuilt
+
+
+class TestCollectorStatusHistory:
+    """Schema lock for ``GET /admin/collector-status/history``.
+
+    The admin dashboard's SourceFreshnessChart renders straight off the
+    ``entries[*].sources[name].new`` shape, so a silent rename in
+    refresh_all.write_status (which writes the JSONL) would blank the
+    chart with no test failure. These tests pin the wire contract.
+    """
+
+    def test_503_when_token_unset(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        r = client.get("/api/admin/collector-status/history")
+        assert r.status_code == 503
+
+    def test_401_when_wrong_token(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-history")
+        r = client.get("/api/admin/collector-status/history?token=wrong")
+        assert r.status_code == 401
+
+    def test_returns_empty_when_file_missing(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(
+            admin_mod, "_COLLECTOR_HISTORY_PATH", tmp_path / "nonexistent.jsonl"
+        )
+        r = client.get("/api/admin/collector-status/history?token=ok")
+        assert r.status_code == 200
+        assert r.json() == {"entries": [], "count": 0}
+
+    def test_returns_entries_with_per_source_counts(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        from backend.routes import admin as admin_mod
+        history_file = tmp_path / "collector_status_history.jsonl"
+        rows = [
+            {
+                "t": "2026-05-23T14:02:26.092181+00:00",
+                "duration_seconds": 12.5,
+                "total_new": 5,
+                "total_updated": 8,
+                "total_in_file": 1902,
+                "sources": {
+                    "uiuc_sro": {"status": "ok", "new": 2, "updated": 3, "fetched": 200},
+                    "uiuc_faculty": {"status": "ok", "new": 3, "updated": 5, "fetched": 50},
+                },
+            },
+            {
+                "t": "2026-05-26T14:02:26.092181+00:00",
+                "duration_seconds": 11.0,
+                "total_new": 1,
+                "total_updated": 2,
+                "total_in_file": 1903,
+                "sources": {
+                    "uiuc_sro": {"status": "ok", "new": 1, "updated": 2, "fetched": 200},
+                },
+            },
+        ]
+        history_file.write_text(
+            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
+        )
+        monkeypatch.setattr(admin_mod, "_COLLECTOR_HISTORY_PATH", history_file)
+
+        r = client.get("/api/admin/collector-status/history?token=ok")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] == 2
+        assert len(body["entries"]) == 2
+        entry = body["entries"][0]
+        assert entry["t"] == "2026-05-23T14:02:26.092181+00:00"
+        assert entry["total_new"] == 5
+        assert entry["sources"]["uiuc_sro"]["new"] == 2
+        assert entry["sources"]["uiuc_faculty"]["fetched"] == 50
+
+    def test_limit_returns_last_n(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        from backend.routes import admin as admin_mod
+        history_file = tmp_path / "collector_status_history.jsonl"
+        rows = [{"t": f"2026-01-{d:02d}T00:00:00", "sources": {}} for d in range(1, 11)]
+        history_file.write_text(
+            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
+        )
+        monkeypatch.setattr(admin_mod, "_COLLECTOR_HISTORY_PATH", history_file)
+
+        r = client.get("/api/admin/collector-status/history?token=ok&limit=3")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] == 10
+        assert len(body["entries"]) == 3
+        assert body["entries"][0]["t"] == "2026-01-08T00:00:00"
+        assert body["entries"][-1]["t"] == "2026-01-10T00:00:00"
+
+    def test_invalid_limit_rejected(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        r = client.get("/api/admin/collector-status/history?token=ok&limit=0")
+        assert r.status_code == 422
+        r = client.get("/api/admin/collector-status/history?token=ok&limit=201")
+        assert r.status_code == 422
+
+    def test_malformed_lines_are_skipped(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        from backend.routes import admin as admin_mod
+        history_file = tmp_path / "collector_status_history.jsonl"
+        history_file.write_text(
+            json.dumps({"t": "2026-01-01", "sources": {}}) + "\n"
+            + "this-is-not-json\n"
+            + "\n"
+            + json.dumps({"t": "2026-01-02", "sources": {}}) + "\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(admin_mod, "_COLLECTOR_HISTORY_PATH", history_file)
+
+        r = client.get("/api/admin/collector-status/history?token=ok")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] == 2
+        assert [e["t"] for e in body["entries"]] == ["2026-01-01", "2026-01-02"]
 
 
 class TestRollingSkillScoring:
