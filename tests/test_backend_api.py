@@ -694,6 +694,56 @@ class TestCollectorStatusHistory:
         assert [e["t"] for e in body["entries"]] == ["2026-01-01", "2026-01-02"]
 
 
+class TestSentryInit:
+    def test_noop_when_dsn_unset(self, monkeypatch):
+        monkeypatch.delenv("SENTRY_DSN", raising=False)
+        from backend.lib.observability import init_sentry
+        assert init_sentry() is False
+
+    def test_noop_when_dsn_empty(self, monkeypatch):
+        monkeypatch.setenv("SENTRY_DSN", "   ")
+        from backend.lib.observability import init_sentry
+        assert init_sentry() is False
+
+    def test_inits_when_dsn_set(self, monkeypatch):
+        monkeypatch.setenv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/1")
+        monkeypatch.setenv("SENTRY_ENVIRONMENT", "test-env")
+        monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "0.25")
+        captured: dict = {}
+        import sentry_sdk
+
+        def fake_init(**kwargs):
+            captured.update(kwargs)
+
+        monkeypatch.setattr(sentry_sdk, "init", fake_init)
+        from backend.lib.observability import init_sentry
+        assert init_sentry() is True
+        assert captured["dsn"] == "https://abc@o0.ingest.sentry.io/1"
+        assert captured["environment"] == "test-env"
+        assert captured["traces_sample_rate"] == 0.25
+        assert captured["send_default_pii"] is False
+
+    def test_clamps_invalid_sample_rate(self, monkeypatch):
+        monkeypatch.setenv("SENTRY_DSN", "https://x@o0.ingest.sentry.io/1")
+        monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "999")
+        captured: dict = {}
+        import sentry_sdk
+        monkeypatch.setattr(sentry_sdk, "init", lambda **kw: captured.update(kw))
+        from backend.lib.observability import init_sentry
+        init_sentry()
+        assert captured["traces_sample_rate"] == 1.0
+
+    def test_defaults_sample_rate_when_invalid(self, monkeypatch):
+        monkeypatch.setenv("SENTRY_DSN", "https://x@o0.ingest.sentry.io/1")
+        monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "not-a-number")
+        captured: dict = {}
+        import sentry_sdk
+        monkeypatch.setattr(sentry_sdk, "init", lambda **kw: captured.update(kw))
+        from backend.lib.observability import init_sentry
+        init_sentry()
+        assert captured["traces_sample_rate"] == 0.1
+
+
 class TestRollingSkillScoring:
     def test_rolling_lab_empty_skills_scored_neutral(self):
         from src.matcher.ranker import score_eligibility

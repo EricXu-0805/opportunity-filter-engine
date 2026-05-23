@@ -35,6 +35,12 @@ openai==2.29.0
 scikit-learn==1.8.0
 numpy==2.3.4
 
+# Observability (no-op unless SENTRY_DSN env var is set, see
+# backend/lib/observability.py). The [fastapi] extra adds Starlette + FastAPI
+# auto-instrumentation; both detect installed frameworks at init time so the
+# import is cheap even when DSN is unset.
+sentry-sdk[fastapi]==2.60.0
+
 # Testing (kept in production set so Render-built images can run /api/health
 # style smoke tests; very small footprint)
 pytest==9.0.3

@@ -18,6 +18,10 @@ try:
 except ImportError:
     pass
 
+from backend.lib.observability import init_sentry
+
+init_sentry()
+
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
