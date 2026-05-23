@@ -27,6 +27,7 @@ router = APIRouter()
 _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 _HISTORY_PATH = _PROCESSED_DIR / "admin_history.jsonl"
 _COLLECTOR_STATUS_PATH = _PROCESSED_DIR / "collector_status.json"
+_COLLECTOR_HISTORY_PATH = _PROCESSED_DIR / "collector_status_history.jsonl"
 _HISTORY_MAX_ENTRIES = 365
 
 # Cache for the data-quality endpoint. Scanning 1741 opportunities takes
@@ -293,6 +294,41 @@ async def collector_status(
         "duration_seconds": payload.get("duration_seconds"),
         "total_in_file": payload.get("total_in_file"),
     }
+
+
+@router.get("/admin/collector-status/history")
+async def collector_status_history(
+    token: str | None = Query(default=None),
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+    limit: int = Query(default=30, ge=1, le=200),
+):
+    """Per-source freshness trend, written by refresh_all.write_status.
+
+    Returns the last ``limit`` entries from collector_status_history.jsonl
+    (newest last). Each row carries the timestamp, totals, and per-source
+    counts so the admin dashboard can chart "which source has been failing
+    most weeks" without re-scanning opportunities.json.
+    """
+    _authenticate(token, x_admin_token)
+
+    if not _COLLECTOR_HISTORY_PATH.exists():
+        return {"entries": [], "count": 0}
+
+    entries: list[dict] = []
+    try:
+        with _COLLECTOR_HISTORY_PATH.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return {"entries": [], "count": 0}
+
+    return {"entries": entries[-limit:], "count": len(entries)}
 
 
 _HEALTH_THRESHOLDS = {

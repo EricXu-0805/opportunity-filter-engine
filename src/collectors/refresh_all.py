@@ -38,16 +38,71 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 STATUS_FILE = PROJECT_ROOT / "data" / "processed" / "collector_status.json"
+STATUS_HISTORY_FILE = PROJECT_ROOT / "data" / "processed" / "collector_status_history.jsonl"
+
+STATUS_HISTORY_MAX_ENTRIES = 200
+
+
+def _trim_history_to_max(path: Path, max_entries: int) -> None:
+    """Drop the oldest entries when the JSONL grows past ``max_entries``.
+
+    Cheap line-count + slice rewrite — collector_status_history.jsonl is
+    written ~2x/week so this never crosses 200KB. Idempotent.
+    """
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            lines = f.readlines()
+        if len(lines) <= max_entries:
+            return
+        with path.open("w", encoding="utf-8") as f:
+            f.writelines(lines[-max_entries:])
+    except OSError as e:
+        logger.warning("Failed to trim collector history: %s", e)
 
 
 def write_status(summary: dict) -> None:
-    """Persist a per-collector run summary for the admin dashboard."""
+    """Persist a per-collector run summary for the admin dashboard.
+
+    Writes two artifacts:
+
+      * ``collector_status.json`` — overwritten each run, contains the
+        latest snapshot. The ``/admin/collector-status`` endpoint reads this.
+      * ``collector_status_history.jsonl`` — append-only log capped at
+        ``STATUS_HISTORY_MAX_ENTRIES`` rows (~2 years at Mon/Thu cadence).
+        The ``/admin/collector-status/history`` endpoint reads this for
+        the per-source freshness trend chart.
+    """
     try:
         STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
         with STATUS_FILE.open("w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2, sort_keys=True)
     except OSError as e:
         logger.warning("Failed to write collector status: %s", e)
+        return
+
+    history_entry = {
+        "t": summary.get("timestamp"),
+        "duration_seconds": summary.get("duration_seconds"),
+        "total_new": summary.get("total_new", 0),
+        "total_updated": summary.get("total_updated", 0),
+        "total_in_file": summary.get("total_in_file", 0),
+        "sources": {
+            name: {
+                "status": info.get("status"),
+                "new": info.get("new"),
+                "updated": info.get("updated"),
+                "fetched": info.get("fetched"),
+            }
+            for name, info in (summary.get("sources") or {}).items()
+            if isinstance(info, dict)
+        },
+    }
+    try:
+        with STATUS_HISTORY_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(history_entry, sort_keys=True) + "\n")
+        _trim_history_to_max(STATUS_HISTORY_FILE, STATUS_HISTORY_MAX_ENTRIES)
+    except OSError as e:
+        logger.warning("Failed to append collector status history: %s", e)
 
 
 def refresh_all(deep: bool = True) -> dict:
