@@ -33,6 +33,7 @@ export const en = {
     pastDeadline: 'Past deadline',
     deadlinePassed: 'Deadline passed',
     dueInDays: 'Due in {count}d',
+    new: 'New',
   },
   restore: {
     verifying: 'Verifying your link...',
@@ -879,6 +880,7 @@ export const zh = {
     pastDeadline: '已过截止',
     deadlinePassed: '已过截止',
     dueInDays: '还剩 {count} 天',
+    new: '新',
   },
   restore: {
     verifying: '正在验证链接...',

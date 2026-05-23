@@ -162,7 +162,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 mb-5">
-          {isNewPosting(opp) && <Badge variant="green" dot>New</Badge>}
+          {isNewPosting(opp) && <Badge variant="green" dot>{t('badges.new')}</Badge>}
           <Badge variant="indigo">{opp.opportunity_type}</Badge>
           <Badge variant={intl.variant} dot>
             <Globe className="w-3 h-3" />
