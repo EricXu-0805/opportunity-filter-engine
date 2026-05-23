@@ -59,13 +59,19 @@ interface Opp {
 const MIN_COMPARE = 2;
 const MAX_COMPARE = 3;
 
-function DeadlineBadge({ deadline }: { deadline?: string }) {
+function DeadlineBadge({
+  deadline,
+  t,
+}: {
+  deadline?: string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}) {
   if (!deadline) return null;
   const dl = new Date(deadline + 'T00:00:00');
   const now = new Date();
   const daysLeft = Math.ceil((dl.getTime() - now.getTime()) / 86400000);
-  if (daysLeft < 0) return <Badge variant="red"><Clock className="w-3 h-3" />Deadline passed</Badge>;
-  if (daysLeft <= 14) return <Badge variant="orange"><Clock className="w-3 h-3" />Due in {daysLeft}d</Badge>;
+  if (daysLeft < 0) return <Badge variant="red"><Clock className="w-3 h-3" />{t('badges.deadlinePassed')}</Badge>;
+  if (daysLeft <= 14) return <Badge variant="orange"><Clock className="w-3 h-3" />{t('badges.dueInDays', { count: daysLeft })}</Badge>;
   return <Badge variant="gray"><Clock className="w-3 h-3" />{deadline}</Badge>;
 }
 
@@ -323,7 +329,7 @@ export default function FavoritesPage() {
                         </Badge>
                       )}
                       {opp.source && <Badge variant="gray">{opp.source}</Badge>}
-                      <DeadlineBadge deadline={opp.deadline} />
+                      <DeadlineBadge deadline={opp.deadline} t={t} />
                     </div>
 
                     {!selectionMode && (
@@ -388,7 +394,7 @@ export default function FavoritesPage() {
 
                           {opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
                             <div>
-                              <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">Required skills</span>
+                              <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">{t('favorites.requiredSkills')}</span>
                               <div className="flex flex-wrap gap-1.5 mt-1.5">
                                 {opp.eligibility.skills_required.map((s) => (
                                   <span key={s} className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[12px] font-medium">{s}</span>

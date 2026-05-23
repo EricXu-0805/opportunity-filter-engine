@@ -24,6 +24,7 @@ import { getGapAnalysis } from '@/lib/api';
 import type { GapAnalysis } from '@/lib/api';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
+import { useT } from '@/i18n/client';
 
 interface MatchCardProps {
   match: MatchResult;
@@ -35,16 +36,19 @@ interface MatchCardProps {
   onTrackInteraction?: (opportunityId: string, type: InteractionType) => void;
 }
 
-function getBucketLabel(bucket: string): { label: string; variant: 'green' | 'blue' | 'yellow' | 'gray' } {
+function getBucketLabel(
+  bucket: string,
+  t: (key: string) => string,
+): { label: string; variant: 'green' | 'blue' | 'yellow' | 'gray' } {
   switch (bucket) {
     case 'high_priority':
-      return { label: 'High Priority', variant: 'green' };
+      return { label: t('results.tabs.highPriority'), variant: 'green' };
     case 'good_match':
-      return { label: 'Good Match', variant: 'blue' };
+      return { label: t('results.tabs.goodMatch'), variant: 'blue' };
     case 'reach':
-      return { label: 'Reach', variant: 'yellow' };
+      return { label: t('results.tabs.reach'), variant: 'yellow' };
     default:
-      return { label: 'Low Fit', variant: 'gray' };
+      return { label: t('results.tabs.lowFit'), variant: 'gray' };
   }
 }
 
@@ -102,9 +106,10 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
+  const { t } = useT();
 
   const { opportunity: opp } = match;
-  const tier = getBucketLabel(match.bucket);
+  const tier = getBucketLabel(match.bucket, t);
   const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown');
   const paid = getPaidBadge(opp.paid);
   const urgency = getDeadlineUrgency(opp.deadline);
@@ -172,8 +177,8 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             const dl = new Date(opp.deadline + 'T00:00:00');
             const now = new Date();
             const daysLeft = Math.ceil((dl.getTime() - now.getTime()) / 86400000);
-            if (daysLeft < 0) return <Badge variant="red"><Clock className="w-3 h-3" />Deadline passed</Badge>;
-            if (daysLeft <= 14) return <Badge variant="orange"><Clock className="w-3 h-3" />Due in {daysLeft}d</Badge>;
+            if (daysLeft < 0) return <Badge variant="red"><Clock className="w-3 h-3" />{t('badges.deadlinePassed')}</Badge>;
+            if (daysLeft <= 14) return <Badge variant="orange"><Clock className="w-3 h-3" />{t('badges.dueInDays', { count: daysLeft })}</Badge>;
             return <Badge variant="gray"><Clock className="w-3 h-3" />{opp.deadline}</Badge>;
           })()}
         </div>
@@ -344,7 +349,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             {opp.eligibility?.skills_required?.length > 0 && (
               <div className="pt-1">
                 <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2">
-                  Required skills
+                  {t('favorites.requiredSkills')}
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
                   {opp.eligibility?.skills_required?.map((skill) => (
