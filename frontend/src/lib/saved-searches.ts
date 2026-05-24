@@ -161,6 +161,24 @@ export async function removeSavedSearch(id: string): Promise<boolean> {
   return true;
 }
 
+export async function markSavedSearchSeen(id: string): Promise<boolean> {
+  if (!id) return false;
+  const deviceId = await getDeviceId();
+  if (!deviceId) return false;
+
+  const { error } = await supabase
+    .from('saved_searches')
+    .update({ new_match_ids: [] })
+    .eq('device_id', deviceId)
+    .eq('id', id);
+
+  if (error) {
+    console.warn('[ofe] markSavedSearchSeen failed:', error.message);
+    return false;
+  }
+  return true;
+}
+
 // URL serialisation for the "Apply saved search" flow: produces a /results
 // URL whose query string matches the params /results writes back to history
 // when filters change. Keep keys in sync with the writer in
@@ -168,8 +186,9 @@ export async function removeSavedSearch(id: string): Promise<boolean> {
 // drift here means saved searches won't roundtrip cleanly through the
 // existing URL-driven state init.
 //
-// opts.highlight is intentionally excluded from /results' URL writer
-// (app/results/page.tsx:224) so it self-clears on the first filter change.
+// opts.highlight and opts.savedSearchId are both intentionally excluded
+// from /results' URL writer (app/results/page.tsx:224) so they self-clear
+// on the first filter change. /results reads each once at mount.
 export function savedSearchToUrl(
   s: {
     query: string;
@@ -177,7 +196,7 @@ export function savedSearchToUrl(
     sort_by: SortBy;
     tab: string;
   },
-  opts?: { highlight?: string[] },
+  opts?: { highlight?: string[]; savedSearchId?: string },
 ): string {
   const params = new URLSearchParams();
   if (s.tab && s.tab !== 'all') params.set('tab', s.tab);
@@ -191,6 +210,9 @@ export function savedSearchToUrl(
   if (s.sort_by && s.sort_by !== 'score') params.set('sort', s.sort_by);
   if (opts?.highlight && opts.highlight.length > 0) {
     params.set('highlight', opts.highlight.join(','));
+  }
+  if (opts?.savedSearchId) {
+    params.set('savedSearchId', opts.savedSearchId);
   }
   const qs = params.toString();
   return qs ? `/results?${qs}` : '/results';

@@ -49,7 +49,7 @@ import {
   removePreset,
 } from '@/lib/filter-presets';
 import type { FilterPreset } from '@/lib/filter-presets';
-import { saveSearch } from '@/lib/saved-searches';
+import { saveSearch, markSavedSearchSeen } from '@/lib/saved-searches';
 import { useT } from '@/i18n/client';
 
 const SEARCH_ALIASES_FOR_HINT: Record<string, string[]> = {
@@ -229,6 +229,17 @@ function ResultsContent() {
     if (!raw) return new Set();
     return new Set(raw.split(',').filter(Boolean));
   });
+
+  // Mount-once ack of the saved-search hand-off. /favorites does an
+  // onClick optimistic clear for same-device latency; this clears the
+  // server row so the badge stays gone on the next visit anywhere.
+  useEffect(() => {
+    const sid = searchParams.get('savedSearchId');
+    if (sid && highlightSet.size > 0) {
+      markSavedSearchSeen(sid).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();

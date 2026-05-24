@@ -13,6 +13,7 @@ import {
   saveSearch,
   updateSavedSearch,
   removeSavedSearch,
+  markSavedSearchSeen,
   savedSearchToUrl,
   type SavedSearchFilters,
 } from './saved-searches';
@@ -275,6 +276,42 @@ describe('removeSavedSearch', () => {
   });
 });
 
+describe('markSavedSearchSeen', () => {
+  it('clears new_match_ids scoped to (device_id, id) and returns true on success', async () => {
+    const q = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValue(q);
+
+    const ok = await markSavedSearchSeen('uuid-1');
+
+    expect(ok).toBe(true);
+    expect(mockFrom).toHaveBeenCalledWith('saved_searches');
+    expect(q.update).toHaveBeenCalledWith({ new_match_ids: [] });
+    expect(q.eq).toHaveBeenCalledWith('device_id', 'test-device-id');
+    expect(q.eq).toHaveBeenCalledWith('id', 'uuid-1');
+  });
+
+  it('returns false without touching supabase when id is empty', async () => {
+    const ok = await markSavedSearchSeen('');
+    expect(ok).toBe(false);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('returns false when getDeviceId is null', async () => {
+    mockGetDeviceId.mockResolvedValue(null);
+    const ok = await markSavedSearchSeen('uuid-1');
+    expect(ok).toBe(false);
+  });
+
+  it('returns false and warns on update error', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'permission denied' } }));
+    const ok = await markSavedSearchSeen('uuid-1');
+    expect(ok).toBe(false);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
 describe('savedSearchToUrl', () => {
   const EMPTY_FILTERS: SavedSearchFilters = {
     paid: '',
@@ -447,6 +484,54 @@ describe('savedSearchToUrl', () => {
       expect(params.get('paid')).toBe('yes');
       expect(params.get('intl')).toBe('yes');
       expect(params.get('highlight')).toBe('opp-x,opp-y');
+    });
+  });
+
+  describe('opts.savedSearchId (R20 ack target)', () => {
+    it('omits savedSearchId when undefined', () => {
+      const url = savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      }, { highlight: ['opp-1'] });
+      const params = new URLSearchParams(url.split('?')[1]);
+      expect(params.has('savedSearchId')).toBe(false);
+    });
+
+    it('omits savedSearchId when empty string', () => {
+      const url = savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      }, { savedSearchId: '' });
+      expect(url).toBe('/results');
+    });
+
+    it('emits savedSearchId when provided', () => {
+      const url = savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      }, { savedSearchId: 'uuid-abc' });
+      const params = new URLSearchParams(url.split('?')[1]);
+      expect(params.get('savedSearchId')).toBe('uuid-abc');
+    });
+
+    it('coexists with highlight + other filters', () => {
+      const url = savedSearchToUrl({
+        query: 'nlp',
+        filters: { ...EMPTY_FILTERS, paid: 'yes' },
+        sort_by: 'score',
+        tab: 'all',
+      }, { highlight: ['opp-1', 'opp-2'], savedSearchId: 'uuid-xyz' });
+      const params = new URLSearchParams(url.split('?')[1]);
+      expect(params.get('q')).toBe('nlp');
+      expect(params.get('paid')).toBe('yes');
+      expect(params.get('highlight')).toBe('opp-1,opp-2');
+      expect(params.get('savedSearchId')).toBe('uuid-xyz');
     });
   });
 });
