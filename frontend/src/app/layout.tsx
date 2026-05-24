@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Header from '@/components/Header';
 import BackendWaker from '@/components/BackendWaker';
-import { getServerLocale, tServer } from '@/i18n/server';
+import { getServerLocale, getServerT } from '@/i18n/server';
 import { LanguageProvider } from '@/i18n/client';
 import './globals.css';
 
@@ -58,13 +58,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const locale = getServerLocale();
-  const skipLabel = tServer('common.appName') === 'OpportunityEngine' && locale === 'zh'
+  const locale = await getServerLocale();
+  const t = await getServerT();
+  const skipLabel = t('common.appName') === 'OpportunityEngine' && locale === 'zh'
     ? '跳到主要内容'
     : 'Skip to main content';
   const footerDisclaimer = locale === 'zh'

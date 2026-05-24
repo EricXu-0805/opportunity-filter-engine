@@ -15,7 +15,6 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 const SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 if (!SUPABASE_CONFIGURED && typeof window !== 'undefined') {
-  // eslint-disable-next-line no-console
   console.warn(
     '[ofe] NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are not set; ' +
     'profile/favorites/interactions will only persist in localStorage.',
