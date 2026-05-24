@@ -221,6 +221,15 @@ function ResultsContent() {
     getInteractions().then(setInteractions).catch(() => {});
   }, []);
 
+  // Read ?highlight=a,b,c once at mount. The URL writer below strips this
+  // param on the first filter edit (cross-file contract in
+  // lib/saved-searches.ts) so re-reading on URL change would race itself.
+  const [highlightSet] = useState<Set<string>>(() => {
+    const raw = searchParams.get('highlight');
+    if (!raw) return new Set();
+    return new Set(raw.split(',').filter(Boolean));
+  });
+
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeTab !== 'all') params.set('tab', activeTab);
@@ -937,23 +946,32 @@ function ResultsContent() {
             />
           ) : (
             <>
-              {paginated.map((match: MatchResult, idx: number) => (
-                <div
-                  key={match.opportunity.id}
-                  id={`match-card-${match.opportunity.id}`}
-                  className={`transition-all ${focusedIdx === idx ? 'ring-2 ring-blue-500/40 rounded-2xl' : ''}`}
-                >
-                  <MemoizedMatchCard
-                    match={match}
-                    profile={profile}
-                    onDraftEmail={openEmailModal}
-                    isFavorited={favs.has(match.opportunity.id)}
-                    onToggleFavorite={handleToggleFav}
-                    interaction={interactions.get(match.opportunity.id)}
-                    onTrackInteraction={handleTrackInteraction}
-                  />
-                </div>
-              ))}
+              {paginated.map((match: MatchResult, idx: number) => {
+                const isNew = highlightSet.has(match.opportunity.id);
+                const ringClass = focusedIdx === idx
+                  ? 'ring-2 ring-blue-500/40 rounded-2xl'
+                  : isNew
+                  ? 'ring-2 ring-amber-400/70 rounded-2xl'
+                  : '';
+                return (
+                  <div
+                    key={match.opportunity.id}
+                    id={`match-card-${match.opportunity.id}`}
+                    className={`transition-all ${ringClass}`}
+                  >
+                    <MemoizedMatchCard
+                      match={match}
+                      profile={profile}
+                      onDraftEmail={openEmailModal}
+                      isFavorited={favs.has(match.opportunity.id)}
+                      onToggleFavorite={handleToggleFav}
+                      interaction={interactions.get(match.opportunity.id)}
+                      onTrackInteraction={handleTrackInteraction}
+                      isNew={isNew}
+                    />
+                  </div>
+                );
+              })}
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 pt-4">
@@ -1014,6 +1032,7 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.match.final_score === next.match.final_score &&
     prev.isFavorited === next.isFavorited &&
     prev.interaction === next.interaction &&
+    prev.isNew === next.isNew &&
     prev.profile === next.profile &&
     prev.onDraftEmail === next.onDraftEmail &&
     prev.onToggleFavorite === next.onToggleFavorite &&

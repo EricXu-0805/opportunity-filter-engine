@@ -383,4 +383,70 @@ describe('savedSearchToUrl', () => {
     expect(params.get('min')).toBe('60');
     expect(params.get('sort')).toBe('deadline');
   });
+
+  describe('opts.highlight (R19 new-match ring)', () => {
+    it('omits highlight when opts is undefined', () => {
+      expect(savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      })).toBe('/results');
+    });
+
+    it('omits highlight when opts.highlight is undefined', () => {
+      expect(savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      }, {})).toBe('/results');
+    });
+
+    it('omits highlight when opts.highlight is empty', () => {
+      expect(savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      }, { highlight: [] })).toBe('/results');
+    });
+
+    it('serialises a single ID', () => {
+      const url = savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      }, { highlight: ['opp-1'] });
+      const params = new URLSearchParams(url.split('?')[1]);
+      expect(params.get('highlight')).toBe('opp-1');
+    });
+
+    it('serialises multiple IDs as comma-joined and round-trips via URLSearchParams', () => {
+      const url = savedSearchToUrl({
+        query: '',
+        filters: EMPTY_FILTERS,
+        sort_by: 'score',
+        tab: 'all',
+      }, { highlight: ['opp-a', 'opp-b', 'opp-c'] });
+      const params = new URLSearchParams(url.split('?')[1]);
+      expect(params.get('highlight')).toBe('opp-a,opp-b,opp-c');
+      expect(params.get('highlight')!.split(',')).toEqual(['opp-a', 'opp-b', 'opp-c']);
+    });
+
+    it('coexists with other filters in the same URL', () => {
+      const url = savedSearchToUrl({
+        query: 'ml',
+        filters: { ...EMPTY_FILTERS, paid: 'yes', intl: 'yes' },
+        sort_by: 'score',
+        tab: 'all',
+      }, { highlight: ['opp-x', 'opp-y'] });
+      const params = new URLSearchParams(url.split('?')[1]);
+      expect(params.get('q')).toBe('ml');
+      expect(params.get('paid')).toBe('yes');
+      expect(params.get('intl')).toBe('yes');
+      expect(params.get('highlight')).toBe('opp-x,opp-y');
+    });
+  });
 });

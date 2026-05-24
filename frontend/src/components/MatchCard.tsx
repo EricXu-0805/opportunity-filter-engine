@@ -10,6 +10,7 @@ import {
   ArrowRight,
   MapPin,
   Building2,
+  BellRing,
   Globe,
   DollarSign,
   Star,
@@ -26,7 +27,7 @@ import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
 import { useT } from '@/i18n/client';
 
-interface MatchCardProps {
+export interface MatchCardProps {
   match: MatchResult;
   profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
@@ -34,6 +35,7 @@ interface MatchCardProps {
   onToggleFavorite?: (opportunityId: string) => void;
   interaction?: InteractionType;
   onTrackInteraction?: (opportunityId: string, type: InteractionType) => void;
+  isNew?: boolean;
 }
 
 function getBucketLabel(
@@ -102,7 +104,7 @@ const URGENCY_BORDER: Record<string, string> = {
   passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
 };
 
-export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction }: MatchCardProps) {
+export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction, isNew }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
@@ -162,6 +164,12 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 mb-5">
+          {isNew && (
+            <Badge variant="orange" dot>
+              <BellRing className="w-3 h-3" />
+              {t('results.newMatchBadge')}
+            </Badge>
+          )}
           {isNewPosting(opp) && <Badge variant="green" dot>{t('badges.new')}</Badge>}
           <Badge variant="indigo">{opp.opportunity_type}</Badge>
           <Badge variant={intl.variant} dot>
