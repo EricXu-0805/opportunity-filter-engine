@@ -137542,5 +137542,53 @@
     "status": "unknown",
     "level": "program_overview",
     "contact_email": "atlas@illinois.edu"
+  },
+  {
+    "id": "a84c9bc675202077",
+    "source": "uiuc_other",
+    "source_url": "https://researchpark.illinois.edu/work-here/careers/",
+    "title": "UIUC Research Park — Student Internships and Part-Time Jobs",
+    "description": "Research Park hosts 120+ technology companies (Fortune 500 and startups) on the south side of campus, employing 2000+ affiliated staff and 350+ student interns. Internships run year-round — part-time during the semester and full-time over the summer. Roles span data science, AI/ML, software, hardware, biotech, UI/UX, communications, and business. Each company hires independently through the central Job Board. Many positions are Research Park exclusive and do not appear on Handshake. Highest hiring volume: August–October and January–March. Open to all majors, all class years, and international students.\n\nFrom the program page: Job Board | Research Park Skip to content UNIVERSITY  OF ILLINOIS URBANA-CHAMPAIGN Research Park About About Us Getting Here Board of Managers Our Team History & Awards Locate Here Now Leasing Development Opportunities EnterpriseWorks Incubator Housing Amenities Corporate Innovation Centers Development History Impact Startup Highlights Startup Graduates Facts and Figures Corporate Innovation Succe",
+    "url": "https://researchpark.illinois.edu/work-here/careers/",
+    "organization": "Research Park",
+    "opportunity_type": "research",
+    "paid": "yes",
+    "deadline": null,
+    "is_rolling": true,
+    "on_campus": true,
+    "contact_email": "uirp-jobs@illinois.edu",
+    "eligibility": {
+      "majors": [],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior"
+      ],
+      "skills_required": [],
+      "international_friendly": "yes",
+      "citizenship_required": false
+    },
+    "application": {
+      "application_url": "https://researchpark.illinois.edu/work-here/careers/",
+      "application_effort": "medium",
+      "requires_resume": "yes",
+      "requires_cover_letter": "unknown",
+      "requires_recommendation": "unknown"
+    },
+    "keywords": [
+      "research",
+      "program_overview",
+      "research_park_internships"
+    ],
+    "metadata": {
+      "is_active": true,
+      "scraped_at": "2026-05-24T15:19:30.784000",
+      "first_seen": "2026-05-24T15:19:30.784000"
+    },
+    "program_key": "research_park_internships",
+    "college": "Cross-college",
+    "status": "unknown",
+    "level": "program_overview"
   }
 ]

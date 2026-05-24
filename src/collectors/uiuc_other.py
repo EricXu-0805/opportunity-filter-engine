@@ -148,6 +148,29 @@ PROGRAMS = [
             "are not public. Apply through atlas.illinois.edu."
         ),
     },
+    {
+        "key": "research_park_internships",
+        "url": "https://researchpark.illinois.edu/work-here/careers/",
+        "title": "UIUC Research Park — Student Internships and Part-Time Jobs",
+        "organization": "Research Park",
+        "college": "Cross-college",
+        "majors": [],
+        "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+        "paid": "yes",
+        "contact_email": "uirp-jobs@illinois.edu",
+        "fallback_desc": (
+            "Research Park hosts 120+ technology companies (Fortune 500 and "
+            "startups) on the south side of campus, employing 2000+ affiliated "
+            "staff and 350+ student interns. Internships run year-round — "
+            "part-time during the semester and full-time over the summer. "
+            "Roles span data science, AI/ML, software, hardware, biotech, "
+            "UI/UX, communications, and business. Each company hires "
+            "independently through the central Job Board. Many positions are "
+            "Research Park exclusive and do not appear on Handshake. Highest "
+            "hiring volume: August–October and January–March. Open to all "
+            "majors, all class years, and international students."
+        ),
+    },
 ]
 
 
