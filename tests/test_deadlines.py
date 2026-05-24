@@ -12,7 +12,6 @@ import pytest
 
 from src.normalizers.deadlines import (
     DeadlineType,
-    ParsedDeadline,
     normalize_deadline,
     parse_to_date,
     reclassify_opportunity,
