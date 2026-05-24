@@ -167,12 +167,18 @@ export async function removeSavedSearch(id: string): Promise<boolean> {
 // app/results/page.tsx (paid/intl/source/loc/dl/min/sort/q/tab) — any
 // drift here means saved searches won't roundtrip cleanly through the
 // existing URL-driven state init.
-export function savedSearchToUrl(s: {
-  query: string;
-  filters: SavedSearchFilters;
-  sort_by: SortBy;
-  tab: string;
-}): string {
+//
+// opts.highlight is intentionally excluded from /results' URL writer
+// (app/results/page.tsx:224) so it self-clears on the first filter change.
+export function savedSearchToUrl(
+  s: {
+    query: string;
+    filters: SavedSearchFilters;
+    sort_by: SortBy;
+    tab: string;
+  },
+  opts?: { highlight?: string[] },
+): string {
   const params = new URLSearchParams();
   if (s.tab && s.tab !== 'all') params.set('tab', s.tab);
   if (s.query) params.set('q', s.query);
@@ -183,6 +189,9 @@ export function savedSearchToUrl(s: {
   if (s.filters.deadline) params.set('dl', s.filters.deadline);
   if (s.filters.minScore > 0) params.set('min', String(s.filters.minScore));
   if (s.sort_by && s.sort_by !== 'score') params.set('sort', s.sort_by);
+  if (opts?.highlight && opts.highlight.length > 0) {
+    params.set('highlight', opts.highlight.join(','));
+  }
   const qs = params.toString();
   return qs ? `/results?${qs}` : '/results';
 }

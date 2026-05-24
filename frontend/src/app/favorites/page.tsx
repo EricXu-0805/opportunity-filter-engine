@@ -371,7 +371,7 @@ export default function FavoritesPage() {
                   className="group bg-white rounded-xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-shadow flex items-center"
                 >
                   <Link
-                    href={savedSearchToUrl(search)}
+                    href={savedSearchToUrl(search, hasNew ? { highlight: search.new_match_ids } : undefined)}
                     aria-label={t('favorites.savedSearches.applyAria', { name: search.name })}
                     className="flex-1 min-w-0 px-4 py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-l-xl"
                   >
