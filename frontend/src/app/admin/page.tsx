@@ -208,8 +208,14 @@ function AdminInner() {
       try { resolved = sessionStorage.getItem(SESSION_KEY); } catch { resolved = null; }
     }
     if (resolved) {
+      /* eslint-disable react-hooks/set-state-in-effect --
+         Auth token resolution must finish in one effect tick so the
+         token-entry form is replaced atomically by the dashboard.
+         The history.replaceState above strips ?token= from the URL,
+         which is a side effect of the same one-shot mount handler. */
       setToken(resolved);
       setTokenInput(resolved);
+      /* eslint-enable react-hooks/set-state-in-effect */
       fetchAll(resolved);
     }
   }, [searchParams, fetchAll]);

@@ -561,12 +561,19 @@ function TrackerPanel({
   const [notesMode, setNotesMode] = useState<'edit' | 'preview'>('edit');
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Sync internal editor state when the parent's `detail` updates
+       (e.g. after the debounced save below round-trips through
+       Supabase). Using key-remount would close the editor on every
+       save — the wrong UX since the user might still be typing. */
     setNotes(detail?.notes ?? '');
     setRemindAt(detail?.remind_at ?? '');
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [detail?.notes, detail?.remind_at]);
 
   useEffect(() => {
     if (notes === (detail?.notes ?? '') && remindAt === (detail?.remind_at ?? '')) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced save side effect; setSaveStatus must run sync to show 'saving…' before the 600ms timer fires
     setSaveStatus('saving');
     const timer = setTimeout(async () => {
       await onSave({

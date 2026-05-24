@@ -201,6 +201,7 @@ function ResultsContent() {
 
   const [presets, setPresets] = useState<FilterPreset[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount hydration of presets from localStorage; loadPresets() validates schema + drops malformed entries, so wrapping it in useSyncExternalStore would need a stable-reference cache (TODO: extend useLocalStorageJSON to accept a transformer)
   useEffect(() => { setPresets(loadPresets()); }, []);
 
   const [emailModal, setEmailModal] = useState<{
@@ -307,6 +308,7 @@ function ResultsContent() {
 
   useEffect(() => {
     if (!loading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the "slow loading…" hint the instant loading finishes; the setTimeout that would have shown it is also cancelled in cleanup
       setShowSlowHint(false);
       return;
     }
@@ -358,6 +360,7 @@ function ResultsContent() {
   const [focusedIdx, setFocusedIdx] = useState(-1);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset keyboard-nav focus when filters change so j/k starts from the top of the newly-filtered list; React.dev recommends key-remount for this pattern but it would unmount the whole grid every filter tick
   useEffect(() => { setFocusedIdx(-1); }, [activeTab, debouncedQuery, filters, sortBy, page]);
 
   const filtered = useMemo(() => {
@@ -454,6 +457,7 @@ function ResultsContent() {
     [filtered, page],
   );
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination to page 1 when filter inputs change; key-remount would lose focus on the search box mid-typing, which is worse than the cascading render
   useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy]);
 
   const dismissedCount = useMemo(

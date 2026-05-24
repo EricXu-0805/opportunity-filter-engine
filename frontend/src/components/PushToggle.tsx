@@ -10,6 +10,7 @@ export default function PushToggle() {
 
   useEffect(() => {
     if (!isPushSupported()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- isPushSupported() checks navigator.serviceWorker (undefined during SSR), so the support test must run post-hydration; useState initializer would cause a hydration mismatch
       setStatus('unsupported');
       return;
     }

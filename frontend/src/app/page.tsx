@@ -98,9 +98,15 @@ function HomePageInner() {
     if (shareParam) {
       const shared = decodeProfile(shareParam);
       if (shared) {
+        /* eslint-disable react-hooks/set-state-in-effect --
+           One-shot URL-share import on mount. setProfile + setSearchWeight
+           + setSharedBanner must all flush in the same effect tick so the
+           form renders pre-filled from the share link before any user
+           interaction; otherwise the home page would flash empty fields. */
         setProfile(prev => ({ ...prev, ...shared } as ProfileData));
         if (typeof shared.search_weight === 'number') setSearchWeight(shared.search_weight);
         setSharedBanner(t('home.sharedBanner'));
+        /* eslint-enable react-hooks/set-state-in-effect */
         setTimeout(() => { isInitialLoad.current = false; }, 500);
         return;
       }

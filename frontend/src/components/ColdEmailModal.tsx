@@ -149,6 +149,13 @@ export default function ColdEmailModal({
   }, [profile, opportunityId, t]);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Modal-lifecycle effect. Open path calls fetchVariants() whose
+       sync prefix flips setLoading(true) before any await. Cleanup
+       path resets every internal state slice so the next open()
+       starts from a known-empty surface — splitting this into two
+       effects would race the next open's fetchVariants() with stale
+       residue from the previous session. */
     if (isOpen) fetchVariants();
     return () => {
       setVariants([]);
@@ -161,6 +168,7 @@ export default function ColdEmailModal({
       setChatMessages([]);
       setChatInput('');
     };
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, fetchVariants]);
 
   useEffect(() => {

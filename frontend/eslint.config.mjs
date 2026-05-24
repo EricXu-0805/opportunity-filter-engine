@@ -19,12 +19,6 @@ const config = [
     rules: {
       '@next/next/no-img-element': 'off',
       'react/no-unescaped-entities': 'warn',
-      // eslint-plugin-react-hooks v7 (auto-installed by eslint-config-next 16)
-      // introduced this strict rule. ~21 legitimate "init from prop /
-      // localStorage on mount" usages currently violate it; converting them
-      // to useSyncExternalStore / derived state is its own refactor and
-      // out of scope for the Next 16 upgrade. Tracked as a Round 9 cleanup.
-      'react-hooks/set-state-in-effect': 'warn',
     },
   },
 ];
