@@ -354,3 +354,122 @@ export async function removeInteraction(opportunityId: string): Promise<void> {
   if (!deviceId) return;
   await supabase.from('interactions').delete().eq('device_id', deviceId).eq('opportunity_id', opportunityId);
 }
+
+export const ATTACHMENTS_BUCKET = 'tracker-attachments';
+export const ATTACHMENTS_MAX_BYTES = 5 * 1024 * 1024;
+export const ATTACHMENTS_ALLOWED_MIME = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'text/markdown',
+]);
+
+export interface Attachment {
+  name: string;
+  sizeBytes: number;
+  mimeType: string;
+  createdAt: string;
+}
+
+function attachmentPath(deviceId: string, opportunityId: string, filename: string): string {
+  return `${deviceId}/${opportunityId}/${filename}`;
+}
+
+function sanitizeFilename(raw: string): string {
+  const base = raw.replace(/[\\/:*?"<>|]/g, '_').replace(/^\.+/, '').trim();
+  return base.slice(0, 200) || `file-${Date.now()}`;
+}
+
+export type AttachmentUploadResult =
+  | { ok: true; name: string }
+  | { ok: false; reason: 'too_large' | 'wrong_type' | 'duplicate' | 'unauthenticated' | 'unknown'; message?: string };
+
+export async function uploadAttachment(
+  opportunityId: string,
+  file: File,
+): Promise<AttachmentUploadResult> {
+  if (file.size > ATTACHMENTS_MAX_BYTES) return { ok: false, reason: 'too_large' };
+  if (!ATTACHMENTS_ALLOWED_MIME.has(file.type)) return { ok: false, reason: 'wrong_type' };
+
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return { ok: false, reason: 'unauthenticated' };
+
+  const safeName = sanitizeFilename(file.name);
+  const path = attachmentPath(deviceId, opportunityId, safeName);
+
+  const { error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) {
+    const msg = error.message || '';
+    if (/exists|duplicate/i.test(msg)) return { ok: false, reason: 'duplicate', message: msg };
+    return { ok: false, reason: 'unknown', message: msg };
+  }
+  return { ok: true, name: safeName };
+}
+
+export async function listAttachments(opportunityId: string): Promise<Attachment[]> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return [];
+
+  const prefix = `${deviceId}/${opportunityId}`;
+  const { data, error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .list(prefix, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+
+  if (error || !data) {
+    if (error) console.warn('[ofe] listAttachments failed:', error.message);
+    return [];
+  }
+
+  return data
+    .filter((item) => item.name && !item.name.endsWith('/'))
+    .map((item) => {
+      const meta = (item.metadata ?? {}) as { size?: number; mimetype?: string };
+      return {
+        name: item.name,
+        sizeBytes: meta.size ?? 0,
+        mimeType: meta.mimetype ?? 'application/octet-stream',
+        createdAt: item.created_at ?? item.updated_at ?? new Date().toISOString(),
+      };
+    });
+}
+
+export async function deleteAttachment(opportunityId: string, filename: string): Promise<boolean> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return false;
+
+  const { error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .remove([attachmentPath(deviceId, opportunityId, filename)]);
+
+  if (error) {
+    console.warn('[ofe] deleteAttachment failed:', error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function getAttachmentSignedUrl(
+  opportunityId: string,
+  filename: string,
+  expiresInSeconds = 300,
+): Promise<string | null> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return null;
+
+  const { data, error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .createSignedUrl(attachmentPath(deviceId, opportunityId, filename), expiresInSeconds);
+
+  if (error || !data) {
+    if (error) console.warn('[ofe] getAttachmentSignedUrl failed:', error.message);
+    return null;
+  }
+  return data.signedUrl;
+}

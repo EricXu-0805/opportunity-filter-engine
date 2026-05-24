@@ -41,6 +41,7 @@ import { useT } from '@/i18n/client';
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ssr: false });
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), { ssr: false });
+const AttachmentsPanel = dynamic(() => import('@/components/AttachmentsPanel'), { ssr: false });
 
 const INTERACTION_PILL: Record<InteractionType, string> = {
   applied: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -274,6 +275,8 @@ export default function OpportunityDetail({
         <TrackerPanel
           detail={interactionDetail}
           onSave={saveDetails}
+          opportunityId={opp.id as string}
+          hasInteraction={!!interaction}
           t={t}
         />
       </div>
@@ -493,10 +496,14 @@ export default function OpportunityDetail({
 function TrackerPanel({
   detail,
   onSave,
+  opportunityId,
+  hasInteraction,
   t,
 }: {
   detail: InteractionRecord | null;
   onSave: (patch: { notes?: string | null; remind_at?: string | null }) => Promise<void>;
+  opportunityId: string;
+  hasInteraction: boolean;
   t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
   const [open, setOpen] = useState(!!(detail?.notes || detail?.remind_at));
@@ -637,6 +644,11 @@ function TrackerPanel({
               </button>
             )}
           </label>
+          {hasInteraction && (
+            <div className="pt-2 border-t border-gray-50">
+              <AttachmentsPanel opportunityId={opportunityId} />
+            </div>
+          )}
         </div>
       )}
     </div>
