@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { useCustomImports, removeCustomImport, type CustomImport } from '@/lib/custom-imports';
 import {
+  listSavedSearches,
+  removeSavedSearch,
+  savedSearchToUrl,
+  type SavedSearch,
+} from '@/lib/saved-searches';
+import {
   Star,
   ArrowLeft,
   Loader2,
@@ -19,6 +25,8 @@ import {
   Check,
   X,
   Bookmark,
+  Cloud,
+  Trash2,
   ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -93,6 +101,25 @@ function customImportToOpp(c: CustomImport): Opp {
 const MIN_COMPARE = 2;
 const MAX_COMPARE = 3;
 
+function summarizeSavedSearchFilters(
+  search: SavedSearch,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const parts: string[] = [];
+  if (search.query) parts.push(`"${search.query}"`);
+  if (search.filters.paid === 'yes') parts.push('paid');
+  if (search.filters.paid === 'no') parts.push('unpaid');
+  if (search.filters.intl === 'yes') parts.push('intl');
+  if (search.filters.onCampus === 'yes') parts.push('on-campus');
+  if (search.filters.deadline === 'passed') parts.push('past-due');
+  else if (search.filters.deadline) parts.push(`≤${search.filters.deadline}d`);
+  if (search.filters.minScore > 0) parts.push(`≥${search.filters.minScore}`);
+  if (search.filters.source) parts.push(search.filters.source);
+  if (search.tab && search.tab !== 'all') parts.push(search.tab);
+  if (search.sort_by && search.sort_by !== 'score') parts.push(`by ${search.sort_by}`);
+  return parts.length > 0 ? parts.join(' · ') : t('favorites.savedSearches.filtersFallback');
+}
+
 function DeadlineBadge({
   deadline,
   t,
@@ -119,6 +146,7 @@ export default function FavoritesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
   const customImports = useCustomImports();
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string }>({
     open: false, id: '', title: '',
   });
@@ -136,6 +164,18 @@ export default function FavoritesPage() {
     }
     load();
   }, []);
+
+  useEffect(() => {
+    listSavedSearches().then(setSavedSearches).catch(() => {});
+  }, []);
+
+  const handleRemoveSavedSearch = useCallback(async (search: SavedSearch) => {
+    if (!window.confirm(t('favorites.savedSearches.deleteConfirm', { name: search.name }))) return;
+    const ok = await removeSavedSearch(search.id);
+    if (ok) {
+      setSavedSearches((prev) => prev.filter((s) => s.id !== search.id));
+    }
+  }, [t]);
 
   const opportunities = useMemo<Opp[]>(
     () => [...customImports.map(customImportToOpp), ...serverOpportunities],
@@ -273,6 +313,57 @@ export default function FavoritesPage() {
           )}
         </div>
       </div>
+
+      {!selectionMode && savedSearches.length > 0 && (
+        <section className="mb-8" aria-labelledby="saved-searches-heading">
+          <div className="flex items-baseline justify-between mb-3">
+            <div>
+              <h2 id="saved-searches-heading" className="text-[15px] font-semibold text-gray-900 inline-flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-indigo-500" aria-hidden="true" />
+                {t('favorites.savedSearches.sectionTitle')}
+              </h2>
+              <p className="text-[12px] text-gray-400 mt-0.5">
+                {t('favorites.savedSearches.sectionHint')}
+              </p>
+            </div>
+            <span className="text-[11px] text-gray-400 tabular-nums">
+              {t('favorites.savedSearches.itemCount', { count: savedSearches.length })}
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {savedSearches.map((search) => {
+              const summary = summarizeSavedSearchFilters(search, t);
+              return (
+                <li
+                  key={search.id}
+                  className="group bg-white rounded-xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-shadow flex items-center"
+                >
+                  <Link
+                    href={savedSearchToUrl(search)}
+                    aria-label={t('favorites.savedSearches.applyAria', { name: search.name })}
+                    className="flex-1 min-w-0 px-4 py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-l-xl"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[14px] font-medium text-gray-900 truncate">
+                        {search.name}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-gray-500 truncate mt-0.5">{summary}</p>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSavedSearch(search)}
+                    aria-label={t('favorites.savedSearches.deleteAria', { name: search.name })}
+                    className="p-3 mr-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {opportunities.length === 0 ? (
         <div className="text-center py-20">

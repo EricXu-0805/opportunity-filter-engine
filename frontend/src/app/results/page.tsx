@@ -17,6 +17,7 @@ import {
   EyeOff,
   Bookmark,
   BookmarkPlus,
+  Cloud,
   Trash2,
   Sparkles,
 } from 'lucide-react';
@@ -48,6 +49,7 @@ import {
   removePreset,
 } from '@/lib/filter-presets';
 import type { FilterPreset } from '@/lib/filter-presets';
+import { saveSearch } from '@/lib/saved-searches';
 import { useT } from '@/i18n/client';
 
 const SEARCH_ALIASES_FOR_HINT: Record<string, string[]> = {
@@ -515,6 +517,21 @@ function ResultsContent() {
     setActivePresetId(preset.id);
   }, [filters, sortBy, activeTab, presets, t]);
 
+  const handleSaveSearchToAccount = useCallback(async () => {
+    const name = window.prompt(t('results.saveSearchPrompt'), '')?.trim();
+    if (!name) return;
+    const saved = await saveSearch({
+      name,
+      query: debouncedQuery,
+      filters: { ...filters },
+      sort_by: sortBy,
+      tab: activeTab,
+    });
+    if (!saved) {
+      window.alert(t('results.saveSearchError'));
+    }
+  }, [filters, sortBy, activeTab, debouncedQuery, t]);
+
   const handleApplyPreset = useCallback((preset: FilterPreset) => {
     setFilters(preset.filters as typeof DEFAULT_FILTERS);
     setSortBy(preset.sortBy);
@@ -779,15 +796,26 @@ function ResultsContent() {
                 />
               ))}
               {(activeFilterCount > 0 || !!debouncedQuery.trim()) && (
-                <button
-                  type="button"
-                  onClick={handleSavePreset}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
-                  title={t('results.savePresetTitle')}
-                >
-                  <BookmarkPlus className="w-3 h-3" />
-                  {t('results.savePresetButton')}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSavePreset}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                    title={t('results.savePresetTitle')}
+                  >
+                    <BookmarkPlus className="w-3 h-3" />
+                    {t('results.savePresetButton')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveSearchToAccount}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                    title={t('results.saveSearchTitle')}
+                  >
+                    <Cloud className="w-3 h-3" />
+                    {t('results.saveSearchButton')}
+                  </button>
+                </>
               )}
             </div>
           )}

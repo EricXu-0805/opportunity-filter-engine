@@ -151,3 +151,29 @@ export async function removeSavedSearch(id: string): Promise<boolean> {
   }
   return true;
 }
+
+// URL serialisation for the "Apply saved search" flow: produces a /results
+// URL whose query string matches the params /results writes back to history
+// when filters change. Keep keys in sync with the writer in
+// app/results/page.tsx (paid/intl/source/loc/dl/min/sort/q/tab) — any
+// drift here means saved searches won't roundtrip cleanly through the
+// existing URL-driven state init.
+export function savedSearchToUrl(s: {
+  query: string;
+  filters: SavedSearchFilters;
+  sort_by: SortBy;
+  tab: string;
+}): string {
+  const params = new URLSearchParams();
+  if (s.tab && s.tab !== 'all') params.set('tab', s.tab);
+  if (s.query) params.set('q', s.query);
+  if (s.filters.paid) params.set('paid', s.filters.paid);
+  if (s.filters.intl) params.set('intl', s.filters.intl);
+  if (s.filters.source) params.set('source', s.filters.source);
+  if (s.filters.onCampus) params.set('loc', s.filters.onCampus);
+  if (s.filters.deadline) params.set('dl', s.filters.deadline);
+  if (s.filters.minScore > 0) params.set('min', String(s.filters.minScore));
+  if (s.sort_by && s.sort_by !== 'score') params.set('sort', s.sort_by);
+  const qs = params.toString();
+  return qs ? `/results?${qs}` : '/results';
+}
