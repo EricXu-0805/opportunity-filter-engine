@@ -21,36 +21,36 @@ function RestoreInner() {
   const d = searchParams.get('d');
   const token = searchParams.get('t');
   const s = searchParams.get('s');
-  const [state, setState] = useState<'verifying' | 'ok' | 'error'>('verifying');
-  const [error, setError] = useState<string | null>(null);
+  const hasAllParams = !!(d && token && s);
+  const [verifyState, setVerifyState] = useState<'verifying' | 'ok' | 'error'>('verifying');
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  const state = hasAllParams ? verifyState : 'error';
+  const error = hasAllParams ? verifyError : t('restore.errMissingParams');
 
   useEffect(() => {
-    if (!d || !token || !s) {
-      setState('error');
-      setError(t('restore.errMissingParams'));
-      return;
-    }
-    verifyRestoreLink({ d, t: token, s })
+    if (!hasAllParams) return;
+    verifyRestoreLink({ d: d!, t: token!, s: s! })
       .then((res) => {
         if (res.ok && res.device_id) {
           try {
             localStorage.setItem('ofe_restored_device_id', res.device_id);
           } catch { /* quota */ }
-          setState('ok');
+          setVerifyState('ok');
           setTimeout(() => router.push('/'), 1600);
         } else {
-          setState('error');
-          setError(t('restore.errLinkInvalid'));
+          setVerifyState('error');
+          setVerifyError(t('restore.errLinkInvalid'));
         }
       })
       .catch((e) => {
-        setState('error');
+        setVerifyState('error');
         const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes('400')) setError(t('restore.errLinkExpired'));
-        else if (msg.includes('503')) setError(t('restore.errDisabled'));
-        else setError(t('restore.errVerifyFailed'));
+        if (msg.includes('400')) setVerifyError(t('restore.errLinkExpired'));
+        else if (msg.includes('503')) setVerifyError(t('restore.errDisabled'));
+        else setVerifyError(t('restore.errVerifyFailed'));
       });
-  }, [d, token, s, router, t]);
+  }, [hasAllParams, d, token, s, router, t]);
 
   return (
     <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-20">
