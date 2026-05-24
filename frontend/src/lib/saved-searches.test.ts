@@ -13,6 +13,7 @@ import {
   saveSearch,
   updateSavedSearch,
   removeSavedSearch,
+  savedSearchToUrl,
   type SavedSearchFilters,
 } from './saved-searches';
 
@@ -249,5 +250,115 @@ describe('removeSavedSearch', () => {
     expect(ok).toBe(false);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+describe('savedSearchToUrl', () => {
+  const EMPTY_FILTERS: SavedSearchFilters = {
+    paid: '',
+    intl: '',
+    source: '',
+    onCampus: '',
+    deadline: '',
+    minScore: 0,
+  };
+
+  it('returns bare /results when everything is at default', () => {
+    expect(savedSearchToUrl({
+      query: '',
+      filters: EMPTY_FILTERS,
+      sort_by: 'score',
+      tab: 'all',
+    })).toBe('/results');
+  });
+
+  it('serialises query to ?q=', () => {
+    expect(savedSearchToUrl({
+      query: 'machine learning',
+      filters: EMPTY_FILTERS,
+      sort_by: 'score',
+      tab: 'all',
+    })).toBe('/results?q=machine+learning');
+  });
+
+  it('serialises tab only when not the default "all"', () => {
+    expect(savedSearchToUrl({
+      query: '',
+      filters: EMPTY_FILTERS,
+      sort_by: 'score',
+      tab: 'starred',
+    })).toBe('/results?tab=starred');
+    expect(savedSearchToUrl({
+      query: '',
+      filters: EMPTY_FILTERS,
+      sort_by: 'score',
+      tab: 'all',
+    })).toBe('/results');
+  });
+
+  it('serialises sort only when not the default "score"', () => {
+    expect(savedSearchToUrl({
+      query: '',
+      filters: EMPTY_FILTERS,
+      sort_by: 'deadline',
+      tab: 'all',
+    })).toBe('/results?sort=deadline');
+    expect(savedSearchToUrl({
+      query: '',
+      filters: EMPTY_FILTERS,
+      sort_by: 'score',
+      tab: 'all',
+    })).toBe('/results');
+  });
+
+  it('maps filter fields to the URL keys /results actually reads (loc/dl/min)', () => {
+    const url = savedSearchToUrl({
+      query: '',
+      filters: {
+        paid: 'yes',
+        intl: 'no',
+        source: 'uiuc_faculty',
+        onCampus: 'yes',
+        deadline: '14',
+        minScore: 70,
+      },
+      sort_by: 'score',
+      tab: 'all',
+    });
+    const params = new URLSearchParams(url.split('?')[1]);
+    expect(params.get('paid')).toBe('yes');
+    expect(params.get('intl')).toBe('no');
+    expect(params.get('source')).toBe('uiuc_faculty');
+    expect(params.get('loc')).toBe('yes');
+    expect(params.get('dl')).toBe('14');
+    expect(params.get('min')).toBe('70');
+    expect(params.has('onCampus')).toBe(false);
+    expect(params.has('deadline')).toBe(false);
+    expect(params.has('minScore')).toBe(false);
+  });
+
+  it('elides minScore=0 (the unfiltered sentinel)', () => {
+    expect(savedSearchToUrl({
+      query: '',
+      filters: { ...EMPTY_FILTERS, minScore: 0 },
+      sort_by: 'score',
+      tab: 'all',
+    })).toBe('/results');
+  });
+
+  it('combines tab + query + multiple filters in a single URL', () => {
+    const url = savedSearchToUrl({
+      query: 'NLP',
+      filters: { paid: 'yes', intl: '', source: '', onCampus: '', deadline: '7', minScore: 60 },
+      sort_by: 'deadline',
+      tab: 'high_priority',
+    });
+    const params = new URLSearchParams(url.split('?')[1]);
+    expect(params.get('tab')).toBe('high_priority');
+    expect(params.get('q')).toBe('NLP');
+    expect(params.get('paid')).toBe('yes');
+    expect(params.get('dl')).toBe('7');
+    expect(params.get('min')).toBe('60');
+    expect(params.get('sort')).toBe('deadline');
   });
 });
