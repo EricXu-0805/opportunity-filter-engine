@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
@@ -65,7 +66,7 @@ export default function OpportunityDetail({
   const { t } = useT();
   const [isFavorited, setIsFavorited] = useState(false);
   const [interactionDetail, setInteractionDetail] = useState<InteractionRecord | null>(null);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
@@ -76,10 +77,6 @@ export default function OpportunityDetail({
   useEffect(() => {
     getFavorites().then(set => setIsFavorited(set.has(opp.id))).catch(() => {});
     getInteractionDetail(opp.id).then(setInteractionDetail).catch(() => {});
-    try {
-      const raw = localStorage.getItem('ofe_profile');
-      if (raw) setProfile(JSON.parse(raw) as ProfileData);
-    } catch { /* malformed */ }
   }, [opp.id]);
 
   const applyUrl = opp.application?.application_url || opp.url || opp.source_url;

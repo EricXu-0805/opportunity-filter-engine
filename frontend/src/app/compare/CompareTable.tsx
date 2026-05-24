@@ -1,21 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Opportunity, ProfileData } from '@/lib/types';
+import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { rankAndBucket } from './scores';
 import BucketCards from './BucketCards';
 import DifferencesSection from './DifferencesSection';
 import RadarChart from './RadarChart';
 
 export default function CompareTable({ opps }: { opps: Opportunity[] }) {
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ofe_profile');
-      if (raw) setProfile(JSON.parse(raw) as ProfileData);
-    } catch {}
-  }, []);
+  const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
 
   const ranked = useMemo(() => {
     if (!profile) return null;

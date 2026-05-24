@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, memo, Suspense } from 'react';
+import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -57,6 +58,28 @@ const SEARCH_ALIASES_FOR_HINT: Record<string, string[]> = {
 };
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
+
+type LegacyProfileShape = Omit<ProfileData, 'skills'> & {
+  skills?: ProfileData['skills'] | string[];
+};
+
+function migrateProfile(raw: LegacyProfileShape | null): ProfileData | null {
+  if (!raw) return null;
+  if (
+    Array.isArray(raw.skills)
+    && raw.skills.length > 0
+    && typeof raw.skills[0] === 'string'
+  ) {
+    return {
+      ...raw,
+      skills: (raw.skills as string[]).map((name) => ({
+        name,
+        level: 'beginner' as const,
+      })),
+    } as ProfileData;
+  }
+  return raw as ProfileData;
+}
 
 interface Filters {
   paid: '' | 'yes' | 'no';
@@ -137,7 +160,8 @@ function ResultsContent() {
   const searchParams = useSearchParams();
   const { t } = useT();
 
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>('ofe_profile');
+  const profile = useMemo(() => migrateProfile(rawStoredProfile), [rawStoredProfile]);
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -245,47 +269,41 @@ function ResultsContent() {
   }, []);
 
   useEffect(() => {
-    const raw = localStorage.getItem('ofe_profile');
-    if (!raw) {
-      router.replace('/');
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.skills) && parsed.skills.length > 0 && typeof parsed.skills[0] === 'string') {
-        parsed.skills = (parsed.skills as string[]).map((name: string) => ({ name, level: 'beginner' as const }));
-      }
-      const loadedProfile = parsed as ProfileData;
-      setProfile(loadedProfile);
+    if (rawStoredProfile === null) router.replace('/');
+  }, [rawStoredProfile, router]);
 
-      const cachedRaw = sessionStorage.getItem('ofe_match_results');
-      if (cachedRaw) {
-        try {
-          const cached = JSON.parse(cachedRaw) as {
-            hash: string;
-            semantic?: boolean;
-            data: MatchesResponse;
-          };
-          const hashOk = cached.hash === hashProfile(loadedProfile);
-          const semanticOk = (cached.semantic ?? false) === semanticRerank;
-          if (hashOk && semanticOk) {
-            setData(cached.data);
-            setLoading(false);
-          } else {
-            sessionStorage.removeItem('ofe_match_results');
-          }
-        } catch {
-          sessionStorage.removeItem('ofe_match_results');
-        }
+  useEffect(() => {
+    if (!profile) return;
+    const cachedRaw = sessionStorage.getItem('ofe_match_results');
+    if (!cachedRaw) return;
+    try {
+      const cached = JSON.parse(cachedRaw) as {
+        hash: string;
+        semantic?: boolean;
+        data: MatchesResponse;
+      };
+      if (
+        cached.hash === hashProfile(profile)
+        && (cached.semantic ?? false) === semanticRerank
+      ) {
+        /* eslint-disable react-hooks/set-state-in-effect --
+           One-shot hydration from sessionStorage cache. Both setData and
+           setLoading must run together to atomically replace the loading
+           UI with the cached results; splitting into separate renders
+           would briefly show "loading…" over a populated grid.
+           semanticRerank is also intentionally a dependency: a toggle
+           flip elsewhere clears `data`, so this effect re-runs to try
+           the cache again under the new mode. */
+        setData(cached.data);
+        setLoading(false);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      } else {
+        sessionStorage.removeItem('ofe_match_results');
       }
     } catch {
-      router.replace('/');
+      sessionStorage.removeItem('ofe_match_results');
     }
-    // semanticRerank is intentionally read but not in deps: this effect
-    // should only run on mount to load profile + any matching cache, not
-    // refire every time the toggle flips.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [profile, semanticRerank]);
 
   useEffect(() => {
     if (!loading) {
