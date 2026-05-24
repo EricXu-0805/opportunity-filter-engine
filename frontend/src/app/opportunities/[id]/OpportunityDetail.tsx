@@ -76,7 +76,9 @@ export default function OpportunityDetail({
 
   useEffect(() => {
     getFavorites().then(set => setIsFavorited(set.has(opp.id))).catch(() => {});
-    getInteractionDetail(opp.id).then(setInteractionDetail).catch(() => {});
+    getInteractionDetail(opp.id).then((d) => {
+      if (d) setInteractionDetail(d);
+    }).catch(() => {});
   }, [opp.id]);
 
   const applyUrl = opp.application?.application_url || opp.url || opp.source_url;
