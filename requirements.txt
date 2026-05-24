@@ -9,10 +9,10 @@
 fastapi==0.135.1
 uvicorn==0.42.0
 pydantic==2.12.3
-python-multipart==0.0.26
+python-multipart==0.0.27
 httpx==0.28.1
 pyyaml==6.0.3
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # Web Push (only needed for /api/cron/reminders push delivery; soft-pinned
 # because it isn't installed in dev/CI by default and we don't want
