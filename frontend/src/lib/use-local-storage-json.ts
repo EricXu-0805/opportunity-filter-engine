@@ -38,6 +38,29 @@ function subscribe(onStoreChange: () => void): () => void {
   return () => window.removeEventListener('storage', onStoreChange);
 }
 
+// Companion writer for useLocalStorageJSON readers. The native 'storage'
+// event fires only on OTHER tabs by spec, so same-tab subscribers via
+// useSyncExternalStore miss updates without a synthetic dispatch. Use
+// this writer instead of localStorage.setItem when other components in
+// the SAME tab need to react (e.g. /favorites re-rendering after a save
+// click on /import).
+//
+// Passing null removes the key. Throws are swallowed (quota, private
+// browsing); callers should treat as best-effort persistence.
+export function writeLocalStorageJSON<T>(key: string, value: T | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (value === null) {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    }
+    window.dispatchEvent(new StorageEvent('storage', { key }));
+  } catch {
+    /* localStorage unavailable / quota exceeded */
+  }
+}
+
 // useSyncExternalStore-based hook for reading JSON-serialized localStorage
 // values. Replaces the common `useState(null) + useEffect(() => setX(read()))`
 // pattern that eslint-plugin-react-hooks v7 flags as set-state-in-effect.

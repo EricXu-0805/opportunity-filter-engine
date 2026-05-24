@@ -118,6 +118,100 @@ test.describe('Import by URL', () => {
     await expect(page.getByPlaceholder('https://...')).toHaveValue('');
   });
 
+  test('Save to my list persists the import and surfaces it on /favorites', async ({ page, context }) => {
+    await page.route('**/api/import-url', (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          llm_enriched: true,
+          opportunity: {
+            source: 'url_parser',
+            source_url: 'https://lab.example/research-asst',
+            title: 'Research Assistant — Quantum Lab',
+            description_raw: 'Join the QC group as a junior research assistant.',
+            url: 'https://lab.example/research-asst',
+            organization: 'Caltech',
+            deadline: '2026-06-01',
+            location: 'Pasadena, CA',
+            extra_fields: {
+              opportunity_type: 'research',
+              paid: 'stipend',
+              llm_enriched: true,
+            },
+          },
+        }),
+      }),
+    );
+    await page.goto('/import');
+    await page.getByPlaceholder('https://...').fill('https://lab.example/research-asst');
+    await page.getByRole('button', { name: /Fetch & parse/i }).click();
+    const card = page.getByRole('article');
+    await expect(card.getByRole('heading', { name: /Quantum Lab/i })).toBeVisible();
+
+    const saveBtn = card.getByRole('button', { name: /Save to my list/i });
+    await expect(saveBtn).toBeVisible();
+    await saveBtn.click();
+
+    await expect(card.getByText(/^Saved$/i)).toBeVisible();
+    const viewLink = card.getByRole('link', { name: /View in Saved/i });
+    await expect(viewLink).toBeVisible();
+
+    const stored = await page.evaluate(() => window.localStorage.getItem('ofe_custom_imports'));
+    expect(stored).toBeTruthy();
+    const parsed = JSON.parse(stored as string) as { opportunity: { title: string } }[];
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].opportunity.title).toBe('Research Assistant — Quantum Lab');
+
+    await viewLink.click();
+    await expect(page).toHaveURL(/\/favorites/);
+    await expect(page.getByRole('heading', { name: /Research Assistant — Quantum Lab/i })).toBeVisible();
+    await expect(page.getByText(/^Custom$/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open source/i })).toBeVisible();
+
+    await context.clearCookies();
+  });
+
+  test('saving twice does not duplicate the entry', async ({ page }) => {
+    await page.route('**/api/import-url', (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          llm_enriched: true,
+          opportunity: {
+            source: 'url_parser',
+            source_url: 'https://dedup.example/role',
+            title: 'Dedupe Test',
+            description_raw: 'desc',
+            url: 'https://dedup.example/role',
+            extra_fields: { llm_enriched: true },
+          },
+        }),
+      }),
+    );
+    await page.goto('/import');
+    await page.evaluate(() => window.localStorage.removeItem('ofe_custom_imports'));
+    await page.getByPlaceholder('https://...').fill('https://dedup.example/role');
+    await page.getByRole('button', { name: /Fetch & parse/i }).click();
+    const cardA = page.getByRole('article');
+    await cardA.getByRole('button', { name: /Save to my list/i }).click();
+    await expect(cardA.getByText(/^Saved$/i)).toBeVisible();
+
+    await cardA.getByRole('button', { name: /Try another URL/i }).click();
+    await page.getByPlaceholder('https://...').fill('https://dedup.example/role');
+    await page.getByRole('button', { name: /Fetch & parse/i }).click();
+    const cardB = page.getByRole('article');
+    await expect(cardB.getByText(/^Saved$/i)).toBeVisible();
+    await expect(cardB.getByRole('button', { name: /Save to my list/i })).toHaveCount(0);
+
+    const stored = await page.evaluate(() => window.localStorage.getItem('ofe_custom_imports'));
+    const parsed = JSON.parse(stored as string) as unknown[];
+    expect(parsed).toHaveLength(1);
+  });
+
   test('basic-extraction badge shows when LLM not configured', async ({ page }) => {
     await page.route('**/api/import-url', (route: Route) =>
       route.fulfill({
