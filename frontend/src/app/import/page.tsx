@@ -2,19 +2,28 @@
 
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import {
   ArrowRight,
+  Check,
   ClipboardCopy,
   Loader2,
   RotateCw,
   Sparkles,
   AlertCircle,
+  Bookmark,
 } from 'lucide-react';
 import {
   importByUrl,
   importByText,
   type ImportedOpportunity,
 } from '@/lib/api';
+import {
+  addCustomImport,
+  findExistingImport,
+  useCustomImports,
+  type CustomImport,
+} from '@/lib/custom-imports';
 import { useT } from '@/i18n/client';
 
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), {
@@ -39,6 +48,15 @@ export default function ImportPage() {
   const [text, setText] = useState('');
   const [state, setState] = useState<FetchState>({ kind: 'idle' });
   const [copied, setCopied] = useState(false);
+  const customImports = useCustomImports();
+  const savedEntry: CustomImport | null = state.kind === 'success'
+    ? findExistingImport(state.opportunity, customImports)
+    : null;
+
+  const handleSave = useCallback(() => {
+    if (state.kind !== 'success') return;
+    addCustomImport(state.opportunity);
+  }, [state]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,6 +250,8 @@ export default function ImportPage() {
           mode={state.mode}
           onCopy={handleCopy}
           onReset={handleReset}
+          onSave={handleSave}
+          savedEntry={savedEntry}
           copied={copied}
           t={t}
         />
@@ -272,6 +292,8 @@ function ResultCard({
   mode,
   onCopy,
   onReset,
+  onSave,
+  savedEntry,
   copied,
   t,
 }: {
@@ -280,6 +302,8 @@ function ResultCard({
   mode: Mode;
   onCopy: () => void;
   onReset: () => void;
+  onSave: () => void;
+  savedEntry: CustomImport | null;
   copied: boolean;
   t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
@@ -352,6 +376,30 @@ function ResultCard({
       </p>
 
       <div className="flex flex-wrap gap-2 mt-5">
+        {savedEntry ? (
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[13px] font-semibold">
+            <Check className="w-3.5 h-3.5" />
+            {t('import.saved')}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onSave}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 transition-colors"
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            {t('import.saveToList')}
+          </button>
+        )}
+        {savedEntry && (
+          <Link
+            href="/favorites"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-[13px] font-medium hover:bg-gray-50 transition-colors"
+          >
+            {t('import.viewInFavorites')}
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        )}
         <button
           type="button"
           onClick={onCopy}

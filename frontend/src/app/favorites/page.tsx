@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
+import { useCustomImports, removeCustomImport, type CustomImport } from '@/lib/custom-imports';
 import {
   Star,
   ArrowLeft,
@@ -17,7 +18,10 @@ import {
   GitCompare,
   Check,
   X,
+  Bookmark,
+  ExternalLink,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getFavorites, toggleFavorite } from '@/lib/supabase';
@@ -55,6 +59,35 @@ interface Opp {
     skills_required?: string[];
     years?: string[];
   };
+  _customId?: string;
+}
+
+function customImportToOpp(c: CustomImport): Opp {
+  const e = c.opportunity;
+  const extra = (e.extra_fields ?? {}) as Record<string, unknown>;
+  const oppType = typeof extra.opportunity_type === 'string' ? extra.opportunity_type : undefined;
+  const paid = typeof extra.paid === 'string' ? extra.paid : undefined;
+  const onCampus = typeof extra.on_campus === 'boolean' ? extra.on_campus : undefined;
+  const intl = typeof extra.international_friendly === 'string' ? extra.international_friendly : undefined;
+  const skills = Array.isArray(extra.skills_required) ? (extra.skills_required as string[]) : undefined;
+  return {
+    id: c.id,
+    _customId: c.id,
+    title: e.title || 'Untitled import',
+    organization: e.organization || undefined,
+    opportunity_type: oppType,
+    paid,
+    location: e.location || undefined,
+    url: e.url || e.source_url || undefined,
+    source: undefined,
+    on_campus: onCampus,
+    deadline: e.deadline || undefined,
+    description_raw: e.description_raw || undefined,
+    eligibility: skills || intl ? {
+      international_friendly: intl,
+      skills_required: skills,
+    } : undefined,
+  };
 }
 
 const MIN_COMPARE = 2;
@@ -79,12 +112,13 @@ function DeadlineBadge({
 export default function FavoritesPage() {
   const router = useRouter();
   const { t } = useT();
-  const [opportunities, setOpportunities] = useState<Opp[]>([]);
+  const [serverOpportunities, setServerOpportunities] = useState<Opp[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
+  const customImports = useCustomImports();
   const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string }>({
     open: false, id: '', title: '',
   });
@@ -96,16 +130,25 @@ export default function FavoritesPage() {
         const ids = Array.from(favSet);
         if (ids.length === 0) { setLoading(false); return; }
         const opps = await getOpportunitiesByIds(ids);
-        setOpportunities(opps as unknown as Opp[]);
+        setServerOpportunities(opps as unknown as Opp[]);
       } catch {}
       finally { setLoading(false); }
     }
     load();
   }, []);
 
-  const handleRemove = useCallback(async (oppId: string) => {
-    await toggleFavorite(oppId, true);
-    setOpportunities(prev => prev.filter(o => o.id !== oppId));
+  const opportunities = useMemo<Opp[]>(
+    () => [...customImports.map(customImportToOpp), ...serverOpportunities],
+    [customImports, serverOpportunities],
+  );
+
+  const handleRemove = useCallback(async (opp: Opp) => {
+    if (opp._customId) {
+      removeCustomImport(opp._customId);
+      return;
+    }
+    await toggleFavorite(opp.id, true);
+    setServerOpportunities(prev => prev.filter(o => o.id !== opp.id));
   }, []);
 
   const toggleExpand = useCallback((id: string) => {
@@ -126,13 +169,14 @@ export default function FavoritesPage() {
     setSelected(new Set());
   }, []);
 
-  const toggleSelect = useCallback((id: string) => {
+  const toggleSelect = useCallback((opp: Opp) => {
+    if (opp._customId) return;
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+      if (next.has(opp.id)) {
+        next.delete(opp.id);
       } else if (next.size < MAX_COMPARE) {
-        next.add(id);
+        next.add(opp.id);
       }
       return next;
     });
@@ -189,22 +233,25 @@ export default function FavoritesPage() {
               title={t('email.subtitle')}
               onSend={async (emailAddr) => {
                 const interactions = await getInteractionsFull().catch(() => new Map());
-                const items = opportunities.slice(0, 50).map((o) => {
-                  const rec = interactions.get(o.id);
-                  return {
-                    title: o.title,
-                    url: o.url || '',
-                    source: o.source || '',
-                    deadline: o.deadline || null,
-                    notes: rec?.notes || '',
-                    status: rec?.type || '',
-                  };
-                });
+                const items = opportunities
+                  .filter((o) => !o._customId)
+                  .slice(0, 50)
+                  .map((o) => {
+                    const rec = interactions.get(o.id);
+                    return {
+                      title: o.title,
+                      url: o.url || '',
+                      source: o.source || '',
+                      deadline: o.deadline || null,
+                      notes: rec?.notes || '',
+                      status: rec?.type || '',
+                    };
+                  });
                 return sendFavoritesEmail(emailAddr, items);
               }}
             />
           )}
-          {!selectionMode && opportunities.length >= MIN_COMPARE && (
+          {!selectionMode && serverOpportunities.length >= MIN_COMPARE && (
             <button
               type="button"
               onClick={enterSelectionMode}
@@ -230,19 +277,24 @@ export default function FavoritesPage() {
       {opportunities.length === 0 ? (
         <div className="text-center py-20">
           <Star className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-          <p className="text-[15px] text-gray-400 mb-2">
-            Star opportunities from the results page to save them here.
-          </p>
-          <p className="text-[13px] text-gray-300 mb-6">
-            You can compare, draft emails, and track your applications.
-          </p>
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 text-white text-[13px] font-medium hover:bg-blue-700 transition-colors duration-300"
-          >
-            Find Matches
-          </button>
+          <p className="text-[15px] text-gray-400 mb-2">{t('favorites.emptyHint')}</p>
+          <p className="text-[13px] text-gray-300 mb-6">{t('favorites.emptyHintImport')}</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 text-white text-[13px] font-medium hover:bg-blue-700 transition-colors duration-300"
+            >
+              {t('favorites.browseMatches')}
+            </button>
+            <Link
+              href="/import"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-200 text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors duration-300"
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              {t('favorites.importLink')}
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -270,7 +322,7 @@ export default function FavoritesPage() {
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
-                          {selectionMode ? (
+                          {selectionMode || opp._customId ? (
                             <span>{opp.title}</span>
                           ) : (
                             <a
@@ -299,16 +351,26 @@ export default function FavoritesPage() {
                       {!selectionMode && (
                         <button
                           type="button"
-                          onClick={() => handleRemove(opp.id)}
+                          onClick={() => handleRemove(opp)}
                           className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0"
-                          aria-label={t('favorites.removeAria')}
+                          aria-label={opp._customId ? t('favorites.removeCustomAria') : t('favorites.removeAria')}
                         >
-                          <Star className="w-4.5 h-4.5 fill-amber-400 text-amber-400" />
+                          {opp._customId ? (
+                            <Bookmark className="w-4.5 h-4.5 fill-blue-500 text-blue-500" />
+                          ) : (
+                            <Star className="w-4.5 h-4.5 fill-amber-400 text-amber-400" />
+                          )}
                         </button>
                       )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                      {opp._customId && (
+                        <Badge variant="indigo" dot>
+                          <Bookmark className="w-3 h-3" />
+                          {t('favorites.customBadge')}
+                        </Badge>
+                      )}
                       {opp.opportunity_type && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
                       {intlFriendly && (
                         <Badge variant={intlFriendly === 'yes' ? 'green' : intlFriendly === 'no' ? 'red' : 'orange'} dot>
@@ -322,13 +384,13 @@ export default function FavoritesPage() {
                           {opp.paid === 'yes' ? 'Paid' : opp.paid === 'stipend' ? 'Stipend' : 'Unpaid'}
                         </Badge>
                       )}
-                      {opp.source && <Badge variant="gray">{opp.source}</Badge>}
+                      {opp.source && !opp._customId && <Badge variant="gray">{opp.source}</Badge>}
                       <DeadlineBadge deadline={opp.deadline} t={t} />
                     </div>
 
                     {!selectionMode && (
                       <div className="flex flex-wrap items-center gap-2">
-                        {profile && (
+                        {profile && !opp._customId && (
                           <button
                             type="button"
                             onClick={() => setEmailModal({ open: true, id: opp.id, title: opp.title })}
@@ -345,8 +407,8 @@ export default function FavoritesPage() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
                           >
-                            <FileText className="w-3.5 h-3.5" />
-                            View Details
+                            {opp._customId ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                            {opp._customId ? t('favorites.openSource') : 'View Details'}
                           </a>
                         )}
                       </div>
@@ -413,12 +475,14 @@ export default function FavoritesPage() {
                 {selectionMode && (
                   <button
                     type="button"
-                    onClick={() => toggleSelect(opp.id)}
-                    disabled={!isSelected && !canSelect}
+                    onClick={() => toggleSelect(opp)}
+                    disabled={!!opp._customId || (!isSelected && !canSelect)}
                     aria-pressed={isSelected}
                     aria-label={t('favorites.toggleSelectAria', { title: opp.title })}
                     className={`absolute inset-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
-                      isSelected ? 'bg-blue-500/[0.05]' : canSelect ? 'hover:bg-blue-500/[0.03]' : 'cursor-not-allowed'
+                      opp._customId
+                        ? 'bg-gray-500/[0.05] cursor-not-allowed'
+                        : isSelected ? 'bg-blue-500/[0.05]' : canSelect ? 'hover:bg-blue-500/[0.03]' : 'cursor-not-allowed'
                     }`}
                   >
                     <span className={`absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
