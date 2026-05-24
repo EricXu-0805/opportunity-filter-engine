@@ -20,6 +20,9 @@ export interface SavedSearch {
   tab: string;
   created_at: string;
   updated_at: string;
+  last_run_at: string | null;
+  last_result_ids: string[];
+  new_match_ids: string[];
 }
 
 export interface SavedSearchInput {
@@ -39,6 +42,9 @@ interface SavedSearchRow {
   tab: string;
   created_at: string;
   updated_at: string;
+  last_run_at: string | null;
+  last_result_ids: string[] | null;
+  new_match_ids: string[] | null;
 }
 
 function rowToSearch(r: SavedSearchRow): SavedSearch {
@@ -51,6 +57,9 @@ function rowToSearch(r: SavedSearchRow): SavedSearch {
     tab: r.tab,
     created_at: r.created_at,
     updated_at: r.updated_at,
+    last_run_at: r.last_run_at ?? null,
+    last_result_ids: r.last_result_ids ?? [],
+    new_match_ids: r.new_match_ids ?? [],
   };
 }
 
@@ -60,7 +69,7 @@ export async function listSavedSearches(): Promise<SavedSearch[]> {
 
   const { data, error } = await supabase
     .from('saved_searches')
-    .select('id, name, query, filters_json, sort_by, tab, created_at, updated_at')
+    .select('id, name, query, filters_json, sort_by, tab, created_at, updated_at, last_run_at, last_result_ids, new_match_ids')
     .eq('device_id', deviceId)
     .order('updated_at', { ascending: false });
 
@@ -93,7 +102,7 @@ export async function saveSearch(input: SavedSearchInput): Promise<SavedSearch |
   const { data, error } = await supabase
     .from('saved_searches')
     .insert(row)
-    .select('id, name, query, filters_json, sort_by, tab, created_at, updated_at')
+    .select('id, name, query, filters_json, sort_by, tab, created_at, updated_at, last_run_at, last_result_ids, new_match_ids')
     .single();
 
   if (error || !data) {
