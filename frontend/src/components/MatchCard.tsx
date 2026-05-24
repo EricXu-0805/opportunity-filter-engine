@@ -68,12 +68,12 @@ function getPaidBadge(
   return { label: 'Unpaid', variant: 'gray' };
 }
 
-const INTERACTION_LABELS: Record<InteractionType, { label: string; color: string }> = {
-  applied: { label: 'Applied', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  replied: { label: 'Got Reply', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  interviewing: { label: 'Interviewing', color: 'bg-violet-50 text-violet-700 border-violet-200' },
-  rejected: { label: 'Rejected', color: 'bg-gray-100 text-gray-500 border-gray-200' },
-  dismissed: { label: 'Not interested', color: 'bg-gray-100 text-gray-400 border-gray-200' },
+const INTERACTION_COLORS: Record<InteractionType, string> = {
+  applied: 'bg-blue-50 text-blue-700 border-blue-200',
+  replied: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  interviewing: 'bg-violet-50 text-violet-700 border-violet-200',
+  rejected: 'bg-gray-100 text-gray-500 border-gray-200',
+  dismissed: 'bg-gray-100 text-gray-400 border-gray-200',
 };
 
 const INTERACTION_OPTIONS: InteractionType[] = ['applied', 'replied', 'interviewing', 'rejected', 'dismissed'];
@@ -263,7 +263,6 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               aria-label={`Track status for ${opp.title}`}
             >
               {INTERACTION_OPTIONS.map((type) => {
-                const cfg = INTERACTION_LABELS[type];
                 const isActive = interaction === type;
                 return (
                   <button
@@ -272,10 +271,10 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                     aria-pressed={isActive}
                     onClick={(e) => { e.stopPropagation(); onTrackInteraction(opp.id, type); }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border whitespace-nowrap transition-all duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                      isActive ? cfg.color : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                      isActive ? INTERACTION_COLORS[type] : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
                     }`}
                   >
-                    {cfg.label}
+                    {t(`detail.tracker.statusLabels.${type}`)}
                   </button>
                 );
               })}

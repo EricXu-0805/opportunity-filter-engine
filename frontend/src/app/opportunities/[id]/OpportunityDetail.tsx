@@ -36,6 +36,8 @@ import type { InteractionType, InteractionRecord } from '@/lib/supabase';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { SimilarOpportunity } from '@/lib/api-server';
 import { getDeadlineUrgency, daysUntil } from '@/lib/match-utils';
+import { suggestReminderForStatusChange, type ReminderSuggestion } from '@/lib/status-suggestions';
+import { Lightbulb } from 'lucide-react';
 import { useT } from '@/i18n/client';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ssr: false });
@@ -67,6 +69,7 @@ export default function OpportunityDetail({
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [suggestion, setSuggestion] = useState<ReminderSuggestion | null>(null);
 
   const interaction = interactionDetail?.type;
 
@@ -95,16 +98,22 @@ export default function OpportunityDetail({
     const prev = interaction;
     if (prev === type) {
       setInteractionDetail(null);
+      setSuggestion(null);
       await removeInteraction(opp.id).catch(() => {});
-    } else {
-      setInteractionDetail(d => ({
-        ...(d ?? {}),
-        type,
-        last_contacted_at: new Date().toISOString(),
-      }));
-      await trackInteraction(opp.id, type).catch(() => {});
+      return;
     }
-  }, [opp.id, interaction]);
+    setInteractionDetail(d => ({
+      ...(d ?? {}),
+      type,
+      last_contacted_at: new Date().toISOString(),
+    }));
+    await trackInteraction(opp.id, type).catch(() => {});
+
+    if (!interactionDetail?.remind_at) {
+      const next = suggestReminderForStatusChange(prev ?? null, type);
+      if (next) setSuggestion(next);
+    }
+  }, [opp.id, interaction, interactionDetail?.remind_at]);
 
   const saveDetails = useCallback(
     async (patch: { notes?: string | null; remind_at?: string | null }) => {
@@ -123,6 +132,15 @@ export default function OpportunityDetail({
     },
     [opp.id, interaction],
   );
+
+  const handleUseSuggestion = useCallback(async () => {
+    if (!suggestion) return;
+    const date = suggestion.date;
+    setSuggestion(null);
+    await saveDetails({ remind_at: date });
+  }, [suggestion, saveDetails]);
+
+  const handleDismissSuggestion = useCallback(() => setSuggestion(null), []);
 
   const handleShare = useCallback(async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -251,7 +269,7 @@ export default function OpportunityDetail({
           </div>
         </div>
 
-        <div className="border-t border-gray-100 px-5 sm:px-8 py-4 bg-gray-50/50">
+        <div className="border-t border-gray-100 px-5 sm:px-8 py-4 bg-gray-50/50 space-y-2">
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('detail.trackAriaLabel')}>
             <span className="text-[12px] text-gray-500 mr-1">{t('detail.track')}</span>
             {INTERACTION_OPTIONS.map(type => {
@@ -271,6 +289,38 @@ export default function OpportunityDetail({
               );
             })}
           </div>
+          {suggestion && (
+            <div
+              role="status"
+              className="flex flex-wrap items-center gap-2 px-3 py-2 text-[12px] bg-amber-50 border border-amber-200 rounded-lg animate-in"
+            >
+              <Lightbulb className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+              <span className="text-amber-900">
+                {t(
+                  suggestion.reason === 'follow_up_after_reply'
+                    ? 'detail.tracker.suggestions.followUpAfterReply'
+                    : 'detail.tracker.suggestions.thankYouAfterInterview',
+                  { date: suggestion.date },
+                )}
+              </span>
+              <div className="ml-auto flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleUseSuggestion}
+                  className="px-2.5 py-0.5 text-[11px] font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
+                >
+                  {t('detail.tracker.suggestions.useButton', { date: suggestion.date })}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissSuggestion}
+                  className="px-2.5 py-0.5 text-[11px] font-medium text-amber-700 hover:text-amber-900 transition-colors"
+                >
+                  {t('detail.tracker.suggestions.dismissButton')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <TrackerPanel

@@ -511,13 +511,19 @@ export const en = {
       previewEmpty: 'Nothing to preview yet. Switch back to the Edit tab to start writing.',
       statusLabels: {
         applied: 'Applied',
-        replied: 'Replied',
+        replied: 'Got reply',
         interviewing: 'Interviewing',
         rejected: 'Rejected',
-        dismissed: 'Dismissed',
+        dismissed: 'Not interested',
       },
       timeline: {
         title: 'Status history',
+      },
+      suggestions: {
+        followUpAfterReply: 'Got a reply — set a follow-up reminder for {date}?',
+        thankYouAfterInterview: 'Interviewing — set a thank-you reminder for {date}?',
+        useButton: 'Use {date}',
+        dismissButton: 'Not now',
       },
     },
     attachments: {
@@ -1394,10 +1400,16 @@ export const zh = {
         replied: '已回复',
         interviewing: '面试中',
         rejected: '已拒绝',
-        dismissed: '已忽略',
+        dismissed: '不感兴趣',
       },
       timeline: {
         title: '状态历史',
+      },
+      suggestions: {
+        followUpAfterReply: '收到回复 —— 要在 {date} 设个跟进提醒吗?',
+        thankYouAfterInterview: '面试中 —— 要在 {date} 设个感谢信提醒吗?',
+        useButton: '使用 {date}',
+        dismissButton: '暂不',
       },
     },
     attachments: {
