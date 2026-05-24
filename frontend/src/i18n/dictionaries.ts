@@ -502,9 +502,13 @@ export const en = {
     tracker: {
       addButton: 'Add notes or reminder',
       openButton: 'Notes & reminder',
-      notesPlaceholder: 'Private notes \u2014 prep questions, who you spoke to, follow-up action...',
+      notesPlaceholder: 'Private notes \u2014 prep questions, who you spoke to, follow-up action. **Bold**, _italic_, lists, [links](https://example.com), tables, and `code` all work.',
       remindLabel: 'Remind me on:',
-      markdownHint: 'Plain text · saves as you type',
+      markdownHint: 'Markdown supported · **bold**, _italic_, lists, [links], `code`, tables · saves as you type',
+      notesTabsAria: 'Notes view mode',
+      editTab: 'Edit',
+      previewTab: 'Preview',
+      previewEmpty: 'Nothing to preview yet. Switch back to the Edit tab to start writing.',
       statusLabels: {
         applied: 'Applied',
         replied: 'Replied',
@@ -1355,9 +1359,13 @@ export const zh = {
     tracker: {
       addButton: '添加笔记或提醒',
       openButton: '笔记和提醒',
-      notesPlaceholder: '私人笔记 —— 准备问题、谈话对象、后续行动...',
+      notesPlaceholder: '私人笔记 —— 准备问题、谈话对象、后续行动。支持 **粗体**、_斜体_、列表、[链接](https://example.com)、表格、`代码`。',
       remindLabel: '提醒日期：',
-      markdownHint: '纯文本 · 输入时自动保存',
+      markdownHint: '支持 Markdown · **粗体**、_斜体_、列表、[链接]、`代码`、表格 · 输入时自动保存',
+      notesTabsAria: '笔记视图模式',
+      editTab: '编辑',
+      previewTab: '预览',
+      previewEmpty: '还没有可预览的内容。切回"编辑"开始书写。',
       statusLabels: {
         applied: '已申请',
         replied: '已回复',
