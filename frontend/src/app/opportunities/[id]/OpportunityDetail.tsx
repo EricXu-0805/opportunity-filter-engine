@@ -75,7 +75,9 @@ export default function OpportunityDetail({
   const interaction = interactionDetail?.type;
 
   useEffect(() => {
-    getFavorites().then(set => setIsFavorited(set.has(opp.id))).catch(() => {});
+    getFavorites().then(set => {
+      if (set.has(opp.id)) setIsFavorited(true);
+    }).catch(() => {});
     getInteractionDetail(opp.id).then((d) => {
       if (d) setInteractionDetail(d);
     }).catch(() => {});
