@@ -9,6 +9,7 @@ import {
   savedSearchToUrl,
   type SavedSearch,
 } from '@/lib/saved-searches';
+import { humanizeTime } from '@/lib/humanize-time';
 import {
   Star,
   ArrowLeft,
@@ -18,6 +19,7 @@ import {
   DollarSign,
   MapPin,
   Building2,
+  BellRing,
   Clock,
   ChevronDown,
   FileText,
@@ -118,6 +120,33 @@ function summarizeSavedSearchFilters(
   if (search.tab && search.tab !== 'all') parts.push(search.tab);
   if (search.sort_by && search.sort_by !== 'score') parts.push(`by ${search.sort_by}`);
   return parts.length > 0 ? parts.join(' · ') : t('favorites.savedSearches.filtersFallback');
+}
+
+function formatSavedSearchTimestamp(
+  iso: string | null,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const result = humanizeTime(iso);
+  if (!result) return t('favorites.savedSearches.pendingSync');
+  let ago: string;
+  switch (result.kind) {
+    case 'just-now':
+      ago = t('favorites.savedSearches.justNow');
+      break;
+    case 'minutes':
+      ago = t('favorites.savedSearches.minutesAgo', { n: result.n });
+      break;
+    case 'hours':
+      ago = t('favorites.savedSearches.hoursAgo', { n: result.n });
+      break;
+    case 'days':
+      ago = t('favorites.savedSearches.daysAgo', { n: result.n });
+      break;
+    case 'date':
+      ago = t('favorites.savedSearches.onDate', { date: result.iso });
+      break;
+  }
+  return t('favorites.savedSearches.checkedAgo', { ago });
 }
 
 function DeadlineBadge({
@@ -333,6 +362,9 @@ export default function FavoritesPage() {
           <ul className="space-y-2">
             {savedSearches.map((search) => {
               const summary = summarizeSavedSearchFilters(search, t);
+              const timestampLabel = formatSavedSearchTimestamp(search.last_run_at, t);
+              const newCount = search.new_match_ids?.length ?? 0;
+              const hasNew = newCount > 0;
               return (
                 <li
                   key={search.id}
@@ -347,8 +379,18 @@ export default function FavoritesPage() {
                       <span className="text-[14px] font-medium text-gray-900 truncate">
                         {search.name}
                       </span>
+                      {hasNew && (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/80 text-amber-700 text-[11px] font-semibold shrink-0"
+                          aria-label={t('favorites.savedSearches.newMatchesAria', { count: newCount })}
+                        >
+                          <BellRing className="w-3 h-3" aria-hidden="true" />
+                          {t('favorites.savedSearches.newBadge', { count: newCount })}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[12px] text-gray-500 truncate mt-0.5">{summary}</p>
+                    <p className="text-[11px] text-gray-400 truncate mt-0.5 tabular-nums">{timestampLabel}</p>
                   </Link>
                   <button
                     type="button"
