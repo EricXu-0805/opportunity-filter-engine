@@ -57,3 +57,26 @@ export function useLocalStorageJSON<T>(key: string): T | null {
     () => null,
   );
 }
+
+// Tri-state existence probe for "is this key set?" decisions.
+//   undefined → still hydrating (don't act yet)
+//   true      → key is present in localStorage
+//   false     → confirmed absent
+// Returns undefined during SSR + first client render so callers can
+// distinguish "not yet known" from "confirmed missing" —
+// useLocalStorageJSON returns null for both, which conflates the two
+// and causes redirect-on-hydrate races for pages that bounce to '/'
+// when storage is empty.
+export function useHasLocalStorageKey(key: string): boolean | undefined {
+  return useSyncExternalStore<boolean | undefined>(
+    subscribe,
+    () => {
+      try {
+        return window.localStorage.getItem(key) !== null;
+      } catch {
+        return false;
+      }
+    },
+    () => undefined,
+  );
+}

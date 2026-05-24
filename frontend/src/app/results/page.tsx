@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, memo, Suspense } from 'react';
-import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
+import { useLocalStorageJSON, useHasLocalStorageKey } from '@/lib/use-local-storage-json';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -162,6 +162,7 @@ function ResultsContent() {
 
   const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>('ofe_profile');
   const profile = useMemo(() => migrateProfile(rawStoredProfile), [rawStoredProfile]);
+  const hasStoredProfile = useHasLocalStorageKey('ofe_profile');
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -270,41 +271,10 @@ function ResultsContent() {
   }, []);
 
   useEffect(() => {
-    if (rawStoredProfile === null) router.replace('/');
-  }, [rawStoredProfile, router]);
-
-  useEffect(() => {
-    if (!profile) return;
-    const cachedRaw = sessionStorage.getItem('ofe_match_results');
-    if (!cachedRaw) return;
-    try {
-      const cached = JSON.parse(cachedRaw) as {
-        hash: string;
-        semantic?: boolean;
-        data: MatchesResponse;
-      };
-      if (
-        cached.hash === hashProfile(profile)
-        && (cached.semantic ?? false) === semanticRerank
-      ) {
-        /* eslint-disable react-hooks/set-state-in-effect --
-           One-shot hydration from sessionStorage cache. Both setData and
-           setLoading must run together to atomically replace the loading
-           UI with the cached results; splitting into separate renders
-           would briefly show "loading…" over a populated grid.
-           semanticRerank is also intentionally a dependency: a toggle
-           flip elsewhere clears `data`, so this effect re-runs to try
-           the cache again under the new mode. */
-        setData(cached.data);
-        setLoading(false);
-        /* eslint-enable react-hooks/set-state-in-effect */
-      } else {
-        sessionStorage.removeItem('ofe_match_results');
-      }
-    } catch {
-      sessionStorage.removeItem('ofe_match_results');
-    }
-  }, [profile, semanticRerank]);
+    // hasStoredProfile bypasses useSyncExternalStore's SSR snapshot so this
+    // doesn't fire-with-stale-null during the first paint after hydration.
+    if (hasStoredProfile === false) router.replace('/');
+  }, [hasStoredProfile, router]);
 
   useEffect(() => {
     if (!loading) {
@@ -318,6 +288,38 @@ function ResultsContent() {
 
   useEffect(() => {
     if (!profile || data) return;
+
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Combined cache-hydrate + fetch-on-miss. Splitting these into two
+       effects races within the same commit: both run with the pre-commit
+       `data` snapshot (still null), so the fetch effect can't see that
+       the cache effect just queued setData. Sequential checks inside one
+       effect keep cache hits from triggering a redundant API roundtrip,
+       which matters most when users navigate back to /results via a
+       deep-link (the test that caught this regression). */
+
+    try {
+      const cachedRaw = sessionStorage.getItem('ofe_match_results');
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as {
+          hash: string;
+          semantic?: boolean;
+          data: MatchesResponse;
+        };
+        if (
+          cached.hash === hashProfile(profile)
+          && (cached.semantic ?? false) === semanticRerank
+        ) {
+          setData(cached.data);
+          setLoading(false);
+          return;
+        }
+        sessionStorage.removeItem('ofe_match_results');
+      }
+    } catch {
+      sessionStorage.removeItem('ofe_match_results');
+    }
+
     let cancelled = false;
 
     async function fetchMatches() {
@@ -348,6 +350,7 @@ function ResultsContent() {
     }
     fetchMatches();
     return () => { cancelled = true; };
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [profile, data, semanticRerank, t]);
 
   const toggleSemantic = useCallback((next: boolean) => {
