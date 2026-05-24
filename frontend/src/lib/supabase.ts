@@ -355,6 +355,37 @@ export async function removeInteraction(opportunityId: string): Promise<void> {
   await supabase.from('interactions').delete().eq('device_id', deviceId).eq('opportunity_id', opportunityId);
 }
 
+export interface StatusChange {
+  fromStatus: InteractionType | null;
+  toStatus: InteractionType;
+  changedAt: string;
+}
+
+export async function getStatusChanges(opportunityId: string): Promise<StatusChange[]> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return [];
+
+  const { data, error } = await supabase
+    .from('interaction_status_changes')
+    .select('from_status, to_status, changed_at')
+    .eq('device_id', deviceId)
+    .eq('opportunity_id', opportunityId)
+    .order('changed_at', { ascending: true });
+
+  if (error || !data) {
+    if (error && !error.message?.toLowerCase().includes('does not exist')) {
+      console.warn('[ofe] getStatusChanges failed:', error.message);
+    }
+    return [];
+  }
+
+  return data.map((r: { from_status: string | null; to_status: string; changed_at: string }) => ({
+    fromStatus: (r.from_status ?? null) as InteractionType | null,
+    toStatus: r.to_status as InteractionType,
+    changedAt: r.changed_at,
+  }));
+}
+
 export const ATTACHMENTS_BUCKET = 'tracker-attachments';
 export const ATTACHMENTS_MAX_BYTES = 5 * 1024 * 1024;
 export const ATTACHMENTS_ALLOWED_MIME = new Set([
