@@ -35,6 +35,7 @@ from backend.routes import (
     opportunities,
     push,
     resume,
+    saved_searches,
 )
 from backend.routes import email as email_routes
 
@@ -169,6 +170,7 @@ app.include_router(admin.router, prefix="/api", tags=["admin"])
 app.include_router(email_routes.router, prefix="/api", tags=["email"])
 app.include_router(import_url.router, prefix="/api", tags=["import-url"])
 app.include_router(import_text.router, prefix="/api", tags=["import-text"])
+app.include_router(saved_searches.router, prefix="/api", tags=["saved-searches"])
 
 
 @app.get("/api/health")

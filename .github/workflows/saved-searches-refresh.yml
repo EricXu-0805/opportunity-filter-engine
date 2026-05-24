@@ -1,0 +1,20 @@
+name: saved-searches-refresh
+
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fire saved-searches cron
+        run: |
+          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "BACKEND_URL or CRON_SECRET secret not set — skipping"
+            exit 0
+          fi
+          curl -sfSL \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.BACKEND_URL }}/api/cron/saved-searches/refresh"

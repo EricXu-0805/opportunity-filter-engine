@@ -56,6 +56,9 @@ const SAMPLE_ROW = {
   tab: 'all',
   created_at: '2026-05-24T00:00:00Z',
   updated_at: '2026-05-24T01:00:00Z',
+  last_run_at: '2026-05-24T02:00:00Z',
+  last_result_ids: ['opp-a', 'opp-b'],
+  new_match_ids: ['opp-b'],
 };
 
 beforeEach(() => {
@@ -84,8 +87,27 @@ describe('listSavedSearches', () => {
         tab: 'all',
         created_at: '2026-05-24T00:00:00Z',
         updated_at: '2026-05-24T01:00:00Z',
+        last_run_at: '2026-05-24T02:00:00Z',
+        last_result_ids: ['opp-a', 'opp-b'],
+        new_match_ids: ['opp-b'],
       },
     ]);
+  });
+
+  it('defaults missing cron-output fields to null / empty arrays (pre-cron state)', async () => {
+    const preCronRow = {
+      ...SAMPLE_ROW,
+      last_run_at: null,
+      last_result_ids: null,
+      new_match_ids: null,
+    };
+    mockFrom.mockReturnValue(makeQuery({ data: [preCronRow], error: null }));
+
+    const result = await listSavedSearches();
+
+    expect(result[0].last_run_at).toBeNull();
+    expect(result[0].last_result_ids).toEqual([]);
+    expect(result[0].new_match_ids).toEqual([]);
   });
 
   it('returns [] when getDeviceId yields null (signed-out / failed auth)', async () => {
