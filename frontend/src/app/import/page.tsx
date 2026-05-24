@@ -2,8 +2,19 @@
 
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ArrowRight, ClipboardCopy, Loader2, RotateCw, Sparkles, AlertCircle } from 'lucide-react';
-import { importByUrl, type ImportedOpportunity } from '@/lib/api';
+import {
+  ArrowRight,
+  ClipboardCopy,
+  Loader2,
+  RotateCw,
+  Sparkles,
+  AlertCircle,
+} from 'lucide-react';
+import {
+  importByUrl,
+  importByText,
+  type ImportedOpportunity,
+} from '@/lib/api';
 import { useT } from '@/i18n/client';
 
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), {
@@ -11,51 +22,99 @@ const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), {
   loading: () => null,
 });
 
+type Mode = 'url' | 'text';
+
+const TEXT_MIN_CHARS = 50;
+
 type FetchState =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'success'; opportunity: ImportedOpportunity; llmEnriched: boolean }
+  | { kind: 'success'; opportunity: ImportedOpportunity; llmEnriched: boolean; mode: Mode }
   | { kind: 'error'; message: string };
 
 export default function ImportPage() {
   const { t } = useT();
+  const [mode, setMode] = useState<Mode>('url');
   const [url, setUrl] = useState('');
+  const [text, setText] = useState('');
   const [state, setState] = useState<FetchState>({ kind: 'idle' });
   const [copied, setCopied] = useState(false);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = url.trim();
-    if (!trimmed) {
-      setState({ kind: 'error', message: t('import.errorEmpty') });
+    setCopied(false);
+
+    if (mode === 'url') {
+      const trimmed = url.trim();
+      if (!trimmed) {
+        setState({ kind: 'error', message: t('import.errorEmpty') });
+        return;
+      }
+      setState({ kind: 'loading' });
+      try {
+        const result = await importByUrl(trimmed);
+        if (!result.ok || !result.opportunity) {
+          const msg = result.error?.toLowerCase().includes('unsafe')
+            ? t('import.errorUnsafe')
+            : t('import.errorFetch');
+          setState({ kind: 'error', message: msg });
+          return;
+        }
+        setState({
+          kind: 'success',
+          opportunity: result.opportunity,
+          llmEnriched: result.llm_enriched,
+          mode: 'url',
+        });
+      } catch {
+        setState({ kind: 'error', message: t('import.errorFetch') });
+      }
+      return;
+    }
+
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      setState({ kind: 'error', message: t('import.errorEmptyText') });
+      return;
+    }
+    if (trimmedText.length < TEXT_MIN_CHARS) {
+      setState({ kind: 'error', message: t('import.errorTooShortText') });
       return;
     }
     setState({ kind: 'loading' });
-    setCopied(false);
     try {
-      const result = await importByUrl(trimmed);
+      const result = await importByText(trimmedText);
       if (!result.ok || !result.opportunity) {
-        const msg = result.error?.toLowerCase().includes('unsafe')
-          ? t('import.errorUnsafe')
-          : t('import.errorFetch');
-        setState({ kind: 'error', message: msg });
+        setState({ kind: 'error', message: t('import.errorExtract') });
         return;
       }
       setState({
         kind: 'success',
         opportunity: result.opportunity,
         llmEnriched: result.llm_enriched,
+        mode: 'text',
       });
     } catch {
-      setState({ kind: 'error', message: t('import.errorFetch') });
+      setState({ kind: 'error', message: t('import.errorExtract') });
     }
-  }, [url, t]);
+  }, [mode, url, text, t]);
 
   const handleReset = useCallback(() => {
-    setUrl('');
+    if (state.kind === 'success' && state.mode === 'text') {
+      setText('');
+    } else {
+      setUrl('');
+    }
     setState({ kind: 'idle' });
     setCopied(false);
-  }, []);
+  }, [state]);
+
+  const handleModeChange = useCallback((next: Mode) => {
+    if (next === mode) return;
+    setMode(next);
+    setState({ kind: 'idle' });
+    setCopied(false);
+  }, [mode]);
 
   const handleCopy = useCallback(async () => {
     if (state.kind !== 'success') return;
@@ -68,9 +127,11 @@ export default function ImportPage() {
     }
   }, [state]);
 
+  const loading = state.kind === 'loading';
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-      <header className="mb-8">
+      <header className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
           {t('import.title')}
         </h1>
@@ -79,40 +140,82 @@ export default function ImportPage() {
         </p>
       </header>
 
+      <div role="tablist" aria-label="Import mode" className="mb-6 flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        <ModeTab active={mode === 'url'} onClick={() => handleModeChange('url')} label={t('import.modeUrl')} />
+        <ModeTab active={mode === 'text'} onClick={() => handleModeChange('text')} label={t('import.modeText')} />
+      </div>
+
       <form onSubmit={handleSubmit} className="mb-8">
-        <label className="block">
-          <span className="text-[13px] font-medium text-gray-700">
-            {t('import.urlLabel')}
-          </span>
-          <div className="mt-2 flex gap-2">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder={t('import.urlPlaceholder')}
-              disabled={state.kind === 'loading'}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none disabled:bg-gray-50"
-              autoFocus
-            />
+        {mode === 'url' ? (
+          <label className="block">
+            <span className="text-[13px] font-medium text-gray-700">
+              {t('import.urlLabel')}
+            </span>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder={t('import.urlPlaceholder')}
+                disabled={loading}
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none disabled:bg-gray-50"
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>{t('import.fetchPending')}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{t('import.fetchButton')}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
+          </label>
+        ) : (
+          <div>
+            <label className="block">
+              <span className="text-[13px] font-medium text-gray-700">
+                {t('import.textLabel')}
+              </span>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={t('import.textPlaceholder')}
+                disabled={loading}
+                rows={10}
+                className="mt-2 block w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] leading-relaxed focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none disabled:bg-gray-50 resize-y"
+                autoFocus
+              />
+            </label>
+            <p className="mt-1.5 text-[12px] text-gray-400">{t('import.textHelp')}</p>
             <button
               type="submit"
-              disabled={state.kind === 'loading'}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              disabled={loading}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {state.kind === 'loading' ? (
+              {loading ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>{t('import.fetchPending')}</span>
+                  <span>{t('import.extractPending')}</span>
                 </>
               ) : (
                 <>
-                  <span>{t('import.fetchButton')}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{t('import.extractButton')}</span>
                 </>
               )}
             </button>
           </div>
-        </label>
+        )}
       </form>
 
       {state.kind === 'error' && (
@@ -126,6 +229,7 @@ export default function ImportPage() {
         <ResultCard
           opportunity={state.opportunity}
           llmEnriched={state.llmEnriched}
+          mode={state.mode}
           onCopy={handleCopy}
           onReset={handleReset}
           copied={copied}
@@ -136,9 +240,36 @@ export default function ImportPage() {
   );
 }
 
+function ModeTab({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
+        active
+          ? 'bg-white text-gray-900 shadow-sm'
+          : 'text-gray-500 hover:text-gray-800'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function ResultCard({
   opportunity,
   llmEnriched,
+  mode,
   onCopy,
   onReset,
   copied,
@@ -146,6 +277,7 @@ function ResultCard({
 }: {
   opportunity: ImportedOpportunity;
   llmEnriched: boolean;
+  mode: Mode;
   onCopy: () => void;
   onReset: () => void;
   copied: boolean;
@@ -234,7 +366,7 @@ function ResultCard({
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-[13px] font-medium hover:bg-gray-50 transition-colors"
         >
           <RotateCw className="w-3.5 h-3.5" />
-          {t('import.tryAnother')}
+          {mode === 'text' ? t('import.tryAnotherText') : t('import.tryAnother')}
         </button>
       </div>
     </article>

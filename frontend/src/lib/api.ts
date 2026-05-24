@@ -356,12 +356,33 @@ export async function importByUrl(url: string): Promise<ImportUrlResponse> {
   }
 }
 
+export async function importByText(text: string): Promise<ImportUrlResponse> {
+  try {
+    return await request<ImportUrlResponse>('/import-text', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const detail = parseFastApiDetail(message);
+    if (detail) {
+      return { ok: false, error: detail, llm_enriched: false };
+    }
+    throw err;
+  }
+}
+
 function parseFastApiDetail(rawErrorMessage: string): string | null {
   const match = rawErrorMessage.match(/^API \d+:\s*(\{.*\})\s*$/);
   if (!match) return null;
   try {
     const body = JSON.parse(match[1]) as { detail?: unknown };
-    return typeof body.detail === 'string' ? body.detail : null;
+    if (typeof body.detail === 'string') return body.detail;
+    if (Array.isArray(body.detail) && body.detail.length > 0) {
+      const first = body.detail[0] as { msg?: unknown };
+      if (first && typeof first.msg === 'string') return first.msg;
+    }
+    return null;
   } catch {
     return null;
   }
