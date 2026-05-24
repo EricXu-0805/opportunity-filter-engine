@@ -22,16 +22,16 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl backdrop-saturate-150 border-b border-black/[0.06]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-12">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-2 group shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shrink-0">
               <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} aria-hidden="true" />
             </div>
-            <span className="text-[15px] font-semibold text-gray-900 tracking-tight">
+            <span className="hidden sm:inline text-[15px] font-semibold text-gray-900 tracking-tight">
               Opportunity<span className="text-blue-600">Engine</span>
             </span>
           </Link>
 
-          <nav className="flex items-center gap-0.5">
+          <nav className="flex items-center gap-0.5 min-w-0">
             {NAV_ITEMS.map(({ href, labelKey, shortKey }) => {
               const isActive =
                 href === '/'
@@ -41,7 +41,7 @@ export default function Header() {
                 <Link
                   key={href}
                   href={href}
-                  className={`px-2 sm:px-3.5 py-1.5 rounded-full text-[12px] sm:text-[13px] font-medium transition-all duration-300
+                  className={`px-1.5 sm:px-3.5 py-1.5 rounded-full text-[12px] sm:text-[13px] font-medium shrink-0 transition-all duration-300
                     ${
                       isActive
                         ? 'bg-black/[0.06] text-gray-900'
