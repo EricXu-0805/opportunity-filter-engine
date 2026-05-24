@@ -341,8 +341,28 @@ export interface ImportUrlResponse {
 }
 
 export async function importByUrl(url: string): Promise<ImportUrlResponse> {
-  return request('/import-url', {
-    method: 'POST',
-    body: JSON.stringify({ url }),
-  });
+  try {
+    return await request<ImportUrlResponse>('/import-url', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const detail = parseFastApiDetail(message);
+    if (detail) {
+      return { ok: false, error: detail, llm_enriched: false };
+    }
+    throw err;
+  }
+}
+
+function parseFastApiDetail(rawErrorMessage: string): string | null {
+  const match = rawErrorMessage.match(/^API \d+:\s*(\{.*\})\s*$/);
+  if (!match) return null;
+  try {
+    const body = JSON.parse(match[1]) as { detail?: unknown };
+    return typeof body.detail === 'string' ? body.detail : null;
+  } catch {
+    return null;
+  }
 }

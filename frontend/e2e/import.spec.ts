@@ -28,7 +28,7 @@ test.describe('Import by URL', () => {
     await expect(page.getByText(/Could not fetch or parse/i)).toBeVisible();
   });
 
-  test('shows unsafe-URL error when backend returns 400', async ({ page }) => {
+  test('surfaces specific "not allowed" message when backend rejects 400', async ({ page }) => {
     await page.route('**/api/import-url', (route: Route) =>
       route.fulfill({
         status: 400,
@@ -39,7 +39,7 @@ test.describe('Import by URL', () => {
     await page.goto('/import');
     await page.getByPlaceholder('https://...').fill('http://192.168.1.1/x');
     await page.getByRole('button', { name: /Fetch & parse/i }).click();
-    await expect(page.getByText(/Could not fetch or parse|not allowed/i)).toBeVisible();
+    await expect(page.getByText(/not allowed|public http\/https/i)).toBeVisible();
   });
 
   test('renders extracted opportunity card on success', async ({ page }) => {
