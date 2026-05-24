@@ -42,7 +42,7 @@ import {
   hashProfile as hashProfileUtil,
 } from '@/lib/match-utils';
 import {
-  loadPresets,
+  parsePresetsArray,
   savePresets,
   upsertPreset,
   removePreset,
@@ -200,10 +200,11 @@ function ResultsContent() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
-  const [presets, setPresets] = useState<FilterPreset[]>([]);
+  const presets = useLocalStorageJSON<unknown, FilterPreset[]>(
+    'ofe_filter_presets',
+    parsePresetsArray,
+  );
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount hydration of presets from localStorage; loadPresets() validates schema + drops malformed entries, so wrapping it in useSyncExternalStore would need a stable-reference cache (TODO: extend useLocalStorageJSON to accept a transformer)
-  useEffect(() => { setPresets(loadPresets()); }, []);
 
   const [emailModal, setEmailModal] = useState<{
     open: boolean;
@@ -510,9 +511,7 @@ function ResultsContent() {
       sortBy,
       tab: activeTab,
     };
-    const next = upsertPreset(presets, preset);
-    setPresets(next);
-    savePresets(next);
+    savePresets(upsertPreset(presets, preset));
     setActivePresetId(preset.id);
   }, [filters, sortBy, activeTab, presets, t]);
 
@@ -524,9 +523,7 @@ function ResultsContent() {
   }, []);
 
   const handleDeletePreset = useCallback((id: string) => {
-    const next = removePreset(presets, id);
-    setPresets(next);
-    savePresets(next);
+    savePresets(removePreset(presets, id));
     if (activePresetId === id) setActivePresetId(null);
   }, [presets, activePresetId]);
 

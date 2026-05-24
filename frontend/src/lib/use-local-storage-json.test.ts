@@ -59,6 +59,62 @@ describe('readLocalStorageJSON', () => {
   });
 });
 
+describe('readLocalStorageJSON with transformer', () => {
+  const EMPTY_NUMS: number[] = [];
+  const onlyNumbers = (raw: unknown): number[] => {
+    if (!Array.isArray(raw)) return EMPTY_NUMS;
+    const out = raw.filter((v): v is number => typeof v === 'number');
+    return out.length === 0 ? EMPTY_NUMS : out;
+  };
+
+  it('invokes the transformer on the parsed value', () => {
+    localStorage.setItem('nums', JSON.stringify([1, 'two', 3, null, 4]));
+    expect(readLocalStorageJSON('nums', onlyNumbers)).toEqual([1, 3, 4]);
+  });
+
+  it('invokes the transformer with null when key is missing', () => {
+    expect(readLocalStorageJSON('absent', onlyNumbers)).toBe(EMPTY_NUMS);
+  });
+
+  it('invokes the transformer with null when JSON is malformed', () => {
+    localStorage.setItem('bad', '{not-json');
+    expect(readLocalStorageJSON('bad', onlyNumbers)).toBe(EMPTY_NUMS);
+  });
+
+  it('returns the same transformed reference across calls when raw + transformer unchanged', () => {
+    localStorage.setItem('stable-t', JSON.stringify([1, 2, 3]));
+    const first = readLocalStorageJSON('stable-t', onlyNumbers);
+    const second = readLocalStorageJSON('stable-t', onlyNumbers);
+    expect(first).toBe(second);
+  });
+
+  it('returns a fresh transformed reference when raw changes', () => {
+    localStorage.setItem('mut-t', JSON.stringify([1, 2]));
+    const first = readLocalStorageJSON('mut-t', onlyNumbers);
+    localStorage.setItem('mut-t', JSON.stringify([1, 2, 3]));
+    const second = readLocalStorageJSON('mut-t', onlyNumbers);
+    expect(first).not.toBe(second);
+    expect(second).toEqual([1, 2, 3]);
+  });
+
+  it('returns a fresh transformed reference when transformer identity changes', () => {
+    localStorage.setItem('swap-t', JSON.stringify([1, 2, 3]));
+    const otherTransformer = (raw: unknown) => (Array.isArray(raw) ? raw.length : 0);
+    const first = readLocalStorageJSON('swap-t', onlyNumbers);
+    const second = readLocalStorageJSON('swap-t', otherTransformer);
+    expect(first).toEqual([1, 2, 3]);
+    expect(second).toBe(3);
+  });
+
+  it('keeps no-transformer and transformer caches separable by re-invoking on switch', () => {
+    localStorage.setItem('mix-t', JSON.stringify([1, 2, 3]));
+    const plain = readLocalStorageJSON<number[]>('mix-t');
+    const transformed = readLocalStorageJSON('mix-t', onlyNumbers);
+    expect(plain).toEqual([1, 2, 3]);
+    expect(transformed).toEqual([1, 2, 3]);
+  });
+});
+
 describe('writeLocalStorageJSON', () => {
   it('writes JSON and is readable via readLocalStorageJSON', () => {
     writeLocalStorageJSON('w1', { x: 1 });

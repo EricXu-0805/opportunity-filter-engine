@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest';
-import { loadPresets, savePresets, upsertPreset, removePreset } from './filter-presets';
+import { afterEach, describe, it, expect } from 'vitest';
+import {
+  loadPresets,
+  savePresets,
+  upsertPreset,
+  removePreset,
+  parsePresetsArray,
+} from './filter-presets';
 import type { FilterPreset } from './filter-presets';
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 const PRESET_A: FilterPreset = {
   id: 'p_a',
@@ -90,5 +100,62 @@ describe('removePreset', () => {
   it('is a no-op when id is not present', () => {
     const out = removePreset([PRESET_A], 'nonexistent');
     expect(out).toEqual([PRESET_A]);
+  });
+});
+
+describe('parsePresetsArray', () => {
+  it('returns the stable EMPTY reference for non-array input', () => {
+    const a = parsePresetsArray(null);
+    const b = parsePresetsArray({ not: 'an array' });
+    const c = parsePresetsArray('string');
+    const d = parsePresetsArray(undefined);
+    expect(a).toEqual([]);
+    expect(a).toBe(b);
+    expect(b).toBe(c);
+    expect(c).toBe(d);
+  });
+
+  it('returns the stable EMPTY reference when all entries are malformed', () => {
+    const a = parsePresetsArray([null, 42, 'string', { id: 1 }]);
+    const b = parsePresetsArray([]);
+    expect(a).toEqual([]);
+    expect(a).toBe(b);
+  });
+
+  it('returns only valid presets when input mixes good and bad entries', () => {
+    const result = parsePresetsArray([
+      PRESET_A,
+      { id: 42 },
+      null,
+      PRESET_B,
+      'garbage',
+      { id: 'p_c', name: 'no filters' },
+    ]);
+    expect(result.map((p) => p.id)).toEqual(['p_a', 'p_b']);
+  });
+
+  it('roundtrips through savePresets + loadPresets so the new write path works', () => {
+    savePresets([PRESET_A, PRESET_B]);
+    const loaded = loadPresets();
+    expect(loaded).toEqual([PRESET_A, PRESET_B]);
+  });
+
+  it('savePresets([]) removes the storage key (matches custom-imports pattern)', () => {
+    savePresets([PRESET_A]);
+    expect(localStorage.getItem('ofe_filter_presets')).not.toBeNull();
+    savePresets([]);
+    expect(localStorage.getItem('ofe_filter_presets')).toBeNull();
+  });
+
+  it('savePresets dispatches a storage event so same-tab readers re-render', () => {
+    const fired: string[] = [];
+    const listener = (e: StorageEvent) => fired.push(e.key ?? '');
+    window.addEventListener('storage', listener);
+    try {
+      savePresets([PRESET_A]);
+    } finally {
+      window.removeEventListener('storage', listener);
+    }
+    expect(fired).toEqual(['ofe_filter_presets']);
   });
 });
