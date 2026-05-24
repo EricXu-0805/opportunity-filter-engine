@@ -30,15 +30,14 @@ export default function EmailMeButton({
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      try {
-        const cached = localStorage.getItem(LS_KEY);
-        if (cached) setEmail(cached);
-      } catch { /* noop */ }
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [open]);
+  const handleOpen = useCallback(() => {
+    try {
+      const cached = localStorage.getItem(LS_KEY);
+      if (cached) setEmail(cached);
+    } catch { /* noop */ }
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +75,7 @@ export default function EmailMeButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
         disabled={disabled}
         title={title}
         className={className ?? 'inline-flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50'}

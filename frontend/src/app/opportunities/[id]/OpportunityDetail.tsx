@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
@@ -65,7 +66,7 @@ export default function OpportunityDetail({
   const { t } = useT();
   const [isFavorited, setIsFavorited] = useState(false);
   const [interactionDetail, setInteractionDetail] = useState<InteractionRecord | null>(null);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
@@ -76,10 +77,6 @@ export default function OpportunityDetail({
   useEffect(() => {
     getFavorites().then(set => setIsFavorited(set.has(opp.id))).catch(() => {});
     getInteractionDetail(opp.id).then(setInteractionDetail).catch(() => {});
-    try {
-      const raw = localStorage.getItem('ofe_profile');
-      if (raw) setProfile(JSON.parse(raw) as ProfileData);
-    } catch { /* malformed */ }
   }, [opp.id]);
 
   const applyUrl = opp.application?.application_url || opp.url || opp.source_url;
@@ -564,12 +561,19 @@ function TrackerPanel({
   const [notesMode, setNotesMode] = useState<'edit' | 'preview'>('edit');
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Sync internal editor state when the parent's `detail` updates
+       (e.g. after the debounced save below round-trips through
+       Supabase). Using key-remount would close the editor on every
+       save — the wrong UX since the user might still be typing. */
     setNotes(detail?.notes ?? '');
     setRemindAt(detail?.remind_at ?? '');
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [detail?.notes, detail?.remind_at]);
 
   useEffect(() => {
     if (notes === (detail?.notes ?? '') && remindAt === (detail?.remind_at ?? '')) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced save side effect; setSaveStatus must run sync to show 'saving…' before the 600ms timer fires
     setSaveStatus('saving');
     const timer = setTimeout(async () => {
       await onSave({

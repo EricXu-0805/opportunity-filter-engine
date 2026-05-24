@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, memo, Suspense } from 'react';
+import { useLocalStorageJSON, useHasLocalStorageKey } from '@/lib/use-local-storage-json';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -57,6 +58,28 @@ const SEARCH_ALIASES_FOR_HINT: Record<string, string[]> = {
 };
 
 type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
+
+type LegacyProfileShape = Omit<ProfileData, 'skills'> & {
+  skills?: ProfileData['skills'] | string[];
+};
+
+function migrateProfile(raw: LegacyProfileShape | null): ProfileData | null {
+  if (!raw) return null;
+  if (
+    Array.isArray(raw.skills)
+    && raw.skills.length > 0
+    && typeof raw.skills[0] === 'string'
+  ) {
+    return {
+      ...raw,
+      skills: (raw.skills as string[]).map((name) => ({
+        name,
+        level: 'beginner' as const,
+      })),
+    } as ProfileData;
+  }
+  return raw as ProfileData;
+}
 
 interface Filters {
   paid: '' | 'yes' | 'no';
@@ -137,7 +160,9 @@ function ResultsContent() {
   const searchParams = useSearchParams();
   const { t } = useT();
 
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>('ofe_profile');
+  const profile = useMemo(() => migrateProfile(rawStoredProfile), [rawStoredProfile]);
+  const hasStoredProfile = useHasLocalStorageKey('ofe_profile');
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -177,6 +202,7 @@ function ResultsContent() {
 
   const [presets, setPresets] = useState<FilterPreset[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount hydration of presets from localStorage; loadPresets() validates schema + drops malformed entries, so wrapping it in useSyncExternalStore would need a stable-reference cache (TODO: extend useLocalStorageJSON to accept a transformer)
   useEffect(() => { setPresets(loadPresets()); }, []);
 
   const [emailModal, setEmailModal] = useState<{
@@ -245,50 +271,14 @@ function ResultsContent() {
   }, []);
 
   useEffect(() => {
-    const raw = localStorage.getItem('ofe_profile');
-    if (!raw) {
-      router.replace('/');
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.skills) && parsed.skills.length > 0 && typeof parsed.skills[0] === 'string') {
-        parsed.skills = (parsed.skills as string[]).map((name: string) => ({ name, level: 'beginner' as const }));
-      }
-      const loadedProfile = parsed as ProfileData;
-      setProfile(loadedProfile);
-
-      const cachedRaw = sessionStorage.getItem('ofe_match_results');
-      if (cachedRaw) {
-        try {
-          const cached = JSON.parse(cachedRaw) as {
-            hash: string;
-            semantic?: boolean;
-            data: MatchesResponse;
-          };
-          const hashOk = cached.hash === hashProfile(loadedProfile);
-          const semanticOk = (cached.semantic ?? false) === semanticRerank;
-          if (hashOk && semanticOk) {
-            setData(cached.data);
-            setLoading(false);
-          } else {
-            sessionStorage.removeItem('ofe_match_results');
-          }
-        } catch {
-          sessionStorage.removeItem('ofe_match_results');
-        }
-      }
-    } catch {
-      router.replace('/');
-    }
-    // semanticRerank is intentionally read but not in deps: this effect
-    // should only run on mount to load profile + any matching cache, not
-    // refire every time the toggle flips.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+    // hasStoredProfile bypasses useSyncExternalStore's SSR snapshot so this
+    // doesn't fire-with-stale-null during the first paint after hydration.
+    if (hasStoredProfile === false) router.replace('/');
+  }, [hasStoredProfile, router]);
 
   useEffect(() => {
     if (!loading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the "slow loading…" hint the instant loading finishes; the setTimeout that would have shown it is also cancelled in cleanup
       setShowSlowHint(false);
       return;
     }
@@ -298,6 +288,38 @@ function ResultsContent() {
 
   useEffect(() => {
     if (!profile || data) return;
+
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Combined cache-hydrate + fetch-on-miss. Splitting these into two
+       effects races within the same commit: both run with the pre-commit
+       `data` snapshot (still null), so the fetch effect can't see that
+       the cache effect just queued setData. Sequential checks inside one
+       effect keep cache hits from triggering a redundant API roundtrip,
+       which matters most when users navigate back to /results via a
+       deep-link (the test that caught this regression). */
+
+    try {
+      const cachedRaw = sessionStorage.getItem('ofe_match_results');
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as {
+          hash: string;
+          semantic?: boolean;
+          data: MatchesResponse;
+        };
+        if (
+          cached.hash === hashProfile(profile)
+          && (cached.semantic ?? false) === semanticRerank
+        ) {
+          setData(cached.data);
+          setLoading(false);
+          return;
+        }
+        sessionStorage.removeItem('ofe_match_results');
+      }
+    } catch {
+      sessionStorage.removeItem('ofe_match_results');
+    }
+
     let cancelled = false;
 
     async function fetchMatches() {
@@ -328,6 +350,7 @@ function ResultsContent() {
     }
     fetchMatches();
     return () => { cancelled = true; };
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [profile, data, semanticRerank, t]);
 
   const toggleSemantic = useCallback((next: boolean) => {
@@ -340,6 +363,7 @@ function ResultsContent() {
   const [focusedIdx, setFocusedIdx] = useState(-1);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset keyboard-nav focus when filters change so j/k starts from the top of the newly-filtered list; React.dev recommends key-remount for this pattern but it would unmount the whole grid every filter tick
   useEffect(() => { setFocusedIdx(-1); }, [activeTab, debouncedQuery, filters, sortBy, page]);
 
   const filtered = useMemo(() => {
@@ -436,6 +460,7 @@ function ResultsContent() {
     [filtered, page],
   );
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination to page 1 when filter inputs change; key-remount would lose focus on the search box mid-typing, which is worse than the cascading render
   useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy]);
 
   const dismissedCount = useMemo(

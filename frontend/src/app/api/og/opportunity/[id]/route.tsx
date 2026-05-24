@@ -1,4 +1,4 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse } from 'next/og';
 import { fetchOpportunityServer } from '@/lib/api-server';
 
 export const runtime = 'edge';
@@ -20,9 +20,10 @@ function daysUntil(deadline?: string): number | null {
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const opp = await fetchOpportunityServer(params.id);
+  const { id } = await params;
+  const opp = await fetchOpportunityServer(id);
 
   if (!opp) {
     return new ImageResponse(

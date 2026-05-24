@@ -41,9 +41,8 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
     setLoading(false);
   }, [opportunityId]);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh() sets loading + files; called on mount and also re-called after upload/delete, so extracting the inline fetch would duplicate the setState pair into two places
+  useEffect(() => { refresh(); }, [refresh]);
 
   const handleSelect = useCallback(async (file: File | undefined) => {
     if (!file) return;

@@ -36,6 +36,7 @@ export function LanguageProvider({
       const stored = localStorage.getItem(LOCALE_STORAGE);
       if (stored) {
         const normalized = normalizeLocale(stored);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration locale upgrade: server rendered with the cookie-derived initialLocale; if the user changed locale on a page that didn't get the cookie write back, localStorage is the source of truth. useState initializer here would cause hydration mismatch.
         if (normalized !== locale) setLocaleState(normalized);
       }
     } catch { /* quota */ }

@@ -4,11 +4,12 @@ import { fetchOpportunityServer, fetchSimilarServer } from '@/lib/api-server';
 import OpportunityDetail from './OpportunityDetail';
 
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const opp = await fetchOpportunityServer(params.id);
+  const { id } = await params;
+  const opp = await fetchOpportunityServer(id);
   if (!opp) {
     return { title: 'Opportunity not found — OpportunityEngine' };
   }
@@ -45,9 +46,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function OpportunityPage({ params }: PageProps) {
+  const { id } = await params;
   const [opp, similar] = await Promise.all([
-    fetchOpportunityServer(params.id),
-    fetchSimilarServer(params.id, 5),
+    fetchOpportunityServer(id),
+    fetchSimilarServer(id, 5),
   ]);
   if (!opp) notFound();
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import {
   Star,
   ArrowLeft,
@@ -83,17 +84,10 @@ export default function FavoritesPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
   const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string }>({
     open: false, id: '', title: '',
   });
-
-  useEffect(() => {
-    const raw = localStorage.getItem('ofe_profile');
-    if (raw) {
-      try { setProfile(JSON.parse(raw)); } catch {}
-    }
-  }, []);
 
   useEffect(() => {
     async function load() {

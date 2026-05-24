@@ -20,8 +20,14 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
 
   useEffect(() => {
     if (alreadyUploaded && state === 'idle') {
+      /* eslint-disable react-hooks/set-state-in-effect --
+         alreadyUploaded arrives async from the parent's loadProfile(),
+         so the value isn't available at mount for a useState initializer.
+         Both setState calls flush together so the UI flips from "drop
+         your resume here" to "✓ resume on file" in one paint. */
       setState('success');
       setFileName(t('resume.savedFallback'));
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [alreadyUploaded, state, t]);
   const [error, setError] = useState<string | null>(null);

@@ -1,5 +1,5 @@
 import { FileText, Sparkles, Send, Shield, Github, ArrowUpRight } from 'lucide-react';
-import { tServer } from '@/i18n/server';
+import { getServerT } from '@/i18n/server';
 
 const STEPS = [
   { num: '01', icon: FileText, titleKey: 'about.steps.buildProfile', descKey: 'about.steps.buildProfileDesc' },
@@ -18,26 +18,27 @@ const STACK = [
   { label: 'scikit-learn', categoryKey: 'about.stackCategories.ml' },
 ] as const;
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const t = await getServerT();
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
 
       <div className="text-center mb-20">
         <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1]">
-          {tServer('about.heroLine1')}
+          {t('about.heroLine1')}
           <br />
           <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-            {tServer('about.heroLine2')}
+            {t('about.heroLine2')}
           </span>
         </h1>
         <p className="mt-6 text-lg text-gray-400 leading-relaxed max-w-xl mx-auto">
-          {tServer('about.heroSubtitle')}
+          {t('about.heroSubtitle')}
         </p>
       </div>
 
       <div className="mb-20">
         <h2 className="text-[13px] font-semibold text-gray-400 uppercase tracking-widest text-center mb-12">
-          {tServer('about.howItWorks')}
+          {t('about.howItWorks')}
         </h2>
         <div className="space-y-0">
           {STEPS.map((step, i) => (
@@ -51,10 +52,10 @@ export default function AboutPage() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <step.icon className="w-5 h-5 text-blue-500" />
-                  <h3 className="text-[17px] font-semibold text-gray-900">{tServer(step.titleKey)}</h3>
+                  <h3 className="text-[17px] font-semibold text-gray-900">{t(step.titleKey)}</h3>
                 </div>
                 <p className="text-[15px] text-gray-400 leading-relaxed">
-                  {tServer(step.descKey)}
+                  {t(step.descKey)}
                 </p>
               </div>
             </div>
@@ -64,15 +65,15 @@ export default function AboutPage() {
 
       <div className="mb-20">
         <h2 className="text-[13px] font-semibold text-gray-400 uppercase tracking-widest text-center mb-12">
-          {tServer('about.builtWith')}
+          {t('about.builtWith')}
         </h2>
         <div className="flex flex-wrap justify-center gap-2">
-          {STACK.map((t) => (
+          {STACK.map((entry) => (
             <span
-              key={t.label}
+              key={entry.label}
               className="px-4 py-2 rounded-full bg-white text-[13px] font-medium text-gray-600 shadow-[0_1px_4px_rgba(0,0,0,0.05)]"
             >
-              {t.label}
+              {entry.label}
             </span>
           ))}
         </div>
@@ -84,9 +85,9 @@ export default function AboutPage() {
             <Shield className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-[15px] font-semibold text-gray-900 mb-1.5">{tServer('about.privacy')}</h3>
+            <h3 className="text-[15px] font-semibold text-gray-900 mb-1.5">{t('about.privacy')}</h3>
             <p className="text-[14px] text-gray-400 leading-relaxed">
-              {tServer('about.privacyBody')}
+              {t('about.privacyBody')}
             </p>
           </div>
         </div>
@@ -100,19 +101,19 @@ export default function AboutPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gray-900 text-white text-[13px] font-medium hover:bg-gray-800 transition-colors duration-300"
         >
           <Github className="w-4 h-4" />
-          {tServer('about.viewOnGithub')}
+          {t('about.viewOnGithub')}
           <ArrowUpRight className="w-3 h-3" />
         </a>
       </div>
 
       <div className="text-center">
-        <p className="text-[15px] text-gray-900 font-medium">{tServer('about.author')}</p>
-        <p className="text-[13px] text-gray-400 mt-1">{tServer('about.authorRole')}</p>
+        <p className="text-[15px] text-gray-900 font-medium">{t('about.author')}</p>
+        <p className="text-[13px] text-gray-400 mt-1">{t('about.authorRole')}</p>
       </div>
 
       <div className="mt-12 text-center">
         <p className="text-[11px] text-gray-400 leading-relaxed max-w-md mx-auto">
-          {tServer('about.disclaimer')}
+          {t('about.disclaimer')}
         </p>
       </div>
     </div>

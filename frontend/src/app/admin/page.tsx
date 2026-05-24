@@ -208,8 +208,14 @@ function AdminInner() {
       try { resolved = sessionStorage.getItem(SESSION_KEY); } catch { resolved = null; }
     }
     if (resolved) {
+      /* eslint-disable react-hooks/set-state-in-effect --
+         Auth token resolution must finish in one effect tick so the
+         token-entry form is replaced atomically by the dashboard.
+         The history.replaceState above strips ?token= from the URL,
+         which is a side effect of the same one-shot mount handler. */
       setToken(resolved);
       setTokenInput(resolved);
+      /* eslint-enable react-hooks/set-state-in-effect */
       fetchAll(resolved);
     }
   }, [searchParams, fetchAll]);
@@ -404,7 +410,9 @@ function diff(key: string, current: AdminResponse, previous: HistoryEntry | null
 }
 
 function FreshnessBanner({ iso, t }: { iso: string; t: ReturnType<typeof useT>['t'] }) {
-  const ageHours = (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
+  const [ageHours] = useState(
+    () => (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60),
+  );
   const stale = ageHours >= 96;
   const warn = !stale && ageHours >= 72;
   const bg = stale ? 'bg-red-50 border-red-200 text-red-800' : warn ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800';
