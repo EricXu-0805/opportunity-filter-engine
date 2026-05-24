@@ -2,24 +2,62 @@
 
 import { useSyncExternalStore } from 'react';
 
-type Cache = { raw: string | null; parsed: unknown };
+type Transformer = (value: unknown) => unknown;
+
+type Cache = {
+  raw: string | null;
+  parsed: unknown;
+  // Tracks which transformer the cached `transformed` was produced by.
+  // `undefined` here means "no transformer was passed" — distinct from
+  // a real transformer that happens to return undefined.
+  transformer: Transformer | undefined;
+  transformed: unknown;
+};
 
 const snapshotCache = new Map<string, Cache>();
 
 // Pure reader exposed for tests + non-React callers.
-// Returns referentially-stable values across calls when the underlying
-// raw string hasn't changed — required for useSyncExternalStore to avoid
-// firing re-renders on every parent re-render.
-export function readLocalStorageJSON<T>(key: string): T | null {
-  if (typeof window === 'undefined') return null;
+//
+// Returns referentially-stable values across calls when the underlying raw
+// string AND the transformer reference are unchanged — required for
+// useSyncExternalStore to avoid firing re-renders on every parent render.
+//
+// Transformer contract:
+//   - Receives the parsed JSON value (or null when key is missing /
+//     malformed / window is undefined / localStorage threw).
+//   - MUST be a module-level constant (stable identity across renders) or
+//     wrapped in useCallback if defined inline. Passing a fresh closure
+//     each render invalidates the cache and re-invokes the transformer
+//     every snapshot read.
+//   - For SSR/hydration safety, MUST return a referentially-stable value
+//     for the `null` input (typically a module-level EMPTY constant);
+//     useSyncExternalStore compares snapshots by identity.
+export function readLocalStorageJSON<T>(key: string): T | null;
+export function readLocalStorageJSON<T, U>(
+  key: string,
+  transformer: (value: T | null) => U,
+): U;
+export function readLocalStorageJSON(
+  key: string,
+  transformer?: Transformer,
+): unknown {
+  if (typeof window === 'undefined') {
+    return transformer ? transformer(null) : null;
+  }
   let raw: string | null;
   try {
     raw = window.localStorage.getItem(key);
   } catch {
-    return null;
+    return transformer ? transformer(null) : null;
   }
   const cached = snapshotCache.get(key);
-  if (cached && cached.raw === raw) return cached.parsed as T | null;
+  if (
+    cached
+    && cached.raw === raw
+    && cached.transformer === transformer
+  ) {
+    return cached.transformed;
+  }
   let parsed: unknown = null;
   if (raw !== null) {
     try {
@@ -28,8 +66,9 @@ export function readLocalStorageJSON<T>(key: string): T | null {
       parsed = null;
     }
   }
-  snapshotCache.set(key, { raw, parsed });
-  return parsed as T | null;
+  const transformed = transformer ? transformer(parsed) : parsed;
+  snapshotCache.set(key, { raw, parsed, transformer, transformed });
+  return transformed;
 }
 
 function subscribe(onStoreChange: () => void): () => void {
@@ -69,15 +108,28 @@ export function writeLocalStorageJSON<T>(key: string, value: T | null): void {
 // initial client render before getSnapshot fires; matches the historical
 // useEffect-based behavior so callers don't need to handle a new state.
 //
+// Optional transformer signature lets callers validate / normalise the
+// parsed value at the snapshot boundary so the hook output is always the
+// already-validated shape (no need for `?? []` + a parallel parser at the
+// call site). See readLocalStorageJSON for the transformer contract.
+//
 // Subscribes to cross-tab 'storage' events. Same-tab writes by other code
 // paths do NOT trigger re-renders here (browsers don't fire 'storage' for
-// the writing tab) — that's matches the previous useEffect-on-mount
-// semantics where same-tab writes also wouldn't propagate.
-export function useLocalStorageJSON<T>(key: string): T | null {
+// the writing tab) — use writeLocalStorageJSON to dispatch a synthetic
+// event so same-tab readers re-render.
+export function useLocalStorageJSON<T>(key: string): T | null;
+export function useLocalStorageJSON<T, U>(
+  key: string,
+  transformer: (value: T | null) => U,
+): U;
+export function useLocalStorageJSON(
+  key: string,
+  transformer?: Transformer,
+): unknown {
   return useSyncExternalStore(
     subscribe,
-    () => readLocalStorageJSON<T>(key),
-    () => null,
+    () => readLocalStorageJSON(key, transformer as never),
+    () => (transformer ? transformer(null) : null),
   );
 }
 
