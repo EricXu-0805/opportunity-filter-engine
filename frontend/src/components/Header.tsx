@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/', labelKey: 'nav.findMatches', shortKey: 'nav.findShort' },
   { href: '/favorites', labelKey: 'nav.favorites', shortKey: 'nav.favShort' },
   { href: '/dashboard', labelKey: 'nav.dashboard', shortKey: 'nav.dashShort' },
+  { href: '/import', labelKey: 'nav.import', shortKey: 'nav.importShort' },
   { href: '/about', labelKey: 'nav.about', shortKey: 'nav.aboutShort' },
 ] as const;
 

@@ -318,3 +318,31 @@ export async function verifyRestoreLink(
   const qs = new URLSearchParams(params).toString();
   return request(`/email/verify-restore?${qs}`);
 }
+
+export interface ImportedOpportunity {
+  source: string;
+  source_url: string;
+  title: string;
+  description_raw: string;
+  url: string;
+  organization?: string | null;
+  deadline?: string | null;
+  posted_date?: string | null;
+  location?: string | null;
+  raw_html?: string | null;
+  extra_fields: Record<string, unknown>;
+}
+
+export interface ImportUrlResponse {
+  ok: boolean;
+  opportunity?: ImportedOpportunity;
+  error?: string;
+  llm_enriched: boolean;
+}
+
+export async function importByUrl(url: string): Promise<ImportUrlResponse> {
+  return request('/import-url', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+}
