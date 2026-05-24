@@ -1,4 +1,4 @@
-"""URL Parser — V1 OG-meta scrape + V2 LLM-enriched structured extraction.
+"""URL + Text Parser — V1 OG-meta scrape + V2 LLM-enriched structured extraction.
 
 V1 (parse_url) reads OpenGraph tags + regex deadline. Best-effort, no LLM
 needed, no rate-limited external dep beyond the source URL. Stable since
@@ -10,6 +10,13 @@ strict JSON schema and merges the response into a RawOpportunity. Used
 by the /api/import-url backend route the frontend's "Add by URL" flow
 calls. Falls back to V1 silently when no LLM provider is configured
 (see backend/lib/llm.py::is_configured).
+
+parse_text_llm is the sibling for paste-text imports — same LLM extraction
+machinery, but the body comes from the user pasting raw text instead of a
+URL we fetched. Used by /api/import-text for sources where the URL is
+blocked by anti-bot (LinkedIn job posts), behind a paywall, or simply not
+present (Slack/email forwards). Returns None when no LLM is configured —
+paste-text has no useful V1 fallback (no OG meta to scrape).
 """
 
 from __future__ import annotations
@@ -31,6 +38,13 @@ logger = logging.getLogger(__name__)
 PAGE_FETCH_TIMEOUT_S = 15
 LLM_BODY_EXCERPT_CHARS = 4000
 LLM_MAX_TOKENS = 700
+
+# Paste-text validation bounds. Below the floor the LLM has nothing useful
+# to chew on (a one-line title is better imported as a URL search), and
+# above the ceiling the body excerpt truncation drops most of the input
+# anyway — and the LLM context is paid per token.
+PASTE_TEXT_MIN_CHARS = 50
+PASTE_TEXT_MAX_CHARS = 50_000
 
 
 def parse_url(url: str) -> Optional[RawOpportunity]:
@@ -136,6 +150,95 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     if raw_text is None:
         return base
 
+    body_excerpt = _strip_to_text(raw_text)[:LLM_BODY_EXCERPT_CHARS]
+    enriched = _run_llm_extraction(
+        base,
+        body_excerpt=body_excerpt,
+        url_hint=url,
+        title_hint=base.title,
+        description_hint=base.description_raw,
+    )
+    # URL flow always has a V1 fallback (OG meta), so on any LLM failure
+    # we return the V1 result rather than failing the whole request.
+    return enriched if enriched is not None else base
+
+
+def parse_text_llm(text: str) -> Optional[RawOpportunity]:
+    """Extract a structured opportunity from a free-form pasted text body.
+
+    Sibling of parse_url_llm — same LLM schema, same merge logic, same
+    schema validation. The difference: the body excerpt comes from the
+    user pasting text directly instead of from a URL we fetched.
+
+    Useful for sources where URL fetching is blocked (LinkedIn anti-bot
+    walls, Indeed paywalls), or sources that don't have a URL at all
+    (Slack/email forwards of a job description).
+
+    Validation: callers should enforce
+    ``PASTE_TEXT_MIN_CHARS <= len(text.strip()) <= PASTE_TEXT_MAX_CHARS``
+    before calling. This function trusts the input and only truncates
+    further to ``LLM_BODY_EXCERPT_CHARS`` for the LLM prompt.
+
+    Returns None when:
+      - the LLM is not configured (paste-text has no V1 fallback; there
+        is no OG meta on a plain text body),
+      - the LLM call returns no response, or
+      - the LLM response is unparseable JSON.
+
+    Returns a merged RawOpportunity with ``llm_enriched=True`` on success.
+    """
+    base = RawOpportunity(
+        source="text_parser",
+        source_url="",
+        title="Untitled Opportunity",
+        description_raw="",
+        url="",
+        organization=None,
+        extra_fields={"needs_manual_review": True},
+    )
+
+    body_excerpt = text[:LLM_BODY_EXCERPT_CHARS]
+    enriched = _run_llm_extraction(
+        base,
+        body_excerpt=body_excerpt,
+        url_hint=None,
+        title_hint="",
+        description_hint="",
+    )
+    # paste-text has no useful V1 fallback — if LLM is unconfigured or
+    # failed, treat as an unrecoverable error so the route can surface a
+    # specific message instead of returning an empty skeleton.
+    if enriched is None:
+        return None
+    if not enriched.extra_fields.get("llm_enriched"):
+        # _run_llm_extraction returned `base` unchanged → LLM not configured.
+        return None
+    return enriched
+
+
+def _run_llm_extraction(
+    base: RawOpportunity,
+    *,
+    body_excerpt: str,
+    url_hint: Optional[str],
+    title_hint: str,
+    description_hint: str,
+) -> Optional[RawOpportunity]:
+    """Run a single LLM extraction pass and merge the response into ``base``.
+
+    Shared core between parse_url_llm and parse_text_llm so the LLM
+    prompt, schema, JSON parsing, and merge rules stay in one place.
+
+    Returns:
+      - ``base`` unchanged when no LLM provider is configured. Callers
+        with a V1 fallback (parse_url_llm) treat this as the V1 result;
+        callers without (parse_text_llm) detect it via the absence of
+        ``llm_enriched`` in extra_fields.
+      - ``None`` when the LLM was called but returned an empty response
+        or unparseable JSON. Distinct from the "unconfigured" return so
+        callers can log + decide whether to surface an error.
+      - The merged RawOpportunity on success.
+    """
     try:
         from backend.lib.llm import chat_completion, is_configured
     except ImportError:
@@ -144,21 +247,22 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     if not is_configured():
         return base
 
-    body_excerpt = _strip_to_text(raw_text)[:LLM_BODY_EXCERPT_CHARS]
     messages = _build_extraction_messages(
-        url=url,
-        title_hint=base.title,
-        description_hint=base.description_raw,
+        url=url_hint or "",
+        title_hint=title_hint,
+        description_hint=description_hint,
         body_excerpt=body_excerpt,
     )
     response_text = chat_completion(messages, max_tokens=LLM_MAX_TOKENS, temperature=0.1)
     if not response_text:
-        return base
+        return None
 
     parsed = _parse_llm_json(response_text)
     if parsed is None:
-        logger.warning("URL %s: LLM returned unparseable JSON, falling back to V1", url)
-        return base
+        logger.warning(
+            "LLM returned unparseable JSON (url_hint=%r), no enrichment", url_hint
+        )
+        return None
 
     return _merge_llm_into_base(base, parsed)
 

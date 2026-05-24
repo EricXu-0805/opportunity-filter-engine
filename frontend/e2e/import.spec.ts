@@ -4,7 +4,7 @@ test.describe('Import by URL', () => {
   test('renders form with disabled button initially empty', async ({ page }) => {
     await page.goto('/import');
     await expect(
-      page.getByRole('heading', { name: /Import opportunity by URL/i }),
+      page.getByRole('heading', { name: /Import opportunity/i }),
     ).toBeVisible();
     await expect(page.getByPlaceholder('https://...')).toBeVisible();
     await expect(page.getByRole('button', { name: /Fetch & parse/i })).toBeVisible();
@@ -142,5 +142,128 @@ test.describe('Import by URL', () => {
     await page.getByPlaceholder('https://...').fill('https://example.com/x');
     await page.getByRole('button', { name: /Fetch & parse/i }).click();
     await expect(page.getByText(/Basic extraction/i)).toBeVisible();
+  });
+});
+
+test.describe('Import by Text', () => {
+  test('switching to text mode reveals textarea + Extract button', async ({ page }) => {
+    await page.goto('/import');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await expect(page.getByRole('tab', { name: /By text/i })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('button', { name: /Extract with AI/i })).toBeVisible();
+    await expect(page.getByText(/Minimum 50 characters/i)).toBeVisible();
+    await expect(page.getByPlaceholder('https://...')).toHaveCount(0);
+  });
+
+  test('shows "paste some text first" when textarea is empty', async ({ page }) => {
+    await page.goto('/import');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await page.getByRole('button', { name: /Extract with AI/i }).click();
+    await expect(page.getByText(/Paste some text first/i)).toBeVisible();
+  });
+
+  test('shows "at least 50 characters" when text is too short', async ({ page }) => {
+    await page.goto('/import');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await page.getByRole('textbox', { name: /Job description/i }).fill('too short');
+    await page.getByRole('button', { name: /Extract with AI/i }).click();
+    await expect(page.getByText(/at least 50 characters/i)).toBeVisible();
+  });
+
+  test('renders extracted opportunity card on text-mode success', async ({ page }) => {
+    await page.route('**/api/import-text', (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          llm_enriched: true,
+          opportunity: {
+            source: 'text_parser',
+            source_url: '',
+            title: 'Pasted LinkedIn Posting',
+            description_raw: 'A solid backend role from a paywalled source.',
+            url: '',
+            organization: 'BigCo',
+            deadline: '2026-05-30',
+            location: 'Remote',
+            extra_fields: {
+              opportunity_type: 'internship',
+              paid: 'yes',
+              skills_required: ['Go', 'Kubernetes'],
+              llm_enriched: true,
+            },
+          },
+        }),
+      }),
+    );
+    await page.goto('/import');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await page.getByRole('textbox', { name: /Job description/i }).fill(
+      'Posting description with deadline and stipend details, redacted org ' +
+      'name so the textarea text does not collide with result-card matches. ' +
+      'Originally on a paywalled source; pasted by the user as plain text.',
+    );
+    await page.getByRole('button', { name: /Extract with AI/i }).click();
+
+    const card = page.getByRole('article');
+    await expect(card.getByRole('heading', { name: 'Pasted LinkedIn Posting' })).toBeVisible();
+    await expect(card.getByText('BigCo')).toBeVisible();
+    await expect(card.getByText('2026-05-30')).toBeVisible();
+    await expect(card.getByText('Go').first()).toBeVisible();
+    await expect(card.getByText(/AI-extracted/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Try another text/i })).toBeVisible();
+  });
+
+  test('shows extraction-failed message on text-mode failure', async ({ page }) => {
+    await page.route('**/api/import-text', (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: false,
+          llm_enriched: false,
+          error: 'AI extraction unavailable',
+        }),
+      }),
+    );
+    await page.goto('/import');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await page.getByRole('textbox', { name: /Job description/i }).fill(
+      'A reasonable-length text that should make it past the 50-char client check before the mocked API returns failure.',
+    );
+    await page.getByRole('button', { name: /Extract with AI/i }).click();
+    await expect(page.getByText(/AI extraction failed/i)).toBeVisible();
+  });
+
+  test('surfaces backend 422 detail from Pydantic min_length violation', async ({ page }) => {
+    await page.route('**/api/import-text', (route: Route) =>
+      route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: [{ msg: 'String should have at least 50 characters', type: 'string_too_short' }],
+        }),
+      }),
+    );
+    await page.goto('/import');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await page.getByRole('textbox', { name: /Job description/i }).fill(
+      'Long enough to pass the client-side guard, but the mocked server returns a 422 anyway.',
+    );
+    await page.getByRole('button', { name: /Extract with AI/i }).click();
+    await expect(page.getByText(/AI extraction failed/i)).toBeVisible();
+  });
+
+  test('switching tabs preserves work-in-progress in each input', async ({ page }) => {
+    await page.goto('/import');
+    await page.getByPlaceholder('https://...').fill('https://example.com/x');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await page.getByRole('textbox', { name: /Job description/i }).fill('Drafting a pasted description...');
+    await page.getByRole('tab', { name: /By URL/i }).click();
+    await expect(page.getByPlaceholder('https://...')).toHaveValue('https://example.com/x');
+    await page.getByRole('tab', { name: /By text/i }).click();
+    await expect(page.getByRole('textbox', { name: /Job description/i }))
+      .toHaveValue('Drafting a pasted description...');
   });
 });
