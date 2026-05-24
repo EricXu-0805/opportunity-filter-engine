@@ -42,6 +42,7 @@ const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ss
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), { ssr: false });
 const AttachmentsPanel = dynamic(() => import('@/components/AttachmentsPanel'), { ssr: false });
+const StatusTimeline = dynamic(() => import('@/components/StatusTimeline'), { ssr: false });
 
 const INTERACTION_PILL: Record<InteractionType, string> = {
   applied: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -565,7 +566,11 @@ function TrackerPanel({
       {open && (
         <div className="mt-3 space-y-3 animate-in">
           {detail?.type && detail?.updated_at && (
-            <StatusTimeline type={detail.type} updatedAt={detail.updated_at} t={t} />
+            <StatusTimeline
+              opportunityId={opportunityId}
+              fallbackType={detail.type}
+              fallbackUpdatedAt={detail.updated_at}
+            />
           )}
           <div>
             <div role="tablist" aria-label={t('detail.tracker.notesTabsAria')} className="flex items-center gap-1 mb-1.5">
@@ -715,44 +720,6 @@ function Badge({
 
 function formatType(t: string): string {
   return t.replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
-}
-
-function formatRelativeAge(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '';
-  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
-  if (diffSec < 60) return 'just now';
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
-  return `${Math.floor(diffSec / 86400)}d ago`;
-}
-
-function StatusTimeline({
-  type,
-  updatedAt,
-  t,
-}: {
-  type: 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
-  updatedAt: string;
-  t: (path: string) => string;
-}) {
-  const statusColors: Record<string, string> = {
-    applied: 'bg-blue-50 text-blue-700',
-    replied: 'bg-violet-50 text-violet-700',
-    interviewing: 'bg-amber-50 text-amber-700',
-    rejected: 'bg-gray-100 text-gray-600',
-    dismissed: 'bg-gray-50 text-gray-400',
-  };
-  const cls = statusColors[type] ?? 'bg-gray-50 text-gray-500';
-  const label = t(`detail.tracker.statusLabels.${type}`);
-  return (
-    <div className="flex items-center gap-2 text-[11px]">
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${cls}`}>
-        {label === `detail.tracker.statusLabels.${type}` ? formatType(type) : label}
-      </span>
-      <span className="text-gray-400">· {formatRelativeAge(updatedAt)}</span>
-    </div>
-  );
 }
 
 function friendlyLabel(v: string, t: (p: string) => string): string {

@@ -516,6 +516,9 @@ export const en = {
         rejected: 'Rejected',
         dismissed: 'Dismissed',
       },
+      timeline: {
+        title: 'Status history',
+      },
     },
     attachments: {
       label: 'Attachments',
@@ -1392,6 +1395,9 @@ export const zh = {
         interviewing: '面试中',
         rejected: '已拒绝',
         dismissed: '已忽略',
+      },
+      timeline: {
+        title: '状态历史',
       },
     },
     attachments: {
