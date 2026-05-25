@@ -1,4 +1,6 @@
-import { beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react';
 
 function makeMemoryStorage(): Storage {
   const store = new Map<string, string>();
@@ -33,4 +35,8 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   vi.restoreAllMocks();
+});
+
+afterEach(() => {
+  cleanup();
 });
