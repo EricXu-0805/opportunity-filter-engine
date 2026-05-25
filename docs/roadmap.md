@@ -2,7 +2,7 @@
 
 ## Phase 1 — Product Definition ✅
 
-**Duration:** Complete
+**Status:** Complete
 
 **Deliverables:**
 - [x] README.md
@@ -16,84 +16,89 @@
 
 ---
 
-## Phase 2 — Build Opportunity Dataset
+## Phase 2 — Build Opportunity Dataset ✅
 
-**Duration:** 1-2 weeks
+**Status:** Complete (greatly exceeded original 50-100 target — now at 1900+ opportunities across 10+ collectors)
 
-**Goal:** Collect and normalize 50-100 opportunities
-
-**Tasks:**
-1. Implement OUR Blog RSS collector (`src/collectors/uiuc_our_rss.py`)
-2. Implement SRO Database scraper (`src/collectors/uiuc_sro.py`)
-3. Build normalization pipeline (raw → schema)
-4. Manually curate 20-30 high-quality opportunities
-5. Build URL parser for ad-hoc link submission
-6. Tag all records with international_friendly
-7. Tag all records with application_effort
-8. Store in SQLite (local dev) or PostgreSQL (deployed)
-
-**Exit criteria:** 50+ normalized opportunities with ≥80% field completeness
+**Done:**
+- [x] OUR Blog RSS collector (`src/collectors/uiuc_our_rss.py`)
+- [x] SRO Database scraper (`src/collectors/uiuc_sro.py`)
+- [x] Normalization pipeline (raw → schema)
+- [x] Manual entry collector (`src/collectors/manual_importer.py`) + `data/manual_entries/`
+- [x] URL parser for ad-hoc link submission (now full `/import` page with paste-URL + paste-text + LLM extraction — see [Round 12 in CHANGELOG](#shipped-rounds))
+- [x] `international_friendly` tagging in normalization
+- [x] `application_effort` tagging in normalization
+- [x] Storage on Supabase (Postgres)
 
 ---
 
-## Phase 3 — Matching Engine
+## Phase 3 — Matching Engine ✅
 
-**Duration:** 1-2 weeks
+**Status:** Complete with the original three-layer design plus an opt-in semantic re-ranker.
 
-**Goal:** Score and rank opportunities for a given profile
-
-**Tasks:**
-1. Implement eligibility scorer
-2. Implement readiness scorer
-3. Implement upside scorer
-4. Implement combined ranker with bucket assignment
-5. Build template-based explanation generator
-6. Test with 3-5 real student profiles
-7. Tune weights based on feedback
-
-**Exit criteria:** Given a profile, system returns ranked results with explanations that feel correct to test users
+**Done:**
+- [x] Eligibility scorer
+- [x] Readiness scorer
+- [x] Upside scorer
+- [x] Combined ranker with bucket assignment (High Priority / Good Match / Reach / Low Fit)
+- [x] Template-based explanation generator (`reasons_fit`, `reasons_gap`, `next_steps`)
+- [x] AI semantic re-rank toggle (TF-IDF; sentence-transformers / OpenAI optional)
 
 ---
 
-## Phase 4 — MVP Interface
+## Phase 4 — MVP Interface ✅
 
-**Duration:** 1 week
+**Status:** Complete; surpassed Streamlit plan with Next.js 16 + React 19 frontend.
 
-**Goal:** Working Streamlit app
-
-**Tasks:**
-1. Profile input form (minimal V1 fields)
-2. Results display with score, bucket, explanation
-3. "Best Matches Now" / "Worth Stretching For" split view
-4. Basic search/filter sidebar
-5. Opportunity detail expansion
-
-**Exit criteria:** A user can fill in profile in < 3 minutes and get useful ranked results
+**Done:**
+- [x] Profile input form (college / major / grade / international / format / skills / coursework / interests / resume / GitHub / LinkedIn / search-weight slider)
+- [x] Results page with bucket tabs, filter rail, search box, AI rerank toggle, keyboard navigation, pagination
+- [x] Min-score, paid, international, source, on-campus, deadline filters with URL state
+- [x] Opportunity detail page with PI contact, eligibility, application metadata, similar opportunities
 
 ---
 
-## Phase 5 — Application Assistance
+## Phase 5 — Application Assistance ✅
 
-**Duration:** 1-2 weeks
+**Status:** Complete plus several follow-ons (interaction tracker, notes, attachments, comparison view, cold email LLM refinement).
 
-**Goal:** Move from discovery to action
-
-**Tasks:**
-1. Cold email template generator (per opportunity)
-2. Resume direction suggestions (per opportunity)
-3. Deadline tracking / urgency indicators
-4. "What you're missing" checklist per opportunity
-5. Optional: LLM-powered personalized cold email drafts
-
-**Exit criteria:** Users report they can take at least one concrete action from recommendations
+**Done:**
+- [x] Cold email template generator (3 variants — formal / curious / specific)
+- [x] LLM-powered personalized cold email drafts + quick-action refinement
+- [x] Resume gap advisor (missing skills, recommended coursework, preparation timeline, resume tips)
+- [x] Deadline tracking + urgency indicators (red / amber / gray)
+- [x] Interaction tracker (applied / replied / interviewing / rejected / dismissed) with status timeline
+- [x] Markdown notes + reminder timestamps per interaction
+- [x] File attachments per opportunity (offer letters, screenshots, etc.)
+- [x] Side-by-side `/compare` view for 2-3 starred opportunities
 
 ---
 
-## Future Phases (Post-V1)
+## Shipped Rounds (Post-V1, in merge order)
 
-- Phase 6: NSF REU API + USAJobs API integration
-- Phase 7: SerpApi for industry internships
-- Phase 8: Multi-university expansion (config-driven scraper registry)
-- Phase 9: User accounts + saved opportunities + email alerts
-- Phase 10: Semantic matching with sentence-transformers + pgvector
-- Phase 11: React + FastAPI frontend for production deployment
+The repo has shipped 14 PRs of feature work + hardening on top of the original five phases. Highlights:
+
+- **Round 1** — Next.js 14 → 16, React 18 → 19 upgrade
+- **Round 12** — `/import` paste-text endpoint (LinkedIn / paywalled / no-URL flows)
+- **Round 13** — `useLocalStorageJSON` transformer + `handleStar` race guard
+- **Round 14** — Research Park collector + `uiuc_other` test coverage
+- **Round 15** — Saved searches infrastructure (migration 010 + Supabase wrapper)
+- **Round 16** — Saved searches UI (`/results` Save button + `/favorites` list)
+- **Round 17** — Saved searches cron + new-match diff tracking (migration 011 + backend route + `.github/workflows/saved-searches-refresh.yml`)
+- **Round 18** — New-match badges + `humanize-time` helper on `/favorites`
+- **Round 19** — Highlight ring on `/results` via `?highlight=` URL param
+- **Round 20** — Acknowledge / mark-seen mechanism (optimistic + server ack)
+- **Round 21** — `useEffect` mount-cancellation guards across saved-searches load sites
+- **Round 22** — Playwright e2e coverage for the saved-searches stack
+- **Round 23** — README accuracy refresh
+
+---
+
+## Open / Planned
+
+- **Email digest** — periodic email summarising new matches per saved search. **Blocked on email-collection UX decision** (where to ask, opt-in policy, frequency, transport reuse vs new).
+- **USAJobs API integration** — federal positions; not started.
+- **SerpApi for industry internships** — not started.
+- **Multi-university expansion** — config-driven scraper registry; not started.
+- **Full vector embeddings** — sentence-transformers + pgvector replacement for TF-IDF; not started.
+- **Admin dashboard widget for saved-search cron health** — operator-facing surface noted in the R20 handoff queue.
