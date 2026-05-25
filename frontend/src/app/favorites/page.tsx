@@ -358,7 +358,7 @@ export default function FavoritesPage() {
         </div>
       </div>
 
-      {!selectionMode && savedSearches.length > 0 && (
+      {!selectionMode && (savedSearches.length > 0 || opportunities.length > 0) && (
         <section className="mb-8" aria-labelledby="saved-searches-heading">
           <div className="flex items-baseline justify-between mb-3">
             <div>
@@ -366,14 +366,25 @@ export default function FavoritesPage() {
                 <Cloud className="w-4 h-4 text-indigo-500" aria-hidden="true" />
                 {t('favorites.savedSearches.sectionTitle')}
               </h2>
-              <p className="text-[12px] text-gray-400 mt-0.5">
-                {t('favorites.savedSearches.sectionHint')}
+              {savedSearches.length > 0 && (
+                <p className="text-[12px] text-gray-400 mt-0.5">
+                  {t('favorites.savedSearches.sectionHint')}
+                </p>
+              )}
+            </div>
+            {savedSearches.length > 0 && (
+              <span className="text-[11px] text-gray-400 tabular-nums">
+                {t('favorites.savedSearches.itemCount', { count: savedSearches.length })}
+              </span>
+            )}
+          </div>
+          {savedSearches.length === 0 ? (
+            <div className="text-center py-6 px-4 rounded-xl bg-gray-50/80 border border-dashed border-gray-200">
+              <p className="text-[13px] text-gray-500">
+                {t('favorites.savedSearches.emptyHint')}
               </p>
             </div>
-            <span className="text-[11px] text-gray-400 tabular-nums">
-              {t('favorites.savedSearches.itemCount', { count: savedSearches.length })}
-            </span>
-          </div>
+          ) : (
           <ul className="space-y-2">
             {savedSearches.map((search) => {
               const summary = summarizeSavedSearchFilters(search, t);
@@ -431,6 +442,7 @@ export default function FavoritesPage() {
               );
             })}
           </ul>
+          )}
         </section>
       )}
 
