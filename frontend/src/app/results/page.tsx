@@ -217,8 +217,14 @@ function ResultsContent() {
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [interactions, setInteractions] = useState<Map<string, InteractionType>>(new Map());
   useEffect(() => {
-    getFavorites().then(setFavs).catch(() => {});
-    getInteractions().then(setInteractions).catch(() => {});
+    let cancelled = false;
+    getFavorites()
+      .then((data) => { if (!cancelled) setFavs(data); })
+      .catch(() => {});
+    getInteractions()
+      .then((data) => { if (!cancelled) setInteractions(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   // Read ?highlight=a,b,c once at mount. The URL writer below strips this

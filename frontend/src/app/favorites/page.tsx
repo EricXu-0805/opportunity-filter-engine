@@ -181,21 +181,36 @@ export default function FavoritesPage() {
   });
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
         const favSet = await getFavorites();
+        if (cancelled) return;
         const ids = Array.from(favSet);
-        if (ids.length === 0) { setLoading(false); return; }
+        if (ids.length === 0) {
+          setLoading(false);
+          return;
+        }
         const opps = await getOpportunitiesByIds(ids);
+        if (cancelled) return;
         setServerOpportunities(opps as unknown as Opp[]);
       } catch {}
-      finally { setLoading(false); }
+      finally {
+        if (!cancelled) setLoading(false);
+      }
     }
     load();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    listSavedSearches().then(setSavedSearches).catch(() => {});
+    let cancelled = false;
+    listSavedSearches()
+      .then((data) => {
+        if (!cancelled) setSavedSearches(data);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const handleRemoveSavedSearch = useCallback(async (search: SavedSearch) => {
