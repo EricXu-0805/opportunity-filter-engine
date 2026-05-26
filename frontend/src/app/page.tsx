@@ -21,6 +21,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useT } from '@/i18n/client';
 import Card from '@/components/Card';
+import FeaturedFellowships from '@/components/FeaturedFellowships';
 import SkillTags from '@/components/SkillTags';
 
 const ResumeUpload = dynamic(() => import('@/components/ResumeUpload'), {
@@ -716,6 +717,8 @@ function HomePageInner() {
           )}
         </div>
       )}
+
+      <FeaturedFellowships />
     </div>
   );
 }
