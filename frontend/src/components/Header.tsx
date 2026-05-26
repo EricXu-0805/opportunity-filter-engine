@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, Sparkles, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -19,6 +19,7 @@ export default function Header() {
   const pathname = usePathname();
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -27,8 +28,24 @@ export default function Header() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
+    /* Click-outside close (R47): a mousedown anywhere outside the <header>
+       element collapses the mobile panel. mousedown (not click) fires
+       before any nested link click handler, so the close happens even if
+       the user taps a non-nav element on the page below. Listener only
+       lives while the panel is open — the cleanup removes it on close,
+       so no stale handlers leak. */
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (target && headerRef.current && !headerRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onMouseDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onMouseDown);
+    };
   }, [open]);
 
   const isActive = (href: string) =>
@@ -37,7 +54,10 @@ export default function Header() {
       : pathname.startsWith(href);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl backdrop-saturate-150 border-b border-black/[0.06]">
+    <header
+      ref={headerRef}
+      className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl backdrop-saturate-150 border-b border-black/[0.06]"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-12">
           <Link href="/" className="flex items-center gap-2 group shrink-0" onClick={close}>
