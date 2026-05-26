@@ -133,13 +133,23 @@ export interface MatchesResponse {
  * generator ultimately produced the email: ``"ai"`` when an LLM provider
  * was configured AND returned a usable draft, ``"template"`` otherwise
  * (either no provider configured or the LLM call failed and we fell back).
+ *
+ * `lab_type` is the detected wet/dry/humanities classification used by
+ * the backend to pick a tone-appropriate system prompt or template ask.
+ * Mirrors `src/recommender/cold_email.py:_detect_lab_type`. The frontend
+ * surfaces this as a badge in `ColdEmailModal` and uses it to look up
+ * the right `EmailTipsPanel` content (Skills to Highlight / Common
+ * Mistakes).
  */
+export type LabType = 'wet' | 'dry' | 'humanities';
+
 export interface ColdEmailResponse {
   subject: string;
   body: string;
   recipient_email: string;
   mailto_link: string;
   method: 'template' | 'ai';
+  lab_type?: LabType | null;
 }
 
 export type ColdEmailEngine = 'template' | 'ai';
@@ -151,10 +161,12 @@ export interface EmailVariant {
   body: string;
   recipient_email: string;
   mailto_link: string;
+  lab_type?: LabType | null;
 }
 
 export interface EmailVariantsResponse {
   variants: EmailVariant[];
+  lab_type?: LabType | null;
 }
 
 // ── Resume ───────────────────────────────────────────────────────────

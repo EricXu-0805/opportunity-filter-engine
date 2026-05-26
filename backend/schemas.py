@@ -148,6 +148,7 @@ class ColdEmailResponse(BaseModel):
     recipient_email: str
     mailto_link: str
     method: str = "template"
+    lab_type: Optional[str] = None
 
 
 class GapAnalysisResponse(BaseModel):
