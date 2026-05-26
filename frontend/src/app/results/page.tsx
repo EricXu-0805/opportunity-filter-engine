@@ -27,6 +27,7 @@ import StorageStatusBanner from '@/components/StorageStatusBanner';
 import EmailMeButton from '@/components/EmailMeButton';
 import { KeyboardHelpDialog } from '@/components/KeyboardHelpDialog';
 import { useDebounce } from '@/lib/use-debounce';
+import { useLoadingNarrative } from '@/lib/use-loading-narrative';
 import { downloadCSV } from '@/lib/csv-export';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
@@ -169,6 +170,7 @@ function ResultsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSlowHint, setShowSlowHint] = useState(false);
+  const [totalOpportunities, setTotalOpportunities] = useState(0);
 
   const [activeTab, setActiveTab] = useState<Tab>(
     (searchParams.get('tab') as Tab) || 'all',
@@ -340,6 +342,7 @@ function ResultsContent() {
           && (cached.semantic ?? false) === semanticRerank
         ) {
           setData(cached.data);
+          setTotalOpportunities(cached.data.total);
           setLoading(false);
           return;
         }
@@ -358,6 +361,7 @@ function ResultsContent() {
         const result = await getMatches(profile!, { semantic: semanticRerank });
         if (!cancelled) {
           setData(result);
+          setTotalOpportunities(result.total);
           try {
             sessionStorage.setItem(
               'ofe_match_results',
@@ -509,6 +513,13 @@ function ResultsContent() {
     } as Record<Tab, number>;
   }, [data, favs]);
 
+  const loadingPhase = useLoadingNarrative({
+    loading,
+    semanticRerank,
+    opportunityCount: totalOpportunities,
+    t,
+  });
+
   const openEmailModal = useCallback(
     (opportunityId: string) => {
       const match = data?.results.find((m) => m.opportunity.id === opportunityId);
@@ -648,11 +659,13 @@ function ResultsContent() {
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
             {t('results.title')}
           </h1>
-          <p className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-400">
+          <p
+            className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-400 transition-opacity duration-200"
+            aria-busy={loading}
+            aria-live="polite"
+          >
             {loading
-              ? semanticRerank
-                ? t('results.analyzingAi')
-                : t('results.analyzing')
+              ? (loadingPhase.message || (semanticRerank ? t('results.analyzingAi') : t('results.analyzing')))
               : data
                 ? (
                   <>
@@ -1019,9 +1032,19 @@ function ResultsContent() {
       )}
 
       {loading && (
-        <div className="fixed top-12 left-0 right-0 z-40">
+        <div
+          className="fixed top-12 left-0 right-0 z-40"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={loadingPhase.percent}
+          aria-label={loadingPhase.message || t('common.loading')}
+        >
           <div className="h-[2px] bg-black/[0.03]">
-            <div className="h-full bg-blue-500 rounded-r-full animate-pulse" style={{ width: '60%' }} />
+            <div
+              className="h-full bg-blue-500 rounded-r-full transition-[width] duration-700 ease-out"
+              style={{ width: `${loadingPhase.percent}%` }}
+            />
           </div>
         </div>
       )}
