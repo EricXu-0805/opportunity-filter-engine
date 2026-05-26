@@ -13,8 +13,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { generateColdEmail, getEmailVariants, refineEmail } from '@/lib/api';
-import type { ProfileData, EmailVariant } from '@/lib/types';
+import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
 import { useT } from '@/i18n/client';
+import LabTypeBadge from './LabTypeBadge';
+import EmailTipsPanel from './EmailTipsPanel';
 
 const AI_VARIANT_ID = 'ai';
 
@@ -111,6 +113,7 @@ export default function ColdEmailModal({
   const [aiVariant, setAiVariant] = useState<EmailVariant | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [activeVariant, setActiveVariant] = useState(0);
+  const [labType, setLabType] = useState<LabType | null>(null);
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -131,6 +134,10 @@ export default function ColdEmailModal({
     try {
       const data = await getEmailVariants(profile, opportunityId);
       setVariants(data.variants);
+      const inferredLabType =
+        data.lab_type
+        ?? (data.variants.find((v) => v.lab_type)?.lab_type ?? null);
+      setLabType(inferredLabType);
       if (data.variants.length > 0) {
         const first = data.variants[0];
         setSubject(first.subject);
@@ -161,6 +168,7 @@ export default function ColdEmailModal({
       setVariants([]);
       setAiVariant(null);
       setAiLoading(false);
+      setLabType(null);
       setSubject('');
       setBody('');
       setCopied(false);
@@ -262,12 +270,14 @@ export default function ColdEmailModal({
         body: resp.body,
         recipient_email: resp.recipient_email,
         mailto_link: resp.mailto_link,
+        lab_type: resp.lab_type ?? labType ?? null,
       };
       setAiVariant(v);
       setActiveVariant(aiIdx);
       setSubject(v.subject);
       setBody(v.body);
       setRecipient(v.recipient_email);
+      if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
       setChatMessages((prev) => [
         ...prev,
         {
@@ -359,8 +369,11 @@ export default function ColdEmailModal({
             <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center" aria-hidden="true">
               <Mail className="w-5 h-5 text-blue-600" />
             </div>
-            <div>
-              <h2 id="email-modal-title" className="text-lg font-bold text-gray-900">{t('coldEmail.title')}</h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 id="email-modal-title" className="text-lg font-bold text-gray-900">{t('coldEmail.title')}</h2>
+                <LabTypeBadge labType={labType} />
+              </div>
               <p className="text-sm text-gray-500 truncate max-w-md">{opportunityTitle}</p>
             </div>
           </div>
@@ -472,6 +485,12 @@ export default function ColdEmailModal({
                   <Sparkles className="w-4 h-4 text-indigo-500" />
                   <span className="text-sm font-semibold text-gray-700">{t('coldEmail.refine')}</span>
                 </div>
+
+                {labType && (
+                  <div className="px-4 pt-3 shrink-0">
+                    <EmailTipsPanel labType={labType} />
+                  </div>
+                )}
 
                 {/* Chat messages */}
                 <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
