@@ -1,0 +1,136 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+
+vi.mock('@/i18n/client', () => ({
+  useT: () => ({
+    t: (key: string) => key,
+    locale: 'en' as const,
+    setLocale: vi.fn(),
+  }),
+}));
+
+const pathnameRef = { current: '/' };
+vi.mock('next/navigation', () => ({
+  usePathname: () => pathnameRef.current,
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
+
+import Header from './Header';
+
+beforeEach(() => {
+  pathnameRef.current = '/';
+});
+
+describe('Header', () => {
+  it('renders all nav labels in both desktop and mobile panels plus a language switcher', () => {
+    render(<Header />);
+    for (const key of ['nav.findMatches', 'nav.favorites', 'nav.dashboard', 'nav.import', 'nav.about']) {
+      expect(screen.getAllByText(key).length).toBeGreaterThanOrEqual(2);
+    }
+    expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('exposes a hamburger toggle that is initially collapsed', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAttribute('aria-label', 'nav.menuOpen');
+    expect(toggle).toHaveAttribute('aria-controls', 'mobile-nav-panel');
+  });
+
+  it('toggles the panel open on click and switches the aria-label', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('aria-label', 'nav.menuClose');
+    const panel = document.getElementById('mobile-nav-panel');
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveAttribute('aria-hidden', 'false');
+  });
+
+  it('renders all 5 nav items inside the panel when open', () => {
+    render(<Header />);
+    fireEvent.click(screen.getByTestId('mobile-nav-toggle'));
+    const matches = screen.getAllByText('nav.findMatches');
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('nav.favorites').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('nav.about').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('closes the panel when ESC is pressed', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('does not close on unrelated keys', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    fireEvent.click(toggle);
+    fireEvent.keyDown(window, { key: 'a' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('hides panel items from focus traversal when collapsed', () => {
+    render(<Header />);
+    const allLinks = screen.getAllByRole('link');
+    const panel = document.getElementById('mobile-nav-panel');
+    const panelLinks = Array.from(panel?.querySelectorAll('a') ?? []);
+    for (const link of panelLinks) {
+      expect(link.getAttribute('tabindex')).toBe('-1');
+    }
+    expect(allLinks.length).toBeGreaterThan(0);
+  });
+
+  it('reveals panel items to focus traversal when expanded', () => {
+    render(<Header />);
+    fireEvent.click(screen.getByTestId('mobile-nav-toggle'));
+    const panel = document.getElementById('mobile-nav-panel');
+    const panelLinks = Array.from(panel?.querySelectorAll('a') ?? []);
+    for (const link of panelLinks) {
+      expect(link.getAttribute('tabindex')).toBe('0');
+    }
+  });
+
+  it('marks the desktop nav with aria-label', () => {
+    render(<Header />);
+    expect(screen.getByLabelText('nav.primary')).toBeInTheDocument();
+  });
+
+  it('marks an item active when its href matches the current pathname', () => {
+    pathnameRef.current = '/favorites';
+    render(<Header />);
+    const favoritesLinks = screen
+      .getAllByRole('link')
+      .filter((el) => el.getAttribute('href') === '/favorites');
+    expect(favoritesLinks.length).toBeGreaterThan(0);
+    expect(favoritesLinks.every((el) => el.className.includes('bg-black/[0.06]'))).toBe(true);
+  });
+
+  it('treats /results as activating the "Find Matches" tab', () => {
+    pathnameRef.current = '/results';
+    render(<Header />);
+    const homeLinks = screen
+      .getAllByRole('link')
+      .filter((el) => el.getAttribute('href') === '/');
+    const navHomeLinks = homeLinks.filter((el) => el.textContent === 'nav.findMatches');
+    expect(navHomeLinks.length).toBeGreaterThan(0);
+    expect(navHomeLinks.every((el) => el.className.includes('bg-black/[0.06]'))).toBe(true);
+  });
+
+  it('closes the panel when a nav link is clicked', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const panel = document.getElementById('mobile-nav-panel');
+    const firstLink = panel?.querySelector('a');
+    expect(firstLink).not.toBeNull();
+    if (firstLink) fireEvent.click(firstLink);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+});

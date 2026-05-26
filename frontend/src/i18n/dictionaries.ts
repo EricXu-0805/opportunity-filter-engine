@@ -222,6 +222,10 @@ export const en = {
     dashShort: 'Stats',
     aboutShort: 'About',
     importShort: 'Import',
+    primary: 'Primary',
+    mobile: 'Mobile',
+    menuOpen: 'Open menu',
+    menuClose: 'Close menu',
   },
   home: {
     hero: {
@@ -1185,6 +1189,10 @@ export const zh = {
     dashShort: '统计',
     aboutShort: '关于',
     importShort: '导入',
+    primary: '主导航',
+    mobile: '移动导航',
+    menuOpen: '打开菜单',
+    menuClose: '关闭菜单',
   },
   home: {
     hero: {
