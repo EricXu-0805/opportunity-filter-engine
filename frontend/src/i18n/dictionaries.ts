@@ -253,6 +253,14 @@ export const en = {
       checkResume: 'Resume uploaded',
       checkType: 'Opportunity type',
     },
+    featured: {
+      title: 'Featured fellowships',
+      subtitle: 'Summer programs, REUs, and named fellowships you can apply to right now.',
+      cta: 'Browse all',
+      deadlineLabel: 'Deadline',
+      paid: 'Paid',
+      intl: 'Intl-friendly',
+    },
     form: {
       institutionLabel: 'Institution',
       institutionLocked: 'UIUC — University of Illinois Urbana-Champaign',
@@ -1268,6 +1276,14 @@ export const zh = {
       checkInterests: '研究兴趣',
       checkResume: '已上传简历',
       checkType: '机会类型',
+    },
+    featured: {
+      title: '推荐项目',
+      subtitle: '现在就可以申请的暑期项目、REU 和奖学金。',
+      cta: '查看全部',
+      deadlineLabel: '截止',
+      paid: '有薪酬',
+      intl: '国际友好',
     },
     form: {
       institutionLabel: '学校',
