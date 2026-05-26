@@ -78,4 +78,50 @@ describe('FellowshipCard', () => {
     render(<FellowshipCard opp={makeOpp({ paid: 'no' })} />);
     expect(screen.queryByText('Paid')).not.toBeInTheDocument();
   });
+
+  it('renders a "Find matches like this" link with the prefill query', () => {
+    render(<FellowshipCard opp={makeOpp({
+      opportunity_type: 'summer_program',
+      eligibility: {
+        international_friendly: 'yes',
+        preferred_year: ['Junior'],
+        majors: ['CS'],
+        skills_required: [],
+        citizenship_required: false,
+      },
+    })} />);
+    const matchLink = screen.getByTestId('match-like-this');
+    const href = matchLink.getAttribute('href') ?? '';
+    expect(href).toContain('prefill_year=Junior');
+    expect(href).toContain('prefill_seeking=summer_program');
+  });
+
+  it('falls back to "/" with no prefill params when preferred_year is invalid', () => {
+    render(<FellowshipCard opp={makeOpp({
+      opportunity_type: '',
+      eligibility: {
+        international_friendly: 'yes',
+        preferred_year: ['Any'],
+        majors: [],
+        skills_required: [],
+        citizenship_required: false,
+      },
+    })} />);
+    const matchLink = screen.getByTestId('match-like-this');
+    expect(matchLink.getAttribute('href')).toBe('/');
+  });
+
+  it('uses the first valid year when preferred_year mixes valid + invalid', () => {
+    render(<FellowshipCard opp={makeOpp({
+      eligibility: {
+        international_friendly: 'no',
+        preferred_year: ['Graduate', 'Senior', 'Junior'],
+        majors: [],
+        skills_required: [],
+        citizenship_required: false,
+      },
+    })} />);
+    const matchLink = screen.getByTestId('match-like-this');
+    expect(matchLink.getAttribute('href')).toContain('prefill_year=Senior');
+  });
 });

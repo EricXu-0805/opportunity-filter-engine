@@ -8,6 +8,34 @@ import { saveProfile, loadProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, type SaveStatus, type TFunc } from './types';
 
+const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior']);
+const VALID_SEEKING = new Set(['research', 'summer_program', 'internship', 'fellowship']);
+
+function applyPrefillFromQuery(
+  params: URLSearchParams | ReadonlyURLSearchParams,
+  setProfile: React.Dispatch<React.SetStateAction<ProfileData>>,
+): void {
+  const grade = params.get('prefill_year');
+  const seeking = params.get('prefill_seeking');
+  if (!grade && !seeking) return;
+
+  setProfile((prev) => {
+    const next = { ...prev };
+    if (grade && VALID_GRADES.has(grade) && !prev.grade) {
+      next.grade = grade;
+    }
+    if (seeking && VALID_SEEKING.has(seeking)) {
+      const existing = prev.seeking_types ?? [];
+      if (!existing.includes(seeking)) {
+        next.seeking_types = [...existing, seeking];
+      }
+    }
+    return next;
+  });
+}
+
+type ReadonlyURLSearchParams = ReturnType<typeof useSearchParams>;
+
 export interface UseProfileFormResult {
   profile: ProfileData;
   setProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
@@ -78,8 +106,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         setProfile((prev) => ({ ...prev, ...raw } as ProfileData));
         if (typeof raw.search_weight === 'number') setSearchWeight(raw.search_weight);
       }
+      applyPrefillFromQuery(searchParams, setProfile);
       setTimeout(() => { isInitialLoad.current = false; }, 500);
     }).catch(() => {
+      applyPrefillFromQuery(searchParams, setProfile);
       isInitialLoad.current = false;
     });
   }, [searchParams, t]);

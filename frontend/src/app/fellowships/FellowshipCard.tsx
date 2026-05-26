@@ -1,12 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { ExternalLink, Calendar, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, ExternalLink, Calendar, MapPin, Sparkles } from 'lucide-react';
 import type { Opportunity } from '@/lib/types';
 import { useT } from '@/i18n/client';
 
 interface FellowshipCardProps {
   opp: Opportunity;
+}
+
+const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior']);
+
+function buildPrefillHref(opp: Opportunity): string {
+  const params = new URLSearchParams();
+  const year = opp.eligibility?.preferred_year?.find((y) => VALID_GRADES.has(y));
+  if (year) params.set('prefill_year', year);
+  if (opp.opportunity_type) params.set('prefill_seeking', opp.opportunity_type);
+  const qs = params.toString();
+  return qs ? `/?${qs}` : '/';
 }
 
 export default function FellowshipCard({ opp }: FellowshipCardProps) {
@@ -16,6 +27,7 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
   const deadline = opp.deadline ?? null;
   const linkHref = opp.url || opp.source_url || `/opportunities/${opp.id}`;
   const external = (opp.url || opp.source_url || '').startsWith('http');
+  const prefillHref = buildPrefillHref(opp);
 
   return (
     <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:border-blue-300 hover:shadow-md transition-all flex flex-col">
@@ -78,6 +90,15 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
           </span>
         )}
       </div>
+
+      <Link
+        href={prefillHref}
+        data-testid="match-like-this"
+        className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 hover:text-blue-700 transition-colors self-start"
+      >
+        {t('fellowships.matchLikeThis')}
+        <ArrowRight className="w-3 h-3" aria-hidden="true" />
+      </Link>
     </article>
   );
 }
