@@ -1,0 +1,85 @@
+'use client';
+
+import { useEffect } from 'react';
+import type { ReadonlyURLSearchParams } from 'next/navigation';
+import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
+
+// Pure reader for the URL → initial-state hydration that runs once on mount
+// of /results. Keys MUST stay in sync with the writer below AND with
+// lib/saved-searches.ts:savedSearchToUrl — that helper builds the URL the
+// /favorites "Apply saved search" link points back to.
+export function readInitialFiltersFromUrl(
+  searchParams: URLSearchParams | ReadonlyURLSearchParams,
+): {
+  activeTab: Tab;
+  searchQuery: string;
+  filters: Filters;
+  sortBy: SortKey;
+} {
+  return {
+    activeTab: (searchParams.get('tab') as Tab) || 'all',
+    searchQuery: searchParams.get('q') || '',
+    filters: {
+      paid: (searchParams.get('paid') || '') as Filters['paid'],
+      intl: (searchParams.get('intl') || '') as Filters['intl'],
+      source: (searchParams.get('source') || '') as Filters['source'],
+      onCampus: (searchParams.get('loc') || '') as Filters['onCampus'],
+      deadline: (searchParams.get('dl') || '') as Filters['deadline'],
+      minScore: Number(searchParams.get('min') || 0),
+    },
+    sortBy: (searchParams.get('sort') as SortKey) || 'score',
+  };
+}
+
+// AI/semantic-rerank toggle resolution order:
+//   1. ?ai=1 / ?ai=0 in URL (explicit, wins for shareable URLs)
+//   2. localStorage 'ofe_semantic_rerank' = '1' / '0' (user preference)
+//   3. Default to true (semantic on)
+// Kept separate from readInitialFiltersFromUrl because it consults
+// localStorage too — the filters reader is pure URL.
+export function readInitialSemanticRerank(
+  searchParams: URLSearchParams | ReadonlyURLSearchParams,
+): boolean {
+  const p = searchParams.get('ai');
+  if (p === '1') return true;
+  if (p === '0') return false;
+  if (typeof window === 'undefined') return true;
+  const stored = localStorage.getItem('ofe_semantic_rerank');
+  if (stored === '0') return false;
+  if (stored === '1') return true;
+  return true;
+}
+
+// URL writer. Uses history.replaceState (not router.replace) to avoid
+// triggering a Next.js navigation on every filter tick — the URL bar
+// stays in sync but no remount fires. Excludes ?highlight= and
+// ?savedSearchId= intentionally: those are mount-once params consumed by
+// useHighlightSet / useSavedSearchAck and self-clear on the first edit
+// (cross-file contract documented in lib/saved-searches.ts:189).
+export function useResultsUrlSync(state: {
+  activeTab: Tab;
+  debouncedQuery: string;
+  filters: Filters;
+  sortBy: SortKey;
+  semanticRerank: boolean;
+}): void {
+  const { activeTab, debouncedQuery, filters, sortBy, semanticRerank } = state;
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activeTab !== 'all') params.set('tab', activeTab);
+    if (debouncedQuery) params.set('q', debouncedQuery);
+    if (filters.paid) params.set('paid', filters.paid);
+    if (filters.intl) params.set('intl', filters.intl);
+    if (filters.source) params.set('source', filters.source);
+    if (filters.onCampus) params.set('loc', filters.onCampus);
+    if (filters.deadline) params.set('dl', filters.deadline);
+    if (filters.minScore > 0) params.set('min', String(filters.minScore));
+    if (sortBy !== 'score') params.set('sort', sortBy);
+    if (!semanticRerank) params.set('ai', '0');
+    const qs = params.toString();
+    const newUrl = qs ? `/results?${qs}` : '/results';
+    window.history.replaceState(null, '', newUrl);
+  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank]);
+}
+
+export { DEFAULT_FILTERS };

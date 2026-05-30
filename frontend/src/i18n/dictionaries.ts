@@ -217,15 +217,19 @@ export const en = {
     dashboard: 'Dashboard',
     about: 'About',
     import: 'Import',
-    resources: 'Resources',
     fellowships: 'Fellowships',
+    resources: 'Resources',
     findShort: 'Match',
     favShort: 'Saved',
     dashShort: 'Stats',
     aboutShort: 'About',
     importShort: 'Import',
-    resourcesShort: 'Tips',
+    primary: 'Primary',
+    mobile: 'Mobile',
+    menuOpen: 'Open menu',
+    menuClose: 'Close menu',
     fellowshipsShort: 'Funding',
+    resourcesShort: 'Tips',
   },
   home: {
     hero: {
@@ -254,6 +258,14 @@ export const en = {
       checkInterests: 'Research interests',
       checkResume: 'Resume uploaded',
       checkType: 'Opportunity type',
+    },
+    featured: {
+      title: 'Featured fellowships',
+      subtitle: 'Summer programs, REUs, and named fellowships you can apply to right now.',
+      cta: 'Browse all',
+      deadlineLabel: 'Deadline',
+      paid: 'Paid',
+      intl: 'Intl-friendly',
     },
     form: {
       institutionLabel: 'Institution',
@@ -364,6 +376,13 @@ export const en = {
     title: 'Your Matches',
     analyzing: 'Analyzing your profile...',
     analyzingAi: 'Analyzing with AI semantic ranking...',
+    loadingPhases: {
+      readingProfile: 'Reading your profile...',
+      scanning: 'Scanning {count} opportunities...',
+      scoring: 'Computing match scores...',
+      reranking: 'AI re-ranking top candidates...',
+      polishing: 'Almost there — polishing results...',
+    },
     slowHint: 'Still working — our free-tier backend takes ~30s to wake up on first use.',
     rankedFor: '{count} opportunities ranked for you',
     aiBadge: 'AI',
@@ -812,6 +831,55 @@ export const en = {
       courseworkNone: 'No coursework found in your profile. Add courses on the main page first.',
       courseworkAdded: 'Added coursework: {list}',
       noChanges: 'No changes applied.',
+    },
+    labType: {
+      wet: 'Wet Lab',
+      dry: 'Dry Lab',
+      humanities: 'Humanities',
+      tooltip: 'Detected lab type — the draft is tuned for this style of research.',
+    },
+    tips: {
+      skillsHeading: 'Skills to highlight',
+      mistakesHeading: 'Avoid these mistakes',
+      wet: {
+        skills: {
+          skill1: 'Lab techniques (PCR, cell culture, microscopy, sterile technique)',
+          skill2: 'Completed lab courses by name (e.g. MCBT 310, CHEM 233)',
+          skill3: 'Realistic time commitment (10-15+ hrs/week is typical)',
+          skill4: 'Willingness to start under a graduate mentor',
+        },
+        mistakes: {
+          mistake1: "Don't overstate technique experience you've only read about.",
+          mistake2: "Don't lead with a GitHub link — bench reliability matters more.",
+          mistake3: "Don't underestimate the hours commitment.",
+        },
+      },
+      dry: {
+        skills: {
+          skill1: "Programming languages that match the lab's stack",
+          skill2: 'Recent project with a real GitHub link',
+          skill3: 'Specific technical interest (ML, CV, NLP, systems)',
+          skill4: 'Offer to complete a small technical assessment',
+        },
+        mistakes: {
+          mistake1: "Don't list skills without showing evidence (link a project).",
+          mistake2: "Don't say 'I'm interested in AI' — be specific about which subfield.",
+          mistake3: "Don't ignore their tech stack (TF vs PyTorch, JAX, etc.).",
+        },
+      },
+      humanities: {
+        skills: {
+          skill1: 'Research methods (qualitative coding, surveys, archival)',
+          skill2: 'Writing strength + literature review experience',
+          skill3: 'Citation managers (Zotero, EndNote)',
+          skill4: 'IRB / human-subjects training if applicable',
+        },
+        mistakes: {
+          mistake1: "Don't write a generic 'I'm interested' email — humanities PIs spot it.",
+          mistake2: "Don't focus only on grad-school prep — emphasize what you can contribute.",
+          mistake3: "Don't undervalue 'soft' skills like writing and detail orientation.",
+        },
+      },
     },
   },
   resume: {
@@ -1334,15 +1402,19 @@ export const zh = {
     dashboard: '仪表盘',
     about: '关于',
     import: '导入',
-    resources: '资源',
     fellowships: '奖学金',
+    resources: '资源',
     findShort: '匹配',
     favShort: '收藏',
     dashShort: '统计',
     aboutShort: '关于',
     importShort: '导入',
-    resourcesShort: '资源',
+    primary: '主导航',
+    mobile: '移动导航',
+    menuOpen: '打开菜单',
+    menuClose: '关闭菜单',
     fellowshipsShort: '资助',
+    resourcesShort: '资源',
   },
   home: {
     hero: {
@@ -1371,6 +1443,14 @@ export const zh = {
       checkInterests: '研究兴趣',
       checkResume: '已上传简历',
       checkType: '机会类型',
+    },
+    featured: {
+      title: '推荐项目',
+      subtitle: '现在就可以申请的暑期项目、REU 和奖学金。',
+      cta: '查看全部',
+      deadlineLabel: '截止',
+      paid: '有薪酬',
+      intl: '国际友好',
     },
     form: {
       institutionLabel: '学校',
@@ -1481,6 +1561,13 @@ export const zh = {
     title: '你的匹配',
     analyzing: '正在分析你的档案...',
     analyzingAi: '正在进行 AI 语义排序...',
+    loadingPhases: {
+      readingProfile: '正在读取你的档案...',
+      scanning: '正在扫描 {count} 个机会...',
+      scoring: '正在计算匹配分数...',
+      reranking: 'AI 正在重新排序候选项...',
+      polishing: '快好了 —— 正在打磨结果...',
+    },
     slowHint: '仍在处理中 —— 免费后端首次唤醒大约需要 30 秒。',
     rankedFor: '为你排名了 {count} 个机会',
     aiBadge: 'AI',
@@ -1929,6 +2016,55 @@ export const zh = {
       courseworkNone: '你的档案中未找到课程。请先在主页面添加课程。',
       courseworkAdded: '已添加课程：{list}',
       noChanges: '未应用任何修改。',
+    },
+    labType: {
+      wet: '湿实验室',
+      dry: '干实验室',
+      humanities: '人文社科',
+      tooltip: '识别到的实验室类型 —— 草稿已针对该类研究风格调整。',
+    },
+    tips: {
+      skillsHeading: '建议突出的能力',
+      mistakesHeading: '避免的常见错误',
+      wet: {
+        skills: {
+          skill1: '湿实验技术（PCR、细胞培养、显微镜、无菌操作）',
+          skill2: '具体的实验课名称（如 MCBT 310、CHEM 233）',
+          skill3: '实际可投入时间（通常需要 10-15+ 小时/周）',
+          skill4: '愿意在研究生导师下起步',
+        },
+        mistakes: {
+          mistake1: '不要夸大你只读过没做过的实验技术。',
+          mistake2: '不要以 GitHub 链接开场 —— 台面操作可靠性更重要。',
+          mistake3: '不要低估时间投入。',
+        },
+      },
+      dry: {
+        skills: {
+          skill1: '与实验室技术栈匹配的编程语言',
+          skill2: '近期项目并附真实 GitHub 链接',
+          skill3: '具体的技术方向（ML、CV、NLP、系统）',
+          skill4: '主动表示愿意完成小型技术评估',
+        },
+        mistakes: {
+          mistake1: '不要光列技能不给证据 —— 附一个项目链接。',
+          mistake2: '不要说"我对 AI 感兴趣" —— 明确具体子领域。',
+          mistake3: '不要忽略他们的技术栈（TF vs PyTorch、JAX 等）。',
+        },
+      },
+      humanities: {
+        skills: {
+          skill1: '研究方法（定性编码、调查、档案研究）',
+          skill2: '写作能力 + 文献综述经验',
+          skill3: '文献管理工具（Zotero、EndNote）',
+          skill4: '人类受试者研究 / IRB 培训（如适用）',
+        },
+        mistakes: {
+          mistake1: '不要写泛泛的"我感兴趣"邮件 —— 人文教授一眼能看出。',
+          mistake2: '不要只谈研究生院规划 —— 强调你能贡献什么。',
+          mistake3: '不要轻视写作和细致度等"软"技能。',
+        },
+      },
     },
   },
   resume: {

@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Menu, Sparkles, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import LanguageSwitcher from './LanguageSwitcher';
 
@@ -19,12 +20,29 @@ const NAV_ITEMS = [
 export default function Header() {
   const pathname = usePathname();
   const { t } = useT();
+  const [open, setOpen] = useState(false);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  const isActive = (href: string) =>
+    href === '/'
+      ? pathname === '/' || pathname === '/results'
+      : pathname.startsWith(href);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl backdrop-saturate-150 border-b border-black/[0.06]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-12">
-          <Link href="/" className="flex items-center gap-2 group shrink-0">
+          <Link href="/" className="flex items-center gap-2 group shrink-0" onClick={close}>
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shrink-0">
               <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} aria-hidden="true" />
             </div>
@@ -33,29 +51,64 @@ export default function Header() {
             </span>
           </Link>
 
-          <nav className="flex items-center gap-0.5 min-w-0">
-            {NAV_ITEMS.map(({ href, labelKey, shortKey }) => {
-              const isActive =
-                href === '/'
-                  ? pathname === '/' || pathname === '/results'
-                  : pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`px-1.5 sm:px-3.5 py-1.5 rounded-full text-[12px] sm:text-[13px] font-medium shrink-0 transition-all duration-300
-                    ${
-                      isActive
-                        ? 'bg-black/[0.06] text-gray-900'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.04]'
-                    }`}
-                >
-                  <span className="hidden sm:inline">{t(labelKey)}</span>
-                  <span className="sm:hidden">{t(shortKey)}</span>
-                </Link>
-              );
-            })}
+          <nav className="hidden sm:flex items-center gap-0.5 min-w-0" aria-label={t('nav.primary')}>
+            {NAV_ITEMS.map(({ href, labelKey }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium shrink-0 transition-all duration-300
+                  ${
+                    isActive(href)
+                      ? 'bg-black/[0.06] text-gray-900'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.04]'
+                  }`}
+              >
+                {t(labelKey)}
+              </Link>
+            ))}
             <LanguageSwitcher />
+          </nav>
+
+          <div className="flex sm:hidden items-center gap-1">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-label={open ? t('nav.menuClose') : t('nav.menuOpen')}
+              aria-expanded={open}
+              aria-controls="mobile-nav-panel"
+              data-testid="mobile-nav-toggle"
+              className="inline-flex items-center justify-center w-9 h-7 rounded-full text-gray-600 hover:text-gray-900 hover:bg-black/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+            >
+              {open ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="mobile-nav-panel"
+          aria-hidden={!open}
+          className={`sm:hidden overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+            open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <nav className="flex flex-col pb-3 pt-1 gap-0.5" aria-label={t('nav.mobile')}>
+            {NAV_ITEMS.map(({ href, labelKey }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={close}
+                tabIndex={open ? 0 : -1}
+                className={`px-3.5 py-2 rounded-xl text-[14px] font-medium transition-colors
+                  ${
+                    isActive(href)
+                      ? 'bg-black/[0.06] text-gray-900'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-black/[0.04]'
+                  }`}
+              >
+                {t(labelKey)}
+              </Link>
+            ))}
           </nav>
         </div>
       </div>
