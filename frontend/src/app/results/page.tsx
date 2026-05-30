@@ -8,6 +8,7 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { KeyboardHelpDialog } from '@/components/KeyboardHelpDialog';
 import { useDebounce } from '@/lib/use-debounce';
+import { useLoadingNarrative } from '@/lib/use-loading-narrative';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { downloadCSV } from '@/lib/csv-export';
 import { matchesToCSV } from '@/lib/match-utils';
@@ -222,6 +223,13 @@ function ResultsContent() {
     } as Record<Tab, number>;
   }, [data, favs]);
 
+  const loadingPhase = useLoadingNarrative({
+    loading,
+    semanticRerank,
+    opportunityCount: data?.total ?? 0,
+    t,
+  });
+
   const activeFilterCount =
     (filters.paid ? 1 : 0) +
     (filters.intl ? 1 : 0) +
@@ -341,6 +349,7 @@ function ResultsContent() {
         onSemanticChange={toggleSemantic}
         onOpenHelp={openHelp}
         onExport={handleExport}
+        loadingMessage={loadingPhase.message}
         t={t}
       />
 
@@ -463,9 +472,19 @@ function ResultsContent() {
       )}
 
       {loading && (
-        <div className="fixed top-12 left-0 right-0 z-40">
+        <div
+          className="fixed top-12 left-0 right-0 z-40"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={loadingPhase.percent}
+          aria-label={loadingPhase.message || t('common.loading')}
+        >
           <div className="h-[2px] bg-black/[0.03]">
-            <div className="h-full bg-blue-500 rounded-r-full animate-pulse" style={{ width: '60%' }} />
+            <div
+              className="h-full bg-blue-500 rounded-r-full transition-[width] duration-700 ease-out"
+              style={{ width: `${loadingPhase.percent}%` }}
+            />
           </div>
         </div>
       )}

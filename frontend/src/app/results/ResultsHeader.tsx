@@ -19,6 +19,7 @@ export interface ResultsHeaderProps {
   onSemanticChange: (v: boolean) => void;
   onOpenHelp: () => void;
   onExport: () => void;
+  loadingMessage?: string;
   t: TFunc;
 }
 
@@ -34,6 +35,7 @@ export function ResultsHeader({
   onSemanticChange,
   onOpenHelp,
   onExport,
+  loadingMessage,
   t,
 }: ResultsHeaderProps) {
   return (
@@ -42,11 +44,13 @@ export function ResultsHeader({
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">
           {t('results.title')}
         </h1>
-        <p className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-400">
+        <p
+          className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-400 transition-opacity duration-200"
+          aria-busy={loading}
+          aria-live="polite"
+        >
           {loading
-            ? semanticRerank
-              ? t('results.analyzingAi')
-              : t('results.analyzing')
+            ? loadingMessage || (semanticRerank ? t('results.analyzingAi') : t('results.analyzing'))
             : data
               ? (
                 <>
