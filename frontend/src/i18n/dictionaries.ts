@@ -841,6 +841,7 @@ export const en = {
     tips: {
       skillsHeading: 'Skills to highlight',
       mistakesHeading: 'Avoid these mistakes',
+      readMore: 'Read the full guide',
       wet: {
         skills: {
           skill1: 'Lab techniques (PCR, cell culture, microscopy, sterile technique)',
@@ -2026,6 +2027,7 @@ export const zh = {
     tips: {
       skillsHeading: '建议突出的能力',
       mistakesHeading: '避免的常见错误',
+      readMore: '查看完整指南',
       wet: {
         skills: {
           skill1: '湿实验技术（PCR、细胞培养、显微镜、无菌操作）',

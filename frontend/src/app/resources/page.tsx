@@ -3,6 +3,7 @@ import { Mail, BookOpen } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
 import ContactTipsCard from './ContactTipsCard';
 import DatabaseLinkCard from './DatabaseLinkCard';
+import HighlightLabType from './HighlightLabType';
 import { DATABASES, LAB_TYPES } from './types';
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default async function ResourcesPage() {
   const t = await getServerT();
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+      <HighlightLabType />
       <header className="mb-12 sm:mb-16">
         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight leading-[1.1]">
           {t('resources.title')}

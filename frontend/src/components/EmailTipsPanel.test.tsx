@@ -45,4 +45,27 @@ describe('EmailTipsPanel', () => {
     const bullets = mistakesSection?.querySelectorAll('li');
     expect(bullets?.length).toBe(3);
   });
+
+  it('renders a Read-more link that deep-links to /resources for wet', () => {
+    render(<EmailTipsPanel labType="wet" />);
+    const link = screen.getByTestId('tips-read-more');
+    expect(link.getAttribute('href')).toBe('/resources?lab=wet#tips-card-wet');
+  });
+
+  it('renders a Read-more link that deep-links to /resources for dry', () => {
+    render(<EmailTipsPanel labType="dry" />);
+    const link = screen.getByTestId('tips-read-more');
+    expect(link.getAttribute('href')).toBe('/resources?lab=dry#tips-card-dry');
+  });
+
+  it('renders a Read-more link that deep-links to /resources for humanities', () => {
+    render(<EmailTipsPanel labType="humanities" />);
+    const link = screen.getByTestId('tips-read-more');
+    expect(link.getAttribute('href')).toBe('/resources?lab=humanities#tips-card-humanities');
+  });
+
+  it('does not render the read-more link when labType is null', () => {
+    render(<EmailTipsPanel labType={null} />);
+    expect(screen.queryByTestId('tips-read-more')).toBeNull();
+  });
 });

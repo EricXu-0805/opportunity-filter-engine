@@ -25,7 +25,8 @@ export default function ContactTipsCard({ labType }: ContactTipsCardProps) {
 
   return (
     <article
-      className={`rounded-2xl border border-gray-200 bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.04)] flex flex-col`}
+      id={`tips-card-${labType}`}
+      className={`rounded-2xl border border-gray-200 bg-white p-6 shadow-[0_1px_6px_rgba(0,0,0,0.04)] flex flex-col scroll-mt-24 transition-shadow duration-300`}
       aria-labelledby={`tips-${labType}-heading`}
     >
       <div className={`inline-flex items-center gap-2 self-start px-3 py-1 rounded-full ring-1 ring-inset ${meta.bgClass} ${meta.textClass} ${meta.ringClass} text-xs font-semibold mb-4`}>
