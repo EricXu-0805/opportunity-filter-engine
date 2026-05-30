@@ -56,3 +56,6 @@ out/
 next-env.d.ts
 .vercel
 .vapid-keys.local
+
+# Supabase CLI scratch (cli-latest version cache etc.)
+supabase/.temp/

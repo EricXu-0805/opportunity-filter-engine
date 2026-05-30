@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, Sparkles, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
-import AuthButton from './AuthButton';
+import AccountMenu from './AccountMenu';
 import LanguageSwitcher from './LanguageSwitcher';
 
 const NAV_ITEMS = [
@@ -87,12 +87,12 @@ export default function Header() {
                 {t(labelKey)}
               </Link>
             ))}
-            <AuthButton />
+            <AccountMenu />
             <LanguageSwitcher />
           </nav>
 
           <div className="flex sm:hidden items-center gap-1">
-            <AuthButton />
+            <AccountMenu />
             <LanguageSwitcher />
             <button
               type="button"
@@ -132,7 +132,7 @@ export default function Header() {
                 {t(labelKey)}
               </Link>
             ))}
-            <AuthButton variant="mobile" onNavigate={close} tabIndex={open ? 0 : -1} />
+            <AccountMenu variant="mobile" onActivate={close} tabIndex={open ? 0 : -1} />
           </nav>
         </div>
       </div>

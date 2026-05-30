@@ -120,6 +120,62 @@ export async function getDeviceId(): Promise<string | null> {
   return ensureAnonSession();
 }
 
+/**
+ * Read counts of the user's persisted data (favorites + interactions
+ * + profile presence). Used by the post-sign-in callback page to render
+ * a real "we kept your N favorites, profile, and M applications"
+ * inventory — turning the success screen from a flash redirect into a
+ * moment of recognition.
+ *
+ * Returns zeros (never errors) if RLS or network fails. UX is the
+ * primary consumer; a wrong count is OK, a thrown error is not.
+ */
+export interface DataInventory {
+  favorites: number;
+  interactions: number;
+  hasProfile: boolean;
+  savedSearches: number;
+}
+
+export async function getDataInventory(): Promise<DataInventory> {
+  const empty: DataInventory = {
+    favorites: 0,
+    interactions: 0,
+    hasProfile: false,
+    savedSearches: 0,
+  };
+  if (typeof window === 'undefined') return empty;
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return empty;
+
+  // count: 'exact', head: true → no rows transferred, just the count
+  const [fav, ints, prof, ss] = await Promise.all([
+    supabase
+      .from('favorites')
+      .select('*', { count: 'exact', head: true })
+      .eq('device_id', deviceId),
+    supabase
+      .from('interactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('device_id', deviceId),
+    supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('id', deviceId),
+    supabase
+      .from('saved_searches')
+      .select('id', { count: 'exact', head: true })
+      .eq('device_id', deviceId),
+  ]);
+
+  return {
+    favorites: fav.count ?? 0,
+    interactions: ints.count ?? 0,
+    hasProfile: (prof.count ?? 0) > 0,
+    savedSearches: ss.count ?? 0,
+  };
+}
+
 // =====================================================================
 // R65 P1 Flow A: magic-link auth (anon → permanent, in-place)
 // =====================================================================
