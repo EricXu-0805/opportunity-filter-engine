@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { getStats, parseGitHubProfile } from '@/lib/api';
-import { saveProfile, loadProfile } from '@/lib/supabase';
+import { loadProfile, onAuthChange, saveProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, type SaveStatus, type TFunc } from './types';
 
@@ -113,6 +113,57 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       isInitialLoad.current = false;
     });
   }, [searchParams, t]);
+
+  // R67 problem #4 (cross-device sync, code-side portion):
+  //
+  // Without this effect, the home form snapshots whatever the database
+  // returned at mount time. If the user then signs in on this browser
+  // (anon → permanent) or switches to a different account on the same
+  // device, the form keeps showing the OLD profile until they hard-
+  // reload the page. The same is true if a different device has saved
+  // updates to the user's profile after this tab opened.
+  //
+  // Fix: subscribe to onAuthChange. On every auth.uid() transition
+  // (after the first event, which fires synchronously with the current
+  // state and is already handled by the mount effect above), re-fetch
+  // the profile from Supabase under the NEW auth context. We flip
+  // `isInitialLoad` for ~500ms during the reload so the auto-save
+  // effect doesn't fire and immediately overwrite the just-reloaded
+  // data with what's currently in state.
+  //
+  // Tracking via a ref avoids re-subscribing on every render; the ref
+  // also lets us skip the very first event without racing the mount
+  // effect (which is already loading under the same uid).
+  const lastUidRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const unsub = onAuthChange((s) => {
+      const uid = s.user?.id ?? null;
+      if (lastUidRef.current === undefined) {
+        // First event after subscribe — mount effect already handled this uid.
+        lastUidRef.current = uid;
+        return;
+      }
+      if (uid === lastUidRef.current) return;
+      lastUidRef.current = uid;
+      // Pause auto-save during reload so the in-flight state doesn't
+      // clobber the freshly fetched data.
+      isInitialLoad.current = true;
+      loadProfile().then((saved) => {
+        if (saved) {
+          const raw = saved as Record<string, unknown>;
+          if (Array.isArray(raw.skills) && raw.skills.length > 0 && typeof raw.skills[0] === 'string') {
+            raw.skills = (raw.skills as string[]).map((name) => ({ name, level: 'beginner' as const }));
+          }
+          setProfile((prev) => ({ ...prev, ...raw } as ProfileData));
+          if (typeof raw.search_weight === 'number') setSearchWeight(raw.search_weight);
+        }
+        setTimeout(() => { isInitialLoad.current = false; }, 500);
+      }).catch(() => {
+        isInitialLoad.current = false;
+      });
+    });
+    return () => unsub();
+  }, []);
 
   const handleShare = useCallback(async () => {
     const url = buildShareUrl({ ...profile, search_weight: searchWeight });

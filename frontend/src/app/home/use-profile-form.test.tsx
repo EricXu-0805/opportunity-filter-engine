@@ -14,9 +14,24 @@ const prefetchSpy = vi.fn();
 const pathnameRef = { current: '/' };
 const searchRef = { current: '' };
 
+// Cache the URLSearchParams instance so re-renders with the same query
+// string return the same object reference. Without this cache,
+// useEffect([searchParams, ...]) treats every render as a new search-
+// params and re-fires the mount load, which makes call-count
+// assertions (used in the cross-device-sync tests below) impossible.
+// Production `useSearchParams()` from next/navigation is already stable.
+let cachedParams: URLSearchParams | null = null;
+let cachedParamsKey: string | null = null;
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshSpy, push: pushSpy, prefetch: prefetchSpy }),
-  useSearchParams: () => new URLSearchParams(searchRef.current),
+  useSearchParams: () => {
+    if (cachedParamsKey !== searchRef.current) {
+      cachedParams = new URLSearchParams(searchRef.current);
+      cachedParamsKey = searchRef.current;
+    }
+    return cachedParams!;
+  },
   usePathname: () => pathnameRef.current,
 }));
 
@@ -25,15 +40,35 @@ vi.mock('@/lib/api', () => ({
   parseGitHubProfile: vi.fn(),
 }));
 
+// R67 problem #4: cross-device profile sync.
+//
+// `mockLoadProfile` is reassigned per-test so we can simulate the
+// "different account / different device" reload (first call returns
+// account A's profile, second call returns account B's). Tests fire
+// the auth change manually via `authChangeCb`, which is captured the
+// moment useProfileForm subscribes.
+let mockLoadProfile: () => Promise<Record<string, unknown> | null> = () => Promise.resolve(null);
+let authChangeCb: ((s: { user: { id: string } | null }) => void) | null = null;
+const unsubSpy = vi.fn();
+
 vi.mock('@/lib/supabase', () => ({
-  loadProfile: () => Promise.resolve(null),
+  loadProfile: () => mockLoadProfile(),
   saveProfile: vi.fn(() => Promise.resolve()),
+  onAuthChange: (cb: (s: { user: { id: string } | null }) => void) => {
+    authChangeCb = cb;
+    return unsubSpy;
+  },
 }));
 
 import { useProfileForm } from './use-profile-form';
 
+// Stable `t` reference to avoid re-firing the mount load effect on each
+// render. Without this, useEffect([searchParams, t]) treats every render
+// as a deps change because each inline `(k) => k` is a new function.
+const stableT = (k: string) => k;
+
 function TestHarness() {
-  const form = useProfileForm((k) => k);
+  const form = useProfileForm(stableT);
   return (
     <div>
       <span data-testid="grade">{form.profile.grade}</span>
@@ -55,6 +90,11 @@ beforeEach(() => {
   pushSpy.mockReset();
   prefetchSpy.mockReset();
   searchRef.current = '';
+  cachedParams = null;
+  cachedParamsKey = null;
+  mockLoadProfile = () => Promise.resolve(null);
+  authChangeCb = null;
+  unsubSpy.mockReset();
 });
 
 describe('useProfileForm — prefill from URL', () => {
@@ -93,5 +133,66 @@ describe('useProfileForm — prefill from URL', () => {
     render(<Wrapped />);
     await waitFor(() => expect(screen.getByTestId('grade').textContent).toBe('Senior'));
     expect(screen.getByTestId('seeking').textContent).toContain('fellowship');
+  });
+});
+
+// R67 problem #4: when the auth session transitions on this device
+// (anon → permanent via magic-link convert, or one signed-in account
+// → a different signed-in account), the form must re-fetch the
+// profile under the NEW auth.uid() so the user sees their own data,
+// not a stale snapshot from before sign-in.
+describe('useProfileForm — cross-device sync via onAuthChange', () => {
+  it('subscribes to onAuthChange on mount and unsubscribes on unmount', async () => {
+    mockLoadProfile = () => Promise.resolve(null);
+    const { unmount } = render(<Wrapped />);
+    await waitFor(() => expect(authChangeCb).not.toBeNull());
+    expect(unsubSpy).not.toHaveBeenCalled();
+    unmount();
+    expect(unsubSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT reload on the first auth event (mount effect already loaded)', async () => {
+    const loadSpy = vi.fn(() => Promise.resolve(null));
+    mockLoadProfile = loadSpy;
+    render(<Wrapped />);
+    // Wait for initial mount load.
+    await waitFor(() => expect(loadSpy).toHaveBeenCalledTimes(1));
+    // Fire the initial onAuthChange event — same uid as mount.
+    authChangeCb?.({ user: { id: 'a' } });
+    await new Promise((r) => setTimeout(r, 10));
+    // Should NOT have triggered a second load.
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads profile when auth.uid() transitions to a different user', async () => {
+    let callCount = 0;
+    mockLoadProfile = () => {
+      callCount += 1;
+      if (callCount === 1) return Promise.resolve({ grade: 'Junior' } as Record<string, unknown>);
+      return Promise.resolve({ grade: 'Senior' } as Record<string, unknown>);
+    };
+    render(<Wrapped />);
+    await waitFor(() => expect(screen.getByTestId('grade').textContent).toBe('Junior'));
+    // First auth event — same uid as mount; ignored.
+    authChangeCb?.({ user: { id: 'a' } });
+    // Second auth event with a DIFFERENT uid — should trigger reload.
+    authChangeCb?.({ user: { id: 'b' } });
+    await waitFor(() => expect(screen.getByTestId('grade').textContent).toBe('Senior'));
+    expect(callCount).toBe(2);
+  });
+
+  it('also reloads on permanent → anon (sign out) transition', async () => {
+    let callCount = 0;
+    mockLoadProfile = () => {
+      callCount += 1;
+      if (callCount === 1) return Promise.resolve({ grade: 'Senior' } as Record<string, unknown>);
+      return Promise.resolve(null);
+    };
+    render(<Wrapped />);
+    await waitFor(() => expect(screen.getByTestId('grade').textContent).toBe('Senior'));
+    // First event with permanent uid; second event with null (signed out).
+    authChangeCb?.({ user: { id: 'perm-uid' } });
+    authChangeCb?.({ user: null });
+    await waitFor(() => expect(callCount).toBe(2));
   });
 });
