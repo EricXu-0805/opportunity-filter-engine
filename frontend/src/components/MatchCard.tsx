@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import Badge from './Badge';
 import ScoreBar from './ScoreBar';
+import { InteractionStatusMenu } from './InteractionStatusMenu';
 import { getGapAnalysis } from '@/lib/api';
 import type { GapAnalysis } from '@/lib/api';
 import type { MatchResult, ProfileData } from '@/lib/types';
@@ -70,15 +71,12 @@ function getPaidBadge(
   return { label: 'Unpaid', variant: 'gray' };
 }
 
-const INTERACTION_COLORS: Record<InteractionType, string> = {
-  applied: 'bg-blue-50 text-blue-700 border-blue-200',
-  replied: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  interviewing: 'bg-violet-50 text-violet-700 border-violet-200',
-  rejected: 'bg-gray-100 text-gray-500 border-gray-200',
-  dismissed: 'bg-gray-100 text-gray-400 border-gray-200',
-};
-
-const INTERACTION_OPTIONS: InteractionType[] = ['applied', 'replied', 'interviewing', 'rejected', 'dismissed'];
+// R69-C: the inline INTERACTION_COLORS map and INTERACTION_OPTIONS list moved
+// into ./InteractionStatusMenu.tsx together with the disclosure UI they fed
+// into. MatchCard now delegates the entire status-tracker surface to that
+// menu component (single trigger + 5 menuitem options + Clear), which
+// collapses ~5 status pills × 608 cards = ~3000 inline buttons in the worst
+// case down to one trigger per card.
 
 function isNewPosting(opp: MatchResult['opportunity']): boolean {
   const posted = opp.posted_date;
@@ -265,28 +263,12 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             </a>
           )}
           {onTrackInteraction && (
-            <div
-              className="flex items-center gap-1 w-full sm:w-auto sm:ml-auto overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0"
-              role="group"
-              aria-label={`Track status for ${opp.title}`}
-            >
-              {INTERACTION_OPTIONS.map((type) => {
-                const isActive = interaction === type;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={(e) => { e.stopPropagation(); onTrackInteraction(opp.id, type); }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border whitespace-nowrap transition-all duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                      isActive ? INTERACTION_COLORS[type] : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
-                    }`}
-                  >
-                    {t(`detail.tracker.statusLabels.${type}`)}
-                  </button>
-                );
-              })}
-            </div>
+            <InteractionStatusMenu
+              opportunityId={opp.id}
+              opportunityTitle={opp.title}
+              interaction={interaction}
+              onTrackInteraction={onTrackInteraction}
+            />
           )}
         </div>
       </div>

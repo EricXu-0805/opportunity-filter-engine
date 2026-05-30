@@ -241,16 +241,29 @@ describe('MatchCard', () => {
     });
   });
 
-  describe('interaction tracker', () => {
-    it('renders none of the status buttons when onTrackInteraction is not provided', () => {
+  describe('interaction tracker (R69-C menu)', () => {
+    it('renders no status UI when onTrackInteraction is not provided', () => {
       render(<MatchCard match={makeMatch()} onDraftEmail={() => {}} />);
+      // No trigger pill, no menu items.
+      expect(screen.queryByText('results.statusMenu.trigger')).toBeNull();
       expect(screen.queryByText('detail.tracker.statusLabels.applied')).toBeNull();
     });
 
-    it('renders all 5 status buttons when onTrackInteraction is provided', () => {
+    it('renders the status menu trigger (collapsed by default) when onTrackInteraction is provided', () => {
       render(
         <MatchCard match={makeMatch()} onDraftEmail={() => {}} onTrackInteraction={() => {}} />,
       );
+      expect(screen.getByText('results.statusMenu.trigger')).toBeInTheDocument();
+      // Menu items are not rendered until the trigger is opened.
+      expect(screen.queryByText('detail.tracker.statusLabels.applied')).toBeNull();
+      expect(screen.queryByText('detail.tracker.statusLabels.dismissed')).toBeNull();
+    });
+
+    it('clicking the trigger reveals all 5 status options as menuitems', () => {
+      render(
+        <MatchCard match={makeMatch()} onDraftEmail={() => {}} onTrackInteraction={() => {}} />,
+      );
+      fireEvent.click(screen.getByText('results.statusMenu.trigger'));
       expect(screen.getByText('detail.tracker.statusLabels.applied')).toBeInTheDocument();
       expect(screen.getByText('detail.tracker.statusLabels.replied')).toBeInTheDocument();
       expect(screen.getByText('detail.tracker.statusLabels.interviewing')).toBeInTheDocument();
@@ -258,7 +271,7 @@ describe('MatchCard', () => {
       expect(screen.getByText('detail.tracker.statusLabels.dismissed')).toBeInTheDocument();
     });
 
-    it('marks the active interaction button with aria-pressed=true', () => {
+    it('trigger label reflects the current status when set, instead of the neutral "Mark status" copy', () => {
       render(
         <MatchCard
           match={makeMatch()}
@@ -267,13 +280,13 @@ describe('MatchCard', () => {
           interaction="applied"
         />,
       );
-      const applied = screen.getByText('detail.tracker.statusLabels.applied').closest('button');
-      expect(applied?.getAttribute('aria-pressed')).toBe('true');
-      const replied = screen.getByText('detail.tracker.statusLabels.replied').closest('button');
-      expect(replied?.getAttribute('aria-pressed')).toBe('false');
+      // The trigger shows the active status label; the neutral
+      // "Mark status" string is not present anywhere when interaction is set.
+      expect(screen.queryByText('results.statusMenu.trigger')).toBeNull();
+      expect(screen.getByText('detail.tracker.statusLabels.applied')).toBeInTheDocument();
     });
 
-    it('calls onTrackInteraction with (oppId, type) on click', () => {
+    it('calls onTrackInteraction with (oppId, type) when a menuitem is selected', () => {
       const handler = vi.fn();
       render(
         <MatchCard
@@ -282,6 +295,8 @@ describe('MatchCard', () => {
           onTrackInteraction={handler}
         />,
       );
+      // Open the menu first; menuitems only render while open.
+      fireEvent.click(screen.getByText('results.statusMenu.trigger'));
       fireEvent.click(screen.getByText('detail.tracker.statusLabels.interviewing'));
       expect(handler).toHaveBeenCalledWith('opp-track', 'interviewing');
     });
