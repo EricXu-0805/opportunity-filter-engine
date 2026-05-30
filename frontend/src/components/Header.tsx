@@ -24,6 +24,26 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
 
+  // R67 problem #3: "Find Matches" should take users back to /results
+  // when they have a generated match set cached in sessionStorage. The
+  // previous behavior — always routing to / — meant tab-switching away
+  // and back made the matches appear to "disappear", because the user
+  // was looking at the profile form, not their results. The cache
+  // itself in `ofe_match_results` is never invalidated by navigation;
+  // it only invalidates on profile-hash mismatch inside useResultsData.
+  //
+  // We re-check on every pathname change so the link target stays in
+  // sync as the user generates new matches mid-session. sessionStorage
+  // is window-only so the initial state has to start false to avoid
+  // SSR/hydration mismatch; useEffect runs after the first paint and
+  // upgrades to the real value before any user interaction.
+  const [hasMatchCache, setHasMatchCache] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate external-source-of-truth sync: sessionStorage is window-only so we must read it after mount, and re-read on pathname change so the link target stays in sync as the user generates new matches mid-session
+    try { setHasMatchCache(!!sessionStorage.getItem('ofe_match_results')); }
+    catch { setHasMatchCache(false); }
+  }, [pathname]);
+
   const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
@@ -73,20 +93,23 @@ export default function Header() {
           </Link>
 
           <nav className="hidden sm:flex items-center gap-0.5 min-w-0" aria-label={t('nav.primary')}>
-            {NAV_ITEMS.map(({ href, labelKey }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium shrink-0 transition-all duration-300
-                  ${
-                    isActive(href)
-                      ? 'bg-black/[0.06] text-gray-900'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.04]'
-                  }`}
-              >
-                {t(labelKey)}
-              </Link>
-            ))}
+            {NAV_ITEMS.map(({ href: originalHref, labelKey }) => {
+              const href = originalHref === '/' && hasMatchCache ? '/results' : originalHref;
+              return (
+                <Link
+                  key={originalHref}
+                  href={href}
+                  className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium shrink-0 transition-all duration-300
+                    ${
+                      isActive(originalHref)
+                        ? 'bg-black/[0.06] text-gray-900'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-black/[0.04]'
+                    }`}
+                >
+                  {t(labelKey)}
+                </Link>
+              );
+            })}
             <AccountMenu />
             <LanguageSwitcher />
           </nav>
@@ -116,22 +139,25 @@ export default function Header() {
           }`}
         >
           <nav className="flex flex-col pb-3 pt-1 gap-0.5" aria-label={t('nav.mobile')}>
-            {NAV_ITEMS.map(({ href, labelKey }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={close}
-                tabIndex={open ? 0 : -1}
-                className={`px-3.5 py-2 rounded-xl text-[14px] font-medium transition-colors
-                  ${
-                    isActive(href)
-                      ? 'bg-black/[0.06] text-gray-900'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-black/[0.04]'
-                  }`}
-              >
-                {t(labelKey)}
-              </Link>
-            ))}
+            {NAV_ITEMS.map(({ href: originalHref, labelKey }) => {
+              const href = originalHref === '/' && hasMatchCache ? '/results' : originalHref;
+              return (
+                <Link
+                  key={originalHref}
+                  href={href}
+                  onClick={close}
+                  tabIndex={open ? 0 : -1}
+                  className={`px-3.5 py-2 rounded-xl text-[14px] font-medium transition-colors
+                    ${
+                      isActive(originalHref)
+                        ? 'bg-black/[0.06] text-gray-900'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-black/[0.04]'
+                    }`}
+                >
+                  {t(labelKey)}
+                </Link>
+              );
+            })}
             <AccountMenu variant="mobile" onActivate={close} tabIndex={open ? 0 : -1} />
           </nav>
         </div>
