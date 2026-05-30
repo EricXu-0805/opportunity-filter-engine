@@ -477,11 +477,39 @@ def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
     return 0.0
 
 
+def _normalize_type_key(value: str) -> str:
+    """Canonicalise an opportunity-type string to the form used in the
+    affinity dict below: lowercase + spaces collapsed to underscores.
+
+    R69-D: callers that don't come through the home form (share URLs,
+    admin debug injection, future API integrations, prefill drift from
+    a different vocabulary) can pass values like 'Research' or
+    'Summer program'. The affinity dict only has 'research' /
+    'summer_program' keys, so any case/format drift previously made
+    the function silently return the 30.0 fallback and the matcher
+    appended a false 'not your primary target type' concern. Normalising
+    on entry keeps the function robust to any caller without forcing
+    every upstream to remember the wire format.
+    """
+    return value.strip().lower().replace(" ", "_").replace("-", "_")
+
+
 def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
-    """Score how well the opportunity type matches user preferences."""
+    """Score how well the opportunity type matches user preferences.
+
+    Inputs are normalised via ``_normalize_type_key`` so callers don't
+    need to know the canonical form (see R69-D commit for the audit
+    trail). Returns 60.0 (neutral) when no preference is stated, 100.0
+    on exact match, an affinity score (50-70) for related types, and
+    30.0 for unrelated types.
+    """
     if not seeking_types:
         return 60.0  # No preference stated
-    if opp_type in seeking_types:
+    normalised_seeking = [_normalize_type_key(s) for s in seeking_types if s]
+    normalised_opp = _normalize_type_key(opp_type)
+    if not normalised_seeking:
+        return 60.0
+    if normalised_opp in normalised_seeking:
         return 100.0
     type_affinity = {
         ("research", "summer_program"): 70.0,
@@ -491,8 +519,8 @@ def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
         ("research", "internship"): 50.0,
         ("internship", "research"): 50.0,
     }
-    for st in seeking_types:
-        score = type_affinity.get((st, opp_type))
+    for st in normalised_seeking:
+        score = type_affinity.get((st, normalised_opp))
         if score:
             return score
     return 30.0  # Completely different type

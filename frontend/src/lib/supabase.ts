@@ -461,19 +461,46 @@ function readLocalProfile(): Record<string, unknown> | null {
   } catch { return null; }
 }
 
+// R69-D: in-flight promise dedup. Pre-R69-D, mount + onAuthChange
+// (see app/home/use-profile-form.ts:100,151) both called loadProfile
+// shortly after each other on page entry, producing 3-4 concurrent
+// SELECT profiles?id=eq.<uid> requests per visit. Two were "wasted"
+// (same result, same uid). Cache the in-flight promise so concurrent
+// callers within the same event-loop burst share one request; clear
+// it the next macrotask so a real later call still re-fetches fresh
+// data (no long-lived stale cache).
+let inflightLoadProfile: Promise<Record<string, unknown> | null> | null = null;
+
 export async function loadProfile(): Promise<Record<string, unknown> | null> {
-  const local = readLocalProfile();
-  const id = await ensureAnonSession();
-  if (!id) return local;
+  if (inflightLoadProfile) return inflightLoadProfile;
+  inflightLoadProfile = (async (): Promise<Record<string, unknown> | null> => {
+    const local = readLocalProfile();
+    const id = await ensureAnonSession();
+    if (!id) return local;
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('profile_data')
-    .eq('id', id)
-    .single();
+    // R69-D: maybeSingle (not single). single() returns HTTP 406 when
+    // the profile row doesn't exist yet — every cold visit produced
+    // a console error even though the empty-row case is expected.
+    // maybeSingle() returns { data: null, error: null } for missing
+    // rows and the existing `if (error || !data)` fallback handles
+    // both paths identically.
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('profile_data')
+      .eq('id', id)
+      .maybeSingle();
 
-  if (error || !data) return local;
-  return (data.profile_data as Record<string, unknown>) ?? local;
+    if (error || !data) return local;
+    return (data.profile_data as Record<string, unknown>) ?? local;
+  })();
+  try {
+    return await inflightLoadProfile;
+  } finally {
+    // Clear after the current burst settles so a future explicit
+    // re-fetch (e.g. after auth.uid() changes on this tab) goes to
+    // the network again instead of getting a stale result.
+    setTimeout(() => { inflightLoadProfile = null; }, 0);
+  }
 }
 
 export async function getFavorites(): Promise<Set<string>> {
