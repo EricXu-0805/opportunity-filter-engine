@@ -133,4 +133,41 @@ describe('Header', () => {
     if (firstLink) fireEvent.click(firstLink);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('closes the panel when a mousedown happens outside the header (R47)', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.mouseDown(document.body);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('keeps the panel open when a mousedown happens inside the header (R47)', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    fireEvent.click(toggle);
+    const panel = document.getElementById('mobile-nav-panel');
+    const firstLink = panel?.querySelector('a');
+    expect(firstLink).not.toBeNull();
+    /* mousedown alone (no click) on a panel link must NOT close the panel
+       via the click-outside path — the listener excludes elements
+       contained by the header. The existing onClick={close} handler is
+       what closes the panel on a full click; we're isolating mousedown
+       here to verify the boundary check. */
+    if (firstLink) fireEvent.mouseDown(firstLink);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('re-attaches the click-outside listener after a reopen (R47)', () => {
+    render(<Header />);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    fireEvent.click(toggle);
+    fireEvent.mouseDown(document.body);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.mouseDown(document.body);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
 });
