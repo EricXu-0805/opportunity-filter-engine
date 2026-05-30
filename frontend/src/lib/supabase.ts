@@ -1,4 +1,9 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  type Session,
+  type SupabaseClient,
+  type User,
+} from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -29,7 +34,16 @@ export const supabase: SupabaseClient = createClient(
       persistSession: true,
       autoRefreshToken: true,
       storageKey: 'ofe_auth',
-      detectSessionInUrl: false,
+      // R65 P1 Flow A: flip on so the /auth/callback page can complete
+      // the PKCE OTP exchange via exchangeCodeForSession(). The callback
+      // page is the *only* place a magic-link URL is ever loaded — every
+      // other page boots with no ?code= in the URL, so this flag is a
+      // no-op there and won't trample the existing anon-session flow.
+      detectSessionInUrl: true,
+      // Explicit PKCE — supabase-js v2 default, but we lock it so a
+      // future dependency bump can't silently swap us to implicit and
+      // break the callback handler.
+      flowType: 'pkce',
     },
   },
 );
@@ -103,6 +117,207 @@ async function ensureAnonSession(): Promise<string | null> {
 }
 
 export async function getDeviceId(): Promise<string | null> {
+  return ensureAnonSession();
+}
+
+// =====================================================================
+// R65 P1 Flow A: magic-link auth (anon → permanent, in-place)
+// =====================================================================
+//
+// Design:
+//   - All RLS policies key off `device_id = auth.uid()::text`. Because
+//     `updateUser({ email })` converts an anonymous user to a permanent
+//     user *in place* (same auth.uid()), every existing row stays owned
+//     by the same UUID and zero data migration is needed.
+//   - Cross-device merge (Flow B) is a separate future PR. It requires
+//     a SECURITY DEFINER Postgres function and is the only data-loss
+//     surface, so it deserves its own review.
+//
+// Branching: `signInOrLinkEmail` reads the current session and picks
+// the right Supabase API based on whether we're sitting on an anonymous
+// session (in-place conversion), no session at all (`signInWithOtp`),
+// or already a permanent user (no-op).
+//
+// All three paths trigger a magic-link email; the user clicks it and
+// lands on `/auth/callback` which calls `exchangeCodeForSession`. The
+// PKCE code_verifier lives in `ofe_auth` localStorage, which means the
+// link MUST be opened in the same browser/profile that initiated the
+// request — a known PKCE limitation we surface in the UI copy.
+
+/**
+ * Returns true when the session belongs to an anonymous user (created
+ * via `signInAnonymously`). Reads from the JWT claim set by Supabase;
+ * falls back to the user object field for older SDK shapes.
+ */
+export function isAnonymousUser(session: Session | null): boolean {
+  if (!session?.user) return false;
+  const userIsAnon = (session.user as unknown as { is_anonymous?: boolean })
+    .is_anonymous;
+  if (typeof userIsAnon === 'boolean') return userIsAnon;
+  // Older shape: claim only on the JWT; trust the user-level field above
+  // when present, otherwise assume non-anon to avoid false positives.
+  return false;
+}
+
+export interface AuthState {
+  session: Session | null;
+  user: User | null;
+  isAnonymous: boolean;
+  email: string | null;
+}
+
+/**
+ * Snapshot of the current auth state. Used by `<AuthButton />` to
+ * render label + click target without re-implementing the same Session
+ * → label pipeline in three places.
+ */
+export async function getAuthState(): Promise<AuthState> {
+  if (typeof window === 'undefined') {
+    return { session: null, user: null, isAnonymous: false, email: null };
+  }
+  const { data: { session } } = await supabase.auth.getSession();
+  return {
+    session,
+    user: session?.user ?? null,
+    isAnonymous: isAnonymousUser(session),
+    email: session?.user?.email ?? null,
+  };
+}
+
+/**
+ * Subscribe to auth state changes. Returns an unsubscribe function.
+ * Wraps `onAuthStateChange` so callers don't have to deal with the
+ * Supabase subscription object shape directly.
+ */
+export function onAuthChange(cb: (state: AuthState) => void): () => void {
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    cb({
+      session,
+      user: session?.user ?? null,
+      isAnonymous: isAnonymousUser(session),
+      email: session?.user?.email ?? null,
+    });
+  });
+  return () => { data.subscription.unsubscribe(); };
+}
+
+export type SignInOutcome =
+  | { ok: true; mode: 'link-anon' | 'sign-in'; message: string }
+  | { ok: false; reason: 'not-configured' | 'invalid-email' | 'rate-limited' | 'email-taken' | 'unknown'; message: string };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Single entry point for the sign-in UI.
+ *
+ * Branches on the current session:
+ *   - anon session present  → `updateUser({ email })` (in-place conversion,
+ *     same auth.uid() preserved → zero data migration)
+ *   - no session            → `signInWithOtp({ email })` (creates or signs
+ *     into a permanent user)
+ *   - permanent user signed in → no-op success (UI shouldn't have shown
+ *     the form, but this guards against double-submits)
+ *
+ * `redirectTo` should be the absolute URL of `/auth/callback` on the
+ * current origin; the caller is responsible for computing it because
+ * this helper is window-agnostic.
+ */
+export async function signInOrLinkEmail(
+  email: string,
+  redirectTo: string,
+): Promise<SignInOutcome> {
+  if (!SUPABASE_CONFIGURED) {
+    return {
+      ok: false,
+      reason: 'not-configured',
+      message: 'Sign-in is unavailable: Supabase is not configured.',
+    };
+  }
+  const cleaned = email.trim().toLowerCase();
+  if (!EMAIL_RE.test(cleaned)) {
+    return {
+      ok: false,
+      reason: 'invalid-email',
+      message: 'Please enter a valid email address.',
+    };
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const anon = isAnonymousUser(session);
+
+  if (session?.user && !anon) {
+    return {
+      ok: true,
+      mode: 'sign-in',
+      message: 'You are already signed in.',
+    };
+  }
+
+  if (session?.user && anon) {
+    const { error } = await supabase.auth.updateUser(
+      { email: cleaned },
+      { emailRedirectTo: redirectTo },
+    );
+    if (error) return mapAuthError(error.message);
+    return {
+      ok: true,
+      mode: 'link-anon',
+      message: `Check ${cleaned} for a confirmation link. Your saved data will move with you.`,
+    };
+  }
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email: cleaned,
+    options: { emailRedirectTo: redirectTo, shouldCreateUser: true },
+  });
+  if (error) return mapAuthError(error.message);
+  return {
+    ok: true,
+    mode: 'sign-in',
+    message: `Check ${cleaned} for your sign-in link.`,
+  };
+}
+
+function mapAuthError(raw: string): SignInOutcome {
+  const msg = raw || 'Unknown error';
+  const lower = msg.toLowerCase();
+  // Supabase returns these strings for an email that's already registered
+  // when we try to convert an anon user. We surface a friendlier path:
+  // "use the sign-in link instead" (caller can offer to redo signInWithOtp).
+  if (
+    lower.includes('already registered') ||
+    lower.includes('already been registered') ||
+    lower.includes('email_address_invalid') ||
+    lower.includes('email address is invalid') ||
+    lower.includes('user already registered')
+  ) {
+    return {
+      ok: false,
+      reason: 'email-taken',
+      message: 'This email already has an account. Sign in instead — your current device data stays on this device for now.',
+    };
+  }
+  if (lower.includes('rate') || lower.includes('too many')) {
+    return {
+      ok: false,
+      reason: 'rate-limited',
+      message: 'Too many attempts. Please wait a minute and try again.',
+    };
+  }
+  return { ok: false, reason: 'unknown', message: msg };
+}
+
+/**
+ * Sign out and immediately re-establish an anonymous session so the
+ * rest of the app keeps working (saveProfile / favorites / etc. all
+ * assume `ensureAnonSession` will succeed). Without the re-anon, the
+ * user would be on a "no session" state until they reload.
+ *
+ * Returns the new device id (anon uid) or null on failure.
+ */
+export async function signOutOfAccount(): Promise<string | null> {
+  const { error } = await supabase.auth.signOut();
+  if (error) console.warn('[ofe] signOut failed:', error.message);
   return ensureAnonSession();
 }
 
