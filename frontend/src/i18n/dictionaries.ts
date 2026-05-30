@@ -217,11 +217,13 @@ export const en = {
     dashboard: 'Dashboard',
     about: 'About',
     import: 'Import',
+    resources: 'Resources',
     findShort: 'Match',
     favShort: 'Saved',
     dashShort: 'Stats',
     aboutShort: 'About',
     importShort: 'Import',
+    resourcesShort: 'Tips',
   },
   home: {
     hero: {
@@ -250,6 +252,14 @@ export const en = {
       checkInterests: 'Research interests',
       checkResume: 'Resume uploaded',
       checkType: 'Opportunity type',
+    },
+    featured: {
+      title: 'Featured fellowships',
+      subtitle: 'Summer programs, REUs, and named fellowships you can apply to right now.',
+      cta: 'Browse all',
+      deadlineLabel: 'Deadline',
+      paid: 'Paid',
+      intl: 'Intl-friendly',
     },
     form: {
       institutionLabel: 'Institution',
@@ -765,6 +775,55 @@ export const en = {
       courseworkAdded: 'Added coursework: {list}',
       noChanges: 'No changes applied.',
     },
+    labType: {
+      wet: 'Wet Lab',
+      dry: 'Dry Lab',
+      humanities: 'Humanities',
+      tooltip: 'Detected lab type — the draft is tuned for this style of research.',
+    },
+    tips: {
+      skillsHeading: 'Skills to highlight',
+      mistakesHeading: 'Avoid these mistakes',
+      wet: {
+        skills: {
+          skill1: 'Lab techniques (PCR, cell culture, microscopy, sterile technique)',
+          skill2: 'Completed lab courses by name (e.g. MCBT 310, CHEM 233)',
+          skill3: 'Realistic time commitment (10-15+ hrs/week is typical)',
+          skill4: 'Willingness to start under a graduate mentor',
+        },
+        mistakes: {
+          mistake1: "Don't overstate technique experience you've only read about.",
+          mistake2: "Don't lead with a GitHub link — bench reliability matters more.",
+          mistake3: "Don't underestimate the hours commitment.",
+        },
+      },
+      dry: {
+        skills: {
+          skill1: "Programming languages that match the lab's stack",
+          skill2: 'Recent project with a real GitHub link',
+          skill3: 'Specific technical interest (ML, CV, NLP, systems)',
+          skill4: 'Offer to complete a small technical assessment',
+        },
+        mistakes: {
+          mistake1: "Don't list skills without showing evidence (link a project).",
+          mistake2: "Don't say 'I'm interested in AI' — be specific about which subfield.",
+          mistake3: "Don't ignore their tech stack (TF vs PyTorch, JAX, etc.).",
+        },
+      },
+      humanities: {
+        skills: {
+          skill1: 'Research methods (qualitative coding, surveys, archival)',
+          skill2: 'Writing strength + literature review experience',
+          skill3: 'Citation managers (Zotero, EndNote)',
+          skill4: 'IRB / human-subjects training if applicable',
+        },
+        mistakes: {
+          mistake1: "Don't write a generic 'I'm interested' email — humanities PIs spot it.",
+          mistake2: "Don't focus only on grad-school prep — emphasize what you can contribute.",
+          mistake3: "Don't undervalue 'soft' skills like writing and detail orientation.",
+        },
+      },
+    },
   },
   resume: {
     pdfOnly: 'PDF only · Max 5 MB',
@@ -806,6 +865,105 @@ export const en = {
       deploy: 'Deploy',
       cicd: 'CI/CD',
       ml: 'ML',
+    },
+  },
+  resources: {
+    title: 'Outreach resources',
+    subtitle: 'Lab-type-specific cold-email guides and the four databases UIUC undergraduates use to research professors before reaching out.',
+    contactTipsHeading: 'Contact tips by lab type',
+    contactTipsSubtitle: 'Wet, dry, and humanities labs each read outreach differently. Match the tone of your email to the kind of work the lab actually does.',
+    databasesHeading: 'Useful databases',
+    databasesSubtitle: 'Where to find faculty profiles, funded projects, and recent publications. Open these in a new tab when drafting outreach.',
+    labType: {
+      wet: 'Wet Lab',
+      dry: 'Dry Lab',
+      humanities: 'Humanities',
+    },
+    tips: {
+      whatHeading: 'What makes this lab type different',
+      skillsHeading: 'Skills to highlight',
+      mistakesHeading: 'Common mistakes',
+      wet: {
+        heading: 'Wet Lab — Biology, Chemistry, Life Sciences',
+        subtitle: 'Bench work, lab techniques, and in-person hours dominate the conversation.',
+        differentiators: {
+          p1: 'Hands-on training is required before independent work — expect an onboarding period.',
+          p2: 'Time commitment is real: 10-15+ hours per week is a typical minimum.',
+          p3: 'Safety training and lab notebook discipline matter from day one.',
+          p4: 'Undergrads often work under a graduate student or postdoc mentor.',
+        },
+        skills: {
+          p1: 'Specific lab techniques (PCR, cell culture, microscopy, sterile technique, Western blot).',
+          p2: 'Completed lab courses by name (e.g. MCBT 310, CHEM 233) — not just the department.',
+          p3: 'Realistic weekly hours you can actually commit, including in-person.',
+          p4: 'Computational adjuncts (ImageJ, GraphPad Prism, basic R or Python).',
+        },
+        mistakes: {
+          p1: "Don't overstate technique experience you've only read about.",
+          p2: "Don't lead with a GitHub link — wet PIs care about bench reliability.",
+          p3: "Don't underestimate the hours commitment.",
+        },
+      },
+      dry: {
+        heading: 'Dry Lab — CS, Engineering, Data Science',
+        subtitle: 'Skills, projects, and a real GitHub link are worth more than a list of buzzwords.',
+        differentiators: {
+          p1: 'Skills-focused hiring: PIs care most about what you can already build.',
+          p2: 'More flexible schedules; remote work is sometimes possible.',
+          p3: 'Project-based: you may be assigned a specific tool or paper to extend.',
+          p4: 'Some labs use a short technical screen before onboarding.',
+        },
+        skills: {
+          p1: 'Programming languages that match the lab\'s stack (Python, C++, JavaScript, R).',
+          p2: 'A recent project with a real GitHub link and a short README.',
+          p3: 'Specific technical interest (ML, CV, NLP, systems) — not just "AI".',
+          p4: 'Familiarity with Git, Linux, and at least one ML framework if relevant.',
+        },
+        mistakes: {
+          p1: "Don't list skills without evidence — link a project.",
+          p2: "Don't say \"I'm interested in AI\" — be specific about which subfield and why.",
+          p3: "Don't ignore the lab's tech stack (TensorFlow vs PyTorch vs JAX).",
+        },
+      },
+      humanities: {
+        heading: 'Humanities Lab — Social Sciences, Arts, Humanities',
+        subtitle: 'Often called RA positions. Writing, research methods, and genuine intellectual curiosity matter most.',
+        differentiators: {
+          p1: 'Most positions are research assistantships ("RAs") rather than "lab seats".',
+          p2: 'Structures vary: some have grad students, some are 1-on-1 with the professor.',
+          p3: 'Human subjects research requires ethics training (often IRB).',
+          p4: 'Strong writing is highly valued for literature reviews and qualitative work.',
+        },
+        skills: {
+          p1: 'Research methods (qualitative coding with NVivo, survey design with Qualtrics, archival research).',
+          p2: 'Writing strength — literature reviews, academic writing courses, citation management (Zotero).',
+          p3: 'Quantitative skills if relevant (SPSS, Stata, R).',
+          p4: 'IRB / human-subjects training certificates if you have them.',
+        },
+        mistakes: {
+          p1: "Don't write a generic \"I'm interested\" email — humanities PIs spot it instantly.",
+          p2: "Don't focus only on grad-school prep — emphasize what you can contribute now.",
+          p3: "Don't undervalue \"soft\" skills like writing and attention to detail.",
+        },
+      },
+    },
+    databases: {
+      illinoisExperts: {
+        name: 'Illinois Experts',
+        description: 'Official UIUC database of faculty profiles, research areas, publications, and contact info. The cleanest source for finding a professor\'s primary department.',
+      },
+      nihReporter: {
+        name: 'NIH Reporter',
+        description: 'Search NIH-funded research projects. Great for finding labs with active biomedical funding and understanding their current focus.',
+      },
+      nsfAwards: {
+        name: 'NSF Award Search',
+        description: 'Search NSF-funded grants. Best for engineering, CS, and physical-sciences labs — shows recent awards and project abstracts.',
+      },
+      googleScholar: {
+        name: 'Google Scholar',
+        description: 'Academic publications + citation counts. Skim a professor\'s 3-5 most recent papers before writing your email.',
+      },
     },
   },
   admin: {
@@ -1187,11 +1345,13 @@ export const zh = {
     dashboard: '仪表盘',
     about: '关于',
     import: '导入',
+    resources: '资源',
     findShort: '匹配',
     favShort: '收藏',
     dashShort: '统计',
     aboutShort: '关于',
     importShort: '导入',
+    resourcesShort: '资源',
   },
   home: {
     hero: {
@@ -1220,6 +1380,14 @@ export const zh = {
       checkInterests: '研究兴趣',
       checkResume: '已上传简历',
       checkType: '机会类型',
+    },
+    featured: {
+      title: '推荐项目',
+      subtitle: '现在就可以申请的暑期项目、REU 和奖学金。',
+      cta: '查看全部',
+      deadlineLabel: '截止',
+      paid: '有薪酬',
+      intl: '国际友好',
     },
     form: {
       institutionLabel: '学校',
@@ -1735,6 +1903,55 @@ export const zh = {
       courseworkAdded: '已添加课程：{list}',
       noChanges: '未应用任何修改。',
     },
+    labType: {
+      wet: '湿实验室',
+      dry: '干实验室',
+      humanities: '人文社科',
+      tooltip: '识别到的实验室类型 —— 草稿已针对该类研究风格调整。',
+    },
+    tips: {
+      skillsHeading: '建议突出的能力',
+      mistakesHeading: '避免的常见错误',
+      wet: {
+        skills: {
+          skill1: '湿实验技术（PCR、细胞培养、显微镜、无菌操作）',
+          skill2: '具体的实验课名称（如 MCBT 310、CHEM 233）',
+          skill3: '实际可投入时间（通常需要 10-15+ 小时/周）',
+          skill4: '愿意在研究生导师下起步',
+        },
+        mistakes: {
+          mistake1: '不要夸大你只读过没做过的实验技术。',
+          mistake2: '不要以 GitHub 链接开场 —— 台面操作可靠性更重要。',
+          mistake3: '不要低估时间投入。',
+        },
+      },
+      dry: {
+        skills: {
+          skill1: '与实验室技术栈匹配的编程语言',
+          skill2: '近期项目并附真实 GitHub 链接',
+          skill3: '具体的技术方向（ML、CV、NLP、系统）',
+          skill4: '主动表示愿意完成小型技术评估',
+        },
+        mistakes: {
+          mistake1: '不要光列技能不给证据 —— 附一个项目链接。',
+          mistake2: '不要说"我对 AI 感兴趣" —— 明确具体子领域。',
+          mistake3: '不要忽略他们的技术栈（TF vs PyTorch、JAX 等）。',
+        },
+      },
+      humanities: {
+        skills: {
+          skill1: '研究方法（定性编码、调查、档案研究）',
+          skill2: '写作能力 + 文献综述经验',
+          skill3: '文献管理工具（Zotero、EndNote）',
+          skill4: '人类受试者研究 / IRB 培训（如适用）',
+        },
+        mistakes: {
+          mistake1: '不要写泛泛的"我感兴趣"邮件 —— 人文教授一眼能看出。',
+          mistake2: '不要只谈研究生院规划 —— 强调你能贡献什么。',
+          mistake3: '不要轻视写作和细致度等"软"技能。',
+        },
+      },
+    },
   },
   resume: {
     pdfOnly: '仅 PDF · 最大 5 MB',
@@ -1776,6 +1993,105 @@ export const zh = {
       deploy: '部署',
       cicd: 'CI/CD',
       ml: '机器学习',
+    },
+  },
+  resources: {
+    title: '联系教授指南',
+    subtitle: '按实验室类型分的冷邮件指南，以及 UIUC 本科生在写邮件前最常用的四个数据库。',
+    contactTipsHeading: '按实验室类型的联系建议',
+    contactTipsSubtitle: '湿、干、人文社科类实验室对待来信的方式不同。让你的邮件语气与他们实际做的工作类型相匹配。',
+    databasesHeading: '常用数据库',
+    databasesSubtitle: '查找教师档案、在研项目和近期论文的地方。起草邮件前在新标签页打开它们。',
+    labType: {
+      wet: '湿实验室',
+      dry: '干实验室',
+      humanities: '人文社科',
+    },
+    tips: {
+      whatHeading: '这类实验室的特点',
+      skillsHeading: '建议突出的能力',
+      mistakesHeading: '常见错误',
+      wet: {
+        heading: '湿实验室 —— 生物、化学、生命科学',
+        subtitle: '台面操作、实验技术和现场时间是对话的重点。',
+        differentiators: {
+          p1: '独立工作前需要手把手训练 —— 预留入门期。',
+          p2: '时间投入是真实的：通常每周至少 10-15 小时起。',
+          p3: '从第一天起，安全培训和实验笔记规范就很重要。',
+          p4: '本科生通常在研究生或博士后导师下工作。',
+        },
+        skills: {
+          p1: '具体的实验技术（PCR、细胞培养、显微镜、无菌操作、Western blot）。',
+          p2: '具体的实验课名称（如 MCBT 310、CHEM 233）—— 不要只写系名。',
+          p3: '现实的每周可投入小时数，包括现场时间。',
+          p4: '辅助计算工具（ImageJ、GraphPad Prism、基本的 R 或 Python）。',
+        },
+        mistakes: {
+          p1: '不要夸大你只读过没做过的实验技术。',
+          p2: '不要以 GitHub 链接开场 —— 湿实验室 PI 更看重台面可靠性。',
+          p3: '不要低估时间投入。',
+        },
+      },
+      dry: {
+        heading: '干实验室 —— CS、工程、数据科学',
+        subtitle: '技能、项目和一个真实的 GitHub 链接比一串关键词更有分量。',
+        differentiators: {
+          p1: '技能驱动招人：PI 最看重你已经能做出什么。',
+          p2: '时间安排更灵活；有时可以远程工作。',
+          p3: '项目导向：你可能会被分配一个具体工具或论文方向。',
+          p4: '部分实验室会安排小型技术筛选。',
+        },
+        skills: {
+          p1: '与实验室技术栈匹配的编程语言（Python、C++、JavaScript、R）。',
+          p2: '一个近期项目并附真实 GitHub 链接和简短 README。',
+          p3: '具体的技术方向（ML、CV、NLP、系统）—— 不要只说 "AI"。',
+          p4: '熟悉 Git、Linux，至少一个 ML 框架（如相关）。',
+        },
+        mistakes: {
+          p1: '不要光列技能不给证据 —— 附一个项目链接。',
+          p2: '不要说"我对 AI 感兴趣" —— 明确具体子领域和原因。',
+          p3: '不要忽略他们的技术栈（TensorFlow vs PyTorch vs JAX）。',
+        },
+      },
+      humanities: {
+        heading: '人文社科实验室 —— 社会科学、艺术、人文',
+        subtitle: '通常被称为研究助理（RA）岗。写作能力、研究方法和真正的求知欲最关键。',
+        differentiators: {
+          p1: '多数岗位是研究助理（"RA"）而不是"实验室席位"。',
+          p2: '结构多样：有的有研究生团队，有的是与教授 1 对 1 合作。',
+          p3: '涉及人类受试的研究需要伦理培训（通常 IRB）。',
+          p4: '文献综述和定性研究非常看重写作能力。',
+        },
+        skills: {
+          p1: '研究方法（NVivo 定性编码、Qualtrics 调查设计、档案研究）。',
+          p2: '写作能力 —— 文献综述、学术写作课、文献管理（Zotero）。',
+          p3: '相关的量化技能（SPSS、Stata、R）。',
+          p4: 'IRB / 人类受试者研究培训证书（如已有）。',
+        },
+        mistakes: {
+          p1: '不要写泛泛的"我感兴趣"邮件 —— 人文教授一眼能看出。',
+          p2: '不要只谈研究生院规划 —— 强调你现在能贡献什么。',
+          p3: '不要轻视写作、细致度等"软"技能。',
+        },
+      },
+    },
+    databases: {
+      illinoisExperts: {
+        name: 'Illinois Experts',
+        description: 'UIUC 官方教师档案库，含研究方向、出版物和联系方式。查找教授主属院系的最干净来源。',
+      },
+      nihReporter: {
+        name: 'NIH Reporter',
+        description: '搜索 NIH 资助的研究项目。适合找有活跃生物医学经费的实验室及其当前方向。',
+      },
+      nsfAwards: {
+        name: 'NSF Award Search',
+        description: '搜索 NSF 资助。最适合工程、CS 和物理学科 —— 显示近期项目立项书。',
+      },
+      googleScholar: {
+        name: 'Google Scholar',
+        description: '学术论文 + 引用数。在写邮件前先翻一遍教授最近 3-5 篇论文。',
+      },
     },
   },
   admin: {
