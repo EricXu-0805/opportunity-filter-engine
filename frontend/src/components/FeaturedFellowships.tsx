@@ -6,8 +6,13 @@ import { ArrowRight, Globe, GraduationCap, Sparkles } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { getFeaturedFellowships } from '@/lib/api';
 import type { Opportunity } from '@/lib/types';
+import {
+  FEATURED_FETCH_POOL,
+  FEATURED_PREVIEW_LIMIT,
+  rankFeaturedFellowships,
+} from './featured-fellowships-rank';
 
-const PREVIEW_LIMIT = 3;
+const PREVIEW_LIMIT = FEATURED_PREVIEW_LIMIT;
 
 function formatDeadline(iso?: string): string | null {
   if (!iso) return null;
@@ -89,10 +94,10 @@ export default function FeaturedFellowships() {
 
   useEffect(() => {
     let cancelled = false;
-    getFeaturedFellowships(PREVIEW_LIMIT)
+    getFeaturedFellowships(FEATURED_FETCH_POOL)
       .then((res) => {
         if (cancelled) return;
-        setItems((res.opportunities ?? []).slice(0, PREVIEW_LIMIT));
+        setItems(rankFeaturedFellowships(res.opportunities ?? [], new Date()));
       })
       .catch(() => {
         if (!cancelled) setErrored(true);

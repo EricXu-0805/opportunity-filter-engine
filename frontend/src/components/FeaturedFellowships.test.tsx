@@ -15,6 +15,26 @@ vi.mock('@/lib/api', () => ({
 import FeaturedFellowships from './FeaturedFellowships';
 import type { Opportunity } from '@/lib/types';
 
+// Always 90 days into the future relative to the test run, so the R49
+// past-deadline filter never accidentally hides these fixtures.
+const FUTURE_DEADLINE_ISO = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 90);
+  return d.toISOString().split('T')[0];
+})();
+
+const FAR_FUTURE_DEADLINE_ISO = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 365);
+  return d.toISOString().split('T')[0];
+})();
+
+const PAST_DEADLINE_ISO = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return d.toISOString().split('T')[0];
+})();
+
 const makeOpp = (overrides: Partial<Opportunity> = {}): Opportunity => ({
   id: 'opp-1',
   title: 'SURF Summer Program',
@@ -23,7 +43,7 @@ const makeOpp = (overrides: Partial<Opportunity> = {}): Opportunity => ({
   paid: 'yes',
   location: 'Urbana, IL',
   on_campus: true,
-  deadline: '2026-02-15',
+  deadline: FUTURE_DEADLINE_ISO,
   description_clean: 'desc',
   keywords: [],
   eligibility: {
@@ -132,10 +152,10 @@ describe('FeaturedFellowships', () => {
     expect(cta?.getAttribute('href')).toBe('/fellowships');
   });
 
-  it('requests exactly 3 opportunities on mount', async () => {
+  it('requests a larger pool on mount so the frontend filter has room to work', async () => {
     mockGetFeatured.mockResolvedValue({ opportunities: [makeOpp()], total: 1 });
     render(<FeaturedFellowships />);
-    await waitFor(() => expect(mockGetFeatured).toHaveBeenCalledWith(3));
+    await waitFor(() => expect(mockGetFeatured).toHaveBeenCalledWith(12));
   });
 
   it('renders paid and intl badges when present', async () => {
@@ -163,7 +183,7 @@ describe('FeaturedFellowships', () => {
 
   it('renders the deadline label and formatted date', async () => {
     mockGetFeatured.mockResolvedValue({
-      opportunities: [makeOpp({ deadline: '2026-03-21' })],
+      opportunities: [makeOpp({ deadline: FAR_FUTURE_DEADLINE_ISO })],
       total: 1,
     });
     render(<FeaturedFellowships />);
@@ -178,5 +198,68 @@ describe('FeaturedFellowships', () => {
     render(<FeaturedFellowships />);
     await waitFor(() => expect(screen.getByText('SURF Summer Program')).toBeInTheDocument());
     expect(screen.queryByText(/home.featured.deadlineLabel/)).toBeNull();
+  });
+
+  it('filters past-deadline opportunities out of the previewed cards (R49)', async () => {
+    mockGetFeatured.mockResolvedValue({
+      opportunities: [
+        makeOpp({ id: 'past-1', title: 'Stale Alpha', deadline: PAST_DEADLINE_ISO }),
+        makeOpp({ id: 'future-1', title: 'Fresh Bravo', deadline: FUTURE_DEADLINE_ISO }),
+        makeOpp({ id: 'past-2', title: 'Stale Charlie', deadline: PAST_DEADLINE_ISO }),
+      ],
+      total: 3,
+    });
+    render(<FeaturedFellowships />);
+    await waitFor(() => expect(screen.getByText('Fresh Bravo')).toBeInTheDocument());
+    expect(screen.queryByText('Stale Alpha')).toBeNull();
+    expect(screen.queryByText('Stale Charlie')).toBeNull();
+  });
+
+  it('renders nothing when every returned opportunity is past-deadline (R49)', async () => {
+    mockGetFeatured.mockResolvedValue({
+      opportunities: [
+        makeOpp({ id: 'past-1', title: 'Stale 1', deadline: PAST_DEADLINE_ISO }),
+        makeOpp({ id: 'past-2', title: 'Stale 2', deadline: PAST_DEADLINE_ISO }),
+      ],
+      total: 2,
+    });
+    const { container } = render(<FeaturedFellowships />);
+    await waitFor(() =>
+      expect(container.querySelector('[data-testid="featured-fellowships"]')).toBeNull(),
+    );
+  });
+
+  it('orders surviving cards by urgency, soonest deadline first (R49)', async () => {
+    mockGetFeatured.mockResolvedValue({
+      opportunities: [
+        makeOpp({ id: 'far', title: 'Faraway', deadline: FAR_FUTURE_DEADLINE_ISO }),
+        makeOpp({ id: 'soon', title: 'Soon', deadline: FUTURE_DEADLINE_ISO }),
+      ],
+      total: 2,
+    });
+    render(<FeaturedFellowships />);
+    await waitFor(() => expect(screen.getByText('Soon')).toBeInTheDocument());
+
+    const titles = screen
+      .getAllByRole('heading', { level: 3 })
+      .map((el) => el.textContent ?? '');
+    expect(titles).toEqual(['Soon', 'Faraway']);
+  });
+
+  it('places undated (rolling) opportunities after dated ones in the ranking (R49)', async () => {
+    mockGetFeatured.mockResolvedValue({
+      opportunities: [
+        makeOpp({ id: 'rolling', title: 'Rolling Admit', deadline: undefined }),
+        makeOpp({ id: 'soon', title: 'Soon', deadline: FUTURE_DEADLINE_ISO }),
+      ],
+      total: 2,
+    });
+    render(<FeaturedFellowships />);
+    await waitFor(() => expect(screen.getByText('Soon')).toBeInTheDocument());
+
+    const titles = screen
+      .getAllByRole('heading', { level: 3 })
+      .map((el) => el.textContent ?? '');
+    expect(titles).toEqual(['Soon', 'Rolling Admit']);
   });
 });
