@@ -46,6 +46,9 @@ logs/
 # Local daemon PIDs
 *.pid
 
+# gstack tooling (local agent audit logs / capability cache)
+.gstack/
+
 # Node / Next.js
 node_modules/
 .next/

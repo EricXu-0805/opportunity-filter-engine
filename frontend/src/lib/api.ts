@@ -63,6 +63,32 @@ export async function getOpportunities(): Promise<OpportunitiesResponse> {
   return request<OpportunitiesResponse>('/opportunities');
 }
 
+export interface FellowshipQuery {
+  opportunity_type?: 'summer_program' | 'fellowship' | 'research' | 'internship';
+  international_friendly?: 'yes' | 'no';
+  limit?: number;
+}
+
+export async function getFellowshipOpportunities(
+  query: FellowshipQuery = {},
+): Promise<OpportunitiesResponse> {
+  const params = new URLSearchParams();
+  params.set('opportunity_type', query.opportunity_type ?? 'summer_program');
+  if (query.international_friendly) {
+    params.set('international_friendly', query.international_friendly);
+  }
+  params.set('limit', String(query.limit ?? 500));
+  return request<OpportunitiesResponse>(`/opportunities?${params.toString()}`);
+}
+
+export async function getFeaturedFellowships(limit = 3): Promise<OpportunitiesResponse> {
+  const params = new URLSearchParams({
+    opportunity_type: 'summer_program',
+    limit: String(limit),
+  });
+  return request<OpportunitiesResponse>(`/opportunities?${params.toString()}`);
+}
+
 export interface GapAnalysis {
   missing_skills: string[];
   suggested_coursework: string[];
