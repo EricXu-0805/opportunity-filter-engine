@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
@@ -17,6 +18,12 @@ from src.recommender.cold_email import (
 
 router = APIRouter()
 
+# Tolerates real LLM output drift on the subject line: case, stray space
+# around the colon, and markdown bold (e.g. "**Subject: ...**"). Without this
+# the strict "Subject:" prefix check silently rejected good drafts and fell
+# back to the template.
+_SUBJECT_LINE_RE = re.compile(r"^\s*\*{0,2}\s*subject\s*:\s*(.+?)\s*\*{0,2}\s*$", re.IGNORECASE)
+
 
 def _extract_subject_and_body(email_text: str) -> tuple[str, str]:
     """Split the generated email into subject line and body."""
@@ -25,8 +32,9 @@ def _extract_subject_and_body(email_text: str) -> tuple[str, str]:
     body_start = 0
 
     for i, line in enumerate(lines):
-        if line.lower().startswith("subject:"):
-            subject = line[len("Subject:"):].strip()
+        match = _SUBJECT_LINE_RE.match(line)
+        if match:
+            subject = match.group(1).strip()
             body_start = i + 1
             break
 
@@ -36,6 +44,16 @@ def _extract_subject_and_body(email_text: str) -> tuple[str, str]:
 
     body = "\n".join(lines[body_start:]).strip()
     return subject, body
+
+
+def _sanitize_field(value: object, *, max_len: int = 600) -> str:
+    """Flatten a free-text profile field for safe prompt interpolation.
+
+    Collapses all whitespace (incl. newlines) to single spaces so a user
+    supplied field cannot inject fake ``Subject:`` / role lines or multi-line
+    instructions into the LLM prompt, then truncates to ``max_len``.
+    """
+    return " ".join(str(value).split())[:max_len]
 
 
 def _build_mailto_link(to: str, subject: str, body: str) -> str:
@@ -144,14 +162,17 @@ def _ai_generate_email_text(profile_dict: dict, opp: dict) -> str | None:
         p["lab_type"], _SYSTEM_PROMPTS_BY_LAB_TYPE["dry"],
     )
 
+    name = _sanitize_field(p["name"], max_len=100) or "(unnamed)"
+    research_interests = _sanitize_field(p["research_interests"]) or "(none stated)"
+
     user = (
         f"STUDENT:\n"
-        f"- Name: {p['name']}\n"
+        f"- Name: {name}\n"
         f"- Year & major: {p['year']} {p['major']} at {p['school']}\n"
         f"- Skills (level): {skills_str}\n"
         f"- Relevant coursework: {coursework_str}\n"
         f"- Skills that match this posting: {matching_str}\n"
-        f"- Research interests: {p['research_interests'] or '(none stated)'}\n"
+        f"- Research interests: {research_interests}\n"
         f"- LinkedIn: {p['linkedin_url'] or '(not shared)'}\n"
         f"- GitHub: {p['github_url'] or '(not shared)'}\n"
         f"\n"
@@ -191,18 +212,20 @@ async def generate_email(request: ColdEmailRequest):
 
     profile_dict = request.profile.model_dump()
     method = "template"
+    subject = ""
+    body = ""
 
     if request.engine == "ai" and is_configured():
         ai_text = _ai_generate_email_text(profile_dict, opp)
-        if ai_text and ai_text.strip().lower().startswith("subject:"):
-            email_text = ai_text.strip()
-            method = "ai"
-        else:
-            email_text = generate_cold_email(profile_dict, opp)
-    else:
-        email_text = generate_cold_email(profile_dict, opp)
+        if ai_text:
+            ai_subject, ai_body = _extract_subject_and_body(ai_text)
+            if ai_subject and ai_body:
+                subject, body, method = ai_subject, ai_body, "ai"
 
-    subject, body = _extract_subject_and_body(email_text)
+    if method != "ai":
+        email_text = generate_cold_email(profile_dict, opp)
+        subject, body = _extract_subject_and_body(email_text)
+
     recipient_email = opp.get("contact_email", "") or ""
     mailto_link = _build_mailto_link(recipient_email, subject, body)
 
@@ -275,7 +298,7 @@ async def refine_email(request: EmailRefineRequest):
         )},
         {"role": "user", "content": (
             f"Current email:\n\n{request.current_body[:3000]}\n\n"
-            f"Edit instruction: {request.instruction[:300]}\n\n"
+            f"Edit instruction: {_sanitize_field(request.instruction, max_len=300)}\n\n"
             "Return the edited email body only."
         )},
     ]
@@ -285,27 +308,45 @@ async def refine_email(request: EmailRefineRequest):
     return {"body": edited, "method": "llm"}
 
 
+# Word-boundary + case-insensitive so the quick-action buttons fire on real
+# drafts ("I Would Love", trailing punctuation) instead of only exact-case
+# substrings. Category order (formal → concise → enthusiastic) is preserved.
+_FORMAL_SUBS = [
+    (re.compile(r"\bI would love\b", re.IGNORECASE), "I would greatly appreciate"),
+    (re.compile(r"\bI am a fast learner\b", re.IGNORECASE),
+     "I am committed to continuous professional development"),
+    (re.compile(r"\bBest regards\b", re.IGNORECASE), "Respectfully"),
+]
+_ENTHUSIASTIC_SUBS = [
+    (re.compile(r"\bI am very interested\b", re.IGNORECASE), "I am truly excited about"),
+    (re.compile(r"\bI really enjoyed\b", re.IGNORECASE), "I was fascinated by"),
+    (re.compile(r"\bI would love the chance\b", re.IGNORECASE),
+     "I would be thrilled at the opportunity"),
+]
+_CONCISE_FILLERS = ("fast learner", "eager to pick up")
+
+
 def _local_refine(body: str, instruction: str) -> dict:
     lower = instruction.lower()
     edited = body
     applied: list[str] = []
 
     if any(kw in lower for kw in ["formal", "professional"]):
-        edited = edited.replace("I would love", "I would greatly appreciate")
-        edited = edited.replace("I am a fast learner", "I am committed to continuous professional development")
-        edited = edited.replace("Best regards", "Respectfully")
+        for pattern, repl in _FORMAL_SUBS:
+            edited = pattern.sub(repl, edited)
         applied.append("formal")
 
     if any(kw in lower for kw in ["short", "concise", "brief", "trim"]):
         lines = edited.split("\n")
-        edited = "\n".join(l for l in lines
-                           if "fast learner" not in l and "eager to pick up" not in l)
+        edited = "\n".join(
+            line for line in lines
+            if not any(filler in line.lower() for filler in _CONCISE_FILLERS)
+        )
         applied.append("concise")
 
     if any(kw in lower for kw in ["enthus", "excit", "energy", "passion"]):
-        edited = edited.replace("I am very interested", "I am truly excited about")
-        edited = edited.replace("I really enjoyed", "I was fascinated by")
-        edited = edited.replace("I would love the chance", "I would be thrilled at the opportunity")
+        for pattern, repl in _ENTHUSIASTIC_SUBS:
+            edited = pattern.sub(repl, edited)
         applied.append("enthusiastic")
 
     return {"body": edited, "method": "local", "applied": applied}
