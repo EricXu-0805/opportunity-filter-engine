@@ -19,6 +19,7 @@ import Header from './Header';
 
 beforeEach(() => {
   pathnameRef.current = '/';
+  try { sessionStorage.clear(); } catch { /* private mode */ }
 });
 
 describe('Header', () => {
@@ -169,5 +170,60 @@ describe('Header', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     fireEvent.mouseDown(document.body);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  // R67 problem #3: when matches are cached in sessionStorage, the
+  // "Find Matches" nav should take users to /results (where the
+  // matches are) instead of back to / (which shows the profile form
+  // with the matches "missing"). The cache itself never invalidates
+  // on navigation — only on profile-hash mismatch inside the results
+  // page. So the link target switches as the cache appears/disappears.
+  it('routes "Find Matches" to / by default (no cache in sessionStorage)', async () => {
+    render(<Header />);
+    const findMatchesLinks = screen
+      .getAllByRole('link')
+      .filter((el) => el.textContent === 'nav.findMatches');
+    expect(findMatchesLinks.length).toBeGreaterThan(0);
+    for (const link of findMatchesLinks) {
+      expect(link.getAttribute('href')).toBe('/');
+    }
+  });
+
+  it('routes "Find Matches" to /results when cache is present in sessionStorage', async () => {
+    sessionStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', data: { matches: [] } }));
+    render(<Header />);
+    // Wait for the useEffect that reads sessionStorage to run.
+    await new Promise((r) => setTimeout(r, 0));
+    const findMatchesLinks = screen
+      .getAllByRole('link')
+      .filter((el) => el.textContent === 'nav.findMatches');
+    expect(findMatchesLinks.length).toBeGreaterThan(0);
+    for (const link of findMatchesLinks) {
+      expect(link.getAttribute('href')).toBe('/results');
+    }
+  });
+
+  it('keeps active styling on "Find Matches" when on /results, even when href has switched to /results', async () => {
+    sessionStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', data: { matches: [] } }));
+    pathnameRef.current = '/results';
+    render(<Header />);
+    await new Promise((r) => setTimeout(r, 0));
+    const findMatchesLinks = screen
+      .getAllByRole('link')
+      .filter((el) => el.textContent === 'nav.findMatches');
+    expect(findMatchesLinks.length).toBeGreaterThan(0);
+    expect(findMatchesLinks.every((el) => el.className.includes('bg-black/[0.06]'))).toBe(true);
+  });
+
+  it('only swaps the Find Matches link — other nav items keep their hrefs', async () => {
+    sessionStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', data: { matches: [] } }));
+    render(<Header />);
+    await new Promise((r) => setTimeout(r, 0));
+    const favoritesLinks = screen
+      .getAllByRole('link')
+      .filter((el) => el.textContent === 'nav.favorites');
+    for (const link of favoritesLinks) {
+      expect(link.getAttribute('href')).toBe('/favorites');
+    }
   });
 });
