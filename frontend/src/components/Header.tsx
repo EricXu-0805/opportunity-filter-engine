@@ -9,9 +9,11 @@ import LanguageSwitcher from './LanguageSwitcher';
 
 const NAV_ITEMS = [
   { href: '/', labelKey: 'nav.findMatches', shortKey: 'nav.findShort' },
+  { href: '/fellowships', labelKey: 'nav.fellowships', shortKey: 'nav.fellowshipsShort' },
   { href: '/favorites', labelKey: 'nav.favorites', shortKey: 'nav.favShort' },
   { href: '/dashboard', labelKey: 'nav.dashboard', shortKey: 'nav.dashShort' },
   { href: '/import', labelKey: 'nav.import', shortKey: 'nav.importShort' },
+  { href: '/resources', labelKey: 'nav.resources', shortKey: 'nav.resourcesShort' },
   { href: '/about', labelKey: 'nav.about', shortKey: 'nav.aboutShort' },
 ] as const;
 

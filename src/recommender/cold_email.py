@@ -31,6 +31,143 @@ _EMAIL_GENERIC_KW = frozenset({
 })
 
 
+# Lab-type taxonomy. Cold-email tone, structure, and the skills a student
+# should foreground all shift by lab type — wet labs care about bench
+# technique + hours, dry labs care about a working GitHub link, humanities
+# labs care about writing samples and IRB familiarity. Three buckets are
+# what AcadeLink's contact-tips pages converge on, which matches what
+# UIUC undergrads actually face. Default is "dry" because our user base
+# skews STEM/Grainger, and a dry-lab template degrades the most gracefully
+# when applied to an ambiguous CS-adjacent posting.
+LabType = str  # "wet" | "dry" | "humanities"
+
+_WET_LAB_KEYWORDS = frozenset({
+    # disciplines
+    "biology", "biological", "bio", "chemistry", "chemical", "biochem",
+    "biochemistry", "microbiology", "molecular biology", "cell biology",
+    "genetics", "neuroscience", "physiology", "pharmacology", "pharmacy",
+    "biomedical", "biotechnology", "immunology", "virology", "ecology",
+    "evolutionary biology", "medicine", "medical", "clinical", "nutrition",
+    "food science", "plant biology", "animal science", "veterinary",
+    # techniques
+    "pcr", "rt-pcr", "western blot", "elisa", "cell culture", "microscopy",
+    "fluorescence", "flow cytometry", "crispr", "sequencing", "rna-seq",
+    "wet lab", "wet bench", "assay", "bench work", "protein purification",
+    "gel electrophoresis", "pipetting", "sterile technique",
+})
+
+_DRY_LAB_KEYWORDS = frozenset({
+    # disciplines
+    "computer science", "computing", "data science", "software",
+    "machine learning", "deep learning", "artificial intelligence",
+    "computer vision", "natural language processing", "nlp", "robotics",
+    "electrical engineering", "ece", "mechanical engineering",
+    "civil engineering", "aerospace", "materials science", "physics",
+    "applied math", "statistics", "operations research", "bioinformatics",
+    "computational biology", "computational neuroscience",
+    "human-computer interaction", "hci",
+    # techniques / tools
+    "python", "pytorch", "tensorflow", "jax", "scikit-learn", "pandas",
+    "numpy", "kubernetes", "docker", "aws", "gcp", "azure",
+    "javascript", "typescript", "react", "node", "rust", "golang",
+    "c++", "cuda", "github", "git", "linux", "command-line", "shell",
+    "algorithm", "data structure", "simulation", "modeling",
+})
+
+_HUMANITIES_KEYWORDS = frozenset({
+    # disciplines
+    "psychology", "behavioral", "cognitive science", "sociology",
+    "anthropology", "economics", "political science", "public policy",
+    "history", "english", "literature", "linguistics", "philosophy",
+    "religion", "communication", "media", "journalism", "education",
+    "social work", "labor", "industrial relations", "law", "legal",
+    "art history", "music", "theater", "performing arts", "design",
+    "urban planning", "geography", "gender studies", "ethnic studies",
+    # methods
+    "qualitative", "ethnography", "ethnographic", "interview",
+    "focus group", "survey design", "archival", "content analysis",
+    "discourse analysis", "literature review", "irb", "human subjects",
+    "nvivo", "atlas.ti", "spss", "stata", "qualtrics",
+    "transcription", "coding qualitative", "case study",
+})
+
+
+def _detect_lab_type(opportunity: dict) -> LabType:
+    """Classify an opportunity as wet / dry / humanities lab.
+
+    Signal weighting:
+      department > title > keywords > description excerpt > required skills.
+
+    Returns "dry" as the default for two reasons:
+      1. Our user base skews STEM/Grainger so dry is the modal case.
+      2. The dry-lab template's emphasis (skills + projects + GitHub
+         link) degrades most gracefully for ambiguous postings — the
+         worst case is a humanities student sees a slightly tech-forward
+         draft, which is still recoverable. The reverse (a CS student
+         getting a "highlight your IRB training" template) would feel
+         badly off-target.
+    """
+    def _score(text: str, vocab: frozenset[str]) -> int:
+        if not text:
+            return 0
+        lower = text.lower()
+        return sum(1 for kw in vocab if kw in lower)
+
+    # Compose signal corpora with descending weight.
+    department = (opportunity.get("department") or "").lower()
+    title = (opportunity.get("title") or "").lower()
+    lab = (opportunity.get("lab_or_program") or "").lower()
+    keywords_text = " ".join(opportunity.get("keywords", []) or []).lower()
+    desc = (
+        opportunity.get("description_clean")
+        or opportunity.get("description_raw")
+        or ""
+    ).lower()[:1500]
+    required_text = " ".join(
+        opportunity.get("eligibility", {}).get("skills_required", []) or []
+    ).lower()
+
+    # Weighted scores. Department signal is worth 3x a description hit
+    # because UIUC department names are the cleanest classifier we have
+    # (e.g. "Molecular and Cellular Biology" is unambiguously wet).
+    wet = (
+        3 * _score(department, _WET_LAB_KEYWORDS)
+        + 2 * _score(title, _WET_LAB_KEYWORDS)
+        + 2 * _score(lab, _WET_LAB_KEYWORDS)
+        + 1 * _score(keywords_text, _WET_LAB_KEYWORDS)
+        + 1 * _score(desc, _WET_LAB_KEYWORDS)
+    )
+    dry = (
+        3 * _score(department, _DRY_LAB_KEYWORDS)
+        + 2 * _score(title, _DRY_LAB_KEYWORDS)
+        + 2 * _score(lab, _DRY_LAB_KEYWORDS)
+        + 1 * _score(keywords_text, _DRY_LAB_KEYWORDS)
+        + 1 * _score(desc, _DRY_LAB_KEYWORDS)
+        + 2 * _score(required_text, _DRY_LAB_KEYWORDS)
+    )
+    hum = (
+        3 * _score(department, _HUMANITIES_KEYWORDS)
+        + 2 * _score(title, _HUMANITIES_KEYWORDS)
+        + 2 * _score(lab, _HUMANITIES_KEYWORDS)
+        + 1 * _score(keywords_text, _HUMANITIES_KEYWORDS)
+        + 1 * _score(desc, _HUMANITIES_KEYWORDS)
+    )
+
+    # All-zero (no signal) -> default to dry.
+    if wet == 0 and dry == 0 and hum == 0:
+        return "dry"
+
+    # Pick the leader. Ties resolve in order: wet > humanities > dry,
+    # which prevents a wet-lab posting with one "machine learning"
+    # buzzword from being misrouted to the dry-lab tone.
+    best = max(wet, dry, hum)
+    if wet == best:
+        return "wet"
+    if hum == best:
+        return "humanities"
+    return "dry"
+
+
 def _clean_research_interests(text: str) -> str:
     if not text:
         return ""
@@ -126,6 +263,7 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
         recipient = "Professor"
 
     coursework = profile.get("coursework", [])
+    lab_type = _detect_lab_type(opportunity)
 
     return dict(
         name=name, year=year, major=major, school=school,
@@ -136,7 +274,7 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
         research_area=research_area, research_topic=research_topic,
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
-        coursework=coursework,
+        coursework=coursework, lab_type=lab_type,
     )
 
 
@@ -147,27 +285,39 @@ def generate_cold_email(profile: dict, opportunity: dict) -> str:
 
 def generate_variants(profile: dict, opportunity: dict) -> list[dict]:
     p = _common_parts(profile, opportunity)
+    lab_type = p["lab_type"]
     return [
-        {"id": "balanced",  "label": "Balanced",       "text": _build_balanced(p)},
-        {"id": "skills",    "label": "Skills Focus",   "text": _build_skills_focus(p)},
-        {"id": "concise",   "label": "Concise",        "text": _build_concise(p)},
+        {"id": "balanced",  "label": "Balanced",       "text": _build_balanced(p),     "lab_type": lab_type},
+        {"id": "skills",    "label": "Skills Focus",   "text": _build_skills_focus(p), "lab_type": lab_type},
+        {"id": "concise",   "label": "Concise",        "text": _build_concise(p),      "lab_type": lab_type},
     ]
 
 
 def _subject(p: dict, style: str = "") -> str:
     lab = p["lab"]
     area = p["research_area"]
+    lab_type = p.get("lab_type", "dry")
+
+    # AcadeLink's contact-tips pages use distinct subject conventions per
+    # lab type — wet labs say "Inquiry", dry labs say "Interest" (skills
+    # framing), humanities say "Assistant Interest" (the role is RA, not
+    # a lab seat). Mirroring that vocabulary signals lab literacy.
+    intent = {
+        "wet": "Research Inquiry",
+        "dry": "Undergraduate Research Interest",
+        "humanities": "Research Assistant Interest",
+    }.get(lab_type, "Research Inquiry")
 
     if style == "concise":
         ctx = lab or area or p["title"] or "research"
         return f"Subject: {p['major']} student — {ctx}"
 
     if lab and "Prof" in lab:
-        return f"Subject: {p['year'].capitalize()} {p['major']} student interested in joining {lab}"
+        return f"Subject: {intent} — {p['year'].capitalize()} {p['major']} student, interest in joining {lab}"
     if area:
-        return f"Subject: Research inquiry — {p['year']} {p['major']} student, background in {area}"
+        return f"Subject: {intent} — {p['year']} {p['major']} student, background in {area}"
     ctx = lab or p["title"] or "your research"
-    return f"Subject: {p['year'].capitalize()} {p['major']} student — interest in {ctx}"
+    return f"Subject: {intent} — {p['year'].capitalize()} {p['major']} student, interest in {ctx}"
 
 
 def _closing(p: dict) -> str:
@@ -179,6 +329,32 @@ def _closing(p: dict) -> str:
     return "\n".join(lines)
 
 
+def _ask_for_lab_type(lab_type: LabType) -> str:
+    if lab_type == "wet":
+        return (
+            "\n\nI am eager to develop my wet-lab skills further and"
+            " can commit to in-person hours each week. I am happy to"
+            " complete any required safety training and to start under"
+            " a graduate mentor."
+            "\n\nWould you be open to a brief meeting to discuss"
+            " how I might contribute?"
+        )
+    if lab_type == "humanities":
+        return (
+            "\n\nI would welcome the chance to assist with literature"
+            " reviews, qualitative coding, or any other tasks that"
+            " would be helpful to your research."
+            "\n\nWould you have 15 minutes to discuss how I might"
+            " support your work?"
+        )
+    return (
+        "\n\nI would love the chance to contribute to your lab"
+        " and to learn more about your research."
+        "\n\nWould you be open to a short meeting?"
+        " I am happy to work around your availability."
+    )
+
+
 def _build_balanced(p: dict) -> str:
     subject = _subject(p)
     greeting = f"Dear {p['recipient']},"
@@ -187,13 +363,7 @@ def _build_balanced(p: dict) -> str:
     intro += _p1_research_hook(p)
 
     skills_para = _p2_skills_applied(p)
-
-    ask = (
-        "\n\nI would love the chance to contribute to your lab"
-        " and to learn more about your research."
-        "\n\nWould you be open to a short meeting?"
-        " I am happy to work around your availability."
-    )
+    ask = _ask_for_lab_type(p.get("lab_type", "dry"))
     closing = _closing(p)
     body = f"{greeting}\n\n{intro}{skills_para}{ask}{closing}"
     return f"{subject}\n\n{body}"
@@ -240,6 +410,10 @@ def _build_skills_focus(p: dict) -> str:
     coursework = p.get("coursework", [])
     if coursework:
         skills_para += f" Relevant coursework includes {', '.join(coursework[:3])}."
+
+    lab_type = p.get("lab_type", "dry")
+    if lab_type == "dry" and p.get("github_url"):
+        skills_para += f" My recent work is on GitHub at {p['github_url']}."
 
     ask = (
         "\n\nI would welcome the opportunity to discuss how my skills"
