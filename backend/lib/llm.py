@@ -24,9 +24,17 @@ local template — never raise from a chat-completion attempt.
 
 from __future__ import annotations
 
+import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Optional
+
+logger = logging.getLogger("ofe.llm")
+
+_MAX_ATTEMPTS = 2
+_RETRY_BASE_DELAY_SECONDS = 0.5
+_REQUEST_TIMEOUT_SECONDS = 20.0
 
 _PROVIDERS: tuple[tuple[str, str, str], ...] = (
     ("OPENAI_API_KEY", "", "gpt-4o-mini"),
@@ -84,7 +92,7 @@ def chat_completion(
     except ImportError:
         return None
 
-    client_kwargs: dict = {"api_key": provider.api_key}
+    client_kwargs: dict = {"api_key": provider.api_key, "timeout": _REQUEST_TIMEOUT_SECONDS}
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 
@@ -97,13 +105,25 @@ def chat_completion(
     if provider.model.startswith("gemini-"):
         call_kwargs["extra_body"] = {"reasoning_effort": "none"}
 
-    try:
-        client = openai.OpenAI(**client_kwargs)
-        resp = client.chat.completions.create(**call_kwargs)
-        text = (resp.choices[0].message.content or "").strip()
-        return text or None
-    except Exception:
-        return None
+    last_error: Optional[Exception] = None
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            client = openai.OpenAI(**client_kwargs)
+            resp = client.chat.completions.create(**call_kwargs)
+            text = (resp.choices[0].message.content or "").strip()
+            return text or None
+        except Exception as exc:
+            last_error = exc
+            if attempt < _MAX_ATTEMPTS:
+                time.sleep(_RETRY_BASE_DELAY_SECONDS * attempt)
+
+    logger.warning(
+        "LLM chat_completion failed after %d attempt(s) (model=%s): %s",
+        _MAX_ATTEMPTS,
+        provider.model,
+        last_error,
+    )
+    return None
 
 
 def is_configured() -> bool:

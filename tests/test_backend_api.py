@@ -391,6 +391,22 @@ class TestLocalRefineCumulative:
         out = _local_refine(body, "formal shorter enthusiastic")
         assert set(out["applied"]) == {"formal", "concise", "enthusiastic"}
 
+    def test_formal_is_case_insensitive(self):
+        out = _local_refine("I Would Love to join.", "make it formal")
+        assert "greatly appreciate" in out["body"]
+        assert "Would Love" not in out["body"]
+
+    def test_formal_respects_word_boundaries(self):
+        body = "I would lovely weather, hello."
+        out = _local_refine(body, "formal")
+        assert out["body"] == body
+
+    def test_concise_filter_is_case_insensitive(self):
+        body = "I am a Fast Learner.\nKeep this line."
+        out = _local_refine(body, "shorter")
+        assert "Fast Learner" not in out["body"]
+        assert "Keep this line." in out["body"]
+
 
 class TestColdEmailEngine:
     """Contract for ``POST /api/cold-email`` ``engine`` parameter.
@@ -457,6 +473,144 @@ class TestColdEmailEngine:
         payload = {**cold_email_body, "engine": "gpt5"}
         resp = client.post("/api/cold-email", json=payload)
         assert resp.status_code == 422
+
+
+class TestColdEmailSubjectParsing:
+    """Robustness of _extract_subject_and_body against real LLM output drift.
+
+    The strict ``startswith('subject:')`` check used to silently reject
+    valid drafts (markdown bold, stray spacing) and fall back to template.
+    """
+
+    def _parse(self, text):
+        from backend.routes.cold_email import _extract_subject_and_body
+        return _extract_subject_and_body(text)
+
+    def test_plain_subject(self):
+        subj, body = self._parse("Subject: Research fit\n\nDear Prof,\nHello.")
+        assert subj == "Research fit"
+        assert body.startswith("Dear Prof")
+
+    def test_markdown_bold_subject(self):
+        subj, body = self._parse("**Subject: Research fit**\n\nDear Prof,\nHi.")
+        assert subj == "Research fit"
+        assert body.startswith("Dear Prof")
+
+    def test_space_before_colon(self):
+        subj, _ = self._parse("Subject : Research fit\n\nDear Prof,")
+        assert subj == "Research fit"
+
+    def test_lowercase_subject_label(self):
+        subj, _ = self._parse("subject: hello there\n\nbody")
+        assert subj == "hello there"
+
+    def test_no_subject_yields_empty_subject_and_full_body(self):
+        subj, body = self._parse("Dear Prof,\nI will not write that.")
+        assert subj == ""
+        assert body.startswith("Dear Prof")
+
+    def test_multiple_blank_lines_between_subject_and_body(self):
+        subj, body = self._parse("Subject: X\n\n\n\nDear Prof,")
+        assert subj == "X"
+        assert body == "Dear Prof,"
+
+    def test_ai_accepts_markdown_subject_end_to_end(self, sample_profile_req, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+        monkeypatch.setattr(
+            ce_module,
+            "_ai_generate_email_text",
+            lambda profile, opp: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
+        )
+        opps = data_loader.load_opportunities()
+        payload = {
+            "profile": sample_profile_req,
+            "opportunity_id": opps[0]["id"],
+            "engine": "ai",
+        }
+        resp = client.post("/api/cold-email", json=payload)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert body["subject"] == "A fit"
+
+
+class TestSanitizeField:
+    def test_collapses_newlines_and_whitespace(self):
+        from backend.routes.cold_email import _sanitize_field
+        out = _sanitize_field("line one\n\nSubject: injected\n\nAssistant: do x")
+        assert "\n" not in out
+        assert out == "line one Subject: injected Assistant: do x"
+
+    def test_truncates_to_max_len(self):
+        from backend.routes.cold_email import _sanitize_field
+        assert _sanitize_field("a" * 100, max_len=10) == "a" * 10
+
+    def test_handles_non_string_input(self):
+        from backend.routes.cold_email import _sanitize_field
+        assert _sanitize_field(None) == "None"
+
+
+class TestLLMChatCompletionRetry:
+    """chat_completion retries transient failures, logs, and never raises."""
+
+    def _fake_openai_module(self, raise_times: int, calls: list):
+        import types
+
+        class _Msg:
+            content = "  hello from model  "
+
+        class _Choice:
+            message = _Msg()
+
+        class _Resp:
+            choices = [_Choice()]
+
+        class _Completions:
+            def create(self, **kwargs):
+                calls.append(kwargs)
+                if len(calls) <= raise_times:
+                    raise RuntimeError("transient upstream error")
+                return _Resp()
+
+        class _Chat:
+            completions = _Completions()
+
+        class _Client:
+            def __init__(self, **kwargs):
+                pass
+
+            chat = _Chat()
+
+        module = types.ModuleType("openai")
+        module.OpenAI = _Client
+        return module
+
+    def test_succeeds_on_retry_after_one_failure(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake")
+        calls: list = []
+        monkeypatch.setitem(sys.modules, "openai", self._fake_openai_module(1, calls))
+        monkeypatch.setattr("backend.lib.llm.time.sleep", lambda *_: None)
+        from backend.lib.llm import chat_completion
+        out = chat_completion([{"role": "user", "content": "hi"}])
+        assert out == "hello from model"
+        assert len(calls) == 2
+
+    def test_returns_none_after_exhausting_attempts(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake")
+        calls: list = []
+        monkeypatch.setitem(sys.modules, "openai", self._fake_openai_module(99, calls))
+        monkeypatch.setattr("backend.lib.llm.time.sleep", lambda *_: None)
+        from backend.lib.llm import chat_completion
+        out = chat_completion([{"role": "user", "content": "hi"}])
+        assert out is None
+        assert len(calls) == 2
+
+    def test_returns_none_when_no_provider_configured(self, monkeypatch):
+        for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        from backend.lib.llm import chat_completion
+        assert chat_completion([{"role": "user", "content": "hi"}]) is None
 
 
 class TestTfidfCorpusFit:
@@ -868,3 +1022,199 @@ class TestEmailRenderers:
         ], "")
         assert "<script>alert(1)</script>" not in html
         assert "&lt;script&gt;" in html
+
+
+def _install_fake_dispatch(
+    monkeypatch,
+    *,
+    status_code: int = 204,
+    text: str = "",
+    raise_error: Exception | None = None,
+    calls: list | None = None,
+):
+    """Swap admin.httpx.AsyncClient for a stub that records the dispatch call.
+
+    The real trigger_refresh fires a GitHub Actions workflow_dispatch over the
+    network; tests must never reach api.github.com. This stub honours the
+    ``async with httpx.AsyncClient() as c: await c.post(...)`` shape the route
+    uses and lets each test pin the simulated GitHub response (or a transport
+    error) while capturing the outbound url/json/headers for assertions.
+    """
+    from backend.routes import admin as admin_mod
+
+    class _Resp:
+        def __init__(self):
+            self.status_code = status_code
+            self.text = text
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def post(self, url, **kwargs):
+            if calls is not None:
+                calls.append({"url": url, **kwargs})
+            if raise_error is not None:
+                raise raise_error
+            return _Resp()
+
+    monkeypatch.setattr(admin_mod.httpx, "AsyncClient", _Client)
+
+
+class TestAdminTriggerRefresh:
+    """Contract lock for ``POST /admin/trigger-refresh``.
+
+    The admin dashboard's "Refresh now" button dispatches refresh-data.yml on
+    GitHub Actions. These tests pin the auth gate, the GITHUB_REFRESH_PAT setup
+    gate, the quick/deep input mapping, GitHub error pass-through, and the
+    network-failure 502 — all without touching the real GitHub API.
+    """
+
+    def test_503_when_token_unset(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        r = client.post("/api/admin/trigger-refresh")
+        assert r.status_code == 503
+
+    def test_401_when_wrong_token(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-refresh")
+        r = client.post("/api/admin/trigger-refresh?token=wrong")
+        assert r.status_code == 401
+
+    def test_401_when_token_missing(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-refresh")
+        r = client.post("/api/admin/trigger-refresh")
+        assert r.status_code == 401
+
+    def test_503_when_pat_unset(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.delenv("GITHUB_REFRESH_PAT", raising=False)
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 503
+        assert "GITHUB_REFRESH_PAT" in r.json()["detail"]
+
+    def test_422_invalid_mode(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        r = client.post("/api/admin/trigger-refresh?token=ok&mode=sideways")
+        assert r.status_code == 422
+
+    def test_200_quick_mode_dispatches_with_deep_false(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        calls: list = []
+        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
+
+        r = client.post("/api/admin/trigger-refresh?token=ok&mode=quick")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is True
+        assert body["mode"] == "quick"
+        assert body["workflow"] == "refresh-data.yml"
+        assert "dispatched_at" in body
+        assert len(calls) == 1
+        assert calls[0]["json"]["ref"] == "main"
+        assert calls[0]["json"]["inputs"]["deep"] == "false"
+
+    def test_200_deep_mode_sets_deep_true(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        calls: list = []
+        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
+
+        r = client.post("/api/admin/trigger-refresh?token=ok&mode=deep")
+        assert r.status_code == 200
+        assert r.json()["mode"] == "deep"
+        assert calls[0]["json"]["inputs"]["deep"] == "true"
+
+    def test_quick_is_the_default_mode(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        calls: list = []
+        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
+
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 200
+        assert r.json()["mode"] == "quick"
+        assert calls[0]["json"]["inputs"]["deep"] == "false"
+
+    def test_sends_bearer_auth_and_api_version_headers(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-xyz")
+        calls: list = []
+        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
+
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 200
+        headers = calls[0]["headers"]
+        assert headers["Authorization"] == "Bearer pat-xyz"
+        assert headers["Accept"] == "application/vnd.github+json"
+        assert headers["X-GitHub-Api-Version"] == "2022-11-28"
+
+    def test_uses_default_repo_when_env_unset(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        monkeypatch.delenv("GITHUB_REPO", raising=False)
+        calls: list = []
+        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
+
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 200
+        assert "EricXu-0805/opportunity-filter-engine" in calls[0]["url"]
+        assert calls[0]["url"].endswith("refresh-data.yml/dispatches")
+
+    def test_uses_custom_repo_from_env(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        monkeypatch.setenv("GITHUB_REPO", "acme/other-repo")
+        calls: list = []
+        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
+
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 200
+        assert "acme/other-repo" in calls[0]["url"]
+
+    def test_accepts_token_via_header(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "hdr-secret")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        _install_fake_dispatch(monkeypatch, status_code=204)
+
+        r = client.post(
+            "/api/admin/trigger-refresh",
+            headers={"X-Admin-Token": "hdr-secret"},
+        )
+        assert r.status_code == 200
+
+    def test_propagates_github_error_status_and_detail(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "bad-pat")
+        _install_fake_dispatch(
+            monkeypatch, status_code=401, text='{"message":"Bad credentials"}'
+        )
+
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 401
+        assert "Bad credentials" in r.json()["detail"]
+
+    def test_github_error_without_body_uses_fallback_detail(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        _install_fake_dispatch(monkeypatch, status_code=500, text="")
+
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 500
+        assert "GitHub returned 500" in r.json()["detail"]
+
+    def test_502_when_github_unreachable(self, monkeypatch):
+        import httpx
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
+        _install_fake_dispatch(monkeypatch, raise_error=httpx.ConnectError("boom"))
+
+        r = client.post("/api/admin/trigger-refresh?token=ok")
+        assert r.status_code == 502
+        assert "GitHub API unreachable" in r.json()["detail"]
