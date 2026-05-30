@@ -37,6 +37,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getAuthState,
   onAuthChange,
+  signInExistingEmail,
   signInOrLinkEmail,
   signOutOfAccount,
   type AuthState,
@@ -122,6 +123,21 @@ export default function AuthModal() {
     if (result.ok) setPhase('sent');
   }, [email, submitting, setPhase]);
 
+  // R67 problem #2: when signInOrLinkEmail returns `email-taken` (because
+  // the user typed an email that's already a permanent account), we surface
+  // a button that calls `signInExistingEmail` directly — bypassing the
+  // anon-link branch and forcing the magic-link-to-existing-account path.
+  // Without this button the user has no way out of the dead end.
+  const submitSignInExisting = useCallback(async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const result = await signInExistingEmail(email, redirectTo);
+    setOutcome(result);
+    setSubmitting(false);
+    if (result.ok) setPhase('sent');
+  }, [email, submitting, setPhase]);
+
   const confirmSignOut = useCallback(async () => {
     await signOutOfAccount();
     // Tell GuestBanner this was a deliberate sign-out (not first-visit
@@ -194,8 +210,19 @@ export default function AuthModal() {
               </label>
 
               {outcome && !outcome.ok && (
-                <div className="flex items-start gap-2 text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <span>{outcome.message}</span>
+                <div className="text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-2">
+                  <p>{outcome.message}</p>
+                  {outcome.reason === 'email-taken' && (
+                    <button
+                      type="button"
+                      onClick={submitSignInExisting}
+                      disabled={submitting}
+                      data-testid="auth-modal-signin-existing"
+                      className="w-full py-2 rounded-lg bg-white border border-red-300 text-red-800 text-[12px] font-medium hover:bg-red-50 disabled:opacity-60 transition-colors"
+                    >
+                      {submitting ? t('auth.modal.signin.submitting') : t('auth.modal.signin.signInExistingCta')}
+                    </button>
+                  )}
                 </div>
               )}
 

@@ -10,6 +10,7 @@ import { HeroSection } from './home/HeroSection';
 import { LiveDatabaseCard } from './home/LiveDatabaseCard';
 import { OnlineProfilesCard } from './home/OnlineProfilesCard';
 import { ProfileStrength } from './home/ProfileStrength';
+import { SaveCta } from './home/SaveCta';
 import { SearchFocusCard } from './home/SearchFocusCard';
 import { SharedBanner } from './home/SharedBanner';
 import { SubmitRow } from './home/SubmitRow';
@@ -83,6 +84,8 @@ function HomePageInner() {
         onShare={handleShare}
         t={t}
       />
+
+      <SaveCta t={t} />
 
       <FeaturedFellowships />
     </div>

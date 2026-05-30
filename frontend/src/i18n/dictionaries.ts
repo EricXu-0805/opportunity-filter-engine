@@ -51,18 +51,19 @@ export const en = {
   },
   auth: {
     menu: {
-      guestLabel: 'Save',
-      guestAria: 'Save your data so you can access it from any device',
+      guestLabel: 'Sign in',
+      guestAria: 'Sign in or create an account to sync your data across devices',
       signedInAria: 'Your account, signed in as {email}',
     },
     modal: {
       signin: {
-        title: 'Save your work',
-        subtitle: "Add an email and we'll send a one-tap link so you can access this on any device.",
+        title: 'Sign in to OpportunityEngine',
+        subtitle: "Enter your email — we'll send a one-tap sign-in link. No password needed.",
         emailLabel: 'Email',
         submitting: 'Sending...',
         submit: 'Email me a link',
         trust: "We'll send one email. No password, no spam.",
+        signInExistingCta: 'Send sign-in link to this email',
       },
       sent: {
         title: 'Check your inbox',
@@ -396,6 +397,12 @@ export const en = {
       requiredFields: 'Please select your college, major, and grade to continue',
     },
     sharedBanner: 'Loaded a shared profile. Review & tweak before generating matches — your saved profile is untouched until you click generate.',
+    saveCta: {
+      title: 'Save my work',
+      body: 'Your profile is saved on this device. Sign in to access it from your phone, laptop, or any other browser.',
+      cta: 'Sign in to save across devices',
+      dismiss: 'Not now',
+    },
   },
   fellowships: {
     title: 'Research fellowships & summer programs',
@@ -1313,18 +1320,19 @@ export const zh = {
   },
   auth: {
     menu: {
-      guestLabel: '保存',
-      guestAria: '保存你的数据，跨设备都能访问',
+      guestLabel: '登录',
+      guestAria: '登录或创建账号，跨设备同步数据',
       signedInAria: '我的账号，已登录：{email}',
     },
     modal: {
       signin: {
-        title: '保存我的数据',
-        subtitle: '留一个邮箱，我们发一个一键登录链接，让你在任何设备都能继续用。',
+        title: '登录 OpportunityEngine',
+        subtitle: '留一个邮箱，我们发一个一键登录链接。无需密码。',
         emailLabel: '邮箱',
         submitting: '发送中...',
         submit: '发送链接',
         trust: '只会发一封邮件。无密码，无营销。',
+        signInExistingCta: '给这个邮箱发送登录链接',
       },
       sent: {
         title: '请查收邮件',
@@ -1658,6 +1666,12 @@ export const zh = {
       requiredFields: '请选择学院、专业和年级以继续',
     },
     sharedBanner: '已加载分享的档案。请在生成匹配前查看并调整 —— 在你点击生成之前，你自己保存的档案不会被修改。',
+    saveCta: {
+      title: '保存我的资料',
+      body: '你的资料已经保存在这台设备。登录之后可以在手机、笔记本或其他浏览器都看到。',
+      cta: '登录以跨设备同步',
+      dismiss: '暂不',
+    },
   },
   fellowships: {
     title: '研究奖学金与暑期项目',

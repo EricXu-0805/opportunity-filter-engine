@@ -56,7 +56,7 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { isAnonymousUser, signInOrLinkEmail } from './supabase';
+import { isAnonymousUser, signInExistingEmail, signInOrLinkEmail } from './supabase';
 
 const REDIRECT = 'https://app.test/auth/callback';
 
@@ -217,5 +217,64 @@ describe('signInOrLinkEmail — error mapping', () => {
       expect(result.reason).toBe('unknown');
       expect(result.message).toBe('Database connection lost');
     }
+  });
+});
+
+// R67 problem #2: `signInExistingEmail` is the dedicated "I already have
+// an account" path. It MUST always call signInWithOtp with
+// shouldCreateUser:false regardless of current session, so the user who
+// just hit "email-taken" on the link-anon path can recover in-modal.
+describe('signInExistingEmail — forced sign-in-to-existing path', () => {
+  beforeEach(() => {
+    mockGetSession.mockReset();
+    mockUpdateUser.mockReset();
+    mockSignInWithOtp.mockReset();
+  });
+
+  it('rejects malformed emails before any network call', async () => {
+    const result = await signInExistingEmail('not-an-email', REDIRECT);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('invalid-email');
+    expect(mockSignInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it('always calls signInWithOtp with shouldCreateUser:false (does NOT read session)', async () => {
+    mockSignInWithOtp.mockResolvedValueOnce({ data: {}, error: null });
+
+    const result = await signInExistingEmail('eric@illinois.edu', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.mode).toBe('sign-in');
+    expect(mockSignInWithOtp).toHaveBeenCalledWith({
+      email: 'eric@illinois.edu',
+      options: { emailRedirectTo: REDIRECT, shouldCreateUser: false },
+    });
+    // Crucially, we do NOT branch on session state — that's the bug we
+    // were working around in signInOrLinkEmail.
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+  });
+
+  it('lowercases + trims the email before sending', async () => {
+    mockSignInWithOtp.mockResolvedValueOnce({ data: {}, error: null });
+
+    await signInExistingEmail('  Eric@ILLINOIS.edu  ', REDIRECT);
+
+    expect(mockSignInWithOtp).toHaveBeenCalledWith({
+      email: 'eric@illinois.edu',
+      options: { emailRedirectTo: REDIRECT, shouldCreateUser: false },
+    });
+  });
+
+  it('maps Supabase errors through the same mapAuthError pipeline', async () => {
+    mockSignInWithOtp.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'For security purposes, too many requests' },
+    });
+
+    const result = await signInExistingEmail('eric@illinois.edu', REDIRECT);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('rate-limited');
   });
 });
