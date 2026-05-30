@@ -1218,3 +1218,253 @@ class TestAdminTriggerRefresh:
         r = client.post("/api/admin/trigger-refresh?token=ok")
         assert r.status_code == 502
         assert "GitHub API unreachable" in r.json()["detail"]
+
+
+def _set_push_env(monkeypatch):
+    monkeypatch.setenv("CRON_SECRET", "cron-ok")
+    monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "vapid-priv")
+    monkeypatch.setenv("VAPID_PUBLIC_KEY", "vapid-pub")
+    monkeypatch.setenv("VAPID_SUBJECT", "mailto:ops@example.com")
+
+
+def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_impl=None, calls=None):
+    """Stub httpx.AsyncClient + pywebpush.webpush for the reminders cron.
+
+    The route fetches due interactions then push subscriptions from Supabase
+    over httpx and fans out Web Push notifications via pywebpush — neither may
+    touch the network in tests. ``interactions``/``subscriptions`` seed the two
+    Supabase GET responses (routed by url substring), and ``webpush_impl`` lets
+    a test simulate a successful delivery or a WebPushException.
+    """
+    import httpx
+    import pywebpush
+
+    class _Resp:
+        def __init__(self, data):
+            self._data = data
+            self.status_code = 200
+
+        def json(self):
+            return self._data
+
+        def raise_for_status(self):
+            return None
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, **kwargs):
+            if "push_subscriptions" in url:
+                return _Resp(subscriptions)
+            return _Resp(interactions)
+
+    def _default_webpush(**kwargs):
+        if calls is not None:
+            calls.append(kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+    monkeypatch.setattr(pywebpush, "webpush", webpush_impl or _default_webpush)
+
+
+_DUE_ROW = {
+    "device_id": "dev-1",
+    "opportunity_id": "opp-42",
+    "remind_at": "2020-01-01",
+    "interaction_type": "applied",
+    "notes": "",
+}
+_SUB_ROW = {
+    "device_id": "dev-1",
+    "endpoint": "https://push.example.com/dev-1",
+    "p256dh": "p256dh-key",
+    "auth": "auth-key",
+}
+
+
+class TestPushRemindersCron:
+    """Contract lock for ``GET /api/cron/reminders``.
+
+    Pins the CRON_SECRET auth gate, the graceful skip when push env / pywebpush
+    are absent, the due→subscription fan-out counts, and the failure tally —
+    all without reaching Supabase or a real Web Push endpoint.
+    """
+
+    def test_503_when_cron_secret_unset(self, monkeypatch):
+        monkeypatch.delenv("CRON_SECRET", raising=False)
+        r = client.get("/api/cron/reminders")
+        assert r.status_code == 503
+
+    def test_401_when_wrong_secret(self, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "cron-ok")
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer wrong"}
+        )
+        assert r.status_code == 401
+
+    def test_401_when_authorization_missing(self, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "cron-ok")
+        r = client.get("/api/cron/reminders")
+        assert r.status_code == 401
+
+    def test_skipped_when_push_env_missing(self, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "cron-ok")
+        for k in (
+            "SUPABASE_URL",
+            "SUPABASE_SERVICE_ROLE_KEY",
+            "VAPID_PRIVATE_KEY",
+            "VAPID_PUBLIC_KEY",
+            "VAPID_SUBJECT",
+        ):
+            monkeypatch.delenv(k, raising=False)
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "skipped"
+        assert "SUPABASE_URL" in body["missing"]
+        assert "VAPID_SUBJECT" in body["missing"]
+
+    def test_skipped_when_pywebpush_missing(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        monkeypatch.setitem(sys.modules, "pywebpush", None)
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "skipped"
+        assert "pywebpush" in body["reason"]
+
+    def test_ok_zero_when_no_due_reminders(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        _install_push_stubs(monkeypatch, interactions=[], subscriptions=[])
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        assert r.json() == {"status": "ok", "sent": 0, "due": 0}
+
+    def test_sends_one_push_per_subscription(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        calls: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW], calls=calls
+        )
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["due"] == 1
+        assert body["sent"] == 1
+        assert body["failed"] == 0
+        assert "timestamp" in body
+        assert len(calls) == 1
+
+    def test_multiple_subscriptions_per_device_all_sent(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        sub2 = {**_SUB_ROW, "endpoint": "https://push.example.com/dev-1-b"}
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW, sub2]
+        )
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["due"] == 1
+        assert body["sent"] == 2
+
+    def test_due_without_subscription_sends_nothing(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        _install_push_stubs(monkeypatch, interactions=[_DUE_ROW], subscriptions=[])
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["due"] == 1
+        assert body["sent"] == 0
+        assert body["failed"] == 0
+
+    def test_counts_failed_when_webpush_raises(self, monkeypatch):
+        from pywebpush import WebPushException
+
+        def _boom(**kwargs):
+            raise WebPushException("delivery rejected")
+
+        _set_push_env(monkeypatch)
+        _install_push_stubs(
+            monkeypatch,
+            interactions=[_DUE_ROW],
+            subscriptions=[_SUB_ROW],
+            webpush_impl=_boom,
+        )
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["sent"] == 0
+        assert body["failed"] == 1
+
+    def test_payload_carries_opportunity_url_and_tag(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        calls: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW], calls=calls
+        )
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        payload = calls[0]["data"]
+        assert "/opportunities/opp-42" in payload
+        assert "reminder-opp-42" in payload
+
+    def test_passes_vapid_private_key_and_claims(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        calls: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW], calls=calls
+        )
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        kwargs = calls[0]
+        assert kwargs["vapid_private_key"] == "vapid-priv"
+        assert kwargs["vapid_claims"] == {"sub": "mailto:ops@example.com"}
+        assert kwargs["subscription_info"]["endpoint"] == "https://push.example.com/dev-1"
+
+
+class TestVapidPublicKey:
+    def test_503_when_unset(self, monkeypatch):
+        monkeypatch.delenv("VAPID_PUBLIC_KEY", raising=False)
+        monkeypatch.delenv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", raising=False)
+        r = client.get("/api/push/vapid-public-key")
+        assert r.status_code == 503
+
+    def test_returns_key_when_set(self, monkeypatch):
+        monkeypatch.setenv("VAPID_PUBLIC_KEY", "pub-123")
+        r = client.get("/api/push/vapid-public-key")
+        assert r.status_code == 200
+        assert r.json() == {"key": "pub-123"}
+
+    def test_falls_back_to_next_public_var(self, monkeypatch):
+        monkeypatch.delenv("VAPID_PUBLIC_KEY", raising=False)
+        monkeypatch.setenv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "pub-next")
+        r = client.get("/api/push/vapid-public-key")
+        assert r.status_code == 200
+        assert r.json() == {"key": "pub-next"}
