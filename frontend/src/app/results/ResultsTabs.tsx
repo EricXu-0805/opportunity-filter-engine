@@ -7,9 +7,20 @@ export interface ResultsTabsProps {
   t: TFunc;
 }
 
+/**
+ * R69-B: the tab row scrolls horizontally on viewports < sm. On a 375x812
+ * mobile viewport the rightmost tabs (Reach, Starred) clip off the edge of
+ * the screen, but the original layout gave no visual cue that scroll was
+ * possible. Adding a `mask-image` linear gradient fades the right edge
+ * into transparency so the clipped tabs read as "more content here, swipe
+ * left" rather than as broken UI. The mask is removed at `sm:` because the
+ * 5 tabs fit comfortably in the desktop container.
+ */
 export function ResultsTabs({ activeTab, onChange, counts, t }: ResultsTabsProps) {
   return (
-    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-8 sm:mb-10 no-scrollbar">
+    <div
+      className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-8 sm:mb-10 no-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] sm:[mask-image:none]"
+    >
       <div className="inline-flex items-center bg-black/[0.04] rounded-full p-1" role="tablist" aria-label={t('results.matchCategoryAria')}>
         {TABS.map(({ key, labelKey, icon: Icon, color }) => (
           <button

@@ -585,6 +585,14 @@ export const en = {
     showDismissedLabel: 'Show {count} dismissed',
     clearNFilter: 'Clear {count} filter',
     clearNFilters: 'Clear {count} filters',
+    // R69-B: mobile filter rail collapse — on viewports below the `sm`
+    // breakpoint, FilterRail renders a single toggle button instead of
+    // the 7-chip horizontal stack (which used ~200px of above-the-fold
+    // vertical real estate on a 375x812 viewport).
+    filtersMobileToggle: 'Filters',
+    filtersMobileActive: '{count} active',
+    filtersMobileExpandAria: 'Show filters',
+    filtersMobileCollapseAria: 'Hide filters',
     alsoMatching: 'also matching: {terms}',
     resultsForPrefix: 'for',
     semantic: {
@@ -1854,6 +1862,12 @@ export const zh = {
     showDismissedLabel: '显示 {count} 个已忽略',
     clearNFilter: '清除 {count} 个筛选',
     clearNFilters: '清除 {count} 个筛选',
+    // R69-B：移动端 filter rail 折叠 —— 小于 sm 断点时 FilterRail 渲染为
+    // 单个 toggle 按钮，而不是占用 ~200px above-the-fold 高度的 7 个 chip。
+    filtersMobileToggle: '筛选',
+    filtersMobileActive: '{count} 项生效',
+    filtersMobileExpandAria: '展开筛选',
+    filtersMobileCollapseAria: '收起筛选',
     alsoMatching: '同时匹配：{terms}',
     resultsForPrefix: '对于',
     semantic: {
