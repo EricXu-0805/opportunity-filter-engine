@@ -18,7 +18,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.matcher.ranker import rank_all, rank_opportunity
 from src.normalizers.normalizer import normalize
 from src.parsers.llm_tagger import _build_full_text, apply_updates, needs_tagging, rule_based_tag
-from src.recommender.cold_email import generate_cold_email
+from src.recommender.cold_email import (
+    _detect_lab_type,
+    generate_cold_email,
+    generate_variants,
+)
 from src.recommender.resume_advisor import analyze_gaps
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
@@ -306,6 +310,144 @@ class TestColdEmailGenerator:
         for opp in data[:5]:
             email = generate_cold_email(sample_profile, opp)
             assert len(email) > 50, f"Email too short for {opp.get('title')}"
+
+
+class TestLabTypeDetection:
+    def test_wet_lab_from_biology_department(self):
+        opp = {
+            "title": "Undergraduate research in protein folding",
+            "department": "Molecular and Cellular Biology",
+            "description_clean": "Looking for students to assist with cell culture and Western blot.",
+            "keywords": ["protein", "cell biology"],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "wet"
+
+    def test_wet_lab_from_techniques_even_without_department(self):
+        opp = {
+            "title": "Summer fellowship",
+            "department": "",
+            "description_clean": "PCR, gel electrophoresis, and sterile technique daily.",
+            "keywords": [],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "wet"
+
+    def test_dry_lab_from_cs_department(self):
+        opp = {
+            "title": "ML research with deep neural networks",
+            "department": "Computer Science",
+            "description_clean": "Looking for students with Python and PyTorch experience.",
+            "keywords": ["machine learning", "deep learning"],
+            "eligibility": {"skills_required": ["Python", "PyTorch"]},
+        }
+        assert _detect_lab_type(opp) == "dry"
+
+    def test_humanities_lab_from_psychology(self):
+        opp = {
+            "title": "Research assistant — behavioral psychology",
+            "department": "Psychology",
+            "description_clean": "Qualitative coding of interviews using NVivo. IRB protocol experience preferred.",
+            "keywords": ["psychology", "qualitative"],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "humanities"
+
+    def test_defaults_to_dry_on_no_signal(self):
+        opp = {
+            "title": "Research opportunity",
+            "department": "",
+            "description_clean": "Contact the professor for details.",
+            "keywords": [],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "dry"
+
+    def test_wet_wins_over_dry_buzzword(self):
+        """A wet-lab posting that mentions Python for analysis should
+        not be misrouted to dry. Wet-lab signals (cell culture, microscopy)
+        get 3x weight from the department field plus 2x from title."""
+        opp = {
+            "title": "Cell biology REU — microscopy and image analysis",
+            "department": "Cell and Developmental Biology",
+            "description_clean": "Use Python for image analysis after wet-bench microscopy work.",
+            "keywords": ["cell biology", "microscopy"],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "wet"
+
+
+class TestLabTypeAwareTemplates:
+    def test_wet_lab_subject_says_inquiry(self, sample_profile):
+        opp = {
+            "id": "wet-1", "title": "Biology research",
+            "department": "Molecular Biology", "lab_or_program": "Smith Lab",
+            "pi_name": "Prof. Smith",
+            "description_clean": "PCR and cell culture daily.",
+            "keywords": ["biology"], "eligibility": {"skills_required": []},
+        }
+        email = generate_cold_email(sample_profile, opp)
+        first_line = email.split("\n")[0]
+        assert "Research Inquiry" in first_line
+
+    def test_dry_lab_subject_says_interest(self, sample_profile):
+        opp = {
+            "id": "dry-1", "title": "ML research",
+            "department": "Computer Science", "lab_or_program": "Smith Lab",
+            "pi_name": "Prof. Smith",
+            "description_clean": "Python and PyTorch required.",
+            "keywords": ["machine learning"],
+            "eligibility": {"skills_required": ["Python"]},
+        }
+        email = generate_cold_email(sample_profile, opp)
+        first_line = email.split("\n")[0]
+        assert "Undergraduate Research Interest" in first_line
+
+    def test_humanities_subject_says_assistant_interest(self, sample_profile):
+        opp = {
+            "id": "hum-1", "title": "Sociology RA",
+            "department": "Sociology", "lab_or_program": "Smith Lab",
+            "pi_name": "Prof. Smith",
+            "description_clean": "Qualitative interviews and survey design.",
+            "keywords": ["sociology"], "eligibility": {"skills_required": []},
+        }
+        email = generate_cold_email(sample_profile, opp)
+        first_line = email.split("\n")[0]
+        assert "Research Assistant Interest" in first_line
+
+    def test_wet_lab_ask_mentions_safety_training(self, sample_profile):
+        opp = {
+            "id": "wet-2", "title": "Bio research",
+            "department": "Biology", "description_clean": "PCR work.",
+            "keywords": ["biology"], "eligibility": {"skills_required": []},
+        }
+        email = generate_cold_email(sample_profile, opp)
+        assert "safety training" in email.lower() or "graduate mentor" in email.lower()
+
+    def test_humanities_ask_mentions_literature_reviews(self, sample_profile):
+        opp = {
+            "id": "hum-2", "title": "History RA",
+            "department": "History", "description_clean": "Archival research.",
+            "keywords": ["history"], "eligibility": {"skills_required": []},
+        }
+        email = generate_cold_email(sample_profile, opp)
+        assert (
+            "literature review" in email.lower()
+            or "qualitative coding" in email.lower()
+        )
+
+    def test_variants_include_lab_type_field(self, sample_profile):
+        opp = {
+            "id": "dry-2", "title": "CS research",
+            "department": "Computer Science",
+            "description_clean": "ML work in Python.",
+            "keywords": ["computer science"],
+            "eligibility": {"skills_required": ["Python"]},
+        }
+        variants = generate_variants(sample_profile, opp)
+        assert len(variants) == 3
+        for v in variants:
+            assert v["lab_type"] == "dry"
 
 
 # ── Test: Resume Advisor ────────────────
