@@ -200,7 +200,12 @@ export function savedSearchToUrl(
   opts?: { highlight?: string[]; savedSearchId?: string },
 ): string {
   const params = new URLSearchParams();
-  if (s.tab && s.tab !== 'all') params.set('tab', s.tab);
+  // R69-A: omit-sentinel moved from 'all' → 'high_priority' in lock-step with
+  // app/results/use-results-url.ts. Saved searches with tab='all' (the historic
+  // implicit default, still the default for `saveSearch()` input) now emit
+  // ?tab=all so the reader stays on 'all' instead of falling through to the
+  // new 'high_priority' default.
+  if (s.tab && s.tab !== 'high_priority') params.set('tab', s.tab);
   if (s.query) params.set('q', s.query);
   if (s.filters.paid) params.set('paid', s.filters.paid);
   if (s.filters.intl) params.set('intl', s.filters.intl);
