@@ -81,6 +81,14 @@ export async function getFellowshipOpportunities(
   return request<OpportunitiesResponse>(`/opportunities?${params.toString()}`);
 }
 
+export async function getFeaturedFellowships(limit = 3): Promise<OpportunitiesResponse> {
+  const params = new URLSearchParams({
+    opportunity_type: 'summer_program',
+    limit: String(limit),
+  });
+  return request<OpportunitiesResponse>(`/opportunities?${params.toString()}`);
+}
+
 export interface GapAnalysis {
   missing_skills: string[];
   suggested_coursework: string[];
