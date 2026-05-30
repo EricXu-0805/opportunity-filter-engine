@@ -313,6 +313,10 @@ describe('markSavedSearchSeen', () => {
 });
 
 describe('savedSearchToUrl', () => {
+  // R69-A: omit-sentinel for tab is 'high_priority' (was 'all'). Most tests
+  // here use tab: 'high_priority' as a placeholder for "I'm testing a
+  // different feature, give me the bare URL"; the dedicated tab test below
+  // covers both halves of the round-trip explicitly.
   const EMPTY_FILTERS: SavedSearchFilters = {
     paid: '',
     intl: '',
@@ -327,7 +331,7 @@ describe('savedSearchToUrl', () => {
       query: '',
       filters: EMPTY_FILTERS,
       sort_by: 'score',
-      tab: 'all',
+      tab: 'high_priority',
     })).toBe('/results');
   });
 
@@ -336,22 +340,33 @@ describe('savedSearchToUrl', () => {
       query: 'machine learning',
       filters: EMPTY_FILTERS,
       sort_by: 'score',
-      tab: 'all',
+      tab: 'high_priority',
     })).toBe('/results?q=machine+learning');
   });
 
-  it('serialises tab only when not the default "all"', () => {
+  it('serialises tab only when not the default "high_priority" (R69-A)', () => {
+    // Non-default tabs round-trip.
     expect(savedSearchToUrl({
       query: '',
       filters: EMPTY_FILTERS,
       sort_by: 'score',
       tab: 'starred',
     })).toBe('/results?tab=starred');
+    // The historic implicit default ('all') is now an explicit tab and
+    // MUST round-trip so legacy saved searches don't silently snap to
+    // the new high_priority default on apply.
     expect(savedSearchToUrl({
       query: '',
       filters: EMPTY_FILTERS,
       sort_by: 'score',
       tab: 'all',
+    })).toBe('/results?tab=all');
+    // The new omit-sentinel.
+    expect(savedSearchToUrl({
+      query: '',
+      filters: EMPTY_FILTERS,
+      sort_by: 'score',
+      tab: 'high_priority',
     })).toBe('/results');
   });
 
@@ -360,13 +375,13 @@ describe('savedSearchToUrl', () => {
       query: '',
       filters: EMPTY_FILTERS,
       sort_by: 'deadline',
-      tab: 'all',
+      tab: 'high_priority',
     })).toBe('/results?sort=deadline');
     expect(savedSearchToUrl({
       query: '',
       filters: EMPTY_FILTERS,
       sort_by: 'score',
-      tab: 'all',
+      tab: 'high_priority',
     })).toBe('/results');
   });
 
@@ -382,7 +397,7 @@ describe('savedSearchToUrl', () => {
         minScore: 70,
       },
       sort_by: 'score',
-      tab: 'all',
+      tab: 'high_priority',
     });
     const params = new URLSearchParams(url.split('?')[1]);
     expect(params.get('paid')).toBe('yes');
@@ -401,19 +416,22 @@ describe('savedSearchToUrl', () => {
       query: '',
       filters: { ...EMPTY_FILTERS, minScore: 0 },
       sort_by: 'score',
-      tab: 'all',
+      tab: 'high_priority',
     })).toBe('/results');
   });
 
   it('combines tab + query + multiple filters in a single URL', () => {
+    // tab: 'all' rather than 'high_priority' so the test still asserts
+    // that a non-default tab survives serialisation alongside everything
+    // else (mirrors the original intent of this test pre-R69-A).
     const url = savedSearchToUrl({
       query: 'NLP',
       filters: { paid: 'yes', intl: '', source: '', onCampus: '', deadline: '7', minScore: 60 },
       sort_by: 'deadline',
-      tab: 'high_priority',
+      tab: 'all',
     });
     const params = new URLSearchParams(url.split('?')[1]);
-    expect(params.get('tab')).toBe('high_priority');
+    expect(params.get('tab')).toBe('all');
     expect(params.get('q')).toBe('NLP');
     expect(params.get('paid')).toBe('yes');
     expect(params.get('dl')).toBe('7');
@@ -427,7 +445,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       })).toBe('/results');
     });
 
@@ -436,7 +454,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, {})).toBe('/results');
     });
 
@@ -445,7 +463,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { highlight: [] })).toBe('/results');
     });
 
@@ -454,7 +472,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { highlight: ['opp-1'] });
       const params = new URLSearchParams(url.split('?')[1]);
       expect(params.get('highlight')).toBe('opp-1');
@@ -465,7 +483,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { highlight: ['opp-a', 'opp-b', 'opp-c'] });
       const params = new URLSearchParams(url.split('?')[1]);
       expect(params.get('highlight')).toBe('opp-a,opp-b,opp-c');
@@ -477,7 +495,7 @@ describe('savedSearchToUrl', () => {
         query: 'ml',
         filters: { ...EMPTY_FILTERS, paid: 'yes', intl: 'yes' },
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { highlight: ['opp-x', 'opp-y'] });
       const params = new URLSearchParams(url.split('?')[1]);
       expect(params.get('q')).toBe('ml');
@@ -493,7 +511,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { highlight: ['opp-1'] });
       const params = new URLSearchParams(url.split('?')[1]);
       expect(params.has('savedSearchId')).toBe(false);
@@ -504,7 +522,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { savedSearchId: '' });
       expect(url).toBe('/results');
     });
@@ -514,7 +532,7 @@ describe('savedSearchToUrl', () => {
         query: '',
         filters: EMPTY_FILTERS,
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { savedSearchId: 'uuid-abc' });
       const params = new URLSearchParams(url.split('?')[1]);
       expect(params.get('savedSearchId')).toBe('uuid-abc');
@@ -525,7 +543,7 @@ describe('savedSearchToUrl', () => {
         query: 'nlp',
         filters: { ...EMPTY_FILTERS, paid: 'yes' },
         sort_by: 'score',
-        tab: 'all',
+        tab: 'high_priority',
       }, { highlight: ['opp-1', 'opp-2'], savedSearchId: 'uuid-xyz' });
       const params = new URLSearchParams(url.split('?')[1]);
       expect(params.get('q')).toBe('nlp');

@@ -8,6 +8,14 @@ import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
 // of /results. Keys MUST stay in sync with the writer below AND with
 // lib/saved-searches.ts:savedSearchToUrl — that helper builds the URL the
 // /favorites "Apply saved search" link points back to.
+//
+// R69-A: default tab is 'high_priority' (was 'all'). Rationale: the "All" tab
+// dilutes the user's high-signal matches with mid/low-fit results — first-time
+// visitors saw Math fellowships before their top CS/CV picks. "High Priority"
+// (bucket === 'high_priority') is what they actually came for. URL omit
+// sentinel moves in lock-step: `?tab=high_priority` is omitted, every other
+// tab (including the explicit 'all') round-trips through the URL so deep
+// links, saved searches, and bookmarks stay deterministic.
 export function readInitialFiltersFromUrl(
   searchParams: URLSearchParams | ReadonlyURLSearchParams,
 ): {
@@ -17,7 +25,7 @@ export function readInitialFiltersFromUrl(
   sortBy: SortKey;
 } {
   return {
-    activeTab: (searchParams.get('tab') as Tab) || 'all',
+    activeTab: (searchParams.get('tab') as Tab) || 'high_priority',
     searchQuery: searchParams.get('q') || '',
     filters: {
       paid: (searchParams.get('paid') || '') as Filters['paid'],
@@ -66,7 +74,10 @@ export function useResultsUrlSync(state: {
   const { activeTab, debouncedQuery, filters, sortBy, semanticRerank } = state;
   useEffect(() => {
     const params = new URLSearchParams();
-    if (activeTab !== 'all') params.set('tab', activeTab);
+    // R69-A: omit-sentinel is 'high_priority' (the new default). Every other
+    // tab — including 'all' — must round-trip through the URL so /favorites
+    // "Apply saved search" deep links land on the tab the user saved.
+    if (activeTab !== 'high_priority') params.set('tab', activeTab);
     if (debouncedQuery) params.set('q', debouncedQuery);
     if (filters.paid) params.set('paid', filters.paid);
     if (filters.intl) params.set('intl', filters.intl);

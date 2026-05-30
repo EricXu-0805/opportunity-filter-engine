@@ -39,7 +39,6 @@ import { ResultsHeader } from './ResultsHeader';
 import { ResultsSearch } from './ResultsSearch';
 import { ResultsTabs } from './ResultsTabs';
 import { SkeletonCard } from './SkeletonCard';
-import { SummaryCard } from './SummaryCard';
 import {
   DEFAULT_FILTERS,
   migrateProfile,
@@ -339,6 +338,16 @@ function ResultsContent() {
     setSearchQuery('');
   }, []);
 
+  // R69-A: cold-visit pre-check. The router.replace('/') effect above
+  // is reactive — between the first render and the effect firing, the
+  // skeleton row + loading narrative ("Reading your profile...") paints
+  // for ~1 frame, which feels like a glitch to a user who never had a
+  // profile. Returning null here suppresses that flash; the effect still
+  // performs the actual navigation. hasStoredProfile is undefined while
+  // localStorage probes; we only skip rendering once it's been confirmed
+  // absent (=== false), so users with profiles never hit this branch.
+  if (hasStoredProfile === false) return null;
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <button
@@ -368,27 +377,14 @@ function ResultsContent() {
         t={t}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 sm:mb-10">
-        {!loading && data ? (
-          <>
-            <SummaryCard label={t('results.summary.total')} count={counts.all} />
-            <SummaryCard label={t('results.summary.highPriority')} count={counts.high_priority} accent="emerald" />
-            <SummaryCard label={t('results.summary.goodMatch')} count={counts.good_match} accent="blue" />
-            <SummaryCard label={t('results.summary.reach')} count={counts.reach} accent="amber" />
-          </>
-        ) : (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] px-5 py-5">
-              <div className="skeleton h-9 w-14 mb-2" />
-              <div className="skeleton h-3 w-20" />
-            </div>
-          ))
-        )}
-      </div>
-
-      {(loading || !data) && (
-        <div className="mb-8 sm:mb-10 h-[44px]" aria-hidden="true" />
-      )}
+      {/*
+        R69-A: the 4-cell summary grid (Total / High Priority / Good Match /
+        Reach) was removed here — those numbers already render twice elsewhere
+        on this page (in the header subtitle "{count} opportunities ranked
+        for you" and in the tab row "All 608 / High Priority 39 / Good Match
+        298 / Reach 271"). Triple-printing the same figure consumed ~250px of
+        mobile real estate above the fold for zero new information.
+      */}
 
       {!loading && data && (
         <ResultsTabs activeTab={activeTab} onChange={setActiveTab} counts={counts} t={t} />
