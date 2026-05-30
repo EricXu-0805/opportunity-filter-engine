@@ -19,7 +19,9 @@ from src.matcher.ranker import (
     BUCKET_THRESHOLDS,
     MatchResult,
     _major_match_score,
+    _normalize_type_key,
     _skill_overlap_score,
+    _type_preference_score,
     _year_match_score,
     rank_all,
     rank_opportunity,
@@ -144,6 +146,67 @@ class TestSkillOverlap:
     def test_case_insensitive(self):
         score = _skill_overlap_score(["python", "JAVA"], ["Python", "Java"])
         assert score == 100.0
+
+
+class TestTypePreferenceNormalisation:
+    """R69-D: _type_preference_score normalises inputs so case / space /
+    hyphen drift from non-form callers (share URLs, admin debug, future
+    API integrations) doesn't silently land in the 30.0 fallback and
+    produce a false 'not your primary target type' concern downstream."""
+
+    def test_normalize_lowercase(self):
+        assert _normalize_type_key("research") == "research"
+
+    def test_normalize_capitalised(self):
+        assert _normalize_type_key("Research") == "research"
+
+    def test_normalize_uppercase_with_spaces(self):
+        assert _normalize_type_key("Summer Program") == "summer_program"
+
+    def test_normalize_hyphens_become_underscores(self):
+        assert _normalize_type_key("summer-program") == "summer_program"
+
+    def test_normalize_strips_surrounding_whitespace(self):
+        assert _normalize_type_key("  Internship  ") == "internship"
+
+    def test_empty_seeking_types_returns_neutral_60(self):
+        assert _type_preference_score([], "research") == 60.0
+
+    def test_whitespace_only_entries_filtered_out(self):
+        # An empty string in the list should not be treated as a real
+        # preference; result mirrors the no-preference path.
+        assert _type_preference_score([""], "research") == 60.0
+
+    def test_exact_lowercase_match(self):
+        assert _type_preference_score(["research"], "research") == 100.0
+
+    def test_capitalised_seeking_matches_canonical_opp(self):
+        # Pre-R69-D this returned 30.0 ('Research' != 'research') and
+        # triggered the false 'not your primary target type' concern.
+        assert _type_preference_score(["Research"], "research") == 100.0
+
+    def test_space_form_matches_underscore_form(self):
+        # The frontend home form stores 'summer_program' but other
+        # callers may pass 'Summer program' (display label) — both
+        # should land on an exact match against an opp typed
+        # 'summer_program'.
+        assert _type_preference_score(["Summer program"], "summer_program") == 100.0
+
+    def test_affinity_score_survives_normalisation(self):
+        # 'Research' user seeking 'summer_program' opp → affinity 70.0
+        # via the (research, summer_program) entry; both inputs are
+        # case/format normalised before the affinity lookup.
+        assert _type_preference_score(["Research"], "Summer Program") == 70.0
+
+    def test_genuinely_unrelated_still_returns_30(self):
+        # Normalisation cannot turn an unrelated pair into a match — the
+        # 30.0 floor still applies for off-affinity combinations.
+        assert _type_preference_score(["fellowship"], "internship") == 30.0
+
+    def test_mixed_list_picks_best_affinity(self):
+        # Multiple seeking entries: an exact match anywhere in the list
+        # should win over an unrelated entry.
+        assert _type_preference_score(["Fellowship", "Research"], "research") == 100.0
 
 
 class TestMajorMatching:

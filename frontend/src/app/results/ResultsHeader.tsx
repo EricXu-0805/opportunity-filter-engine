@@ -86,9 +86,21 @@ export function ResultsHeader({
           </button>
         )}
         {!loading && data && filtered.length > 0 && (
+          // R69-D: the sendMatchesEmail path silently caps at the top 50
+          // by match score. When the filtered list exceeds that cap the
+          // label and tooltip now say so explicitly, so users aren't
+          // surprised by a clipped email.
           <EmailMeButton
-            label={t('email.sendMatches')}
-            title={t('email.subtitle')}
+            label={
+              filtered.length > 50
+                ? t('email.sendMatchesTop', { count: 50 })
+                : t('email.sendMatches')
+            }
+            title={
+              filtered.length > 50
+                ? `${t('email.matchesCapNote')} — ${t('email.subtitle')}`
+                : t('email.subtitle')
+            }
             onSend={async (emailAddr) => {
               const top = filtered.slice(0, 50);
               const items = top.map((m) => ({

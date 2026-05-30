@@ -869,6 +869,13 @@ export const en = {
     send: 'Send',
     sent: 'Sent ✓',
     sendMatches: 'Email matches',
+    // R69-D: when filtered.length > 50 the send-matches button only
+    // actually emails the top 50 by match score (see
+    // ResultsHeader.tsx — filtered.slice(0, 50)). Expose the cap in
+    // the label and tooltip instead of letting users assume they
+    // received the full list.
+    sendMatchesTop: 'Email top {count} matches',
+    matchesCapNote: 'Sends the top 50 by match score',
     sendFavorites: 'Email favorites',
     sentMessage: 'Check your inbox!',
     invalidEmail: 'Please enter a valid email address.',
@@ -2152,6 +2159,11 @@ export const zh = {
     send: '发送',
     sent: '已发送 ✓',
     sendMatches: '发送匹配结果',
+    // R69-D：filtered.length > 50 时按钮只发送评分最高的 50 条
+    // （ResultsHeader.tsx — filtered.slice(0, 50)）。在 label 和
+    // tooltip 中明示截断，避免用户以为收到了完整列表。
+    sendMatchesTop: '发送前 {count} 条匹配',
+    matchesCapNote: '按匹配分数发送前 50 条',
     sendFavorites: '发送我的收藏',
     sentMessage: '请查看收件箱！',
     invalidEmail: '请输入有效的邮箱地址。',
