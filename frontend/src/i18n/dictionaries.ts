@@ -593,6 +593,14 @@ export const en = {
     filtersMobileActive: '{count} active',
     filtersMobileExpandAria: 'Show filters',
     filtersMobileCollapseAria: 'Hide filters',
+    // R69-C: InteractionStatusMenu trigger + clear copy. Replaces the
+    // inline 5-status-pill row that used to sit on every MatchCard.
+    statusMenu: {
+      trigger: 'Mark status',
+      clear: 'Clear status',
+      ariaTrigger: 'Set application status for {title}',
+      ariaMenu: 'Application status options for {title}',
+    },
     alsoMatching: 'also matching: {terms}',
     resultsForPrefix: 'for',
     semantic: {
@@ -1868,6 +1876,14 @@ export const zh = {
     filtersMobileActive: '{count} 项生效',
     filtersMobileExpandAria: '展开筛选',
     filtersMobileCollapseAria: '收起筛选',
+    // R69-C：InteractionStatusMenu 触发按钮 + 清除选项文案，
+    // 替代之前每张 MatchCard 上 inline 渲染的 5 个 status pill 行。
+    statusMenu: {
+      trigger: '标记状态',
+      clear: '清除状态',
+      ariaTrigger: '为 {title} 设置申请状态',
+      ariaMenu: '{title} 的申请状态选项',
+    },
     alsoMatching: '同时匹配：{terms}',
     resultsForPrefix: '对于',
     semantic: {

@@ -54,32 +54,49 @@ export function MatchList({
 }: MatchListProps) {
   return (
     <>
-      {matches.map((match: MatchResult, idx: number) => {
-        const isNew = highlightSet.has(match.opportunity.id);
-        const ringClass = focusedIdx === idx
-          ? 'ring-2 ring-blue-500/40 rounded-2xl'
-          : isNew
-          ? 'ring-2 ring-amber-400/70 rounded-2xl'
-          : '';
-        return (
-          <div
-            key={match.opportunity.id}
-            id={`match-card-${match.opportunity.id}`}
-            className={`transition-all ${ringClass}`}
-          >
-            <MemoizedMatchCard
-              match={match}
-              profile={profile}
-              onDraftEmail={onDraftEmail}
-              isFavorited={favs.has(match.opportunity.id)}
-              onToggleFavorite={onToggleFavorite}
-              interaction={interactions.get(match.opportunity.id)}
-              onTrackInteraction={onTrackInteraction}
-              isNew={isNew}
-            />
-          </div>
-        );
-      })}
+      {/*
+        R69-C: lg:grid-cols-2 at the lg (1024px) breakpoint reclaims the
+        ~50% of horizontal whitespace the single-column layout left on
+        the right side of >= 1440px viewports. Mobile + tablet keep the
+        single-column stack, so this is a desktop-only density bump.
+        items-start prevents grid auto-stretch from forcing both cells
+        in a row to the height of the expanded one — collapsed cards
+        stay compact even when their sibling is expanded.
+
+        Keyboard nav caveat: j/k cycles through `paginated` in document
+        order, so on a 2-col grid the visual progression goes
+        left→right→down rather than purely down. Acceptable trade for
+        the density win; revisit in a future round if keyboard power
+        users object.
+      */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
+        {matches.map((match: MatchResult, idx: number) => {
+          const isNew = highlightSet.has(match.opportunity.id);
+          const ringClass = focusedIdx === idx
+            ? 'ring-2 ring-blue-500/40 rounded-2xl'
+            : isNew
+            ? 'ring-2 ring-amber-400/70 rounded-2xl'
+            : '';
+          return (
+            <div
+              key={match.opportunity.id}
+              id={`match-card-${match.opportunity.id}`}
+              className={`transition-all ${ringClass}`}
+            >
+              <MemoizedMatchCard
+                match={match}
+                profile={profile}
+                onDraftEmail={onDraftEmail}
+                isFavorited={favs.has(match.opportunity.id)}
+                onToggleFavorite={onToggleFavorite}
+                interaction={interactions.get(match.opportunity.id)}
+                onTrackInteraction={onTrackInteraction}
+                isNew={isNew}
+              />
+            </div>
+          );
+        })}
+      </div>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4">
