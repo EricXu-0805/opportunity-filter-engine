@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
+import SaveFavoritesAnchor from '@/components/SaveFavoritesAnchor';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useCustomImports } from '@/lib/custom-imports';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
@@ -94,6 +95,11 @@ export default function FavoritesPage() {
       </button>
 
       <StorageStatusBanner />
+
+      {/* R66: the lone anchor prompt — only renders when an anonymous
+          user has 3+ favorites AND has not dismissed it (localStorage
+          flag persists across sessions on this device). */}
+      <SaveFavoritesAnchor favoriteCount={opportunities.length} />
 
       <FavoritesHeader
         opportunities={opportunities}

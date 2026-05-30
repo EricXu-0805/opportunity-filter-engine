@@ -21,6 +21,7 @@ import {
 } from '@/lib/filter-presets';
 import { saveSearch } from '@/lib/saved-searches';
 import {
+  getAuthState,
   getFavorites,
   getInteractions,
   removeInteraction,
@@ -28,6 +29,7 @@ import {
   trackInteraction,
   type InteractionType,
 } from '@/lib/supabase';
+import { useAuthModal } from '@/lib/auth-modal-context';
 import { useT } from '@/i18n/client';
 
 import { EmptyState } from './EmptyState';
@@ -91,6 +93,9 @@ function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useT();
+  // R66: openAuthModal is renamed locally to avoid shadowing the email
+  // modal's own "open" state names elsewhere in this large component.
+  const { openModal: openAuthModal } = useAuthModal();
 
   const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>('ofe_profile');
   const profile = useMemo(() => migrateProfile(rawStoredProfile), [rawStoredProfile]);
@@ -285,6 +290,16 @@ function ResultsContent() {
   }, [filters, sortBy, activeTab, presets, t]);
 
   const handleSaveSearchToAccount = useCallback(async () => {
+    // R66: the "Save to account" button used to silently save under
+    // the anonymous UUID, which is what made the CTA "lie" — it
+    // claimed to save to an account that didn't exist. Now we gate
+    // the actual save behind real account state: anon users get the
+    // sign-in modal, permanent users proceed straight to the save.
+    const authState = await getAuthState();
+    if (!authState.user || authState.isAnonymous) {
+      openAuthModal({ reason: 'save-search' });
+      return;
+    }
     const name = window.prompt(t('results.saveSearchPrompt'), '')?.trim();
     if (!name) return;
     const saved = await saveSearch({
@@ -297,7 +312,7 @@ function ResultsContent() {
     if (!saved) {
       window.alert(t('results.saveSearchError'));
     }
-  }, [filters, sortBy, activeTab, debouncedQuery, t]);
+  }, [filters, sortBy, activeTab, debouncedQuery, t, openAuthModal]);
 
   const handleApplyPreset = useCallback((preset: FilterPreset) => {
     setFilters(preset.filters as typeof DEFAULT_FILTERS);
