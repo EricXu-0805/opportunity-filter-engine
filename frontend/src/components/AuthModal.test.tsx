@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockSignIn = vi.fn();
+const mockSignInExisting = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetAuthState = vi.fn();
 const mockOnAuthChange = vi.fn((_cb: (s: unknown) => void) => () => {});
@@ -20,6 +21,7 @@ vi.mock('@/lib/supabase', () => ({
   getAuthState: () => mockGetAuthState(),
   onAuthChange: (cb: (s: unknown) => void) => mockOnAuthChange(cb),
   signInOrLinkEmail: (email: string, redirect: string) => mockSignIn(email, redirect),
+  signInExistingEmail: (email: string, redirect: string) => mockSignInExisting(email, redirect),
   signOutOfAccount: () => mockSignOut(),
 }));
 
@@ -137,6 +139,57 @@ describe('AuthModal — signin phase', () => {
     // setPhase should NOT have been called with 'sent'
     const sentCalls = setPhaseMock.mock.calls.filter(c => c[0] === 'sent');
     expect(sentCalls).toHaveLength(0);
+  });
+
+  // R67 problem #2: when the user types an already-registered email,
+  // signInOrLinkEmail returns `email-taken`. The modal must render an
+  // in-place "Sign in with this email instead" button (not a dead-end
+  // text message), and clicking it must call signInExistingEmail and
+  // transition to 'sent' on success.
+  it('renders Sign-in-existing button when outcome.reason is email-taken', async () => {
+    mockSignIn.mockResolvedValue({ ok: false, reason: 'email-taken', message: 'taken' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-modal-signin-existing')).toBeInTheDocument();
+    });
+  });
+
+  it('does NOT render Sign-in-existing button for other error reasons', async () => {
+    mockSignIn.mockResolvedValue({ ok: false, reason: 'rate-limited', message: 'wait' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalled();
+    });
+    expect(screen.queryByTestId('auth-modal-signin-existing')).toBeNull();
+  });
+
+  it('Sign-in-existing button calls signInExistingEmail and transitions to sent on ok', async () => {
+    mockSignIn.mockResolvedValue({ ok: false, reason: 'email-taken', message: 'taken' });
+    mockSignInExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'check inbox' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    const btn = await screen.findByTestId('auth-modal-signin-existing');
+    btn.click();
+    await waitFor(() => {
+      expect(mockSignInExisting).toHaveBeenCalledWith(
+        'eric@illinois.edu',
+        expect.stringContaining('/auth/callback'),
+      );
+    });
+    await waitFor(() => {
+      expect(setPhaseMock).toHaveBeenCalledWith('sent');
+    });
   });
 });
 

@@ -334,6 +334,55 @@ export async function signInOrLinkEmail(
   };
 }
 
+/**
+ * R67 problem #2: dedicated "sign in to existing account" path.
+ *
+ * `signInOrLinkEmail` branches on the current session and tries to LINK
+ * an anon account first; if Supabase rejects ("email already registered")
+ * the user is stuck with no in-modal recovery action.
+ *
+ * This helper forces the OTP sign-in path with `shouldCreateUser: false`,
+ * so it ALWAYS tries to sign the user into the existing permanent account
+ * regardless of the current session state. Used by AuthModal when it sees
+ * the `email-taken` outcome from `signInOrLinkEmail` — it surfaces a
+ * button that calls this directly.
+ *
+ * Note: the anon-session's data stays under its own auth.uid() (not
+ * destroyed, but not visible to the permanent user until Flow B cross-
+ * device merge ships). This is the caveat the email-taken message warns
+ * about.
+ */
+export async function signInExistingEmail(
+  email: string,
+  redirectTo: string,
+): Promise<SignInOutcome> {
+  if (!SUPABASE_CONFIGURED) {
+    return {
+      ok: false,
+      reason: 'not-configured',
+      message: 'Sign-in is unavailable: Supabase is not configured.',
+    };
+  }
+  const cleaned = email.trim().toLowerCase();
+  if (!EMAIL_RE.test(cleaned)) {
+    return {
+      ok: false,
+      reason: 'invalid-email',
+      message: 'Please enter a valid email address.',
+    };
+  }
+  const { error } = await supabase.auth.signInWithOtp({
+    email: cleaned,
+    options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+  });
+  if (error) return mapAuthError(error.message);
+  return {
+    ok: true,
+    mode: 'sign-in',
+    message: `Check ${cleaned} for your sign-in link.`,
+  };
+}
+
 function mapAuthError(raw: string): SignInOutcome {
   const msg = raw || 'Unknown error';
   const lower = msg.toLowerCase();
