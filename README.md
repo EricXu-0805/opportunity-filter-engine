@@ -109,11 +109,11 @@ Open http://localhost:3000. The frontend proxies API requests to the backend aut
 # Backend: pytest — 380 unit + integration + API tests
 pytest tests/ -v
 
-# Frontend unit tests: vitest — 190 tests over lib/ modules + helpers
+# Frontend unit tests: vitest — 278 tests over lib/ modules, components + helpers
 cd frontend
 npm test
 
-# Frontend E2E: playwright — 77 tests, real browser, runs both servers
+# Frontend E2E: playwright — 82 tests per browser project, real browser, runs both servers
 # (a small handful auto-skip in environments without NEXT_PUBLIC_SUPABASE_*)
 cd frontend
 npx playwright install chromium       # one-time browser download
