@@ -248,27 +248,45 @@ async def refine_email(request: EmailRefineRequest):
     return {"body": edited, "method": "llm"}
 
 
+# Word-boundary + case-insensitive so the quick-action buttons fire on real
+# drafts ("I Would Love", trailing punctuation) instead of only exact-case
+# substrings. Category order (formal → concise → enthusiastic) is preserved.
+_FORMAL_SUBS = [
+    (re.compile(r"\bI would love\b", re.IGNORECASE), "I would greatly appreciate"),
+    (re.compile(r"\bI am a fast learner\b", re.IGNORECASE),
+     "I am committed to continuous professional development"),
+    (re.compile(r"\bBest regards\b", re.IGNORECASE), "Respectfully"),
+]
+_ENTHUSIASTIC_SUBS = [
+    (re.compile(r"\bI am very interested\b", re.IGNORECASE), "I am truly excited about"),
+    (re.compile(r"\bI really enjoyed\b", re.IGNORECASE), "I was fascinated by"),
+    (re.compile(r"\bI would love the chance\b", re.IGNORECASE),
+     "I would be thrilled at the opportunity"),
+]
+_CONCISE_FILLERS = ("fast learner", "eager to pick up")
+
+
 def _local_refine(body: str, instruction: str) -> dict:
     lower = instruction.lower()
     edited = body
     applied: list[str] = []
 
     if any(kw in lower for kw in ["formal", "professional"]):
-        edited = edited.replace("I would love", "I would greatly appreciate")
-        edited = edited.replace("I am a fast learner", "I am committed to continuous professional development")
-        edited = edited.replace("Best regards", "Respectfully")
+        for pattern, repl in _FORMAL_SUBS:
+            edited = pattern.sub(repl, edited)
         applied.append("formal")
 
     if any(kw in lower for kw in ["short", "concise", "brief", "trim"]):
         lines = edited.split("\n")
-        edited = "\n".join(l for l in lines
-                           if "fast learner" not in l and "eager to pick up" not in l)
+        edited = "\n".join(
+            line for line in lines
+            if not any(filler in line.lower() for filler in _CONCISE_FILLERS)
+        )
         applied.append("concise")
 
     if any(kw in lower for kw in ["enthus", "excit", "energy", "passion"]):
-        edited = edited.replace("I am very interested", "I am truly excited about")
-        edited = edited.replace("I really enjoyed", "I was fascinated by")
-        edited = edited.replace("I would love the chance", "I would be thrilled at the opportunity")
+        for pattern, repl in _ENTHUSIASTIC_SUBS:
+            edited = pattern.sub(repl, edited)
         applied.append("enthusiastic")
 
     return {"body": edited, "method": "local", "applied": applied}

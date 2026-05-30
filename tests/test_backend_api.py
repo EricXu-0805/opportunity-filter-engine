@@ -391,6 +391,22 @@ class TestLocalRefineCumulative:
         out = _local_refine(body, "formal shorter enthusiastic")
         assert set(out["applied"]) == {"formal", "concise", "enthusiastic"}
 
+    def test_formal_is_case_insensitive(self):
+        out = _local_refine("I Would Love to join.", "make it formal")
+        assert "greatly appreciate" in out["body"]
+        assert "Would Love" not in out["body"]
+
+    def test_formal_respects_word_boundaries(self):
+        body = "I would lovely weather, hello."
+        out = _local_refine(body, "formal")
+        assert out["body"] == body
+
+    def test_concise_filter_is_case_insensitive(self):
+        body = "I am a Fast Learner.\nKeep this line."
+        out = _local_refine(body, "shorter")
+        assert "Fast Learner" not in out["body"]
+        assert "Keep this line." in out["body"]
+
 
 class TestColdEmailEngine:
     """Contract for ``POST /api/cold-email`` ``engine`` parameter.
