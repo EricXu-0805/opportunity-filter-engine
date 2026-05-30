@@ -182,13 +182,14 @@ export async function markSavedSearchSeen(id: string): Promise<boolean> {
 // URL serialisation for the "Apply saved search" flow: produces a /results
 // URL whose query string matches the params /results writes back to history
 // when filters change. Keep keys in sync with the writer in
-// app/results/page.tsx (paid/intl/source/loc/dl/min/sort/q/tab) — any
-// drift here means saved searches won't roundtrip cleanly through the
+// app/results/use-results-url.ts (paid/intl/source/loc/dl/min/sort/q/tab) —
+// any drift here means saved searches won't roundtrip cleanly through the
 // existing URL-driven state init.
 //
 // opts.highlight and opts.savedSearchId are both intentionally excluded
-// from /results' URL writer (app/results/page.tsx:224) so they self-clear
-// on the first filter change. /results reads each once at mount.
+// from /results' URL writer (see useResultsUrlSync) so they self-clear on
+// the first filter change. /results reads each once at mount via
+// useHighlightSet and useSavedSearchAck respectively.
 export function savedSearchToUrl(
   s: {
     query: string;

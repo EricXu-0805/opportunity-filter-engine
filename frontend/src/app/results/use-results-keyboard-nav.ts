@@ -1,0 +1,87 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import type { MatchResult } from '@/lib/types';
+
+export interface UseResultsKeyboardNavParams {
+  paginated: MatchResult[];
+  emailModalOpen: boolean;
+  onCloseEmailModal: () => void;
+  onToggleFavorite: (opportunityId: string) => void;
+  onOpenHelp: () => void;
+}
+
+export interface UseResultsKeyboardNavResult {
+  focusedIdx: number;
+  setFocusedIdx: React.Dispatch<React.SetStateAction<number>>;
+}
+
+// Vim-style nav: j/k or ArrowDown/ArrowUp moves the focus ring across
+// the paginated set, Enter opens the focused card's apply URL in a new
+// tab, s toggles favorite on the focused card, / focuses search input,
+// ?+Shift opens the help dialog, Escape closes the email modal.
+// Caller resets focusedIdx to -1 when filters change (the new list is
+// shorter and the old index would point off the end).
+export function useResultsKeyboardNav({
+  paginated,
+  emailModalOpen,
+  onCloseEmailModal,
+  onToggleFavorite,
+  onOpenHelp,
+}: UseResultsKeyboardNavParams): UseResultsKeyboardNavResult {
+  const [focusedIdx, setFocusedIdx] = useState(-1);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && emailModalOpen) {
+        onCloseEmailModal();
+        return;
+      }
+      const target = e.target as HTMLElement;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isTyping) return;
+
+      if (e.key === '/') {
+        e.preventDefault();
+        document.getElementById('results-search-input')?.focus();
+        return;
+      }
+
+      if (paginated.length === 0) return;
+
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedIdx(i => {
+          const next = Math.min(paginated.length - 1, i < 0 ? 0 : i + 1);
+          document.getElementById(`match-card-${paginated[next]?.opportunity.id}`)
+            ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          return next;
+        });
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedIdx(i => {
+          const next = Math.max(0, i <= 0 ? 0 : i - 1);
+          document.getElementById(`match-card-${paginated[next]?.opportunity.id}`)
+            ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          return next;
+        });
+      } else if (e.key === 's' && focusedIdx >= 0) {
+        e.preventDefault();
+        const match = paginated[focusedIdx];
+        if (match) onToggleFavorite(match.opportunity.id);
+      } else if (e.key === 'Enter' && focusedIdx >= 0) {
+        e.preventDefault();
+        const match = paginated[focusedIdx];
+        const url = match?.opportunity.application?.application_url || match?.opportunity.url;
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      } else if (e.key === '?' && e.shiftKey) {
+        e.preventDefault();
+        onOpenHelp();
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [emailModalOpen, paginated, focusedIdx, onCloseEmailModal, onToggleFavorite, onOpenHelp]);
+
+  return { focusedIdx, setFocusedIdx };
+}
