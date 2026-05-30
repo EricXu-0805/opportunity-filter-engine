@@ -70,6 +70,38 @@ function CallbackInner() {
         return;
       }
 
+      // R68: idempotency guard. PKCE code_verifier is single-use — the
+      // successful first exchange consumes and clears it from
+      // localStorage. If the user hits back/forward, reloads the page,
+      // re-clicks the email link, or otherwise re-lands on /auth/callback
+      // with the same `code=` after a successful exchange, the second
+      // exchange call fails with "PKCE code verifier not found in
+      // storage" even though the session is already established. The
+      // user (correctly) sees the error page but ALSO sees themselves as
+      // signed in everywhere else in the app — confusing and
+      // contradictory. Detect "already signed in" before exchanging and
+      // skip straight to the success path.
+      //
+      // We only short-circuit on PERMANENT sessions, not anonymous ones,
+      // so a guest who happens to have an anon session still goes
+      // through the conversion path. (signInOrLinkEmail already prevents
+      // a permanent-user re-request from ever sending a magic link, so
+      // a permanent session at callback time means: this user already
+      // completed THIS link's conversion in an earlier tick.)
+      const preflight = await getAuthState();
+      if (preflight.user && !preflight.isAnonymous) {
+        const inv = await getDataInventory().catch(() => null);
+        if (cancelled) return;
+        setSignedInEmail(preflight.email);
+        setInventory(inv);
+        setStatus('success');
+        try {
+          sessionStorage.removeItem('ofe_just_signed_out');
+          sessionStorage.removeItem('ofe_guest_banner_dismissed');
+        } catch { /* private mode */ }
+        return;
+      }
+
       // PKCE wins if both shapes are present; otherwise we use verifyOtp
       // for Supabase's default email template format.
       const code = params.get('code');
@@ -99,6 +131,25 @@ function CallbackInner() {
       }
       if (cancelled) return;
       if (exchangeError) {
+        // R68 second-chance: a "code verifier not found" error after we
+        // already passed the preflight check above is rare but possible
+        // — e.g., if a parallel onAuthStateChange tick wrote the session
+        // between preflight and exchange. Re-check session state; if
+        // we're now signed in, treat the exchange's stale-verifier
+        // error as a no-op and show success.
+        const postCheck = await getAuthState();
+        if (!cancelled && postCheck.user && !postCheck.isAnonymous) {
+          const inv = await getDataInventory().catch(() => null);
+          if (cancelled) return;
+          setSignedInEmail(postCheck.email);
+          setInventory(inv);
+          setStatus('success');
+          try {
+            sessionStorage.removeItem('ofe_just_signed_out');
+            sessionStorage.removeItem('ofe_guest_banner_dismissed');
+          } catch { /* private mode */ }
+          return;
+        }
         setStatus('error');
         setErrorMsg(exchangeError.message);
         return;
