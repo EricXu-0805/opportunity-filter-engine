@@ -224,7 +224,7 @@ describe('MatchCard', () => {
     it('calls onDraftEmail with the opportunity id when clicked', () => {
       const handler = vi.fn();
       render(<MatchCard match={makeMatch({ id: 'opp-abc' })} onDraftEmail={handler} />);
-      fireEvent.click(screen.getByText(/Draft Email/i));
+      fireEvent.click(screen.getByText('card.draftEmail'));
       expect(handler).toHaveBeenCalledWith('opp-abc');
     });
   });
@@ -234,7 +234,7 @@ describe('MatchCard', () => {
       const match = makeMatch({}, undefined);
       match.opportunity.application = { ...match.opportunity.application, application_url: 'https://apply.example' };
       render(<MatchCard match={match} onDraftEmail={() => {}} />);
-      const link = screen.getByText(/Apply Now/i).closest('a');
+      const link = screen.getByText('card.applyNow').closest('a');
       expect(link).not.toBeNull();
       expect(link!.getAttribute('href')).toBe('https://apply.example');
       expect(link!.getAttribute('target')).toBe('_blank');
@@ -243,8 +243,8 @@ describe('MatchCard', () => {
     it('falls back to View Details (opp.url) when no application_url', () => {
       const match = makeMatch({ url: 'https://opp.example' });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);
-      // Case-sensitive: link reads "View Details", expand toggle reads "View details"
-      const link = screen.getByText(/^View Details$/).closest('a');
+      // R70-F: link CTA → card.viewDetails key; expand toggle → card.showDetails key.
+      const link = screen.getByText('card.viewDetails').closest('a');
       expect(link).not.toBeNull();
       expect(link!.getAttribute('href')).toBe('https://opp.example');
     });
