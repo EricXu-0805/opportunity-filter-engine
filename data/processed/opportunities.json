@@ -125597,10 +125597,12 @@
       "last_verified": "2026-04-14T02:30:42.492460",
       "first_seen_at": "2026-04-14T02:30:42.492460",
       "last_seen_at": "2026-04-14T02:30:42.492460",
-      "is_active": true,
+      "is_active": false,
       "manually_reviewed": false,
       "notes": "Imported from Handshake (posting 1372483712)",
-      "handshake_id": "1372483712"
+      "handshake_id": "1372483712",
+      "deactivated_at": "2026-05-31",
+      "deactivation_reason": "deadline_passed"
     }
   },
   {

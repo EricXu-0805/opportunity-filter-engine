@@ -29,7 +29,7 @@ import pytest
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "processed" / "opportunities.json"
 DESCRIPTION_CAP = 1500
 ROLLING_DEFAULT_SOURCES = {"uiuc_sro", "uiuc_our_rss", "manual"}
-PAST_DEADLINE_LEAK_TOLERANCE = 1  # one known historical record, tighten in a later PR
+PAST_DEADLINE_LEAK_TOLERANCE = 0  # R70-C: zero tolerance now that deactivate_past runs in refresh_all
 
 # R70-B: corruption patterns that pi_enricher used to emit when
 # soup.get_text() concatenated adjacent HTML elements without a separator.
@@ -133,8 +133,9 @@ class TestR70ADataQuality:
 
     def test_past_deadline_deactivated(self):
         """Records with a parseable past deadline must be is_active=False
-        (handled by src.normalizers.deactivate_past). We tolerate a small
-        historical leak; tighten in a later PR."""
+        (handled by src.normalizers.deactivate_past, now wired into
+        refresh_all.py per R70-C so every local refresh closes the loop).
+        Zero tolerance — any leak means deactivate_past was bypassed."""
         data = _load_data()
         today = date.today()
         leaks = []

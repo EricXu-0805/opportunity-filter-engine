@@ -13,6 +13,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from src.normalizers.deactivate_past import deactivate_past
+
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
@@ -237,6 +239,28 @@ def refresh_all(deep: bool = True) -> dict:
             "status": "ok",
         }
         logger.info(f"PI enricher: {pi_stats['enriched']} new emails found")
+
+        # R70-C: deactivate past-deadline records. Previously only run as a
+        # separate CI step (.github/workflows/refresh-data.yml) so local
+        # refresh runs left expired opps live in the dataset. Running it here
+        # closes that gap and keeps the JSON file in sync with what would land
+        # in CI on the next push.
+        deact_counts = deactivate_past(all_opps)
+        with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
+            json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
+        summary["sources"]["deactivate_past"] = {
+            "newly_deactivated": deact_counts["newly_deactivated"],
+            "already_inactive": deact_counts["already_inactive"],
+            "kept_active": deact_counts["kept_active"],
+            "skipped_rolling": deact_counts["skipped_rolling"],
+            "status": "ok",
+        }
+        logger.info(
+            "deactivate_past: %d newly deactivated, %d already inactive, %d kept active",
+            deact_counts["newly_deactivated"],
+            deact_counts["already_inactive"],
+            deact_counts["kept_active"],
+        )
 
         summary["total_in_file"] = len(all_opps)
     else:
