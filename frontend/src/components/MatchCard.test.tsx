@@ -102,19 +102,28 @@ describe('MatchCard', () => {
   });
 
   describe('paid badge', () => {
-    it('renders Paid (green) for yes', () => {
+    it('renders badges.paid key (green) for yes', () => {
       render(<MatchCard match={makeMatch({ paid: 'yes' })} onDraftEmail={() => {}} />);
-      expect(screen.getByText('Paid')).toBeInTheDocument();
+      expect(screen.getByText('badges.paid')).toBeInTheDocument();
     });
 
-    it('renders Stipend (blue) for stipend', () => {
+    it('renders badges.stipend key (blue) for stipend', () => {
       render(<MatchCard match={makeMatch({ paid: 'stipend' })} onDraftEmail={() => {}} />);
-      expect(screen.getByText('Stipend')).toBeInTheDocument();
+      expect(screen.getByText('badges.stipend')).toBeInTheDocument();
     });
 
-    it('renders Unpaid (gray) for no', () => {
+    it('renders badges.unpaid key (gray) for no', () => {
       render(<MatchCard match={makeMatch({ paid: 'no' })} onDraftEmail={() => {}} />);
-      expect(screen.getByText('Unpaid')).toBeInTheDocument();
+      expect(screen.getByText('badges.unpaid')).toBeInTheDocument();
+    });
+
+    // R70-D: previously 'unknown' fell through to the misleading "Unpaid"
+    // label. Now it routes to badges.notDisclosed so uiuc_faculty records
+    // (which are simply missing compensation info, not explicitly unpaid)
+    // render with accurate copy.
+    it('renders badges.notDisclosed key (gray) for unknown', () => {
+      render(<MatchCard match={makeMatch({ paid: 'unknown' })} onDraftEmail={() => {}} />);
+      expect(screen.getByText('badges.notDisclosed')).toBeInTheDocument();
     });
   });
 

@@ -28,6 +28,10 @@ export const en = {
     paid: 'Paid',
     stipend: 'Stipend',
     unpaid: 'Unpaid',
+    // R70-D: distinct label for paid='unknown' so the 1262 records (65.9%
+    // of dataset, mostly uiuc_faculty PI pages where compensation is simply
+    // not advertised) don't get badged as the misleading "Unpaid".
+    notDisclosed: 'Not disclosed',
     onCampus: 'On campus',
     remoteOk: 'Remote OK',
     internationalFriendly: 'International friendly',
@@ -1320,6 +1324,9 @@ export const zh = {
     paid: '付费',
     stipend: '有津贴',
     unpaid: '无酬',
+    // R70-D: 区分 paid='unknown' 与 'no'，避免把 1262 条（65.9%，多为
+    // uiuc_faculty 的 PI 页面 — 实际是页面上未注明薪酬）误标为"无酬"。
+    notDisclosed: '薪酬未公开',
     onCampus: '校内',
     remoteOk: '支持远程',
     internationalFriendly: '国际友好',

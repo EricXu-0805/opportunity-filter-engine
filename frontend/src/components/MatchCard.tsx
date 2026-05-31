@@ -65,10 +65,15 @@ function getIntlBadge(
 
 function getPaidBadge(
   paid: string,
+  t: (key: string) => string,
 ): { label: string; variant: 'green' | 'blue' | 'gray' } {
-  if (paid === 'stipend') return { label: 'Stipend', variant: 'blue' };
-  if (paid === 'yes') return { label: 'Paid', variant: 'green' };
-  return { label: 'Unpaid', variant: 'gray' };
+  if (paid === 'stipend') return { label: t('badges.stipend'), variant: 'blue' };
+  if (paid === 'yes') return { label: t('badges.paid'), variant: 'green' };
+  // R70-D: distinguish "compensation not advertised" (1262 records, 65.9% —
+  // mostly uiuc_faculty PI pages) from "explicitly unpaid" (5 records). Before
+  // R70-D, both fell through to the misleading "Unpaid" label.
+  if (paid === 'unknown') return { label: t('badges.notDisclosed'), variant: 'gray' };
+  return { label: t('badges.unpaid'), variant: 'gray' };
 }
 
 // R69-C: the inline INTERACTION_COLORS map and INTERACTION_OPTIONS list moved
@@ -111,7 +116,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const { opportunity: opp } = match;
   const tier = getBucketLabel(match.bucket, t);
   const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown');
-  const paid = getPaidBadge(opp.paid);
+  const paid = getPaidBadge(opp.paid, t);
   const urgency = getDeadlineUrgency(opp.deadline);
   const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';
 
