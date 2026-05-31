@@ -147,7 +147,7 @@ export function OpportunityCard({
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow transition-all duration-200"
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  Draft Email
+                  {t('card.draftEmail')}
                 </button>
               )}
               {opp.url && (
@@ -158,7 +158,7 @@ export function OpportunityCard({
                   className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
                 >
                   {opp._customId ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                  {opp._customId ? t('favorites.openSource') : 'View Details'}
+                  {opp._customId ? t('favorites.openSource') : t('card.viewDetails')}
                 </a>
               )}
             </div>
@@ -172,7 +172,7 @@ export function OpportunityCard({
               onClick={() => onToggleExpand(opp.id)}
               className="flex items-center justify-between w-full px-6 py-3 text-[13px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <span>{isExpanded ? 'Hide details' : 'Show details'}</span>
+              <span>{isExpanded ? t('card.hideDetails') : t('card.showDetails')}</span>
               <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
 

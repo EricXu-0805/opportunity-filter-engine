@@ -628,6 +628,18 @@ export const en = {
       done: 'Done',
     },
   },
+  // R70-F: shared labels for opportunity card surfaces (MatchCard +
+  // favorites/OpportunityCard). Distinct from `detail.*` which targets
+  // the full opportunity-detail page.
+  card: {
+    applyNow: 'Apply Now',
+    draftEmail: 'Draft Email',
+    viewDetails: 'View Details',
+    showDetails: 'Show details',
+    hideDetails: 'Hide details',
+    resumeRequired: 'Resume required',
+    recLetterNeeded: 'Rec. letter needed',
+  },
   detail: {
     backToMatches: 'Back to matches',
     apply: 'Apply now',
@@ -1925,6 +1937,17 @@ export const zh = {
       reset: '重置',
       done: '完成',
     },
+  },
+  // R70-F: 卡片表面的共用标签（MatchCard + favorites/OpportunityCard）。
+  // 与 detail.* 区分 —— 后者用于完整详情页。
+  card: {
+    applyNow: '立即申请',
+    draftEmail: '起草邮件',
+    viewDetails: '查看详情',
+    showDetails: '展开详情',
+    hideDetails: '收起详情',
+    resumeRequired: '需要简历',
+    recLetterNeeded: '需要推荐信',
   },
   detail: {
     backToMatches: '返回匹配列表',
