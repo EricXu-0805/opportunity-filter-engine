@@ -259,7 +259,7 @@ def normalize_award(award: dict) -> dict:
             "application_url": url,
         },
         "description_raw": abstract,
-        "description_clean": abstract[:500],
+        "description_clean": abstract[:1500],
         "keywords": keywords,
         "metadata": {
             "confidence_score": 0.95,

@@ -188,6 +188,9 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         "paid": "unknown",
         "compensation_details": "",
         "deadline": deadline,
+        # R70-A: RSS feed entries are listing-page descriptions, not individual
+        # postings with deadlines. Default to rolling when no deadline parsed.
+        "is_rolling": deadline is None,
         "posted_date": raw.posted_date or now[:10],
         "start_date": None,
         "duration": None,
@@ -212,7 +215,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
             "application_url": raw.url,
         },
         "description_raw": raw.description_raw,
-        "description_clean": desc_clean[:500],
+        "description_clean": desc_clean[:1500],
         "keywords": raw.extra_fields.get("categories", []),
         "metadata": {
             "confidence_score": 0.65,  # RSS auto-parsed = lower confidence than manual
