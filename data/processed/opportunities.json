@@ -71,7 +71,7 @@
       "manually_reviewed": true,
       "notes": "Based on typical ECE lab posting patterns"
     },
-    "contact_email": "265-4317nslack@illinois.edu",
+    "contact_email": "",
     "is_rolling": true
   },
   {
@@ -144,7 +144,7 @@
       "manually_reviewed": true,
       "notes": "Confirmed from ECE undergrad research page"
     },
-    "contact_email": "265-4317nslack@illinois.edu",
+    "contact_email": "",
     "is_rolling": true
   },
   {
@@ -218,7 +218,7 @@
       "manually_reviewed": true,
       "notes": ""
     },
-    "contact_email": "265-4317nslack@illinois.edu",
+    "contact_email": "",
     "is_rolling": true
   },
   {
@@ -294,7 +294,7 @@
       "deactivated_at": "2026-05-22",
       "deactivation_reason": "deadline_passed"
     },
-    "contact_email": "Communicationsgrainger-marcom@illinois.edu"
+    "contact_email": ""
   },
   {
     "id": "uiuc-isgc-urop-2026",
@@ -370,7 +370,7 @@
       "deactivated_at": "2026-05-22",
       "deactivation_reason": "deadline_passed"
     },
-    "contact_email": "Consortium217-300-0151hbjerke2@illinois.edu"
+    "contact_email": ""
   },
   {
     "id": "uiuc-physics-reu-2026",
@@ -654,7 +654,7 @@
       "manually_reviewed": true,
       "notes": "Umbrella listing — cold email individual faculty"
     },
-    "contact_email": "Communicationsgrainger-marcom@illinois.edu",
+    "contact_email": "",
     "is_rolling": true
   },
   {
@@ -1234,7 +1234,7 @@
       "manually_reviewed": true,
       "notes": "From ECE undergrad research page"
     },
-    "contact_email": "265-4317nslack@illinois.edu",
+    "contact_email": "",
     "is_rolling": true
   },
   {
@@ -1435,7 +1435,7 @@
       "manually_reviewed": true,
       "notes": ""
     },
-    "contact_email": "265-4317nslack@illinois.edu",
+    "contact_email": "",
     "is_rolling": true
   },
   {
@@ -1512,7 +1512,7 @@
       "manually_reviewed": true,
       "notes": ""
     },
-    "contact_email": "Communicationsgrainger-marcom@illinois.edu",
+    "contact_email": "",
     "is_rolling": true
   },
   {
@@ -136817,7 +136817,7 @@
     "semester": "winter",
     "status": "unknown",
     "level": "program_overview",
-    "contact_email": "Organizeramato@illinois.edu",
+    "contact_email": "",
     "description_clean": "Winter-break reading program in computer science. Junior or senior CS / CS+X students pair with a grad student mentor for a deep dive into a CS topic. Application opens in early December and runs through January.",
     "description_raw": "Winter-break reading program in computer science. Junior or senior CS / CS+X students pair with a grad student mentor for a deep dive into a CS topic. Application opens in early December and runs through January."
   },
