@@ -20,6 +20,7 @@ the issues we just fixed:
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -29,6 +30,11 @@ DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "processed" / "opport
 DESCRIPTION_CAP = 1500
 ROLLING_DEFAULT_SOURCES = {"uiuc_sro", "uiuc_our_rss", "manual"}
 PAST_DEADLINE_LEAK_TOLERANCE = 1  # one known historical record, tighten in a later PR
+
+# R70-B: corruption patterns that pi_enricher used to emit when
+# soup.get_text() concatenated adjacent HTML elements without a separator.
+_PHONE_IN_LOCAL = re.compile(r"^[^@]*\d{3,4}-\d{3,4}")
+_CAPS_MASHED_LOCAL = re.compile(r"^[A-Z][a-z]+[^A-Z_@]{12,}@")
 
 
 def _load_data() -> list[dict]:
@@ -104,6 +110,25 @@ class TestR70ADataQuality:
         ids = [o.get("id") for o in data if o.get("id")]
         assert len(ids) == len(set(ids)), (
             f"Duplicate ids found: {len(ids) - len(set(ids))} duplicates"
+        )
+
+    def test_no_corrupted_contact_emails(self):
+        """R70-B: pi_enricher used to extract phone-number-prefixed or
+        capitalized-label-mashed addresses from HTML pages where adjacent
+        elements lacked whitespace separators. After the fix + cleanup
+        migration, no record should have a contact_email matching the
+        known corruption patterns."""
+        data = _load_data()
+        corrupted = []
+        for o in data:
+            ce = o.get("contact_email")
+            if not isinstance(ce, str) or "@" not in ce:
+                continue
+            if _PHONE_IN_LOCAL.match(ce) or _CAPS_MASHED_LOCAL.match(ce):
+                corrupted.append((o.get("id"), ce))
+        assert not corrupted, (
+            f"{len(corrupted)} records have corruption-pattern contact_email "
+            f"values. First 3: {corrupted[:3]}"
         )
 
     def test_past_deadline_deactivated(self):

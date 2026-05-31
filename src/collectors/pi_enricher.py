@@ -26,6 +26,37 @@ PROCESSED_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 HEADERS = {"User-Agent": "OpportunityFilterEngine/1.0 (educational project)"}
 DELAY = 2
 
+# R70-B: emails extracted from BeautifulSoup whose local-part is the result
+# of adjacent HTML-element concatenation (e.g. "265-4317nslack@illinois.edu"
+# from `<strong>265-4317</strong><a>nslack@..</a>`) are garbage. Reject them
+# so the regex extractor doesn't pollute contact_email.
+#
+# Two patterns observed across the 9 polluted manual records:
+#   * Phone number prefix in local part: ``\d{3,4}-\d{3,4}`` anywhere.
+#   * Capitalized label mashed into a lowercase address with no underscore
+#     or further capital separator (e.g.
+#     "Communicationsgrainger-marcom@illinois.edu"). The "no further capital"
+#     constraint preserves legitimate CamelCase like
+#     ``OluwatosinPopoola@uni.com`` and underscore-separated
+#     ``Firstname_Lastname@uni.edu``.
+_PHONE_IN_LOCAL = re.compile(r"^[^@]*\d{3,4}-\d{3,4}")
+_CAPS_MASHED_LOCAL = re.compile(r"^[A-Z][a-z]+[^A-Z_@]{12,}@")
+
+
+def _is_likely_real_email(email: str) -> bool:
+    """Return True if the address doesn't look like a get_text() concat artifact.
+
+    Conservative: only rejects clear corruption patterns we observed.
+    Legitimate academic formats like ``Firstname_Lastname@uni.edu`` are kept.
+    """
+    if not email or "@" not in email:
+        return False
+    if _PHONE_IN_LOCAL.match(email):
+        return False
+    if _CAPS_MASHED_LOCAL.match(email):
+        return False
+    return True
+
 
 def _fetch_soup(url: str) -> BeautifulSoup | None:
     try:
@@ -75,9 +106,12 @@ def _extract_contact_from_sro(soup: BeautifulSoup) -> dict:
                 result["pi_name"] = name
 
     if "contact_email" not in result:
-        full_text = soup.get_text()
+        # R70-B: separator=" " prevents adjacent HTML elements from concatenating
+        # into a single token. Without it, `<strong>265-4317</strong><a>nslack@..</a>`
+        # collapses to "265-4317nslack@.." and the regex extracts a corrupted address.
+        full_text = soup.get_text(separator=" ", strip=True)
         emails = re.findall(r"[a-zA-Z0-9_.+-]+@illinois\.edu", full_text)
-        filtered = [e for e in emails if e != "ugresearch@illinois.edu"]
+        filtered = [e for e in emails if e != "ugresearch@illinois.edu" and _is_likely_real_email(e)]
         if filtered:
             result["contact_email"] = filtered[0]
 
@@ -118,10 +152,16 @@ NOISE_EMAILS = {
 
 def _extract_contact_from_generic_page(soup: BeautifulSoup) -> dict:
     result = {}
-    text = soup.get_text()
+    # R70-B: separator=" " prevents adjacent HTML elements from concatenating
+    # into a single token. Without it the regex picks up phone+name+email
+    # mashed together as one "email".
+    text = soup.get_text(separator=" ", strip=True)
 
     illinois_emails = re.findall(r"[a-zA-Z0-9_.+-]+@illinois\.edu", text)
-    personal = [e for e in illinois_emails if e not in NOISE_EMAILS]
+    personal = [
+        e for e in illinois_emails
+        if e not in NOISE_EMAILS and _is_likely_real_email(e)
+    ]
     if personal:
         result["contact_email"] = personal[0]
 
@@ -129,7 +169,12 @@ def _extract_contact_from_generic_page(soup: BeautifulSoup) -> dict:
         for tag in soup.select("a[href^='mailto:']"):
             href = tag.get("href", "")
             email = href.replace("mailto:", "").split("?")[0].strip()
-            if email and "@" in email and email not in NOISE_EMAILS:
+            if (
+                email
+                and "@" in email
+                and email not in NOISE_EMAILS
+                and _is_likely_real_email(email)
+            ):
                 result["contact_email"] = email
                 break
 
