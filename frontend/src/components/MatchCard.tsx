@@ -27,6 +27,7 @@ import type { GapAnalysis } from '@/lib/api';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
 import { useT } from '@/i18n/client';
+import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 
 export interface MatchCardProps {
   match: MatchResult;
@@ -55,26 +56,9 @@ function getBucketLabel(
   }
 }
 
-function getIntlBadge(
-  friendly: string,
-): { label: string; variant: 'green' | 'red' | 'orange' } {
-  if (friendly === 'yes') return { label: 'Intl OK', variant: 'green' };
-  if (friendly === 'no') return { label: 'US Only', variant: 'red' };
-  return { label: 'Verify', variant: 'orange' };
-}
-
-function getPaidBadge(
-  paid: string,
-  t: (key: string) => string,
-): { label: string; variant: 'green' | 'blue' | 'gray' } {
-  if (paid === 'stipend') return { label: t('badges.stipend'), variant: 'blue' };
-  if (paid === 'yes') return { label: t('badges.paid'), variant: 'green' };
-  // R70-D: distinguish "compensation not advertised" (1262 records, 65.9% —
-  // mostly uiuc_faculty PI pages) from "explicitly unpaid" (5 records). Before
-  // R70-D, both fell through to the misleading "Unpaid" label.
-  if (paid === 'unknown') return { label: t('badges.notDisclosed'), variant: 'gray' };
-  return { label: t('badges.unpaid'), variant: 'gray' };
-}
+// R70-E: getIntlBadge + getPaidBadge moved to `lib/badge-utils.ts` so
+// `OpportunityCard.tsx` can reuse the same logic (it previously duplicated
+// the ternary inline, complete with the R70-D paid='unknown' mislabel).
 
 // R69-C: the inline INTERACTION_COLORS map and INTERACTION_OPTIONS list moved
 // into ./InteractionStatusMenu.tsx together with the disclosure UI they fed
@@ -115,7 +99,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
 
   const { opportunity: opp } = match;
   const tier = getBucketLabel(match.bucket, t);
-  const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown');
+  const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown', t);
   const paid = getPaidBadge(opp.paid, t);
   const urgency = getDeadlineUrgency(opp.deadline);
   const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';

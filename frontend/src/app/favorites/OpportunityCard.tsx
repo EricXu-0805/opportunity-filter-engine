@@ -14,6 +14,7 @@ import {
   Star,
 } from 'lucide-react';
 import Badge from '@/components/Badge';
+import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { DeadlineBadge } from './DeadlineBadge';
 import { MAX_COMPARE, type Opp, type TFunc } from './types';
 
@@ -44,7 +45,13 @@ export function OpportunityCard({
   onOpenEmailModal,
   t,
 }: OpportunityCardProps) {
+  // R70-E: switched from inline ternaries to the shared badge-utils
+  // helpers so this card stays in sync with MatchCard. The inline paid
+  // ternary that used to live here had the same R70-D bug — labelling
+  // paid='unknown' (1262 records) as the misleading "Unpaid".
   const intlFriendly = opp.eligibility?.international_friendly;
+  const intlBadge = intlFriendly ? getIntlBadge(intlFriendly, t) : null;
+  const paidBadge = opp.paid ? getPaidBadge(opp.paid, t) : null;
   const desc = opp.description_clean || opp.description_raw || '';
   const canSelect = !isSelected && selectedSize < MAX_COMPARE;
 
@@ -115,16 +122,16 @@ export function OpportunityCard({
               </Badge>
             )}
             {opp.opportunity_type && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
-            {intlFriendly && (
-              <Badge variant={intlFriendly === 'yes' ? 'green' : intlFriendly === 'no' ? 'red' : 'orange'} dot>
+            {intlBadge && (
+              <Badge variant={intlBadge.variant} dot>
                 <Globe className="w-3 h-3" />
-                {intlFriendly === 'yes' ? 'Intl OK' : intlFriendly === 'no' ? 'US Only' : 'Verify'}
+                {intlBadge.label}
               </Badge>
             )}
-            {opp.paid && (
-              <Badge variant={opp.paid === 'yes' || opp.paid === 'stipend' ? 'green' : 'gray'} dot>
+            {paidBadge && (
+              <Badge variant={paidBadge.variant} dot>
                 <DollarSign className="w-3 h-3" />
-                {opp.paid === 'yes' ? 'Paid' : opp.paid === 'stipend' ? 'Stipend' : 'Unpaid'}
+                {paidBadge.label}
               </Badge>
             )}
             {opp.source && !opp._customId && <Badge variant="gray">{opp.source}</Badge>}
