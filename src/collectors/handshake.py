@@ -315,7 +315,7 @@ def normalize_posting(raw: dict) -> dict:
             "application_url": raw.get("apply_url") or raw["url"],
         },
         "description_raw": desc,
-        "description_clean": desc[:500],
+        "description_clean": desc[:1500],
         "keywords": keywords,
         "metadata": {
             "confidence_score": 0.8,

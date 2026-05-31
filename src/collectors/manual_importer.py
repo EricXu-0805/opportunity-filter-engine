@@ -87,6 +87,10 @@ def create_opportunity(
         "paid": paid,
         "compensation_details": kwargs.get("compensation_details", ""),
         "deadline": deadline,
+        # R70-A: callers can pass is_rolling=False explicitly; otherwise default
+        # to True when no deadline was provided so the UI shows "Rolling"
+        # instead of an empty timing block.
+        "is_rolling": kwargs.get("is_rolling", deadline is None),
         "posted_date": kwargs.get("posted_date", now[:10]),
         "start_date": kwargs.get("start_date"),
         "duration": kwargs.get("duration"),
@@ -111,7 +115,7 @@ def create_opportunity(
             "application_url": kwargs.get("application_url", url),
         },
         "description_raw": description,
-        "description_clean": description[:500].strip(),
+        "description_clean": description[:1500].strip(),
         "keywords": kwargs.get("keywords", []),
         "metadata": {
             "confidence_score": 0.90,  # Manual entries are high confidence

@@ -183,7 +183,12 @@ def _to_normalized(r: RawOpportunity) -> dict:
         "source": r.source,
         "source_url": r.source_url,
         "title": r.title,
+        # R70-A: emit description_clean + description_raw so the frontend (which
+        # reads `description_clean || description_raw`) renders content for
+        # these program_overview records. Keep legacy `description` for back-compat.
         "description": r.description_raw,
+        "description_raw": r.description_raw,
+        "description_clean": (r.description_raw or "")[:1500],
         "url": r.url,
         "organization": r.organization,
         "opportunity_type": "research",

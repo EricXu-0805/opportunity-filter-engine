@@ -205,10 +205,15 @@ def _infer_contact_method(text: str, url: str) -> str:
 
 
 def _clean_description(text: str) -> str:
-    """Remove HTML artifacts, normalize whitespace."""
+    """Remove HTML artifacts, normalize whitespace, cap at 1500 chars.
+
+    Cap raised from 500 → 1500 in R70-A to stop truncating descriptions
+    mid-sentence (NSF REU 554/554 records were affected). Backend route
+    already serves [:1500] so this aligns the storage with the wire format.
+    """
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"\s+", " ", text)
-    return text.strip()[:500]
+    return text.strip()[:1500]
 
 
 def _extract_keywords(title: str, desc: str) -> list[str]:

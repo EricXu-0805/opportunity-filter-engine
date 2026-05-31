@@ -379,6 +379,11 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
     # 3 historical "Rolling" string records correctly set is_rolling=True
     # instead of getting silently dropped.
     deadline, is_rolling = _parse_deadline(extra.get("deadline_raw", ""))
+    # R70-A: SRO listings without a parseable deadline are aggregator-page
+    # entries — default to rolling so the UI shows "Rolling" instead of
+    # leaving the timing block blank (was 258 silent records).
+    if deadline is None and not is_rolling:
+        is_rolling = True
 
     research_area = extra.get("research_area", "")
     timing = extra.get("timing", "")
@@ -447,7 +452,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
             "application_url": application_url,
         },
         "description_raw": desc,
-        "description_clean": desc[:500],
+        "description_clean": desc[:1500],
         "keywords": [a.strip() for a in research_area.split(",") if a.strip()],
         "metadata": {
             "confidence_score": confidence,

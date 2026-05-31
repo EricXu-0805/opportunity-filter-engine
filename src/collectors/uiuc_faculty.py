@@ -604,7 +604,7 @@ def normalize_faculty(person: dict, dept_config: dict) -> Optional[dict]:
             "application_url": profile_url,
         },
         "description_raw": description,
-        "description_clean": description[:500],
+        "description_clean": description[:1500],
         "keywords": keywords,
         "metadata": {
             "confidence_score": 0.7 if email else 0.5,
