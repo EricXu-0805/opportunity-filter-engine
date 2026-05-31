@@ -82,22 +82,22 @@ describe('MatchCard', () => {
   });
 
   describe('international-friendly badge', () => {
-    it('renders Intl OK (green) for yes', () => {
+    it('renders badges.intlOk key (green) for yes', () => {
       const match = makeMatch({ eligibility: { ...makeOpp().eligibility, international_friendly: 'yes' } });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);
-      expect(screen.getByText('Intl OK')).toBeInTheDocument();
+      expect(screen.getByText('badges.intlOk')).toBeInTheDocument();
     });
 
-    it('renders US Only (red) for no', () => {
+    it('renders badges.intlUsOnly key (red) for no', () => {
       const match = makeMatch({ eligibility: { ...makeOpp().eligibility, international_friendly: 'no' } });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);
-      expect(screen.getByText('US Only')).toBeInTheDocument();
+      expect(screen.getByText('badges.intlUsOnly')).toBeInTheDocument();
     });
 
-    it('renders Verify (orange) when status is anything else', () => {
+    it('renders badges.intlVerify key (orange) when status is anything else', () => {
       const match = makeMatch({ eligibility: { ...makeOpp().eligibility, international_friendly: 'unknown' } });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);
-      expect(screen.getByText('Verify')).toBeInTheDocument();
+      expect(screen.getByText('badges.intlVerify')).toBeInTheDocument();
     });
   });
 
