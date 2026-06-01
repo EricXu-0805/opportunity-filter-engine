@@ -426,6 +426,48 @@ describe('TailorModal', () => {
     expect(screen.queryByText('tailor.aiUnavailableBanner')).toBeNull();
   });
 
+  it('R71-G: shows a coverage line when some bullets are dropped (partial AI result)', async () => {
+    // Submit 2 bullets but the backend (post anti-fabrication) returns 1.
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: ['bullet_1_rejected_fabrication: pytorch'],
+      tailored_bullets: [
+        { text: 'Grounded rewrite kept', source_evidence: 'Python', source_index: 0 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'kept bullet\ndropped bullet' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => {
+      // t-mock renders vars as "key:n|total" → 1 rewritten of 2 submitted.
+      expect(screen.getByText('tailor.coverage:1|2')).toBeTruthy();
+    });
+  });
+
+  it('R71-G: no coverage line when every submitted bullet comes back', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        { text: 'Rewrite A', source_evidence: 'Python', source_index: 0 },
+        { text: 'Rewrite B', source_evidence: 'CS 225', source_index: 1 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'bullet A\nbullet B' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => expect(screen.getByText('tailor.methodAi')).toBeTruthy());
+    expect(screen.queryByText(/^tailor\.coverage/)).toBeNull();
+  });
+
   it('R71-G: smart-extract button is hidden when the profile has no resume text', () => {
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: '' })} />);
     expect(screen.queryByRole('button', { name: /tailor\.extractFromResume/ })).toBeNull();
