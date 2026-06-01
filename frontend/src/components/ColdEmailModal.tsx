@@ -329,7 +329,12 @@ export default function ColdEmailModal({
         const updated = [...prev];
         updated[updated.length - 1] = {
           role: 'assistant',
-          content: result.method === 'llm' ? t('coldEmail.doneLlm') : t('coldEmail.doneFallback'),
+          content:
+            result.method === 'llm'
+              ? t('coldEmail.doneLlm')
+              : result.fallback_reason === 'fabrication'
+                ? t('coldEmail.refineFabrication')
+                : t('coldEmail.doneFallback'),
         };
         return updated;
       });

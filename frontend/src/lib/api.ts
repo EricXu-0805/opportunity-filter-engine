@@ -222,8 +222,8 @@ export async function uploadResume(file: File): Promise<ResumeParseResponse> {
 export async function refineEmail(
   currentBody: string,
   instruction: string,
-): Promise<{ body: string; method: string }> {
-  return request<{ body: string; method: string }>('/cold-email/refine', {
+): Promise<{ body: string; method: string; fallback_reason?: string }> {
+  return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
     method: 'POST',
     body: JSON.stringify({ current_body: currentBody, instruction: instruction }),
   });
