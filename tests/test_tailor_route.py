@@ -680,7 +680,7 @@ class TestUnitHelpers:
     """Unit tests for the validator + evidence builder, no HTTP layer."""
 
     def test_hard_claims_extracts_5plus_char_tokens(self):
-        from backend.routes.tailor import _hard_claims
+        from backend.lib.grounding import hard_claims as _hard_claims
         claims = _hard_claims("Built Python pipelines for ML in CS")
         # 'built' filtered by common-filler at validation time, but extract-
         # level it shows up. We only care these 5+ char tokens are *found*.

@@ -474,6 +474,53 @@ class TestColdEmailEngine:
         resp = client.post("/api/cold-email", json=payload)
         assert resp.status_code == 422
 
+    def test_engine_ai_rejects_fabricated_skill(self, cold_email_body, monkeypatch):
+        """R72-A: an AI draft claiming skills the student never listed
+        (PyTorch / Kubernetes — profile has only Python) is rejected and
+        degrades to the grounded template, same as the resume tailor."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+        monkeypatch.setattr(
+            ce_module,
+            "_ai_generate_email_text",
+            lambda profile, opp: (
+                "Subject: ML research fit\n\n"
+                "Dear Professor,\n"
+                "I am an expert in PyTorch and have deployed Kubernetes "
+                "clusters for large-scale transformer training.\n"
+                "Best,\nTest"
+            ),
+        )
+        payload = {**cold_email_body, "engine": "ai"}
+        resp = client.post("/api/cold-email", json=payload)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "template"
+        joined = (body["subject"] + " " + body["body"]).lower()
+        assert "pytorch" not in joined
+        assert "kubernetes" not in joined
+
+    def test_engine_ai_accepts_grounded_skill(self, cold_email_body, monkeypatch):
+        """A draft that only reuses listed skills (Python, machine learning,
+        CS 124) passes the grounding check and stays method=ai."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+        monkeypatch.setattr(
+            ce_module,
+            "_ai_generate_email_text",
+            lambda profile, opp: (
+                "Subject: Python research fit\n\n"
+                "Dear Professor,\n"
+                "I have experience with Python and machine learning from CS 124 "
+                "and would be grateful to contribute.\n"
+                "Best,\nTest"
+            ),
+        )
+        payload = {**cold_email_body, "engine": "ai"}
+        resp = client.post("/api/cold-email", json=payload)
+        assert resp.status_code == 200
+        assert resp.json()["method"] == "ai"
+
 
 class TestColdEmailSubjectParsing:
     """Robustness of _extract_subject_and_body against real LLM output drift.
