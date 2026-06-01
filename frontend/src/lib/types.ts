@@ -169,6 +169,38 @@ export interface EmailVariantsResponse {
   lab_type?: LabType | null;
 }
 
+// ── Tailor (resume bullet rewriter, R71) ─────────────────────────────
+/**
+ * Mirrors `backend.schemas.TailoredBullet`. `source_evidence` is a short
+ * quote from the original bullet / profile field / opportunity description
+ * that the model used as grounding — never an invented citation.
+ *
+ * When `method === "fallback"`, `source_evidence` is hard-coded to
+ * "original" so the UI can render a different chip ("Original — AI
+ * unavailable") versus the AI variant.
+ */
+export interface TailoredBullet {
+  text: string;
+  source_evidence: string;
+}
+
+/**
+ * Mirrors `backend.schemas.TailorResponse`. The route NEVER raises 5xx
+ * for LLM problems — every failure mode degrades to `method: "fallback"`
+ * with a non-empty `warnings` list:
+ *   - `no_bullets_provided`       — caller sent an empty list
+ *   - `llm_not_configured`        — no API key on the server
+ *   - `llm_failed_or_invalid_json` — provider failed or returned non-JSON
+ *   - `bullet_<i>_rejected_fabrication: foo,bar` — anti-fabrication
+ *     validator caught the model inventing tokens not in profile/opp
+ *   - `all_bullets_rejected`      — every bullet was flagged → passthrough
+ */
+export interface TailorResponse {
+  tailored_bullets: TailoredBullet[];
+  method: 'ai' | 'fallback';
+  warnings: string[];
+}
+
 // ── Resume ───────────────────────────────────────────────────────────
 export interface ResumeParseResponse {
   extracted_skills: string[];

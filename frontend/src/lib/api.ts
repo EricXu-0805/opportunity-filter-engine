@@ -8,6 +8,7 @@ import type {
   EmailVariantsResponse,
   ResumeParseResponse,
   StatsResponse,
+  TailorResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -225,6 +226,30 @@ export async function refineEmail(
   return request<{ body: string; method: string }>('/cold-email/refine', {
     method: 'POST',
     body: JSON.stringify({ current_body: currentBody, instruction: instruction }),
+  });
+}
+
+/**
+ * POST /api/tailor — rewrite resume bullets for one opportunity.
+ *
+ * Always resolves (never throws for LLM problems): on any backend
+ * failure mode the response has `method: "fallback"` and a non-empty
+ * `warnings` list. The only thrown errors are 404 (opportunity not
+ * found) and network failures. Mirrors the cold-email "always returns
+ * usable" contract.
+ */
+export async function tailorResume(
+  profile: ProfileData,
+  opportunityId: string,
+  originalBullets: string[],
+): Promise<TailorResponse> {
+  return request<TailorResponse>('/tailor', {
+    method: 'POST',
+    body: JSON.stringify({
+      profile: toProfileRequest(profile),
+      opportunity_id: opportunityId,
+      original_bullets: originalBullets,
+    }),
   });
 }
 
