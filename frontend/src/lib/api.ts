@@ -269,6 +269,25 @@ export async function getTailorStatus(): Promise<TailorStatus> {
   return request<TailorStatus>('/tailor/status');
 }
 
+export interface ExtractBulletsResponse {
+  bullets: string[];
+  method: 'ai' | 'heuristic';
+}
+
+/**
+ * POST /api/tailor/extract-bullets — LLM-extract resume bullet lines from
+ * raw text (catches "dark bullets" the glyph heuristic misses). Always
+ * resolves: backend degrades to the glyph heuristic on any LLM issue.
+ */
+export async function extractResumeBullets(
+  resumeText: string,
+): Promise<ExtractBulletsResponse> {
+  return request<ExtractBulletsResponse>('/tailor/extract-bullets', {
+    method: 'POST',
+    body: JSON.stringify({ resume_text: resumeText }),
+  });
+}
+
 export interface GitHubParseResponse {
   username: string;
   extracted_skills: string[];

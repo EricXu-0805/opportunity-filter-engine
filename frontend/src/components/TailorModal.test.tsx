@@ -27,9 +27,11 @@ vi.mock('@/i18n/client', () => {
 
 const mockTailorResume = vi.fn();
 const mockGetTailorStatus = vi.fn();
+const mockExtractResumeBullets = vi.fn();
 vi.mock('@/lib/api', () => ({
   tailorResume: (...args: unknown[]) => mockTailorResume(...args),
   getTailorStatus: (...args: unknown[]) => mockGetTailorStatus(...args),
+  extractResumeBullets: (...args: unknown[]) => mockExtractResumeBullets(...args),
 }));
 
 import TailorModal from './TailorModal';
@@ -422,6 +424,48 @@ describe('TailorModal', () => {
     // Let the probe resolve, then assert the banner never appears.
     await waitFor(() => expect(mockGetTailorStatus).toHaveBeenCalled());
     expect(screen.queryByText('tailor.aiUnavailableBanner')).toBeNull();
+  });
+
+  it('R71-G: smart-extract button is hidden when the profile has no resume text', () => {
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: '' })} />);
+    expect(screen.queryByRole('button', { name: /tailor\.extractFromResume/ })).toBeNull();
+  });
+
+  it('R71-G: smart-extract loads LLM-extracted bullets into the draft', async () => {
+    mockExtractResumeBullets.mockResolvedValueOnce({
+      method: 'ai',
+      bullets: ['Dark bullet one with no glyph', 'Dark bullet two with no glyph'],
+    });
+
+    const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+    render(<TailorModal {...baseProps} profile={profile} />);
+
+    const extractBtn = screen.getByRole('button', { name: /tailor\.extractFromResume/ });
+    fireEvent.click(extractBtn);
+
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    await waitFor(() => {
+      expect(textarea.value).toBe('Dark bullet one with no glyph\nDark bullet two with no glyph');
+    });
+    // Promoted draft is persisted so it survives a close/reopen.
+    expect(window.localStorage.getItem('ofe_tailor_draft_opp-123')).toBe(
+      'Dark bullet one with no glyph\nDark bullet two with no glyph',
+    );
+  });
+
+  it('R71-G: smart-extract leaves the draft untouched when nothing is found', async () => {
+    mockExtractResumeBullets.mockResolvedValueOnce({ method: 'heuristic', bullets: [] });
+
+    const profile = makeProfile({ resume_text: 'just a header, no bullets here' });
+    render(<TailorModal {...baseProps} profile={profile} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'my own typing' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+
+    await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalled());
+    // Empty result is a no-op — the user's typing stays put.
+    expect(textarea.value).toBe('my own typing');
   });
 
   it('R71-G: "use as new originals" promotes the AI rewrite into the draft', async () => {
