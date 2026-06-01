@@ -10,7 +10,7 @@ from pydantic import BaseModel, field_validator
 from backend.data_loader import load_opportunities_by_id
 from backend.lib.grounding import validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured
-from backend.schemas import ColdEmailRequest, ColdEmailResponse
+from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.recommender.cold_email import (
     _common_parts,
     _detect_lab_type,
@@ -345,6 +345,8 @@ class EmailRefineRequest(BaseModel):
     current_body: str
     instruction: str
     subject: str = ""
+    profile: ProfileRequest | None = None
+    opportunity_id: str | None = None
 
     @field_validator("current_body")
     @classmethod
@@ -355,6 +357,24 @@ class EmailRefineRequest(BaseModel):
     @classmethod
     def cap_instruction(cls, v: str) -> str:
         return v[:500]
+
+
+def _refine_evidence_corpus(request: EmailRefineRequest) -> str:
+    """Ground truth a refined draft may draw vocabulary from.
+
+    Profile + opportunity (the same single source of truth as generate)
+    plus the already-grounded prior body. The user's free-text instruction
+    is deliberately EXCLUDED: otherwise "say I'm an expert in PyTorch" would
+    whitelist its own fabrication. A skill the student really has belongs in
+    their profile, where it is allowed everywhere.
+    """
+    corpus = request.current_body.lower()
+    if request.profile is not None and request.opportunity_id:
+        opp = load_opportunities_by_id().get(request.opportunity_id)
+        if opp:
+            parts = _common_parts(request.profile.model_dump(), opp)
+            corpus = f"{corpus} {_build_email_corpus(parts, opp)}"
+    return corpus
 
 
 @router.post("/cold-email/refine")
@@ -380,12 +400,8 @@ async def refine_email(request: EmailRefineRequest):
     if edited is None:
         return _local_refine(request.current_body, request.instruction)
 
-    # Anti-fabrication contract: prior body was already grounded at generate
-    # time, so corpus = prior body + the user's instruction. User-supplied facts
-    # pass; a skill the LLM invents on its own during the edit is rejected.
-    corpus = f"{request.current_body} {request.instruction}".lower()
     passed, _fabricated = validate_no_fabrication(
-        edited, corpus, extra_allow=_EMAIL_SCAFFOLDING,
+        edited, _refine_evidence_corpus(request), extra_allow=_EMAIL_SCAFFOLDING,
     )
     if not passed:
         result = _local_refine(request.current_body, request.instruction)

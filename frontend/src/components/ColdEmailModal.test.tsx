@@ -542,7 +542,12 @@ describe('ColdEmailModal', () => {
         fireEvent.submit(form!);
       });
       await waitFor(() => expect(mockRefineEmail).toHaveBeenCalledTimes(1));
-      expect(mockRefineEmail).toHaveBeenCalledWith('Original body.', 'Make it warmer');
+      expect(mockRefineEmail).toHaveBeenCalledWith(
+        'Original body.',
+        'Make it warmer',
+        makeProfile(),
+        'opp',
+      );
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
     });
 
