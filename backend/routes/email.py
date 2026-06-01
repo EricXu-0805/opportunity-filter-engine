@@ -133,6 +133,19 @@ def _html_escape(s: str) -> str:
     )
 
 
+def _safe_url(url: str) -> str:
+    """Return the URL only if it is http(s); otherwise "".
+
+    send-matches/send-favorites accept caller-supplied item URLs and render
+    them as clickable links under the OpportunityEngine brand. Restricting the
+    scheme blocks javascript:/data:/other-scheme links from riding the sending
+    domain's reputation. Non-http(s) items render as plain text, not links.
+    """
+    u = (url or "").strip()
+    low = u.lower()
+    return u if low.startswith("http://") or low.startswith("https://") else ""
+
+
 def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str, str, str]:
     title_line = subject_hint or f"Your top {len(items)} matches from OpportunityEngine"
     rows_html = []
@@ -140,12 +153,17 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
     for i, m in enumerate(items, 1):
         score_str = f"{m.score:.0f}% match" if m.score is not None else ""
         dl_str = f" · due {m.deadline}" if m.deadline else ""
-        link = m.url or "#"
+        safe = _safe_url(m.url)
+        title_html = (
+            f'<a href="{_html_escape(safe)}" style="color:#2563eb;text-decoration:none">{_html_escape(m.title)}</a>'
+            if safe else
+            f'<span style="color:#111827">{_html_escape(m.title)}</span>'
+        )
         rows_html.append(
             f'<tr><td style="padding:14px 0;border-bottom:1px solid #eee">'
             f'<div style="font-size:13px;color:#6b7280">#{i} · {_html_escape(score_str)}{_html_escape(dl_str)}</div>'
             f'<div style="font-size:15px;font-weight:600;margin:4px 0">'
-            f'<a href="{_html_escape(link)}" style="color:#2563eb;text-decoration:none">{_html_escape(m.title)}</a>'
+            f'{title_html}'
             f'</div>'
             f'<div style="font-size:12px;color:#9ca3af">{_html_escape(m.organization)} · {_html_escape(m.source)}</div>'
             f'</td></tr>'
@@ -154,7 +172,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
             f"#{i} {score_str}{dl_str}\n"
             f"  {m.title}\n"
             f"  {m.organization} · {m.source}\n"
-            f"  {m.url or '(no link)'}\n"
+            f"  {safe or '(no link)'}\n"
         )
 
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
@@ -209,12 +227,17 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
                 f'border-left:3px solid #e5e7eb;font-size:13px;color:#4b5563;white-space:pre-wrap">'
                 f'{_html_escape(f.notes)}</div>'
             )
-        link = f.url or "#"
+        safe = _safe_url(f.url)
+        title_html = (
+            f'<a href="{_html_escape(safe)}" style="color:#2563eb;text-decoration:none">{_html_escape(f.title)}</a>'
+            if safe else
+            f'<span style="color:#111827">{_html_escape(f.title)}</span>'
+        )
         rows_html.append(
             f'<tr><td style="padding:14px 0;border-bottom:1px solid #eee">'
             f'<div>{status_badge}<span style="font-size:12px;color:#9ca3af">{_html_escape(dl_str.lstrip(" ·"))}</span></div>'
             f'<div style="font-size:15px;font-weight:600;margin:4px 0">'
-            f'<a href="{_html_escape(link)}" style="color:#2563eb;text-decoration:none">{_html_escape(f.title)}</a>'
+            f'{title_html}'
             f'</div>'
             f'<div style="font-size:12px;color:#9ca3af">{_html_escape(f.source)}</div>'
             f'{notes_html}</td></tr>'
@@ -222,7 +245,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
         rows_text.append(
             f"#{i} [{f.status.upper() if f.status else 'saved'}]{dl_str}\n"
             f"  {f.title}\n"
-            f"  {f.url or '(no link)'}\n"
+            f"  {safe or '(no link)'}\n"
             + (f"  notes: {f.notes}\n" if f.notes.strip() else "")
         )
 
@@ -249,7 +272,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
 
 
 def _restore_signing_secret() -> str:
-    return os.environ.get("RESTORE_LINK_SECRET") or os.environ.get("ADMIN_TOKEN") or ""
+    return os.environ.get("RESTORE_LINK_SECRET", "").strip()
 
 
 def _sign_restore_payload(device_id: str, ts: int) -> str:
@@ -311,7 +334,7 @@ async def restore_link(req: RestoreLinkRequest):
     """
     url = _build_restore_url(req.device_id)
     if not url:
-        logger.warning("restore-link requested but RESTORE_LINK_SECRET/ADMIN_TOKEN unset")
+        logger.warning("restore-link requested but RESTORE_LINK_SECRET unset")
         return {"ok": True, "note": "disabled"}
 
     try:
