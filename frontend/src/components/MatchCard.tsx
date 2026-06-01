@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   ChevronDown,
   ExternalLink,
@@ -18,6 +19,7 @@ import {
   Clock,
   BookOpen,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import Badge from './Badge';
 import ScoreBar from './ScoreBar';
@@ -28,6 +30,10 @@ import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
 import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
+
+// R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
+// to keep this card a server-cheap leaf until the user opens the panel).
+const TailorModal = dynamic(() => import('./TailorModal'), { ssr: false });
 
 export interface MatchCardProps {
   match: MatchResult;
@@ -95,6 +101,12 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
+  // R71 PR-2: local tailor-modal state — parent doesn't need to know.
+  // We only mount the heavy modal once the user clicks the CTA, and
+  // the button itself only renders when a profile exists (the route
+  // would still work without one, but the tailor UX without a profile
+  // is empty).
+  const [tailorOpen, setTailorOpen] = useState(false);
   const { t } = useT();
 
   const { opportunity: opp } = match;
@@ -105,6 +117,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';
 
   return (
+    <>
     <div className={`relative bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300 overflow-hidden ${urgencyBorder}`}>
       <div className="p-4 sm:p-6">
           <div className="flex items-start justify-between gap-4 mb-3">
@@ -240,6 +253,16 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             <Mail className="w-3.5 h-3.5" />
             {t('card.draftEmail')}
           </button>
+          {profile && (
+            <button
+              type="button"
+              onClick={() => setTailorOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors duration-200"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {t('card.tailorResume')}
+            </button>
+          )}
           {opp.url && !opp.application?.application_url && (
             <a
               href={opp.url}
@@ -431,5 +454,15 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         )}
       </div>
     </div>
+    {profile && (
+      <TailorModal
+        isOpen={tailorOpen}
+        onClose={() => setTailorOpen(false)}
+        profile={profile}
+        opportunityId={opp.id}
+        opportunityTitle={opp.title}
+      />
+    )}
+    </>
   );
 }
