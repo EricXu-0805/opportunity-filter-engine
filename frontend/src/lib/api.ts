@@ -261,6 +261,14 @@ export async function tailorResume(
   });
 }
 
+export interface TailorStatus {
+  ai_available: boolean;
+}
+
+export async function getTailorStatus(): Promise<TailorStatus> {
+  return request<TailorStatus>('/tailor/status');
+}
+
 export interface GitHubParseResponse {
   username: string;
   extracted_skills: string[];

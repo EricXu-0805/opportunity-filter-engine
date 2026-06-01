@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Info,
 } from 'lucide-react';
-import { tailorResume } from '@/lib/api';
+import { tailorResume, getTailorStatus } from '@/lib/api';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 
@@ -178,6 +178,11 @@ export default function TailorModal({
   // just re-parse `draft` because the user might edit the textarea
   // *after* clicking Generate and we'd then pair the wrong originals.
   const [submittedBullets, setSubmittedBullets] = useState<string[]>([]);
+  // R71-G: server-side AI availability, probed on open. `null` = unknown
+  // (loading or probe failed), so we only show the "AI unavailable" banner
+  // on an explicit `false` — a failed probe shouldn't scare the user when
+  // the generate path might still work.
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -216,6 +221,26 @@ export default function TailorModal({
     if (!isOpen) return;
     saveDraft(opportunityId, draft);
   }, [isOpen, opportunityId, draft]);
+
+  // R71-G: probe server AI availability each time the modal opens so the
+  // banner reflects current config (a Render env-var change shouldn't need
+  // a page reload to surface). setState runs in the async callback, not
+  // synchronously in the effect body, so it's outside the
+  // react-hooks/set-state-in-effect rule's scope.
+  useEffect(() => {
+    if (!isOpen) return;
+    let ignore = false;
+    getTailorStatus()
+      .then((s) => {
+        if (!ignore) setAiAvailable(s.ai_available);
+      })
+      .catch(() => {
+        if (!ignore) setAiAvailable(null);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [isOpen]);
 
   const handleClearDraft = useCallback(() => {
     setDraft('');
@@ -368,6 +393,15 @@ export default function TailorModal({
             <X className="w-5 h-5 text-gray-400" aria-hidden="true" />
           </button>
         </div>
+
+        {/* R71-G: up-front AI-unavailable banner. Only on explicit false
+            (not on a failed/loading probe) so we never falsely warn. */}
+        {aiAvailable === false && (
+          <div className="flex items-start gap-2 px-4 sm:px-6 py-2.5 bg-amber-50 border-b border-amber-200 text-[12.5px] text-amber-800 shrink-0">
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>{t('tailor.aiUnavailableBanner')}</span>
+          </div>
+        )}
 
         {/* Body — two panel layout */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0">

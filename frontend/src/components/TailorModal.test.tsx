@@ -26,8 +26,10 @@ vi.mock('@/i18n/client', () => {
 });
 
 const mockTailorResume = vi.fn();
+const mockGetTailorStatus = vi.fn();
 vi.mock('@/lib/api', () => ({
   tailorResume: (...args: unknown[]) => mockTailorResume(...args),
+  getTailorStatus: (...args: unknown[]) => mockGetTailorStatus(...args),
 }));
 
 import TailorModal from './TailorModal';
@@ -62,6 +64,10 @@ describe('TailorModal', () => {
     // draft from a previous test can't leak into the next one's
     // "initial state" assertions.
     window.localStorage.clear();
+    // R71-G: default the status probe to "AI available" so the
+    // unavailable banner stays hidden and pre-existing assertions are
+    // untouched. Tests that exercise the banner override this.
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true });
   });
 
   it('does not render when closed', () => {
@@ -386,6 +392,35 @@ describe('TailorModal', () => {
       expect(screen.getByRole('button', { name: /tailor\.regenerate/ })).toBeTruthy();
       expect(screen.queryByRole('button', { name: /tailor\.generate$/ })).toBeNull();
     });
+  });
+
+  it('R71-G: shows the AI-unavailable banner when status probe returns false', async () => {
+    mockGetTailorStatus.mockResolvedValue({ ai_available: false });
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('tailor.aiUnavailableBanner')).toBeTruthy();
+    });
+  });
+
+  it('R71-G: hides the AI-unavailable banner when AI is configured', async () => {
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true });
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+
+    // Let the probe resolve, then assert the banner never appears.
+    await waitFor(() => expect(mockGetTailorStatus).toHaveBeenCalled());
+    expect(screen.queryByText('tailor.aiUnavailableBanner')).toBeNull();
+  });
+
+  it('R71-G: keeps the banner hidden when the status probe rejects', async () => {
+    mockGetTailorStatus.mockRejectedValue(new Error('network down'));
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+
+    await waitFor(() => expect(mockGetTailorStatus).toHaveBeenCalled());
+    expect(screen.queryByText('tailor.aiUnavailableBanner')).toBeNull();
   });
 
   it('parses bullet-prefixed lines from the textarea before sending', async () => {
