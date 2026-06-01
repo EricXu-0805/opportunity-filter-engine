@@ -379,6 +379,18 @@ async def refine_email(request: EmailRefineRequest):
     edited = chat_completion(messages, max_tokens=800, temperature=0.7)
     if edited is None:
         return _local_refine(request.current_body, request.instruction)
+
+    # Anti-fabrication contract: prior body was already grounded at generate
+    # time, so corpus = prior body + the user's instruction. User-supplied facts
+    # pass; a skill the LLM invents on its own during the edit is rejected.
+    corpus = f"{request.current_body} {request.instruction}".lower()
+    passed, _fabricated = validate_no_fabrication(
+        edited, corpus, extra_allow=_EMAIL_SCAFFOLDING,
+    )
+    if not passed:
+        result = _local_refine(request.current_body, request.instruction)
+        result["fallback_reason"] = "fabrication"
+        return result
     return {"body": edited, "method": "llm"}
 
 

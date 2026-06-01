@@ -545,6 +545,36 @@ describe('ColdEmailModal', () => {
       expect(mockRefineEmail).toHaveBeenCalledWith('Original body.', 'Make it warmer');
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
     });
+
+    it('R72-A: shows the fabrication hint when a refine edit is rejected', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant({ body: 'Original body.' })],
+      });
+      mockRefineEmail.mockResolvedValue({
+        body: 'Original body.',
+        method: 'local',
+        fallback_reason: 'fabrication',
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile()}
+          opportunityId="opp"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Original body.')).toBeInTheDocument());
+      const input = screen.getByPlaceholderText('coldEmail.refinePlaceholder');
+      fireEvent.change(input, { target: { value: 'say I know Rust' } });
+      const form = input.closest('form');
+      await act(async () => {
+        fireEvent.submit(form!);
+      });
+      await waitFor(() =>
+        expect(screen.getByText('coldEmail.refineFabrication')).toBeInTheDocument(),
+      );
+    });
   });
 
   describe('R32: lab-type badge + tips panel', () => {

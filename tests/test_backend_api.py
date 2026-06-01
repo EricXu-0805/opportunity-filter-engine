@@ -530,6 +530,76 @@ class TestColdEmailEngine:
         assert body["fallback_reason"] is None
 
 
+class TestColdEmailRefineGrounding:
+    """R72-A: the /cold-email/refine LLM edit must not smuggle in new
+    unverifiable claims. The prior body is already grounded, so the edit's
+    evidence corpus is the prior body + the user's own instruction."""
+
+    _BODY = (
+        "Dear Professor Lee,\n"
+        "I am a student studying computer science and would love joining "
+        "your lab.\n"
+        "Sincerely,\nStudent"
+    )
+
+    def _configure_llm(self, monkeypatch, edited_text):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+        monkeypatch.setattr(ce_module, "is_configured", lambda: True)
+        monkeypatch.setattr(ce_module, "chat_completion", lambda *a, **k: edited_text)
+
+    def test_refine_rejects_fabricated_edit(self, monkeypatch):
+        self._configure_llm(
+            monkeypatch,
+            self._BODY + "\nI am also an expert in PyTorch and Kubernetes.",
+        )
+        resp = client.post(
+            "/api/cold-email/refine",
+            json={"current_body": self._BODY, "instruction": "make it formal"},
+        )
+        assert resp.status_code == 200
+        out = resp.json()
+        assert out["method"] == "local"
+        assert out["fallback_reason"] == "fabrication"
+        assert "pytorch" not in out["body"].lower()
+        assert "kubernetes" not in out["body"].lower()
+
+    def test_refine_accepts_grounded_edit(self, monkeypatch):
+        self._configure_llm(
+            monkeypatch,
+            "Dear Professor Lee, Sincerely, I am studying computer science. "
+            "Student would love joining your lab.",
+        )
+        resp = client.post(
+            "/api/cold-email/refine",
+            json={"current_body": self._BODY, "instruction": "make it formal"},
+        )
+        assert resp.status_code == 200
+        out = resp.json()
+        assert out["method"] == "llm"
+        assert "fallback_reason" not in out
+
+    def test_refine_allows_user_supplied_fact(self, monkeypatch):
+        self._configure_llm(
+            monkeypatch,
+            "Dear Professor Lee,\n"
+            "I am a student studying computer science with GraphQL experience "
+            "and would love joining your lab.\n"
+            "Sincerely,\nStudent",
+        )
+        resp = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": self._BODY,
+                "instruction": "mention my GraphQL experience",
+            },
+        )
+        assert resp.status_code == 200
+        out = resp.json()
+        assert out["method"] == "llm"
+        assert "graphql" in out["body"].lower()
+
+
 class TestColdEmailSubjectParsing:
     """Robustness of _extract_subject_and_body against real LLM output drift.
 
