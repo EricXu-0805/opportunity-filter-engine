@@ -317,6 +317,22 @@ export default function TailorModal({
     }
   }
 
+  // R71-G: promote the AI rewrite back into the draft so the user can
+  // iterate (tweak a bullet, re-tailor) without retyping. Clearing the
+  // result resets the right panel to the empty prompt and flips the CTA
+  // back to "Tailor with AI" — the originals are now the rewritten text.
+  function handleUseAsOriginals() {
+    if (!resp || resp.tailored_bullets.length === 0) return;
+    const next = resp.tailored_bullets.map((b) => b.text).join('\n');
+    setDraft(next);
+    saveDraft(opportunityId, next);
+    setDraftRestored(false);
+    setResp(null);
+    setSubmittedBullets([]);
+    setError(null);
+    setCopied(false);
+  }
+
   async function handleCopyAll() {
     if (!resp || resp.tailored_bullets.length === 0) return;
     const text = resp.tailored_bullets.map((b) => `• ${b.text}`).join('\n');
@@ -610,6 +626,16 @@ export default function TailorModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
+          {resp?.method === 'ai' && hasResults && (
+            <button
+              type="button"
+              onClick={handleUseAsOriginals}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors mr-auto"
+            >
+              <RefreshCw className="w-4 h-4" aria-hidden="true" />
+              {t('tailor.useAsOriginals')}
+            </button>
+          )}
           {resp && hasResults && (
             <button
               type="button"

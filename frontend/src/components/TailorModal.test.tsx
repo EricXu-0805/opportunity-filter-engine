@@ -414,6 +414,58 @@ describe('TailorModal', () => {
     expect(screen.queryByText('tailor.aiUnavailableBanner')).toBeNull();
   });
 
+  it('R71-G: "use as new originals" promotes the AI rewrite into the draft', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        { text: 'Rewritten bullet one', source_evidence: 'Python', source_index: 0 },
+        { text: 'Rewritten bullet two', source_evidence: 'CS 225', source_index: 1 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'orig one\norig two' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /tailor\.useAsOriginals/ })).toBeTruthy(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.useAsOriginals/ }));
+
+    // Draft now holds the tailored text, one bullet per line.
+    expect(textarea.value).toBe('Rewritten bullet one\nRewritten bullet two');
+    // Storage persisted the promoted draft too.
+    expect(window.localStorage.getItem('ofe_tailor_draft_opp-123')).toBe(
+      'Rewritten bullet one\nRewritten bullet two',
+    );
+    // Result panel resets — CTA flips back to generate, promote button gone.
+    expect(screen.getByRole('button', { name: /tailor\.generate/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /tailor\.useAsOriginals/ })).toBeNull();
+  });
+
+  it('R71-G: "use as new originals" is absent for fallback results', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'fallback',
+      warnings: ['llm_not_configured'],
+      tailored_bullets: [
+        { text: 'original bullet', source_evidence: 'original', source_index: 0 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'original bullet' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => expect(screen.getByText('tailor.methodFallback')).toBeTruthy());
+    // Fallback's tailored === original, so promotion would be a no-op — hidden.
+    expect(screen.queryByRole('button', { name: /tailor\.useAsOriginals/ })).toBeNull();
+  });
+
   it('R71-G: keeps the banner hidden when the status probe rejects', async () => {
     mockGetTailorStatus.mockRejectedValue(new Error('network down'));
 
