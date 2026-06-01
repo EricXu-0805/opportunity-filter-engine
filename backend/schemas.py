@@ -149,6 +149,12 @@ class ColdEmailResponse(BaseModel):
     mailto_link: str
     method: str = "template"
     lab_type: Optional[str] = None
+    # R72-A: when an AI draft was requested but we served the template,
+    # this says why so the UI can show an accurate hint. None when method
+    # is "ai" or the caller asked for the template engine directly.
+    # Values: "not_configured" | "unavailable" | "invalid_output" |
+    # "fabrication".
+    fallback_reason: Optional[str] = None
 
 
 class GapAnalysisResponse(BaseModel):
