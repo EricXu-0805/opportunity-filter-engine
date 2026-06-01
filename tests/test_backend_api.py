@@ -686,6 +686,14 @@ class TestHTMLSanitization:
 
 
 class TestAdminDataQuality:
+    @pytest.fixture(autouse=True)
+    def _isolate_history(self, monkeypatch, tmp_path):
+        """The data-quality endpoint appends a snapshot to _HISTORY_PATH as a
+        side effect; redirect it to a tmp file so tests never dirty the
+        committed data/processed/admin_history.jsonl in the working tree."""
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "_HISTORY_PATH", tmp_path / "admin_history.jsonl")
+
     def test_503_when_token_unset(self, monkeypatch):
         monkeypatch.delenv("ADMIN_TOKEN", raising=False)
         from backend.routes import admin as admin_mod
