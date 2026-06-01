@@ -58,6 +58,10 @@ const baseProps = {
 describe('TailorModal', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // R71-F: every test starts with a clean localStorage so a leftover
+    // draft from a previous test can't leak into the next one's
+    // "initial state" assertions.
+    window.localStorage.clear();
   });
 
   it('does not render when closed', () => {
@@ -172,6 +176,91 @@ describe('TailorModal', () => {
       // Two pairs of section labels.
       expect(screen.getAllByText('tailor.originalRowLabel').length).toBe(2);
       expect(screen.getAllByText('tailor.tailoredRowLabel').length).toBe(2);
+    });
+  });
+
+  it('R71-F: restores saved draft from localStorage on open + clears flag on edit', async () => {
+    /* Pre-populate the storage slot for this opp so opening the modal
+       should hydrate from it rather than the (empty) heuristic
+       prefill. The "Restored" chip is the visible affordance. */
+    window.localStorage.setItem(
+      'ofe_tailor_draft_opp-123',
+      'previously saved bullet 1\npreviously saved bullet 2',
+    );
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('previously saved bullet 1\npreviously saved bullet 2');
+    expect(screen.getByText('tailor.draftRestored')).toBeTruthy();
+
+    // Editing clears the "restored" badge so the chip doesn't linger
+    // forever once the user has acknowledged it and started typing.
+    fireEvent.change(textarea, { target: { value: 'now editing this' } });
+    expect(screen.queryByText('tailor.draftRestored')).toBeNull();
+  });
+
+  it('R71-F: persists draft to localStorage on textarea change', async () => {
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+    fireEvent.change(textarea, { target: { value: 'newly typed bullet' } });
+
+    await waitFor(() => {
+      expect(
+        window.localStorage.getItem('ofe_tailor_draft_opp-123'),
+      ).toBe('newly typed bullet');
+    });
+  });
+
+  it('R71-F: clear-draft button wipes the textarea + storage slot', async () => {
+    window.localStorage.setItem('ofe_tailor_draft_opp-123', 'kept across reload');
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.clearDraftAria/ }));
+
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('');
+    expect(window.localStorage.getItem('ofe_tailor_draft_opp-123')).toBeNull();
+    // Chip disappears once cleared.
+    expect(screen.queryByText('tailor.draftRestored')).toBeNull();
+  });
+
+  it('R71-F: per-bullet copy button writes that bullet to the clipboard', async () => {
+    /* jsdom doesn't ship a clipboard implementation; we install a
+       writable spy and verify the button calls it with just the one
+       bullet's text (not all bullets — that's what Copy All does). */
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        { text: 'tailored bullet A', source_evidence: 'Python', source_index: 0 },
+        { text: 'tailored bullet B', source_evidence: 'CS 225', source_index: 1 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'orig A\norig B' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => {
+      // Two per-bullet copy buttons rendered (one per accepted bullet).
+      expect(screen.getAllByRole('button', { name: /tailor\.copyBulletAria/ }).length).toBe(2);
+    });
+
+    // Click the second one — should grab "tailored bullet B" only.
+    const copyButtons = screen.getAllByRole('button', { name: /tailor\.copyBulletAria/ });
+    fireEvent.click(copyButtons[1]);
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('tailored bullet B');
     });
   });
 

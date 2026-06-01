@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   X,
   Copy,
@@ -14,6 +14,41 @@ import {
 import { tailorResume } from '@/lib/api';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
+
+// R71-F: persist the textarea draft per-opportunity so the user doesn't
+// lose typed bullets if they close the modal accidentally. Keying by
+// opportunity id keeps drafts isolated — opening the modal on opp A then
+// opp B shows two distinct prefills, not the same leaked text.
+const DRAFT_STORAGE_PREFIX = 'ofe_tailor_draft_';
+
+function draftStorageKey(opportunityId: string): string {
+  return `${DRAFT_STORAGE_PREFIX}${opportunityId}`;
+}
+
+function loadSavedDraft(opportunityId: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(draftStorageKey(opportunityId));
+  } catch {
+    // localStorage can throw in private-mode Safari and embedded webviews.
+    // Swallow — persistence is a UX nicety, not a correctness requirement.
+    return null;
+  }
+}
+
+function saveDraft(opportunityId: string, value: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (value.trim().length === 0) {
+      window.localStorage.removeItem(draftStorageKey(opportunityId));
+    } else {
+      window.localStorage.setItem(draftStorageKey(opportunityId), value);
+    }
+  } catch {
+    // Same rationale as loadSavedDraft — never crash the modal on quota
+    // / private-mode failures.
+  }
+}
 
 /**
  * R71 resume-tailor modal — side-by-side originals vs AI rewrite.
@@ -117,20 +152,27 @@ export default function TailorModal({
   // falling back to 'en', so we can pipe `useT().locale` through raw.
   const { t, locale } = useT();
 
-  // Pre-fill from `profile.resume_text` if we can pluck bullet-shaped
-  // lines; otherwise leave the textarea empty so the user pastes their
-  // own. `useMemo` so the auto-prefill is stable per profile but doesn't
-  // re-run on every keystroke.
-  const initialBullets = useMemo(
+  // Heuristic prefill from `profile.resume_text` — used when no saved
+  // draft exists for this opportunity. `useMemo` so the extraction is
+  // stable per profile.
+  const heuristicPrefill = useMemo(
     () => extractBulletLines(profile.resume_text).join('\n'),
     [profile.resume_text],
   );
 
-  const [draft, setDraft] = useState(initialBullets);
+  // R71-F: initial draft = saved draft for THIS opportunity (if any)
+  // over heuristic prefill over empty. Computed once per modal open;
+  // see the open-effect below for the actual loading.
+  const [draft, setDraft] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<TailorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // R71-G: per-bullet copy-confirmation state. Keyed by bullet index
+  // so two cards' "Copied!" states can't collide if the user spams
+  // copy buttons quickly.
+  const [copiedBulletIdx, setCopiedBulletIdx] = useState<number | null>(null);
   // R71-E: snapshot the bullets actually submitted to the backend so
   // we can render each tailored bullet next to its source. We can't
   // just re-parse `draft` because the user might edit the textarea
@@ -149,15 +191,37 @@ export default function TailorModal({
        internal slice on open so the next render starts from a known
        state and clears any leftover AI result. */
     if (isOpen) {
-      setDraft(initialBullets);
+      // R71-F: prefer saved-per-opportunity draft over heuristic
+      // prefill so the user's last typed bullets survive across
+      // close→reopen cycles. Empty heuristic + no saved draft → "".
+      const saved = loadSavedDraft(opportunityId);
+      setDraft(saved ?? heuristicPrefill);
+      setDraftRestored(saved !== null && saved.length > 0);
       setResp(null);
       setError(null);
       setCopied(false);
+      setCopiedBulletIdx(null);
       setLoading(false);
       setSubmittedBullets([]);
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [isOpen, initialBullets]);
+  }, [isOpen, heuristicPrefill, opportunityId]);
+
+  // R71-F: persist draft to localStorage as the user types. localStorage
+  // is synchronous and cheap enough that per-keystroke writes are fine —
+  // no debouncing needed for typical resume-bullet inputs (<3KB). The
+  // helper swallows quota/private-mode errors so persistence failures
+  // never break the modal.
+  useEffect(() => {
+    if (!isOpen) return;
+    saveDraft(opportunityId, draft);
+  }, [isOpen, opportunityId, draft]);
+
+  const handleClearDraft = useCallback(() => {
+    setDraft('');
+    setDraftRestored(false);
+    saveDraft(opportunityId, '');
+  }, [opportunityId]);
 
   // Focus trap + escape + body-overflow lock. Lifted verbatim from
   // ColdEmailModal so the two modals feel identical to keyboard users.
@@ -236,6 +300,21 @@ export default function TailorModal({
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // R71-F: per-bullet copy. Idx-keyed confirmation state so two
+  // adjacent cards' "Copied" flashes can't collide when the user
+  // clicks them in rapid succession.
+  async function handleCopyBullet(idx: number, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedBulletIdx(idx);
+      setTimeout(() => setCopiedBulletIdx((cur) => (cur === idx ? null : cur)), 1800);
+    } catch {
+      // navigator.clipboard.writeText can reject in insecure contexts
+      // (HTTP, sandboxed iframes). Swallow — the global Copy All button
+      // is the documented path, this is just a shortcut.
+    }
+  }
+
   if (!isOpen) return null;
 
   const warningMessage = resp ? pickWarningMessage(resp.warnings, t) : null;
@@ -295,12 +374,33 @@ export default function TailorModal({
           {/* Left panel — originals */}
           <div className="flex-1 flex flex-col md:border-r border-gray-100 min-w-0">
             <div className="px-5 pt-4 pb-2 shrink-0">
-              <label
-                htmlFor="tailor-bullets-input"
-                className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5"
-              >
-                {t('tailor.originalHeading')}
-              </label>
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <label
+                  htmlFor="tailor-bullets-input"
+                  className="block text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
+                  {t('tailor.originalHeading')}
+                </label>
+                {/* R71-F: "Restored from your last edit" chip with one-
+                    click clear. Sticks around as a non-blocking hint
+                    rather than auto-dismissing on the first keystroke
+                    so the user actually notices their last session
+                    was restored — auto-clear would feel like the chip
+                    flickered and vanished before being read. */}
+                {draftRestored && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                    {t('tailor.draftRestored')}
+                    <button
+                      type="button"
+                      onClick={handleClearDraft}
+                      className="text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
+                      aria-label={t('tailor.clearDraftAria')}
+                    >
+                      {t('tailor.clearDraft')}
+                    </button>
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-400 mb-2">
                 {t('tailor.bulletsHint')}
               </p>
@@ -309,7 +409,12 @@ export default function TailorModal({
               <textarea
                 id="tailor-bullets-input"
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  // Any user edit clears the "restored" indicator since
+                  // the draft is no longer purely the restored copy.
+                  if (draftRestored) setDraftRestored(false);
+                }}
                 placeholder={t('tailor.bulletsPlaceholder')}
                 rows={12}
                 className="w-full h-full min-h-[200px] px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-none"
@@ -415,13 +520,38 @@ export default function TailorModal({
                             </p>
                           </div>
                         )}
-                        <div className="px-4 py-3">
-                          {!sameAsOriginal && (
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 mb-1">
-                              {t('tailor.tailoredRowLabel')}
-                            </p>
-                          )}
-                          <p className="text-[13.5px] text-gray-800 leading-relaxed">
+                        <div className="px-4 py-3 relative">
+                          <div className="flex items-start justify-between gap-2">
+                            {!sameAsOriginal && (
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">
+                                {t('tailor.tailoredRowLabel')}
+                              </p>
+                            )}
+                            {/* R71-F per-bullet copy. Sits in the top-
+                                right of each card so the user can grab
+                                just the bullet they like without taking
+                                everything via Copy All. */}
+                            <button
+                              type="button"
+                              onClick={() => handleCopyBullet(i, b.text)}
+                              className={`ml-auto inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md transition-colors ${
+                                copiedBulletIdx === i
+                                  ? 'text-emerald-600 bg-emerald-50'
+                                  : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
+                              }`}
+                              aria-label={t('tailor.copyBulletAria')}
+                            >
+                              {copiedBulletIdx === i ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3" aria-hidden="true" />
+                                  {t('tailor.copyBulletCopied')}
+                                </>
+                              ) : (
+                                <Copy className="w-3 h-3" aria-hidden="true" />
+                              )}
+                            </button>
+                          </div>
+                          <p className="mt-1 text-[13.5px] text-gray-800 leading-relaxed">
                             {b.text}
                           </p>
                           {b.source_evidence && (
