@@ -370,6 +370,125 @@ class TestInputCaps:
         assert body["tailored_bullets"][0]["text"] == "actual content"
 
 
+class TestLocale:
+    """R71-D: caller-declared output locale selects the system prompt."""
+
+    def test_default_locale_is_en(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Omitting `locale` keeps EN behavior — the schema default."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            return json.dumps({"bullets": [
+                {"text": "Implemented Python ML projects in CS 225", "source_evidence": "Python"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python work in CS 225"],
+            },
+        )
+        assert resp.status_code == 200
+        # EN prompt has the English "STRICT RULES:" header verbatim.
+        assert "STRICT RULES:" in captured["system"]
+        assert "严格规则" not in captured["system"]
+
+    def test_locale_zh_uses_chinese_prompt(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            return json.dumps({"bullets": [
+                {
+                    "text": "在 CS 225 课程中用 Python 完成机器学习项目",
+                    "source_evidence": "Python; CS 225",
+                },
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python work in CS 225"],
+                "locale": "zh",
+            },
+        )
+        assert resp.status_code == 200
+        # ZH prompt has the Chinese rules header; EN header must NOT be there.
+        assert "严格规则" in captured["system"]
+        assert "STRICT RULES:" not in captured["system"]
+        body = resp.json()
+        # Chinese body still passes the ASCII validator — there are no
+        # fabricated ASCII tokens (Python and CS appear in the corpus).
+        assert body["method"] == "ai"
+        assert "Python" in body["tailored_bullets"][0]["text"]
+
+    def test_locale_zh_cn_normalized_to_zh(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Locale-region tags ('zh-CN', 'zh_TW') normalize to 'zh'."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            return json.dumps({"bullets": [
+                {"text": "用 Python 在 CS 225 做实验", "source_evidence": "Python"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python work in CS 225"],
+                "locale": "zh-CN",
+            },
+        )
+        assert resp.status_code == 200
+        assert "严格规则" in captured["system"]
+
+    def test_unknown_locale_falls_back_to_en(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Forward-compatible: 'fr' or random strings don't 422, fall to EN."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            return json.dumps({"bullets": [
+                {"text": "Implemented Python ML projects in CS 225", "source_evidence": "Python"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python work in CS 225"],
+                "locale": "fr-FR",
+            },
+        )
+        assert resp.status_code == 200
+        # 'fr' is not 'zh', so we fall to the EN prompt — no 422.
+        assert "STRICT RULES:" in captured["system"]
+
+
 class TestUnitHelpers:
     """Unit tests for the validator + evidence builder, no HTTP layer."""
 

@@ -171,6 +171,15 @@ class TailorRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
     original_bullets: list[str] = Field(default_factory=list)
+    # R71-D: caller-declared output language. Defaults to "en" so existing
+    # clients (R71-B/C) keep their current behavior. The route uses this
+    # to pick between the EN and ZH system prompts; everything else (the
+    # anti-fabrication validator, the evidence corpus, the cap_bullets
+    # field validator) is locale-agnostic by design — the ASCII hard-claim
+    # regex still catches Python / PyTorch / Kubernetes regardless of
+    # whether the LLM output is English or Chinese, which is the
+    # high-priority fabrication risk we care about.
+    locale: str = "en"
 
     @field_validator("original_bullets")
     @classmethod
@@ -179,6 +188,16 @@ class TailorRequest(BaseModel):
         # paste cannot blow past the LLM context budget. Mirrors the
         # ``ProfileRequest`` field-validator pattern.
         return [str(b)[:500] for b in v[:12] if str(b).strip()]
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, v: str) -> str:
+        # Accept ``"en"``, ``"zh"``, ``"en-US"``, ``"zh-CN"`` etc. — we
+        # only key off the primary subtag. Unknown locales fall back to
+        # "en" rather than raising so a forward-compatible client adding
+        # ``"fr"`` doesn't 422 here.
+        primary = (v or "").lower().split("-")[0].split("_")[0]
+        return "zh" if primary == "zh" else "en"
 
 
 class TailoredBullet(BaseModel):
