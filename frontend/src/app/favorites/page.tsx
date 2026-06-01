@@ -25,6 +25,13 @@ import { useSavedSearches } from './use-saved-searches';
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
   ssr: false,
 });
+// R71 PR-3: third entry point for the tailor modal. Same shape as the
+// email modal — favorites/page owns the open/close state, OpportunityCard
+// gets a callback prop, and the modal is mounted once at the page level
+// (not per-card) so we don't pay the dynamic-import cost N times.
+const TailorModal = dynamic(() => import('@/components/TailorModal'), {
+  ssr: false,
+});
 
 export default function FavoritesPage() {
   const router = useRouter();
@@ -48,6 +55,12 @@ export default function FavoritesPage() {
   const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string }>({
     open: false, id: '', title: '',
   });
+  // R71 PR-3: mirror emailModal state. We model open/closed + opp metadata
+  // together (rather than separate booleans) so closing the modal doesn't
+  // race with re-opening for a different opp.
+  const [tailorModal, setTailorModal] = useState<{ open: boolean; id: string; title: string }>({
+    open: false, id: '', title: '',
+  });
 
   const opportunities = useMemo<Opp[]>(
     () => [...customImports.map(customImportToOpp), ...serverOpportunities],
@@ -68,6 +81,14 @@ export default function FavoritesPage() {
 
   const closeEmailModal = useCallback(() => {
     setEmailModal({ open: false, id: '', title: '' });
+  }, []);
+
+  const openTailorModal = useCallback((opp: Opp) => {
+    setTailorModal({ open: true, id: opp.id, title: opp.title });
+  }, []);
+
+  const closeTailorModal = useCallback(() => {
+    setTailorModal({ open: false, id: '', title: '' });
   }, []);
 
   if (loading) {
@@ -136,6 +157,7 @@ export default function FavoritesPage() {
               onToggleSelect={toggleSelect}
               onRemove={handleRemove}
               onOpenEmailModal={openEmailModal}
+              onOpenTailorModal={openTailorModal}
               t={t}
             />
           ))}
@@ -159,6 +181,16 @@ export default function FavoritesPage() {
           profile={profile}
           opportunityId={emailModal.id}
           opportunityTitle={emailModal.title}
+        />
+      )}
+
+      {profile && (
+        <TailorModal
+          isOpen={tailorModal.open}
+          onClose={closeTailorModal}
+          profile={profile}
+          opportunityId={tailorModal.id}
+          opportunityTitle={tailorModal.title}
         />
       )}
     </div>

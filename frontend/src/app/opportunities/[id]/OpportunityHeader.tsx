@@ -12,6 +12,7 @@ import {
   Mail,
   MapPin,
   Share2,
+  Sparkles,
   Star,
 } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
@@ -27,6 +28,7 @@ export function OpportunityHeader({
   shareCopied,
   onStar,
   onOpenEmailModal,
+  onOpenTailorModal,
   onShare,
   t,
 }: {
@@ -36,6 +38,13 @@ export function OpportunityHeader({
   shareCopied: boolean;
   onStar: () => void;
   onOpenEmailModal: () => void;
+  /**
+   * Optional — when omitted the "Tailor Resume" CTA is hidden. R71 PR-3
+   * passes it from `OpportunityDetail`; leaving it optional keeps the
+   * existing call sites (none today, but a defensive API surface) from
+   * breaking when this header is reused.
+   */
+  onOpenTailorModal?: () => void;
   onShare: () => void;
   t: TFunc;
 }) {
@@ -124,6 +133,16 @@ export function OpportunityHeader({
           >
             <Mail className="w-4 h-4" aria-hidden="true" />
             {t('detail.draftEmail')}
+          </button>
+        )}
+        {profile && onOpenTailorModal && (
+          <button
+            type="button"
+            onClick={onOpenTailorModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-[14px] font-medium hover:bg-indigo-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
+            {t('card.tailorResume')}
           </button>
         )}
         <button
