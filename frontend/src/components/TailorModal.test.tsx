@@ -109,10 +109,13 @@ describe('TailorModal', () => {
     fireEvent.click(generate);
 
     await waitFor(() =>
+      // R71-D: locale flows from useT().locale ('en' in the test env)
+      // through tailorResume's options arg.
       expect(mockTailorResume).toHaveBeenCalledWith(
         expect.objectContaining({ major: 'CS' }),
         'opp-123',
         ['Worked on Python projects in CS 225'],
+        { locale: 'en' },
       ),
     );
 
@@ -233,6 +236,7 @@ describe('TailorModal', () => {
         expect.any(Object),
         'opp-123',
         ['first bullet', 'second bullet', 'third bullet'],
+        { locale: 'en' },
       ),
     );
   });

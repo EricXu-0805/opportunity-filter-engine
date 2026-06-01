@@ -237,19 +237,27 @@ export async function refineEmail(
  * `warnings` list. The only thrown errors are 404 (opportunity not
  * found) and network failures. Mirrors the cold-email "always returns
  * usable" contract.
+ *
+ * `locale` (R71-D) selects the output language. Backend normalizes
+ * region tags ('zh-CN' / 'zh_TW' / 'zh') to 'zh', and any unknown
+ * value falls back to 'en' rather than 422-ing — so we can safely
+ * pass `useT().locale` through without sanitization.
  */
 export async function tailorResume(
   profile: ProfileData,
   opportunityId: string,
   originalBullets: string[],
+  options: { locale?: string } = {},
 ): Promise<TailorResponse> {
+  const body: Record<string, unknown> = {
+    profile: toProfileRequest(profile),
+    opportunity_id: opportunityId,
+    original_bullets: originalBullets,
+  };
+  if (options.locale) body.locale = options.locale;
   return request<TailorResponse>('/tailor', {
     method: 'POST',
-    body: JSON.stringify({
-      profile: toProfileRequest(profile),
-      opportunity_id: opportunityId,
-      original_bullets: originalBullets,
-    }),
+    body: JSON.stringify(body),
   });
 }
 

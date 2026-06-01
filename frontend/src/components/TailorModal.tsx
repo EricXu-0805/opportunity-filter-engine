@@ -111,7 +111,11 @@ export default function TailorModal({
   opportunityId,
   opportunityTitle,
 }: TailorModalProps) {
-  const { t } = useT();
+  // R71-D: `locale` flows from the i18n context all the way down to the
+  // backend so the LLM returns bullets in the user's current display
+  // language. The backend tolerates unknown / region-tagged values by
+  // falling back to 'en', so we can pipe `useT().locale` through raw.
+  const { t, locale } = useT();
 
   // Pre-fill from `profile.resume_text` if we can pluck bullet-shaped
   // lines; otherwise leave the textarea empty so the user pastes their
@@ -206,7 +210,7 @@ export default function TailorModal({
     setError(null);
     setCopied(false);
     try {
-      const data = await tailorResume(profile, opportunityId, bullets);
+      const data = await tailorResume(profile, opportunityId, bullets, { locale });
       setResp(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('tailor.failedToTailor'));
