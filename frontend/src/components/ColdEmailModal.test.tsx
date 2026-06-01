@@ -337,6 +337,32 @@ describe('ColdEmailModal', () => {
       expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai' });
     });
 
+    it('R72-A: shows the fabrication fallback hint when the AI draft is rejected', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGenerateColdEmail.mockResolvedValue({
+        subject: 'Template Subject',
+        body: 'Template Body',
+        recipient_email: 'p@x.edu',
+        mailto_link: 'mailto:p@x.edu',
+        method: 'template',
+        fallback_reason: 'fabrication',
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile()}
+          opportunityId="opp-fab"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      await waitFor(() =>
+        expect(screen.getByText('coldEmail.aiFallbackFabrication')).toBeInTheDocument(),
+      );
+    });
+
     it('clicking the AI pill again switches to the cached AI variant without re-fetching', async () => {
       mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
       mockGenerateColdEmail.mockResolvedValue({

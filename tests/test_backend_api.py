@@ -438,7 +438,9 @@ class TestColdEmailEngine:
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
         assert resp.status_code == 200
-        assert resp.json()["method"] == "template"
+        body = resp.json()
+        assert body["method"] == "template"
+        assert body["fallback_reason"] == "not_configured"
 
     def test_engine_ai_marks_method_ai_when_llm_responds(self, cold_email_body, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
@@ -467,7 +469,10 @@ class TestColdEmailEngine:
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
         assert resp.status_code == 200
-        assert resp.json()["method"] == "template"
+        body = resp.json()
+        assert body["method"] == "template"
+        # ai_text was non-empty ("I will not write...") but had no Subject/body.
+        assert body["fallback_reason"] == "invalid_output"
 
     def test_engine_rejects_unknown_value(self, cold_email_body):
         payload = {**cold_email_body, "engine": "gpt5"}
@@ -496,6 +501,7 @@ class TestColdEmailEngine:
         assert resp.status_code == 200
         body = resp.json()
         assert body["method"] == "template"
+        assert body["fallback_reason"] == "fabrication"
         joined = (body["subject"] + " " + body["body"]).lower()
         assert "pytorch" not in joined
         assert "kubernetes" not in joined
@@ -519,7 +525,9 @@ class TestColdEmailEngine:
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
         assert resp.status_code == 200
-        assert resp.json()["method"] == "ai"
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert body["fallback_reason"] is None
 
 
 class TestColdEmailSubjectParsing:

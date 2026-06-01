@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { generateColdEmail, getEmailVariants, refineEmail } from '@/lib/api';
-import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
+import type { ProfileData, EmailVariant, LabType, ColdEmailFallbackReason } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
@@ -37,6 +37,18 @@ const QUICK_ACTION_KEYS = ['formal', 'shorter', 'enthusiastic', 'coursework'] as
 type QuickActionKey = typeof QUICK_ACTION_KEYS[number];
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
+
+// R72-A: pick the right fallback hint. 'fabrication' (the AI invented an
+// unverifiable detail and was rejected) gets a distinct message — the old
+// "no provider configured" line would be misleading since AI *is* wired.
+function aiFallbackMessage(
+  reason: ColdEmailFallbackReason | null | undefined,
+  t: Replier,
+): string {
+  if (reason === 'fabrication') return t('coldEmail.aiFallbackFabrication');
+  if (reason === 'not_configured') return t('coldEmail.aiFallback');
+  return t('coldEmail.aiFallbackGeneric');
+}
 
 function applyQuickEdit(
   body: string,
@@ -282,7 +294,7 @@ export default function ColdEmailModal({
         ...prev,
         {
           role: 'assistant',
-          content: resp.method === 'ai' ? t('coldEmail.aiGenerated') : t('coldEmail.aiFallback'),
+          content: resp.method === 'ai' ? t('coldEmail.aiGenerated') : aiFallbackMessage(resp.fallback_reason, t),
         },
       ]);
     } catch {

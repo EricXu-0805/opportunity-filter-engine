@@ -143,6 +143,12 @@ export interface MatchesResponse {
  */
 export type LabType = 'wet' | 'dry' | 'humanities';
 
+export type ColdEmailFallbackReason =
+  | 'not_configured'
+  | 'unavailable'
+  | 'invalid_output'
+  | 'fabrication';
+
 export interface ColdEmailResponse {
   subject: string;
   body: string;
@@ -150,6 +156,8 @@ export interface ColdEmailResponse {
   mailto_link: string;
   method: 'template' | 'ai';
   lab_type?: LabType | null;
+  /** R72-A: why the template was served when AI was requested (null on success). */
+  fallback_reason?: ColdEmailFallbackReason | null;
 }
 
 export type ColdEmailEngine = 'template' | 'ai';

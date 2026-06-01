@@ -945,6 +945,8 @@ export const en = {
     aiGenerating: 'Generating an AI-personalized version...',
     aiGenerated: 'AI-personalized version ready. Switch back to a template variant anytime.',
     aiFallback: 'No AI provider configured — fell back to the template version. Set OPENAI_API_KEY (or Gemini / OpenRouter) to unlock AI.',
+    aiFallbackFabrication: 'The AI draft added details we couldn\'t verify in your profile, so we kept the safe template version instead.',
+    aiFallbackGeneric: 'AI couldn\'t produce a usable draft — showing the template version.',
     aiFailed: 'AI generation failed. Try again, or pick a template variant.',
     quickActions: {
       formal: 'More formal',
@@ -2299,6 +2301,8 @@ export const zh = {
     aiGenerating: '正在生成 AI 个性化版本...',
     aiGenerated: 'AI 个性化版本已就绪。随时可切回模板版本。',
     aiFallback: '未配置 AI 提供者 —— 已退回模板版本。设置 OPENAI_API_KEY(或 Gemini / OpenRouter)以启用 AI。',
+    aiFallbackFabrication: 'AI 草稿写出了你资料中无法验证的内容,因此保留了更安全的模板版本。',
+    aiFallbackGeneric: 'AI 无法生成可用草稿 —— 显示模板版本。',
     aiFailed: 'AI 生成失败。请重试,或选择一个模板版本。',
     quickActions: {
       formal: '更正式',

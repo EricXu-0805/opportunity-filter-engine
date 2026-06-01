@@ -268,12 +268,17 @@ async def generate_email(request: ColdEmailRequest):
     method = "template"
     subject = ""
     body = ""
+    fallback_reason: str | None = None
 
-    if request.engine == "ai" and is_configured():
-        ai_text = _ai_generate_email_text(profile_dict, opp)
-        if ai_text:
-            ai_subject, ai_body = _extract_subject_and_body(ai_text)
-            if ai_subject and ai_body:
+    if request.engine == "ai":
+        if not is_configured():
+            fallback_reason = "not_configured"
+        else:
+            ai_text = _ai_generate_email_text(profile_dict, opp)
+            ai_subject, ai_body = _extract_subject_and_body(ai_text) if ai_text else ("", "")
+            if not ai_subject or not ai_body:
+                fallback_reason = "unavailable" if not ai_text else "invalid_output"
+            else:
                 # R72-A: reject the AI draft if it fabricates a skill / tech
                 # the student never listed (same guarantee as the resume
                 # tailor) and fall back to the grounded template.
@@ -284,6 +289,7 @@ async def generate_email(request: ColdEmailRequest):
                 if passed:
                     subject, body, method = ai_subject, ai_body, "ai"
                 else:
+                    fallback_reason = "fabrication"
                     logger.info(
                         "cold-email: AI draft rejected (fabrication: %s)",
                         fabricated[:5],
@@ -303,6 +309,7 @@ async def generate_email(request: ColdEmailRequest):
         mailto_link=mailto_link,
         method=method,
         lab_type=_detect_lab_type(opp),
+        fallback_reason=fallback_reason,
     )
 
 
