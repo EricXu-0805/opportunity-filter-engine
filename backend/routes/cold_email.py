@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from urllib.parse import quote
 
@@ -7,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
 from backend.data_loader import load_opportunities_by_id
+from backend.lib.grounding import validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured
 from backend.schemas import ColdEmailRequest, ColdEmailResponse
 from src.recommender.cold_email import (
@@ -16,7 +18,34 @@ from src.recommender.cold_email import (
     generate_variants,
 )
 
+logger = logging.getLogger("ofe.cold_email")
+
 router = APIRouter()
+
+# Salutation / closing / connective vocabulary that legitimately appears in
+# a cold email but isn't a *skill claim*. Allow-listed (on top of the shared
+# generic-filler set) so the anti-fabrication check fires only on invented
+# technical / proper-noun terms — not on "Dear", "studying", or "grateful".
+_EMAIL_SCAFFOLDING: frozenset[str] = frozenset({
+    "hello", "greetings", "afternoon", "morning", "evening", "regards",
+    "sincerely", "respectfully", "warmly", "cheers", "wishes", "thank",
+    "thanks", "please", "kindly", "appreciate", "appreciated", "grateful",
+    "gratefully", "sincere", "truly", "regarding", "reaching", "reach",
+    "introduce", "myself", "writing", "contacting", "looking", "forward",
+    "hearing", "availability", "schedule", "discuss", "conversation",
+    "willing", "happy", "glad", "hope", "hoping", "wonder", "wondering",
+    "passion", "enthusiasm", "enthusiastic", "excited", "exciting",
+    "attached", "attachment", "email", "emails", "semester", "spring",
+    "summer", "autumn", "winter", "weeks", "months", "prospective",
+    "aspiring", "eager", "mentorship", "involvement", "contribute",
+    "contributing", "contribution", "dedicated", "motivated", "curious",
+    "align", "aligns", "aligned", "alignment", "resonate", "resonates",
+    "admire", "drawn", "studying", "working", "seeking",
+    "aiming", "planning", "majoring", "pursuing", "joining", "applying",
+    "exploring", "fascinated", "intrigued", "computer", "science",
+    "distributed", "deeply", "warm", "thoughtful",
+    "professor", "doctor", "department", "faculty", "graduate", "lab",
+})
 
 # Tolerates real LLM output drift on the subject line: case, stray space
 # around the colon, and markdown bold (e.g. "**Subject: ...**"). Without this
@@ -196,6 +225,31 @@ def _ai_generate_email_text(profile_dict: dict, opp: dict) -> str | None:
     )
 
 
+def _build_email_corpus(p: dict, opp: dict) -> str:
+    """Lower-cased evidence corpus the AI email may draw vocabulary from.
+
+    Mirrors ``tailor._build_evidence_corpus``: profile facts + the
+    opportunity's own text. Any 5+ char ASCII token in the draft that isn't
+    here, isn't generic filler, and isn't email scaffolding is a fabricated
+    skill claim → reject the draft and fall back to the grounded template.
+    """
+    parts: list[str] = [
+        str(p.get("name", "")), str(p.get("major", "")), str(p.get("school", "")),
+        str(p.get("research_interests", "")), str(p.get("title", "")),
+        str(p.get("recipient", "")), str(p.get("lab", "")),
+        str(p.get("research_area", "")), str(p.get("research_topic", "")),
+        str(p.get("opp_desc", "")), str(p.get("linkedin_url", "")),
+        str(p.get("github_url", "")),
+    ]
+    for key in ("skills", "coursework", "matching_skills", "opp_skills_required"):
+        parts.extend(str(x) for x in (p.get(key) or []))
+    parts.append(str(opp.get("organization", "")))
+    parts.append(str(opp.get("department", "")))
+    parts.append(str(opp.get("pi_name", "")))
+    parts.extend(str(k) for k in (opp.get("keywords") or []))
+    return " ".join(parts).lower()
+
+
 @router.post("/cold-email", response_model=ColdEmailResponse)
 async def generate_email(request: ColdEmailRequest):
     """Generate a cold email for a specific opportunity with mailto: link.
@@ -220,7 +274,20 @@ async def generate_email(request: ColdEmailRequest):
         if ai_text:
             ai_subject, ai_body = _extract_subject_and_body(ai_text)
             if ai_subject and ai_body:
-                subject, body, method = ai_subject, ai_body, "ai"
+                # R72-A: reject the AI draft if it fabricates a skill / tech
+                # the student never listed (same guarantee as the resume
+                # tailor) and fall back to the grounded template.
+                corpus = _build_email_corpus(_common_parts(profile_dict, opp), opp)
+                passed, fabricated = validate_no_fabrication(
+                    f"{ai_subject}\n{ai_body}", corpus, extra_allow=_EMAIL_SCAFFOLDING,
+                )
+                if passed:
+                    subject, body, method = ai_subject, ai_body, "ai"
+                else:
+                    logger.info(
+                        "cold-email: AI draft rejected (fabrication: %s)",
+                        fabricated[:5],
+                    )
 
     if method != "ai":
         email_text = generate_cold_email(profile_dict, opp)
