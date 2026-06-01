@@ -1,0 +1,441 @@
+"""Tests for ``POST /api/tailor`` — resume bullet tailoring.
+
+The anti-fabrication test is the **non-negotiable** spec for this feature.
+If the model says the student "Built ML pipelines in Python" but the
+profile has no Python, the route MUST degrade to the local passthrough
+and surface the violation in ``warnings``. That contract lives in
+``test_fabrication_python_when_profile_has_none``.
+
+Other tests cover the graceful-degradation contract (mirrors cold-email):
+  * 404 only when the opportunity doesn't exist
+  * Empty bullets → 200 with a hint
+  * No LLM provider configured → fallback
+  * LLM returns non-JSON → fallback
+  * LLM returns valid JSON drawing only from profile + opp → method="ai"
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+
+import pytest
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from backend import data_loader
+from backend.main import app
+from backend.routes import tailor as tailor_module
+
+client = TestClient(app)
+
+
+@pytest.fixture
+def real_opp_id() -> str:
+    """Return the first available opportunity id from the live data file.
+
+    Using a real id keeps the test honest about the `load_opportunities_by_id`
+    contract — if the loader changes shape, this fixture breaks loudly.
+    """
+    by_id = data_loader.load_opportunities_by_id()
+    assert by_id, "data loader should return at least one opportunity"
+    return next(iter(by_id.keys()))
+
+
+@pytest.fixture
+def java_profile() -> dict:
+    """Profile that knows Java only — has no Python anywhere on it.
+
+    Used by the core anti-fabrication test to assert the validator
+    catches the model inventing 'Python' when the student never claimed
+    it. Keep this profile free of any token an LLM might smuggle in.
+    """
+    return {
+        "name": "Test Student",
+        "school": "UIUC",
+        "year": "junior",
+        "major": "Mechanical Engineering",
+        "college": "Grainger College of Engineering",
+        "secondary_interests": [],
+        "international_student": False,
+        "seeking_type": ["research"],
+        "desired_fields": [],
+        "hard_skills": [{"name": "Java", "level": "experienced"}],
+        "coursework": ["ME 270"],
+        "experience_level": "some",
+        "resume_ready": True,
+        "can_cold_email": True,
+        "research_interests_text": "thermodynamics and fluid dynamics",
+        "linkedin_url": "",
+        "github_url": "",
+        "search_weight": 50,
+    }
+
+
+@pytest.fixture
+def python_profile() -> dict:
+    """Profile that DOES list Python — control case for the validator."""
+    return {
+        "name": "Test Student",
+        "school": "UIUC",
+        "year": "junior",
+        "major": "Computer Science",
+        "college": "Grainger College of Engineering",
+        "secondary_interests": [],
+        "international_student": False,
+        "seeking_type": ["research"],
+        "desired_fields": [],
+        "hard_skills": [
+            {"name": "Python", "level": "experienced"},
+            {"name": "PyTorch", "level": "familiar"},
+        ],
+        "coursework": ["CS 124", "CS 225"],
+        "experience_level": "some",
+        "resume_ready": True,
+        "can_cold_email": True,
+        "research_interests_text": "machine learning systems",
+        "linkedin_url": "",
+        "github_url": "",
+        "search_weight": 50,
+    }
+
+
+class TestTailorContract:
+    """High-level route contract (mirrors TestColdEmailEngine in test_backend_api)."""
+
+    def test_opportunity_not_found_returns_404(self, java_profile):
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": "definitely-not-a-real-id",
+                "original_bullets": ["did some research"],
+            },
+        )
+        assert resp.status_code == 404
+
+    def test_empty_bullets_returns_empty_with_hint(self, java_profile, real_opp_id):
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": [],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["tailored_bullets"] == []
+        assert body["method"] == "fallback"
+        assert "no_bullets_provided" in body["warnings"]
+
+    def test_no_llm_provider_falls_back_to_originals(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        # Strip every provider env var the chain consults.
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+
+        bullets = ["Designed a thermal sensor in Java", "Wrote ME 270 lab report"]
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": bullets,
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "fallback"
+        assert [b["text"] for b in body["tailored_bullets"]] == bullets
+        assert "llm_not_configured" in body["warnings"]
+
+
+class TestAntiFabrication:
+    """The non-negotiable test: model cannot smuggle in unlisted skills."""
+
+    def test_fabrication_python_when_profile_has_none(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        """Java-only profile + LLM that hallucinates Python expertise.
+
+        Expected: every bullet is flagged, method degrades to 'fallback',
+        and the warnings array names the fabricated tokens. The user sees
+        their originals, not the fabricated rewrite.
+        """
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fake = json.dumps({
+            "bullets": [
+                {
+                    "text": (
+                        "Built scalable ML pipelines using PyTorch and "
+                        "deployed Kubernetes clusters for distributed training."
+                    ),
+                    "source_evidence": "fabricated",
+                },
+                {
+                    "text": (
+                        "Authored peer-reviewed paper on transformer "
+                        "architectures published at NeurIPS."
+                    ),
+                    "source_evidence": "fabricated",
+                },
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Designed a thermal sensor in Java"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        # All AI bullets rejected -> degrade to passthrough.
+        assert body["method"] == "fallback"
+        assert any("rejected_fabrication" in w for w in body["warnings"])
+        # The user gets their own bullet back, not the fabricated one.
+        assert any("Java" in b["text"] for b in body["tailored_bullets"])
+        # Pytorch / kubernetes should not have leaked through.
+        joined = " ".join(b["text"] for b in body["tailored_bullets"]).lower()
+        assert "pytorch" not in joined
+        assert "kubernetes" not in joined
+
+    def test_valid_tailored_passes_through(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Profile has Python + ML coursework — re-using those terms is OK."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fake = json.dumps({
+            "bullets": [
+                {
+                    "text": (
+                        "Implemented machine learning experiments in Python "
+                        "during CS 225 coursework."
+                    ),
+                    "source_evidence": "Python (experienced); CS 225",
+                },
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Worked on Python projects in CS 225"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert len(body["tailored_bullets"]) == 1
+        # source_evidence is preserved on accepted bullets.
+        assert body["tailored_bullets"][0]["source_evidence"]
+
+
+class TestLlmFailureModes:
+    def test_malformed_json_falls_back(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setattr(
+            tailor_module, "chat_completion",
+            lambda *a, **k: "not even close to JSON — model went off-script",
+        )
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Designed a thermal sensor in Java"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "fallback"
+        assert "llm_failed_or_invalid_json" in body["warnings"]
+
+    def test_llm_returns_none_falls_back(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: None)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Designed a thermal sensor in Java"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "fallback"
+        assert "llm_failed_or_invalid_json" in body["warnings"]
+
+    def test_json_with_markdown_fence_still_parses(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Some providers ignore 'no markdown fences' — we strip and parse."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fenced = "```json\n" + json.dumps({
+            "bullets": [{
+                "text": "Implemented Python machine learning projects in CS 225",
+                "source_evidence": "Python; CS 225",
+            }],
+        }) + "\n```"
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fenced)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python projects in CS 225"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert len(body["tailored_bullets"]) == 1
+
+
+class TestInputCaps:
+    """Pydantic ``cap_bullets`` validator drops empty strings & enforces limits."""
+
+    def test_more_than_12_bullets_truncated(self, java_profile, real_opp_id, monkeypatch):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+
+        bullets = [f"bullet number {i}" for i in range(20)]
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": bullets,
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        # Validator caps the input list at 12 before the route sees it.
+        assert len(body["tailored_bullets"]) == 12
+
+    def test_each_bullet_capped_500_chars(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+
+        long_bullet = "x" * 2000
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": [long_bullet],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["tailored_bullets"][0]["text"]) == 500
+
+    def test_empty_string_bullets_dropped(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["", "   ", "actual content"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["tailored_bullets"]) == 1
+        assert body["tailored_bullets"][0]["text"] == "actual content"
+
+
+class TestUnitHelpers:
+    """Unit tests for the validator + evidence builder, no HTTP layer."""
+
+    def test_hard_claims_extracts_5plus_char_tokens(self):
+        from backend.routes.tailor import _hard_claims
+        claims = _hard_claims("Built Python pipelines for ML in CS")
+        # 'built' filtered by common-filler at validation time, but extract-
+        # level it shows up. We only care these 5+ char tokens are *found*.
+        assert "python" in claims
+        assert "pipelines" in claims
+        # 'ml' and 'cs' too short; 'for' too short.
+        assert "ml" not in claims
+        assert "cs" not in claims
+
+    def test_validator_flags_unlisted_skill(self):
+        from backend.routes.tailor import _validate_no_fabrication
+        passed, fab = _validate_no_fabrication(
+            "Built pipelines with Python and PyTorch.",
+            evidence_corpus="java sensors thermodynamics mechanical engineering",
+        )
+        assert not passed
+        assert "python" in fab
+        assert "pytorch" in fab
+
+    def test_validator_accepts_when_evidence_present(self):
+        from backend.routes.tailor import _validate_no_fabrication
+        passed, fab = _validate_no_fabrication(
+            "Built Python projects using PyTorch frameworks.",
+            evidence_corpus="python pytorch projects machine learning",
+        )
+        assert passed
+        assert fab == []
+
+    def test_validator_allows_opp_vocabulary_in_corpus(self):
+        """The opp's own description tokens are in the corpus by design."""
+        from backend.routes.tailor import _validate_no_fabrication
+        # 'compiler' isn't in profile, but opp description mentions it.
+        passed, fab = _validate_no_fabrication(
+            "Wrote compiler passes in Python during coursework",
+            evidence_corpus=(
+                "python coursework computer science compiler passes systems"
+            ),
+        )
+        assert passed, f"expected pass, got fabricated={fab}"
+
+    def test_evidence_corpus_includes_profile_and_opp(self):
+        from backend.routes.tailor import _build_evidence_corpus
+        profile = {
+            "major": "Computer Science",
+            "research_interests_text": "machine learning systems",
+            "hard_skills": [{"name": "Python", "level": "experienced"}],
+            "coursework": ["CS 225"],
+        }
+        opp = {
+            "title": "Compilers research",
+            "description_clean": "build LLVM compiler passes",
+            "keywords": ["compilers", "LLVM"],
+            "eligibility": {"skills_required": ["C++"], "skills_preferred": []},
+        }
+        corpus = _build_evidence_corpus(profile, opp, ["Did Python projects"])
+        # Profile signal.
+        assert "python" in corpus
+        assert "cs 225" in corpus
+        assert "machine learning" in corpus
+        # Opportunity signal.
+        assert "compiler" in corpus
+        assert "llvm" in corpus
+        # Original bullet signal.
+        assert "did python projects" in corpus

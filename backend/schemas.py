@@ -167,6 +167,31 @@ class ResumeParseResponse(BaseModel):
     message: str = ""
 
 
+class TailorRequest(BaseModel):
+    profile: ProfileRequest
+    opportunity_id: str
+    original_bullets: list[str] = Field(default_factory=list)
+
+    @field_validator("original_bullets")
+    @classmethod
+    def cap_bullets(cls, v: list) -> list:
+        # Cap at 12 bullets × 500 chars each so a malicious / oversized
+        # paste cannot blow past the LLM context budget. Mirrors the
+        # ``ProfileRequest`` field-validator pattern.
+        return [str(b)[:500] for b in v[:12] if str(b).strip()]
+
+
+class TailoredBullet(BaseModel):
+    text: str
+    source_evidence: str = ""
+
+
+class TailorResponse(BaseModel):
+    tailored_bullets: list[TailoredBullet]
+    method: str = "fallback"  # "ai" | "fallback"
+    warnings: list[str] = Field(default_factory=list)
+
+
 class OpportunityListResponse(BaseModel):
     total: int
     opportunities: list[dict]

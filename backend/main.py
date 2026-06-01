@@ -36,6 +36,7 @@ from backend.routes import (
     push,
     resume,
     saved_searches,
+    tailor,
 )
 from backend.routes import email as email_routes
 
@@ -48,6 +49,7 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/cold-email": (15, 60),
     "/api/cold-email/refine": (20, 60),
     "/api/cold-email/variants": (15, 60),
+    "/api/tailor": (10, 60),
     "/api/resume/upload": (5, 60),
     "/api/resume/github": (10, 60),
     "/api/email/send-matches": (3, 3600),
@@ -164,6 +166,7 @@ app.add_middleware(
 app.include_router(matches.router, prefix="/api", tags=["matches"])
 app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
+app.include_router(tailor.router, prefix="/api", tags=["tailor"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])
