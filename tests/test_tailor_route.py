@@ -171,6 +171,87 @@ class TestStatus:
         assert resp.json() == {"ai_available": False}
 
 
+class TestExtractBullets:
+    """R71-G: POST /api/tailor/extract-bullets — resume text → bullet lines."""
+
+    def test_empty_text_returns_empty_heuristic(self):
+        resp = client.post("/api/tailor/extract-bullets", json={"resume_text": "   "})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body == {"bullets": [], "method": "heuristic"}
+
+    def test_no_provider_uses_glyph_heuristic(self, monkeypatch):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        resume = (
+            "EDUCATION\n"
+            "• Built a thermal sensor in Java for the ME 270 capstone\n"
+            "- Wrote a 12-page final lab report on heat transfer\n"
+            "not a bullet line at all\n"
+        )
+        resp = client.post("/api/tailor/extract-bullets", json={"resume_text": resume})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "heuristic"
+        assert "Built a thermal sensor in Java for the ME 270 capstone" in body["bullets"]
+        assert "Wrote a 12-page final lab report on heat transfer" in body["bullets"]
+        assert "EDUCATION" not in body["bullets"]
+        assert "not a bullet line at all" not in body["bullets"]
+
+    def test_ai_extracts_dark_bullets(self, monkeypatch):
+        """LLM finds accomplishment lines with no glyph (the whole point)."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        resume = (
+            "Research Assistant, Fluids Lab\n"
+            "Designed a thermal sensor in Java and validated it against ME 270 data\n"
+            "Presented results at the undergraduate symposium\n"
+        )
+        fake = json.dumps({
+            "bullets": [
+                "Designed a thermal sensor in Java and validated it against ME 270 data",
+                "Presented results at the undergraduate symposium",
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        resp = client.post("/api/tailor/extract-bullets", json={"resume_text": resume})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert len(body["bullets"]) == 2
+        assert any("thermal sensor in Java" in b for b in body["bullets"])
+
+    def test_ai_invented_bullet_is_dropped(self, monkeypatch):
+        """A bullet the model fabricated (not grounded in the resume) is filtered."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        resume = "Designed a thermal sensor in Java for the ME 270 capstone project\n"
+        fake = json.dumps({
+            "bullets": [
+                "Designed a thermal sensor in Java for the ME 270 capstone project",
+                "Deployed Kubernetes clusters and trained PyTorch transformer models",
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        resp = client.post("/api/tailor/extract-bullets", json={"resume_text": resume})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        joined = " ".join(body["bullets"]).lower()
+        assert "thermal sensor" in joined
+        # The ungrounded fabricated bullet was dropped by the grounding check.
+        assert "kubernetes" not in joined
+        assert "pytorch" not in joined
+
+    def test_ai_malformed_json_falls_back_to_heuristic(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: "garbage not json")
+        resume = "• Built a thermal sensor in Java for the ME 270 capstone\n"
+        resp = client.post("/api/tailor/extract-bullets", json={"resume_text": resume})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "heuristic"
+        assert any("thermal sensor" in b for b in body["bullets"])
+
+
 class TestAntiFabrication:
     """The non-negotiable test: model cannot smuggle in unlisted skills."""
 

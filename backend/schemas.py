@@ -225,6 +225,19 @@ class TailorResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class ExtractBulletsRequest(BaseModel):
+    # R71-G: raw resume text the modal extracts bullet-shaped lines from.
+    # Capped at 20k chars (well above a one-page resume) so an oversized
+    # paste can't blow the LLM context budget; the route caps again before
+    # the prompt.
+    resume_text: str = Field(default="", max_length=20000)
+
+
+class ExtractBulletsResponse(BaseModel):
+    bullets: list[str]
+    method: str = "heuristic"  # "ai" | "heuristic"
+
+
 class OpportunityListResponse(BaseModel):
     total: int
     opportunities: list[dict]

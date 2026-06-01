@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Info,
 } from 'lucide-react';
-import { tailorResume, getTailorStatus } from '@/lib/api';
+import { tailorResume, getTailorStatus, extractResumeBullets } from '@/lib/api';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
@@ -230,6 +230,8 @@ export default function TailorModal({
   // on an explicit `false` — a failed probe shouldn't scare the user when
   // the generate path might still work.
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  // R71-G: smart-extract (LLM resume → bullets) loading state.
+  const [extracting, setExtracting] = useState(false);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -341,6 +343,29 @@ export default function TailorModal({
       previouslyFocusedRef.current?.focus();
     };
   }, [isOpen, onClose]);
+
+  // R71-G: LLM-extract bullets from the saved resume text and load them
+  // into the draft. Backend degrades to the glyph heuristic on any LLM
+  // issue, so this always returns *some* bullets when the resume has them.
+  // No-op silently if extraction yields nothing (keeps whatever's typed).
+  async function handleExtractFromResume() {
+    if (!profile.resume_text || extracting) return;
+    setExtracting(true);
+    try {
+      const data = await extractResumeBullets(profile.resume_text);
+      if (data.bullets.length > 0) {
+        const next = data.bullets.join('\n');
+        setDraft(next);
+        saveDraft(opportunityId, next);
+        setDraftRestored(false);
+      }
+    } catch {
+      // Extraction is a convenience; on failure the user still has the
+      // heuristic prefill / their own typing. Don't surface an error.
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   async function handleGenerate() {
     const bullets = parseBullets(draft);
@@ -501,6 +526,26 @@ export default function TailorModal({
               <p className="text-xs text-gray-400 mb-2">
                 {t('tailor.bulletsHint')}
               </p>
+              {profile.resume_text && (
+                <button
+                  type="button"
+                  onClick={handleExtractFromResume}
+                  disabled={extracting}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
+                >
+                  {extracting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                      {t('tailor.extracting')}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                      {t('tailor.extractFromResume')}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
             <div className="flex-1 px-5 pb-4 min-h-0">
               <textarea
