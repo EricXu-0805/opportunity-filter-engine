@@ -14,6 +14,7 @@ import {
 import { tailorResume, getTailorStatus } from '@/lib/api';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
+import { diffWords, isWhitespace } from '@/lib/word-diff';
 
 // R71-F: persist the textarea draft per-opportunity so the user doesn't
 // lose typed bullets if they close the modal accidentally. Keying by
@@ -137,6 +138,52 @@ function pickWarningMessage(warnings: string[], t: Replier): string | null {
     return t('tailor.warnings.noBullets');
   }
   return null;
+}
+
+/**
+ * R71-G: render one side of a word-level diff. Removed words (original
+ * side) get a struck red `<del>`; added words (tailored side) get an
+ * emerald `<ins>`; equal words and whitespace render plain. textContent
+ * stays the full original/tailored string so screen readers and text
+ * queries see uninterrupted prose.
+ */
+function DiffLine({
+  original,
+  tailored,
+  side,
+}: {
+  original: string;
+  tailored: string;
+  side: 'original' | 'tailored';
+}) {
+  const segments = diffWords(original, tailored);
+  const skip = side === 'original' ? 'added' : 'removed';
+  return (
+    <>
+      {segments
+        .filter((s) => s.type !== skip)
+        .map((s, idx) => {
+          if (s.type === 'equal' || isWhitespace(s.value)) {
+            return <span key={idx}>{s.value}</span>;
+          }
+          if (s.type === 'removed') {
+            return (
+              <del key={idx} className="text-red-400/90 decoration-red-300">
+                {s.value}
+              </del>
+            );
+          }
+          return (
+            <ins
+              key={idx}
+              className="no-underline bg-emerald-100 text-emerald-800 rounded px-0.5"
+            >
+              {s.value}
+            </ins>
+          );
+        })}
+    </>
+  );
 }
 
 export default function TailorModal({
@@ -565,8 +612,8 @@ export default function TailorModal({
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
                               {t('tailor.originalRowLabel')}
                             </p>
-                            <p className="text-[12.5px] text-gray-500 leading-relaxed line-through decoration-gray-300/70">
-                              {original}
+                            <p className="text-[12.5px] text-gray-500 leading-relaxed">
+                              <DiffLine original={original} tailored={b.text} side="original" />
                             </p>
                           </div>
                         )}
@@ -602,7 +649,11 @@ export default function TailorModal({
                             </button>
                           </div>
                           <p className="mt-1 text-[13.5px] text-gray-800 leading-relaxed">
-                            {b.text}
+                            {sameAsOriginal ? (
+                              b.text
+                            ) : (
+                              <DiffLine original={original} tailored={b.text} side="tailored" />
+                            )}
                           </p>
                           {b.source_evidence && (
                             <p className="mt-2 text-[11.5px] text-gray-500 italic">

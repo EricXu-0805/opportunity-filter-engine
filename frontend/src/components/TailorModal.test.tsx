@@ -35,6 +35,13 @@ vi.mock('@/lib/api', () => ({
 import TailorModal from './TailorModal';
 import type { ProfileData, TailorResponse } from '@/lib/types';
 
+// R71-G word-diff splits bullet text into per-word <span>/<ins>/<del>
+// nodes, so getByText(/whole sentence/) no longer matches — testing-library
+// only reads an element's *direct* text nodes. Match on assembled
+// textContent instead; the diff preserves the full string there.
+const fullText = (s: string) => (_content: string, el: Element | null): boolean =>
+  el?.textContent === s;
+
 function makeProfile(overrides: Partial<ProfileData> = {}): ProfileData {
   return {
     institution: 'UIUC',
@@ -131,7 +138,10 @@ describe('TailorModal', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Implemented Python ML experiments in CS 225 coursework/)).toBeTruthy();
+      // R71-G: tailored text is word-diff-split, so match on textContent.
+      expect(
+        screen.getAllByText(fullText('Implemented Python ML experiments in CS 225 coursework')).length,
+      ).toBeGreaterThanOrEqual(1);
     });
     // Method chip reflects success path.
     expect(screen.getByText('tailor.methodAi')).toBeTruthy();
@@ -139,11 +149,11 @@ describe('TailorModal', () => {
     // (looked up via source_index=0 against the submitted snapshot).
     expect(screen.getByText('tailor.originalRowLabel')).toBeTruthy();
     expect(screen.getByText('tailor.tailoredRowLabel')).toBeTruthy();
-    // The original bullet text appears both in the textarea (value)
-    // AND in the rendered comparison card, so getAllByText returns >=2.
+    // R71-G: the original-side diff line preserves the full original
+    // string in its textContent even though it's split into word spans.
     expect(
-      screen.getAllByText(/Worked on Python projects in CS 225/).length,
-    ).toBeGreaterThanOrEqual(2);
+      screen.getAllByText(fullText('Worked on Python projects in CS 225')).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('R71-E: pairs each tailored bullet with its original via source_index', async () => {
@@ -175,10 +185,10 @@ describe('TailorModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
 
     await waitFor(() => {
-      // Both original lines should render as their tailored card's
-      // line-through prefix.
-      expect(screen.getByText(/^thermal flow project$/)).toBeTruthy();
-      expect(screen.getByText(/^fluid dynamics project$/)).toBeTruthy();
+      // Both original lines render in their card's original-side diff row;
+      // R71-G word-diff splits them into spans, so match on textContent.
+      expect(screen.getAllByText(fullText('thermal flow project')).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(fullText('fluid dynamics project')).length).toBeGreaterThanOrEqual(1);
       // Two pairs of section labels.
       expect(screen.getAllByText('tailor.originalRowLabel').length).toBe(2);
       expect(screen.getAllByText('tailor.tailoredRowLabel').length).toBe(2);
