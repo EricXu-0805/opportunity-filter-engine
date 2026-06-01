@@ -96,6 +96,7 @@ describe('TailorModal', () => {
         {
           text: 'Implemented Python ML experiments in CS 225 coursework',
           source_evidence: 'Python; CS 225',
+          source_index: 0,
         },
       ],
     };
@@ -124,6 +125,86 @@ describe('TailorModal', () => {
     });
     // Method chip reflects success path.
     expect(screen.getByText('tailor.methodAi')).toBeTruthy();
+    // R71-E: side-by-side renders both labels + the matching original
+    // (looked up via source_index=0 against the submitted snapshot).
+    expect(screen.getByText('tailor.originalRowLabel')).toBeTruthy();
+    expect(screen.getByText('tailor.tailoredRowLabel')).toBeTruthy();
+    // The original bullet text appears both in the textarea (value)
+    // AND in the rendered comparison card, so getAllByText returns >=2.
+    expect(
+      screen.getAllByText(/Worked on Python projects in CS 225/).length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it('R71-E: pairs each tailored bullet with its original via source_index', async () => {
+    /* The model returns bullets in submitted order but the second one
+       has a different source_index (1) — we should pair the LEFT side
+       of card-2 with the user's bullet at index 1, not index 0.
+       Defensive against future backend reordering. */
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        {
+          text: 'Used Python at CS 225 to model thermal flow',
+          source_evidence: 'Python; CS 225',
+          source_index: 0,
+        },
+        {
+          text: 'Implemented Python sims for fluid dynamics coursework',
+          source_evidence: 'Python coursework',
+          source_index: 1,
+        },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'thermal flow project\nfluid dynamics project' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => {
+      // Both original lines should render as their tailored card's
+      // line-through prefix.
+      expect(screen.getByText(/^thermal flow project$/)).toBeTruthy();
+      expect(screen.getByText(/^fluid dynamics project$/)).toBeTruthy();
+      // Two pairs of section labels.
+      expect(screen.getAllByText('tailor.originalRowLabel').length).toBe(2);
+      expect(screen.getAllByText('tailor.tailoredRowLabel').length).toBe(2);
+    });
+  });
+
+  it('R71-E: hides the original row when fallback echoes the same text', async () => {
+    /* method === "fallback" → backend returns the user's own bullets
+       verbatim with source_evidence === 'original'. Showing the same
+       text twice (original + tailored) adds noise without value, so
+       the modal collapses to a single section. */
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'fallback',
+      warnings: ['llm_not_configured'],
+      tailored_bullets: [
+        {
+          text: 'unchanged bullet text',
+          source_evidence: 'original',
+          source_index: 0,
+        },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'unchanged bullet text' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => {
+      // Bullet still renders (in the tailored slot) but the row
+      // labels are suppressed because original === tailored.
+      expect(screen.getByText(/unchanged bullet text/)).toBeTruthy();
+      expect(screen.queryByText('tailor.originalRowLabel')).toBeNull();
+      expect(screen.queryByText('tailor.tailoredRowLabel')).toBeNull();
+    });
   });
 
   it('surfaces a fabrication warning when backend rejects every bullet', async () => {
@@ -134,7 +215,7 @@ describe('TailorModal', () => {
         'all_bullets_rejected',
       ],
       tailored_bullets: [
-        { text: 'Designed a thermal sensor in Java', source_evidence: 'original' },
+        { text: 'Designed a thermal sensor in Java', source_evidence: 'original', source_index: 0 },
       ],
     };
     mockTailorResume.mockResolvedValueOnce(resp);
@@ -166,7 +247,7 @@ describe('TailorModal', () => {
       method: 'fallback',
       warnings: ['llm_not_configured'],
       tailored_bullets: [
-        { text: 'original bullet 1', source_evidence: 'original' },
+        { text: 'original bullet 1', source_evidence: 'original', source_index: 0 },
       ],
     } satisfies TailorResponse);
 
@@ -201,7 +282,7 @@ describe('TailorModal', () => {
       method: 'ai',
       warnings: [],
       tailored_bullets: [
-        { text: 'Tailored bullet 1', source_evidence: 'Python' },
+        { text: 'Tailored bullet 1', source_evidence: 'Python', source_index: 0 },
       ],
     } satisfies TailorResponse);
 

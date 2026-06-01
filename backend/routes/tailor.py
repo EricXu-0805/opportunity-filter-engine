@@ -595,11 +595,16 @@ def _ai_tailor_bullets(
 def _local_fallback(
     original_bullets: list[str], warnings: list[str],
 ) -> TailorResponse:
-    """Echo original bullets so the UI always has *something* to show."""
+    """Echo original bullets so the UI always has *something* to show.
+
+    R71-E: each fallback bullet's ``source_index`` is its position in the
+    original list (positional passthrough), so the frontend can pair it
+    with the matching textarea line for side-by-side display.
+    """
     return TailorResponse(
         tailored_bullets=[
-            TailoredBullet(text=b, source_evidence="original")
-            for b in original_bullets
+            TailoredBullet(text=b, source_evidence="original", source_index=i)
+            for i, b in enumerate(original_bullets)
         ],
         method="fallback",
         warnings=warnings,
@@ -652,9 +657,15 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
     for i, item in enumerate(bullets):
         passed, fabricated = _validate_no_fabrication(item["text"], evidence_corpus)
         if passed:
+            # R71-E: ``i`` indexes into both the LLM response array and
+            # ``original_bullets`` because the system prompt mandates the
+            # rewritten list stays in the same order. Clamp to the input
+            # bound defensively in case a misbehaving model returns more
+            # bullets than were submitted.
             accepted.append(TailoredBullet(
                 text=item["text"],
                 source_evidence=item.get("source_evidence", ""),
+                source_index=min(i, len(request.original_bullets) - 1),
             ))
         else:
             warnings.append(

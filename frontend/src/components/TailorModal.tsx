@@ -131,6 +131,11 @@ export default function TailorModal({
   const [resp, setResp] = useState<TailorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // R71-E: snapshot the bullets actually submitted to the backend so
+  // we can render each tailored bullet next to its source. We can't
+  // just re-parse `draft` because the user might edit the textarea
+  // *after* clicking Generate and we'd then pair the wrong originals.
+  const [submittedBullets, setSubmittedBullets] = useState<string[]>([]);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -149,6 +154,7 @@ export default function TailorModal({
       setError(null);
       setCopied(false);
       setLoading(false);
+      setSubmittedBullets([]);
     }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, initialBullets]);
@@ -209,6 +215,9 @@ export default function TailorModal({
     setLoading(true);
     setError(null);
     setCopied(false);
+    // R71-E: snapshot before the await so a textarea edit during the
+    // request can't desync the rendered pairing.
+    setSubmittedBullets(bullets);
     try {
       const data = await tailorResume(profile, opportunityId, bullets, { locale });
       setResp(data);
@@ -377,26 +386,58 @@ export default function TailorModal({
 
               {!loading && !error && hasResults && (
                 <ul className="space-y-3">
-                  {resp.tailored_bullets.map((b: TailoredBullet, i: number) => (
-                    <li
-                      key={i}
-                      className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm"
-                    >
-                      <p className="text-[13.5px] text-gray-800 leading-relaxed">
-                        {b.text}
-                      </p>
-                      {b.source_evidence && (
-                        <p className="mt-2 text-[11.5px] text-gray-500 italic">
-                          <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">
-                            {t('tailor.sourceLabel')}:
-                          </span>{' '}
-                          {b.source_evidence === 'original'
-                            ? t('tailor.sourceOriginal')
-                            : `"${b.source_evidence}"`}
-                        </p>
-                      )}
-                    </li>
-                  ))}
+                  {resp.tailored_bullets.map((b: TailoredBullet, i: number) => {
+                    // R71-E: pair each tailored bullet with its source.
+                    // `source_index` is set by the backend and clamped to
+                    // the submitted-bullets length, so this access is
+                    // always safe; the `??` is a defensive belt-and-
+                    // suspenders for stale snapshots.
+                    const original = submittedBullets[b.source_index] ?? '';
+                    const isFallbackBullet = b.source_evidence === 'original';
+                    const sameAsOriginal =
+                      isFallbackBullet || original.trim() === b.text.trim();
+
+                    return (
+                      <li
+                        key={i}
+                        className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden"
+                      >
+                        {/* Original (R71-E side-by-side). Hidden when the
+                            backend echoed the original verbatim — showing
+                            the same text twice adds noise without value. */}
+                        {original && !sameAsOriginal && (
+                          <div className="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                              {t('tailor.originalRowLabel')}
+                            </p>
+                            <p className="text-[12.5px] text-gray-500 leading-relaxed line-through decoration-gray-300/70">
+                              {original}
+                            </p>
+                          </div>
+                        )}
+                        <div className="px-4 py-3">
+                          {!sameAsOriginal && (
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 mb-1">
+                              {t('tailor.tailoredRowLabel')}
+                            </p>
+                          )}
+                          <p className="text-[13.5px] text-gray-800 leading-relaxed">
+                            {b.text}
+                          </p>
+                          {b.source_evidence && (
+                            <p className="mt-2 text-[11.5px] text-gray-500 italic">
+                              <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">
+                                {t('tailor.sourceLabel')}:
+                              </span>{' '}
+                              {isFallbackBullet
+                                ? t('tailor.sourceOriginal')
+                                : `"${b.source_evidence}"`}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

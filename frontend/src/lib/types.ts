@@ -178,10 +178,16 @@ export interface EmailVariantsResponse {
  * When `method === "fallback"`, `source_evidence` is hard-coded to
  * "original" so the UI can render a different chip ("Original — AI
  * unavailable") versus the AI variant.
+ *
+ * `source_index` (R71-E) points back into the request's
+ * `original_bullets`, letting the modal render each tailored bullet
+ * next to its source for side-by-side comparison even when some
+ * bullets were dropped by the anti-fabrication validator.
  */
 export interface TailoredBullet {
   text: string;
   source_evidence: string;
+  source_index: number;
 }
 
 /**
