@@ -203,6 +203,20 @@ class TailorRequest(BaseModel):
 class TailoredBullet(BaseModel):
     text: str
     source_evidence: str = ""
+    # R71-E: zero-based index pointing back into the request's
+    # ``original_bullets``. Lets the frontend pair each tailored bullet
+    # with its source bullet for side-by-side display, even when some
+    # bullets were dropped by the anti-fabrication validator and the
+    # accepted list is shorter than the submitted list.
+    #
+    # Conventions:
+    #   - AI path: equals the bullet's position in the LLM's response
+    #     array, which by prompt contract matches its position in the
+    #     original_bullets array (the prompt explicitly tells the model
+    #     to keep the rewritten list in the same order).
+    #   - Fallback path: equals the bullet's index in original_bullets
+    #     verbatim, since fallback is positional passthrough.
+    source_index: int = 0
 
 
 class TailorResponse(BaseModel):

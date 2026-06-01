@@ -370,6 +370,95 @@ class TestInputCaps:
         assert body["tailored_bullets"][0]["text"] == "actual content"
 
 
+class TestSourceIndex:
+    """R71-E: every TailoredBullet carries the matching original index."""
+
+    def test_fallback_source_indices_are_positional(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        """Local fallback passthrough preserves [0, 1, 2, …] indices."""
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+
+        bullets = ["alpha bullet", "beta bullet", "gamma bullet"]
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": bullets,
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "fallback"
+        # source_index aligns with input position so the UI can pair
+        # each fallback bullet back to its matching textarea row.
+        assert [b["source_index"] for b in body["tailored_bullets"]] == [0, 1, 2]
+
+    def test_ai_path_source_indices_match_submission(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """LLM-accepted bullets keep their index into original_bullets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fake = json.dumps({
+            "bullets": [
+                {"text": "Implemented Python ML in CS 225", "source_evidence": "Python"},
+                {"text": "Built ML models with Python during coursework", "source_evidence": "Python"},
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": [
+                    "Did Python coursework in CS 225",
+                    "Worked on Python ML projects",
+                ],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        # The prompt mandates same-order rewrites, so accepted[i] points
+        # back to original_bullets[i].
+        indices = [b["source_index"] for b in body["tailored_bullets"]]
+        assert indices == [0, 1]
+
+    def test_ai_overproduction_clamped_to_input_length(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Misbehaving model returns N+1 bullets — source_index clamps."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fake = json.dumps({
+            "bullets": [
+                {"text": "Python ML in CS 225", "source_evidence": "Python"},
+                {"text": "More Python ML work", "source_evidence": "Python"},
+                # Extra bullet the model invented past the submitted count.
+                {"text": "Yet another Python project", "source_evidence": "Python"},
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python coursework"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        # All three accepted, but every source_index clamps to the single
+        # input bullet — frontend won't dereference out of bounds.
+        for b in body["tailored_bullets"]:
+            assert b["source_index"] == 0
+
+
 class TestLocale:
     """R71-D: caller-declared output locale selects the system prompt."""
 
