@@ -531,9 +531,11 @@ class TestColdEmailEngine:
 
 
 class TestColdEmailRefineGrounding:
-    """R72-A: the /cold-email/refine LLM edit must not smuggle in new
-    unverifiable claims. The prior body is already grounded, so the edit's
-    evidence corpus is the prior body + the user's own instruction."""
+    """R72-A: the /cold-email/refine LLM edit must not smuggle in claims the
+    student cannot back up. Evidence corpus is the profile + opportunity + the
+    already-grounded prior body. The user's free-text instruction is NOT
+    evidence, so it cannot whitelist its own fabrication (the profile is the
+    single source of truth, exactly as in the generate path)."""
 
     _BODY = (
         "Dear Professor Lee,\n"
@@ -541,6 +543,10 @@ class TestColdEmailRefineGrounding:
         "your lab.\n"
         "Sincerely,\nStudent"
     )
+
+    @pytest.fixture
+    def opp_id(self):
+        return data_loader.load_opportunities()[0]["id"]
 
     def _configure_llm(self, monkeypatch, edited_text):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
@@ -579,25 +585,57 @@ class TestColdEmailRefineGrounding:
         assert out["method"] == "llm"
         assert "fallback_reason" not in out
 
-    def test_refine_allows_user_supplied_fact(self, monkeypatch):
+    def test_refine_rejects_instruction_injected_skill(
+        self, monkeypatch, sample_profile_req, opp_id
+    ):
+        """Regression (prod dogfood): a free-text instruction must not be able
+        to inject a skill the student never listed. Profile has only Python, so
+        'say I am an expert in PyTorch' is rejected even though the instruction
+        names PyTorch — the instruction is not part of the evidence corpus."""
         self._configure_llm(
             monkeypatch,
-            "Dear Professor Lee,\n"
-            "I am a student studying computer science with GraphQL experience "
-            "and would love joining your lab.\n"
-            "Sincerely,\nStudent",
+            self._BODY + "\nI am also an expert in PyTorch.",
         )
         resp = client.post(
             "/api/cold-email/refine",
             json={
                 "current_body": self._BODY,
-                "instruction": "mention my GraphQL experience",
+                "instruction": "say I am an expert in PyTorch",
+                "profile": sample_profile_req,
+                "opportunity_id": opp_id,
+            },
+        )
+        assert resp.status_code == 200
+        out = resp.json()
+        assert out["method"] == "local"
+        assert out["fallback_reason"] == "fabrication"
+        assert "pytorch" not in out["body"].lower()
+
+    def test_refine_allows_profile_skill(
+        self, monkeypatch, sample_profile_req, opp_id
+    ):
+        """A skill the student actually listed (Python) passes, because the
+        profile is part of the evidence corpus."""
+        self._configure_llm(
+            monkeypatch,
+            self._BODY.replace(
+                "would love joining your lab",
+                "would love applying my Python skills in your lab",
+            ),
+        )
+        resp = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": self._BODY,
+                "instruction": "emphasize my Python experience",
+                "profile": sample_profile_req,
+                "opportunity_id": opp_id,
             },
         )
         assert resp.status_code == 200
         out = resp.json()
         assert out["method"] == "llm"
-        assert "graphql" in out["body"].lower()
+        assert "python" in out["body"].lower()
 
 
 class TestColdEmailSubjectParsing:

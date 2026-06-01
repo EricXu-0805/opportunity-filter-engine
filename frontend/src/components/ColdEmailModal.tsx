@@ -323,7 +323,7 @@ export default function ColdEmailModal({
     setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.editing') }]);
 
     try {
-      const result = await refineEmail(body, msg);
+      const result = await refineEmail(body, msg, profile, opportunityId);
       setBody(result.body);
       setChatMessages((prev) => {
         const updated = [...prev];

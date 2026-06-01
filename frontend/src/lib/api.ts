@@ -222,10 +222,17 @@ export async function uploadResume(file: File): Promise<ResumeParseResponse> {
 export async function refineEmail(
   currentBody: string,
   instruction: string,
+  profile?: ProfileData,
+  opportunityId?: string,
 ): Promise<{ body: string; method: string; fallback_reason?: string }> {
   return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
     method: 'POST',
-    body: JSON.stringify({ current_body: currentBody, instruction: instruction }),
+    body: JSON.stringify({
+      current_body: currentBody,
+      instruction: instruction,
+      profile: profile ? toProfileRequest(profile) : null,
+      opportunity_id: opportunityId ?? null,
+    }),
   });
 }
 
