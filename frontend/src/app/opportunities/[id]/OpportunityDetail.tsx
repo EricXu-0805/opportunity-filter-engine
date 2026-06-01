@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -23,6 +24,10 @@ import { TrackerPanel } from './TrackerPanel';
 import { useOpportunityDetail } from './use-opportunity-detail';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ssr: false });
+// R71 PR-3: second entry point for the tailor modal (first was MatchCard).
+// Keeping the same dynamic-ssr-off pattern so this leaf doesn't pull the
+// modal bundle into the server render.
+const TailorModal = dynamic(() => import('@/components/TailorModal'), { ssr: false });
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
 
 export default function OpportunityDetail({
@@ -34,6 +39,10 @@ export default function OpportunityDetail({
 }) {
   const { t } = useT();
   const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
+  // R71 PR-3: tailor modal is local to this page — it has no callers
+  // outside OpportunityDetail, so we keep state here rather than bloat
+  // useOpportunityDetail. Matches PR-2's MatchCard-local pattern.
+  const [tailorOpen, setTailorOpen] = useState(false);
   const {
     isFavorited,
     interactionDetail,
@@ -74,6 +83,7 @@ export default function OpportunityDetail({
               shareCopied={shareCopied}
               onStar={handleStar}
               onOpenEmailModal={() => setEmailModalOpen(true)}
+              onOpenTailorModal={() => setTailorOpen(true)}
               onShare={handleShare}
               t={t}
             />
@@ -129,6 +139,16 @@ export default function OpportunityDetail({
         <ColdEmailModal
           isOpen={emailModalOpen}
           onClose={() => setEmailModalOpen(false)}
+          profile={profile}
+          opportunityId={opp.id}
+          opportunityTitle={opp.title}
+        />
+      )}
+
+      {profile && (
+        <TailorModal
+          isOpen={tailorOpen}
+          onClose={() => setTailorOpen(false)}
           profile={profile}
           opportunityId={opp.id}
           opportunityTitle={opp.title}

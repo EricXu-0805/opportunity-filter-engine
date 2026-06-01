@@ -11,6 +11,7 @@ import {
   Globe,
   Mail,
   MapPin,
+  Sparkles,
   Star,
 } from 'lucide-react';
 import Badge from '@/components/Badge';
@@ -29,6 +30,13 @@ export interface OpportunityCardProps {
   onToggleSelect: (opp: Opp) => void;
   onRemove: (opp: Opp) => void;
   onOpenEmailModal: (opp: Opp) => void;
+  /**
+   * Optional — when omitted the "Tailor Resume" CTA is hidden. R71 PR-3
+   * adds this entry point for the favorites page; the modal itself is
+   * mounted at the parent so we don't pay the dynamic-import cost N
+   * times across the saved list.
+   */
+  onOpenTailorModal?: (opp: Opp) => void;
   t: TFunc;
 }
 
@@ -43,6 +51,7 @@ export function OpportunityCard({
   onToggleSelect,
   onRemove,
   onOpenEmailModal,
+  onOpenTailorModal,
   t,
 }: OpportunityCardProps) {
   // R70-E: switched from inline ternaries to the shared badge-utils
@@ -148,6 +157,16 @@ export function OpportunityCard({
                 >
                   <Mail className="w-3.5 h-3.5" />
                   {t('card.draftEmail')}
+                </button>
+              )}
+              {hasProfile && !opp._customId && onOpenTailorModal && (
+                <button
+                  type="button"
+                  onClick={() => onOpenTailorModal(opp)}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors duration-200"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {t('card.tailorResume')}
                 </button>
               )}
               {opp.url && (
