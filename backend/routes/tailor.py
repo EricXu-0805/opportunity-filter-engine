@@ -611,6 +611,22 @@ def _local_fallback(
     )
 
 
+@router.get("/tailor/status")
+async def tailor_status() -> dict[str, bool]:
+    """Report whether server-side AI tailoring is available.
+
+    Lets the frontend modal warn up-front ("AI unavailable — results will
+    just echo your originals") instead of the user typing bullets, clicking
+    Generate, and only *then* discovering everything silently degraded to
+    the passthrough fallback. Returns a single boolean — never *which*
+    provider is configured, so we don't leak key-shape / vendor details.
+
+    Cheap + synchronous: ``is_configured()`` only inspects env vars, it
+    never contacts a provider.
+    """
+    return {"ai_available": is_configured()}
+
+
 @router.post("/tailor", response_model=TailorResponse)
 async def tailor_resume(request: TailorRequest) -> TailorResponse:
     """Tailor a student's resume bullets for a specific opportunity.

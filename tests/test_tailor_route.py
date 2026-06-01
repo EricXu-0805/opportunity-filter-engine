@@ -154,6 +154,23 @@ class TestTailorContract:
         assert "llm_not_configured" in body["warnings"]
 
 
+class TestStatus:
+    """R71-G: GET /api/tailor/status reports AI availability for the UI banner."""
+
+    def test_status_true_when_provider_configured(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        resp = client.get("/api/tailor/status")
+        assert resp.status_code == 200
+        assert resp.json() == {"ai_available": True}
+
+    def test_status_false_when_no_provider(self, monkeypatch):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        resp = client.get("/api/tailor/status")
+        assert resp.status_code == 200
+        assert resp.json() == {"ai_available": False}
+
+
 class TestAntiFabrication:
     """The non-negotiable test: model cannot smuggle in unlisted skills."""
 

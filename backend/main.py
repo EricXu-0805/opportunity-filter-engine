@@ -49,6 +49,10 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/cold-email": (15, 60),
     "/api/cold-email/refine": (20, 60),
     "/api/cold-email/variants": (15, 60),
+    # Status probe is a cheap GET the modal fires on every open — keep its
+    # budget generous and list it BEFORE "/api/tailor" so prefix matching
+    # picks the dedicated bucket instead of the tighter generate limit.
+    "/api/tailor/status": (60, 60),
     "/api/tailor": (10, 60),
     "/api/resume/upload": (5, 60),
     "/api/resume/github": (10, 60),
