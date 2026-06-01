@@ -982,17 +982,17 @@ class TestEmailEndpoints:
         assert r.json().get("note") == "disabled"
 
     def test_verify_restore_rejects_invalid_device_id(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "secret-xyz")
+        monkeypatch.setenv("RESTORE_LINK_SECRET", "secret-xyz")
         r = client.get("/api/email/verify-restore?d=%21&t=123&s=abc")
         assert r.status_code == 400
 
     def test_verify_restore_rejects_expired(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "secret-xyz")
+        monkeypatch.setenv("RESTORE_LINK_SECRET", "secret-xyz")
         r = client.get("/api/email/verify-restore?d=abcd1234&t=1&s=abc")
         assert r.status_code == 400
 
     def test_verify_restore_roundtrip(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "secret-roundtrip")
+        monkeypatch.setenv("RESTORE_LINK_SECRET", "secret-roundtrip")
         import time as _time
 
         from backend.routes.email import _sign_restore_payload

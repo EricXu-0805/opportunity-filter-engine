@@ -121804,10 +121804,12 @@
       "last_verified": "2026-04-14T02:30:38.108703",
       "first_seen_at": "2026-04-14T02:30:38.108703",
       "last_seen_at": "2026-04-14T02:30:38.108703",
-      "is_active": true,
+      "is_active": false,
       "manually_reviewed": false,
       "notes": "Imported from Handshake (posting 1327126823)",
-      "handshake_id": "1327126823"
+      "handshake_id": "1327126823",
+      "deactivated_at": "2026-06-01",
+      "deactivation_reason": "deadline_passed"
     }
   },
   {
