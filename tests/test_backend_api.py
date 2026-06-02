@@ -530,6 +530,27 @@ class TestColdEmailEngine:
         assert body["fallback_reason"] is None
 
 
+class TestGroundingShadowTelemetry:
+    """R72-H: when LENIENT_PROSE accepts a draft, the route logs what STRICT
+    would have flagged so the lenient policy's footprint is observable."""
+
+    def test_shadow_logs_strict_only_delta(self, caplog):
+        import logging
+
+        from backend.routes.cold_email import _log_grounding_shadow
+        with caplog.at_level(logging.INFO, logger="ofe.cold_email"):
+            _log_grounding_shadow("I enjoy kayaking on weekends.", "research")
+        assert any("grounding shadow" in r.message for r in caplog.records)
+
+    def test_shadow_silent_when_no_divergence(self, caplog):
+        import logging
+
+        from backend.routes.cold_email import _log_grounding_shadow
+        with caplog.at_level(logging.INFO, logger="ofe.cold_email"):
+            _log_grounding_shadow("I used Python.", "python projects")
+        assert not any("grounding shadow" in r.message for r in caplog.records)
+
+
 class TestColdEmailRefineGrounding:
     """R72-A: the /cold-email/refine LLM edit must not smuggle in claims the
     student cannot back up. Evidence corpus is the profile + opportunity + the
