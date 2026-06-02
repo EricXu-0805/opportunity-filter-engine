@@ -15,6 +15,7 @@ from src.collectors.uiuc_faculty import (
 NEWLY_ADDED = {
     "aero", "cee", "npre", "chbe", "ise", "astro", "mcb", "psych",
     "ib", "econ", "linguistics", "comm", "anthro", "atmos", "soc", "geology",
+    "polisci", "english", "philosophy", "history",
 }
 
 # The exact non-person headings observed live across the new departments'

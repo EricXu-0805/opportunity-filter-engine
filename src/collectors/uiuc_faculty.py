@@ -280,6 +280,43 @@ DEPARTMENTS = {
         "keywords": ["geology", "earth science", "geochemistry", "geophysics",
                       "paleontology", "environmental change"],
     },
+    "polisci": {
+        "name": "Department of Political Science",
+        "short": "PoliSci",
+        "url": "https://pol.illinois.edu/directory/faculty",
+        "base": "https://pol.illinois.edu",
+        "majors": ["Political Science"],
+        "keywords": ["political science", "american politics",
+                      "comparative politics", "international relations",
+                      "political theory", "public policy"],
+    },
+    "english": {
+        "name": "Department of English",
+        "short": "English",
+        "url": "https://english.illinois.edu/directory/faculty",
+        "base": "https://english.illinois.edu",
+        "majors": ["English", "Creative Writing"],
+        "keywords": ["english", "literature", "creative writing", "rhetoric",
+                      "literary criticism", "writing studies"],
+    },
+    "philosophy": {
+        "name": "Department of Philosophy",
+        "short": "Philosophy",
+        "url": "https://philosophy.illinois.edu/directory/faculty",
+        "base": "https://philosophy.illinois.edu",
+        "majors": ["Philosophy"],
+        "keywords": ["philosophy", "ethics", "epistemology", "metaphysics",
+                      "logic", "philosophy of science"],
+    },
+    "history": {
+        "name": "Department of History",
+        "short": "History",
+        "url": "https://history.illinois.edu/directory/faculty",
+        "base": "https://history.illinois.edu",
+        "majors": ["History"],
+        "keywords": ["history", "american history", "european history",
+                      "world history", "social history", "cultural history"],
+    },
 }
 
 
@@ -333,7 +370,8 @@ _NON_PERSON_LABELS: frozenset[str] = frozenset({
     "human resources", "business office", "main office", "department office",
     "graduate office", "student services", "advising", "front desk",
     "reception", "facilities", "it support", "help desk", "general inquiries",
-    "office", "contact", "information",
+    "office", "contact", "information", "committee", "committees", "people",
+    "person", "overview", "news", "events",
 })
 
 
