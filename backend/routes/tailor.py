@@ -37,6 +37,7 @@ from fastapi import APIRouter, HTTPException
 from backend.data_loader import load_opportunities_by_id
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured
+from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import (
     ExtractBulletsRequest,
     ExtractBulletsResponse,
@@ -51,13 +52,6 @@ router = APIRouter()
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200
 _DEFAULT_BULLETS_PER_REQUEST = 8
-
-
-def _sanitize_field(value: object, *, max_len: int = 600) -> str:
-    """Flatten free text for prompt interpolation (mirrors cold-email)."""
-    return " ".join(str(value).split())[:max_len]
-
-
 
 
 def _build_evidence_corpus(

@@ -10,6 +10,7 @@ from pydantic import BaseModel, field_validator
 from backend.data_loader import load_opportunities_by_id
 from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured
+from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.recommender.cold_email import (
     _common_parts,
@@ -73,16 +74,6 @@ def _extract_subject_and_body(email_text: str) -> tuple[str, str]:
 
     body = "\n".join(lines[body_start:]).strip()
     return subject, body
-
-
-def _sanitize_field(value: object, *, max_len: int = 600) -> str:
-    """Flatten a free-text profile field for safe prompt interpolation.
-
-    Collapses all whitespace (incl. newlines) to single spaces so a user
-    supplied field cannot inject fake ``Subject:`` / role lines or multi-line
-    instructions into the LLM prompt, then truncates to ``max_len``.
-    """
-    return " ".join(str(value).split())[:max_len]
 
 
 def _build_mailto_link(to: str, subject: str, body: str) -> str:
