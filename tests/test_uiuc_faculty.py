@@ -31,6 +31,11 @@ OBSERVED_SECTION_LABELS = [
     "Human Resources",
     "Business Office",
     "Student Services",
+    "Committees",
+    "Grads on the Market",
+    "Job Market Candidates",
+    "Diversity and Inclusion",
+    "Instructors and Lecturers",
 ]
 
 # Real names that must NEVER be mistaken for section labels, including the
