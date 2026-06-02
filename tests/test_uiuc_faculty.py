@@ -12,7 +12,10 @@ from src.collectors.uiuc_faculty import (
     normalize_faculty,
 )
 
-NEWLY_ADDED = {"aero", "cee", "npre", "chbe", "ise", "astro", "mcb", "psych"}
+NEWLY_ADDED = {
+    "aero", "cee", "npre", "chbe", "ise", "astro", "mcb", "psych",
+    "ib", "econ", "linguistics", "comm", "anthro", "atmos", "soc", "geology",
+}
 
 # The exact non-person headings observed live across the new departments'
 # directory pages — every one must be filtered out.
