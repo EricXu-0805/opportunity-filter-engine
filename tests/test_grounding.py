@@ -13,6 +13,7 @@ from backend.lib.grounding import (
     _TECH_TERMS,
     LENIENT_PROSE,
     hard_claims,
+    policy_divergence,
     validate_no_fabrication,
 )
 
@@ -289,3 +290,32 @@ def test_acronym_map_keys_are_short_and_disjoint_from_hard_claims():
     assert _TECH_ACRONYMS["nlp"] == "natural language processing"
     assert _TECH_ACRONYMS["k8s"] == "kubernetes"
     assert _TECH_ACRONYMS["aws"] == "amazon web services"
+
+
+# --- policy_divergence: shadow telemetry (R72-H) ---
+
+
+def test_divergence_surfaces_words_only_strict_flags():
+    """Warm prose: STRICT flags the ordinary words, LENIENT allows them, so
+    they show up in the divergence delta — the expected, benign footprint."""
+    delta = policy_divergence(
+        "On weekends I enjoy kayaking and hiking.", evidence_corpus="research",
+    )
+    assert "kayaking" in delta and "hiking" in delta
+
+
+def test_divergence_empty_when_policies_agree():
+    delta = policy_divergence(
+        "I have hands-on Python and PyTorch experience.",
+        evidence_corpus="python pytorch machine learning",
+    )
+    assert delta == []
+
+
+def test_divergence_excludes_tokens_both_policies_flag():
+    """A fabricated tech term is flagged by BOTH policies, so it must NOT
+    appear in the delta — the delta is only what LENIENT lets through."""
+    delta = policy_divergence(
+        "I am an expert in PyTorch.", evidence_corpus="java research",
+    )
+    assert "pytorch" not in delta

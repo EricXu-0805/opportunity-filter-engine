@@ -516,3 +516,25 @@ def validate_no_fabrication(
     ]
     fabricated += _acronym_fabricated(text, corpus_lower, extra_allow)
     return (len(fabricated) == 0, sorted(set(fabricated)))
+
+
+def policy_divergence(
+    text: str,
+    evidence_corpus: str,
+    *,
+    extra_allow: frozenset[str] = frozenset(),
+) -> list[str]:
+    """Tokens STRICT flags as fabricated but LENIENT_PROSE allows — the
+    shadow delta between the two policies on one draft. Pure (no logging) so
+    a caller can quantify, over real cold-email traffic, how much looser the
+    lenient policy is than the strict resume baseline. Expected to be warm
+    register words; a concrete tech term appearing here would signal a
+    LENIENT false-negative worth review (it shouldn't, those are caught by
+    both)."""
+    _, strict_fab = validate_no_fabrication(
+        text, evidence_corpus, extra_allow=extra_allow, policy=STRICT,
+    )
+    _, lenient_fab = validate_no_fabrication(
+        text, evidence_corpus, extra_allow=extra_allow, policy=LENIENT_PROSE,
+    )
+    return sorted(set(strict_fab) - set(lenient_fab))

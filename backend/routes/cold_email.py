@@ -8,7 +8,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
 from backend.data_loader import load_opportunities_by_id
-from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
+from backend.lib.grounding import (
+    LENIENT_PROSE,
+    policy_divergence,
+    validate_no_fabrication,
+)
 from backend.lib.llm import chat_completion, is_configured
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
@@ -86,6 +90,21 @@ def _build_mailto_link(to: str, subject: str, body: str) -> str:
 
     query = "&".join(params)
     return f"mailto:{quote(to)}?{query}" if query else f"mailto:{quote(to)}"
+
+
+def _log_grounding_shadow(text: str, corpus: str) -> None:
+    """Shadow telemetry: record what the STRICT resume policy would have
+    flagged on a draft LENIENT_PROSE just accepted, so the lenient cold-email
+    policy's real-world footprint is observable in logs (and any leaked tech
+    term is greppable)."""
+    delta = policy_divergence(text, corpus, extra_allow=_EMAIL_SCAFFOLDING)
+    if delta:
+        logger.info(
+            "cold-email grounding shadow: LENIENT_PROSE accepted; STRICT would "
+            "flag %d token(s) (sample: %s)",
+            len(delta),
+            delta[:6],
+        )
 
 
 _BASE_SYSTEM_RULES = (
@@ -280,6 +299,7 @@ async def generate_email(request: ColdEmailRequest):
                 )
                 if passed:
                     subject, body, method = ai_subject, ai_body, "ai"
+                    _log_grounding_shadow(f"{ai_subject}\n{ai_body}", corpus)
                 else:
                     fallback_reason = "fabrication"
                     logger.info(
@@ -392,14 +412,15 @@ async def refine_email(request: EmailRefineRequest):
     if edited is None:
         return _local_refine(request.current_body, request.instruction)
 
+    corpus = _refine_evidence_corpus(request)
     passed, _fabricated = validate_no_fabrication(
-        edited, _refine_evidence_corpus(request),
-        extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
+        edited, corpus, extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
     )
     if not passed:
         result = _local_refine(request.current_body, request.instruction)
         result["fallback_reason"] = "fabrication"
         return result
+    _log_grounding_shadow(edited, corpus)
     return {"body": edited, "method": "llm"}
 
 
