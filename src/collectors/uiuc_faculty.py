@@ -20,7 +20,6 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urljoin
 
 import requests
@@ -128,10 +127,87 @@ DEPARTMENTS = {
         "keywords": ["information science", "data science", "HCI",
                       "information retrieval", "social computing"],
     },
+    "aero": {
+        "name": "Aerospace Engineering",
+        "short": "AE",
+        "url": "https://aerospace.illinois.edu/directory/faculty",
+        "base": "https://aerospace.illinois.edu",
+        "majors": ["Aerospace Engineering"],
+        "keywords": ["aerospace", "aerodynamics", "propulsion", "astronautics",
+                      "flight dynamics", "spacecraft"],
+    },
+    "cee": {
+        "name": "Civil & Environmental Engineering",
+        "short": "CEE",
+        "url": "https://cee.illinois.edu/directory/faculty",
+        "base": "https://cee.illinois.edu",
+        "majors": ["Civil Engineering", "Environmental Engineering"],
+        "keywords": ["civil engineering", "structural engineering",
+                      "environmental engineering", "geotechnical",
+                      "transportation", "water resources"],
+    },
+    "npre": {
+        "name": "Nuclear, Plasma & Radiological Engineering",
+        "short": "NPRE",
+        "url": "https://npre.illinois.edu/people/faculty",
+        "base": "https://npre.illinois.edu",
+        "majors": ["Nuclear Engineering",
+                    "Nuclear, Plasma, and Radiological Engineering"],
+        "keywords": ["nuclear engineering", "plasma", "radiological", "fusion",
+                      "reactor", "radiation"],
+    },
+    "chbe": {
+        "name": "Chemical & Biomolecular Engineering",
+        "short": "ChBE",
+        "url": "https://chbe.illinois.edu/people/faculty",
+        "base": "https://chbe.illinois.edu",
+        "majors": ["Chemical Engineering",
+                    "Chemical & Biomolecular Engineering"],
+        "keywords": ["chemical engineering", "biomolecular", "catalysis",
+                      "reaction engineering", "thermodynamics", "separations"],
+    },
+    "ise": {
+        "name": "Industrial & Enterprise Systems Engineering",
+        "short": "ISE",
+        "url": "https://ise.illinois.edu/directory/faculty",
+        "base": "https://ise.illinois.edu",
+        "majors": ["Industrial Engineering", "Systems Engineering",
+                    "Industrial & Enterprise Systems Engineering"],
+        "keywords": ["industrial engineering", "operations research",
+                      "optimization", "systems engineering", "manufacturing",
+                      "logistics"],
+    },
+    "astro": {
+        "name": "Department of Astronomy",
+        "short": "Astronomy",
+        "url": "https://astro.illinois.edu/people/faculty",
+        "base": "https://astro.illinois.edu",
+        "majors": ["Astronomy", "Astrophysics"],
+        "keywords": ["astronomy", "astrophysics", "cosmology", "galaxies",
+                      "exoplanets", "observational astronomy"],
+    },
+    "mcb": {
+        "name": "School of Molecular & Cellular Biology",
+        "short": "MCB",
+        "url": "https://mcb.illinois.edu/directory/faculty",
+        "base": "https://mcb.illinois.edu",
+        "majors": ["Molecular & Cellular Biology", "Biochemistry", "Biology"],
+        "keywords": ["molecular biology", "cell biology", "biochemistry",
+                      "genetics", "neuroscience", "microbiology"],
+    },
+    "psych": {
+        "name": "Department of Psychology",
+        "short": "Psychology",
+        "url": "https://psychology.illinois.edu/people/faculty",
+        "base": "https://psychology.illinois.edu",
+        "majors": ["Psychology"],
+        "keywords": ["psychology", "cognitive science", "behavioral",
+                      "neuroscience", "social psychology", "developmental"],
+    },
 }
 
 
-def _fetch_soup(url: str) -> Optional[BeautifulSoup]:
+def _fetch_soup(url: str) -> BeautifulSoup | None:
     """Fetch a URL and return parsed BeautifulSoup, or None on failure."""
     try:
         resp = requests.get(url, timeout=20, headers=HEADERS)
@@ -161,6 +237,26 @@ NOISE_EMAILS = {
     "grainger@illinois.edu", "ugresearch@illinois.edu",
     "admin@siebelschool.illinois.edu",
 }
+
+# Directory pages group people under section headings ("Postdocs", "Affiliates
+# and Adjuncts", …) that the generic card scraper picks up as if they were
+# faculty. Matched against the WHOLE normalized name (not as a substring) so a
+# real surname like "Fellows" is never clipped.
+_NON_PERSON_LABELS: frozenset[str] = frozenset({
+    "faculty", "staff", "administration", "emeritus", "emeriti",
+    "emeritus faculty", "emeriti faculty", "affiliate faculty",
+    "affiliated faculty", "adjunct faculty", "affiliates and adjuncts",
+    "adjuncts and affiliates", "affiliates", "adjuncts", "lecturers",
+    "instructors", "research staff", "postdoc", "postdocs",
+    "postdoctoral researchers", "postdoctoral associates", "graduate student",
+    "graduate students", "doctoral student", "doctoral students",
+    "masters students", "master s students", "undergraduate students",
+    "students", "alumni", "advisors", "directory",
+})
+
+
+def _is_section_label(name: str) -> bool:
+    return re.sub(r"[^a-z]+", " ", name.lower()).strip() in _NON_PERSON_LABELS
 
 
 def _get_main_content(soup: BeautifulSoup) -> BeautifulSoup:
@@ -233,7 +329,7 @@ def _find_faculty_links(soup: BeautifulSoup, base_url: str) -> list:
     return results
 
 
-def _parse_faculty_card(element, base_url: str, dept: str) -> Optional[dict]:
+def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
     """Parse a single faculty card/row into a dict."""
     result = {"department": dept}
 
@@ -521,10 +617,12 @@ def _infer_skills_from_research(person: dict) -> list[str]:
     return sorted(skills)[:5]
 
 
-def normalize_faculty(person: dict, dept_config: dict) -> Optional[dict]:
+def normalize_faculty(person: dict, dept_config: dict) -> dict | None:
     """Convert a scraped faculty entry into the normalized opportunity schema."""
     name = person.get("name", "")
     if not name or len(name) < 3:
+        return None
+    if _is_section_label(name):
         return None
 
     email = person.get("email", "")
