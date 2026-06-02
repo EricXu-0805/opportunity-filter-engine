@@ -284,6 +284,43 @@ _COMMON_FILLER: frozenset[str] = frozenset({
     "substantially", "surely", "swiftly", "thoroughly",
     "thus", "tightly", "totally", "ultimately", "uniformly", "usually",
     "verbally", "visibly", "visually", "widely",
+    # Warm cover-letter / cold-email prose. These tone, intensifier, connector
+    # and abstract-noun words showed up as false positives on "make it warmer"
+    # email edits (R72-A): ordinary register vocabulary that is never a skill
+    # claim. Safe per the design intent above — a technology/credential is
+    # never ordinary English, so listing "delighted" cannot smuggle "PyTorch".
+    "about", "absolutely", "accordingly", "admire", "admired", "although",
+    "amazing", "anything", "appreciate", "appreciated", "appreciation",
+    "aspects", "aspiration", "aspirations", "because", "besides", "brilliant",
+    "bring", "bringing", "brings", "certainly", "collaboration", "comfortable",
+    "commitment", "completely", "confident", "consider", "consideration",
+    "considering", "contribute", "contributing", "contributions",
+    "conversations", "curiosity", "dedication", "deeply", "definitely",
+    "delighted", "despite", "discover", "discovering", "discuss", "discussing",
+    "dreams", "eagerness", "enjoy", "enjoyed", "enjoying", "enthusiasm",
+    "enthusiastic", "entirely", "equally", "everyone", "everything",
+    "exceptionally", "excited", "exciting", "explore", "exploring", "fantastic",
+    "fascinated", "finds", "follow", "following", "fulfilling", "further",
+    "furthermore", "genuine", "genuinely", "glad", "goals", "grateful",
+    "gratitude", "greatly", "grow", "happen", "happening", "happens", "help",
+    "helped", "helping", "honestly", "honored", "hoped", "hopeful", "hopes",
+    "hoping", "humbled", "immensely", "impressive", "incredible", "incredibly",
+    "inspired", "interest", "interests", "intrigued", "journey", "kindest",
+    "learn", "likewise", "lovely", "loving", "maybe", "meaningful", "mentorship",
+    "moreover", "motivation", "offer", "offering", "outstanding", "passion",
+    "passionate", "passions", "perspective", "perspectives", "pleased", "proud",
+    "qualities", "quite", "rather", "reaching", "really", "remarkable",
+    "rewarding", "share", "sharing", "since", "someone",
+    "something", "somewhat", "strengths", "supporting", "therefore", "things",
+    "though", "thoughts", "thrilled", "tremendously", "truly", "unless",
+    "valuable", "valued", "warmest", "welcome", "welcomed", "whenever",
+    "wherever", "whether", "wholeheartedly", "willingness", "wished", "wishing",
+    "wonder", "wonderful", "wonderfully", "wondering",
+    "always", "attitude", "brief", "challenging", "chance", "collaborative",
+    "committed", "cutting-edge", "dependable", "detail-oriented", "ethic",
+    "excitement", "friendly", "groundbreaking", "hands-on", "hardworking",
+    "heartfelt", "inspiring", "loves", "making", "persistent", "prospect",
+    "relish", "sleeves", "solid", "spirit", "tackling",
 })
 
 

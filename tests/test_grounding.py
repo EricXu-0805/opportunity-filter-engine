@@ -55,3 +55,31 @@ def test_extra_allow_permits_caller_scaffolding():
         extra_allow=frozenset({"sincerely"}),
     )
     assert passed_with
+
+
+def test_warm_email_prose_is_not_flagged_as_fabrication():
+    """R72-A-6: warm cover-letter register (tone adjectives, intensifiers,
+    abstract nouns) must not be mistaken for fabricated skills. These words
+    tripped the validator on 'make it warmer' edits before the filler grew."""
+    draft = (
+        "I am genuinely delighted and absolutely thrilled about this. I bring "
+        "solid, hands-on experience and a heartfelt enthusiasm for your "
+        "groundbreaking, inspiring research. I would be grateful for the chance "
+        "to contribute my dedication and collaborative spirit."
+    )
+    passed, fab = validate_no_fabrication(draft, evidence_corpus="research")
+    assert passed, f"warm prose wrongly flagged: {fab}"
+
+
+def test_filler_expansion_still_catches_technical_fabrication():
+    """Guard against over-relaxing: a real technology claim absent from the
+    corpus is still rejected even amid heavy warm prose."""
+    draft = (
+        "I am truly delighted and genuinely passionate about contributing. I am "
+        "also an expert in PyTorch, Kubernetes, and TensorFlow."
+    )
+    passed, fab = validate_no_fabrication(draft, evidence_corpus="python research")
+    assert not passed
+    assert "pytorch" in fab
+    assert "kubernetes" in fab
+    assert "tensorflow" in fab
