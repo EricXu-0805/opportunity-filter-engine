@@ -328,6 +328,12 @@ _NON_PERSON_LABELS: frozenset[str] = frozenset({
     "graduate students", "doctoral student", "doctoral students",
     "masters students", "master s students", "undergraduate students",
     "students", "alumni", "advisors", "directory",
+    # Administrative / office aliases that surface as a directory "person"
+    # with a shared mailbox (e.g. an IB "Human Resources" las-HR alias).
+    "human resources", "business office", "main office", "department office",
+    "graduate office", "student services", "advising", "front desk",
+    "reception", "facilities", "it support", "help desk", "general inquiries",
+    "office", "contact", "information",
 })
 
 
