@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
 from backend.data_loader import load_opportunities_by_id
-from backend.lib.grounding import validate_no_fabrication
+from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.recommender.cold_email import (
@@ -284,7 +284,8 @@ async def generate_email(request: ColdEmailRequest):
                 # tailor) and fall back to the grounded template.
                 corpus = _build_email_corpus(_common_parts(profile_dict, opp), opp)
                 passed, fabricated = validate_no_fabrication(
-                    f"{ai_subject}\n{ai_body}", corpus, extra_allow=_EMAIL_SCAFFOLDING,
+                    f"{ai_subject}\n{ai_body}", corpus,
+                    extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
                 )
                 if passed:
                     subject, body, method = ai_subject, ai_body, "ai"
@@ -401,7 +402,8 @@ async def refine_email(request: EmailRefineRequest):
         return _local_refine(request.current_body, request.instruction)
 
     passed, _fabricated = validate_no_fabrication(
-        edited, _refine_evidence_corpus(request), extra_allow=_EMAIL_SCAFFOLDING,
+        edited, _refine_evidence_corpus(request),
+        extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
     )
     if not passed:
         result = _local_refine(request.current_body, request.instruction)
