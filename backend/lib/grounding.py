@@ -358,6 +358,53 @@ _TECH_TERMS: frozenset[str] = frozenset({
     "patent", "patents", "dissertation", "fellowship", "valedictorian",
 })
 
+# Security gate: short tech acronyms (<5 chars) the hard-claim regex can't see,
+# mapped to expansions. STRICT must flag a hallucinated "AWS"/"ROS", but a
+# resume that abbreviates "natural language processing" to "NLP" must NOT be
+# flagged (one flag drops the whole AI draft). Hence *bidirectional* grounding:
+# grounded if the acronym OR its expansion is in the corpus. Empty value = no
+# corpus-expressible expansion (bert, cuda) -> grounded by the token only.
+_TECH_ACRONYMS: dict[str, str] = {
+    "aws": "amazon web services",
+    "gcp": "google cloud",
+    "ros": "robot operating system",
+    "ros2": "robot operating system",
+    "k8s": "kubernetes",
+    "fpga": "field programmable gate array",
+    "asic": "application specific integrated circuit",
+    "hpc": "high performance computing",
+    "nlp": "natural language processing",
+    "llm": "large language model",
+    "cnn": "convolutional neural network",
+    "rnn": "recurrent neural network",
+    "lstm": "long short term memory",
+    "bert": "",
+    "cuda": "",
+    "pcr": "polymerase chain reaction",
+    "hplc": "high performance liquid chromatography",
+    "fmri": "functional magnetic resonance",
+    "nmr": "nuclear magnetic resonance",
+}
+
+# Collapse every non-alphanumeric run to a single space so an expansion like
+# "high-performance liquid chromatography" matches a corpus that wrote it
+# without the hyphen (or vice-versa).
+_NONALNUM_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _norm_phrase(s: str) -> str:
+    return _NONALNUM_RE.sub(" ", s.lower()).strip()
+
+
+def _expansion_grounded(token: str, corpus_norm: str) -> bool:
+    """True if ``token`` is a known acronym whose expansion phrase appears in
+    the (space-normalized) corpus — the acronym→expansion half of the
+    bidirectional grounding. The acronym→token half is handled by the caller's
+    word-boundary corpus check."""
+    exp = _TECH_ACRONYMS.get(token)
+    return bool(exp) and _norm_phrase(exp) in corpus_norm
+
+
 # Case-preserving token scan (keeps tech punctuation so c++, node.js, ci/cd,
 # scikit-learn survive as single tokens). Lower-cased + stripped before use.
 _LENIENT_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#./\-]*")
@@ -386,6 +433,7 @@ def _lenient_fabricated(
     text: str, corpus_lower: str, extra_allow: frozenset[str],
 ) -> list[str]:
     corpus_tokens = _corpus_tokens(corpus_lower)
+    corpus_norm = _norm_phrase(corpus_lower)
     fabricated: list[str] = []
     for raw in _LENIENT_TOKEN_RE.findall(text):
         tok = raw.strip("./-")
@@ -402,6 +450,28 @@ def _lenient_fabricated(
         if not (internal_cap or has_digit or has_techpunct or low in _TECH_TERMS):
             continue
         if low in extra_allow or _in_corpus(low, corpus_lower, corpus_tokens):
+            continue
+        if _expansion_grounded(low, corpus_norm):
+            continue
+        fabricated.append(low)
+    return fabricated
+
+
+def _acronym_fabricated(
+    text: str, corpus_lower: str, extra_allow: frozenset[str],
+) -> list[str]:
+    """Short tech acronyms (aws, ros, cuda, k8s, nlp …) the 5-char hard-claim
+    regex misses, flagged only when neither the acronym nor its expansion is
+    grounded in the corpus. Closes a STRICT false-negative without the
+    abbreviation false-positive (see ``_TECH_ACRONYMS``)."""
+    corpus_tokens = _corpus_tokens(corpus_lower)
+    corpus_norm = _norm_phrase(corpus_lower)
+    fabricated: list[str] = []
+    for raw in _LENIENT_TOKEN_RE.findall(text):
+        low = raw.strip("./-").lower()
+        if low not in _TECH_ACRONYMS or low in extra_allow:
+            continue
+        if low in corpus_tokens or _expansion_grounded(low, corpus_norm):
             continue
         fabricated.append(low)
     return fabricated
@@ -426,10 +496,14 @@ def validate_no_fabrication(
     can be fabricated, so warm register words pass without an allowlist arms
     race. Corpus matching is word-boundary for short/tech tokens (substring
     only for 5+ tokens), so short acronyms aren't swallowed by collisions.
+
+    Both policies additionally flag ungrounded short tech acronyms via
+    bidirectional acronym/expansion matching (``_TECH_ACRONYMS``).
     """
+    corpus_lower = evidence_corpus.lower()
     if policy == LENIENT_PROSE:
         fabricated = sorted(set(_lenient_fabricated(
-            text, evidence_corpus.lower(), extra_allow,
+            text, corpus_lower, extra_allow,
         )))
         return (len(fabricated) == 0, fabricated)
 
@@ -438,6 +512,7 @@ def validate_no_fabrication(
         c for c in claims
         if c not in _COMMON_FILLER
         and c not in extra_allow
-        and c not in evidence_corpus
+        and c not in corpus_lower
     ]
-    return (len(fabricated) == 0, sorted(fabricated))
+    fabricated += _acronym_fabricated(text, corpus_lower, extra_allow)
+    return (len(fabricated) == 0, sorted(set(fabricated)))
