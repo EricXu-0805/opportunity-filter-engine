@@ -372,6 +372,13 @@ _NON_PERSON_LABELS: frozenset[str] = frozenset({
     "reception", "facilities", "it support", "help desk", "general inquiries",
     "office", "contact", "information", "committee", "committees", "people",
     "person", "overview", "news", "events",
+    # Role-combo and job-market section headings seen in humanities/social
+    # science directories (still whole-name matches, never substrings).
+    "diversity and inclusion", "diversity equity and inclusion",
+    "grads on the market", "graduate students on the market",
+    "students on the market", "job market candidates", "job market",
+    "instructors and lecturers", "lecturers and instructors",
+    "postdocs and lecturers", "adjuncts and lecturers",
 })
 
 
