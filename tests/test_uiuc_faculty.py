@@ -27,6 +27,9 @@ OBSERVED_SECTION_LABELS = [
     "Postdocs",
     "Doctoral Students",
     "Master's Students",
+    "Human Resources",
+    "Business Office",
+    "Student Services",
 ]
 
 # Real names that must NEVER be mistaken for section labels, including the
