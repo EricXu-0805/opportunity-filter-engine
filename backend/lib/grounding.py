@@ -324,9 +324,87 @@ _COMMON_FILLER: frozenset[str] = frozenset({
 })
 
 
+# Validation policies. STRICT is the original deny-by-default behaviour
+# (every unknown 5+ char token is a claim) — correct for terse resume bullets
+# where unknown words are usually real claims. LENIENT_PROSE only treats tokens
+# carrying a concreteness signal as claims — correct for warm cold-email prose
+# where ordinary register words (delighted, genuinely, …) are not claims and
+# the deny-by-default approach over-rejects benign edits.
+STRICT = "strict"
+LENIENT_PROSE = "lenient_prose"
+
+# Concrete technology / tool / credential terms that are hard claims even in
+# lowercase prose. The shape signal (internal caps, digits, +/#) misses two
+# important classes: conventionally-lowercase names (numpy, pandas, kubernetes
+# written lowercase) and short acronyms the 5-char regex never sees (aws, cuda,
+# ros, k8s). This set backstops both. Seeded from the ranker skill taxonomy but
+# PINNED here so the security gate cannot silently weaken when ranking changes
+# (test_tech_terms_cover_security_critical guards the high-value members).
+_TECH_TERMS: frozenset[str] = frozenset({
+    "pytorch", "tensorflow", "keras", "scikit-learn", "sklearn", "numpy",
+    "pandas", "matplotlib", "seaborn", "scipy", "opencv", "huggingface",
+    "transformers", "xgboost", "lightgbm", "spacy", "nltk", "jax",
+    "python", "java", "javascript", "typescript", "kotlin", "swift", "rust",
+    "golang", "scala", "haskell", "matlab", "verilog", "vhdl", "perl", "ruby",
+    "kubernetes", "docker", "terraform", "ansible", "jenkins", "kafka",
+    "spark", "hadoop", "airflow", "mongodb", "postgresql", "mysql", "redis",
+    "elasticsearch", "graphql", "nginx", "django", "flask", "fastapi",
+    "react", "angular", "node.js", "tailwind", "webpack",
+    "aws", "gcp", "azure", "cuda", "ros", "ros2", "fpga", "asic",
+    "labview", "solidworks", "ansys", "comsol", "autocad", "simulink",
+    "nlp", "llm", "cnn", "rnn", "lstm", "bert", "hpc", "k8s", "cpp", "ci/cd",
+    "pcr", "crispr", "elisa", "hplc", "fmri", "nmr",
+    "chromatography", "spectroscopy", "microscopy",
+    "patent", "patents", "dissertation", "fellowship", "valedictorian",
+})
+
+# Case-preserving token scan (keeps tech punctuation so c++, node.js, ci/cd,
+# scikit-learn survive as single tokens). Lower-cased + stripped before use.
+_LENIENT_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#./\-]*")
+
+
 def hard_claims(text: str) -> set[str]:
     """Extract 5+ char lowercase ASCII tokens — candidate 'hard claims'."""
     return set(_HARD_CLAIM_RE.findall(text.lower()))
+
+
+def _corpus_tokens(corpus_lower: str) -> set[str]:
+    return {t.strip("./-") for t in _LENIENT_TOKEN_RE.findall(corpus_lower)}
+
+
+def _in_corpus(token: str, corpus_lower: str, corpus_tokens: set[str]) -> bool:
+    """Word-boundary (exact-token) membership, with a substring fallback only
+    for long (5+) tokens so "python" still matches a corpus "python3". Short
+    tokens are word-boundary ONLY — otherwise "ros" would match "across".
+    """
+    if token in corpus_tokens:
+        return True
+    return len(token) >= 5 and token in corpus_lower
+
+
+def _lenient_fabricated(
+    text: str, corpus_lower: str, extra_allow: frozenset[str],
+) -> list[str]:
+    corpus_tokens = _corpus_tokens(corpus_lower)
+    fabricated: list[str] = []
+    for raw in _LENIENT_TOKEN_RE.findall(text):
+        tok = raw.strip("./-")
+        if not tok:
+            continue
+        low = tok.lower()
+        # A claim candidate only if it carries a concreteness signal: an
+        # internal capital (CamelCase: PyTorch — but NOT all-caps shouting or a
+        # sentence-initial capital), a digit (GPT-4, ResNet50), '+'/'#' (c++,
+        # c#), or membership in the pinned tech/credential taxonomy.
+        internal_cap = any(c.isupper() for c in tok[1:]) and any(c.islower() for c in tok)
+        has_digit = any(c.isdigit() for c in tok)
+        has_techpunct = "+" in tok or "#" in tok
+        if not (internal_cap or has_digit or has_techpunct or low in _TECH_TERMS):
+            continue
+        if low in extra_allow or _in_corpus(low, corpus_lower, corpus_tokens):
+            continue
+        fabricated.append(low)
+    return fabricated
 
 
 def validate_no_fabrication(
@@ -334,18 +412,27 @@ def validate_no_fabrication(
     evidence_corpus: str,
     *,
     extra_allow: frozenset[str] = frozenset(),
+    policy: str = STRICT,
 ) -> tuple[bool, list[str]]:
     """Return ``(passed, fabricated_tokens)``.
 
-    A token is fabricated when it is a 5+ char lowercase ASCII word in
-    ``text`` that is NOT in the common-filler allowlist, NOT in the
-    caller's ``extra_allow`` set (e.g. cold-email salutation/closing
-    scaffolding), and does NOT appear anywhere in ``evidence_corpus``.
+    ``policy=STRICT`` (default, used by resume tailoring): a token is
+    fabricated when it is a 5+ char lowercase ASCII word NOT in the
+    common-filler allowlist, NOT in ``extra_allow``, and NOT a substring of
+    ``evidence_corpus``. Aggressive — right for terse resume claims.
 
-    Substring matching against the (already-lowercased) corpus is
-    intentional: it lets "python" hit when the corpus has "python3" and
-    avoids false flags on stem variations.
+    ``policy=LENIENT_PROSE`` (cold-email): only tokens carrying a concreteness
+    signal (internal caps, digit, '+'/'#', or pinned tech/credential taxonomy)
+    can be fabricated, so warm register words pass without an allowlist arms
+    race. Corpus matching is word-boundary for short/tech tokens (substring
+    only for 5+ tokens), so short acronyms aren't swallowed by collisions.
     """
+    if policy == LENIENT_PROSE:
+        fabricated = sorted(set(_lenient_fabricated(
+            text, evidence_corpus.lower(), extra_allow,
+        )))
+        return (len(fabricated) == 0, fabricated)
+
     claims = hard_claims(text)
     fabricated = [
         c for c in claims
