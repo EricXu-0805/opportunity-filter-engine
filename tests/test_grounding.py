@@ -9,6 +9,7 @@ directly (the route-level tests cover integration).
 from __future__ import annotations
 
 from backend.lib.grounding import (
+    _TECH_ACRONYMS,
     _TECH_TERMS,
     LENIENT_PROSE,
     hard_claims,
@@ -217,3 +218,74 @@ def test_tech_terms_cover_security_critical():
         "scikit-learn", "numpy", "pandas", "cpp",
     }
     assert critical <= _TECH_TERMS
+
+
+# --- Bidirectional acronym/expansion grounding (R72-E, both policies) ---
+
+
+def test_strict_flags_ungrounded_short_acronym():
+    """The STRICT false-negative this closes: aws/ros are <5 chars so the
+    hard-claim regex never saw them — a hallucinated 'AWS and ROS' used to
+    pass silently onto a resume."""
+    passed, fab = validate_no_fabrication(
+        "Deployed on AWS and ROS.", evidence_corpus="python robotics research",
+    )
+    assert not passed
+    assert {"aws", "ros"} <= set(fab)
+
+
+def test_strict_grounds_acronym_by_its_token():
+    passed, fab = validate_no_fabrication(
+        "Experience with AWS.", evidence_corpus="we use aws in our pipeline",
+    )
+    assert passed, f"acronym present in corpus wrongly flagged: {fab}"
+
+
+def test_strict_grounds_acronym_by_expansion():
+    """The abbreviation false-positive the map prevents: a student who lists
+    'natural language processing' and gets a bullet saying 'NLP' must pass."""
+    passed, fab = validate_no_fabrication(
+        "Applied NLP techniques.",
+        evidence_corpus="research in natural language processing",
+    )
+    assert passed, f"expansion-grounded acronym wrongly flagged: {fab}"
+
+
+def test_strict_grounds_k8s_by_kubernetes_expansion():
+    passed, fab = validate_no_fabrication(
+        "Ran K8s clusters.", evidence_corpus="managed kubernetes in production",
+    )
+    assert passed, f"k8s wrongly flagged despite kubernetes in corpus: {fab}"
+
+
+def test_strict_empty_expansion_acronym_grounded_by_token_only():
+    """cuda/bert have no corpus-expressible expansion: token-only grounding."""
+    passed_fab, fab = validate_no_fabrication(
+        "Used CUDA.", evidence_corpus="machine learning research",
+    )
+    assert not passed_fab
+    assert "cuda" in fab
+
+    passed_ok, _ = validate_no_fabrication(
+        "Used CUDA.", evidence_corpus="optimized cuda kernels",
+    )
+    assert passed_ok
+
+
+def test_lenient_grounds_acronym_by_expansion():
+    """Same FP reduction reaches cold-email: 'NLP' is grounded by the
+    student's 'natural language processing', no allowlist needed."""
+    passed, fab = _lenient(
+        "I am drawn to your NLP lab.",
+        evidence_corpus="your work in natural language processing",
+    )
+    assert passed, f"expansion-grounded acronym wrongly flagged: {fab}"
+
+
+def test_acronym_map_keys_are_short_and_disjoint_from_hard_claims():
+    """Map keys must be <5 chars so they cannot double-fire with the 5+
+    hard-claim regex, and the security-critical expansions must be present."""
+    assert all(len(k) < 5 for k in _TECH_ACRONYMS)
+    assert _TECH_ACRONYMS["nlp"] == "natural language processing"
+    assert _TECH_ACRONYMS["k8s"] == "kubernetes"
+    assert _TECH_ACRONYMS["aws"] == "amazon web services"
