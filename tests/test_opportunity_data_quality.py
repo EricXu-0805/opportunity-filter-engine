@@ -55,6 +55,22 @@ def _parse_iso(d):
         return None
 
 
+def _data_as_of(data: list[dict]) -> date:
+    """The date the snapshot was last refreshed = newest last_seen_at across
+    records. The past-deadline invariant must be anchored here, not to
+    date.today(): deactivate_past runs at refresh time against the refresh
+    clock, so a committed record can only be a *pipeline leak* if its deadline
+    had already passed when the data was generated. Anchoring to date.today()
+    instead made the test go red at midnight boundaries whenever the committed
+    file aged past a still-active deadline — that is staleness, not a bug."""
+    seen = [
+        _parse_iso((o.get("metadata") or {}).get("last_seen_at"))
+        for o in data
+    ]
+    seen = [d for d in seen if d]
+    return max(seen) if seen else date.today()
+
+
 class TestR70ADataQuality:
     def test_every_record_has_description_clean(self):
         """R70-A backfilled 25 program_overview records that previously
@@ -132,19 +148,85 @@ class TestR70ADataQuality:
         )
 
     def test_past_deadline_deactivated(self):
-        """Records with a parseable past deadline must be is_active=False
-        (handled by src.normalizers.deactivate_past, now wired into
-        refresh_all.py per R70-C so every local refresh closes the loop).
-        Zero tolerance — any leak means deactivate_past was bypassed."""
+        """Records whose deadline had already passed *as of the snapshot's
+        refresh date* must be is_active=False (handled by
+        src.normalizers.deactivate_past, wired into refresh_all.py per R70-C
+        so every refresh closes the loop). Zero tolerance — any leak means
+        deactivate_past was bypassed at generation time.
+
+        Anchored to the data's as-of date (newest last_seen_at), NOT
+        date.today(): the deterministic logic of deactivate_past is covered
+        separately by TestDeactivatePastLogic, and anchoring this snapshot
+        assertion to the wall clock made it flake at midnight boundaries when
+        the committed file aged past a deadline that was still live at refresh.
+        """
         data = _load_data()
-        today = date.today()
+        as_of = _data_as_of(data)
         leaks = []
         for o in data:
             dt = _parse_iso(o.get("deadline"))
-            if dt and dt < today:
+            if dt and dt < as_of:
                 if o.get("metadata", {}).get("is_active") is not False:
                     leaks.append(o.get("id"))
         assert len(leaks) <= PAST_DEADLINE_LEAK_TOLERANCE, (
-            f"{len(leaks)} past-deadline records still is_active=True "
-            f"(tolerance: {PAST_DEADLINE_LEAK_TOLERANCE}). First 3: {leaks[:3]}"
+            f"{len(leaks)} records past-deadline as of {as_of} still "
+            f"is_active=True (tolerance: {PAST_DEADLINE_LEAK_TOLERANCE}). "
+            f"First 3: {leaks[:3]}"
         )
+
+
+class TestDeactivatePastLogic:
+    """Deterministic guard for the deactivate_past normalizer itself, using an
+    injected `today` so it never depends on the wall clock (unlike the snapshot
+    invariant above). This is the real logic contract; the snapshot test only
+    confirms the committed file honored it at generation time."""
+
+    REF = date(2026, 1, 15)
+
+    def _run(self, opps):
+        from src.normalizers.deactivate_past import deactivate_past
+
+        return deactivate_past(opps, today=self.REF)
+
+    def test_past_deadline_marked_inactive_with_metadata(self):
+        opp = {"id": "x", "deadline": "2026-01-01"}
+        counts = self._run([opp])
+        assert opp["metadata"]["is_active"] is False
+        assert opp["metadata"]["deactivated_at"] == self.REF.isoformat()
+        assert opp["metadata"]["deactivation_reason"] == "deadline_passed"
+        assert counts["newly_deactivated"] == 1
+
+    def test_future_deadline_kept_active(self):
+        opp = {"id": "x", "deadline": "2026-12-31"}
+        counts = self._run([opp])
+        assert opp.get("metadata", {}).get("is_active") is not False
+        assert counts["kept_active"] == 1
+
+    def test_rolling_is_skipped(self):
+        opp = {"id": "x", "deadline": "2026-01-01", "is_rolling": True}
+        counts = self._run([opp])
+        assert opp.get("metadata", {}).get("is_active") is not False
+        assert counts["skipped_rolling"] == 1
+
+    def test_no_deadline_is_skipped(self):
+        opp = {"id": "x", "deadline": None}
+        counts = self._run([opp])
+        assert counts["skipped_no_deadline"] == 1
+
+    def test_unparseable_deadline_is_skipped(self):
+        opp = {"id": "x", "deadline": "sometime next spring"}
+        counts = self._run([opp])
+        assert opp.get("metadata", {}).get("is_active") is not False
+        assert counts["skipped_invalid"] == 1
+
+    def test_already_inactive_is_idempotent(self):
+        """Re-running must not overwrite the original deactivated_at stamp."""
+        opp = {
+            "id": "x",
+            "deadline": "2026-01-01",
+            "metadata": {"is_active": False, "deactivated_at": "2025-12-01"},
+        }
+        counts = self._run([opp])
+        assert counts["already_inactive"] == 1
+        assert counts["newly_deactivated"] == 0
+        assert opp["metadata"]["deactivated_at"] == "2025-12-01"
