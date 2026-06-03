@@ -79,8 +79,8 @@ describe('readInitialSemanticRerank', () => {
     expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(false);
   });
 
-  it('defaults to true when neither URL nor localStorage present', () => {
-    expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(true);
+  it('defaults to false when neither URL nor localStorage present', () => {
+    expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(false);
   });
 });
 
