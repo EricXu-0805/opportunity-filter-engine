@@ -24,9 +24,8 @@ Usage:
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import requests
 
@@ -131,17 +130,17 @@ def _format_location(locations: list[str]) -> tuple[str, str]:
     return location_str, ("remote" if is_remote and not named else "unknown")
 
 
-def _epoch_to_iso(value) -> Optional[str]:
+def _epoch_to_iso(value) -> str | None:
     """Convert a Unix-epoch-seconds int to an ISO date, or None."""
-    if not isinstance(value, (int, float)) or value <= 0:
+    if not isinstance(value, int | float) or value <= 0:
         return None
     try:
-        return datetime.fromtimestamp(value, tz=timezone.utc).date().isoformat()
+        return datetime.fromtimestamp(value, tz=UTC).date().isoformat()
     except (ValueError, OSError, OverflowError):
         return None
 
 
-def normalize_listing(raw: dict) -> Optional[dict]:
+def normalize_listing(raw: dict) -> dict | None:
     """Normalize one listings.json row into the opportunity schema."""
     from src.normalizers.enricher import enrich_opportunity
 
@@ -153,7 +152,7 @@ def normalize_listing(raw: dict) -> Optional[dict]:
         return None
 
     opp_id = f"simplify-intern-{listing_id}"
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     location_str, remote_option = _format_location(raw.get("locations"))
     category = raw.get("category") or ""
