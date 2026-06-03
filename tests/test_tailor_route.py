@@ -338,6 +338,46 @@ class TestAntiFabrication:
         # source_evidence is preserved on accepted bullets.
         assert body["tailored_bullets"][0]["source_evidence"]
 
+    def test_generic_prose_is_not_flagged_as_fabrication(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Regression: ordinary verbs and abstract nouns must pass.
+
+        Under STRICT, words like 'demonstrating', 'foundational',
+        'understanding', 'applying' were treated as fabricated because they
+        were absent from the English filler allowlist, so every grounded
+        draft degraded to the passthrough fallback (method='fallback') and
+        the tailor feature produced nothing. LENIENT_PROSE flags only
+        concreteness-signal tokens, so this grounded rewrite is accepted.
+        """
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fake = json.dumps({
+            "bullets": [
+                {
+                    "text": (
+                        "Applied Python during CS 225 coursework, "
+                        "demonstrating foundational understanding while "
+                        "identifying and analyzing trends."
+                    ),
+                    "source_evidence": "Python (experienced); CS 225",
+                },
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": python_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Worked on Python projects in CS 225"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert body["warnings"] == []
+
 
 class TestLlmFailureModes:
     def test_malformed_json_falls_back(
