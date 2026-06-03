@@ -14,6 +14,7 @@ pin the three defects found in review:
 from __future__ import annotations
 
 from src.recommender.cold_email import (
+    _common_parts,
     _p1_research_hook,
     _student_self,
     generate_cold_email,
@@ -105,3 +106,17 @@ class TestGenerateColdEmailEndToEnd:
         email = generate_cold_email(profile, self._OPP)
         assert "  " not in email
         assert "a undergraduate" not in email
+
+
+class TestRecipientJunkNameCE6:
+    def test_na_pi_name_does_not_leak_into_recipient(self):
+        # CE-6: "N/A" (in the matcher's _BAD_PI_NAMES) must not render as a name.
+        for junk in ("N/A", "n/a", "Unknown", ""):
+            p = _common_parts({}, {"pi_name": junk, "opportunity_type": "research"})
+            assert p["recipient"] == "Professor"
+            if junk.strip():
+                assert junk.strip() not in p["recipient"]
+
+    def test_real_pi_name_still_used(self):
+        p = _common_parts({}, {"pi_name": "Jane Doe", "opportunity_type": "research"})
+        assert p["recipient"] == "Professor Jane Doe"

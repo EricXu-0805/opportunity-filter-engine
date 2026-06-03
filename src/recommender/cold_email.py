@@ -1,4 +1,4 @@
-from src.matcher.ranker import _BROAD_FIELDS
+from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
 
 
 def _extract_skill_names(raw_skills: list) -> list[str]:
@@ -258,7 +258,10 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
     opp_skills_required = opportunity.get("eligibility", {}).get("skills_required", [])
     matching_skills = _match_skills_to_tasks(skills, opportunity)
 
-    if pi_name and pi_name.lower() not in ("learn more", "none", "and robotics", "unknown"):
+    # CE-6: reuse the matcher's junk-name set (adds "n/a" and "") as the single
+    # source of truth, so a non-faculty source emitting "N/A" can't render
+    # "Dear Professor N/A".
+    if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES:
         recipient = f"Professor {pi_name}" if not pi_name.lower().startswith(("prof", "dr")) else pi_name
     elif opp_type == "summer_program":
         recipient = "Program Coordinator"

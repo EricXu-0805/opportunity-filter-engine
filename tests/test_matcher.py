@@ -586,6 +586,23 @@ class TestTopicAlignmentRankingRegression:
         assert "Research area looks different from your stated interests" not in unknown.reasons_gap
 
 
+class TestInternationalUnknownChip:
+    """DQ-6: the 'unknown international eligibility' chip is softened for
+    internships (most allow CPT/OPT) but kept as a plain verify for research."""
+
+    def _opp(self, otype):
+        return {"opportunity_type": otype, "eligibility": {"international_friendly": "unknown"}}
+
+    def test_internship_unknown_mentions_cpt_opt(self):
+        _, _fit, gap = score_eligibility({"international_student": True}, self._opp("internship"))
+        assert any("CPT/OPT" in g for g in gap)
+
+    def test_research_unknown_keeps_plain_verify(self):
+        _, _fit, gap = score_eligibility({"international_student": True}, self._opp("research"))
+        assert any("verify before applying" in g for g in gap)
+        assert not any("CPT/OPT" in g for g in gap)
+
+
 class TestMajorFitSingleCount:
     """RANK-3: major fit is weighted once (inside score_eligibility). A
     cross-domain mismatch is still clearly demoted, but the signal is not
