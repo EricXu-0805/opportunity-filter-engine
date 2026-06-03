@@ -293,6 +293,37 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     return added, updated
 
 
+def deactivate_stale(all_opps: list[dict], active_ids: set[str],
+                     today: str | None = None) -> int:
+    """Mark previously-collected SimplifyJobs internships that have fallen off
+    the active+visible listing (closed/filled) as inactive.
+
+    These records carry no deadline (is_rolling=True), so deactivate_past never
+    catches them; this is the source-specific freshness pass. ``active_ids`` is
+    the id set from the current fetch. Returns the number newly deactivated.
+
+    No-op when ``active_ids`` is empty (a failed/empty fetch must never
+    mass-deactivate the whole source).
+    """
+    if not active_ids:
+        return 0
+    stamp = today or datetime.now(UTC).replace(tzinfo=None).date().isoformat()
+    count = 0
+    for opp in all_opps:
+        if opp.get("source") != "simplify_internships":
+            continue
+        if opp.get("id") in active_ids:
+            continue
+        meta = opp.setdefault("metadata", {})
+        if meta.get("is_active") is False:
+            continue
+        meta["is_active"] = False
+        meta["deactivated_at"] = stamp
+        meta["deactivation_reason"] = "no_longer_listed"
+        count += 1
+    return count
+
+
 if __name__ == "__main__":
     import argparse
 
