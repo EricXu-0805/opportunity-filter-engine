@@ -561,7 +561,17 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
             reasons_gap.append("Requires US citizenship or permanent residency")
         elif friendly == "unknown":
             intl_score = INTL_UNKNOWN_SCORE
-            reasons_gap.append("International eligibility unclear — verify before applying")
+            # DQ-6: "unknown" covers 37% of the corpus (mostly internships whose
+            # source sponsorship field was blank). For internships specifically,
+            # a flat deterrent over-discourages the primary audience — most allow
+            # CPT/OPT — so frame it as verify-don't-rule-out.
+            if opportunity.get("opportunity_type") == "internship":
+                reasons_gap.append(
+                    "International eligibility unclear — many internships qualify "
+                    "for CPT/OPT; confirm with the employer"
+                )
+            else:
+                reasons_gap.append("International eligibility unclear — verify before applying")
         else:
             reasons_fit.append("Open to international students")
 
