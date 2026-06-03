@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
+    _clean_research_phrase,
     _dedup_faculty_records,
     _demote_shared_keyword_pollution,
     _dept_broad_field,
+    _derive_keywords_from_raw,
     _extract_research_keywords,
     _is_section_label,
     normalize_faculty,
@@ -201,3 +203,65 @@ def test_demote_scoped_to_faculty_source():
     shared = ["a", "b"]
     rows = [{"source": "nsf_reu", "department": "X", "keywords": list(shared)} for _ in range(10)]
     assert _demote_shared_keyword_pollution(rows) == 0
+
+
+# DQ-2: recover real keywords from research_areas_raw for broad-only faculty.
+
+def test_clean_research_phrase_keeps_topical():
+    assert _clean_research_phrase("Dependent Type Theory") == "dependent type theory"
+    assert _clean_research_phrase("AI for Audio") == "ai for audio"
+    assert _clean_research_phrase("nanophotonics") == "nanophotonics"
+    assert _clean_research_phrase("Vertical cavity surface emitting lasers (VCSELs)") == "vertical cavity surface emitting lasers"
+
+
+def test_clean_research_phrase_rejects_noise():
+    for junk in (
+        "Research Areas", "CS 498 SCU", "and freight applications",
+        "My research focuses on the design", "(guitars", "Books Authored",
+        "education", "lab", "in particular", "monographs",
+    ):
+        assert _clean_research_phrase(junk) is None, junk
+
+
+def _fac_raw(pi_name, department, raw_text, keywords):
+    return {
+        "source": "uiuc_faculty", "pi_name": pi_name, "department": department,
+        "keywords": list(keywords), "metadata": {"research_areas_raw": raw_text},
+    }
+
+
+def test_derive_enriches_broad_only_with_unique_phrases():
+    rows = [_fac_raw(
+        "Minje Kim", "Siebel School of Computing and Data Science",
+        "AI for Audio, Source Separation, Model Compression", ["computer science"],
+    )]
+    assert _derive_keywords_from_raw(rows) == 1
+    assert rows[0]["keywords"] == ["ai for audio", "source separation", "model compression"]
+
+
+def test_derive_skips_dept_shared_nav_block():
+    # The same phrase set repeated across many same-dept peers is a nav block.
+    shared = "Architecture, Compilers and Parallel Computing, Artificial Intelligence"
+    dept = "Siebel School of Computing and Data Science"
+    rows = [_fac_raw(f"Prof {i}", dept, shared, ["computer science"]) for i in range(6)]
+    assert _derive_keywords_from_raw(rows) == 0
+    assert all(r["keywords"] == ["computer science"] for r in rows)
+
+
+def test_derive_skips_rows_with_specific_keyword():
+    rows = [_fac_raw(
+        "Has Specific", "Department of Physics",
+        "Nanophotonics, Biosensing", ["quantum optics"],
+    )]
+    assert _derive_keywords_from_raw(rows) == 0
+    assert rows[0]["keywords"] == ["quantum optics"]
+
+
+def test_derive_drops_self_name_token():
+    rows = [_fac_raw(
+        "Kellie Halloran", "Mechanical Science & Engineering",
+        "Halloran, Biomechanics", ["mechanical engineering"],
+    )]
+    _derive_keywords_from_raw(rows)
+    assert "halloran" not in rows[0]["keywords"]
+    assert rows[0]["keywords"] == ["biomechanics"]

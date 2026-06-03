@@ -18,7 +18,7 @@ import json
 import logging
 import re
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urljoin
@@ -1024,6 +1024,118 @@ def _demote_shared_keyword_pollution(opps: list[dict]) -> int:
     return demoted
 
 
+# DQ-2: recover real per-professor keywords from research_areas_raw for faculty
+# stuck on the broad-field fallback. The text is already stored (no re-scrape);
+# the fixed KEYWORD_BANK simply never matched niche areas ("nanophotonics",
+# "dependent type theory", "structural health monitoring"). We parse the
+# comma/line-delimited phrases and keep only clean, dept-unique topical ones.
+
+# A phrase shared by more than this many same-department peers is a "Research
+# Areas" navigation block (DQ-1), not personal research — drop it.
+_SHARED_PHRASE_NAV_THRESHOLD = 3
+
+# Page-furniture / non-topical labels that show up in scraped research-area text.
+_RESEARCH_AREA_NAV_NOISE = re.compile(
+    r"research area|book|monograph|selected article|articles? in|\bjournal|"
+    r"conference proceeding|linkedin|website|\bgroup\b|laborator|\blab\b|"
+    r"master of|bachelor|\bphd\b|usmle|step 1|review method|curriculum|teaching|"
+    r"biography|publication|award|honor|wiki|original edition|focuses on|"
+    r"in particular|crowd-?sourc|\bcontri|\bestab|^education|education$|"
+    r"our research|spec lab|click here|\bcv\b|\bsee\b|emphasis",
+    re.IGNORECASE,
+)
+_COURSE_CODE_RE = re.compile(r"\b[A-Za-z]{2,4}\s?\d{3}\b")
+# Phrases opening with a conjunction/preposition/pronoun are sentence fragments,
+# not topics (e.g. "and freight applications", "including best practices").
+_LEADING_NONTOPICAL_RE = re.compile(
+    r"^(?:and|or|including|with|the|our|some|in|of|for|to|a|an|my|we|is|are|"
+    r"that|this|by|emphasis)\b",
+    re.IGNORECASE,
+)
+_RESEARCH_FUNCTION_WORDS = frozenset({
+    "the", "of", "and", "to", "for", "with", "in", "on", "a", "an", "my", "i",
+    "we", "is", "are", "through", "at", "that", "this", "by", "including",
+})
+_GENERIC_SINGLE_WORDS = frozenset({
+    "education", "learning", "teaching", "solution", "solutions", "design",
+    "analysis", "modeling", "modelling", "research", "science", "methods",
+    "applications", "systems", "theory", "technology", "development",
+    "management", "computation",
+})
+
+
+def _split_research_phrases(text: str) -> list[str]:
+    return [p.strip() for p in re.split(r"[,\n;]", text) if p.strip()]
+
+
+def _clean_research_phrase(phrase: str) -> str | None:
+    """Normalize one scraped phrase into a clean topical keyword, or None when it
+    is navigation furniture, a sentence fragment, a course code, or too generic."""
+    p = re.sub(r"\s*\([^)]*\)", "", phrase).strip().strip(".;:,").strip()
+    if "(" in p or ")" in p or _COURSE_CODE_RE.search(p):
+        return None
+    if not re.match(r"^[A-Za-z][A-Za-z0-9 &/\-]+$", p):
+        return None
+    words = p.split()
+    if not (1 <= len(words) <= 5) or not (4 <= len(p) <= 46):
+        return None
+    if _RESEARCH_AREA_NAV_NOISE.search(p) or _LEADING_NONTOPICAL_RE.match(p):
+        return None
+    if sum(1 for w in words if w.lower() in _RESEARCH_FUNCTION_WORDS) >= 2:
+        return None
+    if len(words) == 1 and (p.lower() in _GENERIC_SINGLE_WORDS or len(p) < 6):
+        return None
+    return p.lower()
+
+
+def _derive_keywords_from_raw(opps: list[dict]) -> int:
+    """Enrich broad-field-only faculty with real keywords parsed from their stored
+    research_areas_raw text (DQ-2). Mutates ``opps`` in place; returns the count
+    of records enriched. Skips dept-shared (nav-block) phrases to avoid
+    re-introducing DQ-1 pollution, and self-name tokens to avoid collaborator
+    surnames leaking in as topics."""
+    fac = [o for o in opps if o.get("source") == "uiuc_faculty"]
+
+    dept_phrase_counts: dict[str, Counter] = defaultdict(Counter)
+    for o in fac:
+        raw_text = (o.get("metadata") or {}).get("research_areas_raw") or ""
+        for p in _split_research_phrases(raw_text):
+            dept_phrase_counts[o.get("department", "")][p.lower()] += 1
+
+    enriched = 0
+    for o in fac:
+        broad = _dept_broad_field(o.get("department", ""))
+        kws = [k.lower() for k in (o.get("keywords") or [])]
+        if kws not in ([], [broad]):
+            continue  # already carries a specific keyword, or no broad fallback
+
+        raw_text = (o.get("metadata") or {}).get("research_areas_raw") or ""
+        if not raw_text.strip():
+            continue
+        parts = _split_research_phrases(raw_text)
+        if len(raw_text) >= 295 and parts:
+            parts = parts[:-1]  # the 300-char cap usually truncates the last phrase
+
+        name_tokens = {t.lower() for t in re.split(r"\W+", o.get("pi_name") or "") if t}
+        counts = dept_phrase_counts[o.get("department", "")]
+        derived: list[str] = []
+        for p in parts:
+            if counts[p.lower()] > _SHARED_PHRASE_NAV_THRESHOLD:
+                continue
+            cleaned = _clean_research_phrase(p)
+            if not cleaned or cleaned == broad or cleaned in derived:
+                continue
+            if cleaned in name_tokens:  # a collaborator/self surname, not a topic
+                continue
+            derived.append(cleaned)
+            if len(derived) >= 4:
+                break
+        if derived:
+            o["keywords"] = derived
+            enriched += 1
+    return enriched
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -1057,6 +1169,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     demoted = _demote_shared_keyword_pollution(all_opps)
     if demoted:
         logger.info(f"Demoted {demoted} faculty record(s) with shared department-block keywords to the broad field")
+
+    enriched = _derive_keywords_from_raw(all_opps)
+    if enriched:
+        logger.info(f"Enriched {enriched} broad-field faculty record(s) with keywords derived from research_areas_raw")
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
