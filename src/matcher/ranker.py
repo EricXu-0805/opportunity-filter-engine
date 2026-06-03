@@ -31,6 +31,8 @@ from .config import (
     STRETCH_BLEND,
     STRETCH_MIDPOINT,
     STRETCH_SIGMOID_K,
+    TOPIC_MISMATCH_PENALTY,
+    TOPIC_UNKNOWN_PENALTY,
     WEIGHTS_DEFAULT,
 )
 
@@ -938,6 +940,63 @@ def _is_undergrad(profile: dict) -> bool:
     return str(profile.get("year", "")).strip().lower() not in _GRADUATE_YEARS
 
 
+# Broad department fields (a faculty row's keyword[0] after the keyword-pollution
+# fix). They name a department, not an individual's research area, so they are
+# treated as "no specific area" rather than a topic to align against — otherwise
+# a cleaned "physics" row would read as a topic mismatch instead of unknown.
+_BROAD_FIELDS = frozenset({
+    "computer science", "physics", "chemistry", "mathematics", "biology",
+    "molecular biology", "integrative biology", "psychology", "economics",
+    "statistics", "information science", "linguistics", "communication",
+    "english", "political science", "anthropology", "sociology", "history",
+    "philosophy", "geology", "astronomy", "atmospheric sciences",
+    "civil engineering", "mechanical engineering", "electrical engineering",
+    "chemical engineering", "aerospace", "nuclear engineering",
+    "industrial engineering", "bioengineering", "materials science",
+})
+
+
+def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
+    """Demote research postings whose area contradicts a student's stated
+    interests. Returns a multiplier in (0, 1].
+
+    Only research postings are judged, and only when the student named at least
+    two specific interest tokens (otherwise there is nothing to align against,
+    so the multiplier is a no-op 1.0). A posting's curated keywords, minus broad
+    department fields, are the topic signal:
+
+      - a keyword phrase appears in the interest text  -> aligned (1.0)
+      - the posting has specific keywords, none appear  -> mismatch penalty
+      - the posting has no specific keywords            -> unknown penalty
+
+    Forward phrase matching (keyword inside interest text) avoids the
+    "computer" / "computers and education" false positive that per-token
+    matching produced.
+    """
+    if opportunity.get("opportunity_type", "") != "research":
+        return 1.0
+
+    interest = (profile.get("research_interests_text") or "").strip().lower()
+    interest_tokens = {t for t in _tokenize(interest) if t not in _GENERIC_INTEREST_WORDS}
+    if len(interest_tokens) < 2:
+        return 1.0
+
+    specific = [
+        k.lower() for k in _extract_specific_keywords(opportunity)
+        if k.lower() not in _BROAD_FIELDS
+    ]
+    if not specific:
+        return TOPIC_UNKNOWN_PENALTY
+
+    for kw in specific:
+        canon = _canonicalize_skill(kw)
+        if (len(kw) >= 4 and kw in interest) or (
+            canon != kw and len(canon) >= 4 and canon in interest
+        ):
+            return 1.0
+    return TOPIC_MISMATCH_PENALTY
+
+
 def rank_opportunity(
     profile: dict,
     opportunity: dict,
@@ -974,6 +1033,12 @@ def rank_opportunity(
             raw *= MAJOR_PENALTY_HARD
         elif mm_score <= MAJOR_PENALTY_SOFT_AT:
             raw *= MAJOR_PENALTY_SOFT
+
+    topic_penalty = _topic_alignment_penalty(profile, opportunity)
+    if topic_penalty < 1.0:
+        raw *= topic_penalty
+        if topic_penalty <= TOPIC_MISMATCH_PENALTY:
+            elig_gap.append("Research area looks different from your stated interests")
 
     final = _stretch_score(raw)
 
