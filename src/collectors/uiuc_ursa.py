@@ -17,7 +17,7 @@ import argparse
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -91,7 +91,7 @@ def _hash_id(title: str, source: str) -> str:
 
 
 def _to_normalized(r: RawOpportunity) -> dict:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     return {
         "id": _hash_id("URSA Program Overview", r.source),
         "source": r.source,

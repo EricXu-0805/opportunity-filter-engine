@@ -19,7 +19,7 @@ import logging
 import os
 import sys
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -67,7 +67,7 @@ def create_opportunity(
     from src.normalizers.enricher import enrich_opportunity
 
     opp_id = kwargs.get("id") or f"manual-{uuid.uuid4().hex[:8]}"
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
     opp = {
         "id": opp_id,

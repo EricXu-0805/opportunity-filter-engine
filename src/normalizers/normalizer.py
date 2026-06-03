@@ -5,7 +5,7 @@ V1 uses rule-based extraction. V2 will add LLM-powered extraction.
 
 import re
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 
@@ -77,9 +77,9 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
 
         "metadata": {
             "confidence_score": 0.6,  # Default; increase after manual review
-            "last_verified": datetime.utcnow().isoformat(),
-            "first_seen_at": datetime.utcnow().isoformat(),
-            "last_seen_at": datetime.utcnow().isoformat(),
+            "last_verified": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+            "first_seen_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+            "last_seen_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
             "is_active": True,
             "manually_reviewed": False,
             "notes": "",

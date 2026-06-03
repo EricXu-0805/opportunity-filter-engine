@@ -23,7 +23,7 @@ import argparse
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -232,7 +232,7 @@ def _hash_id(program_key: str, source: str) -> str:
 
 
 def _to_normalized(r: RawOpportunity) -> dict:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     majors = r.extra_fields.pop("_majors", [])
     preferred_year = r.extra_fields.pop("_preferred_year", ["sophomore", "junior"])
     paid = r.extra_fields.pop("_paid", "unknown")
