@@ -1,3 +1,6 @@
+from src.matcher.ranker import _BROAD_FIELDS
+
+
 def _extract_skill_names(raw_skills: list) -> list[str]:
     result = []
     for s in raw_skills:
@@ -308,16 +311,23 @@ def _subject(p: dict, style: str = "") -> str:
         "humanities": "Research Assistant Interest",
     }.get(lab_type, "Research Inquiry")
 
+    # CE-3: assemble the "<Year> <Major> student" label by joining only the
+    # fields that are present, so a sparse profile can't render "  student" or
+    # a stray double space.
+    major = (p.get("major") or "").strip()
+    who = " ".join(filter(None, [(p.get("year") or "").strip().capitalize(), major, "student"]))
+
     if style == "concise":
         ctx = lab or area or p["title"] or "research"
-        return f"Subject: {p['major']} student — {ctx}"
+        who_concise = f"{major} student" if major else "student"
+        return f"Subject: {who_concise} — {ctx}"
 
     if lab and "Prof" in lab:
-        return f"Subject: {intent} — {p['year'].capitalize()} {p['major']} student, interest in joining {lab}"
+        return f"Subject: {intent} — {who}, interest in joining {lab}"
     if area:
-        return f"Subject: {intent} — {p['year']} {p['major']} student, background in {area}"
+        return f"Subject: {intent} — {who}, background in {area}"
     ctx = lab or p["title"] or "your research"
-    return f"Subject: {intent} — {p['year'].capitalize()} {p['major']} student, interest in {ctx}"
+    return f"Subject: {intent} — {who}, interest in {ctx}"
 
 
 def _closing(p: dict) -> str:
@@ -355,11 +365,33 @@ def _ask_for_lab_type(lab_type: LabType) -> str:
     )
 
 
+def _at_school(p: dict) -> str:
+    school = (p.get("school") or "").strip()
+    return f" at {school}" if school else ""
+
+
+def _student_self(p: dict, connector: str) -> str:
+    """Grammatical self-description that omits any missing year/major/school
+    without leaving double spaces or dangling words (CE-3). ``connector`` picks
+    the voice: 'studying' -> 'a sophomore studying CS', 'major' -> 'a sophomore
+    CS major', 'student' -> 'a sophomore CS student'."""
+    year = (p.get("year") or "").strip()
+    major = (p.get("major") or "").strip()
+    at = _at_school(p)
+    if not major:
+        return (f"a {year} student" if year else "a student") + at
+    if connector == "studying":
+        return (f"a {year} studying {major}" if year else f"a student studying {major}") + at
+    if connector == "major":
+        return f"a {' '.join(filter(None, [year, major]))} major{at}"
+    return f"a {' '.join(filter(None, [year, major]))} student{at}"
+
+
 def _build_balanced(p: dict) -> str:
     subject = _subject(p)
     greeting = f"Dear {p['recipient']},"
 
-    intro = f"My name is {p['name']}, and I am a {p['year']} studying {p['major']} at {p['school']}."
+    intro = f"My name is {p['name']}, and I am {_student_self(p, 'studying')}."
     intro += _p1_research_hook(p)
 
     skills_para = _p2_skills_applied(p)
@@ -373,7 +405,7 @@ def _build_skills_focus(p: dict) -> str:
     subject = _subject(p)
     greeting = f"Dear {p['recipient']},"
 
-    intro = f"My name is {p['name']}, and I am a {p['year']} {p['major']} major at {p['school']}."
+    intro = f"My name is {p['name']}, and I am {_student_self(p, 'major')}."
     intro += _p1_research_hook(p)
 
     skills_para = ""
@@ -429,7 +461,7 @@ def _build_concise(p: dict) -> str:
     subject = _subject(p, style="concise")
     greeting = f"Dear {p['recipient']},"
 
-    core = f"I am a {p['year']} {p['major']} student at {p['school']}"
+    core = f"I am {_student_self(p, 'student')}"
     if p["research_area"]:
         core += f", interested in {p['research_area']}"
     core += "."
@@ -454,38 +486,55 @@ def _p1_research_hook(p: dict) -> str:
     lab = p["lab"]
     interests = p["research_interests"]
 
-    is_short_topic = research_topic and len(research_topic) < 50 and " " in research_topic
+    # CE-1: a bare broad department field ("physics", "molecular biology") is not
+    # a specific topic — claiming a student's interest "aligns closely" with it is
+    # exactly the lazy, unsupported outreach this email is meant to avoid. Drop a
+    # broad field so the hook falls back to a lab-only opener that makes no
+    # false-alignment claim.
+    if research_area and research_area.lower() in _BROAD_FIELDS:
+        research_area = ""
+    if research_topic and research_topic.lower() in _BROAD_FIELDS:
+        research_topic = ""
 
-    if interests and is_short_topic and lab:
+    # CE-2: compute the lab reference once so every branch drops the article
+    # before a possessive proper-noun lab ("Prof. X's Research Group") — one
+    # branch used to hardcode the ungrammatical "in the {lab}".
+    if lab and lab[0].isupper() and ("Prof" in lab or "'s" in lab):
+        lab_ref = lab
+    elif lab:
+        lab_ref = f"the {lab}"
+    else:
+        lab_ref = ""
+
+    is_short_topic = bool(research_topic and len(research_topic) < 50 and " " in research_topic)
+    short_interest = interests[:80].rstrip(".") if interests else ""
+
+    if interests and is_short_topic and lab_ref:
         return (
             f" I am writing because your work on {research_topic}"
-            f" in the {lab} strongly resonates with my interest in"
-            f" {interests[:80].rstrip('.')}."
+            f" in {lab_ref} strongly resonates with my interest in {short_interest}."
         )
     if interests and is_short_topic:
         return (
             f" I am writing because your research on {research_topic}"
-            f" closely aligns with my interest in {interests[:80].rstrip('.')}."
+            f" closely aligns with my interest in {short_interest}."
         )
-    if interests and research_area and lab:
-        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
+    if interests and research_area and lab_ref:
         return (
             f" I came across {lab_ref} and your work in {research_area},"
-            f" which aligns closely with my interest in {interests[:80].rstrip('.')}."
+            f" which aligns closely with my interest in {short_interest}."
         )
     if interests and research_area:
         return (
             f" I am reaching out because your work in {research_area}"
-            f" aligns with my interest in {interests[:80].rstrip('.')}."
+            f" aligns with my interest in {short_interest}."
         )
-    if interests and lab:
-        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
+    if interests and lab_ref:
         return (
             f" I came across {lab_ref} and am very interested in"
             f" contributing, as my background in {interests[:60].rstrip('.')} is closely related."
         )
-    if is_short_topic and lab:
-        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
+    if is_short_topic and lab_ref:
         return (
             f" I came across {lab_ref} and your work on {research_topic},"
             f" and would like to learn more about opportunities to contribute."
@@ -496,8 +545,7 @@ def _p1_research_hook(p: dict) -> str:
             f" and would like to learn more about opportunities"
             f" to contribute."
         )
-    if lab:
-        lab_ref = lab if lab[0].isupper() and ("Prof" in lab or "'s" in lab) else f"the {lab}"
+    if lab_ref:
         return (
             f" I came across {lab_ref} and am very interested"
             f" in contributing to your research."
