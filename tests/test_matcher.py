@@ -501,6 +501,13 @@ class TestTopicAlignmentPenalty:
         opp = self._research(["computer science"])
         assert _topic_alignment_penalty(self._profile(), opp) == TOPIC_UNKNOWN_PENALTY
 
+    def test_unknown_penalty_defaults_to_no_op(self):
+        # RANK-1: an unenriched (broad-field-only) lab is a data gap, not a
+        # mismatch, so the unknown case must not demote (default 1.0).
+        assert TOPIC_UNKNOWN_PENALTY == 1.0
+        opp = self._research(["physics"])
+        assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
     def test_non_research_never_penalized(self):
         opp = {"opportunity_type": "internship", "keywords": ["computers and education"]}
         assert _topic_alignment_penalty(self._profile(), opp) == 1.0
@@ -513,3 +520,56 @@ class TestTopicAlignmentPenalty:
         # "computer" (from the interest) must NOT match "computers and education"
         opp = self._research(["computers and education"])
         assert _topic_alignment_penalty(self._profile(), opp) == TOPIC_MISMATCH_PENALTY
+
+    # RANK-2: short acronym interests must align with the area the student wants,
+    # in both directions (acronym keyword vs acronym/full-phrase interest).
+    def test_acronym_keyword_aligns_with_acronym_interest(self):
+        opp = self._research(["nlp", "dialogue systems"])
+        assert _topic_alignment_penalty(self._profile(interest="nlp and robotics"), opp) == 1.0
+
+    def test_acronym_interest_aligns_with_full_phrase_keyword(self):
+        opp = self._research(["natural language processing"])
+        assert _topic_alignment_penalty(self._profile(interest="nlp and reinforcement"), opp) == 1.0
+
+    def test_full_phrase_interest_aligns_with_acronym_keyword(self):
+        opp = self._research(["cv"])
+        prof = self._profile(interest="computer vision and robotics")
+        assert _topic_alignment_penalty(prof, opp) == 1.0
+
+
+class TestTopicAlignmentRankingRegression:
+    """Golden regression: the topic penalty must move final_score in the right
+    direction — an aligned research posting ranks above a confirmed mismatch,
+    while an unenriched (broad-field-only) posting is NOT demoted like a
+    mismatch (RANK-1)."""
+
+    INTEREST = "machine learning and computer vision"
+
+    def _profile(self):
+        return {
+            "year": "sophomore", "major": "CS",
+            "research_interests_text": self.INTEREST,
+            "seeking_type": ["research"],
+        }
+
+    def _opp(self, oid, keywords):
+        return {
+            "id": oid, "opportunity_type": "research",
+            "title": "Undergraduate Research Position",
+            "keywords": keywords, "eligibility": {}, "application": {},
+        }
+
+    def test_aligned_outranks_confirmed_mismatch(self):
+        prof = self._profile()
+        aligned = rank_opportunity(prof, self._opp("a", ["computer vision", "robotics"]))
+        mismatch = rank_opportunity(prof, self._opp("m", ["medieval history", "poetry"]))
+        assert aligned.final_score > mismatch.final_score
+
+    def test_unknown_lab_not_demoted_like_mismatch(self):
+        # The unenriched (broad-field) lab must score strictly above a confirmed
+        # topic mismatch: a missing keyword is a data gap, not poor fit.
+        prof = self._profile()
+        unknown = rank_opportunity(prof, self._opp("u", ["physics"]))
+        mismatch = rank_opportunity(prof, self._opp("m", ["medieval history", "poetry"]))
+        assert unknown.final_score > mismatch.final_score
+        assert "Research area looks different from your stated interests" not in unknown.reasons_gap
