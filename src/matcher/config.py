@@ -69,10 +69,13 @@ MAJOR_PENALTY_HARD_AT = _env_float("OFE_MAJOR_PEN_HARD_AT", 10.0)
 MAJOR_PENALTY_SOFT_AT = _env_float("OFE_MAJOR_PEN_SOFT_AT", 20.0)
 
 # Research-topic alignment: when a student names specific research interests,
-# a research posting whose curated areas don't match them is demoted. "Unknown"
-# (we have no specific area for the lab) is penalized less than a confirmed
-# topic mismatch.
-TOPIC_UNKNOWN_PENALTY = _env_float("OFE_TOPIC_UNKNOWN_PEN", 0.90)
+# a research posting whose curated areas *contradict* them is demoted. "Unknown"
+# (we have no specific area for the lab — true for ~73% of faculty rows that
+# carry only a broad department field) defaults to a no-op 1.0: a missing
+# enrichment is a data gap, not evidence of poor fit, so penalizing it would
+# systematically steer research-seekers away from research. Only a *confirmed*
+# mismatch (the lab has specific keywords, none align) is penalized.
+TOPIC_UNKNOWN_PENALTY = _env_float("OFE_TOPIC_UNKNOWN_PEN", 1.0)
 TOPIC_MISMATCH_PENALTY = _env_float("OFE_TOPIC_MISMATCH_PEN", 0.80)
 
 STRETCH_SIGMOID_K = _env_float("OFE_STRETCH_K", 0.07)

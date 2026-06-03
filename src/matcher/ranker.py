@@ -965,13 +965,15 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     so the multiplier is a no-op 1.0). A posting's curated keywords, minus broad
     department fields, are the topic signal:
 
-      - a keyword phrase appears in the interest text  -> aligned (1.0)
-      - the posting has specific keywords, none appear  -> mismatch penalty
-      - the posting has no specific keywords            -> unknown penalty
+      - a keyword aligns with the interest               -> aligned (1.0)
+      - the posting has specific keywords, none align    -> mismatch penalty
+      - the posting has no specific keywords (unknown)   -> TOPIC_UNKNOWN_PENALTY
+        (defaults to 1.0: an unenriched lab is a data gap, not a poor fit)
 
-    Forward phrase matching (keyword inside interest text) avoids the
-    "computer" / "computers and education" false positive that per-token
-    matching produced.
+    Alignment matches on exact token equality, canonical-form equality (so the
+    acronym "nlp"/"ml"/"cv" the student typed lines up with a full-phrase
+    keyword and vice-versa), or a len>=4 substring containment (which avoids the
+    "computer" / "computers and education" false positive per-token matching had).
     """
     if opportunity.get("opportunity_type", "") != "research":
         return 1.0
@@ -980,6 +982,12 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     interest_tokens = {t for t in _tokenize(interest) if t not in _GENERIC_INTEREST_WORDS}
     if len(interest_tokens) < 2:
         return 1.0
+
+    # Canonicalize the interest tokens too (not just the keyword) so a student
+    # who types an acronym ("ml", "nlp", "cv") aligns with a posting keyword
+    # stored as the full phrase, and vice-versa — without this the student's
+    # best topical match got the MISMATCH penalty (RANK-2).
+    interest_canon = {_canonicalize_skill(t) for t in interest_tokens}
 
     specific = [
         k.lower() for k in _extract_specific_keywords(opportunity)
@@ -990,9 +998,19 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
 
     for kw in specific:
         canon = _canonicalize_skill(kw)
-        if (len(kw) >= 4 and kw in interest) or (
+        # Whole-token / canonical equality aligns regardless of length, so a
+        # short acronym keyword ("nlp") or a short canonicalized interest still
+        # matches. The len>=4 gate is kept only for loose substring containment,
+        # which guards "computer" from matching inside "computers and education".
+        exact = (
+            kw in interest_tokens
+            or canon in interest_canon
+            or canon in interest_tokens
+        )
+        substring = (len(kw) >= 4 and kw in interest) or (
             canon != kw and len(canon) >= 4 and canon in interest
-        ):
+        )
+        if exact or substring:
             return 1.0
     return TOPIC_MISMATCH_PENALTY
 
