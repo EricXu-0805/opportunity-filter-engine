@@ -18,6 +18,9 @@ from src.normalizers.deactivate_past import deactivate_past
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
+from .simplify_internships import deactivate_stale as deactivate_simplify_stale
+from .simplify_internships import fetch_and_normalize as fetch_simplify
+from .simplify_internships import merge_into_processed as merge_simplify
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
@@ -224,6 +227,30 @@ def refresh_all(deep: bool = True) -> dict:
             logger.error(f"{source_name} collection failed: {e}")
             summary["sources"][source_name] = {"status": "error", "error": str(e)}
 
+    # 5b. SimplifyJobs internships (autonomous GitHub raw fetch — no auth)
+    logger.info("=" * 50)
+    logger.info("Collecting from SimplifyJobs internships...")
+    simplify_active_ids: set[str] = set()
+    simplify_ok = False
+    try:
+        simplify_opps = fetch_simplify()
+        if simplify_opps:
+            simplify_active_ids = {o["id"] for o in simplify_opps}
+            simplify_ok = True
+        added, updated = merge_simplify(simplify_opps)
+        summary["sources"]["simplify_internships"] = {
+            "fetched": len(simplify_opps),
+            "new": added,
+            "updated": updated,
+            "status": "ok",
+        }
+        summary["total_new"] += added
+        summary["total_updated"] += updated
+        logger.info(f"Simplify: {len(simplify_opps)} fetched, {added} new, {updated} updated")
+    except Exception as e:
+        logger.error(f"Simplify internships collection failed: {e}")
+        summary["sources"]["simplify_internships"] = {"status": "error", "error": str(e)}
+
     # 6. PI enrichment pass
     logger.info("=" * 50)
     logger.info("Running PI / contact email enrichment...")
@@ -246,6 +273,12 @@ def refresh_all(deep: bool = True) -> dict:
         # closes that gap and keeps the JSON file in sync with what would land
         # in CI on the next push.
         deact_counts = deactivate_past(all_opps)
+
+        if simplify_ok:
+            simplify_stale = deactivate_simplify_stale(all_opps, simplify_active_ids)
+            summary["sources"]["simplify_internships"]["deactivated_stale"] = simplify_stale
+            logger.info("Simplify: %d stale internships deactivated", simplify_stale)
+
         with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
             json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
         summary["sources"]["deactivate_past"] = {

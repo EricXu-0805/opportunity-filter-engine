@@ -10,6 +10,7 @@ from src.collectors import simplify_internships as si
 from src.collectors.simplify_internships import (
     _epoch_to_iso,
     _format_location,
+    deactivate_stale,
     fetch_and_normalize,
     normalize_listing,
 )
@@ -151,3 +152,42 @@ def test_normalized_record_honors_data_quality_contract(monkeypatch):
 def test_missing_required_fields_returns_none():
     assert normalize_listing({"id": "x", "title": "", "company_name": "Y"}) is None
     assert normalize_listing({"id": "", "title": "T", "company_name": "Y"}) is None
+
+
+def _stale_dataset():
+    return [
+        {"id": "simplify-intern-aaa", "source": "simplify_internships",
+         "metadata": {"is_active": True}},
+        {"id": "simplify-intern-bbb", "source": "simplify_internships",
+         "metadata": {"is_active": True}},
+        {"id": "faculty-cs-123", "source": "uiuc_faculty",
+         "metadata": {"is_active": True}},
+    ]
+
+
+def test_deactivate_stale_marks_delisted_inactive():
+    data = _stale_dataset()
+    n = deactivate_stale(data, {"simplify-intern-aaa"}, today="2026-06-03")
+    assert n == 1
+    by_id = {o["id"]: o for o in data}
+    assert by_id["simplify-intern-aaa"]["metadata"]["is_active"] is True
+    bbb = by_id["simplify-intern-bbb"]["metadata"]
+    assert bbb["is_active"] is False
+    assert bbb["deactivated_at"] == "2026-06-03"
+    assert bbb["deactivation_reason"] == "no_longer_listed"
+    assert by_id["faculty-cs-123"]["metadata"]["is_active"] is True
+
+
+def test_deactivate_stale_empty_active_ids_is_noop():
+    data = _stale_dataset()
+    assert deactivate_stale(data, set()) == 0
+    assert all(o["metadata"]["is_active"] is True for o in data)
+
+
+def test_deactivate_stale_is_idempotent():
+    data = _stale_dataset()
+    deactivate_stale(data, {"simplify-intern-aaa"}, today="2026-06-03")
+    n2 = deactivate_stale(data, {"simplify-intern-aaa"}, today="2026-07-01")
+    assert n2 == 0
+    bbb = {o["id"]: o for o in data}["simplify-intern-bbb"]["metadata"]
+    assert bbb["deactivated_at"] == "2026-06-03"
