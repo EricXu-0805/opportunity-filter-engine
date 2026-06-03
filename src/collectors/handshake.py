@@ -23,7 +23,7 @@ import shutil
 import sqlite3
 import sys
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -265,7 +265,7 @@ def normalize_posting(raw: dict) -> dict:
 
     pid = raw["handshake_id"]
     opp_id = f"handshake-{hashlib.md5(pid.encode()).hexdigest()[:8]}"
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
     desc = raw.get("description", "")
     keywords = _extract_keywords(desc)

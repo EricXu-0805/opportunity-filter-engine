@@ -7,7 +7,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class BaseCollector(ABC):
 
             result = ScrapeResult(
                 source=self.source_name,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC).replace(tzinfo=None),
                 success=True,
                 records_found=len(raw_opportunities),
                 records_new=0,  # Updated after dedup in pipeline
@@ -90,7 +90,7 @@ class BaseCollector(ABC):
 
             return ScrapeResult(
                 source=self.source_name,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC).replace(tzinfo=None),
                 success=False,
                 records_found=0,
                 records_new=0,

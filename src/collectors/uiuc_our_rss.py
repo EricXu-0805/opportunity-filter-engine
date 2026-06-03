@@ -16,7 +16,7 @@ import re
 import ssl
 import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import UTC, datetime
 from html import unescape
 from pathlib import Path
 from typing import Optional
@@ -168,7 +168,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
     url_hash = hashlib.md5(raw.url.encode()).hexdigest()[:8]
     opp_id = f"rss-our-{url_hash}"
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
     opp = {
         "id": opp_id,

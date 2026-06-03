@@ -2,7 +2,7 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -201,7 +201,7 @@ def normalize_award(award: dict) -> dict:
     url = f"https://www.nsf.gov/awardsearch/showAward?AWD_ID={nsf_id}" if nsf_id else ""
 
     opp_id = f"nsf-reu-{nsf_id}" if nsf_id else f"nsf-reu-{hashlib.md5(title.encode()).hexdigest()[:8]}"
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
     skills = _extract_skills_from_abstract(abstract)
     majors = _infer_majors(title, abstract, program)

@@ -17,7 +17,7 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -175,7 +175,7 @@ def _hash_id(title: str, source: str) -> str:
 
 
 def _to_normalized(r: RawOpportunity) -> dict:
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     paid = r.extra_fields.pop("_paid", "unknown")
     preferred_year = r.extra_fields.pop("_preferred_year", ["junior", "senior"])
     return {

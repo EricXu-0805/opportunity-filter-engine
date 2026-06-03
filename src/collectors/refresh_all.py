@@ -10,7 +10,7 @@ Usage:
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from src.normalizers.deactivate_past import deactivate_past
@@ -113,7 +113,7 @@ def refresh_all(deep: bool = True) -> dict:
     Returns a summary dict with counts per source and totals.
     """
     summary = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).replace(tzinfo=None).isoformat(),
         "sources": {},
         "total_new": 0,
         "total_updated": 0,
@@ -313,7 +313,7 @@ if __name__ == "__main__":
     except Exception as e:
         elapsed = time.time() - start
         summary = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).replace(tzinfo=None).isoformat(),
             "sources": {},
             "total_new": 0,
             "total_updated": 0,

@@ -18,7 +18,7 @@ import json
 import logging
 import re
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -766,7 +766,7 @@ def normalize_faculty(person: dict, dept_config: dict) -> dict | None:
     name_hash = hashlib.md5(f"{dept_short}-{name}".encode()).hexdigest()[:8]
     opp_id = f"faculty-{dept_short.lower()}-{name_hash}"
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     keywords = _extract_research_keywords(person, dept_config)
     skills = _infer_skills_from_research(person)
 
