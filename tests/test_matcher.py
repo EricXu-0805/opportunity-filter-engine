@@ -432,6 +432,51 @@ class TestRankAll:
         assert len(results) == 0  # Nothing meets 999 threshold
 
 
+class TestHighPriorityBucketing:
+    """RANK-6: high_priority is a focused, quality-gated shortlist (top-N that
+    clear OFE_BUCKET_HIGH), normalized across profiles — not a flat absolute floor
+    that yields 5 for one student and 80 for another."""
+
+    def _opps(self):
+        path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
+        if not os.path.exists(path):
+            pytest.skip("No processed data file")
+        with open(path) as f:
+            return json.load(f)
+
+    def test_high_priority_quality_gated_and_bounded(self):
+        from src.matcher.config import BUCKET_THRESHOLDS
+        floor_high = float(BUCKET_THRESHOLDS[0][0])
+        opps = self._opps()
+        prof = {
+            "year": "sophomore", "major": "CS",
+            "research_interests_text": "machine learning, computer vision",
+            "seeking_type": ["research"],
+            "hard_skills": [{"name": "Python", "level": "experienced"}],
+            "coursework": ["CS225"], "experience_level": "some",
+        }
+        results = rank_all(prof, opps)
+        hp = [r for r in results if r.bucket == "high_priority"]
+        good = [r for r in results if r.bucket == "good_match"]
+        # Every high_priority result clears the quality floor.
+        assert all(r.final_score >= floor_high for r in hp)
+        # It's a focused shortlist (not the bulk of results) and not empty for a
+        # strong-interest profile.
+        assert 0 < len(hp) <= 100
+        assert len(hp) < len(good)
+
+    def test_sparse_profile_high_priority_still_quality_gated(self):
+        from src.matcher.config import BUCKET_THRESHOLDS
+        floor_high = float(BUCKET_THRESHOLDS[0][0])
+        opps = self._opps()
+        prof = {"year": "freshman", "major": "ECE", "research_interests_text": "",
+                "seeking_type": [], "experience_level": "none"}
+        hp = [r for r in rank_all(prof, opps) if r.bucket == "high_priority"]
+        # A sparse profile must never get a high_priority below the quality floor
+        # (an honest empty top bucket is acceptable).
+        assert all(r.final_score >= floor_high for r in hp)
+
+
 class TestBucketClassification:
     def test_thresholds_descending(self):
         thresholds = [t for t, _ in BUCKET_THRESHOLDS]
