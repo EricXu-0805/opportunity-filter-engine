@@ -390,6 +390,60 @@ describe('ColdEmailModal', () => {
       expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1);
       expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument();
     });
+
+    it('FE-5: shows a durable "template, not AI" badge when the AI pill falls back', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGenerateColdEmail.mockResolvedValue({
+        subject: 'T', body: 'Template Body', recipient_email: 'p@x.edu',
+        mailto_link: 'mailto:p@x.edu', method: 'template', fallback_reason: 'not_configured',
+      });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      await waitFor(() =>
+        expect(screen.getByText('coldEmail.templateFallbackBadge')).toBeInTheDocument(),
+      );
+    });
+
+    it('FE-5: shows no template badge when the AI draft is genuine', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGenerateColdEmail.mockResolvedValue({
+        subject: 'AI', body: 'AI Body', recipient_email: 'p@x.edu',
+        mailto_link: 'mailto:p@x.edu', method: 'ai',
+      });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      await waitFor(() => expect(screen.getByDisplayValue('AI Body')).toBeInTheDocument());
+      expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
+    });
+  });
+
+  describe('send buttons (FE-2)', () => {
+    it('disables the deep-link send buttons when no recipient is resolved', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant({ recipient_email: '' })] });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      expect(screen.getByText('coldEmail.openInEmail').closest('button')).toBeDisabled();
+      expect(screen.getByText('coldEmail.gmail').closest('button')).toBeDisabled();
+      // The copy button stays usable — pasting elsewhere is still helpful.
+      expect(screen.getByText('coldEmail.copy').closest('button')).not.toBeDisabled();
+    });
+
+    it('enables the send buttons once a recipient is present', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant({ recipient_email: 'prof@illinois.edu' })] });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      expect(screen.getByText('coldEmail.openInEmail').closest('button')).not.toBeDisabled();
+    });
   });
 
   describe('error handling', () => {
