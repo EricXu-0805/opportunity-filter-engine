@@ -71,6 +71,7 @@ def chat_completion(
     *,
     max_tokens: int = 400,
     temperature: float = 0.4,
+    reasoning_effort: str = "none",
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
 
@@ -103,7 +104,7 @@ def chat_completion(
         "max_tokens": max_tokens,
     }
     if provider.model.startswith("gemini-"):
-        call_kwargs["extra_body"] = {"reasoning_effort": "none"}
+        call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
 
     last_error: Optional[Exception] = None
     for attempt in range(1, _MAX_ATTEMPTS + 1):
