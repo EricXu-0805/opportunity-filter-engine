@@ -194,7 +194,13 @@ def normalize_listing(raw: dict) -> dict | None:
         "on_campus": False,
         "remote_option": remote_option,
         "opportunity_type": "internship",
-        "paid": "unknown",
+        # DQ-3: these are curated corporate tech internships (Meta, Jane Street,
+        # Northrop, ...) which are virtually all paid; the source listings carry
+        # no comp field, so "stipend" is a far more accurate default than
+        # "unknown" (which floored the paid upside subscore at 40 and suppressed
+        # the "Includes stipend" reason chip). "stipend" rather than "yes" avoids
+        # over-claiming "Paid opportunity" on the unpaid minority.
+        "paid": "stipend",
         "compensation_details": "",
         "deadline": None,
         "posted_date": _epoch_to_iso(raw.get("date_posted")),

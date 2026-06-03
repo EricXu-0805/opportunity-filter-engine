@@ -116,6 +116,13 @@ def test_category_seeds_keywords_and_majors():
     assert "Computer Science" in amazon["eligibility"]["majors"]
 
 
+def test_paid_defaults_to_stipend():
+    # DQ-3: curated corporate internships are virtually all paid; "stipend" is a
+    # far more accurate source default than "unknown" (which floored the paid
+    # upside subscore and hid the "Includes stipend" chip).
+    assert normalize_listing(FAKE_LISTINGS[0])["paid"] == "stipend"
+
+
 def test_na_term_is_stripped_from_duration():
     citadel = normalize_listing(FAKE_LISTINGS[1])
     assert citadel["duration"] == "Summer 2026"  # the "N/A" term is dropped

@@ -350,6 +350,15 @@ class TestGraduateLevelGating:
         ]:
             assert _requires_graduate_standing({"title": title}), title
 
+    def test_detects_masters_and_mba_titles(self):
+        # DQ-5: master's / MBA roles are grad-level for an undergrad audience.
+        for title in [
+            "MBA Intern - Product Manager",
+            "Software Engineering Masters Intern",
+            "Analog IC R&D Intern - Master's Degree",
+        ]:
+            assert _requires_graduate_standing({"title": title}), title
+
     def test_does_not_flag_undergraduate_titles(self):
         for title in [
             "Undergraduate Research Assistant",
@@ -357,6 +366,8 @@ class TestGraduateLevelGating:
             "Computer Vision Intern",
             "Research with Prof. David Forsyth — CS",
             "Summer Undergraduate Research Fellowship",
+            "Master Electrician Apprentice",  # "Master" without 's must NOT match
+            "New Graduate Software Engineer",  # entry-level scheme, NOT grad-level
         ]:
             assert not _requires_graduate_standing({"title": title}), title
 

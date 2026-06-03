@@ -1136,6 +1136,48 @@ def _derive_keywords_from_raw(opps: list[dict]) -> int:
     return enriched
 
 
+# DQ-4: a professor with a joint appointment appears in two department
+# directories, each giving a DIFFERENT profile URL — so the URL+name dedup above
+# never collapses them and the same person surfaces twice (and could be cold-
+# emailed twice). They do, however, share one contact_email. Keying on
+# (email, first_token, last_token) collapses the joint appointments. The FIRST
+# name must match too: a shared department/admin email (e.g. "nslack@illinois.edu"
+# attached to a dozen ECE professors) must never merge distinct people who happen
+# to share a surname — only true name-variants of one person (David Forsyth in CS
+# & BioE; Pamela / Pamela P. Martinez) collapse.
+def _faculty_email_key(opp: dict) -> tuple[str, str, str] | None:
+    if opp.get("source") != "uiuc_faculty":
+        return None
+    email = (opp.get("contact_email") or "").strip().lower()
+    name = (opp.get("pi_name") or "").strip()
+    if not email or not name:
+        return None
+    tokens = [t for t in name.replace(",", " ").split() if t]
+    while tokens and tokens[-1].lower().strip(".") in _NAME_SUFFIXES:
+        tokens.pop()
+    if len(tokens) < 2:
+        return None
+    return (email, tokens[0].lower().strip("."), tokens[-1].lower())
+
+
+def _dedup_faculty_by_email(opps: list[dict]) -> list[dict]:
+    """Collapse same-professor faculty rows that share a contact_email + last
+    name across departments (different profile URLs), keeping the richer record
+    at its original position. Rows without a safe email key pass through."""
+    best_idx: dict[tuple[str, str, str], int] = {}
+    for i, opp in enumerate(opps):
+        key = _faculty_email_key(opp)
+        if key is None:
+            continue
+        if key not in best_idx or _faculty_is_richer(opp, opps[best_idx[key]]):
+            best_idx[key] = i
+    return [
+        opp
+        for i, opp in enumerate(opps)
+        if (key := _faculty_email_key(opp)) is None or best_idx[key] == i
+    ]
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -1165,6 +1207,12 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     removed = before - len(all_opps)
     if removed:
         logger.info(f"Removed {removed} duplicate faculty record(s) sharing a profile URL")
+
+    before_email = len(all_opps)
+    all_opps = _dedup_faculty_by_email(all_opps)
+    removed_email = before_email - len(all_opps)
+    if removed_email:
+        logger.info(f"Removed {removed_email} cross-department duplicate faculty record(s) sharing a contact email")
 
     demoted = _demote_shared_keyword_pollution(all_opps)
     if demoted:

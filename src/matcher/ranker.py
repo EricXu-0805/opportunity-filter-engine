@@ -907,7 +907,13 @@ def _summarize_research(opportunity: dict) -> str:
 _GRAD_TITLE_RE = re.compile(
     r"\bph\.?\s?d\b|\bdoctoral\b|\bdoctorate\b|\bpost-?doc|"
     r"\bgraduate\s+(?:students?|research\s+assistants?|researchers?|interns?)\b|"
-    r"\bgrad\s+students?\b",
+    r"\bgrad\s+students?\b|"
+    # DQ-5: master's / MBA role titles are grad-level for an undergrad audience.
+    # Require the possessive/plural ("master's", "masters") so a trade title like
+    # "Master Electrician" is not flagged; \bmba\b is unambiguous. We deliberately
+    # do NOT flag bare "graduate <engineer/developer/...>" — those are often
+    # entry-level "graduate scheme" titles for new bachelor's grads.
+    r"\bmaster'?s\b|\bmba\b",
     re.IGNORECASE,
 )
 _GRAD_DESC_RE = re.compile(
