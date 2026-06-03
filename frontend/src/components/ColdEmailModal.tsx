@@ -94,9 +94,16 @@ function applyQuickEdit(
       }
       const courseStr = courses.slice(0, 4).join(', ');
       const insertion = `\n\nI have completed relevant coursework including ${courseStr}.`;
-      const closingIdx = body.lastIndexOf('\n\nBest');
-      const respectIdx = body.lastIndexOf('\n\nRespectfully');
-      const insertAt = Math.max(closingIdx, respectIdx);
+      // FE-4: insert before the sign-off. The template closes with "Best
+      // regards"/"Respectfully", but an AI draft can drift to "Sincerely",
+      // "Warm regards", etc. — matching only Best/Respectfully appended the line
+      // BELOW the signature in that case. Match a broad set of closings and use
+      // the last one.
+      const closingRe = /\n\n(?:Best regards|Best|Sincerely|Respectfully|Warm(?:est)? regards|Warmly|Kind regards|Regards|Thank you|Thanks|Cheers)\b/gi;
+      let insertAt = -1;
+      for (const m of body.matchAll(closingRe)) {
+        if (m.index !== undefined) insertAt = m.index;
+      }
       const reply = t('coldEmail.replies.courseworkAdded', { list: courseStr });
       if (insertAt > 0) {
         return {
