@@ -225,9 +225,18 @@ class TestParseUrlLlm:
     </html>
     """
 
+    @pytest.fixture(autouse=True)
+    def _stub_dns_resolution(self):
+        # _safe_fetch resolves the host to reject public names that map to
+        # internal IPs; stub it so these end-to-end tests stay network-free.
+        with patch("src.collectors.url_parser._host_resolves_to_blocked_ip", return_value=False):
+            yield
+
     def _mock_response(self, text: str):
         class R:
             status_code = 200
+            is_redirect = False
+            headers: dict = {}
             def raise_for_status(self):
                 pass
         r = R()
@@ -293,6 +302,40 @@ class TestImportUrlRoute:
     def test_rejects_literal_ip(self):
         resp = client.post("/api/import-url", json={"url": "http://192.168.1.1/x"})
         assert resp.status_code == 400
+
+
+# ---------- SEC-1: SSRF-hardened fetch ----------
+
+class TestSafeFetchSSRF:
+    def test_ip_is_blocked_for_internal_ranges(self):
+        from src.collectors.url_parser import _ip_is_blocked
+        for ip in ["169.254.169.254", "127.0.0.1", "10.0.0.5", "192.168.1.1", "172.16.0.1", "::1"]:
+            assert _ip_is_blocked(ip), ip
+        for ip in ["93.184.216.34", "8.8.8.8"]:
+            assert not _ip_is_blocked(ip), ip
+
+    def test_host_resolving_to_private_ip_is_blocked(self):
+        from src.collectors import url_parser as up
+        priv = [(2, 1, 6, "", ("10.0.0.5", 0))]
+        with patch.object(up.socket, "getaddrinfo", return_value=priv):
+            assert up._host_resolves_to_blocked_ip("rebind.evil.example")
+        pub = [(2, 1, 6, "", ("93.184.216.34", 0))]
+        with patch.object(up.socket, "getaddrinfo", return_value=pub):
+            assert not up._host_resolves_to_blocked_ip("example.com")
+
+    def test_safe_fetch_blocks_redirect_to_metadata(self):
+        # A public URL 302-ing to the cloud-metadata IP must NOT be followed.
+        from src.collectors import url_parser as up
+        redirect = type("R", (), {})()
+        redirect.is_redirect = True
+        redirect.status_code = 302
+        redirect.headers = {"Location": "http://169.254.169.254/latest/meta-data/"}
+        redirect.text = ""
+        with patch.object(up, "_host_resolves_to_blocked_ip", return_value=False), \
+             patch.object(up.requests, "get", return_value=redirect) as mock_get:
+            assert up._safe_fetch("https://evil.example.com/start") is None
+        # Only the first (public) hop was fetched; the metadata URL never was.
+        assert mock_get.call_count == 1
 
     def test_returns_opportunity_on_parse_success(self):
         sample_opp = RawOpportunity(
