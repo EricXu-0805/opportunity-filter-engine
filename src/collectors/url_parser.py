@@ -25,8 +25,9 @@ import ipaddress
 import json
 import logging
 import re
+import socket
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -49,12 +50,8 @@ PASTE_TEXT_MAX_CHARS = 50_000
 
 def parse_url(url: str) -> Optional[RawOpportunity]:
     """V1: OG-meta + regex deadline scrape. No LLM."""
-    try:
-        resp = requests.get(url, timeout=PAGE_FETCH_TIMEOUT_S, headers={
-            "User-Agent": "OpportunityFilterEngine/1.0"
-        })
-        resp.raise_for_status()
-    except Exception:
+    resp = _safe_fetch(url)
+    if resp is None:
         return None
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -106,11 +103,10 @@ def is_safe_url(url: str) -> tuple[bool, str]:
       - non-http(s) schemes (file://, gopher://, ftp://, javascript:, etc.)
       - literal IP addresses (any — most attacks pass an IP directly)
       - localhost / *.local / *.internal hostnames
-    Hostnames that resolve to a private range only at DNS-resolution time
-    are intentionally NOT pre-resolved here (DNS-rebinding TOCTOU);
-    relying on requests + TLS verification is good enough for an internal
-    admin-side tool. Tighten with a connection-time hook before exposing
-    this to unauthenticated traffic.
+    This is the cheap syntactic gate. The DNS-resolution check (a public
+    *hostname* that maps to an internal IP) and per-redirect-hop revalidation
+    live in ``_safe_fetch``, which is what actually performs network I/O —
+    callers that fetch MUST go through it, never ``requests.get`` directly.
 
     Returns (ok, reason) so callers can echo a precise error.
     """
@@ -132,6 +128,77 @@ def is_safe_url(url: str) -> tuple[bool, str]:
     except ValueError:
         return True, ""
     return False, f"literal IP {ip} not allowed"
+
+
+_MAX_REDIRECT_HOPS = 5
+
+
+def _ip_is_blocked(ip_str: str) -> bool:
+    """True for any non-public address: RFC1918 private, loopback, link-local
+    (incl. the 169.254.169.254 cloud-metadata endpoint), reserved, multicast,
+    or unspecified."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    return (
+        ip.is_private or ip.is_loopback or ip.is_link_local
+        or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+    )
+
+
+def _host_resolves_to_blocked_ip(host: str) -> bool:
+    """True if any address ``host`` resolves to is non-public. Closes the gap
+    where ``is_safe_url`` admits a public *hostname* that resolves to an internal
+    IP (an attacker pointing their own DNS at 169.254.169.254 or 10.x)."""
+    if not host:
+        return True
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except (OSError, UnicodeError):
+        return False  # unresolvable — let requests fail naturally, don't false-block
+    return any(_ip_is_blocked(info[4][0]) for info in infos)
+
+
+def _safe_fetch(url: str) -> Optional[requests.Response]:
+    """SSRF-hardened GET — the only network entry point for user-supplied URLs.
+
+    Validates the URL and EVERY redirect hop with ``is_safe_url`` plus a DNS
+    check that the host maps only to public IPs, following redirects manually
+    (``allow_redirects=False``) so an attacker cannot 302 a public URL to cloud
+    metadata or an internal service. Returns the final ``Response`` (after
+    ``raise_for_status``), or ``None`` on any block / error / redirect-budget
+    overrun.
+
+    Residual: a DNS-rebinding race between this resolution check and requests'
+    own connection is not fully closed (that needs a transport that pins the
+    validated IP); the manual-redirect + resolve checks defeat the directly
+    exploitable bypass, which is the realistic threat for this endpoint.
+    """
+    headers = {"User-Agent": "OpportunityFilterEngine/1.0"}
+    current = url
+    try:
+        for _ in range(_MAX_REDIRECT_HOPS + 1):
+            ok, _reason = is_safe_url(current)
+            if not ok:
+                return None
+            if _host_resolves_to_blocked_ip(urlparse(current).hostname or ""):
+                return None
+            resp = requests.get(
+                current, timeout=PAGE_FETCH_TIMEOUT_S, headers=headers,
+                allow_redirects=False,
+            )
+            if resp.is_redirect:
+                location = resp.headers.get("Location")
+                if not location:
+                    break
+                current = urljoin(current, location)
+                continue
+            resp.raise_for_status()
+            return resp
+    except Exception:
+        return None
+    return None  # exceeded the redirect budget
 
 
 def parse_url_llm(url: str) -> Optional[RawOpportunity]:
@@ -425,14 +492,8 @@ def _replace(opp: RawOpportunity, **kwargs) -> RawOpportunity:
 
 
 def _fetch_text(url: str) -> Optional[str]:
-    try:
-        resp = requests.get(url, timeout=PAGE_FETCH_TIMEOUT_S, headers={
-            "User-Agent": "OpportunityFilterEngine/1.0"
-        })
-        resp.raise_for_status()
-        return resp.text
-    except Exception:
-        return None
+    resp = _safe_fetch(url)
+    return resp.text if resp is not None else None
 
 
 def _strip_to_text(html: str) -> str:
