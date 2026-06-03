@@ -283,6 +283,8 @@ export default function ColdEmailModal({
         recipient_email: resp.recipient_email,
         mailto_link: resp.mailto_link,
         lab_type: resp.lab_type ?? labType ?? null,
+        method: resp.method,
+        fallback_reason: resp.fallback_reason,
       };
       setAiVariant(v);
       setActiveVariant(aiIdx);
@@ -486,7 +488,17 @@ export default function ColdEmailModal({
                     />
                   </div>
                   <div className="flex-1 flex flex-col">
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('coldEmail.body')}</label>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('coldEmail.body')}</label>
+                      {/* FE-5: durable provenance — the active variant is the AI
+                          pill but the backend served the template; say so here so
+                          the signal survives chat-scroll and reopen. */}
+                      {activeVariant === variants.length && aiVariant && aiVariant.method !== 'ai' && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                          {t('coldEmail.templateFallbackBadge')}
+                        </span>
+                      )}
+                    </div>
                     <textarea
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
@@ -581,11 +593,20 @@ export default function ColdEmailModal({
                   <><Copy className="w-4 h-4" />{t('coldEmail.copy')}</>
                 )}
               </button>
-              <div className="flex items-stretch rounded-xl overflow-hidden shadow-sm">
+              {/* FE-2: the deep-link send buttons open a real compose window, so
+                  disable them when no recipient is resolved — otherwise the user
+                  is dropped into a draft addressed to nobody with no warning. The
+                  amber "To" hint above guides them to add an address; the Copy
+                  button stays enabled since pasting elsewhere is still useful. */}
+              <div
+                className="flex items-stretch rounded-xl overflow-hidden shadow-sm"
+                title={!recipient.trim() ? t('coldEmail.toHint') : undefined}
+              >
                 <button
                   type="button"
+                  disabled={!recipient.trim()}
                   onClick={() => { window.open(getMailtoLink('default'), '_blank'); }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ExternalLink className="w-4 h-4" />
                   {t('coldEmail.openInEmail')}
@@ -593,16 +614,18 @@ export default function ColdEmailModal({
                 <div className="w-px bg-blue-400" />
                 <button
                   type="button"
+                  disabled={!recipient.trim()}
                   onClick={() => { window.open(getMailtoLink('gmail'), '_blank'); }}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openGmailTitle')}
                 >
                   {t('coldEmail.gmail')}
                 </button>
                 <button
                   type="button"
+                  disabled={!recipient.trim()}
                   onClick={() => { window.open(getMailtoLink('outlook'), '_blank'); }}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openOutlookTitle')}
                 >
                   {t('coldEmail.outlook')}

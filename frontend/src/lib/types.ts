@@ -170,6 +170,11 @@ export interface EmailVariant {
   recipient_email: string;
   mailto_link: string;
   lab_type?: LabType | null;
+  // FE-5: provenance for the AI variant — when the backend degraded to the
+  // template ('AI' pill clicked but method !== 'ai'), this lets the UI surface a
+  // durable "template, not AI" badge instead of only a transient chat bubble.
+  method?: 'template' | 'ai';
+  fallback_reason?: ColdEmailFallbackReason | null;
 }
 
 export interface EmailVariantsResponse {

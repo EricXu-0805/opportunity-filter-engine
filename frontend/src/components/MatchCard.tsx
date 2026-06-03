@@ -225,7 +225,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             Match
           </span>
           <div className="flex-1">
-            <ScoreBar score={match.final_score} size="md" />
+            <ScoreBar score={match.final_score} size="md" bucket={match.bucket} />
           </div>
         </div>
 

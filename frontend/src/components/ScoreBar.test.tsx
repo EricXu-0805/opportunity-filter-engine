@@ -70,6 +70,26 @@ describe('ScoreBar', () => {
     });
   });
 
+  describe('color from bucket (FE-3)', () => {
+    it('uses the bucket color over the score threshold when bucket is provided', () => {
+      // A 78-79 score earns the green high_priority badge but is < 80, so the
+      // score-only path would paint it blue. The bucket prop keeps them in sync.
+      const { container } = render(<ScoreBar score={79} bucket="high_priority" />);
+      expect(getFillBar(container).className).toMatch(/from-emerald-400/);
+      expect(screen.getByText('79%')).toHaveClass('text-emerald-600');
+    });
+
+    it('paints a percentile-demoted reach amber even when the score is high', () => {
+      const { container } = render(<ScoreBar score={66} bucket="reach" />);
+      expect(getFillBar(container).className).toMatch(/from-amber-400/);
+    });
+
+    it('falls back to score thresholds when no bucket is given', () => {
+      const { container } = render(<ScoreBar score={79} />);
+      expect(getFillBar(container).className).toMatch(/from-blue-400/);
+    });
+  });
+
   describe('clamping + rounding', () => {
     it('clamps negative scores to 0', () => {
       const { container } = render(<ScoreBar score={-25} />);
