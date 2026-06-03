@@ -1234,6 +1234,43 @@ class TestEmailEndpoints:
         })
         assert r.status_code == 422
 
+    def test_recipient_quota_caps_then_isolates(self):
+        # SEC-3 contract: the IP-independent per-recipient cap.
+        from fastapi import HTTPException
+
+        from backend.routes import email as email_mod
+        email_mod._recipient_sends.clear()
+        victim = "victim@example.com"
+        for _ in range(email_mod._RECIPIENT_SEND_LIMIT):
+            email_mod._enforce_recipient_quota(victim)
+        with pytest.raises(HTTPException) as exc:
+            email_mod._enforce_recipient_quota(victim)
+        assert exc.value.status_code == 429
+        # A different recipient is unaffected.
+        email_mod._enforce_recipient_quota("someone-else@example.com")
+
+    def test_send_matches_caps_victim_across_rotating_ips(self, monkeypatch):
+        # SEC-3: an attacker rotating source IPs (distinct XFF) evades the per-IP
+        # limit, but the per-recipient cap still protects the victim mailbox.
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        from backend.routes import email as email_mod
+        email_mod._recipient_sends.clear()
+
+        async def _noop(**kwargs):
+            return None
+        monkeypatch.setattr(email_mod, "_send_via_resend", _noop)
+
+        body = {"email": "bomb-target@example.com", "items": [{"title": "opp"}]}
+        for i in range(email_mod._RECIPIENT_SEND_LIMIT):
+            r = client.post("/api/email/send-matches", json=body,
+                            headers={"x-forwarded-for": f"203.0.113.{i}"})
+            assert r.status_code == 200, r.text
+        # Fresh IP, same victim → blocked by the per-recipient cap.
+        r = client.post("/api/email/send-matches", json=body,
+                        headers={"x-forwarded-for": "203.0.113.250"})
+        assert r.status_code == 429
+
     def test_restore_link_ok_disabled_when_no_secret(self, monkeypatch):
         monkeypatch.delenv("RESTORE_LINK_SECRET", raising=False)
         monkeypatch.delenv("ADMIN_TOKEN", raising=False)
