@@ -42,7 +42,11 @@ export function readInitialFiltersFromUrl(
 // AI/semantic-rerank toggle resolution order:
 //   1. ?ai=1 / ?ai=0 in URL (explicit, wins for shareable URLs)
 //   2. localStorage 'ofe_semantic_rerank' = '1' / '0' (user preference)
-//   3. Default to true (semantic on)
+//   3. Default to false (semantic off). The blend in semantic_rerank mixes a
+//      0-0.6 cosine similarity (scaled x100) at weight 0.5, which compresses
+//      a 91 rule score to ~76 and can float generic-keyword matches above
+//      topically specific ones. The rule ranking is accurate, so it is the
+//      default; the toggle stays for opt-in experimentation.
 // Kept separate from readInitialFiltersFromUrl because it consults
 // localStorage too — the filters reader is pure URL.
 export function readInitialSemanticRerank(
@@ -51,11 +55,11 @@ export function readInitialSemanticRerank(
   const p = searchParams.get('ai');
   if (p === '1') return true;
   if (p === '0') return false;
-  if (typeof window === 'undefined') return true;
+  if (typeof window === 'undefined') return false;
   const stored = localStorage.getItem('ofe_semantic_rerank');
   if (stored === '0') return false;
   if (stored === '1') return true;
-  return true;
+  return false;
 }
 
 // URL writer. Uses history.replaceState (not router.replace) to avoid
