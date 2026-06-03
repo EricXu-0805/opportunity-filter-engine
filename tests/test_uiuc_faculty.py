@@ -9,6 +9,7 @@ from __future__ import annotations
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
     _clean_research_phrase,
+    _dedup_faculty_by_email,
     _dedup_faculty_records,
     _demote_shared_keyword_pollution,
     _dept_broad_field,
@@ -265,3 +266,48 @@ def test_derive_drops_self_name_token():
     _derive_keywords_from_raw(rows)
     assert "halloran" not in rows[0]["keywords"]
     assert rows[0]["keywords"] == ["biomechanics"]
+
+
+# DQ-4: collapse a joint-appointment professor duplicated across departments.
+
+def _fac_email(pi_name, department, email, url):
+    return {
+        "source": "uiuc_faculty", "pi_name": pi_name, "department": department,
+        "contact_email": email, "source_url": url, "description": "",
+    }
+
+
+def test_email_dedup_collapses_joint_appointment():
+    rows = [
+        _fac_email("David Forsyth", "Computer Science", "daf@illinois.edu", "https://cs.illinois.edu/daf"),
+        _fac_email("David Forsyth", "Bioengineering", "daf@illinois.edu", "https://bioe.illinois.edu/daf"),
+    ]
+    out = _dedup_faculty_by_email(rows)
+    assert len(out) == 1
+
+
+def test_email_dedup_merges_name_variants_of_same_person():
+    rows = [
+        _fac_email("Pamela Martinez", "Statistics", "pamelapm@illinois.edu", "https://stat.illinois.edu/p"),
+        _fac_email("Pamela P. Martinez", "Microbiology", "pamelapm@illinois.edu", "https://mcb.illinois.edu/p"),
+    ]
+    assert len(_dedup_faculty_by_email(rows)) == 1
+
+
+def test_email_dedup_keeps_distinct_people_sharing_admin_email():
+    # A shared department/admin email must NOT merge different professors who
+    # happen to share a surname (the nslack@illinois.edu over-merge guard).
+    rows = [
+        _fac_email("Deming Chen", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/dchen"),
+        _fac_email("Xu Chen", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/xuchen"),
+        _fac_email("Yun-Sheng Chen", "ECE", "nslack@illinois.edu", "https://ece.illinois.edu/yschen"),
+    ]
+    assert len(_dedup_faculty_by_email(rows)) == 3
+
+
+def test_email_dedup_passes_rows_without_email():
+    rows = [
+        _fac_email("Jane Doe", "Physics", "", "https://physics.illinois.edu/jd"),
+        _fac_email("Jane Doe", "Astronomy", "", "https://astro.illinois.edu/jd"),
+    ]
+    assert len(_dedup_faculty_by_email(rows)) == 2
