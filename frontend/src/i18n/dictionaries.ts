@@ -354,6 +354,8 @@ export const en = {
       intl: 'Intl-friendly',
     },
     form: {
+      nameLabel: 'Your name',
+      namePlaceholder: 'e.g. Alex Chen',
       institutionLabel: 'Institution',
       institutionLocked: 'UIUC — University of Illinois Urbana-Champaign',
       collegeLabel: 'College',
@@ -1716,6 +1718,8 @@ export const zh = {
       intl: '国际友好',
     },
     form: {
+      nameLabel: '你的姓名',
+      namePlaceholder: '例如 Alex Chen',
       institutionLabel: '学校',
       institutionLocked: 'UIUC — 伊利诺伊大学厄巴纳-香槟分校',
       collegeLabel: '学院',

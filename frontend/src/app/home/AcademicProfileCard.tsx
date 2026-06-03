@@ -48,6 +48,20 @@ export function AcademicProfileCard({
 
       <div className="space-y-6">
         <div>
+          <label htmlFor="student_name" className="block text-sm font-medium text-gray-700 mb-2">
+            {t('home.form.nameLabel')}
+          </label>
+          <input
+            id="student_name"
+            type="text"
+            value={profile.name ?? ''}
+            onChange={(e) => update('name', e.target.value)}
+            placeholder={t('home.form.namePlaceholder')}
+            className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300"
+          />
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {t('home.form.institutionLabel')}
           </label>

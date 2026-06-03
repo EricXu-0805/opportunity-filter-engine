@@ -4,6 +4,7 @@ import type { useT } from '@/i18n/client';
 export type TFunc = ReturnType<typeof useT>['t'];
 
 export const DEFAULT_PROFILE: ProfileData = {
+  name: '',
   institution: 'UIUC - University of Illinois Urbana-Champaign',
   college: '',
   major: '',
