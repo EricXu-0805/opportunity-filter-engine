@@ -5,11 +5,10 @@ turn already-extracted resume text into structured profile hints —
 _extract_skills, _extract_coursework, and _infer_experience_level. The PDF
 byte path and the FastAPI upload route are out of scope here.
 
-Note: KNOWN_SKILLS includes the single letters "C" and "R", and
-_extract_skills does a naive case-insensitive substring scan, so any text
-containing a 'c' or 'r' matches them. Tests therefore use membership
-assertions (not whole-list equality) and explicitly characterize that
-substring behaviour rather than asserting it away.
+Note: KNOWN_SKILLS includes the single letters "C" and "R". _extract_skills
+matches each skill as a standalone token (token-boundary aware), so those
+short names no longer false-match inside unrelated words like "Research" or
+"Algorithms" while "C++"/"C#"/"Node.js" still match.
 """
 
 from __future__ import annotations
@@ -44,10 +43,26 @@ class TestExtractSkills:
         assert "machine learning" in skills
         assert "deep learning" in skills
 
-    def test_single_letter_skills_C_and_R_match_via_substring(self):
+    def test_single_letter_skills_do_not_match_inside_words(self):
         skills = _extract_skills("abcdefr")
-        assert "C" in skills
+        assert "C" not in skills
+        assert "R" not in skills
+
+    def test_short_skills_need_token_boundaries(self):
+        # "Go" must not match "Algorithms", "R" must not match "Research",
+        # "C" must not match "C++"; the standalone forms still match.
+        skills = _extract_skills(
+            "Coursework: Algorithms. Research with C++. Languages: Go, R, C"
+        )
+        assert "Go" in skills
         assert "R" in skills
+        assert "C" in skills
+        assert "C++" in skills
+
+    def test_java_does_not_match_inside_javascript(self):
+        skills = _extract_skills("Proficient in JavaScript")
+        assert "JavaScript" in skills
+        assert "Java" not in skills
 
     def test_preserves_canonical_casing_of_the_skill_label(self):
         skills = _extract_skills("i deploy to aws and gcp")
@@ -82,6 +97,22 @@ class TestExtractCoursework:
 
     def test_returns_empty_for_no_courses(self):
         assert _extract_coursework("no course identifiers here") == []
+
+    def test_extracts_named_courses_from_labeled_list(self):
+        assert _extract_coursework(
+            "Coursework: Data Structures, Linear Algebra, Algorithms"
+        ) == ["Algorithms", "Data Structures", "Linear Algebra"]
+
+    def test_named_courses_and_codes_combine(self):
+        result = _extract_coursework(
+            "Relevant Courses: Operating Systems, CS 233, Databases"
+        )
+        assert "CS 233" in result
+        assert "Operating Systems" in result
+        assert "Databases" in result
+
+    def test_unlabeled_prose_does_not_yield_named_courses(self):
+        assert _extract_coursework("I enjoy data structures and algorithms") == []
 
 
 class TestInferExperienceLevel:

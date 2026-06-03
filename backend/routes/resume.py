@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+from functools import cache
 from pathlib import Path
 
 import httpx
@@ -66,20 +67,45 @@ def _extract_text_from_pdf(file_path: str) -> str:
             ) from e
 
 
+# A skill token must not be flanked by a letter or the tech punctuation
+# +/# (so "C" is rejected inside "C++"/"C#" and "Go" inside "Algorithms").
+# Digits and '.' are intentionally excluded so "Docker." (sentence end) and
+# "Python3" still match, while "Node.js"/"scikit-learn" match via the literal.
+_SKILL_BOUNDARY = r"[A-Za-z+#]"
+
+
+@cache
+def _skill_pattern(skill: str) -> re.Pattern[str]:
+    return re.compile(
+        rf"(?<!{_SKILL_BOUNDARY}){re.escape(skill)}(?!{_SKILL_BOUNDARY})",
+        re.IGNORECASE,
+    )
+
+
 def _extract_skills(text: str) -> list[str]:
-    """Find known skills mentioned in resume text."""
-    text_lower = text.lower()
-    found = []
-    for skill in KNOWN_SKILLS:
-        if skill.lower() in text_lower:
-            found.append(skill)
-    return found
+    """Find known skills mentioned in resume text as standalone tokens."""
+    return [skill for skill in KNOWN_SKILLS if _skill_pattern(skill).search(text)]
+
+
+# Matches a "Coursework:" / "Relevant Courses -" label and captures the rest
+# of the line, so named courses ("Data Structures") are extracted, not just
+# department codes ("CS 124"). Requires the label to be followed by : - or —.
+_COURSEWORK_LABEL = re.compile(
+    r"(?i)\b(?:relevant\s+)?(?:course\s?work|courses)\b\s*[:\-\u2014]\s*(.+)"
+)
 
 
 def _extract_coursework(text: str) -> list[str]:
-    """Extract course identifiers like 'CS 124', 'ECE 220'."""
-    matches = COURSE_PATTERN.findall(text)
-    courses = [f"{dept} {num}" for dept, num in matches]
+    """Extract department codes ('CS 124') and named courses from a labeled list."""
+    courses = [f"{dept} {num}" for dept, num in COURSE_PATTERN.findall(text)]
+    for line in text.splitlines():
+        label = _COURSEWORK_LABEL.search(line)
+        if not label:
+            continue
+        for item in re.split(r"[;,]", label.group(1)):
+            name = item.strip(" .\t")
+            if name and any(c.isalpha() for c in name) and 3 <= len(name) <= 40:
+                courses.append(name)
     return sorted(set(courses))
 
 
