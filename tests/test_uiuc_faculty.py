@@ -9,6 +9,7 @@ from __future__ import annotations
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
     _dedup_faculty_records,
+    _extract_research_keywords,
     _is_section_label,
     normalize_faculty,
 )
@@ -138,3 +139,16 @@ def test_dedup_strips_generational_suffix():
     url = "https://physics.illinois.edu/people/directory/profile/demarco"
     out = _dedup_faculty_records([_fac("Brian DeMarco", url), _fac("Brian DeMarco Jr.", url)])
     assert len(out) == 1
+
+
+def test_keyword_fallback_uses_broad_field_only():
+    cfg = {"short": "TEST", "keywords": ["test field", "hot area one", "hot area two"]}
+    kws = _extract_research_keywords({"name": "Jane Doe"}, cfg)
+    assert kws == ["test field"]
+
+
+def test_keyword_fallback_never_injects_unverified_hot_area():
+    cfg = DEPARTMENTS["cs"]
+    kws = _extract_research_keywords({"name": "Jane Doe"}, cfg)
+    assert "machine learning" not in kws
+    assert "artificial intelligence" not in kws

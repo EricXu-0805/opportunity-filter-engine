@@ -704,7 +704,13 @@ def _extract_research_keywords(person: dict, dept_config: dict) -> list[str]:
                 return scraped
 
     if not found:
-        found = dept_config.get("keywords", [])[:3]
+        # No per-professor research signal: fall back to the department's broad
+        # field only (keywords[0]), never its specific subfields. The old [:3]
+        # slice injected hot areas like "machine learning"/"quantum" onto every
+        # un-enriched professor, falsely matching them to students who named
+        # those interests. One generic field is honest; specific claims we
+        # cannot verify are not.
+        found = dept_config.get("keywords", [])[:1]
 
     return found[:8]
 
