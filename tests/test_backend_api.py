@@ -1731,3 +1731,35 @@ class TestVapidPublicKey:
         r = client.get("/api/push/vapid-public-key")
         assert r.status_code == 200
         assert r.json() == {"key": "pub-next"}
+
+
+class TestRateLimitResolution:
+    """SEC-2 / SEC-4: rate buckets resolve by longest matching prefix, so the
+    dedicated sub-route buckets aren't shadowed and the paid chat endpoint
+    isn't left on the loose default."""
+
+    def test_cold_email_subroutes_get_own_buckets(self):
+        from backend.main import RATE_LIMITS, _rate_limit_key
+        # SEC-4: /refine and /variants must NOT be shadowed by /api/cold-email.
+        assert _rate_limit_key("/api/cold-email/refine") == "/api/cold-email/refine"
+        assert RATE_LIMITS[_rate_limit_key("/api/cold-email/refine")] == (20, 60)
+        assert _rate_limit_key("/api/cold-email/variants") == "/api/cold-email/variants"
+        assert _rate_limit_key("/api/cold-email") == "/api/cold-email"
+
+    def test_tailor_status_not_shadowed_by_tailor(self):
+        from backend.main import RATE_LIMITS, _rate_limit_key
+        assert RATE_LIMITS[_rate_limit_key("/api/tailor/status")] == (60, 60)
+        assert RATE_LIMITS[_rate_limit_key("/api/tailor")] == (10, 60)
+
+    def test_chat_endpoint_is_capped_not_default(self):
+        from backend.main import DEFAULT_RATE, RATE_LIMITS, _rate_limit_key
+        # SEC-2: the paid chat path must hit the /api/opportunities/ bucket.
+        limit = RATE_LIMITS[_rate_limit_key("/api/opportunities/abc123/chat")]
+        assert limit == (20, 60)
+        assert limit != DEFAULT_RATE
+
+    def test_opportunities_list_keeps_default(self):
+        from backend.main import DEFAULT_RATE, RATE_LIMITS, _rate_limit_key
+        # The bare list/stats endpoint (no trailing slash) stays generous.
+        key = _rate_limit_key("/api/opportunities")
+        assert RATE_LIMITS.get(key, DEFAULT_RATE) == DEFAULT_RATE
