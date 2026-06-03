@@ -549,6 +549,29 @@ describe('ColdEmailModal', () => {
       expect(screen.getByDisplayValue(/CS 374/)).toBeInTheDocument();
     });
 
+    it('FE-4: "coursework" inserts BEFORE a non-"Best" closing (e.g. Sincerely)', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant({ body: 'Intro paragraph.\n\nSincerely,\nAlex' })],
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile({ coursework: ['CS 225'] })}
+          opportunityId="opp"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Intro paragraph/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      const value = await waitFor(() => {
+        const ta = screen.getByDisplayValue(/CS 225/) as HTMLTextAreaElement;
+        return ta.value;
+      });
+      // The coursework sentence must sit ABOVE the signature, not dangle below it.
+      expect(value.indexOf('CS 225')).toBeLessThan(value.indexOf('Sincerely'));
+    });
+
     it('"coursework" with an empty coursework list does not insert anything', async () => {
       mockGetVariants.mockResolvedValue({
         variants: [makeVariant({ body: 'Just an intro.\n\nBest,\nAlex' })],
