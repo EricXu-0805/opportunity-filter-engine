@@ -18,6 +18,7 @@ from .config import (
     COURSEWORK_PER_COURSE,
     COURSEWORK_RELEVANCE_BONUS,
     DEADLINE_PASSED_PENALTY,
+    GRAD_LEVEL_PENALTY,
     INTEREST_BONUS_CAP,
     INTEREST_BONUS_PER_HIT,
     INTL_UNKNOWN_SCORE,
@@ -899,6 +900,44 @@ def _summarize_research(opportunity: dict) -> str:
     return ""
 
 
+# Graduate-level role markers. \bgraduate\b cannot match inside
+# "undergraduate" (no word boundary before the 'g'), and \bph\.?\s?d\b cannot
+# match inside "UR2PhD" (preceded by a digit), so undergrad-facing listings are
+# not falsely flagged. Title markers are unambiguous role names; description
+# markers require an explicit standing phrase so an undergrad-prep course that
+# merely mentions "PhD applications" is not penalized.
+_GRAD_TITLE_RE = re.compile(
+    r"\bph\.?\s?d\b|\bdoctoral\b|\bdoctorate\b|\bpost-?doc|"
+    r"\bgraduate\s+(?:students?|research\s+assistants?|researchers?|interns?)\b|"
+    r"\bgrad\s+students?\b",
+    re.IGNORECASE,
+)
+_GRAD_DESC_RE = re.compile(
+    r"\b(?:ph\.?\s?d|doctoral|doctorate)\s+(?:student|candidate|program)\b|"
+    r"\bpursuing\s+(?:a\s+|an\s+|their\s+)?(?:ph\.?\s?d|doctoral|doctorate|master)|"
+    r"\bgraduate\s+students?\s+only\b|"
+    r"\bmust\s+be\s+(?:a\s+|currently\s+)?(?:ph\.?\s?d|doctoral|graduate)\s+"
+    r"(?:student|candidate)\b|"
+    r"\b(?:ms|m\.s\.)\s*/\s*ph\.?\s?d\b",
+    re.IGNORECASE,
+)
+_GRADUATE_YEARS = frozenset({
+    "graduate", "grad", "masters", "master", "phd", "ph.d", "doctoral", "postdoc",
+})
+
+
+def _requires_graduate_standing(opportunity: dict) -> bool:
+    title = str(opportunity.get("title", ""))
+    if _GRAD_TITLE_RE.search(title):
+        return True
+    desc = str(opportunity.get("description_clean") or opportunity.get("description_raw") or "")
+    return bool(_GRAD_DESC_RE.search(desc))
+
+
+def _is_undergrad(profile: dict) -> bool:
+    return str(profile.get("year", "")).strip().lower() not in _GRADUATE_YEARS
+
+
 def rank_opportunity(
     profile: dict,
     opportunity: dict,
@@ -951,6 +990,10 @@ def rank_opportunity(
                 elig_fit.append(f"Deadline in {days_left} days — apply soon")
         except ValueError:
             pass
+
+    if _is_undergrad(profile) and _requires_graduate_standing(opportunity):
+        final *= GRAD_LEVEL_PENALTY
+        elig_gap.append("Targets graduate / PhD students — a reach for undergraduates")
 
     bucket = "low_fit"
     for threshold, label in BUCKET_THRESHOLDS:

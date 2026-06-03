@@ -18,8 +18,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.matcher.ranker import (
     BUCKET_THRESHOLDS,
     MatchResult,
+    _is_undergrad,
     _major_match_score,
     _normalize_type_key,
+    _requires_graduate_standing,
     _skill_overlap_score,
     _type_preference_score,
     _year_match_score,
@@ -332,6 +334,54 @@ class TestRankOpportunity:
     def test_has_explanations(self, sample_profile, good_match_opportunity):
         result = rank_opportunity(sample_profile, good_match_opportunity)
         assert len(result.reasons_fit) > 0
+
+
+class TestGraduateLevelGating:
+    def test_detects_graduate_level_titles(self):
+        for title in [
+            "PhD Autonomy Engineer Intern - Deep Learning",
+            "Machine Learning PhD Intern",
+            "Research Scientist Intern - Ph.D",
+            "ML Technology Intern, Graduate Students",
+            "Doctoral Research Assistant",
+            "Postdoctoral Researcher",
+        ]:
+            assert _requires_graduate_standing({"title": title}), title
+
+    def test_does_not_flag_undergraduate_titles(self):
+        for title in [
+            "Undergraduate Research Assistant",
+            "UR2PhD (CS 397)",
+            "Computer Vision Intern",
+            "Research with Prof. David Forsyth — CS",
+            "Summer Undergraduate Research Fellowship",
+        ]:
+            assert not _requires_graduate_standing({"title": title}), title
+
+    def test_detects_graduate_requirement_in_description(self):
+        opp = {"title": "Research Intern", "description_clean": "Must be a PhD candidate."}
+        assert _requires_graduate_standing(opp)
+
+    def test_phd_application_prep_description_is_not_flagged(self):
+        opp = {
+            "title": "Research Prep Seminar",
+            "description_clean": "Prepares undergraduates for PhD applications.",
+        }
+        assert not _requires_graduate_standing(opp)
+
+    def test_is_undergrad(self):
+        assert _is_undergrad({"year": "sophomore"})
+        assert _is_undergrad({"year": ""})
+        assert not _is_undergrad({"year": "phd"})
+        assert not _is_undergrad({"year": "graduate"})
+
+    def test_graduate_role_is_penalized_for_undergrad(self, sample_profile, good_match_opportunity):
+        undergrad_result = rank_opportunity(sample_profile, good_match_opportunity)
+        grad_opp = dict(good_match_opportunity)
+        grad_opp["title"] = good_match_opportunity["title"] + " (PhD Intern)"
+        grad_result = rank_opportunity(sample_profile, grad_opp)
+        assert grad_result.final_score < undergrad_result.final_score
+        assert any("graduate" in g.lower() for g in grad_result.reasons_gap)
 
 
 class TestRankAll:
