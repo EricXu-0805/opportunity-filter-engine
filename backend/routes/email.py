@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import time
+from collections import defaultdict
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -41,6 +42,42 @@ FRONTEND_BASE = os.environ.get(
 
 MAX_ITEMS_PER_EMAIL = 50
 RESTORE_TOKEN_TTL_HOURS = 24 * 30
+
+# SEC-3: the IP rate limit (3/hr, keyed on client IP in main.py) does not stop an
+# attacker rotating or spoofing IPs from bombing ONE victim address with mail from
+# our verified sending domain. Cap sends per normalized recipient too, so a single
+# mailbox can't be flooded regardless of source IP. In-memory + time-windowed,
+# mirroring the main rate-limit middleware's purge pattern.
+_RECIPIENT_SEND_LIMIT = 3
+_RECIPIENT_SEND_WINDOW_S = 3600
+_recipient_sends: dict[str, list[float]] = defaultdict(list)
+_recipient_last_purge = 0.0
+
+
+def _enforce_recipient_quota(email: str) -> None:
+    """Raise 429 when ``email`` (already normalized by _validate_email) has
+    received too many sends within the window — the IP-independent backstop to
+    the per-IP limit."""
+    global _recipient_last_purge
+    now = time.time()
+    if now - _recipient_last_purge > 300:
+        stale = [
+            k for k, ts in _recipient_sends.items()
+            if not ts or ts[-1] < now - _RECIPIENT_SEND_WINDOW_S
+        ]
+        for k in stale:
+            del _recipient_sends[k]
+        _recipient_last_purge = now
+
+    recent = [t for t in _recipient_sends[email] if t > now - _RECIPIENT_SEND_WINDOW_S]
+    if len(recent) >= _RECIPIENT_SEND_LIMIT:
+        _recipient_sends[email] = recent
+        raise HTTPException(
+            status_code=429,
+            detail="This address has received too many emails recently. Try again later.",
+        )
+    recent.append(now)
+    _recipient_sends[email] = recent
 
 
 class MatchItem(BaseModel):
@@ -303,6 +340,7 @@ async def send_matches(req: SendMatchesRequest):
     api_key, from_addr = _resend_configured()
     if not req.items:
         raise HTTPException(status_code=400, detail="No items to send")
+    _enforce_recipient_quota(req.email)
 
     subject, html, text = _render_match_email(req.items, req.subject_hint)
     await _send_via_resend(
@@ -317,6 +355,7 @@ async def send_favorites(req: SendFavoritesRequest):
     api_key, from_addr = _resend_configured()
     if not req.items:
         raise HTTPException(status_code=400, detail="No items to send")
+    _enforce_recipient_quota(req.email)
 
     subject, html, text = _render_favorites_email(req.items)
     await _send_via_resend(
@@ -336,6 +375,8 @@ async def restore_link(req: RestoreLinkRequest):
     if not url:
         logger.warning("restore-link requested but RESTORE_LINK_SECRET unset")
         return {"ok": True, "note": "disabled"}
+
+    _enforce_recipient_quota(req.email)
 
     try:
         api_key, from_addr = _resend_configured()
