@@ -174,6 +174,29 @@ class TestR70ADataQuality:
             f"First 3: {leaks[:3]}"
         )
 
+    def test_no_shared_department_keyword_pollution(self):
+        """DQ-1: a department-wide 'Research Areas' nav block scraped into many
+        profiles produced byte-identical multi-keyword sets across same-department
+        faculty (74 CS profs all 'doing compilers'), giving false specific matches.
+        After the demotion fix no uiuc_faculty multi-keyword set may be shared by
+        more than the collector's threshold of same-department peers."""
+        from collections import defaultdict
+
+        from src.collectors.uiuc_faculty import _SHARED_KEYWORD_POLLUTION_THRESHOLD
+
+        groups: dict[tuple[str, tuple[str, ...]], int] = defaultdict(int)
+        for o in _load_data():
+            if o.get("source") != "uiuc_faculty":
+                continue
+            kws = tuple(sorted((k or "").lower() for k in (o.get("keywords") or [])))
+            if len(kws) >= 2:
+                groups[(o.get("department", ""), kws)] += 1
+        polluted = {k: n for k, n in groups.items() if n > _SHARED_KEYWORD_POLLUTION_THRESHOLD}
+        assert not polluted, (
+            f"{len(polluted)} department-block keyword sets still shared by "
+            f">{_SHARED_KEYWORD_POLLUTION_THRESHOLD} peers. First: {list(polluted.items())[:2]}"
+        )
+
 
 class TestDeactivatePastLogic:
     """Deterministic guard for the deactivate_past normalizer itself, using an
