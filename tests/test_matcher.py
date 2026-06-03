@@ -15,6 +15,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.matcher.config import TOPIC_MISMATCH_PENALTY, TOPIC_UNKNOWN_PENALTY
 from src.matcher.ranker import (
     BUCKET_THRESHOLDS,
     MatchResult,
@@ -23,6 +24,7 @@ from src.matcher.ranker import (
     _normalize_type_key,
     _requires_graduate_standing,
     _skill_overlap_score,
+    _topic_alignment_penalty,
     _type_preference_score,
     _year_match_score,
     rank_all,
@@ -476,3 +478,38 @@ class TestDataIntegrity:
         for r in results:
             assert 0 <= r.final_score <= 100
             assert r.bucket in ("high_priority", "good_match", "reach", "low_fit")
+
+
+class TestTopicAlignmentPenalty:
+    INTEREST = "machine learning, computer vision, deep learning"
+
+    def _research(self, keywords):
+        return {"opportunity_type": "research", "keywords": keywords}
+
+    def _profile(self, interest=INTEREST):
+        return {"research_interests_text": interest}
+
+    def test_aligned_keyword_no_penalty(self):
+        opp = self._research(["computer vision", "robotics"])
+        assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
+    def test_confirmed_mismatch_penalized(self):
+        opp = self._research(["computers and education", "computer science"])
+        assert _topic_alignment_penalty(self._profile(), opp) == TOPIC_MISMATCH_PENALTY
+
+    def test_broad_field_only_is_unknown(self):
+        opp = self._research(["computer science"])
+        assert _topic_alignment_penalty(self._profile(), opp) == TOPIC_UNKNOWN_PENALTY
+
+    def test_non_research_never_penalized(self):
+        opp = {"opportunity_type": "internship", "keywords": ["computers and education"]}
+        assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
+    def test_no_interest_text_is_inert(self):
+        opp = self._research(["computers and education"])
+        assert _topic_alignment_penalty(self._profile(interest=""), opp) == 1.0
+
+    def test_token_substring_does_not_falsely_align(self):
+        # "computer" (from the interest) must NOT match "computers and education"
+        opp = self._research(["computers and education"])
+        assert _topic_alignment_penalty(self._profile(), opp) == TOPIC_MISMATCH_PENALTY
