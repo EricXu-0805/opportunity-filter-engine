@@ -368,6 +368,14 @@ async def chat_with_opportunity(opportunity_id: str, body: ChatRequest):
 
     system_prompt = _build_chat_system_prompt(opp, body.profile)
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
+    # SEC-5: unlike the cold-email / tailor prompts, chat content is NOT routed
+    # through prompt_safety.sanitize_field — and intentionally so. Those handlers
+    # interpolate free text into a single prompt STRING, where a forged "Subject:"
+    # or role line could escape its section; here each turn is a discrete
+    # {role, content} message object whose boundaries the transport enforces, and
+    # role is constrained to user/assistant by ChatMessage's validator. Flattening
+    # the content would also break legitimate multi-line questions (e.g. a pasted
+    # posting). Length is bounded by the Pydantic caps (message 2000, content 4000).
     for msg in body.history[-10:]:
         messages.append({"role": msg.role, "content": msg.content})
     messages.append({"role": "user", "content": body.message})
