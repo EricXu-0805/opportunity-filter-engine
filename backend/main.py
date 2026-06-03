@@ -49,9 +49,9 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/cold-email": (15, 60),
     "/api/cold-email/refine": (20, 60),
     "/api/cold-email/variants": (15, 60),
-    # Status probe is a cheap GET the modal fires on every open — keep its
-    # budget generous and list it BEFORE "/api/tailor" so prefix matching
-    # picks the dedicated bucket instead of the tighter generate limit.
+    # Status probe is a cheap GET the modal fires on every open — its generous
+    # budget is preserved by longest-prefix matching below (a more specific key
+    # always wins over "/api/tailor").
     "/api/tailor/status": (60, 60),
     "/api/tailor": (10, 60),
     "/api/resume/upload": (5, 60),
@@ -61,8 +61,30 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/email/restore-link": (3, 3600),
     "/api/import-url": (5, 60),
     "/api/import-text": (5, 60),
+    # SEC-2: the opportunity chat endpoint issues a paid LLM completion per call
+    # but is under /api/opportunities/{id}/chat with no dedicated key, so it used
+    # to inherit the loose 60/60 default — an unauthenticated paid-LLM
+    # cost/quota-exhaustion vector. The trailing slash scopes this to the
+    # detail + chat sub-routes (cheap detail GETs share it, which 20/min easily
+    # covers) while leaving the bare /api/opportunities list/stats on the default.
+    "/api/opportunities/": (20, 60),
 }
 DEFAULT_RATE = (60, 60)
+
+# SEC-4: resolve the rate bucket by LONGEST matching prefix, not insertion order.
+# First-match-wins let "/api/cold-email" shadow "/api/cold-email/refine" (and
+# /variants), making those dedicated buckets dead config. Longest-prefix is
+# order-independent and removes that footgun.
+_RATE_LIMIT_PREFIXES_BY_LEN = sorted(RATE_LIMITS, key=len, reverse=True)
+
+
+def _rate_limit_key(path: str) -> str:
+    """The RATE_LIMITS key governing ``path`` by longest matching prefix, or the
+    path itself (→ DEFAULT_RATE) when none match."""
+    for prefix in _RATE_LIMIT_PREFIXES_BY_LEN:
+        if path.startswith(prefix):
+            return prefix
+    return path
 
 
 _last_purge = 0.0
@@ -97,12 +119,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 del _rate_buckets[k]
             _last_purge = now
 
-        limit_key = path
-        for prefix in RATE_LIMITS:
-            if path.startswith(prefix):
-                limit_key = prefix
-                break
-
+        limit_key = _rate_limit_key(path)
         max_requests, window = RATE_LIMITS.get(limit_key, DEFAULT_RATE)
         bucket_key = f"{client_ip}:{limit_key}"
 
