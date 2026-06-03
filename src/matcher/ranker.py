@@ -19,6 +19,7 @@ from .config import (
     COURSEWORK_RELEVANCE_BONUS,
     DEADLINE_PASSED_PENALTY,
     GRAD_LEVEL_PENALTY,
+    HIGH_PRIORITY_TARGET_COUNT,
     INTEREST_BONUS_CAP,
     INTEREST_BONUS_PER_HIT,
     INTL_UNKNOWN_SCORE,
@@ -1280,14 +1281,21 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
 
     if len(results) >= 10:
         scores = [r.final_score for r in results]
-        p90 = scores[max(0, len(scores) // 10)]
         p70 = scores[max(0, (len(scores) * 3) // 10)]
         p40 = scores[max(0, (len(scores) * 6) // 10)]
 
         floor_high = float(BUCKET_THRESHOLDS[0][0])
         floor_good = float(BUCKET_THRESHOLDS[1][0])
         floor_reach = float(BUCKET_THRESHOLDS[2][0])
-        hp_threshold = max(floor_high, p90)
+        # RANK-6: high_priority = the top HIGH_PRIORITY_TARGET_COUNT results that
+        # also clear floor_high. The count cap (score at rank K) normalizes the
+        # bucket size across profiles instead of letting a flat floor yield 5 for
+        # one student and 80 for another; the floor still gates out weak matches
+        # so a sparse profile gets an honest empty top bucket. Ties at the cap
+        # boundary are kept (>= comparison), so a genuinely strong cluster isn't
+        # split arbitrarily. good_match / reach keep their percentile bands.
+        k = min(HIGH_PRIORITY_TARGET_COUNT, len(scores) - 1)
+        hp_threshold = max(floor_high, scores[k])
         gm_threshold = max(floor_good, p70)
         reach_threshold = max(floor_reach, p40)
 

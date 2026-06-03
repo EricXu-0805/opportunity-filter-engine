@@ -38,11 +38,18 @@ WEIGHTS_DEFAULT = LayerWeights(
 )
 
 BUCKET_THRESHOLDS: tuple[tuple[float, str], ...] = (
-    (_env_float("OFE_BUCKET_HIGH", 78.0), "high_priority"),
+    (_env_float("OFE_BUCKET_HIGH", 70.0), "high_priority"),
     (_env_float("OFE_BUCKET_GOOD", 62.0), "good_match"),
     (_env_float("OFE_BUCKET_REACH", 42.0), "reach"),
     (0.0, "low_fit"),
 )
+
+# high_priority is a focused "apply to these now" shortlist: the top N results
+# that ALSO clear OFE_BUCKET_HIGH. A flat absolute floor alone produced wildly
+# uneven counts (5 for one profile, 80 for another) because score distributions
+# differ per profile; capping at a target count normalizes it while the floor
+# keeps the bucket from promoting weak matches on sparse queries (RANK-6).
+HIGH_PRIORITY_TARGET_COUNT = int(_env_float("OFE_HIGH_PRIORITY_TARGET", 20))
 
 PROFICIENCY_WEIGHTS: dict[str, float] = {
     "expert": 1.0,
