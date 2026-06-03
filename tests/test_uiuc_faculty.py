@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
+    _dedup_faculty_records,
     _is_section_label,
     normalize_faculty,
 )
@@ -90,3 +91,50 @@ def test_new_departments_registered_with_valid_config():
 def test_department_ids_do_not_collide():
     shorts = [c["short"].lower() for c in DEPARTMENTS.values()]
     assert len(shorts) == len(set(shorts)), "duplicate department short codes"
+
+
+def _fac(pi_name, url, source="uiuc_faculty", description=""):
+    return {
+        "source": source,
+        "pi_name": pi_name,
+        "source_url": url,
+        "description": description,
+    }
+
+
+def test_dedup_collapses_fuller_name_variant():
+    url = "https://physics.illinois.edu/people/directory/profile/bkclark"
+    out = _dedup_faculty_records([_fac("Bryan Clark", url), _fac("Bryan K. Clark", url)])
+    assert [o["pi_name"] for o in out] == ["Bryan K. Clark"]
+
+
+def test_dedup_collapses_nickname_variant():
+    url = "https://physics.illinois.edu/people/directory/profile/eckstein"
+    out = _dedup_faculty_records([_fac("Jim Eckstein", url), _fac("James N. Eckstein", url)])
+    assert [o["pi_name"] for o in out] == ["James N. Eckstein"]
+
+
+def test_dedup_keeps_distinct_surnames_at_same_url():
+    url = "https://example.illinois.edu/lab"
+    rows = [_fac("Jane Smith", url), _fac("John Doe", url)]
+    assert len(_dedup_faculty_records(rows)) == 2
+
+
+def test_dedup_keeps_same_name_at_different_urls():
+    rows = [
+        _fac("Bryan Clark", "https://a.illinois.edu/profile/1"),
+        _fac("Bryan Clark", "https://b.illinois.edu/profile/2"),
+    ]
+    assert len(_dedup_faculty_records(rows)) == 2
+
+
+def test_dedup_ignores_non_faculty_rows():
+    url = "https://x.illinois.edu/p"
+    rows = [_fac("Ann Lee", url, source="nsf_reu"), _fac("Ann Lee", url, source="handshake")]
+    assert len(_dedup_faculty_records(rows)) == 2
+
+
+def test_dedup_strips_generational_suffix():
+    url = "https://physics.illinois.edu/people/directory/profile/demarco"
+    out = _dedup_faculty_records([_fac("Brian DeMarco", url), _fac("Brian DeMarco Jr.", url)])
+    assert len(out) == 1

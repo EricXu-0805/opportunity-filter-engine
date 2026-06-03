@@ -893,6 +893,68 @@ def fetch_and_normalize(departments: list[str] = None,
     return all_opps
 
 
+# Faculty profiles are sometimes scraped under two spellings of one person at
+# the same profile URL — a fuller name ("Geoffrey Lindsay Herman" vs "Geoffrey
+# Herman") or a nickname ("James N. Eckstein" vs "Jim Eckstein"). Because the
+# record id hashes the name, each spelling becomes a separate row and the
+# professor surfaces twice in matches. The helpers below collapse uiuc_faculty
+# records that share a profile URL AND the same last name. source_url here is a
+# per-person profile page, so the last-name guard only blocks the unlikely case
+# of two distinct same-surname professors sharing one URL; differing surnames
+# (or differing URLs) are never merged.
+_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
+
+
+def _faculty_name_key(opp: dict) -> tuple[str, str] | None:
+    """Return (source_url, last_name) identifying a professor, or None when the
+    record is not faculty or lacks the URL/two-token name needed to dedup
+    safely (None means the row always passes through untouched)."""
+    if opp.get("source") != "uiuc_faculty":
+        return None
+    url = (opp.get("source_url") or "").strip()
+    name = (opp.get("pi_name") or "").strip()
+    if not url or not name:
+        return None
+    tokens = [t for t in name.replace(",", " ").split() if t]
+    # Drop generational suffixes so "Brian DeMarco Jr." keys the same as "Brian DeMarco".
+    while tokens and tokens[-1].lower().strip(".") in _NAME_SUFFIXES:
+        tokens.pop()
+    if len(tokens) < 2:
+        return None
+    return (url, tokens[-1].lower())
+
+
+def _faculty_is_richer(a: dict, b: dict) -> bool:
+    """True if faculty record ``a`` is more complete than ``b``: the fuller
+    name wins (captures more of the person's full name), then the longer
+    description. Used to choose which duplicate spelling to keep."""
+    an, bn = len(a.get("pi_name") or ""), len(b.get("pi_name") or "")
+    if an != bn:
+        return an > bn
+    ad = len(a.get("description") or a.get("description_raw") or "")
+    bd = len(b.get("description") or b.get("description_raw") or "")
+    return ad > bd
+
+
+def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
+    """Collapse same-professor duplicate faculty rows (same profile URL + last
+    name), keeping the richer record at its original position. Non-faculty rows
+    and records without a safe key always pass through untouched. Survivors keep
+    their original order so a re-write only removes the duplicate rows."""
+    best_idx: dict[tuple[str, str], int] = {}
+    for i, opp in enumerate(opps):
+        key = _faculty_name_key(opp)
+        if key is None:
+            continue
+        if key not in best_idx or _faculty_is_richer(opp, opps[best_idx[key]]):
+            best_idx[key] = i
+    return [
+        opp
+        for i, opp in enumerate(opps)
+        if (key := _faculty_name_key(opp)) is None or best_idx[key] == i
+    ]
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -917,6 +979,12 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             added += 1
 
     all_opps = list(index.values())
+    before = len(all_opps)
+    all_opps = _dedup_faculty_records(all_opps)
+    removed = before - len(all_opps)
+    if removed:
+        logger.info(f"Removed {removed} duplicate faculty record(s) sharing a profile URL")
+
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
 
