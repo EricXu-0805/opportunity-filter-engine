@@ -953,6 +953,8 @@ _BROAD_FIELDS = frozenset({
     "civil engineering", "mechanical engineering", "electrical engineering",
     "chemical engineering", "aerospace", "nuclear engineering",
     "industrial engineering", "bioengineering", "materials science",
+    "animal sciences", "crop sciences", "food science", "environmental sciences",
+    "natural resources",
 })
 
 

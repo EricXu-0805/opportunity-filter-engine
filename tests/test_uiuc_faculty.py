@@ -9,6 +9,8 @@ from __future__ import annotations
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
     _dedup_faculty_records,
+    _demote_shared_keyword_pollution,
+    _dept_broad_field,
     _extract_research_keywords,
     _is_section_label,
     normalize_faculty,
@@ -152,3 +154,50 @@ def test_keyword_fallback_never_injects_unverified_hot_area():
     kws = _extract_research_keywords({"name": "Jane Doe"}, cfg)
     assert "machine learning" not in kws
     assert "artificial intelligence" not in kws
+
+
+# DQ-1: department-block keyword pollution demotion.
+
+def _fac_kw(department, keywords):
+    return {"source": "uiuc_faculty", "department": department, "keywords": list(keywords)}
+
+
+def test_dept_broad_field_resolves_known_department():
+    assert _dept_broad_field("Siebel School of Computing and Data Science") == "computer science"
+    assert _dept_broad_field("Electrical & Computer Engineering") == "electrical engineering"
+
+
+def test_dept_broad_field_resolves_aces_and_fallback():
+    assert _dept_broad_field("Department of Animal Sciences") == "animal sciences"
+    # Unknown dept falls back to a normalized name.
+    assert _dept_broad_field("Department of Underwater Basket Weaving") == "underwater basket weaving"
+
+
+def test_demote_collapses_shared_block_to_broad_field():
+    shared = ["artificial intelligence", "bioinformatics", "compilers"]
+    rows = [_fac_kw("Siebel School of Computing and Data Science", shared) for _ in range(6)]
+    demoted = _demote_shared_keyword_pollution(rows)
+    assert demoted == 6
+    assert all(r["keywords"] == ["computer science"] for r in rows)
+
+
+def test_demote_leaves_small_shared_sets_alone():
+    # A 2-keyword set shared by only a few peers is plausibly real — keep it.
+    shared = ["computer vision", "robotics"]
+    rows = [_fac_kw("Siebel School of Computing and Data Science", shared) for _ in range(4)]
+    assert _demote_shared_keyword_pollution(rows) == 0
+    assert all(r["keywords"] == shared for r in rows)
+
+
+def test_demote_ignores_distinct_keyword_sets():
+    rows = [
+        _fac_kw("Department of Physics", ["nanophotonics", "biosensing"]),
+        _fac_kw("Department of Physics", ["heavy ion physics", "quark gluon plasma"]),
+    ]
+    assert _demote_shared_keyword_pollution(rows) == 0
+
+
+def test_demote_scoped_to_faculty_source():
+    shared = ["a", "b"]
+    rows = [{"source": "nsf_reu", "department": "X", "keywords": list(shared)} for _ in range(10)]
+    assert _demote_shared_keyword_pollution(rows) == 0

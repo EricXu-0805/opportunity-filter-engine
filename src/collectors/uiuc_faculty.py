@@ -18,6 +18,7 @@ import json
 import logging
 import re
 import time
+from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urljoin
@@ -961,6 +962,68 @@ def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
     ]
 
 
+# A department-wide "Research Areas" navigation block scraped into individual
+# profile pages produces byte-identical multi-keyword sets across same-department
+# peers (DQ-1) — e.g. 74 CS professors all tagged the same 5 areas regardless of
+# what they actually do. This is worse than the honest broad-field fallback
+# because it presents specific-looking but false matches. Real per-professor
+# research is diverse, so a 2+ keyword set shared by more than this many peers in
+# one department is treated as a scrape artifact and demoted to the broad field.
+_SHARED_KEYWORD_POLLUTION_THRESHOLD = 5
+
+# Broad field for departments collected by the JS-rendered ACES collector, which
+# are absent from DEPARTMENTS. Keyed on the record's `department` value.
+_ACES_BROAD_FIELDS = {
+    "Department of Animal Sciences": "animal sciences",
+    "Department of Crop Sciences": "crop sciences",
+    "Food Science & Human Nutrition": "food science",
+    "Natural Resources & Environmental Sciences": "environmental sciences",
+}
+
+
+def _dept_broad_field(department: str) -> str:
+    """The honest broad field for a department: its DEPARTMENTS keyword[0] when
+    known, an explicit ACES mapping otherwise, falling back to the department
+    name with a leading 'Department/School/College of' stripped."""
+    for cfg in DEPARTMENTS.values():
+        if cfg.get("name") == department:
+            kws = cfg.get("keywords", [])
+            return kws[0] if kws else ""
+    if department in _ACES_BROAD_FIELDS:
+        return _ACES_BROAD_FIELDS[department]
+    name = re.sub(
+        r"^(?:the\s+)?(?:department|school|college)\s+of\s+",
+        "", department.strip(), flags=re.IGNORECASE,
+    )
+    return name.replace(" & ", " and ").strip().lower()
+
+
+def _demote_shared_keyword_pollution(opps: list[dict]) -> int:
+    """Demote department-block keyword pollution to the broad field (DQ-1).
+
+    Groups uiuc_faculty rows by (department, sorted keywords) for rows with 2+
+    keywords; any group larger than the threshold is a shared nav-block artifact,
+    so each member's keywords are replaced with the department's broad field.
+    Mutates ``opps`` in place; returns the number of records demoted."""
+    groups: dict[tuple[str, tuple[str, ...]], list[dict]] = defaultdict(list)
+    for opp in opps:
+        if opp.get("source") != "uiuc_faculty":
+            continue
+        kws = tuple(sorted((k or "").lower() for k in (opp.get("keywords") or [])))
+        if len(kws) >= 2:
+            groups[(opp.get("department", ""), kws)].append(opp)
+
+    demoted = 0
+    for (department, _kws), members in groups.items():
+        if len(members) <= _SHARED_KEYWORD_POLLUTION_THRESHOLD:
+            continue
+        broad = _dept_broad_field(department)
+        for opp in members:
+            opp["keywords"] = [broad] if broad else []
+            demoted += 1
+    return demoted
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -990,6 +1053,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     removed = before - len(all_opps)
     if removed:
         logger.info(f"Removed {removed} duplicate faculty record(s) sharing a profile URL")
+
+    demoted = _demote_shared_keyword_pollution(all_opps)
+    if demoted:
+        logger.info(f"Demoted {demoted} faculty record(s) with shared department-block keywords to the broad field")
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
