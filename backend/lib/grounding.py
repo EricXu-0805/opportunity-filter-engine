@@ -356,6 +356,16 @@ _TECH_TERMS: frozenset[str] = frozenset({
     "pcr", "crispr", "elisa", "hplc", "fmri", "nmr",
     "chromatography", "spectroscopy", "microscopy",
     "patent", "patents", "dissertation", "fellowship", "valedictorian",
+    # Common all-lowercase tools/brands the shape signal (caps/digits/+#) misses
+    # and that a fixed bank can never fully cover — pinned here so the tailoring
+    # student-only corpus (see backend/routes/tailor.py) can flag a fabricated
+    # claim of one. Chosen to avoid collisions with ordinary English words.
+    "langchain", "llamaindex", "ollama", "vllm", "gradio", "streamlit", "wandb",
+    "pinecone", "weaviate", "qdrant", "chroma", "milvus", "faiss", "supabase",
+    "firebase", "vercel", "netlify", "nextjs", "svelte", "prisma", "snowflake",
+    "databricks", "polars", "duckdb", "clickhouse", "neo4j", "samtools",
+    "bowtie", "bwa", "gatk", "bedtools", "seurat", "scanpy", "arduino",
+    "raspberry", "mistral",
 })
 
 # Security gate: short tech acronyms (<5 chars) the hard-claim regex can't see,
@@ -486,12 +496,13 @@ def validate_no_fabrication(
 ) -> tuple[bool, list[str]]:
     """Return ``(passed, fabricated_tokens)``.
 
-    ``policy=STRICT`` (default, used by resume tailoring): a token is
-    fabricated when it is a 5+ char lowercase ASCII word NOT in the
-    common-filler allowlist, NOT in ``extra_allow``, and NOT a substring of
-    ``evidence_corpus``. Aggressive — right for terse resume claims.
+    ``policy=STRICT`` (default): a token is fabricated when it is a 5+ char
+    lowercase ASCII word NOT in the common-filler allowlist, NOT in
+    ``extra_allow``, and NOT a substring of ``evidence_corpus``. Aggressive —
+    right for terse claims where any unknown word is a real claim.
 
-    ``policy=LENIENT_PROSE`` (cold-email): only tokens carrying a concreteness
+    ``policy=LENIENT_PROSE`` (cold-email AND resume tailoring): only tokens
+    carrying a concreteness
     signal (internal caps, digit, '+'/'#', or pinned tech/credential taxonomy)
     can be fabricated, so warm register words pass without an allowlist arms
     race. Corpus matching is word-boundary for short/tech tokens (substring

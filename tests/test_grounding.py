@@ -221,6 +221,19 @@ def test_tech_terms_cover_security_critical():
     assert critical <= _TECH_TERMS
 
 
+def test_lenient_catches_lowercase_tool_longtail():
+    """TAILOR-1: common all-lowercase tools (langchain, samtools, supabase)
+    carry no case/digit signal and a fixed bank can't fully cover them, but the
+    pinned taxonomy still flags an ungrounded claim instead of letting it onto
+    the resume."""
+    passed, fab = _lenient(
+        "Built retrieval pipelines with langchain and analyzed reads with samtools.",
+        evidence_corpus="python data analysis research",
+    )
+    assert not passed
+    assert {"langchain", "samtools"} <= set(fab)
+
+
 # --- Bidirectional acronym/expansion grounding (R72-E, both policies) ---
 
 

@@ -56,11 +56,10 @@ _DEFAULT_BULLETS_PER_REQUEST = 8
 
 
 def _build_evidence_corpus(
-    profile_dict: dict, opp: dict, original_bullets: list[str],
+    profile_dict: dict, original_bullets: list[str],
 ) -> str:
-    """Concatenate every field the LLM is allowed to draw vocabulary from.
-
-    Profile side (no inventing user skills):
+    """Concatenate every field a concrete tech/credential claim may be grounded
+    against — the STUDENT side ONLY (TAILOR-2):
       - hard_skills name + level
       - coursework
       - research_interests_text
@@ -68,10 +67,14 @@ def _build_evidence_corpus(
       - major / school / college
       - original bullets
 
-    Opportunity side (reframing OK):
-      - title / description_clean / keywords
-      - eligibility.skills_required / skills_preferred / majors
-      - lab_or_program / organization / department / pi_name
+    The opportunity's own text is deliberately EXCLUDED. Folding the posting's
+    skills_required / description / keywords into the corpus used to let the
+    model assert exactly the technologies the posting screens for (PyTorch,
+    CUDA) even when the student never listed them — the highest-stakes
+    fabrication. Under LENIENT_PROSE only concrete-signal tokens are ever
+    checked, so a generic reframing word the posting supplies ("compiler",
+    "pipeline") still passes without the posting in the corpus; only a concrete
+    claim must trace back to the student's own material.
 
     Output is one lowercase string; validation does case-insensitive
     substring lookup against it.
@@ -94,20 +97,6 @@ def _build_evidence_corpus(
 
     parts.extend(str(c) for c in (profile_dict.get("coursework") or []))
     parts.extend(str(b) for b in (original_bullets or []))
-
-    parts.append(str(opp.get("title", "")))
-    parts.append(str(opp.get("description_clean", "")) or str(opp.get("description_raw", "")))
-    parts.append(str(opp.get("lab_or_program", "")))
-    parts.append(str(opp.get("organization", "")))
-    parts.append(str(opp.get("department", "")))
-    parts.append(str(opp.get("pi_name", "")))
-    parts.extend(str(k) for k in (opp.get("keywords") or []))
-
-    eligibility = opp.get("eligibility") or {}
-    if isinstance(eligibility, dict):
-        parts.extend(str(s) for s in (eligibility.get("skills_required") or []))
-        parts.extend(str(s) for s in (eligibility.get("skills_preferred") or []))
-        parts.extend(str(m) for m in (eligibility.get("majors") or []))
 
     return " ".join(parts).lower()
 
@@ -525,7 +514,7 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         )
 
     evidence_corpus = _build_evidence_corpus(
-        profile_dict, opp, request.original_bullets,
+        profile_dict, request.original_bullets,
     )
 
     accepted: list[TailoredBullet] = []
