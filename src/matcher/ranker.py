@@ -25,6 +25,8 @@ from .config import (
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
     SEMANTIC_RERANK_FALLBACK_CAP,
+    SIMILARITY_SCALE_EMBEDDING,
+    SIMILARITY_SCALE_TFIDF,
     STRETCH_BLEND,
     STRETCH_MIDPOINT,
     STRETCH_SIGMOID_K,
@@ -252,6 +254,22 @@ def _text_similarity(text_a: str, text_b: str) -> float:
         return _token_cosine_similarity(text_a, text_b)
     except (ValueError, RuntimeError):
         return _token_cosine_similarity(text_a, text_b)
+
+
+def _similarity_score_scale() -> float:
+    """Multiplier mapping a raw similarity into upside keyword_score points,
+    chosen by the active similarity backend (RANK-5). When an embedding provider
+    is configured, ``_text_similarity`` returns embedding cosines (~0.35-0.75 for
+    related text) — the large TF-IDF multiplier would saturate them at sim≈0.21
+    and flatten real differences — so use the gentler embedding scale. Falls back
+    to the TF-IDF scale otherwise (and on any probe failure)."""
+    try:
+        from .embeddings import _resolve_embedding_provider
+        if _resolve_embedding_provider(None) is not None:
+            return SIMILARITY_SCALE_EMBEDDING
+    except Exception:
+        pass
+    return SIMILARITY_SCALE_TFIDF
 
 
 def _token_cosine_similarity(text_a: str, text_b: str) -> float:
@@ -760,7 +778,7 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
             opp_desc,
         ]))
         sim = _text_similarity(research_text, opp_corpus)
-        keyword_score = max(keyword_score, min(100.0, 15.0 + sim * 400))
+        keyword_score = max(keyword_score, min(100.0, 15.0 + sim * _similarity_score_scale()))
         if sim > 0.15:
             if specific_kw and lab_label:
                 reasons_fit.append(

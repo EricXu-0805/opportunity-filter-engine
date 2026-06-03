@@ -536,6 +536,30 @@ class TestDataIntegrity:
             assert r.bucket in ("high_priority", "good_match", "reach", "low_fit")
 
 
+class TestSimilarityScaleRANK5:
+    """RANK-5: the similarity→keyword_score multiplier is backend-aware so the
+    embedding path isn't saturated at sim≈0.21, without changing the TF-IDF path."""
+
+    def test_scale_switches_on_embedding_provider(self, monkeypatch):
+        from src.matcher.config import SIMILARITY_SCALE_EMBEDDING, SIMILARITY_SCALE_TFIDF
+        from src.matcher.ranker import _similarity_score_scale
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        assert _similarity_score_scale() == SIMILARITY_SCALE_TFIDF
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        assert _similarity_score_scale() == SIMILARITY_SCALE_EMBEDDING
+
+    def test_embedding_scale_stays_discriminative(self):
+        from src.matcher.config import SIMILARITY_SCALE_EMBEDDING
+        # The saturation point (15 + sim*scale == 100) must sit well above the old
+        # 0.21, so embedding cosines in the ~0.35-0.75 band aren't flattened to 100.
+        assert (100.0 - 15.0) / SIMILARITY_SCALE_EMBEDDING > 0.5
+
+    def test_tfidf_scale_unchanged(self):
+        from src.matcher.config import SIMILARITY_SCALE_TFIDF
+        assert SIMILARITY_SCALE_TFIDF == 400.0  # offline default path untouched
+
+
 class TestTopicAlignmentPenalty:
     INTEREST = "machine learning, computer vision, deep learning"
 
