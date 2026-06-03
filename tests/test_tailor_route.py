@@ -378,6 +378,51 @@ class TestAntiFabrication:
         assert body["method"] == "ai"
         assert body["warnings"] == []
 
+    def test_fabrication_lowercase_tool_when_profile_lacks_it(
+        self, java_profile, real_opp_id, monkeypatch,
+    ):
+        """TAILOR-1: an all-lowercase tool (langchain/pinecone) the student
+        never listed carries no case/digit signal but is still rejected via the
+        pinned taxonomy — it must not slip onto the resume."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fake = json.dumps({
+            "bullets": [
+                {
+                    "text": "Built RAG pipelines with langchain over a pinecone vector store.",
+                    "source_evidence": "fabricated",
+                },
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": java_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Designed a thermal sensor in Java"],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "fallback"
+        joined = " ".join(b["text"] for b in body["tailored_bullets"]).lower()
+        assert "langchain" not in joined and "pinecone" not in joined
+
+    def test_posting_tech_term_not_grounded_by_corpus(self):
+        """TAILOR-2: a concrete tech term that appears only in the posting must
+        NOT ground a student's tailored claim — the evidence corpus is
+        student-side only, so the model cannot assert the exact skill the
+        posting screens for that the student lacks."""
+        from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
+        from backend.routes.tailor import _build_evidence_corpus
+
+        profile = {"hard_skills": [{"name": "Java", "level": "experienced"}], "coursework": []}
+        corpus = _build_evidence_corpus(profile, ["Built a thermal sensor in Java"])
+        passed, fab = validate_no_fabrication(
+            "Trained deep learning models in PyTorch.", corpus, policy=LENIENT_PROSE,
+        )
+        assert not passed and "pytorch" in fab
+
 
 class TestLlmFailureModes:
     def test_malformed_json_falls_back(
@@ -761,7 +806,11 @@ class TestUnitHelpers:
         )
         assert passed, f"expected pass, got fabricated={fab}"
 
-    def test_evidence_corpus_includes_profile_and_opp(self):
+    def test_evidence_corpus_is_student_side_only(self):
+        # TAILOR-2: the evidence corpus that grounds concrete tech/credential
+        # claims must be the STUDENT side only — folding in the posting's own
+        # skills_required / description let the model claim exactly the
+        # technologies the posting screens for that the student never listed.
         from backend.routes.tailor import _build_evidence_corpus
         profile = {
             "major": "Computer Science",
@@ -769,19 +818,9 @@ class TestUnitHelpers:
             "hard_skills": [{"name": "Python", "level": "experienced"}],
             "coursework": ["CS 225"],
         }
-        opp = {
-            "title": "Compilers research",
-            "description_clean": "build LLVM compiler passes",
-            "keywords": ["compilers", "LLVM"],
-            "eligibility": {"skills_required": ["C++"], "skills_preferred": []},
-        }
-        corpus = _build_evidence_corpus(profile, opp, ["Did Python projects"])
-        # Profile signal.
+        corpus = _build_evidence_corpus(profile, ["Did Python projects"])
+        # Profile + original-bullet signal is present.
         assert "python" in corpus
         assert "cs 225" in corpus
         assert "machine learning" in corpus
-        # Opportunity signal.
-        assert "compiler" in corpus
-        assert "llvm" in corpus
-        # Original bullet signal.
         assert "did python projects" in corpus
