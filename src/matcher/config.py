@@ -63,11 +63,6 @@ DEADLINE_PASSED_PENALTY = _env_float("OFE_DEADLINE_PENALTY", 0.7)
 
 GRAD_LEVEL_PENALTY = _env_float("OFE_GRAD_LEVEL_PENALTY", 0.5)
 
-MAJOR_PENALTY_HARD = _env_float("OFE_MAJOR_PEN_HARD", 0.75)
-MAJOR_PENALTY_SOFT = _env_float("OFE_MAJOR_PEN_SOFT", 0.88)
-MAJOR_PENALTY_HARD_AT = _env_float("OFE_MAJOR_PEN_HARD_AT", 10.0)
-MAJOR_PENALTY_SOFT_AT = _env_float("OFE_MAJOR_PEN_SOFT_AT", 20.0)
-
 # Research-topic alignment: when a student names specific research interests,
 # a research posting whose curated areas *contradict* them is demoted. "Unknown"
 # (we have no specific area for the lab — true for ~73% of faculty rows that

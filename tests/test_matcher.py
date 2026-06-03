@@ -573,3 +573,28 @@ class TestTopicAlignmentRankingRegression:
         mismatch = rank_opportunity(prof, self._opp("m", ["medieval history", "poetry"]))
         assert unknown.final_score > mismatch.final_score
         assert "Research area looks different from your stated interests" not in unknown.reasons_gap
+
+
+class TestMajorFitSingleCount:
+    """RANK-3: major fit is weighted once (inside score_eligibility). A
+    cross-domain mismatch is still clearly demoted, but the signal is not
+    double-counted via a separate raw multiplier."""
+
+    def _cs_only_opp(self):
+        return {
+            "id": "cs", "opportunity_type": "research", "title": "CS Research",
+            "keywords": ["computer vision"],
+            "eligibility": {"majors": ["CS"]}, "application": {},
+        }
+
+    def test_matching_major_outranks_cross_domain_mismatch(self):
+        opp = self._cs_only_opp()
+        cs = {"year": "sophomore", "major": "CS",
+              "research_interests_text": "computer vision and deep learning"}
+        spanish = {"year": "sophomore", "major": "Spanish",
+                   "research_interests_text": "second language acquisition"}
+        cs_score = rank_opportunity(cs, opp).final_score
+        spanish_score = rank_opportunity(spanish, opp).final_score
+        assert cs_score > spanish_score
+        # The mismatch is still firmly weak — major fit continues to matter.
+        assert spanish_score < cs_score - 15

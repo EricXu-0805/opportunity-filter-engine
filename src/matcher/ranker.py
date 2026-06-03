@@ -22,10 +22,6 @@ from .config import (
     INTEREST_BONUS_CAP,
     INTEREST_BONUS_PER_HIT,
     INTL_UNKNOWN_SCORE,
-    MAJOR_PENALTY_HARD,
-    MAJOR_PENALTY_HARD_AT,
-    MAJOR_PENALTY_SOFT,
-    MAJOR_PENALTY_SOFT_AT,
     PROFICIENCY_WEIGHTS,
     SEMANTIC_RERANK_FALLBACK_CAP,
     STRETCH_BLEND,
@@ -1044,16 +1040,12 @@ def rank_opportunity(
     interest_bonus = _interest_bonus(profile, opportunity)
     raw = min(100.0, raw + interest_bonus)
 
-    elig = opportunity.get("eligibility", {})
-    required_majors = elig.get("majors", [])
-    if required_majors:
-        student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])
-        mm_score = _major_match_score(student_majors, required_majors)
-        if mm_score <= MAJOR_PENALTY_HARD_AT:
-            raw *= MAJOR_PENALTY_HARD
-        elif mm_score <= MAJOR_PENALTY_SOFT_AT:
-            raw *= MAJOR_PENALTY_SOFT
-
+    # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
+    # eligibility layer). A separate raw multiplier here double-counted the same
+    # signal, deflating mismatches far below the documented weight. Dogfooding
+    # confirmed the eligibility term alone keeps a cross-domain mismatch (e.g. a
+    # Spanish major vs a CS-only lab) firmly in low_fit, so the multiplier is
+    # removed and major fit lives in exactly one place.
     topic_penalty = _topic_alignment_penalty(profile, opportunity)
     if topic_penalty < 1.0:
         raw *= topic_penalty
