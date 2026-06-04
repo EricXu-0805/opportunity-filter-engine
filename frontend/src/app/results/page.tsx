@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
@@ -42,6 +42,7 @@ import { SkeletonCard } from './SkeletonCard';
 import {
   DEFAULT_FILTERS,
   migrateProfile,
+  sourceLabel,
   type Filters,
   type LegacyProfileShape,
   type SortKey,
@@ -79,8 +80,8 @@ function ResultsLoading() {
         <div className="skeleton h-10 w-64 mb-3" />
         <div className="skeleton h-5 w-48" />
       </div>
-      <div className="space-y-6">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
+        {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
       </div>
@@ -120,6 +121,21 @@ function ResultsContent() {
     t,
   );
 
+  // Source-filter chips derived from the sources actually present (by count),
+  // so every real source — incl. simplify_internships — is filterable.
+  const sourceOptions = useMemo<Array<[string, string]>>(() => {
+    const counts = new Map<string, number>();
+    for (const m of data?.results ?? []) {
+      const s = m.opportunity.source;
+      if (s) counts.set(s, (counts.get(s) ?? 0) + 1);
+    }
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s);
+    return [
+      ['', t('results.filters.sourceAll')],
+      ...sorted.map((s) => [s, sourceLabel(s, t)] as [string, string]),
+    ];
+  }, [data, t]);
+
   const [showDismissed, setShowDismissed] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -136,6 +152,11 @@ function ResultsContent() {
   }>({ open: false, opportunityId: '', opportunityTitle: '' });
 
   const [favs, setFavs] = useState<Set<string>>(new Set());
+  // Mirror favs into a ref so handleToggleFav can read the current set without
+  // depending on `favs` — a [favs] dep made the callback unstable and defeated
+  // MatchCard's memoization, re-rendering all visible cards on every toggle.
+  const favsRef = useRef(favs);
+  useEffect(() => { favsRef.current = favs; }, [favs]);
   const [interactions, setInteractions] = useState<Map<string, InteractionType>>(new Map());
   useEffect(() => {
     let cancelled = false;
@@ -149,24 +170,20 @@ function ResultsContent() {
   }, []);
 
   const handleToggleFav = useCallback(async (oppId: string) => {
-    setFavs(prev => {
-      const next = new Set(prev);
+    const wasFaved = favsRef.current.has(oppId);
+    const flip = (s: Set<string>) => {
+      const next = new Set(s);
       if (next.has(oppId)) next.delete(oppId);
       else next.add(oppId);
       return next;
-    });
+    };
+    setFavs(flip);
     try {
-      const wasFaved = favs.has(oppId);
       await toggleFavorite(oppId, wasFaved);
     } catch {
-      setFavs(prev => {
-        const next = new Set(prev);
-        if (next.has(oppId)) next.delete(oppId);
-        else next.add(oppId);
-        return next;
-      });
+      setFavs(flip); // revert the optimistic toggle on failure
     }
-  }, [favs]);
+  }, []);
 
   const handleTrackInteraction = useCallback((oppId: string, type: InteractionType) => {
     setInteractions(prev => {
@@ -426,14 +443,15 @@ function ResultsContent() {
             onShowDismissedChange={setShowDismissed}
             dismissedCount={dismissedCount}
             activeFilterCount={activeFilterCount}
+            sourceOptions={sourceOptions}
             t={t}
           />
         </div>
       )}
 
       {loading && (
-        <div className="space-y-6">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
+          {Array.from({ length: 6 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>

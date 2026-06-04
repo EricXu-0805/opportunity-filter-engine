@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { FilterRail } from './FilterRail';
+import { sourceLabel } from './types';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type TFunc } from './types';
 
 const t: TFunc = (key, vars) => {
@@ -15,6 +16,7 @@ function renderRail(overrides: {
   activeFilterCount?: number;
   showDismissed?: boolean;
   dismissedCount?: number;
+  sourceOptions?: Array<[string, string]>;
 } = {}) {
   const onFiltersChange = vi.fn();
   const onSortByChange = vi.fn();
@@ -29,6 +31,7 @@ function renderRail(overrides: {
       onShowDismissedChange={onShowDismissedChange}
       dismissedCount={overrides.dismissedCount ?? 0}
       activeFilterCount={overrides.activeFilterCount ?? 0}
+      sourceOptions={overrides.sourceOptions ?? [['', 'All sources'], ['uiuc_faculty', 'UIUC Faculty']]}
       t={t}
     />,
   );
@@ -128,5 +131,15 @@ describe('FilterRail (R69-B mobile collapse)', () => {
     // must hold at least 6 <select> elements.
     const selects = within(chips!).getAllByRole('combobox');
     expect(selects.length).toBe(6);
+  });
+});
+
+describe('sourceLabel (derived source filter)', () => {
+  const t = (k: string) => k;
+  it('uses the i18n key for a known source', () => {
+    expect(sourceLabel('uiuc_faculty', t)).toBe('results.filters.sourceUiucFaculty');
+  });
+  it('humanizes an unknown source key (e.g. simplify_internships)', () => {
+    expect(sourceLabel('simplify_internships', t)).toBe('Simplify Internships');
   });
 });

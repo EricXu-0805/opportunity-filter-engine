@@ -14,14 +14,11 @@ export type SortKey = 'score' | 'deadline' | 'newest';
 export interface Filters {
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
-  source:
-    | ''
-    | 'uiuc_sro'
-    | 'nsf_reu'
-    | 'manual'
-    | 'uiuc_our_rss'
-    | 'uiuc_faculty'
-    | 'handshake';
+  // Any source key present in the corpus ('' = all). Options are derived from
+  // the actual match results (see sourceLabel + the FilterRail sourceOptions
+  // prop) so newer sources like 'simplify_internships' aren't silently
+  // un-filterable; equality-matched in use-results-filters, so a plain string.
+  source: string;
   onCampus: '' | 'yes' | 'no';
   deadline: '' | '7' | '14' | '30' | 'passed';
   minScore: number;
@@ -99,3 +96,20 @@ export type TFunc = (
   path: string,
   vars?: Record<string, string | number>,
 ) => string;
+
+// Known source keys map to a translated label; anything else (newer/RSS
+// sources) is humanized from the key so it still reads cleanly in the filter.
+const SOURCE_LABEL_KEY: Record<string, string> = {
+  uiuc_sro: 'results.filters.sourceUiucSro',
+  nsf_reu: 'results.filters.sourceNsfReu',
+  uiuc_faculty: 'results.filters.sourceUiucFaculty',
+  handshake: 'results.filters.sourceHandshake',
+  manual: 'results.filters.sourceManual',
+  uiuc_our_rss: 'results.filters.sourceOurRss',
+};
+
+export function sourceLabel(source: string, t: TFunc): string {
+  const key = SOURCE_LABEL_KEY[source];
+  if (key) return t(key);
+  return source.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
