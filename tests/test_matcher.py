@@ -156,6 +156,35 @@ class TestSkillOverlap:
         assert score == 100.0
 
 
+class TestSkillMapMemoization:
+    """rank_all parses the profile's skills once and threads the map into
+    score_eligibility (#12). Passing the precomputed map must be score-identical
+    to parsing it per call — that equality is the safety basis for hoisting it."""
+
+    def test_skill_overlap_score_skill_map_matches_parse(self):
+        from src.matcher.ranker import _parse_skills, _skill_overlap_score
+        skills = ["Python", "PyTorch", "C++"]
+        smap = _parse_skills(skills)
+        req = ["Python", "TensorFlow"]
+        assert _skill_overlap_score(skills, req) == _skill_overlap_score(skills, req, skill_map=smap)
+
+    def test_score_eligibility_skill_map_matches_parse(self):
+        from src.matcher.ranker import _parse_skills, score_eligibility
+        profile = {
+            "hard_skills": ["Python", "PyTorch", "C++"],
+            "year": "freshman", "major": "CS", "seeking_type": ["research"],
+        }
+        opp = {
+            "opportunity_type": "research",
+            "eligibility": {
+                "preferred_year": ["freshman"], "majors": ["CS"],
+                "skills_required": ["Python", "PyTorch"], "international_friendly": "yes",
+            },
+        }
+        smap = _parse_skills(profile["hard_skills"])
+        assert score_eligibility(profile, opp) == score_eligibility(profile, opp, skill_map=smap)
+
+
 class TestTypePreferenceNormalisation:
     """R69-D: _type_preference_score normalises inputs so case / space /
     hyphen drift from non-form callers (share URLs, admin debug, future

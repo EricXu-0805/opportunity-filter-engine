@@ -418,11 +418,17 @@ def _parse_skills(student_skills: list) -> dict[str, float]:
     return result
 
 
-def _skill_overlap_score(student_skills: list, required_skills: list[str]) -> float:
+def _skill_overlap_score(
+    student_skills: list,
+    required_skills: list[str],
+    skill_map: dict[str, float] | None = None,
+) -> float:
     if not required_skills:
         return 35.0
 
-    skill_weights = _parse_skills(student_skills)
+    # skill_map is the caller-precomputed _parse_skills(student_skills); rank_all
+    # passes it so the (identical) profile skills are parsed once, not per opp.
+    skill_weights = skill_map if skill_map is not None else _parse_skills(student_skills)
 
     total_weight = 0.0
     for r in required_skills:
@@ -548,8 +554,16 @@ def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
 
 # --- Scoring layers ---
 
-def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str], list[str]]:
-    """Score eligibility (0-100). Returns (score, fit_reasons, gap_reasons)."""
+def score_eligibility(
+    profile: dict,
+    opportunity: dict,
+    skill_map: dict[str, float] | None = None,
+) -> tuple[float, list[str], list[str]]:
+    """Score eligibility (0-100). Returns (score, fit_reasons, gap_reasons).
+
+    ``skill_map`` is the precomputed _parse_skills(profile hard_skills); rank_all
+    passes it so the profile's skills are parsed once per request, not per opp.
+    """
     elig = opportunity.get("eligibility", {})
     reasons_fit = []
     reasons_gap = []
@@ -607,9 +621,10 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
     else:
         skill_score = _skill_overlap_score(
             profile.get("hard_skills", []),
-            required_skills_list
+            required_skills_list,
+            skill_map=skill_map,
         )
-    student_skill_map = _parse_skills(profile.get("hard_skills", []))
+    student_skill_map = skill_map if skill_map is not None else _parse_skills(profile.get("hard_skills", []))
     required_raw = elig.get("skills_required", [])
     matched_skills = []
     missing_skills = []
@@ -1353,6 +1368,10 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     seeking = set(profile.get("seeking_type", []))
     student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
 
+    # Parse the profile's skills once — it is identical for every opportunity, so
+    # parsing it per opp (inside score_eligibility) was ~12% of rank_all's time.
+    profile_skill_map = _parse_skills(profile.get("hard_skills", []))
+
     # Batch the upside research-interest similarity once for the whole corpus.
     # This pass is TF-IDF only (allow_embeddings=False): embedding the full ~4.4k
     # corpus per request would fan out into dozens of provider calls and is
@@ -1399,7 +1418,7 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
                     if not (all_related & opp_majors_norm):
                         continue
 
-        elig_triple = score_eligibility(profile, opp)
+        elig_triple = score_eligibility(profile, opp, skill_map=profile_skill_map)
         min_threshold = profile.get("preferences", {}).get("min_match_threshold", 0)
         if min_threshold > 0:
             max_possible = (
