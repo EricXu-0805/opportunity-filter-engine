@@ -228,6 +228,8 @@ export interface ResumeParseResponse {
   raw_text: string;
   success: boolean;
   message: string;
+  /** Labeled "Areas of Interest" line from the resume; seeds the interests box when empty. */
+  suggested_interests?: string;
 }
 
 // ── Stats / Dashboard ────────────────────────────────────────────────
