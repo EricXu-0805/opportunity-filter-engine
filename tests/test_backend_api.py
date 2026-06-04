@@ -981,6 +981,22 @@ class TestEmbeddingProvider:
         assert len(out) == 2
 
 
+class TestStartupWarmup:
+    """The FastAPI lifespan warms the opportunity cache + TF-IDF fit at boot so
+    the first user request doesn't pay the data-load cost (C5)."""
+
+    def test_lifespan_warms_opportunity_cache(self):
+        from fastapi.testclient import TestClient
+
+        from backend import data_loader, main
+        data_loader._opp_cache = []
+        data_loader._opp_cache_by_id = {}
+        # Entering the context manager runs the lifespan startup → _warmup.
+        with TestClient(main.app):
+            assert len(data_loader._opp_cache) > 0
+            assert len(data_loader._opp_cache_by_id) > 0
+
+
 class TestCORS:
     def test_localhost_allowed(self):
         resp = client.options(
