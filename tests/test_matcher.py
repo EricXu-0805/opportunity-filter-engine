@@ -832,3 +832,56 @@ class TestBucketRecompute:
         assert ranks == sorted(ranks, reverse=True)
         boosted = next(r for r in out if r.opportunity_id == "o11")
         assert boosted.final_score > 50 and boosted.bucket != "low_fit"
+
+
+class TestBatchedSimilarity:
+    """The batched upside similarity (rank_all) must equal the per-pair path
+    (score_upside) when the TF-IDF vectorizer is fitted — that equality is the
+    whole safety basis for batching (#10)."""
+
+    def _opps(self):
+        return [
+            {"id": f"o{i}", "opportunity_type": "research",
+             "title": f"Lab {i}", "lab_or_program": f"Prof. P{i}'s Group",
+             "keywords": kw, "description_raw": desc,
+             "eligibility": {"preferred_year": ["freshman"], "international_friendly": "yes"},
+             "application": {}}
+            for i, (kw, desc) in enumerate([
+                (["machine learning", "computer vision"], "Computer vision and ML research."),
+                (["robotics", "control"], "Robotics and control systems."),
+                (["nlp", "large language models"], "NLP and large language models."),
+                (["physics"], "Condensed matter physics."),
+                (["computer vision"], "Image understanding."),
+            ])
+        ]
+
+    def test_similarity_corpus_matches_inline_build(self):
+        from src.matcher.ranker import _GENERIC_KEYWORDS, _similarity_corpus
+        opp = self._opps()[0]
+        opp_kw = [k.lower() for k in opp["keywords"]]
+        specific = list(dict.fromkeys(k for k in opp_kw if k not in _GENERIC_KEYWORDS))
+        desc = (opp.get("description_raw") or "").lower()
+        expected = " ".join(filter(None, [opp["title"], opp["lab_or_program"], " ".join(specific), desc]))
+        assert _similarity_corpus(opp) == expected
+
+    def test_batched_equals_per_pair_when_fitted(self):
+        import src.matcher.embeddings as emb
+        from src.matcher.embeddings import fit_tfidf_corpus
+        from src.matcher.ranker import _compute_weights, _similarity_corpus
+
+        prev_v, prev_f = emb._tfidf_vectorizer, emb._tfidf_fitted
+        opps = self._opps()
+        try:
+            fit_tfidf_corpus([_similarity_corpus(o) for o in opps])
+            if not emb._tfidf_fitted:
+                pytest.skip("sklearn unavailable")
+            prof = {"year": "freshman", "seeking_type": ["research"],
+                    "research_interests_text": "machine learning and computer vision"}
+            batched = {r.opportunity_id: round(r.final_score, 6) for r in rank_all(prof, opps)}
+            weights = _compute_weights(50)
+            for o in opps:
+                if o["id"] in batched:
+                    r = rank_opportunity(prof, o, weights, precomputed_sim=None)
+                    assert batched[o["id"]] == round(r.final_score, 6)
+        finally:
+            emb._tfidf_vectorizer, emb._tfidf_fitted = prev_v, prev_f
