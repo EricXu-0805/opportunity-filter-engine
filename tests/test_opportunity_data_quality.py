@@ -275,6 +275,23 @@ class TestR70ADataQuality:
             f"First: {offenders[:3]}"
         )
 
+    def test_faculty_keywords_have_no_junk(self):
+        """No faculty keyword may be page furniture, a dangling/truncated fragment,
+        or a sentence fragment (re-enrich + _strip_furniture_keywords guarantee
+        this). Uses the same _is_junk_keyword the pipeline filters on."""
+        from src.collectors.uiuc_faculty import _is_junk_keyword
+        offenders = [
+            (o.get("id"), k)
+            for o in _load_data()
+            if o.get("source") == "uiuc_faculty"
+            for k in (o.get("keywords") or [])
+            if _is_junk_keyword(k)
+        ]
+        assert not offenders, (
+            f"{len(offenders)} faculty keywords are junk (furniture/truncation/"
+            f"fragment). First: {offenders[:5]}"
+        )
+
 
 class TestDeactivatePastLogic:
     """Deterministic guard for the deactivate_past normalizer itself, using an

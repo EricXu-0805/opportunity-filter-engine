@@ -380,6 +380,12 @@ _NON_PERSON_LABELS: frozenset[str] = frozenset({
     "students on the market", "job market candidates", "job market",
     "instructors and lecturers", "lecturers and instructors",
     "postdocs and lecturers", "adjuncts and lecturers",
+    # Dept-specific section/award/program headings scraped as a "person" (found
+    # by the re-enrich audit). Whole-name matches only — never clip a real name.
+    "awards", "honors awards", "honors and awards", "diversity",
+    "diversity inclusivity", "diversity and inclusivity", "adjuncts affiliates",
+    "affiliates adjuncts", "linguistics awards", "matesl awards", "tesl history",
+    "student ambassadors", "undergraduate student ambassadors", "zjui",
 })
 
 
@@ -589,27 +595,9 @@ def _enrich_faculty_from_profile(person: dict) -> dict:
             person["email"] = emails[0]
 
     if "research_areas" not in person:
-        for selector in [
-            "div.field--name-field-research-interests",
-            "div.field--name-field-research-areas",
-            "div.research-interests",
-            "section.research",
-            "#research",
-        ]:
-            el = soup.select_one(selector)
-            if el:
-                person["research_areas"] = el.get_text(separator=", ", strip=True)[:300]
-                break
-
-    if "research_areas" not in person:
-        page_text = soup.get_text()
-        for marker in ["Research Interests\n", "Research Areas\n"]:
-            idx = page_text.find(marker)
-            if idx != -1:
-                chunk = page_text[idx + len(marker):idx + len(marker) + 400].strip()
-                lines = [l.strip() for l in chunk.split("\n") if l.strip()][:6]
-                person["research_areas"] = ", ".join(lines)
-                break
+        areas = _research_areas_from_soup(soup)
+        if areas:
+            person["research_areas"] = areas
 
     if "research_areas" not in person:
         meta = soup.select_one("meta[name='description']")
@@ -698,7 +686,7 @@ def _extract_research_keywords(person: dict, dept_config: dict) -> list[str]:
     found = [kw for kw in KEYWORD_BANK if kw in text]
 
     if not found:
-        profile_url = person.get("profile_url", "")
+        profile_url = person.get("url", "")
         if profile_url:
             scraped = _scrape_individual_page_keywords(profile_url)
             if scraped:
@@ -926,12 +914,30 @@ def _strip_pi_name_credentials(opps: list[dict]) -> int:
     for opp in opps:
         if opp.get("source") != "uiuc_faculty":
             continue
-        name = (opp.get("pi_name") or "").strip()
+        original = (opp.get("pi_name") or "").strip()
+        # Strip appended pronouns ("Kathryn Clancy she/her" -> "Kathryn Clancy").
+        name = re.sub(r"\s+(?:she|he|they|ze|xe)\s*/\s*\w+\b.*$", "", original,
+                      flags=re.IGNORECASE).strip()
         tokens = name.split()
         if len(tokens) >= 3 and tokens[-1].lower().strip(".") in _NAME_CREDENTIALS:
-            opp["pi_name"] = " ".join(tokens[:-1])
+            name = " ".join(tokens[:-1])
+        if name and name != original:
+            opp["pi_name"] = name
             changed += 1
     return changed
+
+
+def _drop_nonperson_faculty(opps: list[dict]) -> tuple[list[dict], int]:
+    """Remove faculty records whose pi_name is a directory section / award /
+    program heading scraped as a person ("Awards", "TESL History", "ZJUI", …).
+    Returns (kept, dropped_count); non-faculty rows always pass through."""
+    kept, dropped = [], 0
+    for opp in opps:
+        if opp.get("source") == "uiuc_faculty" and _is_section_label(opp.get("pi_name") or ""):
+            dropped += 1
+            continue
+        kept.append(opp)
+    return kept, dropped
 
 
 def _faculty_name_key(opp: dict) -> tuple[str, str] | None:
@@ -1083,7 +1089,54 @@ _GENERIC_SINGLE_WORDS = frozenset({
     "analysis", "modeling", "modelling", "research", "science", "methods",
     "applications", "systems", "theory", "technology", "development",
     "management", "computation",
+    # standalone nav words that are real research terms only in a multi-word
+    # phrase ("water resources"); reject them only when they stand alone.
+    "resources", "resource", "people", "overview", "directory", "news", "events",
 })
+
+
+# Page furniture / directory nav / job titles that scrape as topic-shaped phrases
+# but are never a research area (surfaced by the re-enrich validation: "edit your
+# profile", "courses taught", "people", "faculty", "resources", "undergraduate
+# research", job titles, university/institute names, section headers, …).
+_PAGE_FURNITURE_RE = re.compile(
+    r"edit your profile|courses?\s+taught|"
+    r"\b(?:professor|lecturer|instructor|provost|dean|director)\b|"
+    r"\b(?:people|faculty|staff|administration|colloqui\w*|committees?|"
+    r"ambassadors?|majors|alumni|directory|overview)\b|"
+    r"(?:under)?graduate\s+students?|undergraduate\s+research|"
+    r"research\s+(?:labs?|centers?|equipment|topics?|interests?|areas?|staff|highlights?|description)|"
+    r"about the department|department\s+(?:affairs|news|calendar)|campus affiliation|"
+    r"programs?\s+and\s+courses|student services|business office|human resources|"
+    r"faculty\s*&?\s*staff|\buniversit\w+\b|\binstitute\b|disease research interests|"
+    r"\bconferences?\b|\bcalendar\b|external\s+links?|\bmathscinet\b|upcoming\b|"
+    r"\blectures?\b|\badjuncts?\b|\baffiliates?\b|\bseminars?\b|\bworkshops?\b|"
+    r"symposi\w*|introduction to\b",
+    re.IGNORECASE,
+)
+
+# Mid-word cuts left by the scraped-text length cap (e.g. "columbia uni",
+# "traffic fl", "communication conc") — a denylist so real trailing acronyms
+# (mri, ism, ii, erp, ai, ml) are never mistaken for truncations.
+_TRUNCATION_STUBS = frozenset({
+    "uni", "univ", "universi", "cam", "conc", "int", "fl", "pr", "introductio",
+})
+
+
+def _is_junk_keyword(k: str) -> bool:
+    """True for a keyword that is page furniture, a dangling/truncated fragment,
+    or a sentence fragment — none of which are research areas."""
+    kl = k.lower().strip()
+    if _PAGE_FURNITURE_RE.search(kl):
+        return True
+    words = kl.split()
+    if words and (words[-1] in _RESEARCH_FUNCTION_WORDS or words[-1] in _TRUNCATION_STUBS):
+        return True
+    if re.match(r"^(?:i|we|working|using|derived|assembling)\b", kl):
+        return True
+    if re.search(r"\b(?:has|have|had|done|exactly)\b", kl):
+        return True
+    return False
 
 
 def _split_research_phrases(text: str) -> list[str]:
@@ -1102,6 +1155,8 @@ def _clean_research_phrase(phrase: str) -> str | None:
     if not (1 <= len(words) <= 5) or not (4 <= len(p) <= 46):
         return None
     if _RESEARCH_AREA_NAV_NOISE.search(p) or _LEADING_NONTOPICAL_RE.match(p):
+        return None
+    if _is_junk_keyword(p):
         return None
     if sum(1 for w in words if w.lower() in _RESEARCH_FUNCTION_WORDS) >= 2:
         return None
@@ -1166,6 +1221,28 @@ _KEYWORD_FRAGMENT_PREFIX_RE = re.compile(
     r"\s+(?:the\s+)?",
     re.IGNORECASE,
 )
+
+
+def _strip_furniture_keywords(opps: list[dict]) -> int:
+    """Drop junk faculty keywords corpus-wide — page furniture ('undergraduate
+    research', 'tondeur lectures', job titles), dangling/truncated fragments
+    ('molecular mechanisms of', 'columbia uni'), and sentence fragments — via
+    _is_junk_keyword, restoring the broad field if a record is left empty.
+    Genuine areas like 'water resources' or 'machine teaching' are preserved.
+    Returns count changed."""
+    changed = 0
+    for o in opps:
+        if o.get("source") != "uiuc_faculty":
+            continue
+        kws = o.get("keywords") or []
+        kept = [k for k in kws if not _is_junk_keyword(k)]
+        if kept != kws:
+            if not kept:
+                broad = _dept_broad_field(o.get("department", ""))
+                kept = [broad] if broad else []
+            o["keywords"] = kept
+            changed += 1
+    return changed
 
 
 def _strip_fragment_keywords(opps: list[dict]) -> int:
@@ -1342,6 +1419,186 @@ def _rebuild_faculty_title_and_desc(opps: list[dict]) -> int:
     return changed
 
 
+# ── Re-enrichment: recover specific research keywords for broad-only faculty by
+#    re-scraping each professor's individual profile page (hybrid heuristic→LLM) ──
+
+_RESEARCH_SELECTORS = [
+    "div.field--name-field-research-interests",
+    "div.field--name-field-research-areas",
+    "div.research-interests",
+    "div.research-areas",
+    "section.research",
+    "#research",
+]
+
+
+def _research_areas_from_soup(soup) -> str:
+    """Comma-separated research-area text from a labelled section or a 'Research
+    Interests/Areas/Focus' text marker. Returns '' when none is present. (Prose
+    bios are handled separately by _bio_text_from_soup, for the LLM path.)"""
+    for sel in _RESEARCH_SELECTORS:
+        el = soup.select_one(sel)
+        if el:
+            txt = el.get_text(separator=", ", strip=True)
+            if len(txt) > 20:
+                return txt[:300]
+    page_text = soup.get_text("\n")
+    for marker in ("Research Interests", "Research Areas", "Research Focus"):
+        idx = page_text.find(marker)
+        if idx != -1:
+            chunk = page_text[idx + len(marker):idx + len(marker) + 400]
+            lines = [ln.strip() for ln in chunk.split("\n") if ln.strip()][:8]
+            if lines:
+                return ", ".join(lines)[:300]
+    return ""
+
+
+def _bio_text_from_soup(soup) -> str:
+    """Longest substantial bio paragraph (prose) for the LLM to mine when no
+    labelled research section exists. Returns '' when nothing usable."""
+    main = soup.select_one("main") or soup
+    paras = [p.get_text(" ", strip=True) for p in main.select("p")]
+    paras = [p for p in paras if len(p) > 80]
+    return max(paras, key=len)[:1200] if paras else ""
+
+
+def _keywords_from_research_areas(areas: str, broad: str, pi_name: str) -> list[str]:
+    """Heuristic keywords from comma-separated research-area text — same per-record
+    cleaning as _derive_keywords_from_raw (drops nav noise, the broad field, and
+    self-name tokens)."""
+    name_tokens = {t.lower() for t in re.split(r"\W+", pi_name or "") if t}
+    out: list[str] = []
+    for p in _split_research_phrases(areas):
+        c = _clean_research_phrase(p)
+        if not c or c == broad or c in out or c in name_tokens:
+            continue
+        out.append(c)
+        if len(out) >= 5:
+            break
+    return out
+
+
+def _llm_research_keywords(research_text: str, page_text: str) -> list[str]:
+    """Ask the configured LLM (Gemini via backend.lib.llm) for research-area
+    keywords, then keep ONLY those whose content tokens all appear in the page
+    text — an anti-fabrication gate so the model can never invent areas. Returns
+    [] when no provider is configured, the call fails, or nothing is grounded."""
+    if not research_text.strip():
+        return []
+    try:
+        from backend.lib.llm import chat_completion
+    except ImportError:
+        return []
+    system = (
+        "You extract a professor's research areas from their faculty profile text. "
+        "Output ONLY a comma-separated list of 3-6 short noun phrases (2-5 words "
+        "each) naming research topics, drawn solely from the text. Never include "
+        "degrees, job titles, course names or numbers, awards, committees, or "
+        "people's names."
+    )
+    out = chat_completion(
+        [{"role": "system", "content": system},
+         {"role": "user", "content": research_text[:1500]}],
+        max_tokens=120, temperature=0.0,
+    )
+    if not out:
+        return []
+    ground = page_text.lower()
+    kws: list[str] = []
+    for raw in re.split(r"[,\n;]", out):
+        c = _clean_research_phrase(raw)
+        if not c or c in kws:
+            continue
+        tokens = [t for t in re.split(r"\W+", c) if len(t) > 2 and t not in _RESEARCH_FUNCTION_WORDS]
+        if tokens and all(t in ground for t in tokens):
+            kws.append(c)
+        if len(kws) >= 5:
+            break
+    return kws
+
+
+def _reenrich_broad_only_faculty(
+    opps: list[dict],
+    *,
+    sample: int | None = None,
+    depts: list[str] | None = None,
+    use_llm: bool = True,
+    dry_run: bool = False,
+) -> tuple[int, int, list[tuple]]:
+    """Re-scrape broad-only faculty profile pages and recover specific research
+    keywords (heuristic first, LLM fallback when it yields < 2). Mutates ``opps``
+    in place unless ``dry_run``. Returns (enriched, attempted, change_samples)
+    where change_samples is a list of (pi_name, dept, before_kws, after_kws, areas)."""
+    targets = []
+    for o in opps:
+        if o.get("source") != "uiuc_faculty":
+            continue
+        dept = o.get("department", "")
+        if depts and dept not in depts:
+            continue
+        if _is_section_label(o.get("pi_name") or ""):
+            continue  # non-person record (purged separately) — never enrich it
+        broad = _dept_broad_field(dept)
+        kws = [k.lower() for k in (o.get("keywords") or [])]
+        if kws not in ([], [broad] if broad else ["__never__"]):
+            continue
+        targets.append(o)
+    if sample is not None:
+        # Stratify across departments (round-robin) so a validation sample spans
+        # depts rather than clustering in whichever dept sorts first.
+        buckets: dict[str, list] = defaultdict(list)
+        for o in targets:
+            buckets[o.get("department", "")].append(o)
+        pools = [iter(v) for v in buckets.values()]
+        ordered: list[dict] = []
+        progressed = True
+        while len(ordered) < sample and progressed:
+            progressed = False
+            for it in pools:
+                nxt = next(it, None)
+                if nxt is not None:
+                    ordered.append(nxt)
+                    progressed = True
+                    if len(ordered) >= sample:
+                        break
+        targets = ordered
+
+    enriched = 0
+    changes: list[tuple] = []
+    for o in targets:
+        url = o.get("url") or o.get("source_url")
+        if not url:
+            continue
+        soup = _fetch_soup(url)
+        time.sleep(DELAY)
+        if not soup:
+            continue
+        broad = _dept_broad_field(o.get("department", ""))
+        areas = _research_areas_from_soup(soup)
+        kws = _keywords_from_research_areas(areas, broad, o.get("pi_name", ""))
+        if len(kws) < 2 and use_llm:
+            source = areas or _bio_text_from_soup(soup)
+            llm_kws = _llm_research_keywords(source, soup.get_text(" "))
+            if len(llm_kws) > len(kws):
+                kws = llm_kws
+                if not areas:
+                    areas = ", ".join(llm_kws)
+        # The LLM path doesn't know the dept broad field; drop it here so a
+        # generic "economics"/"physics" never lands as a "specific" keyword.
+        kws = [k for k in kws if k and k != broad]
+        if not kws:
+            continue
+        enriched += 1
+        if dry_run:
+            changes.append((o.get("pi_name"), o.get("department"),
+                            list(o.get("keywords") or []), kws, (areas or "")[:120]))
+        else:
+            o["keywords"] = kws
+            if areas:
+                o.setdefault("metadata", {})["research_areas_raw"] = areas[:300]
+    return enriched, len(targets), changes
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -1366,6 +1623,11 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             added += 1
 
     all_opps = list(index.values())
+
+    all_opps, dropped_nonperson = _drop_nonperson_faculty(all_opps)
+    if dropped_nonperson:
+        logger.info(f"Dropped {dropped_nonperson} non-person faculty record(s) (section/award/program headings)")
+
     before = len(all_opps)
     all_opps = _dedup_faculty_records(all_opps)
     removed = before - len(all_opps)
@@ -1422,6 +1684,14 @@ if __name__ == "__main__":
                         help="Skip profile page enrichment (faster but less data)")
     parser.add_argument("--list-depts", action="store_true",
                         help="List available departments and exit")
+    parser.add_argument("--reenrich", action="store_true",
+                        help="Re-scrape broad-only faculty profile pages to recover specific keywords")
+    parser.add_argument("--sample", type=int, default=None,
+                        help="With --reenrich: cap to the first N broad-only faculty (validation)")
+    parser.add_argument("--no-llm", action="store_true",
+                        help="With --reenrich: heuristic extraction only, skip the Gemini fallback")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="With --reenrich: report recovered keywords without writing")
     args = parser.parse_args()
 
     if args.list_depts:
@@ -1429,6 +1699,43 @@ if __name__ == "__main__":
         for key, cfg in DEPARTMENTS.items():
             print(f"  {key:12s} — {cfg['name']}")
             print(f"  {'':12s}   {cfg['url']}")
+        exit(0)
+
+    if args.reenrich:
+        from collections import Counter as _Counter
+        path = str(PROCESSED_DIR / "opportunities.json")
+        with open(path, encoding="utf-8") as f:
+            corpus = json.load(f)
+        dept_filter = None
+        if args.dept:
+            cfg = DEPARTMENTS.get(args.dept)
+            dept_filter = [cfg["name"]] if cfg else [args.dept]
+        enriched, attempted, changes = _reenrich_broad_only_faculty(
+            corpus, sample=args.sample, depts=dept_filter,
+            use_llm=not args.no_llm, dry_run=args.dry_run,
+        )
+        if args.dry_run:
+            print(f"\nDry run: recovered keywords for {enriched}/{attempted} broad-only faculty")
+            print("\nPer-department recovered:")
+            for dept, n in _Counter(c[1] for c in changes).most_common():
+                print(f"  {n:4d}  {dept}")
+            print("\nSamples (before -> after):")
+            for pi, dept, before, after, areas in changes[:30]:
+                print(f"  {pi} [{dept}]: {before} -> {after}")
+                print(f"      areas: {areas}")
+        else:
+            corpus, dropped = _drop_nonperson_faculty(corpus)
+            _null_shared_admin_emails(corpus)
+            _demote_shared_keyword_pollution(corpus)   # DQ-1: kill dept nav-menu sets
+            _derive_keywords_from_raw(corpus)           # DQ-2
+            _strip_furniture_keywords(corpus)
+            _strip_fragment_keywords(corpus)
+            _strip_pi_name_credentials(corpus)
+            _rebuild_faculty_title_and_desc(corpus)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(corpus, f, indent=2, ensure_ascii=False, default=str)
+            print(f"\nRe-enriched {enriched}/{attempted} broad-only faculty; "
+                  f"purged {dropped} non-person record(s); wrote {path}")
         exit(0)
 
     depts = [args.dept] if args.dept else None

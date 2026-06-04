@@ -14,10 +14,16 @@ from src.collectors.uiuc_faculty import (
     _demote_shared_keyword_pollution,
     _dept_broad_field,
     _derive_keywords_from_raw,
+    _drop_nonperson_faculty,
     _extract_research_keywords,
+    _is_junk_keyword,
     _is_section_label,
+    _keywords_from_research_areas,
+    _llm_research_keywords,
     _null_shared_admin_emails,
     _rebuild_faculty_title_and_desc,
+    _reenrich_broad_only_faculty,
+    _research_areas_from_soup,
     _strip_fragment_keywords,
     _strip_pi_name_credentials,
     normalize_faculty,
@@ -419,3 +425,166 @@ def test_postdoc_phrase_is_treated_as_nav_noise():
     assert _clean_research_phrase("postdoc positions") is None
     # A genuine topic with no postdoc/doctoral token still passes.
     assert _clean_research_phrase("radiation detection") == "radiation detection"
+
+
+# ── Re-enrichment (re-scrape broad-only faculty → recover keywords) ──
+
+def test_keywords_from_research_areas_drops_broad_and_noise():
+    out = _keywords_from_research_areas(
+        "Computational Linguistics, Research Areas, linguistics, Syntax of Language Contact",
+        "linguistics", "Jane Doe",
+    )
+    assert "linguistics" not in out          # broad field dropped
+    assert "research areas" not in out       # nav noise dropped
+    assert "computational linguistics" in out
+    assert "syntax of language contact" in out
+
+
+def test_keywords_from_research_areas_drops_self_name():
+    out = _keywords_from_research_areas("Doe, Robotics", "mechanical engineering", "Jane Doe")
+    assert "doe" not in out
+    assert out == ["robotics"]
+
+
+def test_research_areas_from_soup_reads_labelled_section():
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(
+        '<html><body><div class="research-interests">Quantum Optics, Photonics</div></body></html>',
+        "html.parser",
+    )
+    assert "quantum optics" in _research_areas_from_soup(soup).lower()
+
+
+def test_research_areas_from_soup_empty_when_absent():
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup("<html><body><p>Teaches IS 226.</p></body></html>", "html.parser")
+    assert _research_areas_from_soup(soup) == ""
+
+
+def test_llm_keywords_drop_ungrounded(monkeypatch):
+    # The model returns a fabricated topic ("blockchain") not on the page — the
+    # grounding gate must drop it and keep only page-grounded keywords.
+    monkeypatch.setattr(
+        "backend.lib.llm.chat_completion",
+        lambda *a, **k: "computer vision, blockchain, deep learning",
+    )
+    page = "Professor studies computer vision and deep learning in robotics."
+    out = _llm_research_keywords("computer vision and deep learning", page)
+    assert "computer vision" in out
+    assert "deep learning" in out
+    assert "blockchain" not in out
+
+
+def test_llm_keywords_empty_without_provider(monkeypatch):
+    monkeypatch.setattr("backend.lib.llm.chat_completion", lambda *a, **k: None)
+    assert _llm_research_keywords("computer vision", "computer vision research") == []
+
+
+def test_reenrich_targets_only_broad_only(monkeypatch):
+    from bs4 import BeautifulSoup
+
+    import src.collectors.uiuc_faculty as f
+    monkeypatch.setattr(f.time, "sleep", lambda *_: None)
+    soup = BeautifulSoup(
+        '<div class="research-interests">Synthetic Biology, Gene Editing</div>',
+        "html.parser",
+    )
+    monkeypatch.setattr(f, "_fetch_soup", lambda url: soup)
+    broad = _dept_broad_field("Bioengineering")
+    opps = [
+        {"source": "uiuc_faculty", "department": "Bioengineering", "pi_name": "A B",
+         "url": "http://x", "keywords": [broad]},                  # broad-only -> targeted
+        {"source": "uiuc_faculty", "department": "Bioengineering", "pi_name": "C D",
+         "url": "http://y", "keywords": ["tissue engineering"]},   # specific -> skipped
+        {"source": "simplify_internships", "keywords": []},        # non-faculty -> skipped
+    ]
+    enriched, attempted, changes = _reenrich_broad_only_faculty(opps, dry_run=True)
+    assert attempted == 1
+    assert enriched == 1
+    assert {c[0] for c in changes} == {"A B"}
+    assert opps[0]["keywords"] == [broad]  # dry_run must not mutate
+
+
+def test_reenrich_writes_keywords_when_not_dry_run(monkeypatch):
+    from bs4 import BeautifulSoup
+
+    import src.collectors.uiuc_faculty as f
+    monkeypatch.setattr(f.time, "sleep", lambda *_: None)
+    soup = BeautifulSoup(
+        '<div class="research-interests">Synthetic Biology, Gene Editing</div>',
+        "html.parser",
+    )
+    monkeypatch.setattr(f, "_fetch_soup", lambda url: soup)
+    broad = _dept_broad_field("Bioengineering")
+    opps = [{"source": "uiuc_faculty", "department": "Bioengineering", "pi_name": "A B",
+             "url": "http://x", "keywords": [broad], "metadata": {}}]
+    enriched, attempted, changes = _reenrich_broad_only_faculty(opps, dry_run=False)
+    assert enriched == 1
+    assert opps[0]["keywords"] == ["synthetic biology", "gene editing"]
+    assert "Synthetic Biology" in opps[0]["metadata"]["research_areas_raw"]
+
+
+def test_clean_research_phrase_drops_page_furniture():
+    # Directory nav / job titles / section headers scrape as topic-shaped phrases
+    # but are never research areas — the re-enrich validation surfaced these.
+    for furniture in [
+        "Edit Your Profile", "Courses Taught", "Assistant Professor",
+        "Interim Director", "People", "Faculty", "Graduate Students", "Resources",
+        "Undergraduate Research", "Research Labs and Facilities", "Research Topics",
+        "Additional Campus Affiliations", "Yale University", "Student Services",
+        "English Literature Majors", "Colloquia Calendar",
+        "Conferences", "Upcoming Events", "Department Calendar", "External Links",
+        "Research Description", "MathSciNet Publications",
+    ]:
+        assert _clean_research_phrase(furniture) is None, furniture
+    # Genuine areas with overlapping words must survive.
+    assert _clean_research_phrase("operations research") == "operations research"
+    assert _clean_research_phrase("personnel selection") == "personnel selection"
+    assert _clean_research_phrase("global environmental change") == "global environmental change"
+
+
+def test_drop_nonperson_faculty_removes_section_headings():
+    rows = [
+        {"source": "uiuc_faculty", "pi_name": "Awards", "keywords": []},
+        {"source": "uiuc_faculty", "pi_name": "TESL History", "keywords": []},
+        {"source": "uiuc_faculty", "pi_name": "ZJUI", "keywords": []},
+        {"source": "uiuc_faculty", "pi_name": "Undergraduate Student Ambassadors", "keywords": []},
+        {"source": "uiuc_faculty", "pi_name": "Kathryn Clancy", "keywords": ["biological anthropology"]},
+        {"source": "simplify_internships", "pi_name": "Awards"},  # non-faculty passes through
+    ]
+    kept, dropped = _drop_nonperson_faculty(rows)
+    assert dropped == 4
+    kept_names = [r.get("pi_name") for r in kept]
+    assert kept_names == ["Kathryn Clancy", "Awards"]  # real prof + non-faculty row
+
+
+def test_strip_pronoun_suffix_from_pi_name():
+    rows = [{"source": "uiuc_faculty", "pi_name": "Kathryn Clancy she/her"}]
+    assert _strip_pi_name_credentials(rows) == 1
+    assert rows[0]["pi_name"] == "Kathryn Clancy"
+
+
+def test_is_junk_keyword_catches_furniture_truncation_fragments():
+    junk = [
+        "tondeur lectures in mathematics", "adjuncts & affiliates",
+        "introduction to islam", "undergraduate research opportunities",
+        "molecular mechanisms of", "columbia uni", "universi", "traffic fl",
+        "communication conc", "nature has done exactly that",
+        "i study model theory", "working with peter teichner", "assembling carbon",
+    ]
+    for k in junk:
+        assert _is_junk_keyword(k), k
+
+
+def test_is_junk_keyword_preserves_genuine_areas():
+    # Includes the live-page verifier's over-strict false-positives, which are
+    # real research areas and must survive, plus words that overlap furniture.
+    real = [
+        "endocrinology", "optics", "quantum fisher information", "thermodynamics",
+        "metabolic regulation", "galaxies and ism", "water resources",
+        "machine teaching", "major histocompatibility complex", "media studies",
+        "resource recovery from wastewater", "x-ray ct", "functional mri",
+        "stable isotope ecology and paleoecology",
+    ]
+    for k in real:
+        assert not _is_junk_keyword(k), k
