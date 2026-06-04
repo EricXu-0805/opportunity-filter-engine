@@ -15,6 +15,10 @@ export interface FilterRailProps {
   onShowDismissedChange: (next: boolean) => void;
   dismissedCount: number;
   activeFilterCount: number;
+  /** [value, label] pairs derived from the sources actually present in the
+   *  results (first entry is the "All" option). Replaces a hardcoded list that
+   *  omitted simplify_internships (the 2nd-largest source) and others. */
+  sourceOptions: Array<[string, string]>;
   t: TFunc;
 }
 
@@ -35,6 +39,7 @@ export function FilterRail({
   onShowDismissedChange,
   dismissedCount,
   activeFilterCount,
+  sourceOptions,
   t,
 }: FilterRailProps) {
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -104,8 +109,8 @@ export function FilterRail({
         />
         <FilterSelect
           value={filters.source}
-          onChange={(v) => onFiltersChange({ ...filters, source: v as Filters['source'] })}
-          options={[['', t('results.filters.sourceAll')], ['uiuc_sro', t('results.filters.sourceUiucSro')], ['nsf_reu', t('results.filters.sourceNsfReu')], ['uiuc_faculty', t('results.filters.sourceUiucFaculty')], ['handshake', t('results.filters.sourceHandshake')], ['manual', t('results.filters.sourceManual')], ['uiuc_our_rss', t('results.filters.sourceOurRss')]]}
+          onChange={(v) => onFiltersChange({ ...filters, source: v })}
+          options={sourceOptions}
         />
         <FilterSelect
           value={filters.onCampus}
