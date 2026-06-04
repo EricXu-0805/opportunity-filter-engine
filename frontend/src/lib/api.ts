@@ -25,6 +25,31 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Split the free-text research-interests box into discrete topic terms for
+ * `desired_fields`, which the matcher intersects with each opportunity's
+ * keywords for an exact-match bonus. Previously hardcoded to [], so that bonus
+ * path was dead for every real user. Splits on commas/semicolons/newlines and
+ * the conjunction "and" (so "computer vision and machine learning" → two terms),
+ * trims, dedupes, and caps at 20 (the backend also caps). Non-matching terms are
+ * harmless — the matcher only rewards terms that actually intersect a keyword.
+ */
+export function deriveDesiredFields(interests: string | undefined): string[] {
+  if (!interests) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of interests.split(/[,;\n]|\s+and\s+/i)) {
+    const term = raw.trim();
+    const key = term.toLowerCase();
+    if (term.length >= 2 && term.length <= 100 && !seen.has(key)) {
+      seen.add(key);
+      out.push(term);
+    }
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+
 function toProfileRequest(profile: ProfileData): ProfileRequest {
   return {
     name: profile.name ?? '',
@@ -35,7 +60,7 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     secondary_interests: [],
     international_student: profile.is_international,
     seeking_type: profile.seeking_types ?? ['research', 'summer_program'],
-    desired_fields: [],
+    desired_fields: deriveDesiredFields(profile.research_interests),
     hard_skills: profile.skills.map((s) => ({ name: s.name, level: s.level })),
     coursework: profile.coursework ?? [],
     experience_level: profile.experience_level ?? 'beginner',

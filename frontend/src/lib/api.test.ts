@@ -21,6 +21,7 @@ import {
   verifyRestoreLink,
   importByUrl,
   importByText,
+  deriveDesiredFields,
 } from './api';
 import type { ProfileData } from './types';
 
@@ -427,3 +428,26 @@ describe('import endpoints (FastAPI detail handling)', () => {
     expect(result).toEqual({ ok: false, error: 'text too short', llm_enriched: false });
   });
 });
+
+describe('deriveDesiredFields', () => {
+  it('splits comma + "and" separated interests into discrete terms', () => {
+    expect(
+      deriveDesiredFields('computer vision and machine learning, deep learning'),
+    ).toEqual(['computer vision', 'machine learning', 'deep learning']);
+  });
+
+  it('returns [] for empty/undefined', () => {
+    expect(deriveDesiredFields('')).toEqual([]);
+    expect(deriveDesiredFields(undefined)).toEqual([]);
+  });
+
+  it('dedupes case-insensitively and caps at 20', () => {
+    expect(deriveDesiredFields('AI, ai, Ai')).toEqual(['AI']);
+    const many = Array.from({ length: 30 }, (_, i) => `field${i}`).join(', ');
+    expect(deriveDesiredFields(many).length).toBe(20);
+  });
+
+  it('does not split the substring "and" inside a word', () => {
+    expect(deriveDesiredFields('understanding language')).toEqual(['understanding language']);
+  });
+})
