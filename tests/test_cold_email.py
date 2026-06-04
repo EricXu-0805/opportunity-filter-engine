@@ -14,13 +14,81 @@ pin the three defects found in review:
 from __future__ import annotations
 
 from src.recommender.cold_email import (
+    _build_concise,
     _common_parts,
     _infer_research_area,
+    _match_skills_to_tasks,
     _p1_research_hook,
+    _p2_skills_applied,
     _short_interest,
     _student_self,
+    _subject,
     generate_cold_email,
 )
+
+
+def _parts(*, skills=None, research_area="computer vision", matching=None):
+    profile = {
+        "name": "Eric", "year": "freshman", "major": "Computer Engineering",
+        "school": "UIUC", "hard_skills": skills or ["Python", "C++"],
+        "research_interests_text": research_area,
+    }
+    opp = {
+        "opportunity_type": "research", "title": "Undergraduate Research",
+        "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Research Group",
+        "department": "Computer Science", "keywords": [research_area],
+        "description_raw": f"Research in {research_area} using Python and C++.",
+        "eligibility": {"skills_required": ["Python", "C++"]},
+    }
+    p = _common_parts(profile, opp)
+    if matching is not None:
+        p["matching_skills"] = matching
+    return p
+
+
+class TestColdEmailPolish:
+    def test_subject_drops_verbose_who_clause_and_caps_length(self):
+        p = _parts(research_area="computer vision and vision-language models")
+        s = _subject(p)
+        assert "student" not in s            # no "<Year> <Major> student" clause
+        assert len(s[len("Subject: "):]) <= 74
+        assert "computer vision" in s
+
+    def test_subject_caps_a_very_long_area_on_a_word_boundary(self):
+        p = _parts(research_area=(
+            "digitally driven repair technology for corroded infrastructure "
+            "using cold spray additive manufacturing and robotics"
+        ))
+        s = _subject(p)
+        assert len(s[len("Subject: "):]) <= 74
+        assert not s.endswith("-") and not s.endswith(",")
+
+    def test_skill_match_requires_whole_token(self):
+        opp = {
+            "description_raw": "We do research in algorithms. Some machine learning.",
+            "eligibility": {"skills_required": ["Python", "C++"]},
+        }
+        matched = _match_skills_to_tasks(["R", "C", "Python", "C++", "machine learning"], opp)
+        assert "R" not in matched            # was matching inside "Research"
+        assert "C" not in matched            # was matching inside "algorithms"
+        assert "Python" in matched and "C++" in matched
+        assert "machine learning" in matched  # multi-word substring still matches
+
+    def test_concise_verb_agreement_singular(self):
+        body = _build_concise(_parts(matching=["Python"]))
+        assert "which is relevant" in body
+        assert "which are relevant" not in body
+
+    def test_concise_verb_agreement_plural(self):
+        body = _build_concise(_parts(matching=["Python", "C++"]))
+        assert "which are relevant" in body
+
+    def test_skills_paragraph_does_not_repeat_the_same_list_twice(self):
+        p = _parts(matching=["Python", "C++"])
+        para = _p2_skills_applied(p)
+        # The "In particular, my background in Python, C++ ..." re-list is gone.
+        assert "In particular, my background in" not in para
+        assert "directly apply to the work described in your posting" in para
 
 _LAB = "Prof. Jane Doe's Research Group"
 
