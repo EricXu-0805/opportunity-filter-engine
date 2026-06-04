@@ -17,21 +17,27 @@ from src.recommender.resume_advisor import analyze_gaps
 router = APIRouter()
 
 _REDACTED_FIELDS = frozenset({"contact_email", "pi_email"})
-MAX_RESULTS_PER_REQUEST = 500
+# Upper bound for an *explicit* limit param. The default (limit unset) returns
+# every visible result so all advertised buckets are browsable — see below.
+MAX_RESULTS_PER_REQUEST = 2000
 
 
 @router.post("/matches", response_model=MatchesResponse)
 async def get_matches(
     profile: ProfileRequest,
-    limit: int = Query(default=MAX_RESULTS_PER_REQUEST, ge=1, le=MAX_RESULTS_PER_REQUEST),
+    limit: int | None = Query(default=None, ge=1, le=MAX_RESULTS_PER_REQUEST),
     offset: int = Query(default=0, ge=0),
     semantic: bool = Query(default=False),
 ):
     """Score and rank opportunities for the given profile.
 
-    The full bucket counts are always returned so the client knows
-    the total picture. Only the slice [offset, offset+limit) of visible
-    (non-low_fit) results is returned in ``results``.
+    By default every visible (non-low_fit) result is returned so the client can
+    page through all of them — previously a 500-result cap left most of the
+    'Reach' bucket unreachable even though the counts advertised it. Pass
+    ``limit``/``offset`` for explicit server-side paging.
+
+    The full bucket counts are always returned so the client knows the total
+    picture.
 
     Set ``semantic=true`` to blend LLM/TF-IDF semantic similarity into
     the top 50 results (30% weight). Adds ~200-800ms latency when
@@ -72,7 +78,7 @@ async def get_matches(
         if r.bucket != "low_fit":
             visible_results.append(r)
 
-    page = visible_results[offset:offset + limit]
+    page = visible_results[offset:offset + limit] if limit is not None else visible_results[offset:]
     page_response = [
         MatchResultResponse(
             opportunity_id=r.opportunity_id,
