@@ -197,6 +197,29 @@ class TestR70ADataQuality:
             f">{_SHARED_KEYWORD_POLLUTION_THRESHOLD} peers. First: {list(polluted.items())[:2]}"
         )
 
+    def test_no_shared_admin_contact_emails(self):
+        """D3: a scraped department/advising inbox (amwhit@ on 123 profs, nslack@
+        on 116) attached as many professors' contact_email misfires cold emails to
+        the wrong person. After the null-pass no faculty contact_email may be
+        shared by the collector's threshold of distinct professors."""
+        from collections import defaultdict
+
+        from src.collectors.uiuc_faculty import _SHARED_ADMIN_EMAIL_THRESHOLD
+
+        names_by_email: dict[str, set[str]] = defaultdict(set)
+        for o in _load_data():
+            if o.get("source") != "uiuc_faculty":
+                continue
+            email = (o.get("contact_email") or "").strip().lower()
+            if email:
+                names_by_email[email].add((o.get("pi_name") or "").strip().lower())
+        shared = {e: len(n) for e, n in names_by_email.items()
+                  if len(n) >= _SHARED_ADMIN_EMAIL_THRESHOLD}
+        assert not shared, (
+            f"{len(shared)} contact email(s) still shared by "
+            f">={_SHARED_ADMIN_EMAIL_THRESHOLD} distinct professors: {shared}"
+        )
+
 
 class TestDeactivatePastLogic:
     """Deterministic guard for the deactivate_past normalizer itself, using an
