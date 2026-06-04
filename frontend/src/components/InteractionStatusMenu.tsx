@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, X } from 'lucide-react';
 import type { InteractionType } from '@/lib/supabase';
 import { useT } from '@/i18n/client';
@@ -63,28 +64,52 @@ export function InteractionStatusMenu({
 }: InteractionStatusMenuProps) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  // The menu is rendered through a portal with fixed positioning: MatchCard's
+  // root is `overflow-hidden` (rounded corners + urgency border), which would
+  // otherwise clip an in-card absolute dropdown — the bug where "Mark status"
+  // got cut off and appeared to overlap the expanded reasons in a narrow card.
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const place = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el || typeof window === 'undefined') return;
+    const r = el.getBoundingClientRect();
+    const EST = 300; // approx menu height; flip above when little room below
+    const spaceBelow = window.innerHeight - r.bottom;
+    const top = spaceBelow >= EST || r.top < spaceBelow
+      ? r.bottom + 4
+      : Math.max(8, r.top - EST - 4);
+    setCoords({ top, right: Math.max(8, window.innerWidth - r.right) });
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     function handlePointerDown(e: MouseEvent | TouchEvent) {
       const target = e.target as Node | null;
-      if (wrapperRef.current && target && !wrapperRef.current.contains(target)) {
-        setOpen(false);
-      }
+      if (!target) return;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     }
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false);
     }
+    // Re-anchor (don't detach) as the results list scrolls or the window resizes.
+    place();
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('touchstart', handlePointerDown);
     document.addEventListener('keydown', handleKey);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('touchstart', handlePointerDown);
       document.removeEventListener('keydown', handleKey);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
     };
-  }, [open]);
+  }, [open, place]);
 
   const triggerLabel = interaction
     ? t(`detail.tracker.statusLabels.${interaction}`)
@@ -95,13 +120,17 @@ export function InteractionStatusMenu({
     : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300';
 
   return (
-    <div
-      ref={wrapperRef}
-      className="relative w-full sm:w-auto sm:ml-auto"
-    >
+    <div className="w-full sm:w-auto sm:ml-auto">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => {
+            if (!v) place();
+            return !v;
+          });
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('results.statusMenu.ariaTrigger', { title: opportunityTitle })}
@@ -120,11 +149,13 @@ export function InteractionStatusMenu({
         />
       </button>
 
-      {open && (
+      {open && coords && typeof document !== 'undefined' && createPortal(
         <div
+          ref={menuRef}
           role="menu"
           aria-label={t('results.statusMenu.ariaMenu', { title: opportunityTitle })}
-          className="absolute right-0 z-20 mt-1 w-56 bg-white rounded-xl shadow-[0_8px_28px_rgba(0,0,0,0.12)] border border-gray-100 py-1.5"
+          style={{ position: 'fixed', top: coords.top, right: coords.right, zIndex: 50 }}
+          className="w-56 max-h-[70vh] overflow-auto bg-white rounded-xl shadow-[0_8px_28px_rgba(0,0,0,0.12)] border border-gray-100 py-1.5"
         >
           {INTERACTION_OPTIONS.map((type) => {
             const isActive = interaction === type;
@@ -178,7 +209,8 @@ export function InteractionStatusMenu({
               </button>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
