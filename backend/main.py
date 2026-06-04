@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 import sys
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -160,6 +163,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+logger = logging.getLogger("ofe.main")
+
+
+def _warmup() -> None:
+    """Load the opportunity corpus + fit the TF-IDF vectorizer. Without this the
+    first user request after a cold start pays the ~1-2s data-load + fit cost."""
+    from backend.data_loader import load_opportunities_by_id
+    load_opportunities_by_id()
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    try:
+        await asyncio.to_thread(_warmup)
+    except Exception as exc:  # never let a warmup hiccup block boot
+        logger.warning("Startup warmup failed (will load lazily): %s", exc)
+    yield
+
+
 app = FastAPI(
     title="Opportunity Filter Engine API",
     description="Personalized research & internship matching for UIUC undergrads",
@@ -167,6 +189,7 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    lifespan=_lifespan,
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
