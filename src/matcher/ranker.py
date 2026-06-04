@@ -753,7 +753,8 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
         reasons_fit.append("Potential for publication or long-term involvement")
 
     keyword_score = 25.0
-    opp_keywords = set(k.lower() for k in opportunity.get("keywords", []))
+    opp_kw_list = [k.lower() for k in opportunity.get("keywords", [])]
+    opp_keywords = set(opp_kw_list)
     desired = set(f.lower() for f in profile.get("desired_fields", []))
     if opp_keywords and desired:
         overlap = opp_keywords & desired
@@ -766,7 +767,9 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
     pi_name = opportunity.get("pi_name", "")
     opp_desc = (opportunity.get("description_raw") or opportunity.get("description_clean") or "").lower()
 
-    specific_kw = [kw for kw in opp_keywords if kw not in _GENERIC_KEYWORDS]
+    specific_kw = list(dict.fromkeys(
+        kw for kw in opp_kw_list if kw not in _GENERIC_KEYWORDS
+    ))
     clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
     lab_label = clean_pi and f"Prof. {clean_pi}" or lab or opportunity.get("department", "")
 
@@ -780,13 +783,22 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
         sim = _text_similarity(research_text, opp_corpus)
         keyword_score = max(keyword_score, min(100.0, 15.0 + sim * _similarity_score_scale()))
         if sim > 0.15:
+            work = ", ".join(specific_kw[:3])
+            # Name the interest terms that actually overlap the lab's areas rather
+            # than echoing a mid-word slice of the student's free-text interests.
+            overlap = [kw for kw in specific_kw if kw in research_text]
+            interest_phrase = ", ".join(overlap[:3])
             if specific_kw and lab_label:
                 reasons_fit.append(
-                    f"Your interest in {research_text[:50].rstrip('.')} closely matches {lab_label}'s work on {', '.join(specific_kw[:3])}"
+                    f"Your interest in {interest_phrase} closely matches {lab_label}'s work on {work}"
+                    if interest_phrase
+                    else f"Your research interests align closely with {lab_label}'s work on {work}"
                 )
             elif specific_kw:
                 reasons_fit.append(
-                    f"Your interest in {research_text[:50].rstrip('.')} closely matches their work on {', '.join(specific_kw[:3])}"
+                    f"Your interest in {interest_phrase} closely matches their work on {work}"
+                    if interest_phrase
+                    else f"Your research interests align closely with their work on {work}"
                 )
             elif lab_label:
                 reasons_fit.append(
