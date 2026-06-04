@@ -1214,6 +1214,80 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     return nulled
 
 
+def _title_dept_short(opp: dict) -> str:
+    """The short department label embedded in a faculty title
+    ("Research with Prof. X — CS (areas)") → "CS". Empty when absent."""
+    title = opp.get("title") or ""
+    m = re.search(r" — (.+)$", title)
+    if not m:
+        return ""
+    return m.group(1).split(" (", 1)[0].strip()
+
+
+def _faculty_specific_keywords(opp: dict) -> list[str]:
+    """Cleaned keywords minus the department broad field and generic single
+    words — the genuinely topical areas safe to show in a title/description."""
+    broad = _dept_broad_field(opp.get("department", "")).lower()
+    out: list[str] = []
+    for k in opp.get("keywords") or []:
+        kl = (k or "").strip().lower()
+        if not kl or kl == broad or kl in _GENERIC_SINGLE_WORDS:
+            continue
+        out.append(k.strip())
+    return list(dict.fromkeys(out))
+
+
+def _rebuild_faculty_title_and_desc(opps: list[dict]) -> int:
+    """Rebuild uiuc_faculty title + description from the final cleaned keywords,
+    dropping the scraped department 'Research Areas' nav-menu the earlier keyword
+    cleaning left frozen in those fields (D1/D2). A title like "CS (bioinformatics,
+    artificial intelligence, parallel computing)" on a professor whose cleaned
+    keywords are just ["computer science"] is a false-precise label, and the menu
+    also leaked verbatim into description_clean (and from there into match
+    reasons). Name only genuine specific areas, else just the department. Mutates
+    in place; returns the count of records changed."""
+    changed = 0
+    for o in opps:
+        if o.get("source") != "uiuc_faculty":
+            continue
+        name = (o.get("pi_name") or "").strip()
+        if not name:
+            continue
+        specific = _faculty_specific_keywords(o)
+        dept_short = _title_dept_short(o)
+        summary = f" ({', '.join(specific[:3])})" if specific else ""
+        new_title = (
+            f"Research with Prof. {name} — {dept_short}{summary}"
+            if dept_short else f"Research with Prof. {name}{summary}"
+        )
+
+        fac_title = (o.get("metadata") or {}).get("faculty_title") or "Professor"
+        dept_name = o.get("department", "")
+        parts = [
+            f"Research opportunity with {fac_title} {name} in the {dept_name} at UIUC."
+            if dept_name else f"Research opportunity with {fac_title} {name} at UIUC."
+        ]
+        if specific:
+            parts.append(f"Research areas: {', '.join(specific)}.")
+        parts.append(
+            "Contact the professor directly to inquire about undergraduate "
+            "research positions in their lab."
+        )
+        new_desc = " ".join(parts)
+
+        if (o.get("title") != new_title
+                or o.get("description_raw") != new_desc
+                or o.get("description_clean") != new_desc[:1500]):
+            changed += 1
+        o["title"] = new_title
+        o["description_raw"] = new_desc
+        o["description_clean"] = new_desc[:1500]
+        elig = o.get("eligibility")
+        if isinstance(elig, dict) and "eligibility_text_raw" in elig:
+            elig["eligibility_text_raw"] = new_desc[:500]
+    return changed
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -1261,6 +1335,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     enriched = _derive_keywords_from_raw(all_opps)
     if enriched:
         logger.info(f"Enriched {enriched} broad-field faculty record(s) with keywords derived from research_areas_raw")
+
+    retitled = _rebuild_faculty_title_and_desc(all_opps)
+    if retitled:
+        logger.info(f"Rebuilt {retitled} faculty title/description(s) from cleaned keywords (dropped nav-menu pollution)")
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)

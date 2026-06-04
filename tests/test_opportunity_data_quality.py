@@ -220,6 +220,40 @@ class TestR70ADataQuality:
             f">={_SHARED_ADMIN_EMAIL_THRESHOLD} distinct professors: {shared}"
         )
 
+    def test_faculty_title_parenthetical_is_subset_of_keywords(self):
+        """D1/D2: the parenthetical in a faculty title ("— CS (areas)") must name
+        only the record's own keywords, never a scraped department nav-menu. Any
+        area shown but absent from keywords is false-precise pollution."""
+        import re
+
+        offenders = []
+        for o in _load_data():
+            if o.get("source") != "uiuc_faculty":
+                continue
+            m = re.search(r" — .+? \((.+)\)$", o.get("title", ""))
+            if not m:
+                continue
+            shown = {a.strip().lower() for a in m.group(1).split(",")}
+            kws = {(k or "").strip().lower() for k in (o.get("keywords") or [])}
+            extra = shown - kws
+            if extra:
+                offenders.append((o.get("id"), extra))
+        assert not offenders, (
+            f"{len(offenders)} faculty titles show areas absent from their "
+            f"keywords (nav-menu pollution). First: {offenders[:3]}"
+        )
+
+    def test_faculty_description_has_no_navmenu_leak(self):
+        """D2: scraped page furniture must not survive in faculty descriptions."""
+        NAV = ["Once Research Secured", "Administration & Staff", "Colloquia Calendar",
+               "Affiliated Faculty", "Labs & Facilities", "Research Institutes and Centers"]
+        leaks = [
+            o.get("id") for o in _load_data()
+            if o.get("source") == "uiuc_faculty"
+            and any(n in (o.get("description_clean") or "") for n in NAV)
+        ]
+        assert not leaks, f"{len(leaks)} faculty descriptions still leak nav-menu text: {leaks[:3]}"
+
 
 class TestDeactivatePastLogic:
     """Deterministic guard for the deactivate_past normalizer itself, using an
