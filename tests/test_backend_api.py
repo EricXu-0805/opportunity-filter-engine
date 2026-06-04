@@ -59,13 +59,15 @@ class TestHealthEndpoint:
 
 
 class TestMatchesPagination:
-    def test_default_returns_up_to_500(self, sample_profile_req):
+    def test_default_returns_all_visible_buckets(self, sample_profile_req):
+        # Default (no limit) returns every non-low_fit result so all advertised
+        # buckets are browsable — previously capped at 500, hiding most of Reach.
         resp = client.post("/api/matches", json=sample_profile_req)
         assert resp.status_code == 200
         body = resp.json()
-        assert "total" in body
-        assert "results" in body
-        assert len(body["results"]) <= 500
+        assert "total" in body and "results" in body
+        visible = body["high_priority"] + body["good_match"] + body["reach"]
+        assert len(body["results"]) == visible
 
     def test_limit_clamps_page_size(self, sample_profile_req):
         resp = client.post("/api/matches?limit=5", json=sample_profile_req)
