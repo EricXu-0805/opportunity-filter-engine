@@ -18,6 +18,7 @@ from src.collectors.uiuc_faculty import (
     _is_section_label,
     _null_shared_admin_emails,
     _rebuild_faculty_title_and_desc,
+    _strip_pi_name_credentials,
     normalize_faculty,
 )
 
@@ -376,3 +377,25 @@ def test_rebuild_title_keeps_genuine_specific_areas():
     )
     assert "Research areas: machine learning, computer vision, robotics." in \
         rows[0]["description_raw"]
+
+
+def test_strip_pi_name_credential_suffix():
+    rows = [
+        {"source": "uiuc_faculty", "pi_name": "Helene R Dickel Phd"},
+        {"source": "uiuc_faculty", "pi_name": "John Smith MD"},
+        {"source": "uiuc_faculty", "pi_name": "Jane Doe"},          # 2 tokens — untouched
+        {"source": "uiuc_faculty", "pi_name": "Ada Min Lovelace"},  # real 3-token name
+    ]
+    assert _strip_pi_name_credentials(rows) == 2
+    assert rows[0]["pi_name"] == "Helene R Dickel"
+    assert rows[1]["pi_name"] == "John Smith"
+    assert rows[2]["pi_name"] == "Jane Doe"
+    assert rows[3]["pi_name"] == "Ada Min Lovelace"
+
+
+def test_postdoc_phrase_is_treated_as_nav_noise():
+    # Recruiting-level phrases describe a role, not a research topic.
+    assert _clean_research_phrase("Postdoctoral research opportunities") is None
+    assert _clean_research_phrase("postdoc positions") is None
+    # A genuine topic with no postdoc/doctoral token still passes.
+    assert _clean_research_phrase("radiation detection") == "radiation detection"

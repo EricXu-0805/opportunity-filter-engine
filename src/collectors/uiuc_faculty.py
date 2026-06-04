@@ -911,6 +911,28 @@ def fetch_and_normalize(departments: list[str] = None,
 # (or differing URLs) are never merged.
 _NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 
+# Academic credentials scraped onto the end of a name ("Helene R Dickel Phd").
+# They are not part of the name, leak into the title, and "phd" trips the
+# grad-level penalty regex — so strip a trailing credential token.
+_NAME_CREDENTIALS = {"phd", "ph.d", "md", "m.d", "dsc", "d.sc", "dphil", "edd", "ed.d", "dvm"}
+
+
+def _strip_pi_name_credentials(opps: list[dict]) -> int:
+    """Drop a trailing academic-credential token from faculty pi_name (whole
+    token only, so a real surname is never truncated). Mutates in place; returns
+    the count changed. Run before the title/description rebuild so the cleaned
+    name flows into both."""
+    changed = 0
+    for opp in opps:
+        if opp.get("source") != "uiuc_faculty":
+            continue
+        name = (opp.get("pi_name") or "").strip()
+        tokens = name.split()
+        if len(tokens) >= 3 and tokens[-1].lower().strip(".") in _NAME_CREDENTIALS:
+            opp["pi_name"] = " ".join(tokens[:-1])
+            changed += 1
+    return changed
+
 
 def _faculty_name_key(opp: dict) -> tuple[str, str] | None:
     """Return (source_url, last_name) identifying a professor, or None when the
@@ -1038,7 +1060,7 @@ _SHARED_PHRASE_NAV_THRESHOLD = 3
 _RESEARCH_AREA_NAV_NOISE = re.compile(
     r"research area|book|monograph|selected article|articles? in|\bjournal|"
     r"conference proceeding|linkedin|website|\bgroup\b|laborator|\blab\b|"
-    r"master of|bachelor|\bphd\b|usmle|step 1|review method|curriculum|teaching|"
+    r"master of|bachelor|\bphd\b|post-?doc|doctoral|usmle|step 1|review method|curriculum|teaching|"
     r"biography|publication|award|honor|wiki|original edition|focuses on|"
     r"in particular|crowd-?sourc|\bcontri|\bestab|^education|education$|"
     r"our research|spec lab|click here|\bcv\b|\bsee\b|emphasis",
@@ -1335,6 +1357,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     enriched = _derive_keywords_from_raw(all_opps)
     if enriched:
         logger.info(f"Enriched {enriched} broad-field faculty record(s) with keywords derived from research_areas_raw")
+
+    decredentialed = _strip_pi_name_credentials(all_opps)
+    if decredentialed:
+        logger.info(f"Stripped academic-credential suffix from {decredentialed} faculty pi_name(s)")
 
     retitled = _rebuild_faculty_title_and_desc(all_opps)
     if retitled:
