@@ -1,4 +1,12 @@
+import re
+
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
+
+# Tokenizer for skill matching: a letter followed by letters/digits/+/#/. so
+# "c++", "c#", "node.js" stay whole. Used to match a skill as a WHOLE token in a
+# posting, not a raw substring — substring matching let single-letter skills
+# ("R", "C") and short ones ("AI") match inside unrelated words ("Research").
+_SKILL_TOKEN_RE = re.compile(r"[a-z][a-z0-9+#.]*")
 
 
 def _extract_skill_names(raw_skills: list) -> list[str]:
@@ -174,7 +182,6 @@ def _detect_lab_type(opportunity: dict) -> LabType:
 def _clean_research_interests(text: str) -> str:
     if not text:
         return ""
-    import re
     text = re.sub(
         r"^(?:I am interested in|I'm interested in|my interest is in|interested in)\s*",
         "", text.strip(), flags=re.IGNORECASE,
@@ -242,10 +249,17 @@ def _infer_research_area(opportunity: dict) -> str:
 def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
     desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
     required = [s.lower() for s in opp.get("eligibility", {}).get("skills_required", [])]
+    desc_tokens = set(_SKILL_TOKEN_RE.findall(desc))
+    req_tokens = set()
+    for r in required:
+        req_tokens.update(_SKILL_TOKEN_RE.findall(r))
     matched = []
     for s in skills:
         sl = s.lower()
-        if sl in desc or sl in required:
+        # Multi-word skills ("machine learning") are specific enough to match as a
+        # substring; single-token skills must match a WHOLE token so "R"/"C"/"AI"
+        # don't match inside "Research"/"Algorithms". Exact required entries count.
+        if (" " in sl and sl in desc) or sl in desc_tokens or sl in req_tokens or sl in required:
             matched.append(s)
     return matched
 
@@ -314,6 +328,17 @@ def generate_variants(profile: dict, opportunity: dict) -> list[dict]:
     ]
 
 
+def _cap_subject(s: str, limit: int = 72) -> str:
+    """Trim a subject line's visible text to a word boundary under `limit` so it
+    isn't cut mid-word in inbox previews (the AI path enforces ~75)."""
+    prefix = "Subject: "
+    body = s[len(prefix):] if s.startswith(prefix) else s
+    if len(body) <= limit:
+        return s
+    trimmed = body[:limit].rsplit(" ", 1)[0].rstrip(" ,—-")
+    return prefix + trimmed
+
+
 def _subject(p: dict, style: str = "") -> str:
     lab = p["lab"]
     area = p["research_area"]
@@ -329,23 +354,19 @@ def _subject(p: dict, style: str = "") -> str:
         "humanities": "Research Assistant Interest",
     }.get(lab_type, "Research Inquiry")
 
-    # CE-3: assemble the "<Year> <Major> student" label by joining only the
-    # fields that are present, so a sparse profile can't render "  student" or
-    # a stray double space.
-    major = (p.get("major") or "").strip()
-    who = " ".join(filter(None, [(p.get("year") or "").strip().capitalize(), major, "student"]))
-
+    # Lead with the differentiator (research area > lab > title) and drop the
+    # verbose "<Year> <Major> student" clause — the body already says who they
+    # are, and that clause pushed every subject past the 75-char inbox-preview
+    # cap the AI path enforces. _cap_subject guards a long area/title.
     if style == "concise":
-        ctx = lab or area or p["title"] or "research"
-        who_concise = f"{major} student" if major else "student"
-        return f"Subject: {who_concise} — {ctx}"
-
-    if lab and "Prof" in lab:
-        return f"Subject: {intent} — {who}, interest in joining {lab}"
+        ctx = area or lab or p["title"] or "research"
+        return _cap_subject(f"Subject: Research Interest — {ctx}")
     if area:
-        return f"Subject: {intent} — {who}, background in {area}"
+        return _cap_subject(f"Subject: {intent} — {area}")
+    if lab and "Prof" in lab:
+        return _cap_subject(f"Subject: {intent} — joining your lab")
     ctx = lab or p["title"] or "your research"
-    return f"Subject: {intent} — {who}, interest in {ctx}"
+    return _cap_subject(f"Subject: {intent} — {ctx}")
 
 
 def _closing(p: dict) -> str:
@@ -487,7 +508,8 @@ def _build_concise(p: dict) -> str:
     skills = p["skills"]
     matching = p["matching_skills"]
     if matching:
-        core += f" I have experience with {', '.join(matching[:3])}, which are relevant to your work."
+        verb = "is" if len(matching[:3]) == 1 else "are"
+        core += f" I have experience with {', '.join(matching[:3])}, which {verb} relevant to your work."
     elif skills:
         core += f" I have experience with {', '.join(skills[:3])}."
 
@@ -616,11 +638,11 @@ def _p2_skills_applied(p: dict) -> str:
 
     para = f"\n\nI have experience with {skill_str}."
 
+    # When `top` is already the matching skills (matching is non-empty), naming
+    # them again here just repeats the same list. Keep the relevance emphasis
+    # without re-listing the identical skills.
     if matching and len(matching) >= 2:
-        para += (
-            f" In particular, my background in {', '.join(matching[:3])}"
-            f" directly applies to this role."
-        )
+        para += " These directly apply to the work described in your posting."
 
     coursework = p.get("coursework", [])
     if coursework:
