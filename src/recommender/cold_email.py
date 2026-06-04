@@ -182,6 +182,19 @@ def _clean_research_interests(text: str) -> str:
     return text.strip().rstrip(".")
 
 
+def _short_interest(interests: str) -> str:
+    """A clean, short rendering of the student's interests for an email hook:
+    the first one or two comma-delimited phrases, never a mid-word character
+    slice (CE: `interests[:80]` cut "...vision-language models, dee" mid-word)."""
+    phrases = [p.strip() for p in (interests or "").split(",") if p.strip()]
+    if not phrases:
+        return ""
+    out = phrases[0]
+    if len(phrases) > 1 and len(out) < 40:
+        out = f"{out}, {phrases[1]}"
+    return out.rstrip(".")
+
+
 def _infer_research_topic(opportunity: dict) -> str:
     desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
     keywords = opportunity.get("keywords", [])
@@ -212,9 +225,11 @@ def _infer_research_area(opportunity: dict) -> str:
         specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
         if specific:
             return specific[0]
-    dept = opportunity.get("department", "")
-    if dept:
-        return dept
+    # A department name ("Siebel School of Computing and Data Science") is not a
+    # research area — claiming "your work in <department>, which aligns closely
+    # with my interest" is the false-alignment outreach this email avoids (CE-2).
+    # Fall through to a real topical area in the title, else return nothing so the
+    # hook drops to a lab-only opener.
     title = opportunity.get("title", "")
     for area in ["machine learning", "data science", "computer vision",
                  "robotics", "biology", "chemistry", "physics",
@@ -510,7 +525,7 @@ def _p1_research_hook(p: dict) -> str:
         lab_ref = ""
 
     is_short_topic = bool(research_topic and len(research_topic) < 50 and " " in research_topic)
-    short_interest = interests[:80].rstrip(".") if interests else ""
+    short_interest = _short_interest(interests)
 
     if interests and is_short_topic and lab_ref:
         return (
@@ -535,7 +550,7 @@ def _p1_research_hook(p: dict) -> str:
     if interests and lab_ref:
         return (
             f" I came across {lab_ref} and am very interested in"
-            f" contributing, as my background in {interests[:60].rstrip('.')} is closely related."
+            f" contributing, as my background in {short_interest} is closely related."
         )
     if is_short_topic and lab_ref:
         return (
