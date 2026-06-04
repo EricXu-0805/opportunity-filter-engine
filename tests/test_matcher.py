@@ -885,3 +885,37 @@ class TestBatchedSimilarity:
                     assert batched[o["id"]] == round(r.final_score, 6)
         finally:
             emb._tfidf_vectorizer, emb._tfidf_fitted = prev_v, prev_f
+
+
+class TestFacultyUpsideReweight:
+    """Faculty descriptions are template-generated, so the mentor/pathway keyword
+    scan is a flat constant — its weight is redirected to keyword_score (C4)."""
+
+    def _prof(self):
+        return {"research_interests_text": "x",
+                "desired_fields": ["machine learning", "computer vision"]}
+
+    def _opp(self, source, desc):
+        return {
+            "source": source, "opportunity_type": "research",
+            "keywords": ["machine learning", "computer vision"],
+            "description_raw": desc,
+            "eligibility": {"skills_required": ["Python"]},
+        }
+
+    def test_faculty_upside_unmoved_by_mentor_pathway_text(self):
+        # keyword_score is pinned at 100 by the desired_fields overlap, so the
+        # only thing the extra desc words could move is mentor/pathway — which
+        # carry zero weight for faculty. Upside must be identical.
+        prof = self._prof()
+        plain = score_upside(prof, self._opp("uiuc_faculty", "Research opportunity."))[0]
+        rich = score_upside(prof, self._opp(
+            "uiuc_faculty", "mentor training guided publication co-author conference thesis."))[0]
+        assert plain == rich
+
+    def test_non_faculty_upside_still_responds_to_mentor_pathway(self):
+        prof = self._prof()
+        plain = score_upside(prof, self._opp("handshake", "Research opportunity."))[0]
+        rich = score_upside(prof, self._opp(
+            "handshake", "mentor training guided publication co-author conference thesis."))[0]
+        assert rich > plain
