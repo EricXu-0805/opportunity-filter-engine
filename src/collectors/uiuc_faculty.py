@@ -1178,6 +1178,42 @@ def _dedup_faculty_by_email(opps: list[dict]) -> list[dict]:
     ]
 
 
+# An email attached to this many *distinct* professors is a department/advising
+# inbox scraped in place of a personal address, not one person's contact (e.g.
+# amwhit@illinois.edu on 123 profs, nslack@illinois.edu on 116). Counting
+# distinct names — not rows — keeps a real professor's joint-appointment rows
+# (one name, one shared personal email) from being mistaken for an admin inbox.
+_SHARED_ADMIN_EMAIL_THRESHOLD = 3
+
+
+def _null_shared_admin_emails(opps: list[dict]) -> int:
+    """Null contact_email when it is shared by many distinct professors — a
+    scraped department/advising inbox, not a personal address. A 'Dear Professor
+    X' cold email sent to a shared coordinator inbox misfires; an empty recipient
+    (the modal then disables send) is safer than a confidently wrong one. Mutates
+    ``opps`` in place; returns the count nulled."""
+    names_by_email: dict[str, set[str]] = defaultdict(set)
+    for opp in opps:
+        if opp.get("source") != "uiuc_faculty":
+            continue
+        email = (opp.get("contact_email") or "").strip().lower()
+        if email:
+            names_by_email[email].add((opp.get("pi_name") or "").strip().lower())
+
+    shared = {
+        email for email, names in names_by_email.items()
+        if len(names) >= _SHARED_ADMIN_EMAIL_THRESHOLD
+    }
+    nulled = 0
+    for opp in opps:
+        if opp.get("source") != "uiuc_faculty":
+            continue
+        if (opp.get("contact_email") or "").strip().lower() in shared:
+            opp["contact_email"] = None
+            nulled += 1
+    return nulled
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -1213,6 +1249,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     removed_email = before_email - len(all_opps)
     if removed_email:
         logger.info(f"Removed {removed_email} cross-department duplicate faculty record(s) sharing a contact email")
+
+    nulled_emails = _null_shared_admin_emails(all_opps)
+    if nulled_emails:
+        logger.info(f"Nulled {nulled_emails} faculty contact email(s) that were shared department/admin inboxes")
 
     demoted = _demote_shared_keyword_pollution(all_opps)
     if demoted:

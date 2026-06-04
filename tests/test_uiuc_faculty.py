@@ -16,6 +16,7 @@ from src.collectors.uiuc_faculty import (
     _derive_keywords_from_raw,
     _extract_research_keywords,
     _is_section_label,
+    _null_shared_admin_emails,
     normalize_faculty,
 )
 
@@ -311,3 +312,28 @@ def test_email_dedup_passes_rows_without_email():
         _fac_email("Jane Doe", "Astronomy", "", "https://astro.illinois.edu/jd"),
     ]
     assert len(_dedup_faculty_by_email(rows)) == 2
+
+
+def test_null_shared_admin_email_across_distinct_professors():
+    # One inbox attached to 3 distinct professors = a department/advising inbox.
+    rows = [
+        _fac_email("Alice Adams", "ECE", "nslack@illinois.edu", "u/aa"),
+        _fac_email("Bob Brown", "ECE", "nslack@illinois.edu", "u/bb"),
+        _fac_email("Carol Clark", "ECE", "nslack@illinois.edu", "u/cc"),
+        _fac_email("Dana Diaz", "ECE", "ddiaz@illinois.edu", "u/dd"),  # personal
+    ]
+    nulled = _null_shared_admin_emails(rows)
+    assert nulled == 3
+    assert all(r["contact_email"] is None for r in rows[:3])
+    assert rows[3]["contact_email"] == "ddiaz@illinois.edu"  # personal email kept
+
+
+def test_joint_appointment_personal_email_is_not_nulled():
+    # Same professor, two department rows, one shared *personal* email = 1 distinct
+    # name → below threshold → kept (must not be mistaken for an admin inbox).
+    rows = [
+        _fac_email("David Forsyth", "Computer Science", "daf@illinois.edu", "u/cs"),
+        _fac_email("David Forsyth", "Bioengineering", "daf@illinois.edu", "u/bioe"),
+    ]
+    assert _null_shared_admin_emails(rows) == 0
+    assert all(r["contact_email"] == "daf@illinois.edu" for r in rows)
