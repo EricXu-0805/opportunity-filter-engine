@@ -57,6 +57,14 @@ export interface UseProfileFormResult {
   handleGitHubImport: () => Promise<void>;
 }
 
+/** Append skills whose names aren't already present (case-sensitive match,
+ * mirroring the existing import handlers). Pure — defined at module scope so it
+ * isn't a hook dependency. */
+function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): SkillWithLevel[] {
+  const names = new Set(existing.map((s) => s.name));
+  return [...existing, ...incoming.filter((s) => !names.has(s.name))];
+}
+
 export function useProfileForm(t: TFunc): UseProfileFormResult {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -222,51 +230,75 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
 
   const handleResumeParsed = useCallback((data: ResumeParseResponse) => {
     setProfile((prev) => {
-      const existingNames = new Set(prev.skills.map((s) => s.name));
-      const newSkills: SkillWithLevel[] = data.extracted_skills
-        .filter((name) => !existingNames.has(name))
-        .map((name) => ({ name, level: 'experienced' as const }));
+      const newSkills: SkillWithLevel[] = data.extracted_skills.map(
+        (name) => ({ name, level: 'experienced' as const }),
+      );
       return {
         ...prev,
-        skills: [...prev.skills, ...newSkills],
+        skills: mergeSkills(prev.skills, newSkills),
         resume_text: data.raw_text,
         coursework: data.extracted_coursework,
+        // Seed the interests box (the only semantic-match lever the form sends)
+        // from the resume when the user hasn't typed their own — never overwrite.
+        research_interests: prev.research_interests?.trim()
+          ? prev.research_interests
+          : (data.suggested_interests ?? ''),
       };
     });
   }, []);
 
-  const handleGitHubImport = useCallback(async () => {
+  // Imports GitHub-derived skills and returns them (without mutating profile),
+  // so both the manual button and submit-time auto-import can reuse it without a
+  // stale-state race. Tracks the imported URL so submit won't re-import.
+  const githubImportedUrlRef = useRef<string | null>(null);
+  const importGitHubSkills = useCallback(async (): Promise<SkillWithLevel[] | null> => {
     const url = profile.github_url?.trim();
-    if (!url) return;
+    if (!url) return null;
     const match = url.match(/github\.com\/([^/\s?#]+)/);
     const username = match ? match[1] : url;
     setGhLoading(true);
     setGhStatus(null);
     try {
       const data = await parseGitHubProfile(username);
-      setProfile((prev) => {
-        const existingNames = new Set(prev.skills.map((s) => s.name));
-        const newSkills: SkillWithLevel[] = data.extracted_skills
-          .filter((name) => !existingNames.has(name))
-          .map((name) => ({ name, level: 'experienced' as const }));
-        return { ...prev, skills: [...prev.skills, ...newSkills] };
-      });
+      githubImportedUrlRef.current = url;
       setGhStatus(t('home.form.githubImportSuccess', { skills: data.extracted_skills.length, repos: data.repo_count }));
+      return data.extracted_skills.map((name) => ({ name, level: 'experienced' as const }));
     } catch {
       setGhStatus('__fail__' + t('home.form.githubImportFail'));
+      return null;
     } finally {
       setGhLoading(false);
     }
   }, [profile.github_url, t]);
 
-  const handleSubmit = useCallback(() => {
+  const handleGitHubImport = useCallback(async () => {
+    const newSkills = await importGitHubSkills();
+    if (newSkills) {
+      setProfile((prev) => ({ ...prev, skills: mergeSkills(prev.skills, newSkills) }));
+    }
+  }, [importGitHubSkills]);
+
+  const handleSubmit = useCallback(async () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    const profileToSave = { ...profile, search_weight: searchWeight };
+    let profileToSave = { ...profile, search_weight: searchWeight };
+    // Auto-import GitHub when a URL is present but its skills weren't imported
+    // yet, so a pasted-but-not-imported URL isn't silently dropped. Bounded by a
+    // short timeout so a slow GitHub API can never block reaching the results.
+    const url = profile.github_url?.trim();
+    if (url && githubImportedUrlRef.current !== url) {
+      const newSkills = await Promise.race([
+        importGitHubSkills(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
+      ]);
+      if (newSkills?.length) {
+        profileToSave = { ...profileToSave, skills: mergeSkills(profileToSave.skills, newSkills) };
+      }
+    }
     localStorage.setItem('ofe_profile', JSON.stringify(profileToSave));
     sessionStorage.removeItem('ofe_match_results');
     saveProfile(profileToSave).catch(() => {});
     router.push('/results');
-  }, [profile, searchWeight, router]);
+  }, [profile, searchWeight, router, importGitHubSkills]);
 
   const isValid = !!(profile.college && profile.major && profile.grade);
 

@@ -15,9 +15,50 @@ from __future__ import annotations
 
 from backend.routes.resume import (
     _extract_coursework,
+    _extract_research_interests,
     _extract_skills,
     _infer_experience_level,
 )
+
+
+class TestExtractResearchInterests:
+    def test_areas_of_interest_label(self):
+        text = (
+            "TECHNICAL SKILLS\nProgramming: Python, C++\n"
+            "Areas of Interest: AI systems, computer vision, "
+            "full-stack product development, intelligent tutoring systems\n"
+        )
+        assert _extract_research_interests(text) == (
+            "AI systems, computer vision, full-stack product development, "
+            "intelligent tutoring systems"
+        )
+
+    def test_research_interests_label(self):
+        text = "Research Interests — machine learning and superconductor materials."
+        assert _extract_research_interests(text) == (
+            "machine learning and superconductor materials"
+        )
+
+    def test_one_line_blob_stops_at_next_section(self):
+        # PDF extraction flattens the resume to one line — the capture must stop
+        # at the next "Label:" instead of swallowing the rest of the document.
+        blob = (
+            "Tools & Platforms: Git, Linux, LaTeX "
+            "Areas of Interest: AI systems, computer vision, full-stack product "
+            "development, intelligent tutoring systems "
+            "Languages: Mandarin (native), English PATENT Intelligent Acoustic ..."
+        )
+        assert _extract_research_interests(blob) == (
+            "AI systems, computer vision, full-stack product development, "
+            "intelligent tutoring systems"
+        )
+
+    def test_no_section_returns_empty(self):
+        assert _extract_research_interests("EDUCATION\nUIUC\nSkills: Python") == ""
+
+    def test_personal_interests_hobbies_not_captured(self):
+        # Only research-style labels seed the matcher; hobby lines are ignored.
+        assert _extract_research_interests("Personal Interests: hiking, chess") == ""
 
 
 class TestExtractSkills:

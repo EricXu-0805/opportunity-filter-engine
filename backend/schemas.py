@@ -171,6 +171,9 @@ class ResumeParseResponse(BaseModel):
     raw_text: str
     success: bool
     message: str = ""
+    # A labeled "Areas of Interest" / "Research Interests" line, used to seed the
+    # research-interests box when empty — the frontend's only semantic-match lever.
+    suggested_interests: str = ""
 
 
 class TailorRequest(BaseModel):

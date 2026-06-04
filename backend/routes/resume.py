@@ -109,6 +109,34 @@ def _extract_coursework(text: str) -> list[str]:
     return sorted(set(courses))
 
 
+# Matches an "Areas of Interest" / "Research Interests" / "Research Areas" label
+# and captures its value, stopping at the next section label. PDF extraction
+# often flattens the whole resume onto one line, so the capture is lazy and ends
+# before the next "Capitalized Label:" (e.g. "Languages:") rather than running to
+# end-of-line. Hobby/"Personal Interests" lines are deliberately excluded — this
+# seeds a research-matching signal, not pastimes.
+_INTERESTS_LABEL = re.compile(
+    r"(?i:\b(?:areas?\s+of\s+interest|research\s+interests?|research\s+areas?)\b)"
+    r"\s*[:\-—]\s*(.+?)"
+    # Stop before the next capitalized section label ("Languages:") — case
+    # SENSITIVE so it isn't tripped by lowercase hyphenated words ("full-stack").
+    r"(?=\s+[A-Z][A-Za-z][A-Za-z &/]*\s*[:—]|\s*$)"
+)
+
+
+def _extract_research_interests(text: str) -> str:
+    """Capture a labeled research-interests line from a resume. The frontend's
+    only semantic-match lever is research_interests_text, so a resume-only user
+    otherwise contributes no topical signal. Returns '' when no section exists."""
+    for line in text.splitlines():
+        m = _INTERESTS_LABEL.search(line)
+        if m:
+            phrase = m.group(1).strip(" .\t")
+            if 3 <= len(phrase) <= 300:
+                return phrase
+    return ""
+
+
 def _infer_experience_level(text: str) -> str:
     """Infer experience level from resume language."""
     text_lower = text.lower()
@@ -178,6 +206,7 @@ async def upload_resume(file: UploadFile = File(...)):
     skills = _extract_skills(raw_text)
     coursework = _extract_coursework(raw_text)
     experience = _infer_experience_level(raw_text)
+    interests = _extract_research_interests(raw_text)
 
     return ResumeParseResponse(
         extracted_skills=skills,
@@ -186,6 +215,7 @@ async def upload_resume(file: UploadFile = File(...)):
         raw_text=raw_text[:3000],
         success=True,
         message=f"Extracted {len(skills)} skills, {len(coursework)} courses from resume.",
+        suggested_interests=interests,
     )
 
 

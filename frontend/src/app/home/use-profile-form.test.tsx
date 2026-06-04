@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { Suspense } from 'react';
 
 vi.mock('@/i18n/client', () => ({
@@ -61,6 +61,18 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 import { useProfileForm } from './use-profile-form';
+import { saveProfile } from '@/lib/supabase';
+import { parseGitHubProfile } from '@/lib/api';
+
+const RESUME = (suggested_interests: string) => ({
+  extracted_skills: [] as string[],
+  extracted_coursework: [] as string[],
+  experience_level: 'beginner',
+  raw_text: 'resume body',
+  success: true,
+  message: '',
+  suggested_interests,
+});
 
 // Stable `t` reference to avoid re-firing the mount load effect on each
 // render. Without this, useEffect([searchParams, t]) treats every render
@@ -133,6 +145,61 @@ describe('useProfileForm — prefill from URL', () => {
     render(<Wrapped />);
     await waitFor(() => expect(screen.getByTestId('grade').textContent).toBe('Senior'));
     expect(screen.getByTestId('seeking').textContent).toContain('fellowship');
+  });
+});
+
+function FullHarness() {
+  const form = useProfileForm(stableT);
+  return (
+    <div>
+      <span data-testid="interests">{form.profile.research_interests}</span>
+      <button data-testid="parseA" onClick={() => form.handleResumeParsed(RESUME('computer vision, machine learning'))}>A</button>
+      <button data-testid="parseB" onClick={() => form.handleResumeParsed(RESUME('robotics'))}>B</button>
+      <button data-testid="set-gh" onClick={() => form.update('github_url', 'https://github.com/octocat')}>set</button>
+      <button data-testid="submit" onClick={() => { void form.handleSubmit(); }}>submit</button>
+    </div>
+  );
+}
+
+describe('useProfileForm — resume seeds the interests box (PR5 ①)', () => {
+  it('prefills research_interests from the resume when the box is empty', async () => {
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    fireEvent.click(screen.getByTestId('parseA'));
+    await waitFor(() =>
+      expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning'),
+    );
+  });
+
+  it('does NOT overwrite interests the user already has', async () => {
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    fireEvent.click(screen.getByTestId('parseA')); // seeds it
+    await waitFor(() =>
+      expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning'),
+    );
+    fireEvent.click(screen.getByTestId('parseB')); // must not clobber
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning');
+  });
+});
+
+describe('useProfileForm — GitHub auto-import on submit (PR5 ②)', () => {
+  it('imports an un-imported GitHub URL and merges its skills into the saved profile', async () => {
+    vi.mocked(parseGitHubProfile).mockResolvedValue({
+      username: 'octocat', extracted_skills: ['Go'], topics: [], repo_count: 3, top_repos: [],
+    });
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    fireEvent.click(screen.getByTestId('set-gh'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(parseGitHubProfile).toHaveBeenCalledWith('octocat');
+    expect(saveProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skills: expect.arrayContaining([expect.objectContaining({ name: 'Go' })]),
+      }),
+    );
+    expect(pushSpy).toHaveBeenCalledWith('/results');
   });
 });
 
