@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from src.recommender.cold_email import (
     _common_parts,
+    _infer_research_area,
     _p1_research_hook,
+    _short_interest,
     _student_self,
     generate_cold_email,
 )
@@ -120,3 +122,57 @@ class TestRecipientJunkNameCE6:
     def test_real_pi_name_still_used(self):
         p = _common_parts({}, {"pi_name": "Jane Doe", "opportunity_type": "research"})
         assert p["recipient"] == "Professor Jane Doe"
+
+
+class TestShortInterestCE_C1:
+    """The interest hook must use clean phrase boundaries, never a mid-word
+    character slice (regression for `interests[:80]` → '...models, dee')."""
+
+    _LONG = (
+        "AI systems and machine learning, computer vision and vision-language "
+        "models, deep learning, superconductor materials science"
+    )
+
+    def test_no_midword_truncation(self):
+        s = _short_interest(self._LONG)
+        assert not s.endswith("dee")
+        # ends on a whole phrase, not a mid-word character slice
+        assert s == "AI systems and machine learning, computer vision and vision-language models"
+
+    def test_single_phrase_passthrough(self):
+        assert _short_interest("robotics") == "robotics"
+
+    def test_empty(self):
+        assert _short_interest("") == ""
+
+    def test_hook_with_long_interests_is_not_truncated(self):
+        h = _hook(lab=_LAB, interests=self._LONG)
+        assert "dee." not in h and "dee " not in h
+        assert _LAB in h
+
+
+class TestInferResearchAreaNoDeptFallback_CE_C2:
+    """A department name is not a research area — it must not become a
+    'your work in <department>' false-alignment claim (CE-C2)."""
+
+    def test_broad_keyword_only_does_not_fall_back_to_department(self):
+        area = _infer_research_area({
+            "keywords": ["computer science"],
+            "department": "Siebel School of Computing and Data Science",
+            "title": "Research with Prof. Sasa Misailovic — CS",
+        })
+        assert "School" not in area and "Department" not in area
+        assert area == ""
+
+    def test_specific_keyword_still_returned(self):
+        area = _infer_research_area({
+            "keywords": ["computer vision", "robotics"],
+            "department": "Electrical and Computer Engineering",
+        })
+        assert area == "computer vision"
+
+    def test_no_dept_false_alignment_in_hook(self):
+        # broad-field-only prof: research_area resolves to "" -> lab-only hook
+        h = _hook(research_area="", lab=_LAB, interests="machine learning")
+        assert "your work in" not in h.lower()
+        assert _LAB in h
