@@ -19,6 +19,7 @@ from src.matcher.config import TOPIC_MISMATCH_PENALTY, TOPIC_UNKNOWN_PENALTY
 from src.matcher.ranker import (
     BUCKET_THRESHOLDS,
     MatchResult,
+    _assign_buckets,
     _is_undergrad,
     _major_match_score,
     _normalize_type_key,
@@ -34,6 +35,7 @@ from src.matcher.ranker import (
     score_eligibility,
     score_readiness,
     score_upside,
+    semantic_rerank,
 )
 
 # ── Fixtures ──────────────────────────────────
@@ -789,3 +791,44 @@ class TestReasonQualityOptimizations:
         assert not any(
             "This lab focuses on" in r for r in rank_opportunity(profile, opp).reasons_fit
         )
+
+
+class TestBucketRecompute:
+    """semantic_rerank changes final_score; buckets must follow (not stay stale)."""
+
+    def _mr(self, oid, score):
+        return MatchResult(
+            opportunity_id=oid, eligibility_score=0.0, readiness_score=0.0,
+            upside_score=0.0, final_score=score, bucket="low_fit",
+            reasons_fit=[], reasons_gap=[], next_steps=[],
+        )
+
+    def test_assign_buckets_small_set_uses_flat_floors(self):
+        rs = [self._mr("a", 75.0), self._mr("b", 65.0), self._mr("c", 50.0), self._mr("d", 10.0)]
+        _assign_buckets(rs)
+        assert [r.bucket for r in rs] == ["high_priority", "good_match", "reach", "low_fit"]
+
+    def test_semantic_rerank_recomputes_buckets(self, monkeypatch):
+        import src.matcher.embeddings as emb
+        results = [self._mr(f"o{i}", float(95 - i * 6)) for i in range(12)]
+        opps_by_id = {
+            f"o{i}": {"title": "t", "keywords": ["x"], "description_raw": "d", "lab_or_program": ""}
+            for i in range(12)
+        }
+        # The lowest-rule-score candidate is maximally similar → should jump up.
+        monkeypatch.setattr(
+            emb, "semantic_similarity_batch",
+            lambda q, texts: [0.0] * (len(texts) - 1) + [1.0],
+        )
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        out = semantic_rerank(
+            {"research_interests_text": "machine learning"}, results, opps_by_id,
+            semantic_weight=0.5,
+        )
+        order = {"high_priority": 3, "good_match": 2, "reach": 1, "low_fit": 0}
+        ranks = [order[r.bucket] for r in out]
+        # Buckets are monotonic non-increasing with the re-sorted scores (the bug
+        # left a re-blended high score carrying its stale low_fit label).
+        assert ranks == sorted(ranks, reverse=True)
+        boosted = next(r for r in out if r.opportunity_id == "o11")
+        assert boosted.final_score > 50 and boosted.bucket != "low_fit"

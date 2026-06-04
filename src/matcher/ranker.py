@@ -1231,6 +1231,37 @@ def _opportunity_query_text(opp: dict) -> str:
     return " ".join(p for p in parts if p)
 
 
+def _assign_buckets(results: list[MatchResult]) -> None:
+    """Assign each result's bucket from its current final_score. Expects results
+    sorted by final_score desc. For >=10 results uses the RANK-6 top-N count cap
+    + percentile banding; smaller sets fall back to the flat BUCKET_THRESHOLDS
+    floors. Mutates in place. Shared by rank_all and semantic_rerank so a
+    re-blended score never keeps a stale bucket label."""
+    floor_high = float(BUCKET_THRESHOLDS[0][0])
+    floor_good = float(BUCKET_THRESHOLDS[1][0])
+    floor_reach = float(BUCKET_THRESHOLDS[2][0])
+    if len(results) >= 10:
+        scores = [r.final_score for r in results]
+        p70 = scores[max(0, (len(scores) * 3) // 10)]
+        p40 = scores[max(0, (len(scores) * 6) // 10)]
+        k = min(HIGH_PRIORITY_TARGET_COUNT, len(scores) - 1)
+        hp_threshold = max(floor_high, scores[k])
+        gm_threshold = max(floor_good, p70)
+        reach_threshold = max(floor_reach, p40)
+    else:
+        hp_threshold, gm_threshold, reach_threshold = floor_high, floor_good, floor_reach
+
+    for r in results:
+        if r.final_score >= hp_threshold:
+            r.bucket = "high_priority"
+        elif r.final_score >= gm_threshold:
+            r.bucket = "good_match"
+        elif r.final_score >= reach_threshold:
+            r.bucket = "reach"
+        else:
+            r.bucket = "low_fit"
+
+
 def semantic_rerank(
     profile: dict,
     results: list[MatchResult],
@@ -1286,6 +1317,10 @@ def semantic_rerank(
         r.final_score = round(max(0.0, min(100.0, blended)), 2)
 
     results.sort(key=lambda r: r.final_score, reverse=True)
+    # Buckets were assigned on the pre-blend scores; recompute them so the labels
+    # and per-bucket counts match the re-ranked order (semantic=true used to
+    # return stale buckets).
+    _assign_buckets(results)
     return results
 
 
@@ -1335,35 +1370,6 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             results.append(result)
 
     results.sort(key=lambda r: r.final_score, reverse=True)
-
-    if len(results) >= 10:
-        scores = [r.final_score for r in results]
-        p70 = scores[max(0, (len(scores) * 3) // 10)]
-        p40 = scores[max(0, (len(scores) * 6) // 10)]
-
-        floor_high = float(BUCKET_THRESHOLDS[0][0])
-        floor_good = float(BUCKET_THRESHOLDS[1][0])
-        floor_reach = float(BUCKET_THRESHOLDS[2][0])
-        # RANK-6: high_priority = the top HIGH_PRIORITY_TARGET_COUNT results that
-        # also clear floor_high. The count cap (score at rank K) normalizes the
-        # bucket size across profiles instead of letting a flat floor yield 5 for
-        # one student and 80 for another; the floor still gates out weak matches
-        # so a sparse profile gets an honest empty top bucket. Ties at the cap
-        # boundary are kept (>= comparison), so a genuinely strong cluster isn't
-        # split arbitrarily. good_match / reach keep their percentile bands.
-        k = min(HIGH_PRIORITY_TARGET_COUNT, len(scores) - 1)
-        hp_threshold = max(floor_high, scores[k])
-        gm_threshold = max(floor_good, p70)
-        reach_threshold = max(floor_reach, p40)
-
-        for r in results:
-            if r.final_score >= hp_threshold:
-                r.bucket = "high_priority"
-            elif r.final_score >= gm_threshold:
-                r.bucket = "good_match"
-            elif r.final_score >= reach_threshold:
-                r.bucket = "reach"
-            else:
-                r.bucket = "low_fit"
+    _assign_buckets(results)
 
     return results
