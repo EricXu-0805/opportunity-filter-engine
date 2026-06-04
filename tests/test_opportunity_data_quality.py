@@ -254,6 +254,27 @@ class TestR70ADataQuality:
         ]
         assert not leaks, f"{len(leaks)} faculty descriptions still leak nav-menu text: {leaks[:3]}"
 
+    def test_faculty_keywords_have_no_fragment_leadins(self):
+        """A keyword like 'such as speech' or 'particularly using liquid lithium'
+        is a scraped sentence fragment, not a research area — the lead-in must be
+        stripped so the real topic ('speech', 'liquid lithium') stands alone."""
+        import re
+        lead = re.compile(
+            r"^(?:such as|particularly|especially|including|namely|e\.g\.?)\b",
+            re.IGNORECASE,
+        )
+        offenders = [
+            (o.get("id"), k)
+            for o in _load_data()
+            if o.get("source") == "uiuc_faculty"
+            for k in (o.get("keywords") or [])
+            if lead.match((k or "").strip())
+        ]
+        assert not offenders, (
+            f"{len(offenders)} faculty keywords are sentence fragments. "
+            f"First: {offenders[:3]}"
+        )
+
 
 class TestDeactivatePastLogic:
     """Deterministic guard for the deactivate_past normalizer itself, using an

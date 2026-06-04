@@ -1158,6 +1158,38 @@ def _derive_keywords_from_raw(opps: list[dict]) -> int:
     return enriched
 
 
+# Non-topical lead-ins that prefix a genuine topic inside a scraped phrase
+# ("such as speech", "particularly using liquid lithium"). The topic after the
+# lead-in is real, so strip the lead-in rather than drop the whole keyword.
+_KEYWORD_FRAGMENT_PREFIX_RE = re.compile(
+    r"^(?:such as|particularly using|particularly|especially|including|namely|e\.g\.?)"
+    r"\s+(?:the\s+)?",
+    re.IGNORECASE,
+)
+
+
+def _strip_fragment_keywords(opps: list[dict]) -> int:
+    """Strip non-topical lead-ins from faculty keywords so 'such as speech' becomes
+    'speech' and 'particularly using liquid lithium' becomes 'liquid lithium'.
+    Mutates ``opps`` in place; returns the count of keywords rewritten."""
+    changed = 0
+    for o in opps:
+        if o.get("source") != "uiuc_faculty":
+            continue
+        kws = o.get("keywords") or []
+        new: list[str] = []
+        for k in kws:
+            stripped = _KEYWORD_FRAGMENT_PREFIX_RE.sub("", k).strip()
+            if stripped and stripped != k:
+                changed += 1
+                k = stripped
+            if k.lower() not in {x.lower() for x in new}:
+                new.append(k)
+        if new != kws:
+            o["keywords"] = new
+    return changed
+
+
 # DQ-4: a professor with a joint appointment appears in two department
 # directories, each giving a DIFFERENT profile URL — so the URL+name dedup above
 # never collapses them and the same person surfaces twice (and could be cold-
@@ -1357,6 +1389,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     enriched = _derive_keywords_from_raw(all_opps)
     if enriched:
         logger.info(f"Enriched {enriched} broad-field faculty record(s) with keywords derived from research_areas_raw")
+
+    stripped_frags = _strip_fragment_keywords(all_opps)
+    if stripped_frags:
+        logger.info(f"Stripped non-topical lead-in from {stripped_frags} faculty keyword(s)")
 
     decredentialed = _strip_pi_name_credentials(all_opps)
     if decredentialed:

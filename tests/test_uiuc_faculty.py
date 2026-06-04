@@ -18,6 +18,7 @@ from src.collectors.uiuc_faculty import (
     _is_section_label,
     _null_shared_admin_emails,
     _rebuild_faculty_title_and_desc,
+    _strip_fragment_keywords,
     _strip_pi_name_credentials,
     normalize_faculty,
 )
@@ -269,6 +270,25 @@ def test_derive_drops_self_name_token():
     _derive_keywords_from_raw(rows)
     assert "halloran" not in rows[0]["keywords"]
     assert rows[0]["keywords"] == ["biomechanics"]
+
+
+def test_strip_fragment_keywords_recovers_topic():
+    rows = [
+        {"source": "uiuc_faculty", "keywords": ["such as speech"]},
+        {"source": "uiuc_faculty", "keywords": [
+            "experimental fusion research", "particularly using liquid lithium"]},
+        {"source": "uiuc_faculty", "keywords": ["cognition", "such as the cerebral cortex"]},
+    ]
+    assert _strip_fragment_keywords(rows) == 3
+    assert rows[0]["keywords"] == ["speech"]
+    assert rows[1]["keywords"] == ["experimental fusion research", "liquid lithium"]
+    assert rows[2]["keywords"] == ["cognition", "cerebral cortex"]
+
+
+def test_strip_fragment_keywords_leaves_clean_keywords_untouched():
+    rows = [{"source": "uiuc_faculty", "keywords": ["machine learning", "computer vision"]}]
+    assert _strip_fragment_keywords(rows) == 0
+    assert rows[0]["keywords"] == ["machine learning", "computer vision"]
 
 
 # DQ-4: collapse a joint-appointment professor duplicated across departments.
