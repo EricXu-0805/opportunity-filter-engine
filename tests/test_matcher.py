@@ -695,3 +695,47 @@ class TestMajorFitSingleCount:
         assert cs_score > spanish_score
         # The mismatch is still firmly weak — major fit continues to matter.
         assert spanish_score < cs_score - 15
+
+
+class TestUpsideReasonHook:
+    """The interest-match reason must name the matched keywords, not echo a
+    mid-word, lowercased slice of the student's free-text interests (regression
+    for `research_text[:50]` producing '...computer vision a closely matches')."""
+
+    def _opp(self):
+        return {
+            "id": "opp-hook",
+            "title": "Research with Prof. Schwing — ECE",
+            "lab_or_program": "Prof. Alexander Schwing's Research Group",
+            "pi_name": "Alexander Schwing",
+            "opportunity_type": "research",
+            "keywords": ["machine learning", "computer vision", "robotics"],
+            "description_raw": "Computer vision and machine learning research group.",
+            "eligibility": {"skills_required": ["Python"]},
+        }
+
+    def test_reason_does_not_echo_truncated_interest_text(self):
+        profile = {
+            "research_interests_text": (
+                "ai systems and machine learning, computer vision and "
+                "vision-language models, deep learning"
+            ),
+            "desired_fields": ["computer vision", "machine learning"],
+        }
+        _, reasons_fit, _ = score_upside(profile, self._opp())
+        joined = " ".join(reasons_fit)
+        # The free-text-only prefix must not leak (old code sliced it in raw).
+        assert "ai systems and" not in joined
+        # No mid-word truncation artifact.
+        assert "vision a closely" not in joined
+        # The lab's matched areas are named instead.
+        assert "computer vision" in joined and "machine learning" in joined
+
+    def test_reason_keyword_order_is_deterministic(self):
+        opp = self._opp()
+        profile = {
+            "research_interests_text": "computer vision, robotics, machine learning",
+            "desired_fields": [],
+        }
+        runs = {tuple(score_upside(profile, opp)[1]) for _ in range(8)}
+        assert len(runs) == 1  # set-ordered keywords used to make this flaky
