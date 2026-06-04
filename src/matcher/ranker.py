@@ -7,7 +7,6 @@ data, not policy — moving them to YAML is a separate refactor.
 """
 
 import math
-import os
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -25,7 +24,6 @@ from .config import (
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
     SEMANTIC_RERANK_FALLBACK_CAP,
-    SIMILARITY_SCALE_EMBEDDING,
     SIMILARITY_SCALE_TFIDF,
     STRETCH_BLEND,
     STRETCH_MIDPOINT,
@@ -247,9 +245,13 @@ def _tokenize(text: str) -> list[str]:
 
 
 def _text_similarity(text_a: str, text_b: str) -> float:
+    """Corpus-fitted TF-IDF similarity for the upside base layer. Deliberately
+    TF-IDF (not embeddings) so the per-pair path is identical to rank_all's
+    batched pass and to the list view — embeddings are reserved for the bounded
+    semantic_rerank slice, never the always-on whole-corpus base score."""
     try:
-        from .embeddings import semantic_similarity
-        return semantic_similarity(text_a, text_b)
+        from .embeddings import semantic_similarity_batch
+        return semantic_similarity_batch(text_a, [text_b], allow_embeddings=False)[0]
     except ImportError:
         return _token_cosine_similarity(text_a, text_b)
     except (ValueError, RuntimeError):
@@ -270,22 +272,6 @@ def _similarity_corpus(opportunity: dict) -> str:
         " ".join(specific_kw),
         opp_desc,
     ]))
-
-
-def _similarity_score_scale() -> float:
-    """Multiplier mapping a raw similarity into upside keyword_score points,
-    chosen by the active similarity backend (RANK-5). When an embedding provider
-    is configured, ``_text_similarity`` returns embedding cosines (~0.35-0.75 for
-    related text) — the large TF-IDF multiplier would saturate them at sim≈0.21
-    and flatten real differences — so use the gentler embedding scale. Falls back
-    to the TF-IDF scale otherwise (and on any probe failure)."""
-    try:
-        from .embeddings import _resolve_embedding_provider
-        if _resolve_embedding_provider(None) is not None:
-            return SIMILARITY_SCALE_EMBEDDING
-    except Exception:
-        pass
-    return SIMILARITY_SCALE_TFIDF
 
 
 def _token_cosine_similarity(text_a: str, text_b: str) -> float:
@@ -797,11 +783,13 @@ def score_upside(
     lab_label = clean_pi and f"Prof. {clean_pi}" or lab or opportunity.get("department", "")
 
     if research_text and (opp_desc or specific_kw):
+        # Both the batched (rank_all) and per-pair sims are corpus-fitted TF-IDF,
+        # so the same scale applies either way and the two paths score identically.
         sim = (
             precomputed_sim if precomputed_sim is not None
             else _text_similarity(research_text, _similarity_corpus(opportunity))
         )
-        keyword_score = max(keyword_score, min(100.0, 15.0 + sim * _similarity_score_scale()))
+        keyword_score = max(keyword_score, min(100.0, 15.0 + sim * SIMILARITY_SCALE_TFIDF))
         if sim > 0.15:
             # Display only genuine research areas — drop role/format tokens so a
             # job title never reads as a topic ("...work on CV, research assistant").
@@ -1317,7 +1305,7 @@ def semantic_rerank(
         return results
 
     try:
-        from .embeddings import semantic_similarity_batch
+        from .embeddings import _has_embedding_provider, semantic_similarity_batch
     except ImportError:
         return results
 
@@ -1335,12 +1323,12 @@ def semantic_rerank(
 
     sims = semantic_similarity_batch(query, candidate_texts)
 
-    # When falling back to TF-IDF (no OpenAI/OpenRouter key), similarity
+    # When falling back to TF-IDF (no embedding provider), the similarity
     # signal is noisier — it matches generic corpus keywords like "REU" or
-    # "undergraduate" and can demote truly relevant labs. Detect fallback
-    # by probing the env, and cap the blend weight so rule-based signal
-    # dominates. Production has OPENAI_API_KEY set → full weight applies.
-    has_api = bool(os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY"))
+    # "undergraduate" and can demote truly relevant labs. Cap the blend weight
+    # so rule-based signal dominates. With a provider (OpenAI/Gemini/OpenRouter)
+    # the rerank uses real embeddings → full weight applies.
+    has_api = _has_embedding_provider()
     effective_weight = semantic_weight if has_api else min(semantic_weight, SEMANTIC_RERANK_FALLBACK_CAP)
 
     w = max(0.0, min(1.0, effective_weight))
@@ -1365,21 +1353,23 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     seeking = set(profile.get("seeking_type", []))
     student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
 
-    # Batch the upside research-interest similarity once for the whole corpus when
-    # it is score-identical to the per-pair path — the TF-IDF vectorizer is
-    # already fitted (deterministic transform) or an embedding key is set
-    # (deterministic embeddings). This collapses ~N per-request vectorizer
-    # transforms into a single call. When neither holds (offline/unfitted), leave
+    # Batch the upside research-interest similarity once for the whole corpus.
+    # This pass is TF-IDF only (allow_embeddings=False): embedding the full ~4.4k
+    # corpus per request would fan out into dozens of provider calls and is
+    # reserved for the bounded semantic_rerank slice. The batch is score-identical
+    # to score_upside's per-pair path only when the corpus vectorizer is fitted
+    # (same deterministic transform); when it is not (offline/unfitted), leave
     # sims empty so score_upside keeps its per-pair behavior unchanged.
     sims_by_id: dict[str, float] = {}
     research_text = (profile.get("research_interests_text") or "").lower()
     if research_text:
         try:
             import src.matcher.embeddings as _emb
-            has_api = bool(os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY"))
-            if _emb._tfidf_fitted or has_api:
+            if _emb._tfidf_fitted:
                 corpora = [_similarity_corpus(o) for o in opportunities]
-                sims = _emb.semantic_similarity_batch(research_text, corpora)
+                sims = _emb.semantic_similarity_batch(
+                    research_text, corpora, allow_embeddings=False
+                )
                 sims_by_id = {
                     o["id"]: s for o, s in zip(opportunities, sims, strict=False) if o.get("id")
                 }

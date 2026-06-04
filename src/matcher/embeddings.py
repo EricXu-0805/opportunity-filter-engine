@@ -1,8 +1,12 @@
 """
-Semantic similarity via OpenAI embeddings with TF-IDF fallback.
+Semantic similarity via embeddings with TF-IDF fallback.
 
-OpenAI path: text-embedding-3-small (1536 dims, $0.02/1M tokens)
-Fallback: scikit-learn TfidfVectorizer fit on the opportunity corpus,
+Provider chain (mirrors backend/lib/llm.py so one key lights up both):
+  1. OPENAI_API_KEY     → text-embedding-3-small (1536 dims)
+  2. GEMINI_API_KEY     → gemini-embedding-001 via Google's OpenAI-compatible
+                          endpoint, reduced to EMBED_DIMENSIONS dims
+  3. OPENROUTER_API_KEY → openai/text-embedding-3-small
+Fallback (no key): scikit-learn TfidfVectorizer fit on the opportunity corpus,
           so student ↔ opportunity similarity uses real IDF weights.
 """
 
@@ -12,7 +16,6 @@ import logging
 import os
 from collections import OrderedDict
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -22,7 +25,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CACHE_DIR = PROJECT_ROOT / "data" / "processed"
 EMBEDDING_CACHE_FILE = CACHE_DIR / "embedding_cache.json"
 
-EMBEDDING_MODEL_VERSION = "v1-openai-3small"
+# Embedding dimensionality requested from providers that support it (Gemini's
+# native 3072 is reduced via Matryoshka to keep the cache and cosine lean;
+# OpenAI's text-embedding-3-small is natively 1536). Cosine normalizes, so the
+# unnormalized reduced-dim vectors Gemini returns are fine.
+EMBED_DIMENSIONS = 1536
+
+GEMINI_EMBED_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+GEMINI_EMBED_MODEL = "gemini-embedding-001"
 
 MAX_CACHE_SIZE = 5000
 _cache: "OrderedDict[str, list[float]]" = OrderedDict()
@@ -39,7 +49,7 @@ def _load_cache() -> None:
             with open(EMBEDDING_CACHE_FILE, encoding="utf-8") as f:
                 raw = json.load(f)
             if isinstance(raw, dict) and "__version__" in raw:
-                if raw.get("__version__") == EMBEDDING_MODEL_VERSION:
+                if raw.get("__version__") == _cache_version():
                     _cache = OrderedDict(
                         (k, v) for k, v in raw.items() if not k.startswith("__")
                     )
@@ -47,7 +57,7 @@ def _load_cache() -> None:
                     stale_count = len([k for k in raw if not k.startswith("__")])
                     logger.info(
                         "Embedding cache version changed %s → %s; discarding %d stale entries",
-                        raw.get("__version__"), EMBEDDING_MODEL_VERSION, stale_count,
+                        raw.get("__version__"), _cache_version(), stale_count,
                     )
                     _cache = OrderedDict()
             elif isinstance(raw, dict):
@@ -66,7 +76,7 @@ def _save_cache() -> None:
     """Persist cache atomically. Call sparingly — batched at end of embed_batch."""
     global _cache_dirty
     try:
-        payload = {"__version__": EMBEDDING_MODEL_VERSION, **_cache}
+        payload = {"__version__": _cache_version(), **_cache}
         tmp = EMBEDDING_CACHE_FILE.with_suffix(".json.tmp")
         tmp.parent.mkdir(parents=True, exist_ok=True)
         with open(tmp, "w", encoding="utf-8") as f:
@@ -82,10 +92,11 @@ def _text_hash(text: str) -> str:
 
 
 def _resolve_embedding_provider(explicit_key: str | None) -> tuple[str, str, str] | None:
-    """Pick an embedding provider, in order:
+    """Pick an embedding provider, in order (mirrors backend/lib/llm.py):
        1. explicit_key argument (treated as OpenAI direct)
        2. OPENAI_API_KEY env var
-       3. OPENROUTER_API_KEY env var (gives broader model choice)
+       3. GEMINI_API_KEY env var (OpenAI-compatible endpoint)
+       4. OPENROUTER_API_KEY env var (gives broader model choice)
     Returns (api_key, base_url, model) or None if no key is configured.
     """
     if explicit_key:
@@ -93,13 +104,30 @@ def _resolve_embedding_provider(explicit_key: str | None) -> tuple[str, str, str
     openai_key = os.environ.get("OPENAI_API_KEY")
     if openai_key:
         return openai_key, "", "text-embedding-3-small"
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key:
+        return gemini_key, GEMINI_EMBED_BASE_URL, GEMINI_EMBED_MODEL
     openrouter_key = os.environ.get("OPENROUTER_API_KEY")
     if openrouter_key:
         return openrouter_key, "https://openrouter.ai/api/v1", "openai/text-embedding-3-small"
     return None
 
 
-def _get_openai_embeddings(texts: list[str], api_key: str) -> Optional[list[list[float]]]:
+def _has_embedding_provider(explicit_key: str | None = None) -> bool:
+    """True iff an embedding provider is configured. Single source of truth for
+    the embedding-vs-TF-IDF decision across this module and the ranker."""
+    return _resolve_embedding_provider(explicit_key) is not None
+
+
+def _cache_version() -> str:
+    """Cache tag derived from the active model so vectors from one provider are
+    never cosine-compared against another's (different dims/geometry). Switching
+    providers invalidates the on-disk cache."""
+    provider = _resolve_embedding_provider(None)
+    return f"v2-{provider[2]}-{EMBED_DIMENSIONS}" if provider else "v2-none"
+
+
+def _get_openai_embeddings(texts: list[str], api_key: str | None) -> list[list[float]] | None:
     try:
         import openai
     except ImportError:
@@ -112,8 +140,14 @@ def _get_openai_embeddings(texts: list[str], api_key: str) -> Optional[list[list
     key, base_url, model = provider
     client = openai.OpenAI(api_key=key, base_url=base_url) if base_url else openai.OpenAI(api_key=key)
 
+    # text-embedding-3-small is natively 1536; only the Gemini model needs an
+    # explicit Matryoshka reduction to match.
+    create_kwargs: dict = {"model": model, "input": texts}
+    if model == GEMINI_EMBED_MODEL:
+        create_kwargs["dimensions"] = EMBED_DIMENSIONS
+
     try:
-        resp = client.embeddings.create(model=model, input=texts)
+        resp = client.embeddings.create(**create_kwargs)
         return [item.embedding for item in resp.data]
     except (openai.APIError, openai.APIConnectionError, openai.RateLimitError,
             openai.AuthenticationError, openai.APITimeoutError) as e:
@@ -139,36 +173,13 @@ def _evict_if_needed() -> None:
         _cache.popitem(last=False)
 
 
-def embed_text(text: str, api_key: str = None) -> Optional[list[float]]:
-    """Get embedding for a single text, using cache when available."""
-    global _cache_dirty
-    _load_cache()
-    key = _text_hash(text)
-    if key in _cache:
-        _cache.move_to_end(key)
-        return _cache[key]
-
-    api_key = api_key or os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return None
-
-    result = _get_openai_embeddings([text], api_key)
-    if result:
-        _evict_if_needed()
-        _cache[key] = result[0]
-        _cache_dirty = True
-        _save_cache()
-        return result[0]
-    return None
-
-
-def embed_batch(texts: list[str], api_key: str = None) -> list[Optional[list[float]]]:
+def embed_batch(texts: list[str], api_key: str = None) -> list[list[float] | None]:
     """Embed multiple texts in one API call, respecting cache."""
     global _cache_dirty
     _load_cache()
-    api_key = api_key or os.environ.get("OPENAI_API_KEY")
+    has_provider = _has_embedding_provider(api_key)
 
-    results: list[Optional[list[float]]] = [None] * len(texts)
+    results: list[list[float] | None] = [None] * len(texts)
     uncached_indices = []
     uncached_texts = []
 
@@ -181,7 +192,7 @@ def embed_batch(texts: list[str], api_key: str = None) -> list[Optional[list[flo
             uncached_indices.append(i)
             uncached_texts.append(text)
 
-    if uncached_texts and api_key:
+    if uncached_texts and has_provider:
         BATCH_SIZE = 100
         for batch_start in range(0, len(uncached_texts), BATCH_SIZE):
             batch = uncached_texts[batch_start:batch_start + BATCH_SIZE]
@@ -199,35 +210,28 @@ def embed_batch(texts: list[str], api_key: str = None) -> list[Optional[list[flo
     return results
 
 
-def semantic_similarity(text_a: str, text_b: str, api_key: str = None) -> float:
-    """Compute semantic similarity between two texts (0.0 - 1.0)."""
-    emb_a = embed_text(text_a, api_key)
-    emb_b = embed_text(text_b, api_key)
-
-    if emb_a and emb_b:
-        sim = _cosine_similarity(emb_a, emb_b)
-        return max(0.0, sim)
-
-    return _tfidf_similarity(text_a, text_b)
-
-
 def semantic_similarity_batch(
     query_text: str,
     candidate_texts: list[str],
     api_key: str = None,
+    allow_embeddings: bool = True,
 ) -> list[float]:
     """Compute similarity of one query against many candidates.
 
-    Uses OpenAI embeddings (batched) when an API key is available;
-    otherwise falls back to the TF-IDF vectorizer (fit on the corpus
-    via fit_tfidf_corpus). Returns a list of scores in [0, 1] aligned
-    with candidate_texts.
+    Uses embeddings (batched) when a provider is configured and
+    ``allow_embeddings`` is True; otherwise falls back to the TF-IDF
+    vectorizer (fit on the corpus via fit_tfidf_corpus). Returns scores
+    in [0, 1] aligned with candidate_texts.
+
+    ``allow_embeddings=False`` forces TF-IDF — used by rank_all so the
+    whole-corpus upside pass never fans out into thousands of embedding
+    calls per request (embeddings are reserved for the bounded
+    semantic_rerank slice).
     """
     if not query_text or not candidate_texts:
         return [0.0] * len(candidate_texts)
 
-    api_key = api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
-    if api_key:
+    if allow_embeddings and _has_embedding_provider(api_key):
         embeddings = embed_batch([query_text, *candidate_texts], api_key)
         q_emb = embeddings[0]
         if q_emb is not None:
@@ -279,8 +283,8 @@ def fit_tfidf_corpus(corpus_texts: list[str]) -> None:
 
     Call this once at startup (or when data reloads) so similarity
     queries use real IDF weights learned from the full corpus.
-    Calling _tfidf_similarity without a fitted corpus falls back to
-    a 2-doc fit which degrades to token overlap.
+    _tfidf_similarity_batch without a fitted corpus falls back to a
+    fresh per-call fit which degrades to token overlap.
     """
     global _tfidf_vectorizer, _tfidf_fitted
     try:
@@ -299,36 +303,6 @@ def fit_tfidf_corpus(corpus_texts: list[str]) -> None:
     _tfidf_vectorizer.fit(valid)
     _tfidf_fitted = True
     logger.info("Fitted TF-IDF vectorizer on %d corpus docs", len(valid))
-
-
-def _tfidf_similarity(text_a: str, text_b: str) -> float:
-    try:
-        from sklearn.feature_extraction.text import TfidfVectorizer
-        from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
-    except ImportError:
-        return 0.0
-
-    if not text_a.strip() or not text_b.strip():
-        return 0.0
-
-    global _tfidf_vectorizer, _tfidf_fitted
-    if _tfidf_fitted and _tfidf_vectorizer is not None:
-        matrix = _tfidf_vectorizer.transform([text_a, text_b])
-        sim = sklearn_cosine(matrix[0:1], matrix[1:2])[0][0]
-        return float(max(0.0, sim))
-
-    vectorizer = TfidfVectorizer(
-        stop_words="english",
-        max_features=5000,
-        ngram_range=(1, 2),
-        sublinear_tf=True,
-    )
-    try:
-        matrix = vectorizer.fit_transform([text_a, text_b])
-    except ValueError:
-        return 0.0
-    sim = sklearn_cosine(matrix[0:1], matrix[1:2])[0][0]
-    return float(max(0.0, sim))
 
 
 def precompute_opportunity_embeddings(opportunities: list[dict],
