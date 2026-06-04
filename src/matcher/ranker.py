@@ -256,6 +256,22 @@ def _text_similarity(text_a: str, text_b: str) -> float:
         return _token_cosine_similarity(text_a, text_b)
 
 
+def _similarity_corpus(opportunity: dict) -> str:
+    """The opportunity-side text the upside layer compares against the student's
+    research interests. Shared by score_upside (per-pair) and rank_all (batched)
+    so both feed byte-identical input to the similarity backend — and therefore
+    produce identical scores."""
+    opp_kw_list = [k.lower() for k in opportunity.get("keywords", [])]
+    specific_kw = list(dict.fromkeys(kw for kw in opp_kw_list if kw not in _GENERIC_KEYWORDS))
+    opp_desc = (opportunity.get("description_raw") or opportunity.get("description_clean") or "").lower()
+    return " ".join(filter(None, [
+        opportunity.get("title", ""),
+        opportunity.get("lab_or_program", ""),
+        " ".join(specific_kw),
+        opp_desc,
+    ]))
+
+
 def _similarity_score_scale() -> float:
     """Multiplier mapping a raw similarity into upside keyword_score points,
     chosen by the active similarity backend (RANK-5). When an embedding provider
@@ -707,8 +723,14 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
     return total, reasons_fit, reasons_gap
 
 
-def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], list[str]]:
-    """Score upside (0-100)."""
+def score_upside(
+    profile: dict,
+    opportunity: dict,
+    precomputed_sim: float | None = None,
+) -> tuple[float, list[str], list[str]]:
+    """Score upside (0-100). ``precomputed_sim`` lets rank_all supply a batched
+    research-interest similarity (identical to the per-pair value) instead of
+    recomputing it here per opportunity."""
     reasons_fit = []
     reasons_gap = []
 
@@ -775,13 +797,10 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
     lab_label = clean_pi and f"Prof. {clean_pi}" or lab or opportunity.get("department", "")
 
     if research_text and (opp_desc or specific_kw):
-        opp_corpus = " ".join(filter(None, [
-            opportunity.get("title", ""),
-            lab,
-            " ".join(specific_kw),
-            opp_desc,
-        ]))
-        sim = _text_similarity(research_text, opp_corpus)
+        sim = (
+            precomputed_sim if precomputed_sim is not None
+            else _text_similarity(research_text, _similarity_corpus(opportunity))
+        )
         keyword_score = max(keyword_score, min(100.0, 15.0 + sim * _similarity_score_scale()))
         if sim > 0.15:
             # Display only genuine research areas — drop role/format tokens so a
@@ -1089,13 +1108,14 @@ def rank_opportunity(
     opportunity: dict,
     weights: dict[str, float] | None = None,
     precomputed_eligibility: tuple[float, list[str], list[str]] | None = None,
+    precomputed_sim: float | None = None,
 ) -> MatchResult:
     if precomputed_eligibility is not None:
         elig_score, elig_fit, elig_gap = precomputed_eligibility
     else:
         elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
-    up_score, up_fit, up_gap = score_upside(profile, opportunity)
+    up_score, up_fit, up_gap = score_upside(profile, opportunity, precomputed_sim=precomputed_sim)
 
     w = weights or {
         "eligibility": WEIGHTS_DEFAULT.eligibility,
@@ -1332,6 +1352,27 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     seeking = set(profile.get("seeking_type", []))
     student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
 
+    # Batch the upside research-interest similarity once for the whole corpus when
+    # it is score-identical to the per-pair path — the TF-IDF vectorizer is
+    # already fitted (deterministic transform) or an embedding key is set
+    # (deterministic embeddings). This collapses ~N per-request vectorizer
+    # transforms into a single call. When neither holds (offline/unfitted), leave
+    # sims empty so score_upside keeps its per-pair behavior unchanged.
+    sims_by_id: dict[str, float] = {}
+    research_text = (profile.get("research_interests_text") or "").lower()
+    if research_text:
+        try:
+            import src.matcher.embeddings as _emb
+            has_api = bool(os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY"))
+            if _emb._tfidf_fitted or has_api:
+                corpora = [_similarity_corpus(o) for o in opportunities]
+                sims = _emb.semantic_similarity_batch(research_text, corpora)
+                sims_by_id = {
+                    o["id"]: s for o, s in zip(opportunities, sims, strict=False) if o.get("id")
+                }
+        except Exception:
+            sims_by_id = {}
+
     results = []
     for opp in opportunities:
         if opp.get("metadata", {}).get("is_active") is False:
@@ -1365,7 +1406,11 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             if max_possible < min_threshold:
                 continue
 
-        result = rank_opportunity(profile, opp, weights, precomputed_eligibility=elig_triple)
+        result = rank_opportunity(
+            profile, opp, weights,
+            precomputed_eligibility=elig_triple,
+            precomputed_sim=sims_by_id.get(opp.get("id")),
+        )
         if result.final_score >= min_threshold:
             results.append(result)
 
