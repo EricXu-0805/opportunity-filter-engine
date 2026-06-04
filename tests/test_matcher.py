@@ -540,24 +540,48 @@ class TestDataIntegrity:
             assert r.bucket in ("high_priority", "good_match", "reach", "low_fit")
 
 
-class TestSimilarityScaleRANK5:
-    """RANK-5: the similarity→keyword_score multiplier is backend-aware so the
-    embedding path isn't saturated at sim≈0.21, without changing the TF-IDF path."""
+class TestUpsideSimilarityScale:
+    """The base upside layer is corpus-fitted TF-IDF in both the batched
+    (rank_all) and per-pair paths, so its keyword_score is provider-independent —
+    embeddings only influence the bounded semantic_rerank, never this base score."""
 
-    def test_scale_switches_on_embedding_provider(self, monkeypatch):
-        from src.matcher.config import SIMILARITY_SCALE_EMBEDDING, SIMILARITY_SCALE_TFIDF
-        from src.matcher.ranker import _similarity_score_scale
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-        assert _similarity_score_scale() == SIMILARITY_SCALE_TFIDF
-        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        assert _similarity_score_scale() == SIMILARITY_SCALE_EMBEDDING
+    def _faculty_opp(self):
+        return {
+            "source": "uiuc_faculty",
+            "keywords": ["machine learning"],
+            "description_raw": "Machine learning research in the group.",
+            "lab_or_program": "Prof. X Lab",
+            "eligibility": {},
+            "paid": "unknown",
+            "organization": "uiuc",
+        }
 
-    def test_embedding_scale_stays_discriminative(self):
-        from src.matcher.config import SIMILARITY_SCALE_EMBEDDING
-        # The saturation point (15 + sim*scale == 100) must sit well above the old
-        # 0.21, so embedding cosines in the ~0.35-0.75 band aren't flattened to 100.
-        assert (100.0 - 15.0) / SIMILARITY_SCALE_EMBEDDING > 0.5
+    def test_precomputed_sim_is_provider_independent(self, monkeypatch):
+        from src.matcher.ranker import score_upside
+        # research_text deliberately shares no token with the opp keywords, so the
+        # literal text-overlap bonus stays out and only the sim scaling matters.
+        profile = {"research_interests_text": "quantum chromodynamics", "desired_fields": []}
+        opp = self._faculty_opp()
+        for v in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(v, raising=False)
+        total_no_provider, _, _ = score_upside(profile, opp, precomputed_sim=0.25)
+        monkeypatch.setenv("GEMINI_API_KEY", "g-test")
+        total_with_provider, _, _ = score_upside(profile, opp, precomputed_sim=0.25)
+        assert total_no_provider == total_with_provider
+
+    def test_self_computed_sim_is_provider_independent(self, monkeypatch):
+        """The per-pair path (no precomputed_sim) computes a TF-IDF sim too, so a
+        configured embedding provider must not change the base upside score."""
+        import src.matcher.ranker as rk
+        monkeypatch.setattr(rk, "_text_similarity", lambda _a, _b: 0.3)
+        profile = {"research_interests_text": "quantum chromodynamics", "desired_fields": []}
+        opp = self._faculty_opp()
+        for v in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(v, raising=False)
+        total_no_provider, _, _ = rk.score_upside(profile, opp)
+        monkeypatch.setenv("GEMINI_API_KEY", "g-test")
+        total_with_provider, _, _ = rk.score_upside(profile, opp)
+        assert total_no_provider == total_with_provider
 
     def test_tfidf_scale_unchanged(self):
         from src.matcher.config import SIMILARITY_SCALE_TFIDF

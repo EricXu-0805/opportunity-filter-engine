@@ -88,11 +88,8 @@ SEMANTIC_RERANK_TOPK = int(_env_float("OFE_SEMANTIC_TOPK", 200))
 SEMANTIC_RERANK_WEIGHT = _env_float("OFE_SEMANTIC_W", 0.5)
 SEMANTIC_RERANK_FALLBACK_CAP = _env_float("OFE_SEMANTIC_FALLBACK_CAP", 0.2)
 
-# Upside keyword_score maps a raw similarity via 15 + sim * SCALE. The scale is
-# backend-dependent (RANK-5): TF-IDF (the offline fallback) tops out ~0.16 so it
-# needs a large multiplier to reach usable scores, whereas OpenAI embedding
-# cosines for related text run ~0.35-0.75 — the large multiplier would saturate
-# them at sim≈0.21 and flatten real differences, so the embedding path uses a
-# gentler scale (saturates ~0.71, keeping the relevant band discriminative).
+# Upside keyword_score maps a raw similarity via 15 + sim * SCALE. The base
+# upside layer is corpus-fitted TF-IDF, whose cosines top out ~0.16, so it needs
+# a large multiplier to reach usable scores. (Embeddings power semantic_rerank,
+# which blends cosine*100 directly and does not use this scale.)
 SIMILARITY_SCALE_TFIDF = _env_float("OFE_SIM_SCALE_TFIDF", 400.0)
-SIMILARITY_SCALE_EMBEDDING = _env_float("OFE_SIM_SCALE_EMBEDDING", 120.0)

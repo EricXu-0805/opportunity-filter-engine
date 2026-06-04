@@ -883,11 +883,9 @@ class TestTfidfCorpusFit:
         embeddings.fit_tfidf_corpus(corpus)
         assert embeddings._tfidf_fitted is True
 
-        sim_related = embeddings._tfidf_similarity(
-            "python machine learning", "python data science",
-        )
-        sim_unrelated = embeddings._tfidf_similarity(
-            "python machine learning", "protein folding chemistry",
+        sim_related, sim_unrelated = embeddings._tfidf_similarity_batch(
+            "python machine learning",
+            ["python data science", "protein folding chemistry"],
         )
         assert sim_related > sim_unrelated
 
@@ -906,6 +904,81 @@ class TestTfidfCorpusFit:
         data_loader.load_opportunities()
         if len(data_loader._opp_cache) >= 2:
             assert embeddings._tfidf_fitted is True
+
+
+class TestEmbeddingProvider:
+    """Provider resolution + the embedding-vs-TF-IDF gating that decides whether
+    semantic similarity uses a real embedding API or the corpus TF-IDF fallback."""
+
+    def test_resolves_gemini_when_only_gemini_set(self, monkeypatch):
+        from src.matcher import embeddings
+        for v in ("OPENAI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(v, raising=False)
+        monkeypatch.setenv("GEMINI_API_KEY", "g-key")
+        prov = embeddings._resolve_embedding_provider(None)
+        assert prov is not None
+        key, base_url, model = prov
+        assert key == "g-key"
+        assert model == embeddings.GEMINI_EMBED_MODEL
+        assert "generativelanguage.googleapis.com" in base_url
+        assert embeddings._has_embedding_provider() is True
+
+    def test_no_provider_when_no_keys(self, monkeypatch):
+        from src.matcher import embeddings
+        for v in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(v, raising=False)
+        assert embeddings._resolve_embedding_provider(None) is None
+        assert embeddings._has_embedding_provider() is False
+
+    def test_openai_takes_priority_over_gemini(self, monkeypatch):
+        from src.matcher import embeddings
+        monkeypatch.setenv("OPENAI_API_KEY", "o-key")
+        monkeypatch.setenv("GEMINI_API_KEY", "g-key")
+        key, base_url, model = embeddings._resolve_embedding_provider(None)
+        assert key == "o-key"
+        assert base_url == ""
+        assert model == "text-embedding-3-small"
+
+    def test_cache_version_tracks_provider(self, monkeypatch):
+        from src.matcher import embeddings
+        for v in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(v, raising=False)
+        assert embeddings._cache_version() == "v2-none"
+        monkeypatch.setenv("GEMINI_API_KEY", "g")
+        assert embeddings.GEMINI_EMBED_MODEL in embeddings._cache_version()
+
+    def test_allow_embeddings_false_forces_tfidf(self, monkeypatch):
+        """rank_all passes allow_embeddings=False; even with a provider set it must
+        not fan out into embedding calls over the whole corpus."""
+        from src.matcher import embeddings
+        monkeypatch.setenv("GEMINI_API_KEY", "g-key")
+
+        def _boom(*_a, **_k):
+            raise AssertionError("embed_batch must not run when allow_embeddings=False")
+
+        monkeypatch.setattr(embeddings, "embed_batch", _boom)
+        out = embeddings.semantic_similarity_batch(
+            "machine learning", ["machine learning research", "marine biology"],
+            allow_embeddings=False,
+        )
+        assert len(out) == 2
+        assert all(0.0 <= s <= 1.0 for s in out)
+
+    def test_allow_embeddings_true_uses_provider(self, monkeypatch):
+        from src.matcher import embeddings
+        monkeypatch.setenv("GEMINI_API_KEY", "g-key")
+        called = {}
+
+        def _fake_embed_batch(texts, api_key=None):
+            called["yes"] = True
+            return [None] * len(texts)  # simulate API miss → graceful TF-IDF fallback
+
+        monkeypatch.setattr(embeddings, "embed_batch", _fake_embed_batch)
+        out = embeddings.semantic_similarity_batch(
+            "ml", ["ml research", "bio"], allow_embeddings=True,
+        )
+        assert called.get("yes") is True
+        assert len(out) == 2
 
 
 class TestCORS:
