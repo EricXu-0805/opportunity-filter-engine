@@ -17,6 +17,7 @@ from src.collectors.uiuc_faculty import (
     _extract_research_keywords,
     _is_section_label,
     _null_shared_admin_emails,
+    _rebuild_faculty_title_and_desc,
     normalize_faculty,
 )
 
@@ -337,3 +338,41 @@ def test_joint_appointment_personal_email_is_not_nulled():
     ]
     assert _null_shared_admin_emails(rows) == 0
     assert all(r["contact_email"] == "daf@illinois.edu" for r in rows)
+
+
+def test_rebuild_title_drops_navmenu_for_broad_only_prof():
+    rows = [{
+        "source": "uiuc_faculty", "pi_name": "Sasa Misailovic",
+        "department": "Siebel School of Computing and Data Science",
+        "title": "Research with Prof. Sasa Misailovic — CS (bioinformatics, "
+                 "artificial intelligence, parallel computing)",
+        "keywords": ["computer science"],
+        "description_raw": "Research opportunity with Professor Sasa Misailovic. "
+                           "Research areas: Architecture, Compilers and Parallel "
+                           "Computing, Bioinformatics. Contact the professor.",
+        "description_clean": "stale",
+        "metadata": {"faculty_title": "Professor"},
+        "eligibility": {"eligibility_text_raw": "stale"},
+    }]
+    assert _rebuild_faculty_title_and_desc(rows) == 1
+    assert rows[0]["title"] == "Research with Prof. Sasa Misailovic — CS"
+    assert "bioinformatics" not in rows[0]["title"]
+    assert "Research areas:" not in rows[0]["description_clean"]
+    assert "Architecture" not in rows[0]["description_clean"]
+
+
+def test_rebuild_title_keeps_genuine_specific_areas():
+    rows = [{
+        "source": "uiuc_faculty", "pi_name": "Alexander Schwing",
+        "department": "Electrical & Computer Engineering",
+        "title": "Research with Prof. Alexander Schwing — ECE (stale)",
+        "keywords": ["machine learning", "computer vision", "robotics"],
+        "metadata": {"faculty_title": "Professor"},
+    }]
+    _rebuild_faculty_title_and_desc(rows)
+    assert rows[0]["title"] == (
+        "Research with Prof. Alexander Schwing — ECE "
+        "(machine learning, computer vision, robotics)"
+    )
+    assert "Research areas: machine learning, computer vision, robotics." in \
+        rows[0]["description_raw"]
