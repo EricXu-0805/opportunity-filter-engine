@@ -653,10 +653,11 @@ def score_eligibility(profile: dict, opportunity: dict) -> tuple[float, list[str
         profile.get("seeking_type", []),
         opportunity.get("opportunity_type", "")
     )
+    _otype_label = opportunity.get("opportunity_type", "").replace("_", " ")
     if type_score >= 80:
-        reasons_fit.append(f"Matches your interest in {opportunity.get('opportunity_type', '')}")
+        reasons_fit.append(f"Matches your interest in {_otype_label}")
     elif type_score < 50:
-        reasons_gap.append(f"This is a {opportunity.get('opportunity_type', '')} — not your primary target type")
+        reasons_gap.append(f"This is a {_otype_label} — not your primary target type")
 
     total = 0.30 * year_score + 0.20 * major_score + 0.20 * intl_score + 0.15 * skill_score + 0.15 * type_score
     return total, reasons_fit, reasons_gap
@@ -783,18 +784,21 @@ def score_upside(profile: dict, opportunity: dict) -> tuple[float, list[str], li
         sim = _text_similarity(research_text, opp_corpus)
         keyword_score = max(keyword_score, min(100.0, 15.0 + sim * _similarity_score_scale()))
         if sim > 0.15:
-            work = ", ".join(specific_kw[:3])
+            # Display only genuine research areas — drop role/format tokens so a
+            # job title never reads as a topic ("...work on CV, research assistant").
+            display_kw = _topical_keywords(specific_kw)
+            work = ", ".join(display_kw[:3])
             # Name the interest terms that actually overlap the lab's areas rather
             # than echoing a mid-word slice of the student's free-text interests.
-            overlap = [kw for kw in specific_kw if kw in research_text]
+            overlap = [kw for kw in display_kw if kw in research_text]
             interest_phrase = ", ".join(overlap[:3])
-            if specific_kw and lab_label:
+            if display_kw and lab_label:
                 reasons_fit.append(
                     f"Your interest in {interest_phrase} closely matches {lab_label}'s work on {work}"
                     if interest_phrase
                     else f"Your research interests align closely with {lab_label}'s work on {work}"
                 )
-            elif specific_kw:
+            elif display_kw:
                 reasons_fit.append(
                     f"Your interest in {interest_phrase} closely matches their work on {work}"
                     if interest_phrase
@@ -867,6 +871,26 @@ _GENERIC_KEYWORDS = frozenset({
 })
 
 
+# Role / format / process tokens that describe the POSTING, not the lab's
+# research area. They are multi-word (so they slip past the single-token
+# _GENERIC_KEYWORDS) and would otherwise surface as a fake topical area in
+# headlines/reasons (e.g. "...work on computer vision, research assistant, deep
+# learning"). Filtered in the DISPLAY paths ONLY — never in
+# _extract_specific_keywords, which also feeds _topic_alignment_penalty;
+# stripping there would flip a role-only admin row's deserved mismatch penalty
+# (0.80) to a neutral 1.0 "unknown" and promote it.
+_ROLE_PROCESS_TOKENS = frozenset({
+    "undergraduate research", "research assistant", "summer research",
+    "research experience", "research opportunity", "reu", "fellowship",
+    "paid", "our", "portal",
+})
+
+
+def _topical_keywords(keywords: list[str]) -> list[str]:
+    """Drop role/format tokens for display — keep only genuine research areas."""
+    return [kw for kw in keywords if kw.lower() not in _ROLE_PROCESS_TOKENS]
+
+
 def _extract_specific_keywords(opportunity: dict) -> list[str]:
     keywords = opportunity.get("keywords", [])
     return [kw for kw in keywords if kw.lower() not in _GENERIC_KEYWORDS]
@@ -911,7 +935,7 @@ def _summarize_research(opportunity: dict) -> str:
     dept = opportunity.get("department", "")
     desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
 
-    specific_kw = _extract_specific_keywords(opportunity)
+    specific_kw = _topical_keywords(_extract_specific_keywords(opportunity))
     desc_focus = _extract_research_focus_from_desc(desc)
 
     lab_has_pi = pi and pi.split()[-1].lower() in lab.lower()
@@ -1133,8 +1157,11 @@ def rank_opportunity(
         pi = opportunity.get("pi_name", "")
         if pi and pi in research_summary:
             all_fit.insert(0, research_summary)
-        else:
+        elif opportunity.get("opportunity_type") == "research":
             all_fit.insert(0, f"This lab focuses on {research_summary}")
+        # Non-research postings (internships, summer programs) have no "lab" —
+        # the "This lab focuses on …" framing is a category error there, and the
+        # keyword/interest reasons already convey relevance, so skip it.
 
     next_steps = _generate_next_steps(profile, opportunity, all_gap)
 

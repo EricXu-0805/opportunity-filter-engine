@@ -24,7 +24,9 @@ from src.matcher.ranker import (
     _normalize_type_key,
     _requires_graduate_standing,
     _skill_overlap_score,
+    _summarize_research,
     _topic_alignment_penalty,
+    _topical_keywords,
     _type_preference_score,
     _year_match_score,
     rank_all,
@@ -739,3 +741,51 @@ class TestUpsideReasonHook:
         }
         runs = {tuple(score_upside(profile, opp)[1]) for _ in range(8)}
         assert len(runs) == 1  # set-ordered keywords used to make this flaky
+
+
+class TestReasonQualityOptimizations:
+    """Role/format tokens must not surface as research topics; type reasons must
+    be humanized; the 'This lab focuses on' headline is research-only."""
+
+    def test_topical_keywords_drops_role_tokens(self):
+        kws = ["computer vision", "research assistant", "undergraduate research", "deep learning"]
+        assert _topical_keywords(kws) == ["computer vision", "deep learning"]
+
+    def test_summary_does_not_show_role_token_as_topic(self):
+        opp = {
+            "pi_name": "Jane Doe",
+            "lab_or_program": "Prof. Jane Doe's Research Group",
+            "opportunity_type": "research",
+            "keywords": ["computer vision", "research assistant", "deep learning"],
+        }
+        s = _summarize_research(opp)
+        assert "research assistant" not in s
+        assert "computer vision" in s and "deep learning" in s
+
+    def test_type_reason_is_humanized(self):
+        profile = {"year": "freshman", "seeking_type": ["summer_program"]}
+        opp = {
+            "opportunity_type": "summer_program",
+            "title": "AI/ML REU",
+            "keywords": ["machine learning"],
+            "eligibility": {"preferred_year": ["freshman"], "international_friendly": "yes"},
+            "application": {},
+        }
+        joined = " ".join(rank_opportunity(profile, opp).reasons_fit)
+        assert "summer_program" not in joined
+        assert "summer program" in joined
+
+    def test_lab_focus_headline_not_applied_to_internships(self):
+        profile = {"year": "freshman", "seeking_type": ["internship"],
+                   "research_interests_text": "machine learning and python"}
+        opp = {
+            "opportunity_type": "internship",
+            "title": "Software Engineering Intern",
+            "keywords": ["machine learning", "python"],
+            "description_raw": "A software internship building ML tooling in Python.",
+            "eligibility": {"preferred_year": ["freshman"], "international_friendly": "yes"},
+            "application": {},
+        }
+        assert not any(
+            "This lab focuses on" in r for r in rank_opportunity(profile, opp).reasons_fit
+        )
