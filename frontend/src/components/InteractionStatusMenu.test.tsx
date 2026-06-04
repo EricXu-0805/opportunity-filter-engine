@@ -159,6 +159,24 @@ describe('InteractionStatusMenu (R69-C)', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
+  it('renders the menu in a portal on document.body so an overflow-hidden card cannot clip it', () => {
+    render(
+      <div style={{ overflow: 'hidden' }} data-testid="clipping-card">
+        <InteractionStatusMenu
+          opportunityId="opp-1"
+          opportunityTitle="Test Lab"
+          onTrackInteraction={() => {}}
+        />
+      </div>,
+    );
+    fireEvent.click(screen.getByText('results.statusMenu.trigger'));
+    const menu = screen.getByRole('menu');
+    // The menu must NOT be nested inside the overflow-hidden card wrapper, and
+    // must use fixed positioning to float above sibling content.
+    expect(screen.getByTestId('clipping-card').contains(menu)).toBe(false);
+    expect(menu).toHaveStyle({ position: 'fixed' });
+  });
+
   it('outside click closes the menu', () => {
     render(
       <div>
