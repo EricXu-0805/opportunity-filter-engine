@@ -38,6 +38,7 @@ from backend.routes import (
     opportunities,
     push,
     resume,
+    roadmap,
     saved_searches,
     tailor,
 )
@@ -208,6 +209,7 @@ app.add_middleware(
 )
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])
+app.include_router(roadmap.router, prefix="/api", tags=["roadmap"])
 app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(tailor.router, prefix="/api", tags=["tailor"])

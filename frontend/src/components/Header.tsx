@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: '/fellowships', labelKey: 'nav.fellowships', shortKey: 'nav.fellowshipsShort' },
   { href: '/favorites', labelKey: 'nav.favorites', shortKey: 'nav.favShort' },
   { href: '/tracker', labelKey: 'nav.tracker', shortKey: 'nav.trackerShort' },
+  { href: '/roadmap', labelKey: 'nav.roadmap', shortKey: 'nav.roadmapShort' },
   { href: '/dashboard', labelKey: 'nav.dashboard', shortKey: 'nav.dashShort' },
   { href: '/import', labelKey: 'nav.import', shortKey: 'nav.importShort' },
   { href: '/resources', labelKey: 'nav.resources', shortKey: 'nav.resourcesShort' },
