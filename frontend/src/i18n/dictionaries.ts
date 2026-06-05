@@ -318,6 +318,7 @@ export const en = {
     resourcesShort: 'Tips',
     tracker: 'Tracker',
     trackerShort: 'Tracker',
+    newMatchesAria: '{count} new saved-search matches',
   },
   tracker: {
     back: 'Back',
@@ -1705,6 +1706,7 @@ export const zh = {
     resourcesShort: '资源',
     tracker: '申请追踪',
     trackerShort: '追踪',
+    newMatchesAria: '{count} 个保存搜索的新匹配',
   },
   tracker: {
     back: '返回',

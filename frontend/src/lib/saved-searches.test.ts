@@ -9,6 +9,7 @@ vi.mock('./supabase', () => ({
 }));
 
 import {
+  getTotalNewMatchCount,
   listSavedSearches,
   saveSearch,
   updateSavedSearch,
@@ -551,5 +552,24 @@ describe('savedSearchToUrl', () => {
       expect(params.get('highlight')).toBe('opp-1,opp-2');
       expect(params.get('savedSearchId')).toBe('uuid-xyz');
     });
+  });
+});
+
+describe('getTotalNewMatchCount', () => {
+  it('sums new_match_ids across all saved searches', async () => {
+    mockFrom.mockReturnValue(makeQuery({
+      data: [
+        { ...SAMPLE_ROW, id: 'a', new_match_ids: ['x', 'y'] },
+        { ...SAMPLE_ROW, id: 'b', new_match_ids: ['z'] },
+        { ...SAMPLE_ROW, id: 'c', new_match_ids: [] },
+      ],
+      error: null,
+    }));
+    expect(await getTotalNewMatchCount()).toBe(3);
+  });
+
+  it('returns 0 when there are no saved searches', async () => {
+    mockFrom.mockReturnValue(makeQuery({ data: [], error: null }));
+    expect(await getTotalNewMatchCount()).toBe(0);
   });
 });
