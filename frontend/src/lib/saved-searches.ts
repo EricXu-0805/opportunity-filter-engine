@@ -83,6 +83,14 @@ export async function listSavedSearches(): Promise<SavedSearch[]> {
   return (data as SavedSearchRow[]).map(rowToSearch);
 }
 
+/** Total number of new (unseen) matches across all of this device's saved
+ *  searches — drives the app-wide "new matches" badge in the header. The cron
+ *  populates each search's new_match_ids; viewing a search clears it. */
+export async function getTotalNewMatchCount(): Promise<number> {
+  const searches = await listSavedSearches();
+  return searches.reduce((sum, s) => sum + (s.new_match_ids?.length ?? 0), 0);
+}
+
 export async function saveSearch(input: SavedSearchInput): Promise<SavedSearch | null> {
   const deviceId = await getDeviceId();
   if (!deviceId) return null;

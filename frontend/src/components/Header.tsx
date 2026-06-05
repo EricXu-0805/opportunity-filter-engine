@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, Sparkles, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { hasMatchCache as readHasMatchCache } from '@/lib/match-cache';
+import { useNewMatchCount } from '@/lib/use-new-match-count';
 import AccountMenu from './AccountMenu';
 import LanguageSwitcher from './LanguageSwitcher';
 
@@ -20,9 +21,27 @@ const NAV_ITEMS = [
   { href: '/about', labelKey: 'nav.about', shortKey: 'nav.aboutShort' },
 ] as const;
 
+function NewMatchBadge({
+  count,
+  t,
+}: {
+  count: number;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}) {
+  return (
+    <span
+      aria-label={t('nav.newMatchesAria', { count })}
+      className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-orange-500 text-white text-[10px] font-semibold align-middle"
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 export default function Header() {
   const pathname = usePathname();
   const { t } = useT();
+  const newMatchCount = useNewMatchCount();
   const [open, setOpen] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
 
@@ -97,6 +116,7 @@ export default function Header() {
           <nav className="hidden sm:flex items-center gap-0.5 min-w-0" aria-label={t('nav.primary')}>
             {NAV_ITEMS.map(({ href: originalHref, labelKey }) => {
               const href = originalHref === '/' && hasMatchCache ? '/results' : originalHref;
+              const showBadge = originalHref === '/favorites' && newMatchCount > 0;
               return (
                 <Link
                   key={originalHref}
@@ -109,6 +129,7 @@ export default function Header() {
                     }`}
                 >
                   {t(labelKey)}
+                  {showBadge && <NewMatchBadge count={newMatchCount} t={t} />}
                 </Link>
               );
             })}
@@ -143,6 +164,7 @@ export default function Header() {
           <nav className="flex flex-col pb-3 pt-1 gap-0.5" aria-label={t('nav.mobile')}>
             {NAV_ITEMS.map(({ href: originalHref, labelKey }) => {
               const href = originalHref === '/' && hasMatchCache ? '/results' : originalHref;
+              const showBadge = originalHref === '/favorites' && newMatchCount > 0;
               return (
                 <Link
                   key={originalHref}
@@ -157,6 +179,7 @@ export default function Header() {
                     }`}
                 >
                   {t(labelKey)}
+                  {showBadge && <NewMatchBadge count={newMatchCount} t={t} />}
                 </Link>
               );
             })}
