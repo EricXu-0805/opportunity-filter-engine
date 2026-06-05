@@ -23,6 +23,7 @@ export interface UseTrackerDataResult {
   loading: boolean;
   changeStatus: (id: string, type: InteractionType) => void;
   saveNotes: (id: string, notes: string) => void;
+  setReminder: (id: string, date: string | null) => void;
 }
 
 // Hydrates the tracker once at mount: pull every tracked interaction (status +
@@ -89,7 +90,28 @@ export function useTrackerData(): UseTrackerDataResult {
     updateInteractionDetails(id, { notes: notes.trim() || null }).catch(() => {});
   }, []);
 
-  return { items, loading, changeStatus, saveNotes };
+  const setReminder = useCallback((id: string, date: string | null) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.opp.id === id ? { ...it, record: { ...it.record, remind_at: date ?? undefined } } : it,
+      ),
+    );
+    updateInteractionDetails(id, { remind_at: date }).catch(() => {});
+  }, []);
+
+  return { items, loading, changeStatus, saveNotes, setReminder };
+}
+
+/** ISO date (YYYY-MM-DD) `daysAhead` from today, for quick reminder presets. */
+export function dateInDays(daysAhead: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + daysAhead);
+  return d.toISOString().slice(0, 10);
+}
+
+/** A reminder is "due" when its date is today or earlier. */
+export function isReminderDue(date?: string): boolean {
+  return !!date && date <= new Date().toISOString().slice(0, 10);
 }
 
 // The pipeline columns, in order. "dismissed" is intentionally excluded — it is
