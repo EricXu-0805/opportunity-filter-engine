@@ -45,19 +45,23 @@ export function useResultsData(
   useEffect(() => {
     if (!profile || data) return;
 
-    let cancelled = false;
     const hash = hashProfile(profile);
 
-    async function hydrateOrFetch() {
-      const cached = await readMatchCache(hash, semanticRerank);
-      if (cancelled) return;
-      if (cached) {
-        setData(cached);
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
+    /* eslint-disable react-hooks/set-state-in-effect -- the cache read is a
+       synchronous localStorage parse; setting data/loading from it in the same
+       commit is what makes the return to /results instant (no skeleton, no
+       network). The fetch-on-miss branch sets state from async callbacks. */
+    const cached = readMatchCache(hash, semanticRerank);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    (async () => {
       try {
         const result = await getMatches(profile!, { semantic: semanticRerank });
         if (cancelled) return;
@@ -68,9 +72,9 @@ export function useResultsData(
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-    hydrateOrFetch();
+    })();
     return () => { cancelled = true; };
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [profile, data, semanticRerank, t]);
 
   return { data, setData, loading, error, showSlowHint };

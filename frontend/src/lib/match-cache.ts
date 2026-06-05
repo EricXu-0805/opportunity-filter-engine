@@ -1,23 +1,60 @@
 // Durable cache for the last generated match set, so returning to /results from
-// anywhere (nav, another tab, a later session) is instant instead of re-running
-// the match.
+// anywhere (nav, another tab, a later session) shows results INSTANTLY instead
+// of re-running the match — or even a network round-trip.
 //
 // Why not cache the raw /matches response: it is ~7 MB for a broad profile
 // (~2.3k results × full opportunity bodies), which overflows the ~5 MB Web
-// Storage quota — the write threw and the set was silently never cached, so the
-// header always fell back to the profile form. Instead we store a COMPACT copy
-// (scores/reasons/buckets only, no opportunity bodies ≈ 1 MB) in localStorage,
-// and re-hydrate the opportunity payloads by id via /opportunities/batch on read
-// — a fast lookup, NOT a re-match.
+// Storage quota — the write threw and was swallowed, so the set was never
+// cached and the header always fell back to the profile form. And re-fetching
+// the bodies by id on return is a visible load.
+//
+// Instead we store a self-contained but COMPACT copy in localStorage: each
+// opportunity is projected to just the fields the results list/filters render
+// (no metadata, no full descriptions ≈ 3 MB for the broadest profile), so the
+// read is a synchronous localStorage parse — instant, no network. The /matches
+// response is already email-redacted, so the projection carries no PII.
 
-import { getOpportunitiesByIds } from '@/lib/api';
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = 'ofe_match_results';
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // results older than this re-fetch (corpus drift)
-const REDACTED_FIELDS = ['contact_email', 'pi_email'] as const;
+const MAX_RESULTS = 2500; // hard size bound; far past what anyone scrolls/paginates
+const DESC_CHARS = 200; // keep a snippet so the free-text search still matches bodies
 
-type LiteResult = Omit<MatchResult, 'opportunity'>;
+// Exactly the opportunity fields the results list, filters and sort read
+// (see MatchCard + use-results-filters/sort). Everything else — metadata,
+// full descriptions, the bulky eligibility/application sub-objects — is dropped.
+const OPP_FIELDS = [
+  'id', 'title', 'organization', 'department', 'opportunity_type', 'paid',
+  'deadline', 'source', 'on_campus', 'posted_date', 'location', 'url',
+  'duration', 'compensation_details', 'keywords', 'lab_or_program', 'pi_name',
+] as const;
+const ELIG_FIELDS = ['international_friendly', 'skills_required', 'skills_preferred'] as const;
+const APP_FIELDS = [
+  'application_url', 'requires_resume', 'requires_recommendation',
+  'requires_cover_letter', 'contact_method',
+] as const;
+
+function projectOpportunity(opp: Opportunity): Opportunity {
+  const src = opp as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of OPP_FIELDS) if (src[k] !== undefined) out[k] = src[k];
+  const elig = src.eligibility as Record<string, unknown> | undefined;
+  if (elig) {
+    const e: Record<string, unknown> = {};
+    for (const k of ELIG_FIELDS) if (elig[k] !== undefined) e[k] = elig[k];
+    out.eligibility = e;
+  }
+  const app = src.application as Record<string, unknown> | undefined;
+  if (app) {
+    const a: Record<string, unknown> = {};
+    for (const k of APP_FIELDS) if (app[k] !== undefined) a[k] = app[k];
+    out.application = a;
+  }
+  const dc = src.description_clean;
+  if (typeof dc === 'string') out.description_clean = dc.slice(0, DESC_CHARS);
+  return out as unknown as Opportunity;
+}
 
 interface MatchCacheShape {
   hash: string;
@@ -28,7 +65,7 @@ interface MatchCacheShape {
   good_match: number;
   reach: number;
   low_fit: number;
-  results: LiteResult[];
+  results: MatchResult[];
 }
 
 function parse(): MatchCacheShape | null {
@@ -54,9 +91,14 @@ export function clearMatchCache(): void {
   try { localStorage.removeItem(KEY); } catch { /* ignore */ }
 }
 
-/** Persist a compact copy of the match set (opportunity bodies stripped). */
+/** Persist a compact, self-contained copy of the match set (opportunities
+ *  projected to display fields). */
 export function writeMatchCache(hash: string, semantic: boolean, data: MatchesResponse): void {
   try {
+    const results = data.results.slice(0, MAX_RESULTS).map((r) => ({
+      ...r,
+      opportunity: projectOpportunity(r.opportunity),
+    }));
     const payload: MatchCacheShape = {
       hash,
       semantic,
@@ -66,47 +108,27 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       good_match: data.good_match,
       reach: data.reach,
       low_fit: data.low_fit,
-      results: data.results.map(({ opportunity: _drop, ...lite }) => lite),
+      results,
     };
     localStorage.setItem(KEY, JSON.stringify(payload));
   } catch {
-    // quota or serialization failure → drop any partial write so reads don't
-    // resurrect a corrupt entry; the caller already has the live data.
+    // quota or serialization failure → drop any partial write; the caller still
+    // has the live data, and returning later simply re-matches (old behavior).
     clearMatchCache();
   }
 }
 
-/** Return the full match set (opportunities re-hydrated by id) when a fresh cache
- *  matches this profile+mode; null on miss/expiry/hydration failure (caller then
- *  re-fetches). Crucially this re-hydration is a lookup, never a re-match. */
-export async function readMatchCache(
-  hash: string,
-  semantic: boolean,
-): Promise<MatchesResponse | null> {
-  const cache = parse();
-  if (!cache || cache.hash !== hash || (cache.semantic ?? false) !== semantic) return null;
-
-  try {
-    const ids = cache.results.map((r) => r.opportunity_id);
-    const opps = await getOpportunitiesByIds(ids);
-    const byId = new Map(opps.map((o) => [(o as { id?: string }).id, o]));
-    const results: MatchResult[] = [];
-    for (const lite of cache.results) {
-      const opp = byId.get(lite.opportunity_id);
-      if (!opp) continue; // opportunity removed from the corpus since caching
-      const clean: Record<string, unknown> = { ...(opp as Record<string, unknown>) };
-      for (const f of REDACTED_FIELDS) delete clean[f];
-      results.push({ ...lite, opportunity: clean as unknown as Opportunity });
-    }
-    return {
-      total: cache.total,
-      high_priority: cache.high_priority,
-      good_match: cache.good_match,
-      reach: cache.reach,
-      low_fit: cache.low_fit,
-      results,
-    };
-  } catch {
-    return null;
-  }
+/** Synchronously return the cached match set when a fresh one matches this
+ *  profile+mode; null on miss/expiry. Synchronous = instant render, no network. */
+export function readMatchCache(hash: string, semantic: boolean): MatchesResponse | null {
+  const c = parse();
+  if (!c || c.hash !== hash || (c.semantic ?? false) !== semantic) return null;
+  return {
+    total: c.total,
+    high_priority: c.high_priority,
+    good_match: c.good_match,
+    reach: c.reach,
+    low_fit: c.low_fit,
+    results: c.results,
+  };
 }
