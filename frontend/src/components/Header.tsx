@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, Sparkles, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
+import { hasMatchCache as readHasMatchCache } from '@/lib/match-cache';
 import AccountMenu from './AccountMenu';
 import LanguageSwitcher from './LanguageSwitcher';
 
@@ -41,7 +42,7 @@ export default function Header() {
   const [hasMatchCache, setHasMatchCache] = useState(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate external-source-of-truth sync: sessionStorage is window-only so we must read it after mount, and re-read on pathname change so the link target stays in sync as the user generates new matches mid-session
-    try { setHasMatchCache(!!sessionStorage.getItem('ofe_match_results')); }
+    try { setHasMatchCache(readHasMatchCache()); }
     catch { setHasMatchCache(false); }
   }, [pathname]);
 

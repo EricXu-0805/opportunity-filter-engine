@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getMatches } from '@/lib/api';
 import { hashProfile } from '@/lib/match-utils';
+import { readMatchCache, writeMatchCache } from '@/lib/match-cache';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
 
@@ -14,17 +15,13 @@ interface UseResultsDataResult {
   showSlowHint: boolean;
 }
 
-// Combined cache-hydrate + fetch-on-miss. Splitting these into two
-// effects races within the same commit: both run with the pre-commit
-// `data` snapshot (still null), so the fetch effect can't see that
-// the cache effect just queued setData. Sequential checks inside one
-// effect keep cache hits from triggering a redundant API roundtrip,
-// which matters most when users navigate back to /results via a
-// deep-link (the test that caught this regression).
-//
-// Cache key is { hash(profile), semanticRerank } — flipping the AI
-// toggle invalidates the cache so we re-rank with the new strategy.
-// Caller resets data via setData(null) when toggling.
+// Hydrate-from-durable-cache, fetch on miss. The cache (see lib/match-cache)
+// is keyed by { hash(profile), semanticRerank } and lives in localStorage as a
+// compact copy (no opportunity bodies); a hit re-hydrates the opportunity
+// payloads by id — a fast lookup, NOT a re-match — so returning to /results from
+// anywhere (nav, another tab, a later session) is instant. Flipping the AI
+// toggle changes semanticRerank → cache miss → re-rank. Caller resets data via
+// setData(null) when toggling.
 export function useResultsData(
   profile: ProfileData | null,
   semanticRerank: boolean,
@@ -48,61 +45,32 @@ export function useResultsData(
   useEffect(() => {
     if (!profile || data) return;
 
-    /* eslint-disable react-hooks/set-state-in-effect -- see file-level comment above for the cache+fetch race rationale */
-
-    try {
-      const cachedRaw = sessionStorage.getItem('ofe_match_results');
-      if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw) as {
-          hash: string;
-          semantic?: boolean;
-          data: MatchesResponse;
-        };
-        if (
-          cached.hash === hashProfile(profile)
-          && (cached.semantic ?? false) === semanticRerank
-        ) {
-          setData(cached.data);
-          setLoading(false);
-          return;
-        }
-        sessionStorage.removeItem('ofe_match_results');
-      }
-    } catch {
-      sessionStorage.removeItem('ofe_match_results');
-    }
-
     let cancelled = false;
+    const hash = hashProfile(profile);
 
-    async function fetchMatches() {
+    async function hydrateOrFetch() {
+      const cached = await readMatchCache(hash, semanticRerank);
+      if (cancelled) return;
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
         const result = await getMatches(profile!, { semantic: semanticRerank });
-        if (!cancelled) {
-          setData(result);
-          try {
-            sessionStorage.setItem(
-              'ofe_match_results',
-              JSON.stringify({
-                hash: hashProfile(profile!),
-                semantic: semanticRerank,
-                data: result,
-              }),
-            );
-          } catch { /* quota */ }
-        }
+        if (cancelled) return;
+        setData(result);
+        writeMatchCache(hash, semanticRerank, result);
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : t('results.loadFailed'));
-        }
+        if (!cancelled) setError(err instanceof Error ? err.message : t('results.loadFailed'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    fetchMatches();
+    hydrateOrFetch();
     return () => { cancelled = true; };
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [profile, data, semanticRerank, t]);
 
   return { data, setData, loading, error, showSlowHint };
