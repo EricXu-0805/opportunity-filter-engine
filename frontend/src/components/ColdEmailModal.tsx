@@ -8,11 +8,17 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  BellRing,
   Mail,
   Send,
   Sparkles,
 } from 'lucide-react';
 import { generateColdEmail, getEmailVariants, refineEmail } from '@/lib/api';
+import {
+  getInteractionDetail,
+  trackInteraction,
+  updateInteractionDetails,
+} from '@/lib/supabase';
 import type { ProfileData, EmailVariant, LabType, ColdEmailFallbackReason } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
@@ -138,6 +144,11 @@ export default function ColdEmailModal({
   const [body, setBody] = useState('');
   const [recipient, setRecipient] = useState('');
   const [copied, setCopied] = useState(false);
+  // After the user copies/opens the email we treat the lab as contacted: record
+  // last_contacted_at (and create an 'applied' interaction if none exists yet, so
+  // it shows up in the tracker) and offer a one-tap follow-up reminder.
+  const [contacted, setContacted] = useState(false);
+  const [followUpDate, setFollowUpDate] = useState<string | null>(null);
 
   const allVariants: EmailVariant[] = aiVariant ? [...variants, aiVariant] : variants;
 
@@ -359,10 +370,38 @@ export default function ColdEmailModal({
     }
   }
 
+  // Record the contact without clobbering an existing status: create an
+  // 'applied' row only if none exists, then stamp last_contacted_at (+ remind_at
+  // when a follow-up was chosen). Best-effort — never blocks the email action.
+  const recordContact = useCallback(async (remindAt?: string) => {
+    try {
+      const detail = await getInteractionDetail(opportunityId);
+      if (!detail) await trackInteraction(opportunityId, 'applied');
+      await updateInteractionDetails(opportunityId, {
+        last_contacted_at: new Date().toISOString(),
+        ...(remindAt ? { remind_at: remindAt } : {}),
+      });
+    } catch { /* best-effort */ }
+  }, [opportunityId]);
+
+  const markContacted = useCallback(() => {
+    setContacted(true);
+    recordContact();
+  }, [recordContact]);
+
+  const setFollowUp = useCallback((days: number) => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + days);
+    const date = d.toISOString().slice(0, 10);
+    setFollowUpDate(date);
+    recordContact(date);
+  }, [recordContact]);
+
   async function handleCopy() {
     await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    markContacted();
   }
 
   function getMailtoLink(provider: 'default' | 'gmail' | 'outlook' = 'default'): string {
@@ -587,6 +626,37 @@ export default function ColdEmailModal({
               </div>
             </div>
 
+            {/* Follow-up reminder strip — appears once the email is copied/opened */}
+            {contacted && (
+              <div className="flex flex-wrap items-center gap-2 px-6 py-2.5 border-t border-gray-100 bg-amber-50/60 shrink-0 text-sm">
+                {followUpDate ? (
+                  <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
+                    <BellRing className="w-4 h-4" />
+                    {t('coldEmail.reminderSet', { date: followUpDate })}
+                  </span>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1.5 text-gray-600">
+                      <BellRing className="w-4 h-4 text-amber-500" />
+                      {t('coldEmail.remindPrompt')}
+                    </span>
+                    {([['coldEmail.remind3', 3], ['coldEmail.remind7', 7], ['coldEmail.remind14', 14]] as const).map(
+                      ([key, days]) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => setFollowUp(days)}
+                          className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                        >
+                          {t(key)}
+                        </button>
+                      ),
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
               <button
@@ -612,7 +682,7 @@ export default function ColdEmailModal({
                 <button
                   type="button"
                   disabled={!recipient.trim()}
-                  onClick={() => { window.open(getMailtoLink('default'), '_blank'); }}
+                  onClick={() => { window.open(getMailtoLink('default'), '_blank'); markContacted(); }}
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -622,7 +692,7 @@ export default function ColdEmailModal({
                 <button
                   type="button"
                   disabled={!recipient.trim()}
-                  onClick={() => { window.open(getMailtoLink('gmail'), '_blank'); }}
+                  onClick={() => { window.open(getMailtoLink('gmail'), '_blank'); markContacted(); }}
                   className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openGmailTitle')}
                 >
@@ -631,7 +701,7 @@ export default function ColdEmailModal({
                 <button
                   type="button"
                   disabled={!recipient.trim()}
-                  onClick={() => { window.open(getMailtoLink('outlook'), '_blank'); }}
+                  onClick={() => { window.open(getMailtoLink('outlook'), '_blank'); markContacted(); }}
                   className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openOutlookTitle')}
                 >

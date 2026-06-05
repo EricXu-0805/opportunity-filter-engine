@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, ExternalLink } from 'lucide-react';
+import { BellRing, Calendar, ExternalLink, X } from 'lucide-react';
 
 import { InteractionStatusMenu } from '@/components/InteractionStatusMenu';
 import type { InteractionType } from '@/lib/supabase';
 import type { Opp, TFunc } from '@/app/favorites/types';
+
+import { dateInDays, isReminderDue } from './use-tracker-data';
 
 export function TrackerCard({
   opp,
@@ -14,6 +16,7 @@ export function TrackerCard({
   remindAt,
   onChangeStatus,
   onSaveNotes,
+  onSetReminder,
   t,
 }: {
   opp: Opp;
@@ -22,6 +25,7 @@ export function TrackerCard({
   remindAt?: string;
   onChangeStatus: (id: string, type: InteractionType) => void;
   onSaveNotes: (id: string, notes: string) => void;
+  onSetReminder: (id: string, date: string | null) => void;
   t: TFunc;
 }) {
   const [draft, setDraft] = useState(notes ?? '');
@@ -52,11 +56,46 @@ export function TrackerCard({
         </p>
       )}
 
-      {remindAt && (
-        <p className="mt-1 text-xs font-medium text-amber-600">
-          {t('tracker.remindOn')} {remindAt}
-        </p>
-      )}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+        {remindAt ? (
+          <>
+            <span
+              className={`inline-flex items-center gap-1 font-medium ${
+                isReminderDue(remindAt) ? 'text-red-600' : 'text-amber-600'
+              }`}
+            >
+              <BellRing className="h-3 w-3" />
+              {isReminderDue(remindAt) ? t('tracker.followUpDue') : t('tracker.remindOn')} {remindAt}
+            </span>
+            <button
+              type="button"
+              onClick={() => onSetReminder(opp.id, null)}
+              aria-label={t('tracker.clearReminder')}
+              className="rounded p-0.5 text-gray-300 hover:text-gray-500"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="inline-flex items-center gap-1 text-gray-400">
+              <BellRing className="h-3 w-3" />{t('tracker.remind')}
+            </span>
+            {([['tracker.remind3', 3], ['tracker.remind7', 7], ['tracker.remind14', 14]] as const).map(
+              ([key, days]) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => onSetReminder(opp.id, dateInDays(days))}
+                  className="rounded-md border border-gray-200 px-1.5 py-0.5 text-[11px] text-gray-500 hover:border-amber-300 hover:text-amber-700"
+                >
+                  {t(key)}
+                </button>
+              ),
+            )}
+          </>
+        )}
+      </div>
 
       <div className="mt-3">
         <InteractionStatusMenu

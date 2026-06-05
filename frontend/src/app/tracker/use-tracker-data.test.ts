@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
-import { useTrackerData, TRACKER_COLUMNS } from './use-tracker-data';
+import { useTrackerData, TRACKER_COLUMNS, dateInDays, isReminderDue } from './use-tracker-data';
 
 const trackInteraction = vi.fn((_id: string, _type: string) => Promise.resolve());
 const removeInteraction = vi.fn((_id: string) => Promise.resolve());
@@ -71,5 +71,31 @@ describe('useTrackerData', () => {
     expect(updateInteractionDetails).toHaveBeenCalledWith('o2', { notes: 'follow up' });
     act(() => result.current.saveNotes('o2', '   '));
     expect(updateInteractionDetails).toHaveBeenCalledWith('o2', { notes: null });
+  });
+});
+
+describe('reminder helpers + setReminder', () => {
+  it('isReminderDue: past/today due, future not, empty not', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    expect(isReminderDue(today)).toBe(true);
+    expect(isReminderDue('2000-01-01')).toBe(true);
+    expect(isReminderDue(dateInDays(7))).toBe(false);
+    expect(isReminderDue(undefined)).toBe(false);
+  });
+
+  it('dateInDays returns an ISO date N days ahead', () => {
+    expect(dateInDays(0)).toBe(new Date().toISOString().slice(0, 10));
+    expect(dateInDays(3)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('setReminder optimistically updates remind_at and persists', async () => {
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.setReminder('o1', '2030-01-01'));
+    expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.remind_at).toBe('2030-01-01');
+    expect(updateInteractionDetails).toHaveBeenCalledWith('o1', { remind_at: '2030-01-01' });
+    act(() => result.current.setReminder('o1', null));
+    expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.remind_at).toBeUndefined();
+    expect(updateInteractionDetails).toHaveBeenCalledWith('o1', { remind_at: null });
   });
 });

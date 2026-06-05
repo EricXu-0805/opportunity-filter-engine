@@ -23,7 +23,7 @@ const COLUMN_ACCENT: Record<InteractionType, string> = {
 export default function TrackerPage() {
   const router = useRouter();
   const { t } = useT();
-  const { items, loading, changeStatus, saveNotes } = useTrackerData();
+  const { items, loading, changeStatus, saveNotes, setReminder } = useTrackerData();
 
   const byColumn = useMemo(() => {
     const map = new Map<InteractionType, typeof items>();
@@ -103,6 +103,7 @@ export default function TrackerPage() {
                       remindAt={it.record.remind_at}
                       onChangeStatus={changeStatus}
                       onSaveNotes={saveNotes}
+                      onSetReminder={setReminder}
                       t={t}
                     />
                   ))}
