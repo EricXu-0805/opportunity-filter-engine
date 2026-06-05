@@ -20,6 +20,7 @@ import Header from './Header';
 beforeEach(() => {
   pathnameRef.current = '/';
   try { sessionStorage.clear(); } catch { /* private mode */ }
+  try { localStorage.clear(); } catch { /* private mode */ }
 });
 
 describe('Header', () => {
@@ -189,8 +190,8 @@ describe('Header', () => {
     }
   });
 
-  it('routes "Find Matches" to /results when cache is present in sessionStorage', async () => {
-    sessionStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', data: { matches: [] } }));
+  it('routes "Find Matches" to /results when a match cache is present', async () => {
+    localStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
     render(<Header />);
     // Wait for the useEffect that reads sessionStorage to run.
     await new Promise((r) => setTimeout(r, 0));
@@ -204,7 +205,7 @@ describe('Header', () => {
   });
 
   it('keeps active styling on "Find Matches" when on /results, even when href has switched to /results', async () => {
-    sessionStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', data: { matches: [] } }));
+    localStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
     pathnameRef.current = '/results';
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
@@ -216,7 +217,7 @@ describe('Header', () => {
   });
 
   it('only swaps the Find Matches link — other nav items keep their hrefs', async () => {
-    sessionStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', data: { matches: [] } }));
+    localStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
     const favoritesLinks = screen

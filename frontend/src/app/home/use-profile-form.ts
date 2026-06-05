@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { getStats, parseGitHubProfile } from '@/lib/api';
+import { clearMatchCache } from '@/lib/match-cache';
 import { loadProfile, onAuthChange, saveProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, type SaveStatus, type TFunc } from './types';
@@ -295,7 +296,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       }
     }
     localStorage.setItem('ofe_profile', JSON.stringify(profileToSave));
-    sessionStorage.removeItem('ofe_match_results');
+    clearMatchCache();
     saveProfile(profileToSave).catch(() => {});
     router.push('/results');
   }, [profile, searchWeight, router, importGitHubSkills]);
