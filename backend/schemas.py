@@ -164,6 +164,24 @@ class GapAnalysisResponse(BaseModel):
     preparation_timeline: list[dict]
 
 
+class RoadmapRequest(BaseModel):
+    profile: ProfileRequest
+    opportunity_ids: list[str]
+
+
+class RoadmapSkill(BaseModel):
+    skill: str
+    needed_by: int
+    priority: str
+    estimated_time: str
+    courses: list[str]
+
+
+class RoadmapResponse(BaseModel):
+    skills: list[RoadmapSkill]
+    total_labs: int
+
+
 class ResumeParseResponse(BaseModel):
     extracted_skills: list[str]
     extracted_coursework: list[str]

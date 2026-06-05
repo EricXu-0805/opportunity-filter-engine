@@ -129,6 +129,30 @@ export async function getGapAnalysis(profile: ProfileData, opportunityId: string
   });
 }
 
+export interface RoadmapSkill {
+  skill: string;
+  needed_by: number;
+  priority: string;
+  estimated_time: string;
+  courses: string[];
+}
+export interface RoadmapResult {
+  skills: RoadmapSkill[];
+  total_labs: number;
+}
+
+/** Aggregate the skill gaps across a target set of opportunities (e.g. favorites)
+ *  into one dependency-ordered learning path. */
+export async function getRoadmap(
+  profile: ProfileData,
+  opportunityIds: string[],
+): Promise<RoadmapResult> {
+  return request<RoadmapResult>('/roadmap', {
+    method: 'POST',
+    body: JSON.stringify({ profile: toProfileRequest(profile), opportunity_ids: opportunityIds }),
+  });
+}
+
 export interface MatchExplanationResponse {
   explanation: string;
   method: 'llm' | 'local';
