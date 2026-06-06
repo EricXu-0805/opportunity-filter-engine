@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.collectors.ucb_urap import (
     UCBURAPCollector,
     _hash_id,
-    _to_normalized,
     fetch_and_normalize,
 )
 
