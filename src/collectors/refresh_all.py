@@ -23,6 +23,7 @@ from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
+from .uiuc_faculty import _null_shared_admin_emails
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
 from .uiuc_other import fetch_and_normalize as fetch_other
@@ -266,6 +267,15 @@ def refresh_all(deep: bool = True) -> dict:
             "status": "ok",
         }
         logger.info(f"PI enricher: {pi_stats['enriched']} new emails found")
+
+        # The PI enricher re-scrapes profile pages for records still missing a
+        # contact email and can re-attach a shared department/advising inbox the
+        # faculty merge already nulled. Re-run the threshold-based null pass so a
+        # shared inbox never reaches the corpus as a cold-email target.
+        renulled = _null_shared_admin_emails(all_opps)
+        if renulled:
+            logger.info(f"Re-nulled {renulled} shared department/admin inbox(es) re-attached by PI enrichment")
+        summary["sources"]["pi_enricher"]["renulled_shared_emails"] = renulled
 
         # R70-C: deactivate past-deadline records. Previously only run as a
         # separate CI step (.github/workflows/refresh-data.yml) so local

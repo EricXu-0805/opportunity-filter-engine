@@ -6,6 +6,8 @@ scrape runs in the refresh pipeline, not in CI.
 
 from __future__ import annotations
 
+import re
+
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
     _clean_research_phrase,
@@ -24,6 +26,8 @@ from src.collectors.uiuc_faculty import (
     _rebuild_faculty_title_and_desc,
     _reenrich_broad_only_faculty,
     _research_areas_from_soup,
+    _run_faculty_dq,
+    _split_compound_keywords,
     _strip_fragment_keywords,
     _strip_pi_name_credentials,
     normalize_faculty,
@@ -295,6 +299,89 @@ def test_strip_fragment_keywords_leaves_clean_keywords_untouched():
     rows = [{"source": "uiuc_faculty", "keywords": ["machine learning", "computer vision"]}]
     assert _strip_fragment_keywords(rows) == 0
     assert rows[0]["keywords"] == ["machine learning", "computer vision"]
+
+
+# R70-A regression: the routine refresh re-scrapes faculty pages and re-injects
+# course-listing menus and comma-joined compound keywords. The merge-time DQ
+# chain must scrub them so a fresh scrape passes the data-quality guards (it was
+# previously only scrubbed by the one-off `--reenrich` CLI, never wired in).
+
+def test_is_junk_keyword_catches_course_codes_and_entity_residue():
+    # Course listings scraped from CS faculty pages, and truncated HTML-entity
+    # residue, are not research areas.
+    for k in [
+        "cs 591 sn - systems and networking seminar",
+        "cs 498 it3 (cs 498 it4",
+        "math 473) - algorithms",
+        "cs 598 tal - language",
+        "agents &amp",
+        "se&nbsp",
+        "texas a&amp",
+    ]:
+        assert _is_junk_keyword(k), k
+
+
+def test_is_junk_keyword_keeps_areas_with_digits_and_legit_ampersands():
+    # The course-code rule must not clip genuine areas that merely contain digits,
+    # and the entity rule must not clip a legitimate " & " (or r&d / at&t).
+    for k in ["p53 signaling", "covid-19 modeling", "5g networks",
+              "networks & security", "arts & sciences", "r&d", "at&t"]:
+        assert not _is_junk_keyword(k), k
+
+
+def test_split_compound_keywords_atomizes_comma_joined():
+    rows = [
+        _fac_kw("Computer Science",
+                ["compilers, architecture, and parallel computing"]),
+        _fac_kw("Computer Science",
+                ["computer vision, object recognition, scene understanding, graphics"]),
+        _fac_kw("Computer Science", ["machine learning"]),  # already atomic, untouched
+    ]
+    _split_compound_keywords(rows)
+    # No keyword may retain an internal comma, else the rebuilt title parenthetical
+    # (which the DQ test comma-splits) fragments into tokens absent from keywords.
+    for r in rows:
+        assert all("," not in k for k in r["keywords"]), r["keywords"]
+    assert "compilers" in rows[0]["keywords"]
+    assert "architecture" in rows[0]["keywords"]
+    assert "computer vision" in rows[1]["keywords"]
+    assert rows[2]["keywords"] == ["machine learning"]
+
+
+def test_run_faculty_dq_makes_a_dirty_scrape_quality_clean():
+    # Mirrors the exact branch failures: course-code + comma-joined keywords, a
+    # title with nav-menu pollution, and a shared department inbox on >=3 profs.
+    rows = [
+        {"source": "uiuc_faculty", "pi_name": "Ada Lovelace",
+         "department": "Computer Science",
+         "title": "Research with Prof. Ada Lovelace — CS",
+         "keywords": ["compilers, architecture, and parallel computing",
+                      "cs 591 sn - systems and networking seminar"],
+         "metadata": {}, "contact_email": "advising@illinois.edu"},
+        {"source": "uiuc_faculty", "pi_name": "Alan Turing",
+         "department": "Computer Science",
+         "title": "Research with Prof. Alan Turing — CS",
+         "keywords": ["computer vision, object recognition, scene understanding"],
+         "metadata": {}, "contact_email": "advising@illinois.edu"},
+        {"source": "uiuc_faculty", "pi_name": "Grace Hopper",
+         "department": "Computer Science",
+         "title": "Research with Prof. Grace Hopper — CS",
+         "keywords": ["machine learning"],
+         "metadata": {}, "contact_email": "advising@illinois.edu"},
+    ]
+    _run_faculty_dq(rows)
+    fac = [o for o in rows if o["source"] == "uiuc_faculty"]
+    # TEST3 invariant: no junk keyword survives.
+    assert not [k for o in fac for k in o["keywords"] if _is_junk_keyword(k)]
+    # TEST2 invariant: every title parenthetical area is a subset of keywords.
+    for o in fac:
+        m = re.search(r" — .+? \((.+)\)$", o["title"])
+        if m:
+            shown = {t.strip().lower() for t in m.group(1).split(",")}
+            kws = {(k or "").strip().lower() for k in o["keywords"]}
+            assert not (shown - kws), (o["title"], o["keywords"])
+    # TEST1 invariant: a shared inbox on >=3 distinct profs is nulled.
+    assert all(o["contact_email"] is None for o in fac)
 
 
 # DQ-4: collapse a joint-appointment professor duplicated across departments.
