@@ -1,17 +1,31 @@
 {
-  "duration_seconds": 953.2,
+  "duration_seconds": 2448.2,
   "sources": {
+    "deactivate_past": {
+      "already_inactive": 233,
+      "kept_active": 8,
+      "newly_deactivated": 413,
+      "skipped_rolling": 2050,
+      "status": "ok"
+    },
     "nsf_reu": {
-      "fetched": 408,
-      "new": 5,
+      "fetched": 413,
+      "new": 17,
       "status": "ok",
-      "updated": 403
+      "updated": 396
     },
     "pi_enricher": {
-      "already_had": 1441,
-      "enriched": 369,
-      "scraped": 390,
+      "already_had": 2475,
+      "enriched": 432,
+      "scraped": 451,
       "status": "ok"
+    },
+    "simplify_internships": {
+      "deactivated_stale": 233,
+      "fetched": 1451,
+      "new": 277,
+      "status": "ok",
+      "updated": 1174
     },
     "uiuc_drp": {
       "fetched": 2,
@@ -21,16 +35,16 @@
     },
     "uiuc_faculty": {
       "enriched": false,
-      "fetched": 289,
-      "new": 0,
+      "fetched": 2178,
+      "new": 162,
       "status": "ok",
-      "updated": 289
+      "updated": 2016
     },
     "uiuc_other": {
       "fetched": 7,
       "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 2
     },
     "uiuc_our_rss": {
       "fetched": 25,
@@ -39,7 +53,7 @@
       "updated": 25
     },
     "uiuc_siebel": {
-      "fetched": 10,
+      "fetched": 14,
       "new": 0,
       "status": "ok",
       "updated": 0
@@ -64,8 +78,8 @@
       "updated": 0
     }
   },
-  "timestamp": "2026-05-28T09:48:33.549139",
-  "total_in_file": 1916,
-  "total_new": 5,
-  "total_updated": 996
+  "timestamp": "2026-06-09T03:08:13.870583",
+  "total_in_file": 4695,
+  "total_new": 456,
+  "total_updated": 3892
 }
