@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
@@ -63,15 +65,46 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Commit and push updated data
+      - name: Open data-refresh PR and merge once required checks pass
         if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.REFRESH_PAT }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/processed/opportunities.json data/processed/collector_status.json
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::REFRESH_PAT secret is not set — cannot push to protected main via PR. See repo setup notes."
+            exit 1
+          fi
+
+          MODE="${{ steps.mode.outputs.deep == 'true' && 'deep' || 'quick' }}"
           TOTAL=$(python3 -c "import json; print(len(json.load(open('data/processed/opportunities.json'))))")
           EMAILS=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('contact_email')))")
           INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
-          MODE="${{ steps.mode.outputs.deep == 'true' && 'deep' || 'quick' }}"
-          git commit -m "chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode)"
-          git push
+          MSG="chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode)"
+          BRANCH="auto/refresh-data-${{ github.run_id }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add data/processed/opportunities.json data/processed/collector_status.json
+          git commit -m "$MSG"
+          # Push via PAT so the PR triggers CI (the default GITHUB_TOKEN does not).
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH"
+
+          gh pr create --base main --head "$BRANCH" --title "$MSG" \
+            --body "Automated ${MODE} data refresh. Merges automatically once Backend + Frontend checks pass."
+
+          # Wait for the required checks to register, then watch them to completion.
+          for i in $(seq 1 12); do
+            gh pr checks "$BRANCH" --required >/dev/null 2>&1 && break
+            echo "waiting for required checks to register ($i)…"; sleep 15
+          done
+          gh pr checks "$BRANCH" --required --watch
+
+          # Merge once green (retry briefly while GitHub recomputes mergeability).
+          for i in $(seq 1 6); do
+            gh pr merge "$BRANCH" --squash --delete-branch && exit 0
+            echo "merge not ready, retrying ($i)…"; sleep 10
+          done
+          echo "::error::Required checks passed but the PR could not be merged."
+          exit 1
