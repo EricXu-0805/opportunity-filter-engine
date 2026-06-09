@@ -1111,7 +1111,24 @@ _PAGE_FURNITURE_RE = re.compile(
     r"faculty\s*&?\s*staff|\buniversit\w+\b|\binstitute\b|disease research interests|"
     r"\bconferences?\b|\bcalendar\b|external\s+links?|\bmathscinet\b|upcoming\b|"
     r"\blectures?\b|\badjuncts?\b|\baffiliates?\b|\bseminars?\b|\bworkshops?\b|"
-    r"symposi\w*|introduction to\b",
+    r"symposi\w*|introduction to\b|"
+    r"\bcollege\b|\bpolytechnic\b|\bacademy\b|universidad\w*|"
+    r"\b(?:virginia|georgia|texas|michigan|louisiana)\s+tech\b|\bcaltech\b",
+    re.IGNORECASE,
+)
+
+# Scraped CV / education-history residue (degree lines, award/date stamps) that
+# scrapes as a topic-shaped phrase but is never a research area. _COURSE_CODE_RE
+# covers course listings; these cover the bio/CV section.
+_CV_DEGREE_RE = re.compile(
+    r"\b[bms]\.\s?(?:a|s|d|sc|m)\b|\bph\.?\s?d\b|\bphd\b|\bsc\.?d\b|\bd\.?phil\b",
+    re.IGNORECASE,
+)
+_CV_DATE_RE = re.compile(
+    r"\(\s*(?:19|20)\d{2}|"
+    r"\b(?:january|february|march|april|may|june|july|august|september|october|"
+    r"november|december)\s+\d{4}\b|"
+    r"^\S+\s+(?:19|20)\d{2}$",
     re.IGNORECASE,
 )
 
@@ -1133,6 +1150,12 @@ def _is_junk_keyword(k: str) -> bool:
     if _COURSE_CODE_RE.search(kl):  # scraped course listings ("cs 591 sn - ...")
         return True
     if re.search(r"&[a-z]{2,}", kl):  # HTML-entity residue ("agents &amp", "se&nbsp")
+        return True
+    if "\t" in kl:  # scraped CV-table residue (degree<TAB>field<TAB>school<TAB>year)
+        return True
+    if _CV_DEGREE_RE.search(kl) or re.match(r"^(?:ba|bs|ma)\b", kl):  # degree/CV line
+        return True
+    if _CV_DATE_RE.search(kl):  # award year, month-year, or bare "<token> <year>"
         return True
     words = kl.split()
     if words and (words[-1] in _RESEARCH_FUNCTION_WORDS or words[-1] in _TRUNCATION_STUBS):
