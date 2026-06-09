@@ -1124,10 +1124,15 @@ _TRUNCATION_STUBS = frozenset({
 
 
 def _is_junk_keyword(k: str) -> bool:
-    """True for a keyword that is page furniture, a dangling/truncated fragment,
-    or a sentence fragment — none of which are research areas."""
+    """True for a keyword that is page furniture, a course listing, a
+    dangling/truncated fragment, or a sentence fragment — none of which are
+    research areas."""
     kl = k.lower().strip()
     if _PAGE_FURNITURE_RE.search(kl):
+        return True
+    if _COURSE_CODE_RE.search(kl):  # scraped course listings ("cs 591 sn - ...")
+        return True
+    if re.search(r"&[a-z]{2,}", kl):  # HTML-entity residue ("agents &amp", "se&nbsp")
         return True
     words = kl.split()
     if words and (words[-1] in _RESEARCH_FUNCTION_WORDS or words[-1] in _TRUNCATION_STUBS):
@@ -1241,6 +1246,36 @@ def _strip_furniture_keywords(opps: list[dict]) -> int:
                 broad = _dept_broad_field(o.get("department", ""))
                 kept = [broad] if broad else []
             o["keywords"] = kept
+            changed += 1
+    return changed
+
+
+def _split_compound_keywords(opps: list[dict]) -> int:
+    """Atomize comma/semicolon-joined faculty keywords (a single scraped string
+    like "compilers, architecture, and parallel computing") into clean individual
+    areas via _clean_research_phrase. A keyword carrying internal commas fragments
+    the rebuilt title parenthetical — which the DQ guard comma-splits — into tokens
+    that are no longer verbatim members of the keyword set. Mutates in place;
+    returns the count changed. Already-atomic keywords are left untouched."""
+    changed = 0
+    for o in opps:
+        if o.get("source") != "uiuc_faculty":
+            continue
+        kws = o.get("keywords") or []
+        new: list[str] = []
+        for k in kws:
+            if "," in k or ";" in k:
+                for part in _split_research_phrases(k):
+                    cleaned = _clean_research_phrase(part)
+                    if cleaned and cleaned not in new:
+                        new.append(cleaned)
+            elif k not in new:
+                new.append(k)
+        if new != kws:
+            if not new:
+                broad = _dept_broad_field(o.get("department", ""))
+                new = [broad] if broad else []
+            o["keywords"] = new
             changed += 1
     return changed
 
@@ -1599,6 +1634,39 @@ def _reenrich_broad_only_faculty(
     return enriched, len(targets), changes
 
 
+def _run_faculty_dq(opps: list[dict]) -> None:
+    """Canonical faculty data-quality cleaning sequence, shared by
+    merge_into_processed and the --reenrich CLI so the two paths can never drift.
+    The routine merge previously skipped furniture-stripping and keyword
+    atomization, letting every fresh scrape re-introduce the course-listing /
+    compound-keyword / shared-inbox pollution the one-off migration had scrubbed.
+    Operates in place; logs each step that changes anything."""
+    nulled = _null_shared_admin_emails(opps)
+    if nulled:
+        logger.info(f"Nulled {nulled} faculty contact email(s) that were shared department/admin inboxes")
+    demoted = _demote_shared_keyword_pollution(opps)
+    if demoted:
+        logger.info(f"Demoted {demoted} faculty record(s) with shared department-block keywords to the broad field")
+    enriched = _derive_keywords_from_raw(opps)
+    if enriched:
+        logger.info(f"Enriched {enriched} broad-field faculty record(s) with keywords derived from research_areas_raw")
+    split = _split_compound_keywords(opps)
+    if split:
+        logger.info(f"Atomized comma-joined compound keywords in {split} faculty record(s)")
+    furniture = _strip_furniture_keywords(opps)
+    if furniture:
+        logger.info(f"Stripped page-furniture/course-code/truncated keyword(s) from {furniture} faculty record(s)")
+    stripped_frags = _strip_fragment_keywords(opps)
+    if stripped_frags:
+        logger.info(f"Stripped non-topical lead-in from {stripped_frags} faculty keyword(s)")
+    decredentialed = _strip_pi_name_credentials(opps)
+    if decredentialed:
+        logger.info(f"Stripped academic-credential suffix from {decredentialed} faculty pi_name(s)")
+    retitled = _rebuild_faculty_title_and_desc(opps)
+    if retitled:
+        logger.info(f"Rebuilt {retitled} faculty title/description(s) from cleaned keywords (dropped nav-menu pollution)")
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new faculty opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -1640,29 +1708,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     if removed_email:
         logger.info(f"Removed {removed_email} cross-department duplicate faculty record(s) sharing a contact email")
 
-    nulled_emails = _null_shared_admin_emails(all_opps)
-    if nulled_emails:
-        logger.info(f"Nulled {nulled_emails} faculty contact email(s) that were shared department/admin inboxes")
-
-    demoted = _demote_shared_keyword_pollution(all_opps)
-    if demoted:
-        logger.info(f"Demoted {demoted} faculty record(s) with shared department-block keywords to the broad field")
-
-    enriched = _derive_keywords_from_raw(all_opps)
-    if enriched:
-        logger.info(f"Enriched {enriched} broad-field faculty record(s) with keywords derived from research_areas_raw")
-
-    stripped_frags = _strip_fragment_keywords(all_opps)
-    if stripped_frags:
-        logger.info(f"Stripped non-topical lead-in from {stripped_frags} faculty keyword(s)")
-
-    decredentialed = _strip_pi_name_credentials(all_opps)
-    if decredentialed:
-        logger.info(f"Stripped academic-credential suffix from {decredentialed} faculty pi_name(s)")
-
-    retitled = _rebuild_faculty_title_and_desc(all_opps)
-    if retitled:
-        logger.info(f"Rebuilt {retitled} faculty title/description(s) from cleaned keywords (dropped nav-menu pollution)")
+    _run_faculty_dq(all_opps)
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
@@ -1725,13 +1771,7 @@ if __name__ == "__main__":
                 print(f"      areas: {areas}")
         else:
             corpus, dropped = _drop_nonperson_faculty(corpus)
-            _null_shared_admin_emails(corpus)
-            _demote_shared_keyword_pollution(corpus)   # DQ-1: kill dept nav-menu sets
-            _derive_keywords_from_raw(corpus)           # DQ-2
-            _strip_furniture_keywords(corpus)
-            _strip_fragment_keywords(corpus)
-            _strip_pi_name_credentials(corpus)
-            _rebuild_faculty_title_and_desc(corpus)
+            _run_faculty_dq(corpus)
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(corpus, f, indent=2, ensure_ascii=False, default=str)
             print(f"\nRe-enriched {enriched}/{attempted} broad-only faculty; "

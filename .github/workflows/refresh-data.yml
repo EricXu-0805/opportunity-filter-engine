@@ -56,6 +56,11 @@ jobs:
       - name: Deactivate past-deadline opportunities
         run: python -m src.normalizers.deactivate_past --save
 
+      - name: Data-quality gate
+        # Fail fast and attributably here if the fresh scrape produced dirty data,
+        # rather than letting the downstream data PR's CI catch it late.
+        run: pytest tests/test_opportunity_data_quality.py -q
+
       - name: Check for changes
         id: changes
         run: |
