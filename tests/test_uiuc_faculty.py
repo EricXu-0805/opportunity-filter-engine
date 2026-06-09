@@ -321,11 +321,29 @@ def test_is_junk_keyword_catches_course_codes_and_entity_residue():
         assert _is_junk_keyword(k), k
 
 
-def test_is_junk_keyword_keeps_areas_with_digits_and_legit_ampersands():
-    # The course-code rule must not clip genuine areas that merely contain digits,
-    # and the entity rule must not clip a legitimate " & " (or r&d / at&t).
+def test_is_junk_keyword_catches_cv_and_institution_residue():
+    # Education-history / CV fragments scraped as keywords are not research areas.
+    for k in [
+        "carleton college", "virginia tech", "imperial college london",
+        "college of william & mary", "national academy of engineering",
+        "universidad de los andes",
+        "b.a. from carleton college", "bs mathematics", "ph.d. stony brook",
+        "ma (comparative literature): cornell 1994.",
+        "ph.d.\tcivil engineering\tuiuc\t1979",
+        "december 1989", "feenberg medal (1994)", "urbana 1995",
+    ]:
+        assert _is_junk_keyword(k), k
+
+
+def test_is_junk_keyword_keeps_legit_areas_that_brush_the_cv_rules():
+    # The digit/ampersand/degree/date rules must not clip genuine areas: "md"
+    # (molecular dynamics) and "ms" (mass spectrometry) are not degree markers,
+    # and a topic with a trailing year ("american cinema since 1950") is real.
     for k in ["p53 signaling", "covid-19 modeling", "5g networks",
-              "networks & security", "arts & sciences", "r&d", "at&t"]:
+              "networks & security", "arts & sciences", "r&d", "at&t",
+              "md and kmc", "molecular dynamics", "mass spectrometry",
+              "massive stars", "majorana fermions", "american cinema since 1950",
+              "zero degree calorimetry", "accessibility/universal design"]:
         assert not _is_junk_keyword(k), k
 
 

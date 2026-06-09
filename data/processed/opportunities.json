@@ -57054,7 +57054,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Jeff Erickson in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, theory and algorithms, computer science education, berkeley, july 1996. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Jeff Erickson in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, theory and algorithms, computer science education, berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -57065,15 +57065,14 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/jeffe"
     },
-    "description_raw": "Research opportunity with Professor Jeff Erickson in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, theory and algorithms, computer science education, berkeley, july 1996. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Jeff Erickson in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, theory and algorithms, computer science education, berkeley, july 1996. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Jeff Erickson in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, theory and algorithms, computer science education, berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Jeff Erickson in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, theory and algorithms, computer science education, berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "computers and education",
       "theory and algorithms",
       "computer science education",
       "computer science",
-      "berkeley",
-      "july 1996"
+      "berkeley"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -57303,7 +57302,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cs.illinois.edu/about/people/department-faculty/mfleck",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Margaret M. Fleck — CS (linguistics, may 1982, computational linguistics)",
+    "title": "Research with Prof. Margaret M. Fleck — CS (linguistics, computational linguistics, artificial intelligence)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
     "lab_or_program": "Prof. Margaret M. Fleck's Research Group",
@@ -57339,7 +57338,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Margaret M. Fleck in the Siebel School of Computing and Data Science at UIUC. Research areas: linguistics, may 1982, computational linguistics, artificial intelligence. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Margaret M. Fleck in the Siebel School of Computing and Data Science at UIUC. Research areas: linguistics, computational linguistics, artificial intelligence. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -57350,11 +57349,10 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/mfleck"
     },
-    "description_raw": "Research opportunity with Professor Margaret M. Fleck in the Siebel School of Computing and Data Science at UIUC. Research areas: linguistics, may 1982, computational linguistics, artificial intelligence. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Margaret M. Fleck in the Siebel School of Computing and Data Science at UIUC. Research areas: linguistics, may 1982, computational linguistics, artificial intelligence. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Margaret M. Fleck in the Siebel School of Computing and Data Science at UIUC. Research areas: linguistics, computational linguistics, artificial intelligence. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Margaret M. Fleck in the Siebel School of Computing and Data Science at UIUC. Research areas: linguistics, computational linguistics, artificial intelligence. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "linguistics",
-      "may 1982",
       "computational linguistics",
       "artificial intelligence"
     ],
@@ -62221,7 +62219,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cs.illinois.edu/about/people/department-faculty/j-reid1",
     "source_type": "faculty_research",
-    "title": "Research with Prof. John F. Reid — CS (virginia tech)",
+    "title": "Research with Prof. John F. Reid — CS",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
     "lab_or_program": "Prof. John F. Reid's Research Group",
@@ -62257,7 +62255,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor John F. Reid in the Siebel School of Computing and Data Science at UIUC. Research areas: virginia tech. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor John F. Reid in the Siebel School of Computing and Data Science at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -62268,10 +62266,10 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/j-reid1"
     },
-    "description_raw": "Research opportunity with Professor John F. Reid in the Siebel School of Computing and Data Science at UIUC. Research areas: virginia tech. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor John F. Reid in the Siebel School of Computing and Data Science at UIUC. Research areas: virginia tech. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor John F. Reid in the Siebel School of Computing and Data Science at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor John F. Reid in the Siebel School of Computing and Data Science at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "virginia tech"
+      "computer science"
     ],
     "metadata": {
       "confidence_score": 0.5,
@@ -69545,7 +69543,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://ece.illinois.edu/about/directory/faculty/tkilleen",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Timothy L. Killeen — ECE (atomic and molecular physics, american association for the advancement of science (aaas), national academy of engineering)",
+    "title": "Research with Prof. Timothy L. Killeen — ECE (atomic and molecular physics, american association for the advancement of science (aaas))",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Electrical & Computer Engineering",
     "lab_or_program": "Prof. Timothy L. Killeen's Research Group",
@@ -69579,7 +69577,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Timothy L. Killeen in the Electrical & Computer Engineering at UIUC. Research areas: atomic and molecular physics, american association for the advancement of science (aaas), national academy of engineering, nasa data base panel for space physics (1992-1993). Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Timothy L. Killeen in the Electrical & Computer Engineering at UIUC. Research areas: atomic and molecular physics, american association for the advancement of science (aaas). Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -69590,13 +69588,11 @@
       "application_effort": "low",
       "application_url": "https://ece.illinois.edu/about/directory/faculty/tkilleen"
     },
-    "description_raw": "Research opportunity with Professor Timothy L. Killeen in the Electrical & Computer Engineering at UIUC. Research areas: atomic and molecular physics, american association for the advancement of science (aaas), national academy of engineering, nasa data base panel for space physics (1992-1993). Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Timothy L. Killeen in the Electrical & Computer Engineering at UIUC. Research areas: atomic and molecular physics, american association for the advancement of science (aaas), national academy of engineering, nasa data base panel for space physics (1992-1993). Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Timothy L. Killeen in the Electrical & Computer Engineering at UIUC. Research areas: atomic and molecular physics, american association for the advancement of science (aaas). Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Timothy L. Killeen in the Electrical & Computer Engineering at UIUC. Research areas: atomic and molecular physics, american association for the advancement of science (aaas). Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "atomic and molecular physics",
-      "american association for the advancement of science (aaas)",
-      "national academy of engineering",
-      "nasa data base panel for space physics (1992-1993)"
+      "american association for the advancement of science (aaas)"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -70394,7 +70390,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://ece.illinois.edu/about/directory/faculty/lumetta",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Steven Lumetta — ECE (computer science, december 1998)",
+    "title": "Research with Prof. Steven Lumetta — ECE (computer science)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Electrical & Computer Engineering",
     "lab_or_program": "Prof. Steven Lumetta's Research Group",
@@ -70428,7 +70424,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Steven Lumetta in the Electrical & Computer Engineering at UIUC. Research areas: computer science, december 1998. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Steven Lumetta in the Electrical & Computer Engineering at UIUC. Research areas: computer science. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -70439,11 +70435,10 @@
       "application_effort": "low",
       "application_url": "https://ece.illinois.edu/about/directory/faculty/lumetta"
     },
-    "description_raw": "Research opportunity with Professor Steven Lumetta in the Electrical & Computer Engineering at UIUC. Research areas: computer science, december 1998. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Steven Lumetta in the Electrical & Computer Engineering at UIUC. Research areas: computer science, december 1998. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Steven Lumetta in the Electrical & Computer Engineering at UIUC. Research areas: computer science. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Steven Lumetta in the Electrical & Computer Engineering at UIUC. Research areas: computer science. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "computer science",
-      "december 1998"
+      "computer science"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -71823,7 +71818,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://ece.illinois.edu/about/directory/faculty/j-reid1",
     "source_type": "faculty_research",
-    "title": "Research with Prof. John F. Reid — ECE (virginia tech, ai applications)",
+    "title": "Research with Prof. John F. Reid — ECE (ai applications)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Electrical & Computer Engineering",
     "lab_or_program": "Prof. John F. Reid's Research Group",
@@ -71857,7 +71852,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor John F. Reid in the Electrical & Computer Engineering at UIUC. Research areas: virginia tech, ai applications. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor John F. Reid in the Electrical & Computer Engineering at UIUC. Research areas: ai applications. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -71868,10 +71863,9 @@
       "application_effort": "low",
       "application_url": "https://ece.illinois.edu/about/directory/faculty/j-reid1"
     },
-    "description_raw": "Research opportunity with Professor John F. Reid in the Electrical & Computer Engineering at UIUC. Research areas: virginia tech, ai applications. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor John F. Reid in the Electrical & Computer Engineering at UIUC. Research areas: virginia tech, ai applications. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor John F. Reid in the Electrical & Computer Engineering at UIUC. Research areas: ai applications. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor John F. Reid in the Electrical & Computer Engineering at UIUC. Research areas: ai applications. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "virginia tech",
       "ai applications"
     ],
     "metadata": {
@@ -73099,7 +73093,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://ece.illinois.edu/about/directory/faculty/yvlasov",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Yurii Vlasov — ECE (electromagnetics and optics, ms 1988, russia)",
+    "title": "Research with Prof. Yurii Vlasov — ECE (electromagnetics and optics, russia, nanotechnology)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Electrical & Computer Engineering",
     "lab_or_program": "Prof. Yurii Vlasov's Research Group",
@@ -73133,7 +73127,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Yurii Vlasov in the Electrical & Computer Engineering at UIUC. Research areas: electromagnetics and optics, ms 1988, russia, nanotechnology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Yurii Vlasov in the Electrical & Computer Engineering at UIUC. Research areas: electromagnetics and optics, russia, nanotechnology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -73144,11 +73138,10 @@
       "application_effort": "low",
       "application_url": "https://ece.illinois.edu/about/directory/faculty/yvlasov"
     },
-    "description_raw": "Research opportunity with Professor Yurii Vlasov in the Electrical & Computer Engineering at UIUC. Research areas: electromagnetics and optics, ms 1988, russia, nanotechnology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Yurii Vlasov in the Electrical & Computer Engineering at UIUC. Research areas: electromagnetics and optics, ms 1988, russia, nanotechnology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Yurii Vlasov in the Electrical & Computer Engineering at UIUC. Research areas: electromagnetics and optics, russia, nanotechnology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Yurii Vlasov in the Electrical & Computer Engineering at UIUC. Research areas: electromagnetics and optics, russia, nanotechnology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "electromagnetics and optics",
-      "ms 1988",
       "russia",
       "nanotechnology"
     ],
@@ -78262,7 +78255,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/dhbeck",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Douglas H. Beck — Physics (nsf young investigator (1992-1997), 401a loomis laboratory)",
+    "title": "Research with Prof. Douglas H. Beck — Physics (401a loomis laboratory)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Douglas H. Beck's Research Group",
@@ -78296,7 +78289,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Douglas H. Beck in the Department of Physics at UIUC. Research areas: nsf young investigator (1992-1997), 401a loomis laboratory. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Douglas H. Beck in the Department of Physics at UIUC. Research areas: 401a loomis laboratory. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -78307,10 +78300,9 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/dhbeck"
     },
-    "description_raw": "Research opportunity with Professor Douglas H. Beck in the Department of Physics at UIUC. Research areas: nsf young investigator (1992-1997), 401a loomis laboratory. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Douglas H. Beck in the Department of Physics at UIUC. Research areas: nsf young investigator (1992-1997), 401a loomis laboratory. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Douglas H. Beck in the Department of Physics at UIUC. Research areas: 401a loomis laboratory. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Douglas H. Beck in the Department of Physics at UIUC. Research areas: 401a loomis laboratory. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "nsf young investigator (1992-1997)",
       "physics",
       "401a loomis laboratory"
     ],
@@ -78541,7 +78533,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/ceperley",
     "source_type": "faculty_research",
-    "title": "Research with Prof. David Ceperley — Physics (rahman prize in computational physics of the american physical society  (1998), feenberg medal (1994), ceperley@illinois.edu)",
+    "title": "Research with Prof. David Ceperley — Physics (ceperley@illinois.edu)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. David Ceperley's Research Group",
@@ -78575,7 +78567,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor David Ceperley in the Department of Physics at UIUC. Research areas: rahman prize in computational physics of the american physical society  (1998), feenberg medal (1994), ceperley@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor David Ceperley in the Department of Physics at UIUC. Research areas: ceperley@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -78586,11 +78578,9 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/ceperley"
     },
-    "description_raw": "Research opportunity with Professor David Ceperley in the Department of Physics at UIUC. Research areas: rahman prize in computational physics of the american physical society  (1998), feenberg medal (1994), ceperley@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor David Ceperley in the Department of Physics at UIUC. Research areas: rahman prize in computational physics of the american physical society  (1998), feenberg medal (1994), ceperley@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor David Ceperley in the Department of Physics at UIUC. Research areas: ceperley@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor David Ceperley in the Department of Physics at UIUC. Research areas: ceperley@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "rahman prize in computational physics of the american physical society  (1998)",
-      "feenberg medal (1994)",
       "ceperley@illinois.edu"
     ],
     "metadata": {
@@ -81937,7 +81927,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/kpitts",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Kevin Pitts — Physics (eugene, june 1994, u.s. department of energy outstanding junior investigator)",
+    "title": "Research with Prof. Kevin Pitts — Physics (eugene, u.s. department of energy outstanding junior investigator, high energy physics)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Kevin Pitts's Research Group",
@@ -81971,7 +81961,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Kevin Pitts in the Department of Physics at UIUC. Research areas: eugene, june 1994, u.s. department of energy outstanding junior investigator, high energy physics, kpitts@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Kevin Pitts in the Department of Physics at UIUC. Research areas: eugene, u.s. department of energy outstanding junior investigator, high energy physics, kpitts@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -81982,12 +81972,11 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/kpitts"
     },
-    "description_raw": "Research opportunity with Professor Kevin Pitts in the Department of Physics at UIUC. Research areas: eugene, june 1994, u.s. department of energy outstanding junior investigator, high energy physics, kpitts@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Kevin Pitts in the Department of Physics at UIUC. Research areas: eugene, june 1994, u.s. department of energy outstanding junior investigator, high energy physics, kpitts@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Kevin Pitts in the Department of Physics at UIUC. Research areas: eugene, u.s. department of energy outstanding junior investigator, high energy physics, kpitts@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Kevin Pitts in the Department of Physics at UIUC. Research areas: eugene, u.s. department of energy outstanding junior investigator, high energy physics, kpitts@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "physics",
       "eugene",
-      "june 1994",
       "u.s. department of energy outstanding junior investigator",
       "high energy physics",
       "kpitts@illinois.edu"
@@ -84420,7 +84409,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/s-chang",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Shau-Jin Chang — Physics (ph.d. thesis title: selected topics in the quantum field theory))",
+    "title": "Research with Prof. Shau-Jin Chang — Physics",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Shau-Jin Chang's Research Group",
@@ -84454,7 +84443,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Shau-Jin Chang in the Department of Physics at UIUC. Research areas: ph.d. thesis title: selected topics in the quantum field theory). Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Shau-Jin Chang in the Department of Physics at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -84465,10 +84454,10 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/s-chang"
     },
-    "description_raw": "Research opportunity with Professor Shau-Jin Chang in the Department of Physics at UIUC. Research areas: ph.d. thesis title: selected topics in the quantum field theory). Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Shau-Jin Chang in the Department of Physics at UIUC. Research areas: ph.d. thesis title: selected topics in the quantum field theory). Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Shau-Jin Chang in the Department of Physics at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Shau-Jin Chang in the Department of Physics at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "ph.d. thesis title: selected topics in the quantum field theory)"
+      "physics"
     ],
     "metadata": {
       "confidence_score": 0.5,
@@ -84909,7 +84898,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/hertzog",
     "source_type": "faculty_research",
-    "title": "Research with Prof. David W. Hertzog — Physics (college of william & mary, june 1983, hertzog@illinois.edu)",
+    "title": "Research with Prof. David W. Hertzog — Physics (hertzog@illinois.edu, nuclear physics)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. David W. Hertzog's Research Group",
@@ -84943,7 +84932,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor David W. Hertzog in the Department of Physics at UIUC. Research areas: college of william & mary, june 1983, hertzog@illinois.edu, nuclear physics. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor David W. Hertzog in the Department of Physics at UIUC. Research areas: hertzog@illinois.edu, nuclear physics. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -84954,12 +84943,10 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/hertzog"
     },
-    "description_raw": "Research opportunity with Professor David W. Hertzog in the Department of Physics at UIUC. Research areas: college of william & mary, june 1983, hertzog@illinois.edu, nuclear physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor David W. Hertzog in the Department of Physics at UIUC. Research areas: college of william & mary, june 1983, hertzog@illinois.edu, nuclear physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor David W. Hertzog in the Department of Physics at UIUC. Research areas: hertzog@illinois.edu, nuclear physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor David W. Hertzog in the Department of Physics at UIUC. Research areas: hertzog@illinois.edu, nuclear physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "physics",
-      "college of william & mary",
-      "june 1983",
       "hertzog@illinois.edu",
       "nuclear physics"
     ],
@@ -85120,7 +85107,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/tml",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Tony M. Liss — Physics (high energy physics, tml@illinois.edu, february 1984)",
+    "title": "Research with Prof. Tony M. Liss — Physics (high energy physics, tml@illinois.edu)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Tony M. Liss's Research Group",
@@ -85154,7 +85141,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Tony M. Liss in the Department of Physics at UIUC. Research areas: high energy physics, tml@illinois.edu, february 1984. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Tony M. Liss in the Department of Physics at UIUC. Research areas: high energy physics, tml@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -85165,13 +85152,12 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/tml"
     },
-    "description_raw": "Research opportunity with Professor Tony M. Liss in the Department of Physics at UIUC. Research areas: high energy physics, tml@illinois.edu, february 1984. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Tony M. Liss in the Department of Physics at UIUC. Research areas: high energy physics, tml@illinois.edu, february 1984. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Tony M. Liss in the Department of Physics at UIUC. Research areas: high energy physics, tml@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Tony M. Liss in the Department of Physics at UIUC. Research areas: high energy physics, tml@illinois.edu. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "high energy physics",
       "tml@illinois.edu",
-      "physics",
-      "february 1984"
+      "physics"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -89091,7 +89077,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://mechse.illinois.edu/people/profile/mkersh",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Mariana E. Kersh — MechSE (health and bio, ba english, solid mechanics and materials)",
+    "title": "Research with Prof. Mariana E. Kersh — MechSE (health and bio, solid mechanics and materials)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Mechanical Science & Engineering",
     "lab_or_program": "Prof. Mariana E. Kersh's Research Group",
@@ -89124,7 +89110,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Mariana E. Kersh in the Mechanical Science & Engineering at UIUC. Research areas: health and bio, ba english, solid mechanics and materials. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Mariana E. Kersh in the Mechanical Science & Engineering at UIUC. Research areas: health and bio, solid mechanics and materials. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -89135,11 +89121,10 @@
       "application_effort": "low",
       "application_url": "https://mechse.illinois.edu/people/profile/mkersh"
     },
-    "description_raw": "Research opportunity with Professor Mariana E. Kersh in the Mechanical Science & Engineering at UIUC. Research areas: health and bio, ba english, solid mechanics and materials. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Mariana E. Kersh in the Mechanical Science & Engineering at UIUC. Research areas: health and bio, ba english, solid mechanics and materials. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Mariana E. Kersh in the Mechanical Science & Engineering at UIUC. Research areas: health and bio, solid mechanics and materials. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Mariana E. Kersh in the Mechanical Science & Engineering at UIUC. Research areas: health and bio, solid mechanics and materials. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "health and bio",
-      "ba english",
       "solid mechanics and materials"
     ],
     "metadata": {
@@ -95516,7 +95501,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://ischool.illinois.edu/people/catherine-blake",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Catherine Blake — iSchool (personalized nutrition initiative, informatics, carle illinois college of medicine)",
+    "title": "Research with Prof. Catherine Blake — iSchool (personalized nutrition initiative, informatics)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "School of Information Sciences",
     "lab_or_program": "Prof. Catherine Blake's Research Group",
@@ -95549,7 +95534,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Catherine Blake in the School of Information Sciences at UIUC. Research areas: personalized nutrition initiative, informatics, carle illinois college of medicine. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Catherine Blake in the School of Information Sciences at UIUC. Research areas: personalized nutrition initiative, informatics. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -95560,12 +95545,11 @@
       "application_effort": "low",
       "application_url": "https://ischool.illinois.edu/people/catherine-blake"
     },
-    "description_raw": "Research opportunity with Professor Catherine Blake in the School of Information Sciences at UIUC. Research areas: personalized nutrition initiative, informatics, carle illinois college of medicine. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Catherine Blake in the School of Information Sciences at UIUC. Research areas: personalized nutrition initiative, informatics, carle illinois college of medicine. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Catherine Blake in the School of Information Sciences at UIUC. Research areas: personalized nutrition initiative, informatics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Catherine Blake in the School of Information Sciences at UIUC. Research areas: personalized nutrition initiative, informatics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "personalized nutrition initiative",
-      "informatics",
-      "carle illinois college of medicine"
+      "informatics"
     ],
     "metadata": {
       "confidence_score": 0.5,
@@ -100094,7 +100078,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://bioengineering.illinois.edu/people/jabradly",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Joe Bradley — BioE (engineering education, gies college of business, urbana)",
+    "title": "Research with Prof. Joe Bradley — BioE (engineering education, urbana, (stem) entrepreneurial management)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Bioengineering",
     "lab_or_program": "Prof. Joe Bradley's Research Group",
@@ -100127,7 +100111,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Joe Bradley in the Bioengineering at UIUC. Research areas: engineering education, gies college of business, urbana, (stem) entrepreneurial management, socio-technical systems design. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Joe Bradley in the Bioengineering at UIUC. Research areas: engineering education, urbana, (stem) entrepreneurial management, socio-technical systems design. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -100138,11 +100122,10 @@
       "application_effort": "low",
       "application_url": "https://bioengineering.illinois.edu/people/jabradly"
     },
-    "description_raw": "Research opportunity with Professor Joe Bradley in the Bioengineering at UIUC. Research areas: engineering education, gies college of business, urbana, (stem) entrepreneurial management, socio-technical systems design. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Joe Bradley in the Bioengineering at UIUC. Research areas: engineering education, gies college of business, urbana, (stem) entrepreneurial management, socio-technical systems design. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Joe Bradley in the Bioengineering at UIUC. Research areas: engineering education, urbana, (stem) entrepreneurial management, socio-technical systems design. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Joe Bradley in the Bioengineering at UIUC. Research areas: engineering education, urbana, (stem) entrepreneurial management, socio-technical systems design. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "engineering education",
-      "gies college of business",
       "urbana",
       "(stem) entrepreneurial management",
       "socio-technical systems design"
@@ -100232,7 +100215,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://bioengineering.illinois.edu/people/ybresler",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Yoram Bresler — BioE (outstanding undergraduate advisor (1994), bioimaging at multi-scale, ieee transactions on image processing)",
+    "title": "Research with Prof. Yoram Bresler — BioE (bioimaging at multi-scale, ieee transactions on image processing)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Bioengineering",
     "lab_or_program": "Prof. Yoram Bresler's Research Group",
@@ -100265,7 +100248,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Yoram Bresler in the Bioengineering at UIUC. Research areas: outstanding undergraduate advisor (1994), bioimaging at multi-scale, ieee transactions on image processing. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Yoram Bresler in the Bioengineering at UIUC. Research areas: bioimaging at multi-scale, ieee transactions on image processing. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -100276,10 +100259,9 @@
       "application_effort": "low",
       "application_url": "https://bioengineering.illinois.edu/people/ybresler"
     },
-    "description_raw": "Research opportunity with Professor Yoram Bresler in the Bioengineering at UIUC. Research areas: outstanding undergraduate advisor (1994), bioimaging at multi-scale, ieee transactions on image processing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Yoram Bresler in the Bioengineering at UIUC. Research areas: outstanding undergraduate advisor (1994), bioimaging at multi-scale, ieee transactions on image processing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Yoram Bresler in the Bioengineering at UIUC. Research areas: bioimaging at multi-scale, ieee transactions on image processing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Yoram Bresler in the Bioengineering at UIUC. Research areas: bioimaging at multi-scale, ieee transactions on image processing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "outstanding undergraduate advisor (1994)",
       "bioimaging at multi-scale",
       "ieee transactions on image processing"
     ],
@@ -100502,7 +100484,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://bioengineering.illinois.edu/people/meddean",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Mark Cohen — BioE (carle illinois college of medicine)",
+    "title": "Research with Prof. Mark Cohen — BioE",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Bioengineering",
     "lab_or_program": "Prof. Mark Cohen's Research Group",
@@ -100535,7 +100517,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Mark Cohen in the Bioengineering at UIUC. Research areas: carle illinois college of medicine. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Mark Cohen in the Bioengineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -100546,10 +100528,10 @@
       "application_effort": "low",
       "application_url": "https://bioengineering.illinois.edu/people/meddean"
     },
-    "description_raw": "Research opportunity with Professor Mark Cohen in the Bioengineering at UIUC. Research areas: carle illinois college of medicine. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Mark Cohen in the Bioengineering at UIUC. Research areas: carle illinois college of medicine. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Mark Cohen in the Bioengineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Mark Cohen in the Bioengineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "carle illinois college of medicine"
+      "bioengineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -104451,7 +104433,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://bioengineering.illinois.edu/people/nwangrw",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Ning Wang — BioE (molecular, cellular and tissue engineering, sc.d.\tphysiology\tharvard\t1990)",
+    "title": "Research with Prof. Ning Wang — BioE (molecular, cellular and tissue engineering, bio-imaging of cytoskeletal structures and stress distribution in living cells)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Bioengineering",
     "lab_or_program": "Prof. Ning Wang's Research Group",
@@ -104484,7 +104466,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Ning Wang in the Bioengineering at UIUC. Research areas: molecular, cellular and tissue engineering, sc.d.\tphysiology\tharvard\t1990, bio-imaging of cytoskeletal structures and stress distribution in living cells, mechanotransduction: nuclear deformation and gene expression. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Ning Wang in the Bioengineering at UIUC. Research areas: molecular, cellular and tissue engineering, bio-imaging of cytoskeletal structures and stress distribution in living cells, mechanotransduction: nuclear deformation and gene expression. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -104495,12 +104477,11 @@
       "application_effort": "low",
       "application_url": "https://bioengineering.illinois.edu/people/nwangrw"
     },
-    "description_raw": "Research opportunity with Professor Ning Wang in the Bioengineering at UIUC. Research areas: molecular, cellular and tissue engineering, sc.d.\tphysiology\tharvard\t1990, bio-imaging of cytoskeletal structures and stress distribution in living cells, mechanotransduction: nuclear deformation and gene expression. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Ning Wang in the Bioengineering at UIUC. Research areas: molecular, cellular and tissue engineering, sc.d.\tphysiology\tharvard\t1990, bio-imaging of cytoskeletal structures and stress distribution in living cells, mechanotransduction: nuclear deformation and gene expression. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Ning Wang in the Bioengineering at UIUC. Research areas: molecular, cellular and tissue engineering, bio-imaging of cytoskeletal structures and stress distribution in living cells, mechanotransduction: nuclear deformation and gene expression. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Ning Wang in the Bioengineering at UIUC. Research areas: molecular, cellular and tissue engineering, bio-imaging of cytoskeletal structures and stress distribution in living cells, mechanotransduction: nuclear deformation and gene expression. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "molecular",
       "cellular and tissue engineering",
-      "sc.d.\tphysiology\tharvard\t1990",
       "bio-imaging of cytoskeletal structures and stress distribution in living cells",
       "mechanotransduction: nuclear deformation and gene expression"
     ],
@@ -104522,7 +104503,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://bioengineering.illinois.edu/people/agwebb",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Andrew Graham Webb — BioE (rf coil design, functional imaging agents, june 1986)",
+    "title": "Research with Prof. Andrew Graham Webb — BioE (rf coil design, functional imaging agents, thermal mapping using mri)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Bioengineering",
     "lab_or_program": "Prof. Andrew Graham Webb's Research Group",
@@ -104555,7 +104536,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Andrew Graham Webb in the Bioengineering at UIUC. Research areas: rf coil design, functional imaging agents, june 1986, december 1989, thermal mapping using mri. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Andrew Graham Webb in the Bioengineering at UIUC. Research areas: rf coil design, functional imaging agents, thermal mapping using mri. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -104566,13 +104547,11 @@
       "application_effort": "low",
       "application_url": "https://bioengineering.illinois.edu/people/agwebb"
     },
-    "description_raw": "Research opportunity with Professor Andrew Graham Webb in the Bioengineering at UIUC. Research areas: rf coil design, functional imaging agents, june 1986, december 1989, thermal mapping using mri. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Andrew Graham Webb in the Bioengineering at UIUC. Research areas: rf coil design, functional imaging agents, june 1986, december 1989, thermal mapping using mri. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Andrew Graham Webb in the Bioengineering at UIUC. Research areas: rf coil design, functional imaging agents, thermal mapping using mri. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Andrew Graham Webb in the Bioengineering at UIUC. Research areas: rf coil design, functional imaging agents, thermal mapping using mri. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "rf coil design",
       "functional imaging agents",
-      "june 1986",
-      "december 1989",
       "thermal mapping using mri"
     ],
     "metadata": {
@@ -119628,7 +119607,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/pyhuang",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Pinshane Huang — Physics (carleton college, department of physics, applied and engineering physics)",
+    "title": "Research with Prof. Pinshane Huang — Physics (department of physics, applied and engineering physics)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Pinshane Huang's Research Group",
@@ -119662,7 +119641,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Pinshane Huang in the Department of Physics at UIUC. Research areas: carleton college, department of physics, applied and engineering physics. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Pinshane Huang in the Department of Physics at UIUC. Research areas: department of physics, applied and engineering physics. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -119673,10 +119652,9 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/pyhuang"
     },
-    "description_raw": "Research opportunity with Professor Pinshane Huang in the Department of Physics at UIUC. Research areas: carleton college, department of physics, applied and engineering physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Pinshane Huang in the Department of Physics at UIUC. Research areas: carleton college, department of physics, applied and engineering physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Pinshane Huang in the Department of Physics at UIUC. Research areas: department of physics, applied and engineering physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Pinshane Huang in the Department of Physics at UIUC. Research areas: department of physics, applied and engineering physics. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "carleton college",
       "department of physics",
       "applied and engineering physics"
     ],
@@ -125297,7 +125275,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://aerospace.illinois.edu/directory/profile/tbretl",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Timothy Bretl — AE (engineering education, mathematics, swarthmore college)",
+    "title": "Research with Prof. Timothy Bretl — AE (engineering education, mathematics, optimal control)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Aerospace Engineering",
     "lab_or_program": "Prof. Timothy Bretl's Research Group",
@@ -125329,7 +125307,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Timothy Bretl in the Aerospace Engineering at UIUC. Research areas: engineering education, mathematics, swarthmore college, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Timothy Bretl in the Aerospace Engineering at UIUC. Research areas: engineering education, mathematics, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -125340,12 +125318,11 @@
       "application_effort": "low",
       "application_url": "https://aerospace.illinois.edu/directory/profile/tbretl"
     },
-    "description_raw": "Research opportunity with Professor Timothy Bretl in the Aerospace Engineering at UIUC. Research areas: engineering education, mathematics, swarthmore college, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Timothy Bretl in the Aerospace Engineering at UIUC. Research areas: engineering education, mathematics, swarthmore college, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Timothy Bretl in the Aerospace Engineering at UIUC. Research areas: engineering education, mathematics, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Timothy Bretl in the Aerospace Engineering at UIUC. Research areas: engineering education, mathematics, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "engineering education",
       "mathematics",
-      "swarthmore college",
       "optimal control"
     ],
     "metadata": {
@@ -125634,7 +125611,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://aerospace.illinois.edu/directory/profile/bconway",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Bruce A. Conway — AE (celestial mechanics, optimal control, b.a.\tphysics  \t\tmacalester college\t1973)",
+    "title": "Research with Prof. Bruce A. Conway — AE (celestial mechanics, optimal control)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Aerospace Engineering",
     "lab_or_program": "Prof. Bruce A. Conway's Research Group",
@@ -125666,7 +125643,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Bruce A. Conway in the Aerospace Engineering at UIUC. Research areas: celestial mechanics, optimal control, b.a.\tphysics  \t\tmacalester college\t1973. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Bruce A. Conway in the Aerospace Engineering at UIUC. Research areas: celestial mechanics, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -125677,12 +125654,11 @@
       "application_effort": "low",
       "application_url": "https://aerospace.illinois.edu/directory/profile/bconway"
     },
-    "description_raw": "Research opportunity with Professor Bruce A. Conway in the Aerospace Engineering at UIUC. Research areas: celestial mechanics, optimal control, b.a.\tphysics  \t\tmacalester college\t1973. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Bruce A. Conway in the Aerospace Engineering at UIUC. Research areas: celestial mechanics, optimal control, b.a.\tphysics  \t\tmacalester college\t1973. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Bruce A. Conway in the Aerospace Engineering at UIUC. Research areas: celestial mechanics, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Bruce A. Conway in the Aerospace Engineering at UIUC. Research areas: celestial mechanics, optimal control. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "celestial mechanics",
-      "optimal control",
-      "b.a.\tphysics  \t\tmacalester college\t1973"
+      "optimal control"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -128723,7 +128699,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/hashash",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Youssef M. A. Hashash — CEE (underground structures, ph.d.\t\tcivil (geotechnical) engineering\t\tmit\t\t\t\t\t1992, engineer ii)",
+    "title": "Research with Prof. Youssef M. A. Hashash — CEE (underground structures, engineer ii, dallas)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. Youssef M. A. Hashash's Research Group",
@@ -128756,7 +128732,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Youssef M. A. Hashash in the Civil & Environmental Engineering at UIUC. Research areas: underground structures, ph.d.\t\tcivil (geotechnical) engineering\t\tmit\t\t\t\t\t1992, engineer ii, dallas, june 1992-march 1994. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Youssef M. A. Hashash in the Civil & Environmental Engineering at UIUC. Research areas: underground structures, engineer ii, dallas. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -128767,14 +128743,12 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/hashash"
     },
-    "description_raw": "Research opportunity with Professor Youssef M. A. Hashash in the Civil & Environmental Engineering at UIUC. Research areas: underground structures, ph.d.\t\tcivil (geotechnical) engineering\t\tmit\t\t\t\t\t1992, engineer ii, dallas, june 1992-march 1994. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Youssef M. A. Hashash in the Civil & Environmental Engineering at UIUC. Research areas: underground structures, ph.d.\t\tcivil (geotechnical) engineering\t\tmit\t\t\t\t\t1992, engineer ii, dallas, june 1992-march 1994. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Youssef M. A. Hashash in the Civil & Environmental Engineering at UIUC. Research areas: underground structures, engineer ii, dallas. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Youssef M. A. Hashash in the Civil & Environmental Engineering at UIUC. Research areas: underground structures, engineer ii, dallas. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "underground structures",
-      "ph.d.\t\tcivil (geotechnical) engineering\t\tmit\t\t\t\t\t1992",
       "engineer ii",
-      "dallas",
-      "june 1992-march 1994"
+      "dallas"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -130189,7 +130163,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/bfs",
     "source_type": "faculty_research",
-    "title": "Research with Prof. B. F. Spencer — CEE (engineering college council, structural engineering, consortial relations task force)",
+    "title": "Research with Prof. B. F. Spencer — CEE (structural engineering, consortial relations task force, societal risk & hazard mitigation)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. B. F. Spencer's Research Group",
@@ -130222,7 +130196,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor B. F. Spencer in the Civil & Environmental Engineering at UIUC. Research areas: engineering college council, structural engineering, consortial relations task force, societal risk & hazard mitigation. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor B. F. Spencer in the Civil & Environmental Engineering at UIUC. Research areas: structural engineering, consortial relations task force, societal risk & hazard mitigation. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -130233,10 +130207,9 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/bfs"
     },
-    "description_raw": "Research opportunity with Professor B. F. Spencer in the Civil & Environmental Engineering at UIUC. Research areas: engineering college council, structural engineering, consortial relations task force, societal risk & hazard mitigation. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor B. F. Spencer in the Civil & Environmental Engineering at UIUC. Research areas: engineering college council, structural engineering, consortial relations task force, societal risk & hazard mitigation. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor B. F. Spencer in the Civil & Environmental Engineering at UIUC. Research areas: structural engineering, consortial relations task force, societal risk & hazard mitigation. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor B. F. Spencer in the Civil & Environmental Engineering at UIUC. Research areas: structural engineering, consortial relations task force, societal risk & hazard mitigation. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "engineering college council",
       "structural engineering",
       "consortial relations task force",
       "societal risk & hazard mitigation"
@@ -130259,7 +130232,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/tstark",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Timothy D. Stark — CEE (virginia tech, geotechnical engineering, behavior of railroad track systems and transitions)",
+    "title": "Research with Prof. Timothy D. Stark — CEE (geotechnical engineering, behavior of railroad track systems and transitions, performance of compacted structural fills and slopes)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. Timothy D. Stark's Research Group",
@@ -130292,7 +130265,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Timothy D. Stark in the Civil & Environmental Engineering at UIUC. Research areas: virginia tech, geotechnical engineering, behavior of railroad track systems and transitions, performance of compacted structural fills and slopes, behavior and improvement of confined dredged material. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Timothy D. Stark in the Civil & Environmental Engineering at UIUC. Research areas: geotechnical engineering, behavior of railroad track systems and transitions, performance of compacted structural fills and slopes, behavior and improvement of confined dredged material. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -130303,11 +130276,10 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/tstark"
     },
-    "description_raw": "Research opportunity with Professor Timothy D. Stark in the Civil & Environmental Engineering at UIUC. Research areas: virginia tech, geotechnical engineering, behavior of railroad track systems and transitions, performance of compacted structural fills and slopes, behavior and improvement of confined dredged material. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Timothy D. Stark in the Civil & Environmental Engineering at UIUC. Research areas: virginia tech, geotechnical engineering, behavior of railroad track systems and transitions, performance of compacted structural fills and slopes, behavior and improvement of confined dredged material. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Timothy D. Stark in the Civil & Environmental Engineering at UIUC. Research areas: geotechnical engineering, behavior of railroad track systems and transitions, performance of compacted structural fills and slopes, behavior and improvement of confined dredged material. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Timothy D. Stark in the Civil & Environmental Engineering at UIUC. Research areas: geotechnical engineering, behavior of railroad track systems and transitions, performance of compacted structural fills and slopes, behavior and improvement of confined dredged material. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "civil engineering",
-      "virginia tech",
       "geotechnical engineering",
       "behavior of railroad track systems and transitions",
       "performance of compacted structural fills and slopes",
@@ -130782,7 +130754,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Erol Tutumluer in the Civil & Environmental Engineering at UIUC. Research areas: transportation engineering, subgrade soils/aggregate materials stabilization and recycling, transportation research board, georgia 1995. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Erol Tutumluer in the Civil & Environmental Engineering at UIUC. Research areas: transportation engineering, subgrade soils/aggregate materials stabilization and recycling, transportation research board. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -130793,13 +130765,12 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/tutumlue"
     },
-    "description_raw": "Research opportunity with Professor Erol Tutumluer in the Civil & Environmental Engineering at UIUC. Research areas: transportation engineering, subgrade soils/aggregate materials stabilization and recycling, transportation research board, georgia 1995. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Erol Tutumluer in the Civil & Environmental Engineering at UIUC. Research areas: transportation engineering, subgrade soils/aggregate materials stabilization and recycling, transportation research board, georgia 1995. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Erol Tutumluer in the Civil & Environmental Engineering at UIUC. Research areas: transportation engineering, subgrade soils/aggregate materials stabilization and recycling, transportation research board. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Erol Tutumluer in the Civil & Environmental Engineering at UIUC. Research areas: transportation engineering, subgrade soils/aggregate materials stabilization and recycling, transportation research board. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "transportation engineering",
       "subgrade soils/aggregate materials stabilization and recycling",
-      "transportation research board",
-      "georgia 1995"
+      "transportation research board"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -131921,7 +131892,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/h-reis",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Henrique M. Reis — CEE (machine and process condition monitoring, mechanics of composite materials and design of composite structures, license in mech. eng.\tmechanical engineering\tuniversidade de luanda-angola\t1972)",
+    "title": "Research with Prof. Henrique M. Reis — CEE (machine and process condition monitoring, mechanics of composite materials and design of composite structures, structural health monitoring)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. Henrique M. Reis's Research Group",
@@ -131954,7 +131925,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Henrique M. Reis in the Civil & Environmental Engineering at UIUC. Research areas: machine and process condition monitoring, mechanics of composite materials and design of composite structures, license in mech. eng.\tmechanical engineering\tuniversidade de luanda-angola\t1972, structural health monitoring, materials characterization. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Henrique M. Reis in the Civil & Environmental Engineering at UIUC. Research areas: machine and process condition monitoring, mechanics of composite materials and design of composite structures, structural health monitoring, materials characterization. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -131965,12 +131936,11 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/h-reis"
     },
-    "description_raw": "Research opportunity with Professor Henrique M. Reis in the Civil & Environmental Engineering at UIUC. Research areas: machine and process condition monitoring, mechanics of composite materials and design of composite structures, license in mech. eng.\tmechanical engineering\tuniversidade de luanda-angola\t1972, structural health monitoring, materials characterization. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Henrique M. Reis in the Civil & Environmental Engineering at UIUC. Research areas: machine and process condition monitoring, mechanics of composite materials and design of composite structures, license in mech. eng.\tmechanical engineering\tuniversidade de luanda-angola\t1972, structural health monitoring, materials characterization. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Henrique M. Reis in the Civil & Environmental Engineering at UIUC. Research areas: machine and process condition monitoring, mechanics of composite materials and design of composite structures, structural health monitoring, materials characterization. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Henrique M. Reis in the Civil & Environmental Engineering at UIUC. Research areas: machine and process condition monitoring, mechanics of composite materials and design of composite structures, structural health monitoring, materials characterization. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "machine and process condition monitoring",
       "mechanics of composite materials and design of composite structures",
-      "license in mech. eng.\tmechanical engineering\tuniversidade de luanda-angola\t1972",
       "structural health monitoring",
       "materials characterization"
     ],
@@ -132126,7 +132096,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/thurston",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Deborah L. Thurston — CEE (s.m.\tcivil engineering\tmass. inst. of technology\t1984, environmental engineering and science, ph.d.\tcivil engineering\tmass. inst. of technology\t1987)",
+    "title": "Research with Prof. Deborah L. Thurston — CEE (environmental engineering and science, environmental engineering and science archived)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. Deborah L. Thurston's Research Group",
@@ -132159,7 +132129,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Deborah L. Thurston in the Civil & Environmental Engineering at UIUC. Research areas: s.m.\tcivil engineering\tmass. inst. of technology\t1984, environmental engineering and science, ph.d.\tcivil engineering\tmass. inst. of technology\t1987, environmental engineering and science archived. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Deborah L. Thurston in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, environmental engineering and science archived. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -132170,12 +132140,10 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/thurston"
     },
-    "description_raw": "Research opportunity with Professor Deborah L. Thurston in the Civil & Environmental Engineering at UIUC. Research areas: s.m.\tcivil engineering\tmass. inst. of technology\t1984, environmental engineering and science, ph.d.\tcivil engineering\tmass. inst. of technology\t1987, environmental engineering and science archived. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Deborah L. Thurston in the Civil & Environmental Engineering at UIUC. Research areas: s.m.\tcivil engineering\tmass. inst. of technology\t1984, environmental engineering and science, ph.d.\tcivil engineering\tmass. inst. of technology\t1987, environmental engineering and science archived. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Deborah L. Thurston in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, environmental engineering and science archived. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Deborah L. Thurston in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, environmental engineering and science archived. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "s.m.\tcivil engineering\tmass. inst. of technology\t1984",
       "environmental engineering and science",
-      "ph.d.\tcivil engineering\tmass. inst. of technology\t1987",
       "environmental engineering and science archived"
     ],
     "metadata": {
@@ -132196,7 +132164,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/sherilyn",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Sherilyn Williams-Stroud — CEE (oberlin college, geology)",
+    "title": "Research with Prof. Sherilyn Williams-Stroud — CEE (geology)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. Sherilyn Williams-Stroud's Research Group",
@@ -132229,7 +132197,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Sherilyn Williams-Stroud in the Civil & Environmental Engineering at UIUC. Research areas: oberlin college, geology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Sherilyn Williams-Stroud in the Civil & Environmental Engineering at UIUC. Research areas: geology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -132240,10 +132208,9 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/sherilyn"
     },
-    "description_raw": "Research opportunity with Professor Sherilyn Williams-Stroud in the Civil & Environmental Engineering at UIUC. Research areas: oberlin college, geology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Sherilyn Williams-Stroud in the Civil & Environmental Engineering at UIUC. Research areas: oberlin college, geology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Sherilyn Williams-Stroud in the Civil & Environmental Engineering at UIUC. Research areas: geology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Sherilyn Williams-Stroud in the Civil & Environmental Engineering at UIUC. Research areas: geology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "oberlin college",
       "geology"
     ],
     "metadata": {
@@ -132745,7 +132712,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/d-abrams",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Dan Abrams — CEE (structural dynamics, ph.d.\tcivil engineering\tuiuc\t1979, large-scale structural testing)",
+    "title": "Research with Prof. Dan Abrams — CEE (structural dynamics, large-scale structural testing, seismic evaluation and retrofit of unreinforced masonry buildings)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. Dan Abrams's Research Group",
@@ -132778,7 +132745,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Dan Abrams in the Civil & Environmental Engineering at UIUC. Research areas: structural dynamics, ph.d.\tcivil engineering\tuiuc\t1979, large-scale structural testing, seismic evaluation and retrofit of unreinforced masonry buildings. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Dan Abrams in the Civil & Environmental Engineering at UIUC. Research areas: structural dynamics, large-scale structural testing, seismic evaluation and retrofit of unreinforced masonry buildings. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -132789,11 +132756,10 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/d-abrams"
     },
-    "description_raw": "Research opportunity with Professor Dan Abrams in the Civil & Environmental Engineering at UIUC. Research areas: structural dynamics, ph.d.\tcivil engineering\tuiuc\t1979, large-scale structural testing, seismic evaluation and retrofit of unreinforced masonry buildings. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Dan Abrams in the Civil & Environmental Engineering at UIUC. Research areas: structural dynamics, ph.d.\tcivil engineering\tuiuc\t1979, large-scale structural testing, seismic evaluation and retrofit of unreinforced masonry buildings. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Dan Abrams in the Civil & Environmental Engineering at UIUC. Research areas: structural dynamics, large-scale structural testing, seismic evaluation and retrofit of unreinforced masonry buildings. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Dan Abrams in the Civil & Environmental Engineering at UIUC. Research areas: structural dynamics, large-scale structural testing, seismic evaluation and retrofit of unreinforced masonry buildings. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "structural dynamics",
-      "ph.d.\tcivil engineering\tuiuc\t1979",
       "large-scale structural testing",
       "seismic evaluation and retrofit of unreinforced masonry buildings"
     ],
@@ -134371,7 +134337,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cee.illinois.edu/directory/profile/marinas",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Benito J. Marinas — CEE (environmental engineering and science, sustainable approaches for global safe drinking water and sanitation, universidad politecnica de madrid)",
+    "title": "Research with Prof. Benito J. Marinas — CEE (environmental engineering and science, sustainable approaches for global safe drinking water and sanitation)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Civil & Environmental Engineering",
     "lab_or_program": "Prof. Benito J. Marinas's Research Group",
@@ -134404,7 +134370,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Benito J. Marinas in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, sustainable approaches for global safe drinking water and sanitation, universidad politecnica de madrid. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Benito J. Marinas in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, sustainable approaches for global safe drinking water and sanitation. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -134415,12 +134381,11 @@
       "application_effort": "low",
       "application_url": "https://cee.illinois.edu/directory/profile/marinas"
     },
-    "description_raw": "Research opportunity with Professor Benito J. Marinas in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, sustainable approaches for global safe drinking water and sanitation, universidad politecnica de madrid. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Benito J. Marinas in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, sustainable approaches for global safe drinking water and sanitation, universidad politecnica de madrid. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Benito J. Marinas in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, sustainable approaches for global safe drinking water and sanitation. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Benito J. Marinas in the Civil & Environmental Engineering at UIUC. Research areas: environmental engineering and science, sustainable approaches for global safe drinking water and sanitation. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "environmental engineering and science",
-      "sustainable approaches for global safe drinking water and sanitation",
-      "universidad politecnica de madrid"
+      "sustainable approaches for global safe drinking water and sanitation"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -135467,7 +135432,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://npre.illinois.edu/people/profile/abelson",
     "source_type": "faculty_research",
-    "title": "Research with Prof. John R. Abelson — NPRE (young investigator in the ibm materials program at uiuc \t (1988-1990))",
+    "title": "Research with Prof. John R. Abelson — NPRE",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Nuclear, Plasma & Radiological Engineering",
     "lab_or_program": "Prof. John R. Abelson's Research Group",
@@ -135500,7 +135465,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor John R. Abelson in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: young investigator in the ibm materials program at uiuc \t (1988-1990). Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor John R. Abelson in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -135511,10 +135476,10 @@
       "application_effort": "low",
       "application_url": "https://npre.illinois.edu/people/profile/abelson"
     },
-    "description_raw": "Research opportunity with Professor John R. Abelson in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: young investigator in the ibm materials program at uiuc \t (1988-1990). Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor John R. Abelson in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: young investigator in the ibm materials program at uiuc \t (1988-1990). Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor John R. Abelson in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor John R. Abelson in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "young investigator in the ibm materials program at uiuc \t (1988-1990)"
+      "nuclear engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -136438,7 +136403,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://npre.illinois.edu/people/profile/bjurczyk",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Brian Edward Jurczyk — NPRE (urbana 1995, urbana 1997)",
+    "title": "Research with Prof. Brian Edward Jurczyk — NPRE",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Nuclear, Plasma & Radiological Engineering",
     "lab_or_program": "Prof. Brian Edward Jurczyk's Research Group",
@@ -136471,7 +136436,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Brian Edward Jurczyk in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: urbana 1995, urbana 1997. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Brian Edward Jurczyk in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -136482,11 +136447,10 @@
       "application_effort": "low",
       "application_url": "https://npre.illinois.edu/people/profile/bjurczyk"
     },
-    "description_raw": "Research opportunity with Professor Brian Edward Jurczyk in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: urbana 1995, urbana 1997. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Brian Edward Jurczyk in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: urbana 1995, urbana 1997. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Brian Edward Jurczyk in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Brian Edward Jurczyk in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "urbana 1995",
-      "urbana 1997"
+      "nuclear engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -136784,7 +136748,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://npre.illinois.edu/people/profile/leonl",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Leon Liebenberg — NPRE (imperial college london)",
+    "title": "Research with Prof. Leon Liebenberg — NPRE",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Nuclear, Plasma & Radiological Engineering",
     "lab_or_program": "Prof. Leon Liebenberg's Research Group",
@@ -136817,7 +136781,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Leon Liebenberg in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: imperial college london. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Leon Liebenberg in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -136828,10 +136792,10 @@
       "application_effort": "low",
       "application_url": "https://npre.illinois.edu/people/profile/leonl"
     },
-    "description_raw": "Research opportunity with Professor Leon Liebenberg in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: imperial college london. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Leon Liebenberg in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: imperial college london. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Leon Liebenberg in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Leon Liebenberg in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "imperial college london"
+      "nuclear engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -137818,7 +137782,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://npre.illinois.edu/people/profile/stubbers",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Robert Stubbers — NPRE (urbana 1998)",
+    "title": "Research with Prof. Robert Stubbers — NPRE",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Nuclear, Plasma & Radiological Engineering",
     "lab_or_program": "Prof. Robert Stubbers's Research Group",
@@ -137851,7 +137815,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Robert Stubbers in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: urbana 1998. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Robert Stubbers in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -137862,10 +137826,10 @@
       "application_effort": "low",
       "application_url": "https://npre.illinois.edu/people/profile/stubbers"
     },
-    "description_raw": "Research opportunity with Professor Robert Stubbers in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: urbana 1998. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Robert Stubbers in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: urbana 1998. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Robert Stubbers in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Robert Stubbers in the Nuclear, Plasma & Radiological Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "urbana 1998"
+      "nuclear engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -137885,7 +137849,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://npre.illinois.edu/people/profile/jstubbin",
     "source_type": "faculty_research",
-    "title": "Research with Prof. James F. Stubbins — NPRE (alpha nu sigma (1983), ion bombardment)",
+    "title": "Research with Prof. James F. Stubbins — NPRE (ion bombardment)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Nuclear, Plasma & Radiological Engineering",
     "lab_or_program": "Prof. James F. Stubbins's Research Group",
@@ -137918,7 +137882,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor James F. Stubbins in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: alpha nu sigma (1983), ion bombardment. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor James F. Stubbins in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: ion bombardment. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -137929,10 +137893,9 @@
       "application_effort": "low",
       "application_url": "https://npre.illinois.edu/people/profile/jstubbin"
     },
-    "description_raw": "Research opportunity with Professor James F. Stubbins in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: alpha nu sigma (1983), ion bombardment. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor James F. Stubbins in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: alpha nu sigma (1983), ion bombardment. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor James F. Stubbins in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: ion bombardment. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor James F. Stubbins in the Nuclear, Plasma & Radiological Engineering at UIUC. Research areas: ion bombardment. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "alpha nu sigma (1983)",
       "ion bombardment"
     ],
     "metadata": {
@@ -138368,7 +138331,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://chbe.illinois.edu/people/profile/r-alkire",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Richard C. Alkire — ChBE (lafayette college, electrochemical engineering)",
+    "title": "Research with Prof. Richard C. Alkire — ChBE (electrochemical engineering)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Chemical & Biomolecular Engineering",
     "lab_or_program": "Prof. Richard C. Alkire's Research Group",
@@ -138401,7 +138364,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Richard C. Alkire in the Chemical & Biomolecular Engineering at UIUC. Research areas: lafayette college, electrochemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Richard C. Alkire in the Chemical & Biomolecular Engineering at UIUC. Research areas: electrochemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -138412,10 +138375,9 @@
       "application_effort": "low",
       "application_url": "https://chbe.illinois.edu/people/profile/r-alkire"
     },
-    "description_raw": "Research opportunity with Professor Richard C. Alkire in the Chemical & Biomolecular Engineering at UIUC. Research areas: lafayette college, electrochemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Richard C. Alkire in the Chemical & Biomolecular Engineering at UIUC. Research areas: lafayette college, electrochemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Richard C. Alkire in the Chemical & Biomolecular Engineering at UIUC. Research areas: electrochemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Richard C. Alkire in the Chemical & Biomolecular Engineering at UIUC. Research areas: electrochemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "lafayette college",
       "electrochemical engineering"
     ],
     "metadata": {
@@ -140227,7 +140189,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://chbe.illinois.edu/people/profile/baronp",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Baron G. Peters — ChBE (bs mathematics, bs chemical engineering)",
+    "title": "Research with Prof. Baron G. Peters — ChBE",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Chemical & Biomolecular Engineering",
     "lab_or_program": "Prof. Baron G. Peters's Research Group",
@@ -140260,7 +140222,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Baron G. Peters in the Chemical & Biomolecular Engineering at UIUC. Research areas: bs mathematics, bs chemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Baron G. Peters in the Chemical & Biomolecular Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -140271,11 +140233,10 @@
       "application_effort": "low",
       "application_url": "https://chbe.illinois.edu/people/profile/baronp"
     },
-    "description_raw": "Research opportunity with Professor Baron G. Peters in the Chemical & Biomolecular Engineering at UIUC. Research areas: bs mathematics, bs chemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Baron G. Peters in the Chemical & Biomolecular Engineering at UIUC. Research areas: bs mathematics, bs chemical engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Baron G. Peters in the Chemical & Biomolecular Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Baron G. Peters in the Chemical & Biomolecular Engineering at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "bs mathematics",
-      "bs chemical engineering"
+      "chemical engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -141039,7 +141000,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://chbe.illinois.edu/people/profile/czukoski",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Charles F. Zukoski — ChBE (reed college, colloid and interfacial science)",
+    "title": "Research with Prof. Charles F. Zukoski — ChBE (colloid and interfacial science)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Chemical & Biomolecular Engineering",
     "lab_or_program": "Prof. Charles F. Zukoski's Research Group",
@@ -141072,7 +141033,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Charles F. Zukoski in the Chemical & Biomolecular Engineering at UIUC. Research areas: reed college, colloid and interfacial science. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Charles F. Zukoski in the Chemical & Biomolecular Engineering at UIUC. Research areas: colloid and interfacial science. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -141083,10 +141044,9 @@
       "application_effort": "low",
       "application_url": "https://chbe.illinois.edu/people/profile/czukoski"
     },
-    "description_raw": "Research opportunity with Professor Charles F. Zukoski in the Chemical & Biomolecular Engineering at UIUC. Research areas: reed college, colloid and interfacial science. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Charles F. Zukoski in the Chemical & Biomolecular Engineering at UIUC. Research areas: reed college, colloid and interfacial science. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Charles F. Zukoski in the Chemical & Biomolecular Engineering at UIUC. Research areas: colloid and interfacial science. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Charles F. Zukoski in the Chemical & Biomolecular Engineering at UIUC. Research areas: colloid and interfacial science. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "reed college",
       "colloid and interfacial science"
     ],
     "metadata": {
@@ -156808,7 +156768,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://psychology.illinois.edu/directory/profile/dsimons",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Daniel J Simons — Psychology (b.a. from carleton college)",
+    "title": "Research with Prof. Daniel J Simons — Psychology",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Psychology",
     "lab_or_program": "Prof. Daniel J Simons's Research Group",
@@ -156840,7 +156800,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Daniel J Simons in the Department of Psychology at UIUC. Research areas: b.a. from carleton college. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Daniel J Simons in the Department of Psychology at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -156851,10 +156811,10 @@
       "application_effort": "low",
       "application_url": "https://psychology.illinois.edu/directory/profile/dsimons"
     },
-    "description_raw": "Research opportunity with Professor Daniel J Simons in the Department of Psychology at UIUC. Research areas: b.a. from carleton college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Daniel J Simons in the Department of Psychology at UIUC. Research areas: b.a. from carleton college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Daniel J Simons in the Department of Psychology at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Daniel J Simons in the Department of Psychology at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "b.a. from carleton college"
+      "psychology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -162599,7 +162559,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://sib.illinois.edu/directory/profile/dlagos",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Doris Lagos-Kutz — IB (science agriculture, universidad agraria la molina-peru)",
+    "title": "Research with Prof. Doris Lagos-Kutz — IB (science agriculture)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "School of Integrative Biology",
     "lab_or_program": "Prof. Doris Lagos-Kutz's Research Group",
@@ -162633,7 +162593,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Doris Lagos-Kutz in the School of Integrative Biology at UIUC. Research areas: science agriculture, universidad agraria la molina-peru. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Doris Lagos-Kutz in the School of Integrative Biology at UIUC. Research areas: science agriculture. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -162644,11 +162604,10 @@
       "application_effort": "low",
       "application_url": "https://sib.illinois.edu/directory/profile/dlagos"
     },
-    "description_raw": "Research opportunity with Professor Doris Lagos-Kutz in the School of Integrative Biology at UIUC. Research areas: science agriculture, universidad agraria la molina-peru. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Doris Lagos-Kutz in the School of Integrative Biology at UIUC. Research areas: science agriculture, universidad agraria la molina-peru. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Doris Lagos-Kutz in the School of Integrative Biology at UIUC. Research areas: science agriculture. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Doris Lagos-Kutz in the School of Integrative Biology at UIUC. Research areas: science agriculture. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "science agriculture",
-      "universidad agraria la molina-peru"
+      "science agriculture"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -167830,7 +167789,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://economics.illinois.edu/profile/lubotsky",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Darren Lubotsky — Economics (public policy 555: microeconomics (masters), economics 532: labor economics (phd), economics 440: labor economics (undergraduate))",
+    "title": "Research with Prof. Darren Lubotsky — Economics (public policy 555: microeconomics (masters), economics 440: labor economics (undergraduate))",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Economics",
     "lab_or_program": "Prof. Darren Lubotsky's Research Group",
@@ -167862,7 +167821,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Darren Lubotsky in the Department of Economics at UIUC. Research areas: public policy 555: microeconomics (masters), economics 532: labor economics (phd), economics 440: labor economics (undergraduate), economics 535: econometrics ii (phd), economics 590: advanced topics in labor economics (phd). Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Darren Lubotsky in the Department of Economics at UIUC. Research areas: public policy 555: microeconomics (masters), economics 440: labor economics (undergraduate). Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -167873,14 +167832,11 @@
       "application_effort": "low",
       "application_url": "https://economics.illinois.edu/profile/lubotsky"
     },
-    "description_raw": "Research opportunity with Professor Darren Lubotsky in the Department of Economics at UIUC. Research areas: public policy 555: microeconomics (masters), economics 532: labor economics (phd), economics 440: labor economics (undergraduate), economics 535: econometrics ii (phd), economics 590: advanced topics in labor economics (phd). Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Darren Lubotsky in the Department of Economics at UIUC. Research areas: public policy 555: microeconomics (masters), economics 532: labor economics (phd), economics 440: labor economics (undergraduate), economics 535: econometrics ii (phd), economics 590: advanced topics in labor economics (phd). Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Darren Lubotsky in the Department of Economics at UIUC. Research areas: public policy 555: microeconomics (masters), economics 440: labor economics (undergraduate). Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Darren Lubotsky in the Department of Economics at UIUC. Research areas: public policy 555: microeconomics (masters), economics 440: labor economics (undergraduate). Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "public policy 555: microeconomics (masters)",
-      "economics 532: labor economics (phd)",
-      "economics 440: labor economics (undergraduate)",
-      "economics 535: econometrics ii (phd)",
-      "economics 590: advanced topics in labor economics (phd)"
+      "economics 440: labor economics (undergraduate)"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -180210,7 +180166,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://atmos.illinois.edu/directory/profile/francina",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Francina Dominguez — Atmos (universidad de los andes, colombia)",
+    "title": "Research with Prof. Francina Dominguez — Atmos (colombia)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Atmospheric Sciences",
     "lab_or_program": "Prof. Francina Dominguez's Research Group",
@@ -180242,7 +180198,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Francina Dominguez in the Department of Atmospheric Sciences at UIUC. Research areas: universidad de los andes, colombia. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Francina Dominguez in the Department of Atmospheric Sciences at UIUC. Research areas: colombia. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -180253,10 +180209,9 @@
       "application_effort": "low",
       "application_url": "https://atmos.illinois.edu/directory/profile/francina"
     },
-    "description_raw": "Research opportunity with Professor Francina Dominguez in the Department of Atmospheric Sciences at UIUC. Research areas: universidad de los andes, colombia. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Francina Dominguez in the Department of Atmospheric Sciences at UIUC. Research areas: universidad de los andes, colombia. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Francina Dominguez in the Department of Atmospheric Sciences at UIUC. Research areas: colombia. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Francina Dominguez in the Department of Atmospheric Sciences at UIUC. Research areas: colombia. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "universidad de los andes",
       "colombia"
     ],
     "metadata": {
@@ -182131,7 +182086,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://atmos.illinois.edu/directory/profile/wilhelms",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Robert Wilhelmson — Atmos (wheaton college)",
+    "title": "Research with Prof. Robert Wilhelmson — Atmos",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Atmospheric Sciences",
     "lab_or_program": "Prof. Robert Wilhelmson's Research Group",
@@ -182163,7 +182118,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Robert Wilhelmson in the Department of Atmospheric Sciences at UIUC. Research areas: wheaton college. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Robert Wilhelmson in the Department of Atmospheric Sciences at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -182174,10 +182129,10 @@
       "application_effort": "low",
       "application_url": "https://atmos.illinois.edu/directory/profile/wilhelms"
     },
-    "description_raw": "Research opportunity with Professor Robert Wilhelmson in the Department of Atmospheric Sciences at UIUC. Research areas: wheaton college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Robert Wilhelmson in the Department of Atmospheric Sciences at UIUC. Research areas: wheaton college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Robert Wilhelmson in the Department of Atmospheric Sciences at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Robert Wilhelmson in the Department of Atmospheric Sciences at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "wheaton college"
+      "atmospheric sciences"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -183921,7 +183876,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://geology.illinois.edu/directory/profile/jimbest",
     "source_type": "faculty_research",
-    "title": "Research with Prof. James Leonard Best — Geology (birkbeck college)",
+    "title": "Research with Prof. James Leonard Best — Geology",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Earth Science & Environmental Change",
     "lab_or_program": "Prof. James Leonard Best's Research Group",
@@ -183954,7 +183909,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor James Leonard Best in the Department of Earth Science & Environmental Change at UIUC. Research areas: birkbeck college. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor James Leonard Best in the Department of Earth Science & Environmental Change at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -183965,10 +183920,10 @@
       "application_effort": "low",
       "application_url": "https://geology.illinois.edu/directory/profile/jimbest"
     },
-    "description_raw": "Research opportunity with Professor James Leonard Best in the Department of Earth Science & Environmental Change at UIUC. Research areas: birkbeck college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor James Leonard Best in the Department of Earth Science & Environmental Change at UIUC. Research areas: birkbeck college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor James Leonard Best in the Department of Earth Science & Environmental Change at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor James Leonard Best in the Department of Earth Science & Environmental Change at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "birkbeck college"
+      "geology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -184189,7 +184144,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://geology.illinois.edu/directory/profile/fouke",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Bruce W Fouke — Geology (m.sc. univ iowa, m.sc. univ chicago, ph.d. stony brook)",
+    "title": "Research with Prof. Bruce W Fouke — Geology",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Earth Science & Environmental Change",
     "lab_or_program": "Prof. Bruce W Fouke's Research Group",
@@ -184222,7 +184177,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Bruce W Fouke in the Department of Earth Science & Environmental Change at UIUC. Research areas: m.sc. univ iowa, m.sc. univ chicago, ph.d. stony brook. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Bruce W Fouke in the Department of Earth Science & Environmental Change at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -184233,12 +184188,10 @@
       "application_effort": "low",
       "application_url": "https://geology.illinois.edu/directory/profile/fouke"
     },
-    "description_raw": "Research opportunity with Professor Bruce W Fouke in the Department of Earth Science & Environmental Change at UIUC. Research areas: m.sc. univ iowa, m.sc. univ chicago, ph.d. stony brook. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Bruce W Fouke in the Department of Earth Science & Environmental Change at UIUC. Research areas: m.sc. univ iowa, m.sc. univ chicago, ph.d. stony brook. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Bruce W Fouke in the Department of Earth Science & Environmental Change at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Bruce W Fouke in the Department of Earth Science & Environmental Change at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "m.sc. univ iowa",
-      "m.sc. univ chicago",
-      "ph.d. stony brook"
+      "geology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -188779,7 +188732,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://english.illinois.edu/directory/profile/ecourtem",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Eleanor Courtemanche — English (phd (comparative literature): cornell 1998., ma (comparative literature): cornell 1994., economic and political approaches to victorian fiction)",
+    "title": "Research with Prof. Eleanor Courtemanche — English (economic and political approaches to victorian fiction, utopian novels)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of English",
     "lab_or_program": "Prof. Eleanor Courtemanche's Research Group",
@@ -188812,7 +188765,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Eleanor Courtemanche in the Department of English at UIUC. Research areas: phd (comparative literature): cornell 1998., ma (comparative literature): cornell 1994., economic and political approaches to victorian fiction, utopian novels, ba: yale 1990 (summa cum laude).. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Eleanor Courtemanche in the Department of English at UIUC. Research areas: economic and political approaches to victorian fiction, utopian novels. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -188823,14 +188776,11 @@
       "application_effort": "low",
       "application_url": "https://english.illinois.edu/directory/profile/ecourtem"
     },
-    "description_raw": "Research opportunity with Professor Eleanor Courtemanche in the Department of English at UIUC. Research areas: phd (comparative literature): cornell 1998., ma (comparative literature): cornell 1994., economic and political approaches to victorian fiction, utopian novels, ba: yale 1990 (summa cum laude).. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Eleanor Courtemanche in the Department of English at UIUC. Research areas: phd (comparative literature): cornell 1998., ma (comparative literature): cornell 1994., economic and political approaches to victorian fiction, utopian novels, ba: yale 1990 (summa cum laude).. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Eleanor Courtemanche in the Department of English at UIUC. Research areas: economic and political approaches to victorian fiction, utopian novels. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Eleanor Courtemanche in the Department of English at UIUC. Research areas: economic and political approaches to victorian fiction, utopian novels. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "phd (comparative literature): cornell 1998.",
-      "ma (comparative literature): cornell 1994.",
       "economic and political approaches to victorian fiction",
-      "utopian novels",
-      "ba: yale 1990 (summa cum laude)."
+      "utopian novels"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -191084,7 +191034,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://english.illinois.edu/directory/profile/ashakar",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Alex Shakar — English (yale (b.a. in literature cum laude))",
+    "title": "Research with Prof. Alex Shakar — English",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of English",
     "lab_or_program": "Prof. Alex Shakar's Research Group",
@@ -191117,7 +191067,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Alex Shakar in the Department of English at UIUC. Research areas: yale (b.a. in literature cum laude). Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Alex Shakar in the Department of English at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -191128,10 +191078,10 @@
       "application_effort": "low",
       "application_url": "https://english.illinois.edu/directory/profile/ashakar"
     },
-    "description_raw": "Research opportunity with Professor Alex Shakar in the Department of English at UIUC. Research areas: yale (b.a. in literature cum laude). Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Alex Shakar in the Department of English at UIUC. Research areas: yale (b.a. in literature cum laude). Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Alex Shakar in the Department of English at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Alex Shakar in the Department of English at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "yale (b.a. in literature cum laude)"
+      "english"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -191352,7 +191302,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://english.illinois.edu/directory/profile/coreyv",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Corey Van Landingham — English (clark college)",
+    "title": "Research with Prof. Corey Van Landingham — English",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of English",
     "lab_or_program": "Prof. Corey Van Landingham's Research Group",
@@ -191385,7 +191335,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Corey Van Landingham in the Department of English at UIUC. Research areas: clark college. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Corey Van Landingham in the Department of English at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -191396,10 +191346,10 @@
       "application_effort": "low",
       "application_url": "https://english.illinois.edu/directory/profile/coreyv"
     },
-    "description_raw": "Research opportunity with Professor Corey Van Landingham in the Department of English at UIUC. Research areas: clark college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Corey Van Landingham in the Department of English at UIUC. Research areas: clark college. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Corey Van Landingham in the Department of English at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Corey Van Landingham in the Department of English at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "clark college"
+      "english"
     ],
     "metadata": {
       "confidence_score": 0.7,
