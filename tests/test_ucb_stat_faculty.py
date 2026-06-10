@@ -16,13 +16,13 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors.ucb_stat_faculty import (
-    STAT_CONFIG,
-    _dedup_by_profile_url,
-    _extract_email_from_profile,
-    _scrape_open_berkeley_faculty,
+from src.collectors.ucb_common import (
+    dedup_by_profile_url,
+    extract_email_from_profile,
     normalize_faculty,
+    scrape_open_berkeley_faculty,
 )
+from src.collectors.ucb_stat_faculty import STAT_CONFIG
 
 # Two faculty teaser cards (one whose title mentions a banked keyword) plus a
 # non-faculty article that must be ignored because it isn't node--type-faculty.
@@ -57,7 +57,7 @@ FIXTURE_HTML = """
 
 def _scrape():
     soup = BeautifulSoup(FIXTURE_HTML, "html.parser")
-    return _scrape_open_berkeley_faculty(soup, STAT_CONFIG)
+    return scrape_open_berkeley_faculty(soup, STAT_CONFIG)
 
 
 def test_parser_extracts_only_faculty_cards():
@@ -124,12 +124,12 @@ PROFILE_NO_EMAIL_HTML = """
 
 def test_extract_email_from_drupal_field():
     soup = BeautifulSoup(PROFILE_HTML, "html.parser")
-    assert _extract_email_from_profile(soup, STAT_CONFIG) == "adhikari@berkeley.edu"
+    assert extract_email_from_profile(soup, STAT_CONFIG) == "adhikari@berkeley.edu"
 
 
 def test_extract_email_returns_none_when_absent():
     soup = BeautifulSoup(PROFILE_NO_EMAIL_HTML, "html.parser")
-    assert _extract_email_from_profile(soup, STAT_CONFIG) is None
+    assert extract_email_from_profile(soup, STAT_CONFIG) is None
 
 
 def test_extract_email_prefers_mailto_and_skips_noise():
@@ -141,7 +141,7 @@ def test_extract_email_prefers_mailto_and_skips_noise():
     """
     soup = BeautifulSoup(html, "html.parser")
     # webmaster@ is in the noise set, so the real address wins.
-    assert _extract_email_from_profile(soup, STAT_CONFIG) == "jane@stat.berkeley.edu"
+    assert extract_email_from_profile(soup, STAT_CONFIG) == "jane@stat.berkeley.edu"
 
 
 def test_dedup_collapses_same_profile_url():
@@ -150,6 +150,6 @@ def test_dedup_collapses_same_profile_url():
         {"name": "Ani Adhikari", "url": "https://x/people/ani-adhikari"},  # 2nd section
         {"name": "Peng Ding", "url": "https://x/people/peng-ding"},
     ]
-    out = _dedup_by_profile_url(people)
+    out = dedup_by_profile_url(people)
     assert len(out) == 2
     assert [p["name"] for p in out] == ["Ani Adhikari", "Peng Ding"]

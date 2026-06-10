@@ -20,13 +20,6 @@ Usage:
 from __future__ import annotations
 
 from . import ucb_common
-from .ucb_common import (  # re-exported for tests / external callers
-    dedup_by_profile_url as _dedup_by_profile_url,
-    extract_email_from_profile as _extract_email_from_profile,
-    merge_into_processed,
-    normalize_faculty,
-    scrape_open_berkeley_faculty as _scrape_open_berkeley_faculty,
-)
 
 STAT_CONFIG = {
     "source": "ucb_stat_faculty",
