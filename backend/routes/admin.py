@@ -21,6 +21,8 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from backend.data_loader import load_opportunities
+from backend.routes.push import _required_env
+from backend.routes.saved_searches import _parse_iso_ts
 
 router = APIRouter()
 
@@ -434,6 +436,97 @@ def _find_baseline(history: list[dict], days_ago: int) -> dict:
         else:
             break
     return best
+
+
+_SAVED_SEARCH_STALE_HOURS = 48
+_SAVED_SEARCH_FETCH_LIMIT = 1000
+
+
+@router.get("/admin/saved-search-health")
+async def saved_search_health(
+    token: str | None = Query(default=None),
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+):
+    """Saved-search refresh-cron + email-digest health rollup.
+
+    Aggregates the per-row run state (migration 011) and digest state (013)
+    from saved_searches so the dead-cron case is visible on the admin
+    dashboard without Supabase console access. Reports env *presence* only
+    (resend_configured) — never the values. When Supabase env is missing
+    (local dev) returns status "unconfigured" instead of 500, mirroring the
+    cron routes' skip behaviour.
+    """
+    _authenticate(token, x_admin_token)
+
+    env_result = _required_env(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
+    if isinstance(env_result, tuple):
+        _, missing = env_result
+        return {"status": "unconfigured", "missing": missing}
+    env = env_result
+
+    supabase_url = env["SUPABASE_URL"].rstrip("/")
+    headers = {
+        "apikey": env["SUPABASE_SERVICE_ROLE_KEY"],
+        "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE_KEY']}",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{supabase_url}/rest/v1/saved_searches",
+                params={
+                    "select": "id,last_run_at,digest_opt_in,digest_unsubscribed_at,last_digest_sent_at",
+                    "limit": str(_SAVED_SEARCH_FETCH_LIMIT),
+                },
+                headers=headers,
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Supabase unreachable: {e}") from e
+
+    now = datetime.now(UTC)
+    stale_cutoff = now - timedelta(hours=_SAVED_SEARCH_STALE_HOURS)
+    opted_in = 0
+    never_run = 0
+    stale = 0
+    opted_in_never_sent = 0
+    last_run_max: datetime | None = None
+    last_digest_max: datetime | None = None
+
+    for row in rows:
+        run_at = _parse_iso_ts(row.get("last_run_at"))
+        if run_at is None:
+            never_run += 1
+        else:
+            if last_run_max is None or run_at > last_run_max:
+                last_run_max = run_at
+            if run_at < stale_cutoff:
+                stale += 1
+        sent_at = _parse_iso_ts(row.get("last_digest_sent_at"))
+        if sent_at is not None and (last_digest_max is None or sent_at > last_digest_max):
+            last_digest_max = sent_at
+        if row.get("digest_opt_in") and not row.get("digest_unsubscribed_at"):
+            opted_in += 1
+            if sent_at is None:
+                opted_in_never_sent += 1
+
+    return {
+        "status": "ok",
+        "searches": {"total": len(rows), "digest_opt_in": opted_in},
+        "refresh": {
+            "last_run_at": last_run_max.isoformat() if last_run_max else None,
+            "never_run": never_run,
+            "stale_over_48h": stale,
+        },
+        "digest": {
+            "last_sent_at": last_digest_max.isoformat() if last_digest_max else None,
+            "opted_in_never_sent": opted_in_never_sent,
+        },
+        "resend_configured": bool(
+            os.environ.get("RESEND_API_KEY") and os.environ.get("RESEND_FROM_EMAIL")
+        ),
+        "generated_at": now.isoformat(),
+    }
 
 
 @router.post("/admin/trigger-refresh")

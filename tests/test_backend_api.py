@@ -1676,6 +1676,167 @@ class TestAdminTriggerRefresh:
         assert "GitHub API unreachable" in r.json()["detail"]
 
 
+def _install_saved_search_rows(monkeypatch, *, rows=None, raise_error=None, calls=None):
+    """Stub admin.httpx.AsyncClient for /admin/saved-search-health.
+
+    The route's only network traffic is one GET against the Supabase REST
+    saved_searches table; tests must never reach a real project.
+    """
+    from backend.routes import admin as admin_mod
+
+    class _Resp:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return rows or []
+
+        def raise_for_status(self):
+            return None
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, **kwargs):
+            if calls is not None:
+                calls.append({"url": url, **kwargs})
+            if raise_error is not None:
+                raise raise_error
+            return _Resp()
+
+    monkeypatch.setattr(admin_mod.httpx, "AsyncClient", _Client)
+
+
+def _set_saved_search_health_env(monkeypatch):
+    monkeypatch.setenv("ADMIN_TOKEN", "ok")
+    monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.delenv("RESEND_API_KEY", raising=False)
+    monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
+
+
+class TestAdminSavedSearchHealth:
+    """Contract lock for ``GET /admin/saved-search-health``.
+
+    The admin dashboard's saved-search card renders straight off this shape:
+    searches totals, refresh-cron run state (011), digest state (013), and
+    Resend env presence. Pins the auth gate, the graceful "unconfigured"
+    response when Supabase env is missing, and the aggregation math.
+    """
+
+    def test_503_when_admin_token_unset(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        r = client.get("/api/admin/saved-search-health")
+        assert r.status_code == 503
+
+    def test_401_when_wrong_token(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        r = client.get("/api/admin/saved-search-health?token=wrong")
+        assert r.status_code == 401
+
+    def test_unconfigured_when_supabase_env_missing(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        r = client.get("/api/admin/saved-search-health?token=ok")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "unconfigured"
+        assert "SUPABASE_URL" in body["missing"]
+
+    def test_healthy_shape_aggregates_run_and_digest_state(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        _set_saved_search_health_env(monkeypatch)
+        now = datetime.now(UTC)
+        fresh = (now - timedelta(hours=2)).isoformat()
+        stale = (now - timedelta(hours=72)).isoformat()
+        sent = (now - timedelta(days=3)).isoformat()
+        rows = [
+            # ran recently, opted in, digest already sent
+            {"id": "a", "last_run_at": fresh, "digest_opt_in": True,
+             "digest_unsubscribed_at": None, "last_digest_sent_at": sent},
+            # never run, opted in, never sent
+            {"id": "b", "last_run_at": None, "digest_opt_in": True,
+             "digest_unsubscribed_at": None, "last_digest_sent_at": None},
+            # stale run, no digest
+            {"id": "c", "last_run_at": stale, "digest_opt_in": False,
+             "digest_unsubscribed_at": None, "last_digest_sent_at": None},
+            # unsubscribed — must not count as opted in
+            {"id": "d", "last_run_at": fresh, "digest_opt_in": True,
+             "digest_unsubscribed_at": now.isoformat(), "last_digest_sent_at": None},
+        ]
+        calls: list = []
+        _install_saved_search_rows(monkeypatch, rows=rows, calls=calls)
+
+        r = client.get("/api/admin/saved-search-health?token=ok")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["searches"] == {"total": 4, "digest_opt_in": 2}
+        assert body["refresh"]["last_run_at"] == fresh
+        assert body["refresh"]["never_run"] == 1
+        assert body["refresh"]["stale_over_48h"] == 1
+        assert body["digest"]["last_sent_at"] == sent
+        assert body["digest"]["opted_in_never_sent"] == 1
+        assert body["resend_configured"] is False
+        assert "generated_at" in body
+
+        assert len(calls) == 1
+        assert calls[0]["url"].endswith("/rest/v1/saved_searches")
+        assert "last_run_at" in calls[0]["params"]["select"]
+
+    def test_empty_table_returns_zeroes_not_error(self, monkeypatch):
+        _set_saved_search_health_env(monkeypatch)
+        _install_saved_search_rows(monkeypatch, rows=[])
+        r = client.get("/api/admin/saved-search-health?token=ok")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["searches"] == {"total": 0, "digest_opt_in": 0}
+        assert body["refresh"]["last_run_at"] is None
+        assert body["digest"]["last_sent_at"] is None
+
+    def test_resend_configured_requires_both_env_vars(self, monkeypatch):
+        _set_saved_search_health_env(monkeypatch)
+        _install_saved_search_rows(monkeypatch, rows=[])
+        monkeypatch.setenv("RESEND_API_KEY", "re_secret_value_123")
+        r = client.get("/api/admin/saved-search-health?token=ok")
+        assert r.json()["resend_configured"] is False
+
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        r = client.get("/api/admin/saved-search-health?token=ok")
+        body = r.json()
+        assert body["resend_configured"] is True
+        # presence only — the key value itself must never appear anywhere
+        assert "re_secret_value_123" not in json.dumps(body)
+
+    def test_502_when_supabase_unreachable(self, monkeypatch):
+        import httpx
+
+        _set_saved_search_health_env(monkeypatch)
+        _install_saved_search_rows(monkeypatch, raise_error=httpx.ConnectError("boom"))
+        r = client.get("/api/admin/saved-search-health?token=ok")
+        assert r.status_code == 502
+        assert "Supabase unreachable" in r.json()["detail"]
+
+    def test_accepts_token_via_header(self, monkeypatch):
+        _set_saved_search_health_env(monkeypatch)
+        _install_saved_search_rows(monkeypatch, rows=[])
+        r = client.get(
+            "/api/admin/saved-search-health",
+            headers={"X-Admin-Token": "ok"},
+        )
+        assert r.status_code == 200
+
+
 def _set_push_env(monkeypatch):
     monkeypatch.setenv("CRON_SECRET", "cron-ok")
     monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
