@@ -1,6 +1,6 @@
 # OpportunityEngine
 
-A personalized research and internship matching engine for UIUC undergraduates. Automatically collects 1900+ opportunities from 7 sources (UIUC SRO, NSF REU, faculty directories, Handshake, OUR RSS, Research Park, manual entries), then ranks and explains each match based on your profile.
+A personalized research and internship matching engine for UIUC undergraduates. Automatically collects 4,600+ opportunities from 12 sources (UIUC SRO, NSF REU, faculty directories, Handshake, Simplify, OUR RSS, Research Park, manual entries), then ranks and explains each match based on your profile.
 
 Not a job board. A decision engine that answers three questions:
 1. **Can I apply?** (Eligibility)
@@ -38,10 +38,10 @@ UIUC scatters opportunities across 7+ platforms with no unified view:
 | Source | What it has | Problem | Our solution |
 |--------|------------|---------|------|
 | OUR Blog | Faculty-posted research positions | RSS feed exists but nobody parses it | ✅ Auto-parsed |
-| SRO Database | 272+ external summer programs | 12 pages of unfiltered Drupal listings | ✅ 272 scraped |
+| SRO Database | 272+ external summer programs | 12 pages of unfiltered Drupal listings | ✅ 279 scraped |
 | Handshake | Jobs + some research | Login-gated, mixes everything together | ✅ Cookie-auth collector |
-| Department pages | Lab-specific openings | Scattered across 50+ faculty sites | ✅ 924 faculty from 10 depts |
-| External REUs | 500+ NSF-funded programs | Requires knowing where to look | ✅ 476 from NSF API |
+| Department pages | Lab-specific openings | Scattered across 50+ faculty sites | ✅ 2,000+ faculty from 30+ depts |
+| External REUs | 500+ NSF-funded programs | Requires knowing where to look | ✅ 570 from NSF API |
 | Research Park | 800+ intern positions/year | Separate site, not linked to research | ✅ Scraped |
 
 International freshmen have it worst: they can't tell what's realistic, what requires citizenship, or where to even start.
@@ -61,13 +61,13 @@ International freshmen have it worst: they can't tell what's realistic, what req
 ## Architecture
 
 ```
-Data Sources (10+ collectors: SRO, NSF REU, Faculty Dirs, Handshake, OUR RSS, Research Park, Manual, …)
+Data Sources (12+ collectors: SRO, NSF REU, Faculty Dirs, Handshake, Simplify, OUR RSS, Research Park, Manual, …)
         │
         ▼
 Normalization Pipeline (raw text → structured fields → skill/keyword inference)
         │
         ▼
-Opportunity Database (1900+ normalized records, auto-refreshed Mon/Thu)
+Opportunity Database (4,600+ normalized records, auto-refreshed Mon/Thu)
         │
         ▼
 Matching Engine (eligibility × readiness × upside + TF-IDF semantic similarity)
@@ -144,12 +144,12 @@ opportunity-filter-engine/
 │   │   └── lib/              # API client, supabase wrapper, saved-searches, types
 │   └── e2e/                  # Playwright specs
 ├── src/                      # Core Python engine
-│   ├── collectors/           # 10+ source-specific scrapers
-│   │   ├── uiuc_sro.py       # SRO database (272 opportunities)
-│   │   ├── nsf_reu.py        # NSF REU Awards API (476)
-│   │   ├── uiuc_faculty.py   # Faculty directories, 10 depts (924)
-│   │   ├── handshake.py      # Handshake with cookie auth (75+)
-│   │   ├── uiuc_our_rss.py   # OUR RSS feed (25)
+│   ├── collectors/           # 12+ source-specific scrapers
+│   │   ├── uiuc_sro.py       # SRO database (279 opportunities)
+│   │   ├── nsf_reu.py        # NSF REU Awards API (570)
+│   │   ├── uiuc_faculty.py   # Faculty directories, 30+ depts (2000+)
+│   │   ├── handshake.py      # Handshake with cookie auth (71)
+│   │   ├── uiuc_our_rss.py   # OUR RSS feed (26)
 │   │   ├── uiuc_other.py     # Research Park, LAS hubs, URAP, Grainger, etc.
 │   │   └── …                 # uiuc_drp, uiuc_siebel, uiuc_urap, uiuc_ursa
 │   ├── matcher/              # Three-layer scoring + TF-IDF
@@ -159,7 +159,7 @@ opportunity-filter-engine/
 ├── supabase/
 │   └── migrations/           # SQL migrations (RLS, anon auth, saved searches, …)
 ├── data/
-│   ├── processed/            # 1900+ normalized opportunities
+│   ├── processed/            # 4,600+ normalized opportunities
 │   └── manual_entries/       # Hand-curated entries
 ├── .github/workflows/        # CI + Mon/Thu refresh + daily saved-search cron
 └── tests/                    # Integration tests

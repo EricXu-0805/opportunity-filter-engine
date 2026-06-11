@@ -18,7 +18,7 @@
 
 ## Phase 2 — Build Opportunity Dataset ✅
 
-**Status:** Complete (greatly exceeded original 50-100 target — now at 1900+ opportunities across 10+ collectors)
+**Status:** Complete (greatly exceeded original 50-100 target — now at 4,600+ opportunities across 12+ collectors)
 
 **Done:**
 - [x] OUR Blog RSS collector (`src/collectors/uiuc_our_rss.py`)
