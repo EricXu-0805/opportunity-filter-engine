@@ -327680,7 +327680,7 @@
     "contact_email": "adhikari@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/ani-adhikari",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -327704,8 +327704,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Teaching Professor Ani Adhikari in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -327747,7 +327747,7 @@
     "contact_email": "andrewbray@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/andrew-bray",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -327771,8 +327771,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate Teaching Professor Andrew Bray in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -327814,7 +327814,7 @@
     "contact_email": null,
     "url": "https://statistics.berkeley.edu/people/jennifer-chayes",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -327838,8 +327838,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Distinguished Professor and Dean, College of Computing, Data Science, and Society Jennifer Chayes in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -327881,7 +327881,7 @@
     "contact_email": "acoston@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/amanda-coston",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -327905,8 +327905,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Professor Amanda Coston in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -327948,7 +327948,7 @@
     "contact_email": "pengdingpku@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/peng-ding",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -327972,8 +327972,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Peng Ding in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328015,7 +328015,7 @@
     "contact_email": "sandrine@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/sandrine-dudoit-0",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328039,8 +328039,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Sandrine Dudoit in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328082,7 +328082,7 @@
     "contact_email": "evans@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/steven-evans",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328106,8 +328106,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Distinguished Professor Steven Evans in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328149,7 +328149,7 @@
     "contact_email": "afeller@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/avi-feller",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328173,8 +328173,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate Professor Avi Feller in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328216,7 +328216,7 @@
     "contact_email": "wfithian@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/will-fithian",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328240,8 +328240,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate Professor Will Fithian in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328283,7 +328283,7 @@
     "contact_email": "sganguly@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/shirshendu-ganguly",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328307,8 +328307,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate Professor Shirshendu Ganguly in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328350,7 +328350,7 @@
     "contact_email": "rgiordano@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/ryan-giordano-0",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328374,8 +328374,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Professor Ryan Giordano in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328417,7 +328417,7 @@
     "contact_email": "vadicgor@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/vadim-gorin",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328441,8 +328441,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Vadim Gorin in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328484,7 +328484,7 @@
     "contact_email": "jdgg@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/joshua-grossman",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328508,8 +328508,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Teaching Professor Joshua Grossman in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328551,7 +328551,7 @@
     "contact_email": "agun@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/adityanand-guntuboyina",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328575,8 +328575,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor and Deputy Chair Adityanand Guntuboyina in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328618,7 +328618,7 @@
     "contact_email": "liberty.hamilton@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/liberty-hamilton",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328642,8 +328642,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Professor Liberty Hamilton in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328685,7 +328685,7 @@
     "contact_email": "alanmh@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/alan-hammond-0",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328709,8 +328709,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Alan Hammond in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328752,7 +328752,7 @@
     "contact_email": "hhuang@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/haiyan-huang",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328776,8 +328776,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Haiyan Huang in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328819,7 +328819,7 @@
     "contact_email": "alex.huth@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/alex-huth",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328843,8 +328843,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Professor Alex Huth in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328886,7 +328886,7 @@
     "contact_email": "jasondlee@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/jason-lee-0",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328910,8 +328910,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate Professor Jason Lee in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -328953,7 +328953,7 @@
     "contact_email": "mmahoney@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/michael-mahoney",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -328977,8 +328977,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Adjunct Professor Michael Mahoney in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329020,7 +329020,7 @@
     "contact_email": "jon@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/jon-mcauliffe-0",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329044,8 +329044,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Adjunct Professor Jon McAuliffe in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329087,7 +329087,7 @@
     "contact_email": "songmei@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/song-mei",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329111,8 +329111,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Professor Song Mei in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329154,7 +329154,7 @@
     "contact_email": "nielsen@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329178,8 +329178,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Rasmus Nielsen in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329221,7 +329221,7 @@
     "contact_email": "paciorek@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/christopher-paciorek",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329245,8 +329245,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Adjunct Professor Christopher Paciorek in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329288,7 +329288,7 @@
     "contact_email": "fernando.perez@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/fernando-perez",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329312,8 +329312,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate Professor Fernando Pérez in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329355,7 +329355,7 @@
     "contact_email": "spi@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/sam-pimentel",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329379,8 +329379,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate  Professor Sam Pimentel in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329422,7 +329422,7 @@
     "contact_email": "epurdom@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/elizabeth-purdom",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329446,8 +329446,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Associate Professor Elizabeth Purdom in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329489,7 +329489,7 @@
     "contact_email": "sinclair@cs.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/alistair-sinclair",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329513,8 +329513,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Alistair Sinclair in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329556,7 +329556,7 @@
     "contact_email": "yss@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/yun-s-song",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329580,8 +329580,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Yun S. Song in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329623,7 +329623,7 @@
     "contact_email": "stark@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/philip-b-stark",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329647,8 +329647,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Distinguished Professor Philip B. Stark in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329690,7 +329690,7 @@
     "contact_email": "jsteinhardt@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/jacob-steinhardt",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329714,8 +329714,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Professor Jacob Steinhardt in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329757,7 +329757,7 @@
     "contact_email": "alexstrang@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/alexander-strang",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329781,8 +329781,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Teaching Professor Alexander Strang in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329824,7 +329824,7 @@
     "contact_email": "ryantibs@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/ryan-tibshirani",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329848,8 +329848,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor and Chair Ryan Tibshirani in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329891,7 +329891,7 @@
     "contact_email": "laan@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/mark-van-der-laan",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329915,8 +329915,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Distinguished Professor Mark van der Laan in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -329958,7 +329958,7 @@
     "contact_email": "binyu@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/bin-yu-0",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -329982,8 +329982,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Distinguished Professor Bin Yu in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330025,7 +330025,7 @@
     "contact_email": "zhivotovskiy@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/nikita-zhivotovskiy",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330049,8 +330049,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Assistant Professor Nikita Zhivotovskiy in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330092,7 +330092,7 @@
     "contact_email": "alucas@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/adam-lucas",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330116,8 +330116,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Continuing Lecturer Adam Lucas in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330159,7 +330159,7 @@
     "contact_email": "amassari@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/andrea-massari",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330183,8 +330183,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Lecturer Andrea Massari in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330226,7 +330226,7 @@
     "contact_email": "gastonsanchez@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/gaston-sanchez",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330250,8 +330250,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Continuing Lecturer Gaston Sanchez in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330293,7 +330293,7 @@
     "contact_email": "jeremysanchez@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/jeremy-eli-sanchez-0",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330317,8 +330317,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Lecturer Jeremy Eli Sanchez in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330360,7 +330360,7 @@
     "contact_email": "shobhana@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/shobhana-murali-stoyanov",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330384,8 +330384,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Continuing Lecturer Shobhana Murali Stoyanov in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330427,7 +330427,7 @@
     "contact_email": "wetchler@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/everett-wetchler",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330451,8 +330451,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Lecturer Everett Wetchler in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330494,7 +330494,7 @@
     "contact_email": "hchardon@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/hugo-chardon",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330518,8 +330518,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Neyman Visiting Assistant Professor Hugo Chardon in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330561,7 +330561,7 @@
     "contact_email": null,
     "url": "https://statistics.berkeley.edu/people/arash-jamshidpey",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330585,8 +330585,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Neyman Visiting Assistant Professor Arash Jamshidpey in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330628,7 +330628,7 @@
     "contact_email": "bartlett@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/peter-bartlett",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330652,8 +330652,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor of the Graduate School Peter Bartlett in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330695,7 +330695,7 @@
     "contact_email": "bickel@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/peter-bickel",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330719,8 +330719,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor of the Graduate School Peter Bickel in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330762,7 +330762,7 @@
     "contact_email": "jewell@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/nicholas-p-jewell",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330786,8 +330786,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Emeritus Nicholas P. Jewell in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330829,7 +330829,7 @@
     "contact_email": "jordan@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/michael-jordan",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330853,8 +330853,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor of the Graduate School Michael Jordan in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330896,7 +330896,7 @@
     "contact_email": "nolan@stat.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/deborah-nolan",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330920,8 +330920,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor of the Graduate School Deborah Nolan in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -330963,7 +330963,7 @@
     "contact_email": "pitman@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/jim-pitman",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -330987,8 +330987,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor of the Graduate School Jim Pitman in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -331030,7 +331030,7 @@
     "contact_email": "bernd@math.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/bernd-sturmfels",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -331054,8 +331054,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor Emeritus Bernd Sturmfels in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -331097,7 +331097,7 @@
     "contact_email": "wachter@demog.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/ken-wachter",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -331121,8 +331121,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Professor of the Graduate School Ken Wachter in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -331164,7 +331164,7 @@
     "contact_email": "amalaa@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/ahmed-alaa",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -331188,8 +331188,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Affiliated Assistant Professor Ahmed Alaa in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -331231,7 +331231,7 @@
     "contact_email": "ekhartman@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/erin-hartman",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -331255,8 +331255,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Affiliated Assistant Professor Erin Hartman in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -331298,7 +331298,7 @@
     "contact_email": "jiantao@eecs.berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/jiantao-jiao",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -331322,8 +331322,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Affiliated Assistant Professor Jiantao Jiao in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -331365,7 +331365,7 @@
     "contact_email": "lexinli@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/lexin-li",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -331389,8 +331389,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Affiliated Professor Lexin ​Li in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
@@ -331432,7 +331432,7 @@
     "contact_email": "yala@berkeley.edu",
     "url": "https://statistics.berkeley.edu/people/adam-yala",
     "location": "Berkeley, CA",
-    "on_campus": true,
+    "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
     "paid": "unknown",
@@ -331456,8 +331456,8 @@
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus research — no work authorization required",
+      "international_friendly": "unknown",
+      "work_auth_notes": "",
       "eligibility_text_raw": "Research opportunity with Affiliated Assistant Professor Adam Yala in the Department of Statistics at UC Berkeley. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
