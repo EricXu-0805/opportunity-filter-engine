@@ -4,6 +4,7 @@ import { memo } from 'react';
 import MatchCard from '@/components/MatchCard';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
+import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import type { TFunc } from './types';
 
 const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
@@ -14,9 +15,11 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.interaction === next.interaction &&
     prev.isNew === next.isNew &&
     prev.profile === next.profile &&
+    prev.feedbackVerdict === next.feedbackVerdict &&
     prev.onDraftEmail === next.onDraftEmail &&
     prev.onToggleFavorite === next.onToggleFavorite &&
-    prev.onTrackInteraction === next.onTrackInteraction
+    prev.onTrackInteraction === next.onTrackInteraction &&
+    prev.onFeedback === next.onFeedback
   );
 });
 MemoizedMatchCard.displayName = 'MemoizedMatchCard';
@@ -28,9 +31,11 @@ export interface MatchListProps {
   focusedIdx: number;
   favs: Set<string>;
   interactions: Map<string, InteractionType>;
+  feedback: Map<string, MatchVerdict>;
   onDraftEmail: (opportunityId: string) => void;
   onToggleFavorite: (opportunityId: string) => void;
   onTrackInteraction: (opportunityId: string, type: InteractionType) => void;
+  onFeedback: (opportunityId: string, verdict: MatchVerdict | null, context: MatchFeedbackContext) => void;
   page: number;
   totalPages: number;
   onPageChange: (next: number) => void;
@@ -44,9 +49,11 @@ export function MatchList({
   focusedIdx,
   favs,
   interactions,
+  feedback,
   onDraftEmail,
   onToggleFavorite,
   onTrackInteraction,
+  onFeedback,
   page,
   totalPages,
   onPageChange,
@@ -92,6 +99,8 @@ export function MatchList({
                 interaction={interactions.get(match.opportunity.id)}
                 onTrackInteraction={onTrackInteraction}
                 isNew={isNew}
+                feedbackVerdict={feedback.get(match.opportunity.id) ?? null}
+                onFeedback={onFeedback}
               />
             </div>
           );

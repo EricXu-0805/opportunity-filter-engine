@@ -20,6 +20,12 @@ import {
   type FilterPreset,
 } from '@/lib/filter-presets';
 import { saveSearch } from '@/lib/saved-searches';
+import {
+  getMatchFeedback,
+  setMatchFeedback,
+  type MatchFeedbackContext,
+  type MatchVerdict,
+} from '@/lib/match-feedback';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import {
   getAuthState,
@@ -201,6 +207,24 @@ function ResultsContent() {
     });
   }, []);
 
+  // Match-accuracy thumbs (Phase 9.6). Optimistic like favorites; the card
+  // passes bucket + final_score along so the persisted row stays
+  // interpretable after the scorer's weights change.
+  const [feedback, setFeedback] = useState<Map<string, MatchVerdict>>(new Map());
+  const handleFeedback = useCallback((
+    oppId: string,
+    verdict: MatchVerdict | null,
+    context: MatchFeedbackContext,
+  ) => {
+    setFeedback(prev => {
+      const next = new Map(prev);
+      if (verdict) next.set(oppId, verdict);
+      else next.delete(oppId);
+      return next;
+    });
+    setMatchFeedback(oppId, verdict, context).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (hasStoredProfile === false) router.replace('/');
   }, [hasStoredProfile, router]);
@@ -227,6 +251,31 @@ function ResultsContent() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination to page 1 when filter inputs change; key-remount would lose focus on the search box mid-typing, which is worse than the cascading render
   useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy]);
+
+  // Hydrate saved verdicts for the cards currently on screen. Fetching per
+  // visible page (instead of all 600+ result ids at once) keeps the
+  // PostgREST `in=(...)` URL bounded; feedbackFetchedRef dedupes so paging
+  // back and forth doesn't refetch ids we've already asked about.
+  const feedbackFetchedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = paginated
+      .map(m => m.opportunity.id)
+      .filter(id => !feedbackFetchedRef.current.has(id));
+    if (ids.length === 0) return;
+    ids.forEach(id => feedbackFetchedRef.current.add(id));
+    let cancelled = false;
+    getMatchFeedback(ids)
+      .then((d) => {
+        if (cancelled || d.size === 0) return;
+        setFeedback(prev => {
+          const next = new Map(prev);
+          d.forEach((verdict, id) => next.set(id, verdict));
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [paginated]);
 
   const dismissedCount = useMemo(
     () => Array.from(interactions.values()).filter(v => v === 'dismissed').length,
@@ -489,9 +538,11 @@ function ResultsContent() {
               focusedIdx={focusedIdx}
               favs={favs}
               interactions={interactions}
+              feedback={feedback}
               onDraftEmail={openEmailModal}
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
+              onFeedback={handleFeedback}
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}

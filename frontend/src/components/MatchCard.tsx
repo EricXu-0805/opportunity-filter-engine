@@ -20,6 +20,8 @@ import {
   BookOpen,
   Loader2,
   Sparkles,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import Badge from './Badge';
 import ScoreBar from './ScoreBar';
@@ -28,6 +30,7 @@ import { getGapAnalysis } from '@/lib/api';
 import type { GapAnalysis } from '@/lib/api';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
+import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 
@@ -44,6 +47,8 @@ export interface MatchCardProps {
   interaction?: InteractionType;
   onTrackInteraction?: (opportunityId: string, type: InteractionType) => void;
   isNew?: boolean;
+  feedbackVerdict?: MatchVerdict | null;
+  onFeedback?: (opportunityId: string, verdict: MatchVerdict | null, context: MatchFeedbackContext) => void;
 }
 
 function getBucketLabel(
@@ -97,7 +102,7 @@ const URGENCY_BORDER: Record<string, string> = {
   passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
 };
 
-export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction, isNew }: MatchCardProps) {
+export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction, isNew, feedbackVerdict, onFeedback }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
@@ -227,6 +232,31 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           <div className="flex-1">
             <ScoreBar score={match.final_score} size="md" bucket={match.bucket} />
           </div>
+          {onFeedback && (
+            <div className="flex items-center gap-0.5 shrink-0">
+              <span className="hidden sm:inline text-[11px] text-gray-400 mr-1">
+                {t('card.feedback.prompt')}
+              </span>
+              <button
+                type="button"
+                onClick={() => onFeedback(opp.id, feedbackVerdict === 'up' ? null : 'up', { bucket: match.bucket, finalScore: match.final_score })}
+                aria-label={t('card.feedback.up')}
+                aria-pressed={feedbackVerdict === 'up'}
+                className={`p-1 rounded-lg transition-colors duration-200 ${feedbackVerdict === 'up' ? 'text-emerald-500 bg-emerald-50' : 'text-gray-300 hover:text-emerald-400 hover:bg-emerald-50'}`}
+              >
+                <ThumbsUp className={`w-3.5 h-3.5 ${feedbackVerdict === 'up' ? 'fill-emerald-200' : ''}`} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onFeedback(opp.id, feedbackVerdict === 'down' ? null : 'down', { bucket: match.bucket, finalScore: match.final_score })}
+                aria-label={t('card.feedback.down')}
+                aria-pressed={feedbackVerdict === 'down'}
+                className={`p-1 rounded-lg transition-colors duration-200 ${feedbackVerdict === 'down' ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:text-red-400 hover:bg-red-50'}`}
+              >
+                <ThumbsDown className={`w-3.5 h-3.5 ${feedbackVerdict === 'down' ? 'fill-red-200' : ''}`} />
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
