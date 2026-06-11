@@ -6,6 +6,7 @@ import { AlertList } from './AlertList';
 import { CollectorStatusSection } from './CollectorStatusSection';
 import { FreshnessBanner } from './FreshnessBanner';
 import { RefreshTriggerSection } from './RefreshTriggerSection';
+import { SavedSearchHealthSection } from './SavedSearchHealthSection';
 import { SourceFreshnessChart } from './SourceFreshnessChart';
 import { SourceTable } from './SourceTable';
 import { StatCard } from './StatCard';
@@ -19,6 +20,7 @@ import type {
   FieldKey,
   HealthResponse,
   HistoryEntry,
+  SavedSearchHealth,
   TFunc,
   TriggerStatus,
   WorstField,
@@ -30,6 +32,7 @@ export function AdminDashboard({
   collectorStatus,
   collectorHistory,
   health,
+  savedSearchHealth,
   loading,
   error,
   activeFieldFilter,
@@ -47,6 +50,7 @@ export function AdminDashboard({
   collectorStatus: CollectorStatus | null;
   collectorHistory: CollectorHistoryEntry[];
   health: HealthResponse | null;
+  savedSearchHealth: SavedSearchHealth | null;
   loading: boolean;
   error: string | null;
   activeFieldFilter: FieldKey | null;
@@ -138,6 +142,8 @@ export function AdminDashboard({
             <CollectorStatusSection status={collectorStatus} t={t} />
 
             <SourceFreshnessChart history={collectorHistory} t={t} />
+
+            <SavedSearchHealthSection health={savedSearchHealth} t={t} />
 
             <RefreshTriggerSection
               status={triggerStatus}

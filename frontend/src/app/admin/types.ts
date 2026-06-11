@@ -104,6 +104,16 @@ export interface HealthResponse {
   checked_at: string;
 }
 
+export interface SavedSearchHealth {
+  status: 'ok' | 'unconfigured';
+  missing?: string[];
+  searches?: { total: number; digest_opt_in: number };
+  refresh?: { last_run_at: string | null; never_run: number; stale_over_48h: number };
+  digest?: { last_sent_at: string | null; opted_in_never_sent: number };
+  resend_configured?: boolean;
+  generated_at?: string;
+}
+
 export type TriggerStatus = {
   kind: 'idle' | 'busy' | 'ok' | 'err';
   message?: string;
