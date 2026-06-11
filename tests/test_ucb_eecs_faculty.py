@@ -1,0 +1,211 @@
+"""Offline tests for src.collectors.ucb_eecs_faculty.
+
+No network: the parser is exercised against a small HTML fixture that mirrors
+the real EECS directory markup (div.cc-image-list__item__content > h3 a, a
+<p> with the rank in the first <strong>, an inline Berkeley email, and
+/Research/Areas/ topic links). Locks in the parser, the Berkeley-specific
+normalized schema, and id stability.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+
+import requests
+from bs4 import BeautifulSoup
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from src.collectors import ucb_eecs_faculty as ucb
+from src.collectors.ucb_eecs_faculty import (
+    EECS_CONFIG,
+    _fetch_soup,
+    _scrape_eecs_faculty_list,
+    normalize_faculty,
+)
+
+# Four faculty cards (one fully populated, one missing email/areas, one with
+# the directory's no_email@ placeholder, one emeritus) plus a non-faculty card
+# with no Homepages link that must be ignored.
+FIXTURE_HTML = """
+<div class="cc-image-list__items">
+  <div class="cc-image-list__item">
+    <div class="cc-image-list__item__content">
+      <h3><span id="A"></span><a href="/Faculty/Homepages/abbeel.html">Pieter Abbeel</a></h3>
+      <p>
+        <strong>Professor</strong>
+        <br>746 Sutardja Dai Hall, (510) 642-7034; pabbeel@cs.berkeley.edu
+        <br><strong>Research Interests:</strong>
+        <a href="/Research/Areas/AI">Artificial Intelligence (AI)</a>;
+        <a href="/Research/Areas/CIR">Robotics</a>
+        <br><strong>Education:</strong> 2008, Ph.D., Stanford University
+      </p>
+    </div>
+  </div>
+  <div class="cc-image-list__item">
+    <div class="cc-image-list__item__content">
+      <h3><a href="/Faculty/Homepages/noemail.html">Jane Researcher</a></h3>
+      <p><strong>Associate Professor</strong><br>123 Cory Hall</p>
+    </div>
+  </div>
+  <div class="cc-image-list__item">
+    <div class="cc-image-list__item__content">
+      <h3><a href="/Faculty/Homepages/attwood.html">David Attwood</a></h3>
+      <p><strong>Professor</strong><br>no_email@eecs.berkeley.edu
+      <br><strong>Research Interests:</strong>
+      <a href="/Research/Areas/PHO">Optics</a></p>
+    </div>
+  </div>
+  <div class="cc-image-list__item">
+    <div class="cc-image-list__item__content">
+      <h3><a href="/Faculty/Homepages/sequin.html">Carlo H. Séquin</a></h3>
+      <p><strong>Professor Emeritus</strong><br>sequin@cs.berkeley.edu
+      <br><strong>Research Interests:</strong>
+      <a href="/Research/Areas/GR">Computer Graphics</a></p>
+    </div>
+  </div>
+  <div class="cc-image-list__item">
+    <div class="cc-image-list__item__content">
+      <h3><a href="/about/contact.html">Department Office</a></h3>
+      <p>Not a faculty profile link.</p>
+    </div>
+  </div>
+</div>
+"""
+
+
+def _scrape():
+    soup = BeautifulSoup(FIXTURE_HTML, "html.parser")
+    return _scrape_eecs_faculty_list(soup, EECS_CONFIG["base"])
+
+
+def test_parser_extracts_only_homepages_faculty():
+    people = _scrape()
+    # The contact-office card has no /Faculty/Homepages/ link, so it's skipped.
+    assert len(people) == 4
+    assert {p["name"] for p in people} == {
+        "Pieter Abbeel", "Jane Researcher", "David Attwood", "Carlo H. Séquin",
+    }
+
+
+def test_parser_pulls_email_title_and_research_areas():
+    abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
+    assert abbeel["email"] == "pabbeel@cs.berkeley.edu"
+    assert abbeel["title"] == "Professor"
+    assert "Robotics" in abbeel["research_areas"]
+    assert abbeel["url"].startswith("https://www2.eecs.berkeley.edu/Faculty/Homepages/")
+
+
+def test_parser_handles_missing_email_and_areas():
+    jane = next(p for p in _scrape() if p["name"] == "Jane Researcher")
+    assert "email" not in jane
+    assert "research_areas" not in jane
+
+
+def test_normalize_produces_berkeley_schema():
+    abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
+    opp = normalize_faculty(abbeel, EECS_CONFIG)
+    assert opp["source"] == "ucb_eecs_faculty"
+    assert opp["source_type"] == "faculty_research"
+    assert opp["organization"] == "University of California, Berkeley"
+    assert opp["location"] == "Berkeley, CA"
+    assert opp["pi_name"] == "Pieter Abbeel"
+    assert opp["contact_email"] == "pabbeel@cs.berkeley.edu"
+    assert opp["id"].startswith("faculty-ucb-eecs-")
+    # research areas drove real keywords, not just the broad fallback.
+    assert "robotics" in opp["keywords"]
+    assert opp["metadata"]["confidence_score"] == 0.7  # has email
+
+
+def test_normalize_falls_back_to_broad_field_without_areas():
+    jane = next(p for p in _scrape() if p["name"] == "Jane Researcher")
+    opp = normalize_faculty(jane, EECS_CONFIG)
+    assert opp["contact_email"] is None
+    assert opp["metadata"]["confidence_score"] == 0.5  # no email
+    assert opp["keywords"] == EECS_CONFIG["keywords"][:1]
+
+
+def test_id_is_deterministic():
+    abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
+    a = normalize_faculty(abbeel, EECS_CONFIG)["id"]
+    b = normalize_faculty(abbeel, EECS_CONFIG)["id"]
+    assert a == b
+
+
+def test_emeritus_and_retired_titles_are_skipped():
+    sequin = next(p for p in _scrape() if p["name"] == "Carlo H. Séquin")
+    assert sequin["title"] == "Professor Emeritus"
+    assert normalize_faculty(sequin, EECS_CONFIG) is None
+    for title in ("Professor Emerita", "Adjunct Professor, Retired",
+                  "Professor Emeritus, Professor in the Graduate School",
+                  "Professor in Residence Emeritus"):
+        person = {"name": "Some Person", "url": "https://example.test/p.html",
+                  "title": title, "email": "person@berkeley.edu"}
+        assert normalize_faculty(person, EECS_CONFIG) is None
+    active = {"name": "Some Person", "url": "https://example.test/p.html",
+              "title": "Associate Professor", "email": "person@berkeley.edu"}
+    assert normalize_faculty(active, EECS_CONFIG) is not None
+
+
+def test_placeholder_directory_email_is_treated_as_no_email():
+    attwood = next(p for p in _scrape() if p["name"] == "David Attwood")
+    assert "email" not in attwood
+    opp = normalize_faculty(attwood, EECS_CONFIG)
+    assert opp["contact_email"] is None
+    assert opp["metadata"]["confidence_score"] == 0.5
+
+
+def test_external_campus_semantics():
+    abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
+    opp = normalize_faculty(abbeel, EECS_CONFIG)
+    assert opp["on_campus"] is False
+    assert opp["eligibility"]["international_friendly"] == "unknown"
+    assert "no work authorization required" not in opp["eligibility"]["work_auth_notes"]
+
+
+def test_metadata_keys_are_canonical():
+    abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
+    opp = normalize_faculty(abbeel, EECS_CONFIG)
+    assert set(opp["metadata"]) == {
+        "confidence_score", "last_verified", "first_seen_at", "last_seen_at",
+        "is_active", "manually_reviewed", "notes", "faculty_title",
+        "research_areas_raw",
+    }
+    assert set(opp) == {
+        "id", "source", "source_url", "source_type", "title", "organization",
+        "department", "lab_or_program", "pi_name", "contact_email", "url",
+        "location", "on_campus", "remote_option", "opportunity_type", "paid",
+        "compensation_details", "deadline", "posted_date", "start_date",
+        "duration", "eligibility", "application", "description_raw",
+        "description_clean", "keywords", "metadata",
+    }
+
+
+# The live server omits a charset header, so requests' resp.text falls back to
+# ISO-8859-1 and mangles UTF-8 names ("Kanté" -> "KantÃ©"). _fetch_soup must
+# parse the response bytes instead.
+UTF8_NO_CHARSET_HTML = """
+<div class="cc-image-list__item__content">
+  <h3><a href="/Faculty/Homepages/kante.html">Boubacar Kanté</a></h3>
+  <p><strong>Professor</strong><br>kante@berkeley.edu
+  <br><strong>Research Interests:</strong>
+  <a href="/Research/Areas/PHO">Photonics</a></p>
+</div>
+""".encode()
+
+
+def test_fetch_soup_is_mojibake_free_without_charset_header(monkeypatch):
+    resp = requests.Response()
+    resp.status_code = 200
+    resp._content = UTF8_NO_CHARSET_HTML
+    resp.headers["Content-Type"] = "text/html"
+    resp.encoding = "ISO-8859-1"  # what requests infers when charset is absent
+    monkeypatch.setattr(ucb.requests, "get", lambda *a, **k: resp)
+
+    soup = _fetch_soup("https://example.test/faculty.html")
+    people = _scrape_eecs_faculty_list(soup, EECS_CONFIG["base"])
+    assert people[0]["name"] == "Boubacar Kanté"
+    opp = normalize_faculty(people[0], EECS_CONFIG)
+    assert opp["pi_name"] == "Boubacar Kanté"
+    assert "Ã" not in opp["title"]
