@@ -106,6 +106,9 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   handshake: 'results.filters.sourceHandshake',
   manual: 'results.filters.sourceManual',
   uiuc_our_rss: 'results.filters.sourceOurRss',
+  ucb_urap: 'results.filters.sourceUcbUrap',
+  ucb_eecs_faculty: 'results.filters.sourceUcbEecsFaculty',
+  ucb_stat_faculty: 'results.filters.sourceUcbStatFaculty',
 };
 
 export function sourceLabel(source: string, t: TFunc): string {

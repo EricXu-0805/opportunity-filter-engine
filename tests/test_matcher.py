@@ -999,16 +999,21 @@ class TestBatchedSimilarity:
 
 class TestFacultyUpsideReweight:
     """Faculty descriptions are template-generated, so the mentor/pathway keyword
-    scan is a flat constant — its weight is redirected to keyword_score (C4)."""
+    scan is a flat constant — its weight is redirected to keyword_score (C4).
+    The branch keys on source_type='faculty_research', which is carried by
+    exactly the faculty collectors (uiuc_faculty, ucb_eecs_faculty,
+    ucb_stat_faculty)."""
 
     def _prof(self):
         return {"research_interests_text": "x",
                 "desired_fields": ["machine learning", "computer vision"]}
 
-    def _opp(self, source, desc):
+    def _opp(self, source, desc, source_type=None, keywords=None):
         return {
             "source": source, "opportunity_type": "research",
-            "keywords": ["machine learning", "computer vision"],
+            "source_type": source_type or (
+                "faculty_research" if source.endswith("_faculty") else "internship"),
+            "keywords": keywords or ["machine learning", "computer vision"],
             "description_raw": desc,
             "eligibility": {"skills_required": ["Python"]},
         }
@@ -1022,6 +1027,31 @@ class TestFacultyUpsideReweight:
         rich = score_upside(prof, self._opp(
             "uiuc_faculty", "mentor training guided publication co-author conference thesis."))[0]
         assert plain == rich
+
+    def test_ucb_faculty_upside_unmoved_by_mentor_pathway_text(self):
+        prof = self._prof()
+        plain = score_upside(prof, self._opp("ucb_eecs_faculty", "Research opportunity."))[0]
+        rich = score_upside(prof, self._opp(
+            "ucb_eecs_faculty", "mentor training guided publication co-author conference thesis."))[0]
+        assert plain == rich
+
+    def test_ucb_faculty_keyword_gap_wider_than_non_faculty_formula(self):
+        # Faculty weighting puts 0.50 on keyword_score (vs 0.20 in the
+        # skill-signal non-faculty formula), so the same keyword-fit difference
+        # must separate two UCB faculty records by strictly more than it would
+        # separate two otherwise-identical non-faculty records.
+        prof = self._prof()
+        desc = "Research opportunity."
+        similar_kw = ["machine learning", "computer vision"]
+        dissimilar_kw = ["quantum chemistry"]
+
+        fac_hi = score_upside(prof, self._opp("ucb_eecs_faculty", desc, keywords=similar_kw))[0]
+        fac_lo = score_upside(prof, self._opp("ucb_eecs_faculty", desc, keywords=dissimilar_kw))[0]
+        non_hi = score_upside(prof, self._opp("handshake", desc, keywords=similar_kw))[0]
+        non_lo = score_upside(prof, self._opp("handshake", desc, keywords=dissimilar_kw))[0]
+
+        assert fac_hi > fac_lo
+        assert (fac_hi - fac_lo) > (non_hi - non_lo)
 
     def test_non_faculty_upside_still_responds_to_mentor_pathway(self):
         prof = self._prof()
