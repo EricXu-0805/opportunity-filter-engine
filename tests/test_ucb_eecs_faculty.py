@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.collectors import ucb_common
 from src.collectors.ucb_common import fetch_soup, normalize_faculty
 from src.collectors.ucb_eecs_faculty import (
+    EECS_AREA_KEYWORDS,
     EECS_CONFIG,
     _scrape_eecs_faculty_list,
 )
@@ -196,6 +197,86 @@ def test_metadata_keys_are_canonical():
         "duration", "eligibility", "application", "description_raw",
         "description_clean", "keywords", "metadata",
     }
+
+
+# --- umbrella-tag keyword mapping ---
+
+# The fixed umbrella research-area vocabulary observed across the live
+# directory's 153 records (the /Research/Areas/ link texts). Every tag must
+# yield real topical keywords: before the explicit mapping, substring-matching
+# against KEYWORD_BANK recovered only 10 distinct keywords and ~30% of records
+# fell back to the bare department keyword.
+EECS_UMBRELLA_TAGS = [
+    "Artificial Intelligence (AI)",
+    "Biosystems & Computational Biology (BIO)",
+    "Computer Architecture & Engineering (ARC)",
+    "Control, Intelligent Systems, and Robotics (CIR)",
+    "Cyber-Physical Systems and Design Automation (CPSDA)",
+    "Database Management Systems (DBMS)",
+    "Design, Modeling and Analysis (DMA)",
+    "Education (EDUC)",
+    "Graphics (GR)",
+    "Human-Computer Interaction (HCI)",
+    "Information, Data, Network, and Communication Sciences (IDNCS)",
+    "Integrated Circuits (INC)",
+    "Micro/Nano Electro Mechanical Systems (MEMS)",
+    "Operating Systems & Networking (OSNT)",
+    "Physical Electronics (PHY)",
+    "Power and Energy (ENE)",
+    "Programming Systems (PS)",
+    "Scientific Computing (SCI)",
+    "Security (SEC)",
+    "Signal Processing (SP)",
+    "Theory (THY)",
+]
+
+
+def _tagged_person(areas: str) -> dict:
+    return {"name": "Test Person", "url": "https://example.test/p.html",
+            "title": "Professor", "research_areas": areas}
+
+
+def test_every_umbrella_tag_yields_real_keywords():
+    fallback = EECS_CONFIG["keywords"][:1]
+    for tag in EECS_UMBRELLA_TAGS:
+        kws = normalize_faculty(_tagged_person(tag), EECS_CONFIG)["keywords"]
+        assert kws and kws != fallback, f"{tag!r} fell back to {kws}"
+
+
+def test_previously_unmapped_umbrella_tags_get_topical_keywords():
+    # Theory + ARC produced zero bank hits before the mapping (fallback-only).
+    opp = normalize_faculty(
+        _tagged_person("Theory (THY); Computer Architecture & Engineering (ARC)"),
+        EECS_CONFIG,
+    )
+    assert "algorithms" in opp["keywords"]
+    assert "computer architecture" in opp["keywords"]
+    assert EECS_CONFIG["keywords"][0] not in opp["keywords"]
+
+
+def test_mapped_keywords_do_not_duplicate_bank_matches():
+    # "Signal Processing (SP)" is both a mapping key and a verbatim bank hit.
+    opp = normalize_faculty(_tagged_person("Signal Processing (SP)"), EECS_CONFIG)
+    assert opp["keywords"].count("signal processing") == 1
+
+
+def test_mapped_keywords_pass_dq_junk_gates():
+    """Every mapped keyword lands in keywords[] (and the title parenthetical)
+    of real records, so it must clear the corpus-wide junk/fragment gates in
+    tests/test_opportunity_data_quality.py."""
+    import re
+
+    from src.collectors.uiuc_faculty import _is_junk_keyword
+
+    lead = re.compile(
+        r"^(?:such as|particularly|especially|including|namely|e\.g\.?)\b",
+        re.IGNORECASE,
+    )
+    for tag, kws in EECS_AREA_KEYWORDS.items():
+        assert kws, f"{tag!r} maps to no keywords"
+        for k in kws:
+            assert not _is_junk_keyword(k), f"{tag!r} -> junk keyword {k!r}"
+            assert not lead.match(k), f"{tag!r} -> fragment lead-in {k!r}"
 
 
 # The live server omits a charset header, so requests' resp.text falls back to

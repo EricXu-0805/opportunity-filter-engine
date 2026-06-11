@@ -15,12 +15,15 @@ A department config is a dict with:
     base       str   site origin for resolving relative profile links
     majors     list  majors attached to each opportunity (for matching)
     keywords   list  broad-field fallback keyword(s)
-    selectors  dict  CSS selectors: card, name, link, title, email_field
+    selectors  dict  CSS selectors: card, name, link, title, email_field,
+                     research_interests (list of profile-page selectors)
     work_auth_notes  str, optional  eligibility note (default "")
+    area_keywords    dict, optional  umbrella research-area tag -> topical
+                     keywords (tag names lowercased, "(ACRONYM)" stripped)
 
 The "Open Berkeley" listing pages expose only name + profile link + job title
-— NOT email or research interests. enrich_faculty_with_email() recovers the
-email by visiting each profile page. Records with no email found ship "lite"
+— NOT email or research interests. enrich_faculty_from_profiles() recovers
+both by visiting each profile page. Records with no email found ship "lite"
 (contact_email=None, confidence_score=0.5).
 """
 
@@ -99,6 +102,8 @@ KEYWORD_BANK = [
     "computational biology", "autonomous systems", "reinforcement learning",
     "graph neural networks", "large language models", "statistics",
     "probability", "statistical learning", "causal inference",
+    "biostatistics", "econometrics", "experimental design", "time series",
+    "stochastic processes",
     "organic chemistry", "inorganic chemistry", "physical chemistry",
     "chemical biology", "catalysis", "spectroscopy",
 ]
@@ -232,15 +237,35 @@ def extract_email_from_profile(soup: BeautifulSoup, config: dict) -> str | None:
     return (berkeley or cleaned)[0]
 
 
-def enrich_faculty_with_email(faculty: list[dict], config: dict) -> list[dict]:
-    """Visit each faculty profile page to recover the contact email.
+def extract_research_interests(soup: BeautifulSoup, config: dict) -> str:
+    """Pull research-interest text from a faculty profile page.
+
+    Selector-driven via selectors["research_interests"] (a list: Open-Berkeley
+    profiles spread the signal across a free-text interests field and a linked
+    research-areas taxonomy, either of which may be absent). Selectors target
+    the Drupal .field__item values so field labels ("Research Expertise and
+    Interests") never pollute the text. Returns "" when the profile carries no
+    research section — the record then keeps its lite broad-field keyword.
+    """
+    parts: list[str] = []
+    for sel in config.get("selectors", {}).get("research_interests", []):
+        for el in soup.select(sel):
+            text = el.get_text(" ", strip=True)
+            if text:
+                parts.append(text)
+    return "; ".join(parts)
+
+
+def enrich_faculty_from_profiles(faculty: list[dict], config: dict) -> list[dict]:
+    """Visit each faculty profile page to recover contact email + research interests.
 
     Respectful: a small delay between requests, the same robust fetcher (headers
-    + retries) used for the listing. A profile that fails to fetch or has no
-    email simply leaves person['email'] unset (lite behavior).
+    + retries) used for the listing. A profile that fails to fetch or lacks a
+    section simply leaves person['email'] / person['research_areas'] unset
+    (lite behavior).
     """
     total = len(faculty)
-    found = 0
+    found = with_interests = 0
     for i, person in enumerate(faculty):
         url = person.get("url")
         if not url:
@@ -251,11 +276,18 @@ def enrich_faculty_with_email(faculty: list[dict], config: dict) -> list[dict]:
             if email:
                 person["email"] = email
                 found += 1
+            interests = extract_research_interests(soup, config)
+            if interests:
+                person["research_areas"] = interests
+                with_interests += 1
         if i < total - 1:
             time.sleep(PROFILE_DELAY)
         if (i + 1) % 10 == 0:
             logger.info(f"  Enriched {i + 1}/{total} profiles ({found} emails)")
-    logger.info(f"  Recovered {found}/{total} emails from profile pages")
+    logger.info(
+        f"  Recovered {found}/{total} emails and {with_interests}/{total} "
+        f"research-interest sections from profile pages"
+    )
     return faculty
 
 
@@ -276,9 +308,31 @@ def dedup_by_profile_url(faculty: list[dict]) -> list[dict]:
     return unique
 
 
+# Trailing "(ACRONYM)" on a directory research-area tag, e.g. "Theory (THY)".
+_AREA_PAREN_RE = re.compile(r"\s*\([^)]*\)\s*$")
+
+
+def _normalize_area_tag(tag: str) -> str:
+    return _AREA_PAREN_RE.sub("", tag).strip().lower()
+
+
 def extract_research_keywords(person: dict, config: dict) -> list[str]:
+    """Derive topical keywords from a person's research areas + title.
+
+    Directory umbrella tags (e.g. Berkeley EECS's fixed ~22-tag vocabulary)
+    rarely contain bank keywords as substrings, so config["area_keywords"]
+    maps each tag explicitly first; the generic substring match over
+    KEYWORD_BANK then adds anything the tags/title mention verbatim.
+    """
+    found: list[str] = []
+    area_map = config.get("area_keywords") or {}
+    if area_map:
+        for area in person.get("research_areas", "").split(";"):
+            for kw in area_map.get(_normalize_area_tag(area), []):
+                if kw not in found:
+                    found.append(kw)
     text = " ".join([person.get("research_areas", ""), person.get("title", "")]).lower()
-    found = [kw for kw in KEYWORD_BANK if kw in text]
+    found += [kw for kw in KEYWORD_BANK if kw in text and kw not in found]
     if not found:
         # No parseable research signal (the common case for lite records):
         # fall back to the broad department field only.
@@ -393,14 +447,14 @@ def fetch_and_normalize(config: dict, enrich: bool = True) -> list[dict]:
     """Scrape one Open-Berkeley department and return normalized records.
 
     With enrich=True (default), each profile page is fetched to recover the
-    contact email the listing page does not expose.
+    contact email and research interests the listing page does not expose.
     """
     soup = fetch_soup(config["url"])
     if not soup:
         return []
     raw = dedup_by_profile_url(scrape_open_berkeley_faculty(soup, config))
     if enrich:
-        raw = enrich_faculty_with_email(raw, config)
+        raw = enrich_faculty_from_profiles(raw, config)
     normalized = [n for n in (normalize_faculty(p, config) for p in raw) if n]
     logger.info(f"Normalized {len(normalized)} {config['short']} faculty opportunities")
     return normalized

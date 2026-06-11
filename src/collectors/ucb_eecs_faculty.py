@@ -32,6 +32,43 @@ from .ucb_common import NOISE_EMAILS, clean_name, fetch_soup, normalize_faculty
 
 logger = logging.getLogger(__name__)
 
+# The directory tags each professor with curated umbrella research areas from
+# a fixed ~22-tag vocabulary. Substring-matching those tags against the
+# generic KEYWORD_BANK recovered only 10 distinct keywords and left ~30% of
+# records on the bare department fallback, so each tag maps explicitly to the
+# topical keywords its area covers. Keys are the tag names lowercased with the
+# trailing "(ACRONYM)" stripped (see ucb_common._normalize_area_tag).
+EECS_AREA_KEYWORDS = {
+    "artificial intelligence": ["artificial intelligence", "machine learning"],
+    "biosystems & computational biology": ["computational biology", "bioinformatics"],
+    "computer architecture & engineering": ["computer architecture", "parallel computing"],
+    "control, intelligent systems, and robotics": ["robotics", "control systems",
+                                                   "autonomous systems"],
+    "cyber-physical systems and design automation": ["cyber-physical systems",
+                                                     "embedded systems",
+                                                     "design automation"],
+    "database management systems": ["databases", "data management"],
+    "design, modeling and analysis": ["systems modeling", "simulation"],
+    "education": ["computer science education"],
+    "graphics": ["computer graphics"],
+    "human-computer interaction": ["human-computer interaction"],
+    "information, data, network, and communication sciences": ["information theory",
+                                                               "communications",
+                                                               "networking"],
+    "integrated circuits": ["integrated circuits", "circuits"],
+    "micro/nano electro mechanical systems": ["microelectromechanical systems",
+                                              "nanotechnology"],
+    "operating systems & networking": ["operating systems", "networking",
+                                       "distributed systems"],
+    "physical electronics": ["nanotechnology", "photonics", "materials science"],
+    "power and energy": ["power systems", "renewable energy"],
+    "programming systems": ["programming languages", "compilers"],
+    "scientific computing": ["scientific computing", "high performance computing"],
+    "security": ["security", "cybersecurity"],
+    "signal processing": ["signal processing"],
+    "theory": ["algorithms", "theoretical computer science"],
+}
+
 EECS_CONFIG = {
     "source": "ucb_eecs_faculty",
     "name": "Electrical Engineering and Computer Sciences",
@@ -43,6 +80,7 @@ EECS_CONFIG = {
     # Broad field used only as the honest fallback when a professor lists no
     # parseable research areas (never injected on top of real ones).
     "keywords": ["electrical engineering and computer sciences"],
+    "area_keywords": EECS_AREA_KEYWORDS,
     "work_auth_notes": "External campus (UC Berkeley) — work "
                        "authorization depends on the arrangement",
 }

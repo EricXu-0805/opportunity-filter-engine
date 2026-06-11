@@ -21,6 +21,7 @@ from src.collectors.ucb_common import (
     dedup_by_profile_url,
     drop_joint_appointment_duplicates,
     extract_email_from_profile,
+    extract_research_interests,
     normalize_faculty,
     scrape_open_berkeley_faculty,
 )
@@ -156,6 +157,83 @@ def test_extract_email_prefers_mailto_and_skips_noise():
     soup = BeautifulSoup(html, "html.parser")
     # webmaster@ is in the noise set, so the real address wins.
     assert extract_email_from_profile(soup, STAT_CONFIG) == "jane@stat.berkeley.edu"
+
+
+# --- profile-page research-interest enrichment (offline) ---
+
+# Real per-professor profile structure (statistics.berkeley.edu/people/<slug>):
+# the page the email hop already fetches also carries a free-text
+# field--name-field-research-interests block and a linked
+# field--name-field-research-areas-ref taxonomy — both ignored before, leaving
+# 46/47 STAT records with the bare ['statistics'] keyword.
+PROFILE_WITH_INTERESTS_HTML = """
+<article class="node node--type-faculty">
+  <h3 class="page--title">Peng Ding</h3>
+  <div class="field field--name-field-job-title field__item">Professor</div>
+  <div class="field field--name-field-email field--type-email field--label-above">
+    <div class="field__label">Email</div>
+    <div class="field__item">pengdingpku@berkeley.edu</div>
+  </div>
+  <div class="field field--name-field-research-interests field--type-text-with-summary field--label-above">
+    <div class="field__label">Research Expertise and Interests</div>
+    <div class="field__item"><p>causal inference, econometrics, experimental design,
+    missing data, applications in biomedical and social sciences</p></div>
+  </div>
+  <div class="field field--name-field-research-areas-ref field--type-entity-reference field--label-above">
+    <div class="field__label">Research Areas</div>
+    <div class="field__items">
+      <div class="field__item"><a href="/research/causal-inference-graphical-models">Causal Inference</a></div>
+      <div class="field__item"><a href="/research/nonparametric-inference">Nonparametric Inference</a></div>
+    </div>
+  </div>
+</article>
+"""
+
+
+def test_extract_research_interests_reads_both_profile_fields():
+    soup = BeautifulSoup(PROFILE_WITH_INTERESTS_HTML, "html.parser")
+    text = extract_research_interests(soup, STAT_CONFIG)
+    assert "causal inference" in text           # free-text interests field
+    assert "Nonparametric Inference" in text    # linked taxonomy field
+    # Drupal field labels are page furniture, not research signal.
+    assert "Research Expertise and Interests" not in text
+    assert "Research Areas" not in text
+
+
+def test_extract_research_interests_empty_when_profile_has_none():
+    soup = BeautifulSoup(PROFILE_HTML, "html.parser")
+    assert extract_research_interests(soup, STAT_CONFIG) == ""
+
+
+def test_enrichment_attaches_email_and_research_interests(monkeypatch):
+    profile_soup = BeautifulSoup(PROFILE_WITH_INTERESTS_HTML, "html.parser")
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: profile_soup)
+    person = {"name": "Peng Ding", "title": "Professor",
+              "url": "https://statistics.berkeley.edu/people/peng-ding"}
+    ucb_common.enrich_faculty_from_profiles([person], STAT_CONFIG)
+    assert person["email"] == "pengdingpku@berkeley.edu"
+
+    opp = normalize_faculty(person, STAT_CONFIG)
+    # Real topical keywords from the profile, not the bare department fallback.
+    assert "causal inference" in opp["keywords"]
+    assert opp["keywords"] != ["statistics"]
+    assert opp["contact_email"] == "pengdingpku@berkeley.edu"
+    assert opp["metadata"]["confidence_score"] == 0.7
+    assert "causal inference" in opp["metadata"]["research_areas_raw"]
+
+
+def test_enrichment_without_research_section_stays_lite(monkeypatch):
+    profile_soup = BeautifulSoup(PROFILE_NO_EMAIL_HTML, "html.parser")
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: profile_soup)
+    person = {"name": "No Email Person", "title": "Professor",
+              "url": "https://statistics.berkeley.edu/people/no-email-person"}
+    ucb_common.enrich_faculty_from_profiles([person], STAT_CONFIG)
+    assert "email" not in person
+    assert "research_areas" not in person
+
+    opp = normalize_faculty(person, STAT_CONFIG)
+    assert opp["keywords"] == ["statistics"]
+    assert opp["metadata"]["confidence_score"] == 0.5
 
 
 def test_dedup_collapses_same_profile_url():
