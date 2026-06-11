@@ -698,6 +698,11 @@ export const en = {
     hideDetails: 'Hide details',
     resumeRequired: 'Resume required',
     recLetterNeeded: 'Rec. letter needed',
+    feedback: {
+      prompt: 'Accurate?',
+      up: 'Yes, this match is accurate',
+      down: 'No, this match is off',
+    },
   },
   detail: {
     backToMatches: 'Back to matches',
@@ -2121,6 +2126,11 @@ export const zh = {
     hideDetails: '收起详情',
     resumeRequired: '需要简历',
     recLetterNeeded: '需要推荐信',
+    feedback: {
+      prompt: '推荐准吗？',
+      up: '准，这个推荐靠谱',
+      down: '不准，这个推荐偏了',
+    },
   },
   detail: {
     backToMatches: '返回匹配列表',

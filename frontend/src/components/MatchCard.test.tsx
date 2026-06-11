@@ -220,6 +220,84 @@ describe('MatchCard', () => {
     });
   });
 
+  describe('match feedback thumbs (Phase 9.6)', () => {
+    it('renders no feedback UI when onFeedback is not provided', () => {
+      render(<MatchCard match={makeMatch()} onDraftEmail={() => {}} />);
+      expect(screen.queryByLabelText('card.feedback.up')).toBeNull();
+      expect(screen.queryByLabelText('card.feedback.down')).toBeNull();
+    });
+
+    it('renders both thumbs with the prompt when onFeedback is provided', () => {
+      render(<MatchCard match={makeMatch()} onDraftEmail={() => {}} onFeedback={() => {}} />);
+      expect(screen.getByText('card.feedback.prompt')).toBeInTheDocument();
+      expect(screen.getByLabelText('card.feedback.up')).toBeInTheDocument();
+      expect(screen.getByLabelText('card.feedback.down')).toBeInTheDocument();
+    });
+
+    it('calls onFeedback with (id, "up", {bucket, finalScore}) on thumbs-up', () => {
+      const handler = vi.fn();
+      render(
+        <MatchCard
+          match={makeMatch({ id: 'opp-fb' }, { bucket: 'good_match', final_score: 72 })}
+          onDraftEmail={() => {}}
+          onFeedback={handler}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText('card.feedback.up'));
+      expect(handler).toHaveBeenCalledWith('opp-fb', 'up', { bucket: 'good_match', finalScore: 72 });
+    });
+
+    it('calls onFeedback with (id, "down", ...) on thumbs-down', () => {
+      const handler = vi.fn();
+      render(
+        <MatchCard match={makeMatch({ id: 'opp-fb' })} onDraftEmail={() => {}} onFeedback={handler} />,
+      );
+      fireEvent.click(screen.getByLabelText('card.feedback.down'));
+      expect(handler).toHaveBeenCalledWith('opp-fb', 'down', { bucket: 'high_priority', finalScore: 85 });
+    });
+
+    it('tapping the active thumb again clears the verdict (passes null)', () => {
+      const handler = vi.fn();
+      render(
+        <MatchCard
+          match={makeMatch({ id: 'opp-fb' })}
+          onDraftEmail={() => {}}
+          onFeedback={handler}
+          feedbackVerdict="up"
+        />,
+      );
+      fireEvent.click(screen.getByLabelText('card.feedback.up'));
+      expect(handler).toHaveBeenCalledWith('opp-fb', null, { bucket: 'high_priority', finalScore: 85 });
+    });
+
+    it('switching thumbs replaces the verdict instead of clearing it', () => {
+      const handler = vi.fn();
+      render(
+        <MatchCard
+          match={makeMatch({ id: 'opp-fb' })}
+          onDraftEmail={() => {}}
+          onFeedback={handler}
+          feedbackVerdict="up"
+        />,
+      );
+      fireEvent.click(screen.getByLabelText('card.feedback.down'));
+      expect(handler).toHaveBeenCalledWith('opp-fb', 'down', { bucket: 'high_priority', finalScore: 85 });
+    });
+
+    it('reflects the current verdict via aria-pressed', () => {
+      render(
+        <MatchCard
+          match={makeMatch()}
+          onDraftEmail={() => {}}
+          onFeedback={() => {}}
+          feedbackVerdict="down"
+        />,
+      );
+      expect(screen.getByLabelText('card.feedback.up')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByLabelText('card.feedback.down')).toHaveAttribute('aria-pressed', 'true');
+    });
+  });
+
   describe('draft email action', () => {
     it('calls onDraftEmail with the opportunity id when clicked', () => {
       const handler = vi.fn();
