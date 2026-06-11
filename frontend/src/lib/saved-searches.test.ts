@@ -10,8 +10,11 @@ vi.mock('./supabase', () => ({
 
 import {
   getTotalNewMatchCount,
+  isValidDigestEmail,
+  listSavedSearchDigests,
   listSavedSearches,
   saveSearch,
+  setSavedSearchDigest,
   updateSavedSearch,
   removeSavedSearch,
   markSavedSearchSeen,
@@ -571,5 +574,123 @@ describe('getTotalNewMatchCount', () => {
   it('returns 0 when there are no saved searches', async () => {
     mockFrom.mockReturnValue(makeQuery({ data: [], error: null }));
     expect(await getTotalNewMatchCount()).toBe(0);
+  });
+});
+
+describe('isValidDigestEmail', () => {
+  it('accepts normal addresses', () => {
+    expect(isValidDigestEmail('user@example.com')).toBe(true);
+    expect(isValidDigestEmail('  eric.guoyi+tag@sub.example.io ')).toBe(true);
+  });
+
+  it('rejects malformed / empty / oversized addresses', () => {
+    expect(isValidDigestEmail('')).toBe(false);
+    expect(isValidDigestEmail('   ')).toBe(false);
+    expect(isValidDigestEmail('not-an-email')).toBe(false);
+    expect(isValidDigestEmail('a@b')).toBe(false);
+    expect(isValidDigestEmail('a b@example.com')).toBe(false);
+    expect(isValidDigestEmail(`${'x'.repeat(250)}@example.com`)).toBe(false);
+  });
+});
+
+describe('listSavedSearchDigests', () => {
+  it('maps rows to a Map keyed by search id', async () => {
+    const q = makeQuery({
+      data: [
+        { id: 'a', digest_email: 'user@example.com', digest_opt_in: true },
+        { id: 'b', digest_email: null, digest_opt_in: false },
+      ],
+      error: null,
+    });
+    mockFrom.mockReturnValue(q);
+
+    const result = await listSavedSearchDigests();
+
+    expect(mockFrom).toHaveBeenCalledWith('saved_searches');
+    expect(q.eq).toHaveBeenCalledWith('device_id', 'test-device-id');
+    expect(result?.get('a')).toEqual({ email: 'user@example.com', optIn: true });
+    expect(result?.get('b')).toEqual({ email: '', optIn: false });
+  });
+
+  it('returns null when getDeviceId is null (signed out)', async () => {
+    mockGetDeviceId.mockResolvedValue(null);
+    expect(await listSavedSearchDigests()).toBeNull();
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('returns null quietly when migration 013 is unapplied', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFrom.mockReturnValue(makeQuery({
+      data: null,
+      error: { message: 'column saved_searches.digest_email does not exist' },
+    }));
+    expect(await listSavedSearchDigests()).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('returns null and warns on other errors', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'boom' } }));
+    expect(await listSavedSearchDigests()).toBeNull();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
+describe('setSavedSearchDigest', () => {
+  it('stores a normalized opt-in and clears the unsubscribe stamp', async () => {
+    const q = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValue(q);
+
+    const ok = await setSavedSearchDigest('uuid-1', {
+      email: '  User@Example.COM ',
+      optIn: true,
+    });
+
+    expect(ok).toBe(true);
+    expect(q.update).toHaveBeenCalledWith({
+      digest_email: 'user@example.com',
+      digest_opt_in: true,
+      digest_unsubscribed_at: null,
+    });
+    expect(q.eq).toHaveBeenCalledWith('device_id', 'test-device-id');
+    expect(q.eq).toHaveBeenCalledWith('id', 'uuid-1');
+  });
+
+  it('never stores opt-in=true with an invalid email', async () => {
+    const q = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValue(q);
+
+    const ok = await setSavedSearchDigest('uuid-1', { email: 'nope', optIn: true });
+
+    expect(ok).toBe(true);
+    const updated = q.update.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(updated.digest_opt_in).toBe(false);
+    expect('digest_unsubscribed_at' in updated).toBe(false);
+  });
+
+  it('opt-out keeps the unsubscribe stamp untouched', async () => {
+    const q = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValue(q);
+
+    await setSavedSearchDigest('uuid-1', { email: 'user@example.com', optIn: false });
+
+    const updated = q.update.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(updated.digest_opt_in).toBe(false);
+    expect('digest_unsubscribed_at' in updated).toBe(false);
+  });
+
+  it('returns false when getDeviceId is null', async () => {
+    mockGetDeviceId.mockResolvedValue(null);
+    expect(await setSavedSearchDigest('uuid-1', { email: 'a@b.co', optIn: true })).toBe(false);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('returns false when the update errors', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'boom' } }));
+    expect(await setSavedSearchDigest('uuid-1', { email: 'a@b.co', optIn: true })).toBe(false);
+    warn.mockRestore();
   });
 });

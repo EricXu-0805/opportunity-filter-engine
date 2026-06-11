@@ -41,8 +41,13 @@ export default function FavoritesPage() {
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const customImports = useCustomImports();
   const { serverOpportunities, loading, handleRemove } = useFavoritesData();
-  const { savedSearches, handleRemove: handleRemoveSavedSearch, handleApplyOptimisticClear } =
-    useSavedSearches(t);
+  const {
+    savedSearches,
+    digests,
+    handleRemove: handleRemoveSavedSearch,
+    handleApplyOptimisticClear,
+    handleDigestSave,
+  } = useSavedSearches(t);
   const {
     selectionMode,
     selected,
@@ -135,8 +140,10 @@ export default function FavoritesPage() {
       {!selectionMode && (savedSearches.length > 0 || opportunities.length > 0) && (
         <SavedSearchesSection
           savedSearches={savedSearches}
+          digests={digests}
           onApplyOptimisticClear={handleApplyOptimisticClear}
           onRemove={handleRemoveSavedSearch}
+          onDigestSave={handleDigestSave}
           t={t}
         />
       )}
