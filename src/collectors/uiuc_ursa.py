@@ -127,8 +127,8 @@ def _to_normalized(r: RawOpportunity) -> dict:
         "keywords": ["research", "engineering", "freshman", "sophomore", "mentor"],
         "metadata": {
             "is_active": True,
-            "scraped_at": now,
-            "first_seen": now,
+            "last_verified": now,
+            "first_seen_at": now,
         },
         **r.extra_fields,
     }
@@ -156,7 +156,7 @@ def merge_into_processed(opps: list[dict]) -> tuple[int, int]:
                 old["title"] = opp["title"]
                 old["description"] = opp["description"]
                 old["status"] = opp.get("status", "unknown")
-                old.setdefault("metadata", {})["last_updated"] = opp["metadata"]["scraped_at"]
+                old.setdefault("metadata", {})["last_updated"] = opp["metadata"]["last_verified"]
                 updated += 1
     with PROCESSED_FILE.open("w", encoding="utf-8") as f:
         json.dump(existing, f, indent=2, ensure_ascii=False, default=str)

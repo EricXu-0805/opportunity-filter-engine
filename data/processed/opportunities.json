@@ -123042,8 +123042,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:20.016390",
-      "first_seen": "2026-05-21T17:24:20.016390"
+      "first_seen_at": "2026-05-21T17:24:20.016390",
+      "last_verified": "2026-05-21T17:24:20.016390"
     },
     "program": "URAP",
     "level": "program_overview",
@@ -123093,9 +123093,9 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:25.225303",
-      "first_seen": "2026-05-21T17:24:25.225303",
-      "last_updated": "2026-05-21T18:31:12.787894"
+      "last_updated": "2026-05-21T18:31:12.787894",
+      "first_seen_at": "2026-05-21T17:24:25.225303",
+      "last_verified": "2026-05-21T17:24:25.225303"
     },
     "program": "URSA",
     "college": "Grainger Engineering",
@@ -123150,9 +123150,9 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:35.440907",
-      "first_seen": "2026-05-21T17:24:35.440907",
-      "last_updated": "2026-05-21T18:31:14.160687"
+      "last_updated": "2026-05-21T18:31:14.160687",
+      "first_seen_at": "2026-05-21T17:24:35.440907",
+      "last_verified": "2026-05-21T17:24:35.440907"
     },
     "program": "DRP-Math",
     "college": "LAS",
@@ -123206,9 +123206,9 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:35.441110",
-      "first_seen": "2026-05-21T17:24:35.441110",
-      "last_updated": "2026-06-09T06:28:57.819573"
+      "last_updated": "2026-06-09T06:28:57.819573",
+      "first_seen_at": "2026-05-21T17:24:35.441110",
+      "last_verified": "2026-05-21T17:24:35.441110"
     },
     "program": "DRP-CS",
     "college": "Siebel CDS",
@@ -123262,8 +123262,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.646971",
-      "first_seen": "2026-05-21T17:24:40.646971"
+      "first_seen_at": "2026-05-21T17:24:40.646971",
+      "last_verified": "2026-05-21T17:24:40.646971"
     },
     "program": "SRP",
     "college": "Siebel CDS",
@@ -123314,8 +123314,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647333",
-      "first_seen": "2026-05-21T17:24:40.647333"
+      "first_seen_at": "2026-05-21T17:24:40.647333",
+      "last_verified": "2026-05-21T17:24:40.647333"
     },
     "program": "CS-DRP",
     "college": "Siebel CDS",
@@ -123366,8 +123366,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647342",
-      "first_seen": "2026-05-21T17:24:40.647342"
+      "first_seen_at": "2026-05-21T17:24:40.647342",
+      "last_verified": "2026-05-21T17:24:40.647342"
     },
     "program": "CS-STARS",
     "college": "Siebel CDS",
@@ -123418,8 +123418,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647348",
-      "first_seen": "2026-05-21T17:24:40.647348"
+      "first_seen_at": "2026-05-21T17:24:40.647348",
+      "last_verified": "2026-05-21T17:24:40.647348"
     },
     "program": "ISUR",
     "college": "Siebel CDS",
@@ -123471,8 +123471,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647353",
-      "first_seen": "2026-05-21T17:24:40.647353"
+      "first_seen_at": "2026-05-21T17:24:40.647353",
+      "last_verified": "2026-05-21T17:24:40.647353"
     },
     "program": "NCSA-SPIN",
     "college": "Siebel CDS",
@@ -123523,8 +123523,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647358",
-      "first_seen": "2026-05-21T17:24:40.647358"
+      "first_seen_at": "2026-05-21T17:24:40.647358",
+      "last_verified": "2026-05-21T17:24:40.647358"
     },
     "program": "UR2PhD",
     "college": "Siebel CDS",
@@ -123575,8 +123575,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647362",
-      "first_seen": "2026-05-21T17:24:40.647362"
+      "first_seen_at": "2026-05-21T17:24:40.647362",
+      "last_verified": "2026-05-21T17:24:40.647362"
     },
     "program": "DaRin-Butz",
     "college": "Siebel CDS",
@@ -123627,8 +123627,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647370",
-      "first_seen": "2026-05-21T17:24:40.647370"
+      "first_seen_at": "2026-05-21T17:24:40.647370",
+      "last_verified": "2026-05-21T17:24:40.647370"
     },
     "program": "I-MRSEC-REU",
     "college": "Siebel CDS",
@@ -123679,8 +123679,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647379",
-      "first_seen": "2026-05-21T17:24:40.647379"
+      "first_seen_at": "2026-05-21T17:24:40.647379",
+      "last_verified": "2026-05-21T17:24:40.647379"
     },
     "program": "MUSE",
     "college": "Siebel CDS",
@@ -123733,8 +123733,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-21T17:24:40.647386",
-      "first_seen": "2026-05-21T17:24:40.647386"
+      "first_seen_at": "2026-05-21T17:24:40.647386",
+      "last_verified": "2026-05-21T17:24:40.647386"
     },
     "program": "Symposium",
     "college": "Siebel CDS",
@@ -123785,8 +123785,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-22T16:46:42.051616",
-      "first_seen": "2026-05-22T16:46:42.051616"
+      "first_seen_at": "2026-05-22T16:46:42.051616",
+      "last_verified": "2026-05-22T16:46:42.051616"
     },
     "program_key": "las_research_hub",
     "college": "LAS",
@@ -123834,8 +123834,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-22T16:46:42.051664",
-      "first_seen": "2026-05-22T16:46:42.051664"
+      "first_seen_at": "2026-05-22T16:46:42.051664",
+      "last_verified": "2026-05-22T16:46:42.051664"
     },
     "program_key": "pursue_las",
     "college": "LAS",
@@ -123890,9 +123890,9 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-22T16:46:42.051670",
-      "first_seen": "2026-05-22T16:46:42.051670",
-      "last_updated": "2026-06-09T06:29:14.861707"
+      "last_updated": "2026-06-09T06:29:14.861707",
+      "first_seen_at": "2026-05-22T16:46:42.051670",
+      "last_verified": "2026-05-22T16:46:42.051670"
     },
     "program_key": "beckman_fellowships",
     "college": "LAS / Beckman",
@@ -123941,8 +123941,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-22T16:46:42.051674",
-      "first_seen": "2026-05-22T16:46:42.051674"
+      "first_seen_at": "2026-05-22T16:46:42.051674",
+      "last_verified": "2026-05-22T16:46:42.051674"
     },
     "program_key": "grainger_isur",
     "college": "Grainger Engineering",
@@ -123992,8 +123992,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-22T16:46:42.051679",
-      "first_seen": "2026-05-22T16:46:42.051679"
+      "first_seen_at": "2026-05-22T16:46:42.051679",
+      "last_verified": "2026-05-22T16:46:42.051679"
     },
     "program_key": "grainger_opportunities_table",
     "college": "Grainger Engineering",
@@ -124046,8 +124046,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-22T16:46:42.051682",
-      "first_seen": "2026-05-22T16:46:42.051682"
+      "first_seen_at": "2026-05-22T16:46:42.051682",
+      "last_verified": "2026-05-22T16:46:42.051682"
     },
     "program_key": "atlas_internship",
     "college": "LAS / ATLAS",
@@ -124101,8 +124101,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-24T15:19:30.784000",
-      "first_seen": "2026-05-24T15:19:30.784000"
+      "first_seen_at": "2026-05-24T15:19:30.784000",
+      "last_verified": "2026-05-24T15:19:30.784000"
     },
     "program_key": "research_park_internships",
     "college": "Cross-college",
@@ -124459,8 +124459,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-25T11:25:16.728347",
-      "first_seen": "2026-05-25T11:25:16.728347"
+      "first_seen_at": "2026-05-25T11:25:16.728347",
+      "last_verified": "2026-05-25T11:25:16.728347"
     },
     "program": "Siebel-UG-Research",
     "college": "Siebel CDS",
@@ -124512,8 +124512,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-25T11:25:16.728351",
-      "first_seen": "2026-05-25T11:25:16.728351"
+      "first_seen_at": "2026-05-25T11:25:16.728351",
+      "last_verified": "2026-05-25T11:25:16.728351"
     },
     "program": "Siebel-UG-Research",
     "college": "Siebel CDS",
@@ -124565,8 +124565,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-25T11:25:16.728354",
-      "first_seen": "2026-05-25T11:25:16.728354"
+      "first_seen_at": "2026-05-25T11:25:16.728354",
+      "last_verified": "2026-05-25T11:25:16.728354"
     },
     "program": "Siebel-UG-Research",
     "college": "Siebel CDS",
@@ -124618,8 +124618,8 @@
     ],
     "metadata": {
       "is_active": true,
-      "scraped_at": "2026-05-25T11:25:16.728357",
-      "first_seen": "2026-05-25T11:25:16.728357"
+      "first_seen_at": "2026-05-25T11:25:16.728357",
+      "last_verified": "2026-05-25T11:25:16.728357"
     },
     "program": "Siebel-UG-Research",
     "college": "Siebel CDS",
