@@ -10,7 +10,6 @@ const config = [
       'e2e/**',
       'playwright-report/**',
       'test-results/**',
-      'src/lib/api-types.gen.ts',
       'next-env.d.ts',
     ],
   },
