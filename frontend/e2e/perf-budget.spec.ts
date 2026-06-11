@@ -85,14 +85,15 @@ test.describe('Performance budget', () => {
 test.describe('Bundle budget', () => {
   test('home page first-load JS transferred size', async ({ page }) => {
     let jsBytes = 0;
+    const bodyReads: Promise<void>[] = [];
     page.on('response', resp => {
       const url = resp.url();
       if (url.includes('/_next/static/chunks/') && url.endsWith('.js')) {
-        resp.body().then(buf => { jsBytes += buf.length; }).catch(() => {});
+        bodyReads.push(resp.body().then(buf => { jsBytes += buf.length; }).catch(() => {}));
       }
     });
     await page.goto('/', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(500);
+    await Promise.all(bodyReads);
     const kb = Math.round(jsBytes / 1024);
     console.log(`Home first-load JS: ${kb} KB transferred`);
     const isDev = kb > 1000;

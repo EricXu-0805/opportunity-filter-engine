@@ -35,10 +35,11 @@ test.describe('Filters, search, sort', () => {
     const before = await page.locator('[id^="match-card-"]').count();
     const paidSelect = page.locator('select').first();
     await paidSelect.selectOption({ label: 'Paid only' });
-    await page.waitForTimeout(500);
+    // URL sync happens with the same state update that filters the list,
+    // so it marks the moment the filtered render has been committed.
+    await expect(page).toHaveURL(/paid=yes/);
     const after = await page.locator('[id^="match-card-"]').count();
     expect(after).toBeLessThanOrEqual(before);
-    await expect(page).toHaveURL(/paid=yes/);
   });
 
   test('deadline-passed opportunities hidden under 7-day filter', async ({ page }) => {
