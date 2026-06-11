@@ -21,6 +21,12 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
+from .ucb_common import merge_into_processed as merge_ucb_stat
+from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
+from .ucb_eecs_faculty import merge_into_processed as merge_ucb_eecs
+from .ucb_stat_faculty import fetch_and_normalize as fetch_ucb_stat
+from .ucb_urap import fetch_and_normalize as fetch_ucb_urap
+from .ucb_urap import merge_into_processed as merge_ucb_urap
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import _null_shared_admin_emails
@@ -202,13 +208,16 @@ def refresh_all(deep: bool = True) -> dict:
         logger.error(f"Faculty collection failed: {e}")
         summary["sources"]["uiuc_faculty"] = {"status": "error", "error": str(e)}
 
-    # 5. UIUC small-list collectors (URAP, URSA, DRP, Siebel program overviews)
+    # 5. Small-list collectors (URAP, URSA, DRP, Siebel program overviews).
+    # ucb_urap emits one static overview record with no network call, so it is
+    # safe in quick mode alongside the UIUC small lists.
     for source_name, fetch_fn, merge_fn in [
         ("uiuc_urap", fetch_urap, merge_urap),
         ("uiuc_ursa", fetch_ursa, merge_ursa),
         ("uiuc_drp", fetch_drp, merge_drp),
         ("uiuc_siebel", fetch_siebel, merge_siebel),
         ("uiuc_other", fetch_other, merge_other),
+        ("ucb_urap", fetch_ucb_urap, merge_ucb_urap),
     ]:
         logger.info("=" * 50)
         logger.info(f"Collecting from {source_name}...")
@@ -228,7 +237,36 @@ def refresh_all(deep: bool = True) -> dict:
             logger.error(f"{source_name} collection failed: {e}")
             summary["sources"][source_name] = {"status": "error", "error": str(e)}
 
-    # 5b. SimplifyJobs internships (autonomous GitHub raw fetch — no auth)
+    # 5b. UC Berkeley faculty directories — deep-only, same class as the
+    # uiuc_faculty enrichment hop: STAT visits every profile page for the email
+    # (~0.75s politeness delay each) and EECS scrapes an external campus site.
+    # Order matters: EECS must merge before STAT so the ucb_common
+    # joint-appointment dedup keeps the EECS record (richer keywords) and drops
+    # the STAT duplicate.
+    if deep:
+        for source_name, fetch_fn, merge_fn in [
+            ("ucb_eecs_faculty", fetch_ucb_eecs, merge_ucb_eecs),
+            ("ucb_stat_faculty", fetch_ucb_stat, merge_ucb_stat),
+        ]:
+            logger.info("=" * 50)
+            logger.info(f"Collecting from {source_name}...")
+            try:
+                new_opps = fetch_fn()
+                added, updated = merge_fn(new_opps)
+                summary["sources"][source_name] = {
+                    "fetched": len(new_opps),
+                    "new": added,
+                    "updated": updated,
+                    "status": "ok",
+                }
+                summary["total_new"] += added
+                summary["total_updated"] += updated
+                logger.info(f"{source_name}: {len(new_opps)} fetched, {added} new, {updated} updated")
+            except Exception as e:
+                logger.error(f"{source_name} collection failed: {e}")
+                summary["sources"][source_name] = {"status": "error", "error": str(e)}
+
+    # 5c. SimplifyJobs internships (autonomous GitHub raw fetch — no auth)
     logger.info("=" * 50)
     logger.info("Collecting from SimplifyJobs internships...")
     simplify_active_ids: set[str] = set()

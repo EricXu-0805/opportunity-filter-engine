@@ -388,12 +388,66 @@ def fetch_and_normalize(config: dict, enrich: bool = True) -> list[dict]:
     return normalized
 
 
+def _dedup_email(opp: dict) -> str:
+    return (opp.get("contact_email") or "").strip().lower()
+
+
+def _dedup_name(opp: dict) -> str:
+    return (opp.get("pi_name") or "").casefold().strip()
+
+
+def drop_joint_appointment_duplicates(
+    new_opps: list[dict], existing: list[dict]
+) -> tuple[list[dict], int]:
+    """Drop incoming records duplicating a ucb_* record from another source.
+
+    Joint-appointment professors (e.g. EECS + Statistics) appear in both
+    department directories, so a re-scrape would surface them twice and fail
+    the data-quality gate (no two ucb_* records may share a non-null
+    contact_email or a normalized pi_name — see
+    tests/test_opportunity_data_quality.py). Keep policy: the record already
+    in the corpus wins; refresh_all merges ucb_eecs_faculty (richer inline
+    research keywords) before the ucb_common departments, so EECS is kept.
+
+    Same-source existing records are ignored: a re-scrape of one department
+    matches its own previous records by id (upsert), and must not be skipped
+    here.
+    """
+    new_sources = {o.get("source") for o in new_opps}
+    emails: set[str] = set()
+    names: set[str] = set()
+    for opp in existing:
+        source = opp.get("source") or ""
+        if not source.startswith("ucb_") or source in new_sources:
+            continue
+        if email := _dedup_email(opp):
+            emails.add(email)
+        if name := _dedup_name(opp):
+            names.add(name)
+
+    kept: list[dict] = []
+    dropped = 0
+    for opp in new_opps:
+        if _dedup_email(opp) in emails or _dedup_name(opp) in names:
+            dropped += 1
+            logger.info(
+                f"  Skipping joint-appointment duplicate {opp.get('pi_name')!r} "
+                f"({opp.get('source')}) — already covered by another UCB source"
+            )
+            continue
+        kept.append(opp)
+    return kept, dropped
+
+
 def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     """Upsert faculty records into processed/opportunities.json by id."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     with PROCESSED_FILE.open("r", encoding="utf-8") as f:
         existing = json.load(f)
+    new_opps, dropped = drop_joint_appointment_duplicates(new_opps, existing)
+    if dropped:
+        logger.info(f"Dropped {dropped} joint-appointment duplicate(s) before merge")
     index = {opp.get("id"): opp for opp in existing if opp.get("id")}
     added = updated = 0
     for opp in new_opps:
