@@ -46,8 +46,14 @@ def test_normalized_record_has_berkeley_schema():
     assert opp["contact_email"] == "urap@berkeley.edu"
     # program_overview records stay active/rolling so they're discoverable.
     assert opp["is_rolling"] is True
-    assert opp["on_campus"] is True
+    # Berkeley is external to this product's UIUC users — no on-campus boost,
+    # and matriculation-gated admission means no unconditional "yes".
+    assert opp["on_campus"] is False
+    assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["metadata"]["is_active"] is True
+    # Canonical metadata keys per #168 (first_seen/scraped_at are forbidden).
+    assert {"first_seen_at", "last_verified"} <= opp["metadata"].keys()
+    assert not {"first_seen", "scraped_at"} & opp["metadata"].keys()
     # frontend reads description_clean || description_raw — both must be present.
     assert opp["description_clean"]
     assert opp["description_raw"]

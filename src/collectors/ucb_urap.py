@@ -106,7 +106,9 @@ def _to_normalized(r: RawOpportunity) -> dict:
         "paid": "no",
         "deadline": None,
         "is_rolling": True if is_overview else False,
-        "on_campus": True,
+        # Berkeley program — external to this product's UIUC users, so the
+        # ranker must not apply the on-campus work-authorization boost.
+        "on_campus": False,
         "contact_email": contact_email,
         "eligibility": {
             "majors": [],
@@ -114,9 +116,9 @@ def _to_normalized(r: RawOpportunity) -> dict:
             # preferred_year (the UIUC template defaults to freshman/sophomore).
             "preferred_year": [],
             "skills_required": [],
-            # Berkeley-specific: matriculated international undergrads are
-            # eligible (with a CPT caveat for some UCSF placements).
-            "international_friendly": "yes",
+            # URAP only admits Berkeley-matriculated students; an unconditional
+            # "yes" would mislead this product's international users.
+            "international_friendly": "unknown",
             "citizenship_required": False,
         },
         "application": {
@@ -129,8 +131,8 @@ def _to_normalized(r: RawOpportunity) -> dict:
         "keywords": ["research", "mentorship", "undergraduate"],
         "metadata": {
             "is_active": True,
-            "scraped_at": now,
-            "first_seen": now,
+            "last_verified": now,
+            "first_seen_at": now,
         },
         **{k: v for k, v in r.extra_fields.items() if k not in {"is_rolling"}},
     }
@@ -158,7 +160,7 @@ def merge_into_processed(opps: list[dict]) -> tuple[int, int]:
             if old.get("description") != opp["description"] or old.get("title") != opp["title"]:
                 old["title"] = opp["title"]
                 old["description"] = opp["description"]
-                old.setdefault("metadata", {})["last_updated"] = opp["metadata"]["scraped_at"]
+                old.setdefault("metadata", {})["last_updated"] = opp["metadata"]["last_verified"]
                 updated += 1
     with PROCESSED_FILE.open("w", encoding="utf-8") as f:
         json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
