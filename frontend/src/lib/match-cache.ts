@@ -14,9 +14,10 @@
 // read is a synchronous localStorage parse — instant, no network. The /matches
 // response is already email-redacted, so the projection carries no PII.
 
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
-const KEY = 'ofe_match_results';
+const KEY = STORAGE_KEYS.MATCH_RESULTS;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // results older than this re-fetch (corpus drift)
 const MAX_RESULTS = 2500; // hard size bound; far past what anyone scrolls/paginates
 const DESC_CHARS = 200; // keep a snippet so the free-text search still matches bodies

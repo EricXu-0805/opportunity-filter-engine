@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
 
 // Pure reader for the URL → initial-state hydration that runs once on mount
@@ -56,7 +57,7 @@ export function readInitialSemanticRerank(
   if (p === '1') return true;
   if (p === '0') return false;
   if (typeof window === 'undefined') return false;
-  const stored = localStorage.getItem('ofe_semantic_rerank');
+  const stored = localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK);
   if (stored === '0') return false;
   if (stored === '1') return true;
   return false;

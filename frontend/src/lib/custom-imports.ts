@@ -5,9 +5,10 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from './use-local-storage-json';
+import { STORAGE_KEYS } from './storage-keys';
 import type { ImportedOpportunity } from './api';
 
-const STORAGE_KEY = 'ofe_custom_imports';
+const STORAGE_KEY = STORAGE_KEYS.CUSTOM_IMPORTS;
 
 export interface CustomImport {
   id: string;

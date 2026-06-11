@@ -35,6 +35,7 @@ import {
   supabase,
   type DataInventory,
 } from '@/lib/supabase';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
 type Status = 'pending' | 'success' | 'error';
@@ -96,8 +97,8 @@ function CallbackInner() {
         setInventory(inv);
         setStatus('success');
         try {
-          sessionStorage.removeItem('ofe_just_signed_out');
-          sessionStorage.removeItem('ofe_guest_banner_dismissed');
+          sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
+          sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
         } catch { /* private mode */ }
         return;
       }
@@ -145,8 +146,8 @@ function CallbackInner() {
           setInventory(inv);
           setStatus('success');
           try {
-            sessionStorage.removeItem('ofe_just_signed_out');
-            sessionStorage.removeItem('ofe_guest_banner_dismissed');
+            sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
+            sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
           } catch { /* private mode */ }
           return;
         }
@@ -169,8 +170,8 @@ function CallbackInner() {
       // Clear any "just signed out" flag — they came back, no banner
       // needed.
       try {
-        sessionStorage.removeItem('ofe_just_signed_out');
-        sessionStorage.removeItem('ofe_guest_banner_dismissed');
+        sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
+        sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
       } catch { /* private mode */ }
     })();
 

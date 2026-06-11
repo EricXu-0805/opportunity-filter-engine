@@ -4,6 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { SimilarOpportunity } from '@/lib/api-server';
@@ -38,7 +39,7 @@ export default function OpportunityDetail({
   similar?: SimilarOpportunity[];
 }) {
   const { t } = useT();
-  const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
+  const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   // R71 PR-3: tailor modal is local to this page — it has no callers
   // outside OpportunityDetail, so we keep state here rather than bloat
   // useOpportunityDetail. Matches PR-2's MatchCard-local pattern.

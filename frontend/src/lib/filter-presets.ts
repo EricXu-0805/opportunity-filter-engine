@@ -1,3 +1,4 @@
+import { STORAGE_KEYS } from './storage-keys';
 import { readLocalStorageJSON, writeLocalStorageJSON } from './use-local-storage-json';
 
 export interface FilterPresetFilters {
@@ -17,7 +18,7 @@ export interface FilterPreset {
   tab: string;
 }
 
-const PRESETS_KEY = 'ofe_filter_presets';
+const PRESETS_KEY = STORAGE_KEYS.FILTER_PRESETS;
 
 // Stable empty-array sentinel so the transformer can return a referentially
 // identical value for "no presets stored" across renders — required by

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { getRoadmap, type RoadmapResult } from '@/lib/api';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { getFavorites } from '@/lib/supabase';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { ProfileData } from '@/lib/types';
@@ -29,11 +30,13 @@ function CenteredCard({ title, body, cta, href }: { title: string; body: string;
 export default function RoadmapPage() {
   const router = useRouter();
   const { t } = useT();
-  const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
+  const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
 
   const [data, setData] = useState<RoadmapResult | null>(null);
   const [favCount, setFavCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,14 +51,21 @@ export default function RoadmapPage() {
           if (!cancelled) setData(r);
         }
       } catch {
-        // leave data null → the empty/CTA state renders
+        if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
-  }, [profile]);
+  }, [profile, retryToken]);
+
+  const retry = () => {
+    setError(false);
+    setData(null);
+    setLoading(true);
+    setRetryToken((n) => n + 1);
+  };
 
   const header = (
     <>
@@ -89,6 +99,20 @@ export default function RoadmapPage() {
     );
   } else if (!profile) {
     inner = <CenteredCard title={t('roadmap.needProfileTitle')} body={t('roadmap.needProfileBody')} cta={t('roadmap.needProfileCta')} href="/" />;
+  } else if (error) {
+    inner = (
+      <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
+        <p className="text-sm font-medium text-gray-600">{t('roadmap.errorTitle')}</p>
+        <p className="mt-1 text-[13px] text-gray-400">{t('roadmap.errorBody')}</p>
+        <button
+          type="button"
+          onClick={retry}
+          className="mt-5 inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+        >
+          {t('roadmap.errorRetry')}
+        </button>
+      </div>
+    );
   } else if (!favCount) {
     inner = <CenteredCard title={t('roadmap.needFavoritesTitle')} body={t('roadmap.needFavoritesBody')} cta={t('roadmap.needFavoritesCta')} href="/results" />;
   } else if (!data || data.skills.length === 0) {

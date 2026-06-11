@@ -43,6 +43,7 @@ import {
   type AuthState,
   type SignInOutcome,
 } from '@/lib/supabase';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useAuthModal, type AuthModalPhase } from '@/lib/auth-modal-context';
 import { useT } from '@/i18n/client';
 
@@ -143,8 +144,8 @@ export default function AuthModal() {
     // Tell GuestBanner this was a deliberate sign-out (not first-visit
     // anon) so it shows the post-signout reassurance.
     try {
-      sessionStorage.setItem('ofe_just_signed_out', '1');
-      sessionStorage.removeItem('ofe_guest_banner_dismissed');
+      sessionStorage.setItem(STORAGE_KEYS.JUST_SIGNED_OUT, '1');
+      sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
     } catch { /* private mode */ }
     closeModal();
   }, [closeModal]);

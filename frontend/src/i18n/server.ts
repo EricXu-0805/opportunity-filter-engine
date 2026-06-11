@@ -1,8 +1,9 @@
 import { cookies, headers } from 'next/headers';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { normalizeLocale, translate, DEFAULT_LOCALE } from './translate';
 import type { Locale } from './translate';
 
-export const LOCALE_COOKIE = 'ofe_lang';
+export const LOCALE_COOKIE = STORAGE_KEYS.LOCALE;
 
 // cookies() / headers() became async in Next.js 15 and the sync form
 // is removed in Next.js 16. All call sites must await.
