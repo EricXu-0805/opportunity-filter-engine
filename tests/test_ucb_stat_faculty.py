@@ -16,8 +16,10 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.collectors import ucb_common
 from src.collectors.ucb_common import (
     dedup_by_profile_url,
+    drop_joint_appointment_duplicates,
     extract_email_from_profile,
     normalize_faculty,
     scrape_open_berkeley_faculty,
@@ -158,3 +160,84 @@ def test_dedup_collapses_same_profile_url():
     out = dedup_by_profile_url(people)
     assert len(out) == 2
     assert [p["name"] for p in out] == ["Ani Adhikari", "Peng Ding"]
+
+
+# --- cross-UCB joint-appointment dedup (keep EECS, drop STAT) ---
+
+def _eecs(name: str, email: str | None, suffix: str = "a") -> dict:
+    return {
+        "id": f"faculty-ucb-eecs-{suffix}",
+        "source": "ucb_eecs_faculty",
+        "pi_name": name,
+        "contact_email": email,
+    }
+
+
+def _stat(name: str, email: str | None, suffix: str = "a") -> dict:
+    return {
+        "id": f"faculty-ucb-stat-{suffix}",
+        "source": "ucb_stat_faculty",
+        "pi_name": name,
+        "contact_email": email,
+    }
+
+
+def test_joint_dedup_skips_stat_record_matching_eecs_by_email():
+    existing = [_eecs("Michael I. Jordan", "jordan@cs.berkeley.edu")]
+    # Different name spelling, same inbox: still the same professor.
+    incoming = [_stat("Michael Jordan", "JORDAN@cs.berkeley.edu")]
+    kept, dropped = drop_joint_appointment_duplicates(incoming, existing)
+    assert kept == []
+    assert dropped == 1
+
+
+def test_joint_dedup_skips_stat_record_matching_eecs_by_name_only():
+    existing = [_eecs("Bin Yu", "binyu@berkeley.edu")]
+    # STAT scrape found no email (lite record) but the person matches by name.
+    incoming = [_stat("bin yu ", None)]
+    kept, dropped = drop_joint_appointment_duplicates(incoming, existing)
+    assert kept == []
+    assert dropped == 1
+
+
+def test_joint_dedup_keeps_non_matching_stat_record():
+    existing = [_eecs("Bin Yu", "binyu@berkeley.edu")]
+    incoming = [_stat("Ani Adhikari", "adhikari@berkeley.edu")]
+    kept, dropped = drop_joint_appointment_duplicates(incoming, existing)
+    assert [o["pi_name"] for o in kept] == ["Ani Adhikari"]
+    assert dropped == 0
+
+
+def test_joint_dedup_ignores_same_source_records_on_rescrape():
+    # A re-scrape of STAT must upsert its own previous records by id, never
+    # skip them as "duplicates" of themselves.
+    existing = [_stat("Ani Adhikari", "adhikari@berkeley.edu")]
+    incoming = [_stat("Ani Adhikari", "adhikari@berkeley.edu")]
+    kept, dropped = drop_joint_appointment_duplicates(incoming, existing)
+    assert len(kept) == 1
+    assert dropped == 0
+
+
+def test_joint_dedup_null_email_does_not_match_null_email():
+    existing = [_eecs("Someone Else", None)]
+    incoming = [_stat("Ani Adhikari", None)]
+    kept, dropped = drop_joint_appointment_duplicates(incoming, existing)
+    assert len(kept) == 1
+    assert dropped == 0
+
+
+def test_merge_into_processed_applies_joint_dedup(tmp_path, monkeypatch):
+    import json
+
+    eecs = _eecs("Bin Yu", "binyu@berkeley.edu")
+    processed = tmp_path / "opportunities.json"
+    processed.write_text(json.dumps([eecs]), encoding="utf-8")
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", processed)
+
+    dup = _stat("Bin Yu", "binyu@berkeley.edu", suffix="dup")
+    fresh = _stat("Ani Adhikari", "adhikari@berkeley.edu", suffix="fresh")
+    added, updated = ucb_common.merge_into_processed([dup, fresh])
+
+    assert (added, updated) == (1, 0)
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert {o["id"] for o in saved} == {eecs["id"], fresh["id"]}
