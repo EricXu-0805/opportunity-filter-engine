@@ -780,11 +780,14 @@ def score_upside(
     opp_kw_list = [k.lower() for k in opportunity.get("keywords", [])]
     opp_keywords = set(opp_kw_list)
     desired = set(f.lower() for f in profile.get("desired_fields", []))
+    interest_reason = ""
+    interest_overlap: set[str] = set()
     if opp_keywords and desired:
-        overlap = opp_keywords & desired
-        if overlap:
-            keyword_score = min(100.0, 50.0 + len(overlap) * 25)
-            reasons_fit.append(f"Matches your interests: {', '.join(overlap)}")
+        interest_overlap = opp_keywords & desired
+        if interest_overlap:
+            keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
+            interest_reason = f"Matches your interests: {', '.join(interest_overlap)}"
+            reasons_fit.append(interest_reason)
 
     research_text = profile.get("research_interests_text", "").lower()
     lab = opportunity.get("lab_or_program", "")
@@ -806,6 +809,7 @@ def score_upside(
         )
         keyword_score = max(keyword_score, min(100.0, 15.0 + sim * SIMILARITY_SCALE_TFIDF))
         if sim > 0.15:
+            pre_sim_len = len(reasons_fit)
             # Display only genuine research areas — drop role/format tokens so a
             # job title never reads as a topic ("...work on CV, research assistant").
             display_kw = _topical_keywords(specific_kw)
@@ -830,18 +834,14 @@ def score_upside(
                 reasons_fit.append(
                     f"Your research background aligns with {lab_label}'s focus area"
                 )
-    elif research_text and specific_kw:
-        text_overlap = [kw for kw in specific_kw if kw in research_text]
-        if text_overlap:
-            keyword_score = min(100.0, keyword_score + len(text_overlap) * 15)
-            if lab_label:
-                reasons_fit.append(
-                    f"Your interest in {', '.join(text_overlap)} connects to {lab_label}'s research"
-                )
-            else:
-                reasons_fit.append(
-                    f"Your interest in {', '.join(text_overlap)} connects to this position"
-                )
+            # If the similarity reason re-mentions every keyword from the bare
+            # "Matches your interests" reason, that earlier reason is pure
+            # repetition — drop it. Partial or disjoint coverage keeps both,
+            # since the bare reason still names keywords the similarity reason
+            # doesn't.
+            if interest_reason and len(reasons_fit) > pre_sim_len:
+                if all(kw in reasons_fit[-1] for kw in interest_overlap):
+                    reasons_fit.remove(interest_reason)
 
     has_skill_signal = bool(opportunity.get("eligibility", {}).get("skills_required"))
     if opportunity.get("source") == "uiuc_faculty":
@@ -1350,7 +1350,7 @@ def semantic_rerank(
     for r, sim in zip(top_slice, sims, strict=False):
         rule = r.final_score
         blended = (1.0 - w) * rule + w * float(sim) * 100.0
-        r.final_score = round(max(0.0, min(100.0, blended)), 2)
+        r.final_score = round(max(0.0, min(100.0, blended)), 1)
 
     results.sort(key=lambda r: r.final_score, reverse=True)
     # Buckets were assigned on the pre-blend scores; recompute them so the labels
@@ -1367,6 +1367,9 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
 
     seeking = set(profile.get("seeking_type", []))
     student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
+    related_majors_norm: set[str] = set()
+    for sm in student_majors_norm:
+        related_majors_norm.update(RELATED_MAJORS.get(sm, []))
 
     # Parse the profile's skills once — it is identical for every opportunity, so
     # parsing it per opp (inside score_eligibility) was ~12% of rank_all's time.
@@ -1412,10 +1415,7 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             if opp_majors:
                 opp_majors_norm = {_normalize_major(m) for m in opp_majors}
                 if not (student_majors_norm & opp_majors_norm):
-                    all_related = set()
-                    for sm in student_majors_norm:
-                        all_related.update(RELATED_MAJORS.get(sm, []))
-                    if not (all_related & opp_majors_norm):
+                    if not (related_majors_norm & opp_majors_norm):
                         continue
 
         elig_triple = score_eligibility(profile, opp, skill_map=profile_skill_map)
