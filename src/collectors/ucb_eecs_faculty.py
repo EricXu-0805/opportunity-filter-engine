@@ -58,6 +58,14 @@ EECS_CONFIG = {
     "keywords": ["electrical engineering and computer sciences"],
 }
 
+# Directory placeholder shown when a professor lists no address — not a real
+# inbox, so treat it as "no email" (lower confidence, no cold-email target).
+NOISE_EMAILS = {"no_email@eecs.berkeley.edu"}
+
+# The directory mixes retired faculty into the same card list; they are not
+# viable cold-email targets for prospective undergrad researchers.
+_RETIRED_TITLE_RE = re.compile(r"\b(emeritus|emerita|retired)\b", re.IGNORECASE)
+
 # Reused verbatim from uiuc_faculty (generic, source-agnostic). Kept local so
 # this collector is self-contained, matching the pattern of the other small
 # collectors in this package.
@@ -94,7 +102,10 @@ def _fetch_soup(url: str) -> BeautifulSoup | None:
     try:
         resp = requests.get(url, timeout=20, headers=HEADERS)
         resp.raise_for_status()
-        return BeautifulSoup(resp.text, "html.parser")
+        # Parse bytes, not resp.text: the server omits a charset header, so
+        # requests falls back to ISO-8859-1 and mangles UTF-8 names
+        # ("Björn" -> "BjÃ¶rn"). BeautifulSoup detects the encoding itself.
+        return BeautifulSoup(resp.content, "html.parser")
     except Exception as e:
         logger.warning(f"Failed to fetch {url}: {e}")
         return None
@@ -139,7 +150,9 @@ def _scrape_eecs_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
 
         # Email: inline in the <p>; keep only Berkeley addresses.
         emails = re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", p_text)
-        berkeley = [e for e in emails if e.lower().endswith("berkeley.edu")]
+        berkeley = [e for e in emails
+                    if e.lower().endswith("berkeley.edu")
+                    and e.lower() not in NOISE_EMAILS]
         if berkeley:
             person["email"] = berkeley[0]
 
@@ -184,6 +197,8 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     dept_name = config["name"]
     profile_url = person.get("url", "")
     title = person.get("title", "Professor")
+    if _RETIRED_TITLE_RE.search(title):
+        return None
     research_areas = person.get("research_areas", "")
 
     name_hash = hashlib.md5(f"{dept_short}-{name}".encode()).hexdigest()[:8]
@@ -221,7 +236,7 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "contact_email": email or None,
         "url": profile_url,
         "location": "Berkeley, CA",
-        "on_campus": True,
+        "on_campus": False,
         "remote_option": "unknown",
         "opportunity_type": "research",
         "paid": "unknown",
@@ -237,8 +252,9 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
             "skills_required": skills[:3],
             "skills_preferred": skills[3:],
             "citizenship_required": False,
-            "international_friendly": "yes",
-            "work_auth_notes": "On-campus research — no work authorization required",
+            "international_friendly": "unknown",
+            "work_auth_notes": "External campus (UC Berkeley) — work "
+                               "authorization depends on the arrangement",
             "eligibility_text_raw": description[:500],
         },
         "application": {
