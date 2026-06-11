@@ -128,6 +128,24 @@ class TestR70ADataQuality:
             f"Duplicate ids found: {len(ids) - len(set(ids))} duplicates"
         )
 
+    def test_no_deprecated_metadata_keys(self):
+        """Five small collectors (siebel/urap/ursa/drp/other) used to emit
+        non-canonical metadata field names — first_seen instead of
+        first_seen_at and scraped_at instead of last_verified — which the
+        rest of the pipeline never reads. After the collector fix + data
+        migration no record may carry the deprecated keys."""
+        data = _load_data()
+        deprecated = {"first_seen", "scraped_at"}
+        offenders = [
+            (o.get("id"), sorted(deprecated & (o.get("metadata") or {}).keys()))
+            for o in data
+            if deprecated & (o.get("metadata") or {}).keys()
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records carry deprecated metadata keys "
+            f"(first_seen/scraped_at). First 3: {offenders[:3]}"
+        )
+
     def test_no_corrupted_contact_emails(self):
         """R70-B: pi_enricher used to extract phone-number-prefixed or
         capitalized-label-mashed addresses from HTML pages where adjacent

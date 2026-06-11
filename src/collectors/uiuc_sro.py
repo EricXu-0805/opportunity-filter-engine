@@ -243,14 +243,27 @@ class UIUCSROCollector(BaseCollector):
             # Title and link
             title_td = row.select_one("td.views-field-title")
             if not title_td:
+                self.logger.warning(
+                    "Skipping SRO row: no td.views-field-title cell "
+                    f"(possible Drupal layout change). Row: {str(row)[:200]!r}"
+                )
                 return None
 
             link_el = title_td.select_one("a")
             if not link_el:
+                self.logger.warning(
+                    "Skipping SRO row: title cell has no <a> link "
+                    f"(possible Drupal layout change). Cell: {str(title_td)[:200]!r}"
+                )
                 return None
 
             title = link_el.get_text(strip=True)
             href = link_el.get("href", "")
+            if not href:
+                self.logger.warning(
+                    f"SRO row {title!r}: title link has empty href "
+                    "(possible Drupal layout change); record will have no url"
+                )
             if href and not href.startswith("http"):
                 href = f"https://researchops.web.illinois.edu{href}"
 
