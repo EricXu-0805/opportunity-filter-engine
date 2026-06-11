@@ -35,7 +35,12 @@ test.describe('Saved searches end-to-end', () => {
     await expect(saveButton).toBeVisible({ timeout: 5_000 });
 
     const testName = `e2e-r22-${Date.now()}`;
-    page.once('dialog', (dialog) => dialog.accept(testName));
+    await saveButton.click();
+
+    // The save dialog replaces the old window.prompt flow.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 5_000 });
+    await dialog.getByLabel(/^Name$/).fill(testName);
 
     const savePromise = page
       .waitForResponse(
@@ -45,7 +50,7 @@ test.describe('Saved searches end-to-end', () => {
       )
       .catch(() => null);
 
-    await saveButton.click();
+    await dialog.getByRole('button', { name: /^Save search$/i }).click();
     await savePromise;
 
     await page.goto('/favorites');

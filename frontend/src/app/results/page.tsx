@@ -19,7 +19,12 @@ import {
   upsertPreset,
   type FilterPreset,
 } from '@/lib/filter-presets';
-import { saveSearch } from '@/lib/saved-searches';
+import {
+  listSavedSearchDigests,
+  saveSearch,
+  setSavedSearchDigest,
+  type SavedSearchDigest,
+} from '@/lib/saved-searches';
 import {
   getMatchFeedback,
   setMatchFeedback,
@@ -45,6 +50,7 @@ import { MatchList } from './MatchList';
 import { ResultsHeader } from './ResultsHeader';
 import { ResultsSearch } from './ResultsSearch';
 import { ResultsTabs } from './ResultsTabs';
+import { SaveSearchDialog } from './SaveSearchDialog';
 import { SkeletonCard } from './SkeletonCard';
 import {
   DEFAULT_FILTERS,
@@ -326,6 +332,8 @@ function ResultsContent() {
   }, []);
 
   const [helpOpen, setHelpOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [digestAvailable, setDigestAvailable] = useState(false);
   const openHelp = useCallback(() => setHelpOpen(true), []);
 
   const { focusedIdx, setFocusedIdx } = useResultsKeyboardNav({
@@ -366,10 +374,21 @@ function ResultsContent() {
       openAuthModal({ reason: 'save-search' });
       return;
     }
-    const name = window.prompt(t('results.saveSearchPrompt'), '')?.trim();
-    if (!name) return;
+    // Probe whether migration 013's digest columns exist — null hides the
+    // digest opt-in inside the dialog (graceful pre-migration degradation).
+    const digests = await listSavedSearchDigests();
+    setDigestAvailable(digests !== null);
+    setSaveDialogOpen(true);
+  }, [openAuthModal]);
+
+  const closeSaveDialog = useCallback(() => setSaveDialogOpen(false), []);
+
+  const handleSaveSearchSubmit = useCallback(async (
+    input: { name: string; digest: SavedSearchDigest | null },
+  ) => {
+    setSaveDialogOpen(false);
     const saved = await saveSearch({
-      name,
+      name: input.name,
       query: debouncedQuery,
       filters: { ...filters },
       sort_by: sortBy,
@@ -377,8 +396,14 @@ function ResultsContent() {
     });
     if (!saved) {
       window.alert(t('results.saveSearchError'));
+      return;
     }
-  }, [filters, sortBy, activeTab, debouncedQuery, t, openAuthModal]);
+    if (input.digest?.optIn) {
+      // Digest persistence is additive — a failure here must not unwind
+      // the already-successful save, so it only logs via the helper.
+      await setSavedSearchDigest(saved.id, input.digest);
+    }
+  }, [filters, sortBy, activeTab, debouncedQuery, t]);
 
   const handleApplyPreset = useCallback((preset: FilterPreset) => {
     setFilters(preset.filters as typeof DEFAULT_FILTERS);
@@ -581,6 +606,16 @@ function ResultsContent() {
       )}
 
       {helpOpen && <KeyboardHelpDialog onClose={() => setHelpOpen(false)} t={t} />}
+
+      {saveDialogOpen && (
+        <SaveSearchDialog
+          digestAvailable={digestAvailable}
+          onCancel={closeSaveDialog}
+          onSave={handleSaveSearchSubmit}
+          t={t}
+        />
+      )}
+
     </div>
   );
 }

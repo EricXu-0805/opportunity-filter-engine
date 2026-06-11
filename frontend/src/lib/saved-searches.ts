@@ -169,6 +169,86 @@ export async function removeSavedSearch(id: string): Promise<boolean> {
   return true;
 }
 
+export interface SavedSearchDigest {
+  email: string;
+  optIn: boolean;
+}
+
+// Mirrors backend/routes/email.py's _EMAIL_RE so an opt-in the digest cron
+// would later reject as invalid is caught at the form instead.
+const DIGEST_EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/;
+
+export function isValidDigestEmail(value: string): boolean {
+  const v = value.trim();
+  return v.length > 0 && v.length <= 254 && DIGEST_EMAIL_RE.test(v);
+}
+
+/** Digest columns are read separately from listSavedSearches so an
+ *  unapplied migration 013 degrades to "digest UI hidden" instead of
+ *  breaking the whole saved-searches list (same missing-relation
+ *  degradation as lib/match-feedback.ts). Returns null when the columns
+ *  don't exist yet (or the user is signed out) — callers hide the digest
+ *  UI on null. */
+export async function listSavedSearchDigests(): Promise<Map<string, SavedSearchDigest> | null> {
+  const deviceId = await getDeviceId();
+  if (!deviceId) return null;
+
+  const { data, error } = await supabase
+    .from('saved_searches')
+    .select('id, digest_email, digest_opt_in')
+    .eq('device_id', deviceId);
+
+  if (error || !data) {
+    if (error && !error.message?.toLowerCase().includes('does not exist')) {
+      console.warn('[ofe] listSavedSearchDigests failed:', error.message);
+    }
+    return null;
+  }
+
+  return new Map(
+    (data as Array<{ id: string; digest_email: string | null; digest_opt_in: boolean | null }>).map(
+      (r) => [r.id, { email: r.digest_email ?? '', optIn: !!r.digest_opt_in }],
+    ),
+  );
+}
+
+export async function setSavedSearchDigest(
+  id: string,
+  digest: SavedSearchDigest,
+): Promise<boolean> {
+  const deviceId = await getDeviceId();
+  if (!deviceId) return false;
+
+  const email = digest.email.trim().toLowerCase();
+  // Opt-in is only ever stored alongside a valid address — the form
+  // validates first, this is the belt-and-suspenders for direct callers.
+  const optIn = digest.optIn && isValidDigestEmail(email);
+
+  const row: Record<string, unknown> = {
+    digest_email: email || null,
+    digest_opt_in: optIn,
+  };
+  if (optIn) {
+    // Re-opting-in is an explicit user action: clear the unsubscribe stamp
+    // so the cron's digest_unsubscribed_at=is.null filter picks the row up.
+    row.digest_unsubscribed_at = null;
+  }
+
+  const { error } = await supabase
+    .from('saved_searches')
+    .update(row)
+    .eq('device_id', deviceId)
+    .eq('id', id);
+
+  if (error) {
+    if (!error.message?.toLowerCase().includes('does not exist')) {
+      console.warn('[ofe] setSavedSearchDigest failed:', error.message);
+    }
+    return false;
+  }
+  return true;
+}
+
 export async function markSavedSearchSeen(id: string): Promise<boolean> {
   if (!id) return false;
   const deviceId = await getDeviceId();
