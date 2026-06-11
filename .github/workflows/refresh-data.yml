@@ -13,18 +13,25 @@ on:
         type: choice
         options: ['true', 'false']
 
+env:
+  # Surface Node 24 breakage now, on our schedule, ahead of GitHub's
+  # June 16 2026 forced migration of node20 actions.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    # Deep Monday scrape legitimately runs ~2.5h; quick mode finishes in <1h.
+    timeout-minutes: 240
     permissions:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 

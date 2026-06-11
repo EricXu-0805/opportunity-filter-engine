@@ -9,16 +9,23 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded runs on PR pushes only; never kill an in-flight main run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Surface Node 24 breakage now, on our schedule, ahead of GitHub's
+  # June 16 2026 forced migration of node20 actions.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   backend:
     name: Backend (lint + pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: pip
@@ -43,13 +50,14 @@ jobs:
   frontend:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
@@ -79,14 +87,15 @@ jobs:
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [backend, frontend]
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: pip
@@ -96,7 +105,7 @@ jobs:
         run: pip install -r requirements.txt
         working-directory: ${{ github.workspace }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
@@ -106,6 +115,8 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
+        # Normally <1 min; CDN downloads have stalled for hours, so fail fast.
+        timeout-minutes: 5
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
@@ -115,7 +126,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: frontend/playwright-report/
