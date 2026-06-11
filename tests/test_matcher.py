@@ -798,6 +798,63 @@ class TestUpsideReasonHook:
         assert len(runs) == 1  # set-ordered keywords used to make this flaky
 
 
+class TestInterestReasonDedup:
+    """When the similarity reason already names every overlapped keyword, the
+    bare 'Matches your interests: X' reason is pure repetition and must be
+    dropped; partial or disjoint coverage keeps both reasons."""
+
+    def _opp(self, keywords):
+        return {
+            "id": "opp-dedup",
+            "title": "Research with Prof. Doe",
+            "pi_name": "Jane Doe",
+            "lab_or_program": "Prof. Jane Doe's Group",
+            "opportunity_type": "research",
+            "keywords": keywords,
+            "description_raw": "Lab working across several areas.",
+            "eligibility": {},
+        }
+
+    def test_same_keyword_not_explained_twice(self):
+        profile = {
+            "research_interests_text": "computer vision and deep learning",
+            "desired_fields": ["computer vision"],
+        }
+        _, fit, _ = score_upside(
+            profile, self._opp(["computer vision", "deep learning"]), precomputed_sim=0.5
+        )
+        assert not any(r.startswith("Matches your interests") for r in fit)
+        assert sum(1 for r in fit if "computer vision" in r) == 1
+
+    def test_disjoint_keywords_keep_both_reasons(self):
+        profile = {
+            "research_interests_text": "computer vision and deep learning",
+            "desired_fields": ["robotics"],
+        }
+        _, fit, _ = score_upside(
+            profile,
+            self._opp(["computer vision", "deep learning", "graphics", "robotics"]),
+            precomputed_sim=0.5,
+        )
+        assert "Matches your interests: robotics" in fit
+        assert any("closely matches" in r for r in fit)
+
+    def test_partially_covered_overlap_keeps_bare_reason(self):
+        profile = {
+            "research_interests_text": "computer vision and deep learning",
+            "desired_fields": ["computer vision", "neural interfaces"],
+        }
+        _, fit, _ = score_upside(
+            profile,
+            self._opp(["computer vision", "deep learning", "graphics", "neural interfaces"]),
+            precomputed_sim=0.5,
+        )
+        sim_reasons = [r for r in fit if "closely matches" in r]
+        assert sim_reasons and "neural interfaces" not in sim_reasons[0]
+        bare = [r for r in fit if r.startswith("Matches your interests")]
+        assert bare and "neural interfaces" in bare[0]
+
+
 class TestReasonQualityOptimizations:
     """Role/format tokens must not surface as research topics; type reasons must
     be humanized; the 'This lab focuses on' headline is research-only."""
