@@ -6,8 +6,11 @@ the first department on this path; Chemistry and others follow by config.
 
 Behavior: scrape the listing for name + profile link + title, dedup people who
 appear in multiple sections, then visit each profile page to recover the
-contact email (the listing does not expose it). Records with no email found
-ship "lite" (contact_email=None, confidence_score=0.5).
+contact email AND research interests (the listing exposes neither; the profile
+carries a free-text interests field plus a linked research-areas taxonomy).
+Records with no email found ship "lite" (contact_email=None,
+confidence_score=0.5); records with no research section keep the broad
+department keyword.
 
 Directory: https://statistics.berkeley.edu/people/faculty
 
@@ -36,6 +39,13 @@ STAT_CONFIG = {
         "title": "div.field--name-field-job-title",
         # Profile-page email field (no mailto: link on STAT profiles).
         "email_field": "div.field--name-field-email",
+        # Profile-page research signal: a free-text interests field plus the
+        # linked research-areas taxonomy (either may be absent). .field__item
+        # keeps the Drupal field labels out of the extracted text.
+        "research_interests": [
+            "div.field--name-field-research-interests .field__item",
+            "div.field--name-field-research-areas-ref .field__item",
+        ],
     },
 }
 

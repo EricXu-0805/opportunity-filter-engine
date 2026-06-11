@@ -4,7 +4,9 @@ No network: the parser is exercised against a small HTML fixture that mirrors
 the real EECS directory markup (div.cc-image-list__item__content > h3 a, a
 <p> with the rank in the first <strong>, an inline Berkeley email, and
 /Research/Areas/ topic links). Locks in the parser, the Berkeley-specific
-normalized schema, and id stability.
+normalized schema, and id stability — the EECS path now runs through
+ucb_common (shared fetch/normalize/merge), so these tests also pin that the
+consolidation changed no record-visible behavior.
 """
 
 from __future__ import annotations
@@ -17,12 +19,12 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors import ucb_eecs_faculty as ucb
+from src.collectors import ucb_common
+from src.collectors.ucb_common import fetch_soup, normalize_faculty
 from src.collectors.ucb_eecs_faculty import (
+    EECS_AREA_KEYWORDS,
     EECS_CONFIG,
-    _fetch_soup,
     _scrape_eecs_faculty_list,
-    normalize_faculty,
 )
 
 # Four faculty cards (one fully populated, one missing email/areas, one with
@@ -133,6 +135,21 @@ def test_id_is_deterministic():
     assert a == b
 
 
+def test_known_record_ids_are_byte_stable():
+    """Ids are the upsert key into processed/opportunities.json: if the
+    derivation drifts (e.g. during the ucb_common consolidation), the next
+    scrape duplicates all ~200 UCB records instead of updating them. Pin
+    real corpus ids, including two recomputed by the mojibake fix."""
+    for name, expected in [
+        ("Pieter Abbeel", "faculty-ucb-eecs-8f9a715a"),
+        ("Björn Hartmann", "faculty-ucb-eecs-ffde8ecc"),
+        ("Boubacar Kanté", "faculty-ucb-eecs-830e5c93"),
+    ]:
+        person = {"name": name, "url": "https://example.test/p.html",
+                  "title": "Professor"}
+        assert normalize_faculty(person, EECS_CONFIG)["id"] == expected
+
+
 def test_emeritus_and_retired_titles_are_skipped():
     sequin = next(p for p in _scrape() if p["name"] == "Carlo H. Séquin")
     assert sequin["title"] == "Professor Emeritus"
@@ -182,8 +199,88 @@ def test_metadata_keys_are_canonical():
     }
 
 
+# --- umbrella-tag keyword mapping ---
+
+# The fixed umbrella research-area vocabulary observed across the live
+# directory's 153 records (the /Research/Areas/ link texts). Every tag must
+# yield real topical keywords: before the explicit mapping, substring-matching
+# against KEYWORD_BANK recovered only 10 distinct keywords and ~30% of records
+# fell back to the bare department keyword.
+EECS_UMBRELLA_TAGS = [
+    "Artificial Intelligence (AI)",
+    "Biosystems & Computational Biology (BIO)",
+    "Computer Architecture & Engineering (ARC)",
+    "Control, Intelligent Systems, and Robotics (CIR)",
+    "Cyber-Physical Systems and Design Automation (CPSDA)",
+    "Database Management Systems (DBMS)",
+    "Design, Modeling and Analysis (DMA)",
+    "Education (EDUC)",
+    "Graphics (GR)",
+    "Human-Computer Interaction (HCI)",
+    "Information, Data, Network, and Communication Sciences (IDNCS)",
+    "Integrated Circuits (INC)",
+    "Micro/Nano Electro Mechanical Systems (MEMS)",
+    "Operating Systems & Networking (OSNT)",
+    "Physical Electronics (PHY)",
+    "Power and Energy (ENE)",
+    "Programming Systems (PS)",
+    "Scientific Computing (SCI)",
+    "Security (SEC)",
+    "Signal Processing (SP)",
+    "Theory (THY)",
+]
+
+
+def _tagged_person(areas: str) -> dict:
+    return {"name": "Test Person", "url": "https://example.test/p.html",
+            "title": "Professor", "research_areas": areas}
+
+
+def test_every_umbrella_tag_yields_real_keywords():
+    fallback = EECS_CONFIG["keywords"][:1]
+    for tag in EECS_UMBRELLA_TAGS:
+        kws = normalize_faculty(_tagged_person(tag), EECS_CONFIG)["keywords"]
+        assert kws and kws != fallback, f"{tag!r} fell back to {kws}"
+
+
+def test_previously_unmapped_umbrella_tags_get_topical_keywords():
+    # Theory + ARC produced zero bank hits before the mapping (fallback-only).
+    opp = normalize_faculty(
+        _tagged_person("Theory (THY); Computer Architecture & Engineering (ARC)"),
+        EECS_CONFIG,
+    )
+    assert "algorithms" in opp["keywords"]
+    assert "computer architecture" in opp["keywords"]
+    assert EECS_CONFIG["keywords"][0] not in opp["keywords"]
+
+
+def test_mapped_keywords_do_not_duplicate_bank_matches():
+    # "Signal Processing (SP)" is both a mapping key and a verbatim bank hit.
+    opp = normalize_faculty(_tagged_person("Signal Processing (SP)"), EECS_CONFIG)
+    assert opp["keywords"].count("signal processing") == 1
+
+
+def test_mapped_keywords_pass_dq_junk_gates():
+    """Every mapped keyword lands in keywords[] (and the title parenthetical)
+    of real records, so it must clear the corpus-wide junk/fragment gates in
+    tests/test_opportunity_data_quality.py."""
+    import re
+
+    from src.collectors.uiuc_faculty import _is_junk_keyword
+
+    lead = re.compile(
+        r"^(?:such as|particularly|especially|including|namely|e\.g\.?)\b",
+        re.IGNORECASE,
+    )
+    for tag, kws in EECS_AREA_KEYWORDS.items():
+        assert kws, f"{tag!r} maps to no keywords"
+        for k in kws:
+            assert not _is_junk_keyword(k), f"{tag!r} -> junk keyword {k!r}"
+            assert not lead.match(k), f"{tag!r} -> fragment lead-in {k!r}"
+
+
 # The live server omits a charset header, so requests' resp.text falls back to
-# ISO-8859-1 and mangles UTF-8 names ("Kanté" -> "KantÃ©"). _fetch_soup must
+# ISO-8859-1 and mangles UTF-8 names ("Kanté" -> "KantÃ©"). fetch_soup must
 # parse the response bytes instead.
 UTF8_NO_CHARSET_HTML = """
 <div class="cc-image-list__item__content">
@@ -201,9 +298,10 @@ def test_fetch_soup_is_mojibake_free_without_charset_header(monkeypatch):
     resp._content = UTF8_NO_CHARSET_HTML
     resp.headers["Content-Type"] = "text/html"
     resp.encoding = "ISO-8859-1"  # what requests infers when charset is absent
-    monkeypatch.setattr(ucb.requests, "get", lambda *a, **k: resp)
+    monkeypatch.setattr(ucb_common.requests.Session, "get",
+                        lambda self, *a, **k: resp)
 
-    soup = _fetch_soup("https://example.test/faculty.html")
+    soup = fetch_soup("https://example.test/faculty.html")
     people = _scrape_eecs_faculty_list(soup, EECS_CONFIG["base"])
     assert people[0]["name"] == "Boubacar Kanté"
     opp = normalize_faculty(people[0], EECS_CONFIG)
