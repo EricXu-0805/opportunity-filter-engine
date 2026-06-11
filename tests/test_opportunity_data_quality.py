@@ -44,6 +44,14 @@ def _load_data() -> list[dict]:
         return json.load(f)
 
 
+def _is_faculty(o: dict) -> bool:
+    """Faculty collectors (uiuc_faculty, ucb_eecs_faculty, ucb_stat_faculty)
+    all emit source_type='faculty_research'; the ranker's faculty re-weighting
+    keys on the same field, so these gates stay in lockstep with scoring as
+    new faculty sources are added."""
+    return o.get("source_type") == "faculty_research"
+
+
 def _parse_iso(d):
     if not d or not isinstance(d, str):
         return None
@@ -197,7 +205,13 @@ class TestR70ADataQuality:
         profiles produced byte-identical multi-keyword sets across same-department
         faculty (74 CS profs all 'doing compilers'), giving false specific matches.
         After the demotion fix no uiuc_faculty multi-keyword set may be shared by
-        more than the collector's threshold of same-department peers."""
+        more than the collector's threshold of same-department peers.
+
+        Deliberately NOT widened to the ucb_* faculty sources: their keywords
+        map each professor's curated research-area memberships onto a fixed
+        keyword bank, so same-area peers legitimately share small identical
+        sets (e.g. 8 EECS profs all tagged AI+Robotics). The shared-set
+        heuristic only signals pollution for page-scraped keywords."""
         from collections import defaultdict
 
         from src.collectors.uiuc_faculty import _SHARED_KEYWORD_POLLUTION_THRESHOLD
@@ -226,7 +240,7 @@ class TestR70ADataQuality:
 
         names_by_email: dict[str, set[str]] = defaultdict(set)
         for o in _load_data():
-            if o.get("source") != "uiuc_faculty":
+            if not _is_faculty(o):
                 continue
             email = (o.get("contact_email") or "").strip().lower()
             if email:
@@ -246,7 +260,7 @@ class TestR70ADataQuality:
 
         offenders = []
         for o in _load_data():
-            if o.get("source") != "uiuc_faculty":
+            if not _is_faculty(o):
                 continue
             m = re.search(r" — .+? \((.+)\)$", o.get("title", ""))
             if not m:
@@ -267,7 +281,7 @@ class TestR70ADataQuality:
                "Affiliated Faculty", "Labs & Facilities", "Research Institutes and Centers"]
         leaks = [
             o.get("id") for o in _load_data()
-            if o.get("source") == "uiuc_faculty"
+            if _is_faculty(o)
             and any(n in (o.get("description_clean") or "") for n in NAV)
         ]
         assert not leaks, f"{len(leaks)} faculty descriptions still leak nav-menu text: {leaks[:3]}"
@@ -284,7 +298,7 @@ class TestR70ADataQuality:
         offenders = [
             (o.get("id"), k)
             for o in _load_data()
-            if o.get("source") == "uiuc_faculty"
+            if _is_faculty(o)
             for k in (o.get("keywords") or [])
             if lead.match((k or "").strip())
         ]
@@ -301,13 +315,40 @@ class TestR70ADataQuality:
         offenders = [
             (o.get("id"), k)
             for o in _load_data()
-            if o.get("source") == "uiuc_faculty"
+            if _is_faculty(o)
             for k in (o.get("keywords") or [])
             if _is_junk_keyword(k)
         ]
         assert not offenders, (
             f"{len(offenders)} faculty keywords are junk (furniture/truncation/"
             f"fragment). First: {offenders[:5]}"
+        )
+
+    def test_no_ucb_joint_appointment_duplicates(self):
+        """Joint-appointment professors (EECS+Statistics) used to appear in both
+        ucb_eecs_faculty and ucb_stat_faculty, surfacing twice in results.
+        Dedup policy: keep the ucb_eecs_faculty record (richer keywords), drop
+        the ucb_stat_faculty one. No two ucb_* records may share a non-null
+        contact_email or a normalized pi_name, so a re-scrape can't silently
+        reintroduce the duplicates."""
+        from collections import defaultdict
+
+        by_email: dict[str, list[str]] = defaultdict(list)
+        by_name: dict[str, list[str]] = defaultdict(list)
+        for o in _load_data():
+            if not (o.get("source") or "").startswith("ucb_"):
+                continue
+            email = (o.get("contact_email") or "").strip().lower()
+            if email:
+                by_email[email].append(o.get("id"))
+            name = (o.get("pi_name") or "").casefold().strip()
+            if name:
+                by_name[name].append(o.get("id"))
+        dup_emails = {e: ids for e, ids in by_email.items() if len(ids) > 1}
+        dup_names = {n: ids for n, ids in by_name.items() if len(ids) > 1}
+        assert not dup_emails and not dup_names, (
+            f"ucb_* joint-appointment duplicates: "
+            f"shared emails {dup_emails} / shared names {dup_names}"
         )
 
 

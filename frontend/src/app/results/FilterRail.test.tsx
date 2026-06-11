@@ -139,6 +139,11 @@ describe('sourceLabel (derived source filter)', () => {
   it('uses the i18n key for a known source', () => {
     expect(sourceLabel('uiuc_faculty', t)).toBe('results.filters.sourceUiucFaculty');
   });
+  it('uses i18n keys for the UC Berkeley sources', () => {
+    expect(sourceLabel('ucb_urap', t)).toBe('results.filters.sourceUcbUrap');
+    expect(sourceLabel('ucb_eecs_faculty', t)).toBe('results.filters.sourceUcbEecsFaculty');
+    expect(sourceLabel('ucb_stat_faculty', t)).toBe('results.filters.sourceUcbStatFaculty');
+  });
   it('humanizes an unknown source key (e.g. simplify_internships)', () => {
     expect(sourceLabel('simplify_internships', t)).toBe('Simplify Internships');
   });

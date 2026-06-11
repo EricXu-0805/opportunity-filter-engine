@@ -844,12 +844,14 @@ def score_upside(
                     reasons_fit.remove(interest_reason)
 
     has_skill_signal = bool(opportunity.get("eligibility", {}).get("skills_required"))
-    if opportunity.get("source") == "uiuc_faculty":
-        # Faculty postings have template-generated descriptions, so the mentor /
-        # pathway keyword scans are a flat constant across ~all of them and don't
-        # differentiate labs (C4). Redirect their combined weight into
-        # keyword_score (research-interest similarity) so faculty are ranked by
-        # topical fit instead of a shared constant. Other layers (paid/first-exp/
+    if opportunity.get("source_type") == "faculty_research":
+        # Faculty postings (uiuc_faculty + ucb_*_faculty — source_type
+        # 'faculty_research' is carried by exactly the faculty collectors) have
+        # template-generated descriptions, so the mentor / pathway keyword scans
+        # are a flat constant across ~all of them and don't differentiate labs
+        # (C4). Redirect their combined weight into keyword_score
+        # (research-interest similarity) so faculty are ranked by topical fit
+        # instead of a shared constant. Other layers (paid/first-exp/
         # campus/brand) keep their weights.
         if has_skill_signal:
             total = 0.15 * paid_score + 0.15 * first_exp_score + 0.10 * campus_score + \
