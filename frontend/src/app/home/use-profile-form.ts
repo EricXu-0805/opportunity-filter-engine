@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { getStats, parseGitHubProfile } from '@/lib/api';
 import { clearMatchCache } from '@/lib/match-cache';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { loadProfile, onAuthChange, saveProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, type SaveStatus, type TFunc } from './types';
@@ -195,7 +196,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
 
     saveTimerRef.current = setTimeout(() => {
       pendingSaveRef.current = null;
-      localStorage.setItem('ofe_profile', JSON.stringify(toSave));
+      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(toSave));
       saveProfile(toSave)
         .then(() => {
           setSaveStatus('saved');
@@ -214,7 +215,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       const pending = pendingSaveRef.current;
       if (!pending) return;
       try {
-        localStorage.setItem('ofe_profile', JSON.stringify(pending));
+        localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(pending));
       } catch { /* quota or SSR */ }
       saveProfile(pending as unknown as Record<string, unknown>).catch(() => {});
       pendingSaveRef.current = null;
@@ -295,7 +296,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         profileToSave = { ...profileToSave, skills: mergeSkills(profileToSave.skills, newSkills) };
       }
     }
-    localStorage.setItem('ofe_profile', JSON.stringify(profileToSave));
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profileToSave));
     clearMatchCache();
     saveProfile(profileToSave).catch(() => {});
     router.push('/results');

@@ -20,6 +20,7 @@ import {
   type FilterPreset,
 } from '@/lib/filter-presets';
 import { saveSearch } from '@/lib/saved-searches';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import {
   getAuthState,
   getFavorites,
@@ -97,9 +98,9 @@ function ResultsContent() {
   // modal's own "open" state names elsewhere in this large component.
   const { openModal: openAuthModal } = useAuthModal();
 
-  const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>('ofe_profile');
+  const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>(STORAGE_KEYS.PROFILE);
   const profile = useMemo(() => migrateProfile(rawStoredProfile), [rawStoredProfile]);
-  const hasStoredProfile = useHasLocalStorageKey('ofe_profile');
+  const hasStoredProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
 
   const initialUrl = useMemo(() => readInitialFiltersFromUrl(searchParams), [searchParams]);
   const [activeTab, setActiveTab] = useState<Tab>(initialUrl.activeTab);
@@ -140,7 +141,7 @@ function ResultsContent() {
   const [page, setPage] = useState(1);
 
   const presets = useLocalStorageJSON<unknown, FilterPreset[]>(
-    'ofe_filter_presets',
+    STORAGE_KEYS.FILTER_PRESETS,
     parsePresetsArray,
   );
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
@@ -206,7 +207,7 @@ function ResultsContent() {
 
   const toggleSemantic = useCallback((next: boolean) => {
     setSemanticRerank(next);
-    try { localStorage.setItem('ofe_semantic_rerank', next ? '1' : '0'); } catch { /* quota */ }
+    try { localStorage.setItem(STORAGE_KEYS.SEMANTIC_RERANK, next ? '1' : '0'); } catch { /* quota */ }
     setData(null);
     setPage(1);
   }, [setData]);

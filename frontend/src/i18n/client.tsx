@@ -1,11 +1,12 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { translate, normalizeLocale, DEFAULT_LOCALE, LOCALES } from './translate';
 import type { Locale } from './translate';
 
-const LOCALE_COOKIE = 'ofe_lang';
-const LOCALE_STORAGE = 'ofe_lang';
+const LOCALE_COOKIE = STORAGE_KEYS.LOCALE;
+const LOCALE_STORAGE = STORAGE_KEYS.LOCALE;
 
 interface LanguageContextValue {
   locale: Locale;

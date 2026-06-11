@@ -340,6 +340,9 @@ export const en = {
     needFavoritesCta: 'Go to results',
     allSetTitle: "You're already competitive 🎉",
     allSetBody: 'Your profile already covers the listed skills for your {count} favorite labs.',
+    errorTitle: "Couldn't build your roadmap",
+    errorBody: 'Something went wrong while loading your skill gaps. Check your connection and try again.',
+    errorRetry: 'Try again',
   },
   tracker: {
     back: 'Back',
@@ -1760,6 +1763,9 @@ export const zh = {
     needFavoritesCta: '去结果页',
     allSetTitle: '你已经很有竞争力 🎉',
     allSetBody: '你的档案已覆盖这 {count} 个收藏实验室所列的技能。',
+    errorTitle: '路线图加载失败',
+    errorBody: '获取技能差距时出了点问题，请检查网络后重试。',
+    errorRetry: '重试',
   },
   tracker: {
     back: '返回',

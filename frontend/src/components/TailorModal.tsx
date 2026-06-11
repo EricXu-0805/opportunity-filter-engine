@@ -12,6 +12,7 @@ import {
   Info,
 } from 'lucide-react';
 import { tailorResume, getTailorStatus, extractResumeBullets } from '@/lib/api';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
@@ -20,7 +21,7 @@ import { diffWords, isWhitespace } from '@/lib/word-diff';
 // lose typed bullets if they close the modal accidentally. Keying by
 // opportunity id keeps drafts isolated — opening the modal on opp A then
 // opp B shows two distinct prefills, not the same leaked text.
-const DRAFT_STORAGE_PREFIX = 'ofe_tailor_draft_';
+const DRAFT_STORAGE_PREFIX = STORAGE_KEYS.TAILOR_DRAFT_PREFIX;
 
 function draftStorageKey(opportunityId: string): string {
   return `${DRAFT_STORAGE_PREFIX}${opportunityId}`;

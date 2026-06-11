@@ -24,11 +24,12 @@ import {
   onAuthChange,
   type AuthState,
 } from '@/lib/supabase';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import { useT } from '@/i18n/client';
 
-const FLAG_KEY = 'ofe_just_signed_out';
-const DISMISS_KEY = 'ofe_guest_banner_dismissed';
+const FLAG_KEY = STORAGE_KEYS.JUST_SIGNED_OUT;
+const DISMISS_KEY = STORAGE_KEYS.GUEST_BANNER_DISMISSED;
 
 function readSession(key: string): string | null {
   if (typeof window === 'undefined') return null;

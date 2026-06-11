@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import SaveFavoritesAnchor from '@/components/SaveFavoritesAnchor';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useCustomImports } from '@/lib/custom-imports';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { ProfileData } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -37,7 +38,7 @@ export default function FavoritesPage() {
   const router = useRouter();
   const { t } = useT();
 
-  const profile = useLocalStorageJSON<ProfileData>('ofe_profile');
+  const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const customImports = useCustomImports();
   const { serverOpportunities, loading, handleRemove } = useFavoritesData();
   const { savedSearches, handleRemove: handleRemoveSavedSearch, handleApplyOptimisticClear } =

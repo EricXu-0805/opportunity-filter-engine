@@ -5,6 +5,8 @@ import {
   type User,
 } from '@supabase/supabase-js';
 
+import { STORAGE_KEYS } from './storage-keys';
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
@@ -454,7 +456,7 @@ export async function saveProfile(profileData: Record<string, unknown>): Promise
 function readLocalProfile(): Record<string, unknown> | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem('ofe_profile');
+    const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === 'object' ? parsed : null;

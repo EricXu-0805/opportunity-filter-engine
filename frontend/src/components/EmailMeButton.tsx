@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
 type SendResult = { ok: boolean; count?: number };
@@ -14,7 +15,7 @@ interface EmailMeButtonProps {
   className?: string;
 }
 
-const LS_KEY = 'ofe_email_hint';
+const LS_KEY = STORAGE_KEYS.EMAIL_HINT;
 
 export default function EmailMeButton({
   label,

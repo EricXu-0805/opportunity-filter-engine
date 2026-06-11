@@ -25,10 +25,11 @@ import {
   onAuthChange,
   type AuthState,
 } from '@/lib/supabase';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import { useT } from '@/i18n/client';
 
-const DISMISS_KEY = 'ofe_anchor_3fav_dismissed';
+const DISMISS_KEY = STORAGE_KEYS.ANCHOR_3FAV_DISMISSED;
 const THRESHOLD = 3;
 
 interface SaveFavoritesAnchorProps {
