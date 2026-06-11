@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.llm import chat_completion
+from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import (
     MatchesResponse,
     MatchResultResponse,
@@ -141,12 +142,12 @@ def _llm_explanation(
     Returns ``None`` when no provider is configured or the call fails;
     callers should fall back to ``_local_explanation``.
     """
-    student_year = profile.get("year", "undergraduate")
-    student_major = profile.get("major", "")
-    student_interests = (profile.get("research_interests_text") or "")[:300]
-    opp_title = opportunity.get("title", "")[:120]
-    opp_lab = opportunity.get("lab_or_program", "")[:120]
-    opp_pi = opportunity.get("pi_name", "") or ""
+    student_year = _sanitize_field(profile.get("year", "undergraduate"), max_len=50)
+    student_major = _sanitize_field(profile.get("major", ""), max_len=100)
+    student_interests = _sanitize_field(profile.get("research_interests_text") or "", max_len=300)
+    opp_title = _sanitize_field(opportunity.get("title", ""), max_len=120)
+    opp_lab = _sanitize_field(opportunity.get("lab_or_program", ""), max_len=120)
+    opp_pi = _sanitize_field(opportunity.get("pi_name", "") or "", max_len=120)
 
     system = (
         "You write short, personalized fit summaries for a student looking at a "
