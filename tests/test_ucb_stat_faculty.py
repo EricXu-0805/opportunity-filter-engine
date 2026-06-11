@@ -110,6 +110,13 @@ def test_id_is_deterministic():
     assert a == b
 
 
+def test_known_record_id_is_byte_stable():
+    """Ids are the upsert key — a drifted derivation duplicates the whole
+    STAT corpus on the next scrape. Pin a real corpus id."""
+    ani = next(p for p in _scrape() if p["name"] == "Ani Adhikari")
+    assert normalize_faculty(ani, STAT_CONFIG)["id"] == "faculty-ucb-stat-58582c90"
+
+
 # --- profile-page email enrichment (offline) ---
 
 PROFILE_HTML = """

@@ -3,7 +3,9 @@
 Berkeley runs several department directories on the same Drupal "Open Berkeley"
 theme (Statistics, Chemistry, CEE, ...). They differ only in CSS selectors and a
 few labels, so the scraping/enrichment/normalization logic lives here and each
-department module is reduced to a config dict.
+department module is reduced to a config dict. EECS (a non-Drupal directory)
+keeps its own card parser but shares everything else — fetching, keyword/skill
+inference, normalization, and the merge path — through this module.
 
 A department config is a dict with:
     source     str   normalized record `source` (e.g. "ucb_stat_faculty")
@@ -14,6 +16,7 @@ A department config is a dict with:
     majors     list  majors attached to each opportunity (for matching)
     keywords   list  broad-field fallback keyword(s)
     selectors  dict  CSS selectors: card, name, link, title, email_field
+    work_auth_notes  str, optional  eligibility note (default "")
 
 The "Open Berkeley" listing pages expose only name + profile link + job title
 — NOT email or research interests. enrich_faculty_with_email() recovers the
@@ -64,12 +67,18 @@ _RETRY_BACKOFF = 2.0  # seconds; doubles each attempt
 # Politeness delay between individual profile-page requests.
 PROFILE_DELAY = 0.75
 
-# Shared/admin mailboxes that are not a specific professor's contact.
+# Shared/admin mailboxes that are not a specific professor's contact, plus the
+# EECS directory's placeholder shown when a professor lists no address.
 NOISE_EMAILS = frozenset({
     "webmaster@berkeley.edu", "info@berkeley.edu",
     "inquiries@stat.berkeley.edu", "info@stat.berkeley.edu",
     "webmaster@stat.berkeley.edu",
+    "no_email@eecs.berkeley.edu",
 })
+
+# Department directories mix retired faculty into the same card list; they are
+# not viable cold-email targets for prospective undergrad researchers.
+_RETIRED_TITLE_RE = re.compile(r"\b(emeritus|emerita|retired)\b", re.IGNORECASE)
 
 EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 
@@ -98,10 +107,14 @@ SKILL_MAP = {
     "Python": ["python", "machine learning", "deep learning", "data science",
                "natural language", "computational", "bioinformatics"],
     "R": ["statistical", "statistics", "biostatistics", "probability"],
+    "C++": ["c++", "systems", "embedded", "robotics", "high performance",
+            "parallel computing", "compilers"],
     "PyTorch": ["deep learning", "neural network", "computer vision",
                 "reinforcement learning", "nlp"],
     "SQL": ["database", "data management", "information systems"],
-    "MATLAB": ["signal processing", "control", "circuits"],
+    "MATLAB": ["matlab", "signal processing", "control", "power systems",
+               "circuits", "electromagnetics"],
+    "Linux": ["systems", "networking", "security", "cloud"],
 }
 
 
@@ -119,7 +132,10 @@ def fetch_soup(url: str) -> BeautifulSoup | None:
         try:
             resp = session.get(url, timeout=_TIMEOUT)
             resp.raise_for_status()
-            return BeautifulSoup(resp.text, "html.parser")
+            # Parse bytes, not resp.text: the EECS server omits a charset
+            # header, so requests falls back to ISO-8859-1 and mangles UTF-8
+            # names ("Björn" -> "BjÃ¶rn"). BeautifulSoup detects the encoding.
+            return BeautifulSoup(resp.content, "html.parser")
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout) as e:
             last_err = e
@@ -288,6 +304,8 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     dept_name = config["name"]
     profile_url = person.get("url", "")
     title = person.get("title", "Professor")
+    if _RETIRED_TITLE_RE.search(title):
+        return None
     research_areas = person.get("research_areas", "")
 
     name_hash = hashlib.md5(f"{dept_short}-{name}".encode()).hexdigest()[:8]
@@ -342,7 +360,7 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
             "skills_preferred": skills[3:],
             "citizenship_required": False,
             "international_friendly": "unknown",
-            "work_auth_notes": "",
+            "work_auth_notes": config.get("work_auth_notes", ""),
             "eligibility_text_raw": description[:500],
         },
         "application": {
@@ -465,8 +483,12 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     return (added, updated)
 
 
-def run_cli(config: dict, description: str) -> None:
-    """Shared command-line entry point for a department collector."""
+def run_cli(config: dict, description: str, fetch=None) -> None:
+    """Shared command-line entry point for a department collector.
+
+    ``fetch`` overrides the Open-Berkeley fetch path for departments with a
+    bespoke parser (EECS); it receives the resolved ``enrich`` flag.
+    """
     import argparse
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -477,7 +499,10 @@ def run_cli(config: dict, description: str) -> None:
                         help="Skip per-profile email enrichment (faster preview)")
     args = parser.parse_args()
 
-    opps = fetch_and_normalize(config, enrich=not args.no_enrich)
+    if fetch is None:
+        def fetch(enrich: bool) -> list[dict]:
+            return fetch_and_normalize(config, enrich=enrich)
+    opps = fetch(not args.no_enrich)
     with_email = sum(1 for o in opps if o.get("contact_email"))
     print(f"\nFetched {len(opps)} {config['short']} faculty research "
           f"opportunities ({with_email} with email)")

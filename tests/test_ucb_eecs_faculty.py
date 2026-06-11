@@ -4,7 +4,9 @@ No network: the parser is exercised against a small HTML fixture that mirrors
 the real EECS directory markup (div.cc-image-list__item__content > h3 a, a
 <p> with the rank in the first <strong>, an inline Berkeley email, and
 /Research/Areas/ topic links). Locks in the parser, the Berkeley-specific
-normalized schema, and id stability.
+normalized schema, and id stability — the EECS path now runs through
+ucb_common (shared fetch/normalize/merge), so these tests also pin that the
+consolidation changed no record-visible behavior.
 """
 
 from __future__ import annotations
@@ -17,12 +19,11 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors import ucb_eecs_faculty as ucb
+from src.collectors import ucb_common
+from src.collectors.ucb_common import fetch_soup, normalize_faculty
 from src.collectors.ucb_eecs_faculty import (
     EECS_CONFIG,
-    _fetch_soup,
     _scrape_eecs_faculty_list,
-    normalize_faculty,
 )
 
 # Four faculty cards (one fully populated, one missing email/areas, one with
@@ -133,6 +134,21 @@ def test_id_is_deterministic():
     assert a == b
 
 
+def test_known_record_ids_are_byte_stable():
+    """Ids are the upsert key into processed/opportunities.json: if the
+    derivation drifts (e.g. during the ucb_common consolidation), the next
+    scrape duplicates all ~200 UCB records instead of updating them. Pin
+    real corpus ids, including two recomputed by the mojibake fix."""
+    for name, expected in [
+        ("Pieter Abbeel", "faculty-ucb-eecs-8f9a715a"),
+        ("Björn Hartmann", "faculty-ucb-eecs-ffde8ecc"),
+        ("Boubacar Kanté", "faculty-ucb-eecs-830e5c93"),
+    ]:
+        person = {"name": name, "url": "https://example.test/p.html",
+                  "title": "Professor"}
+        assert normalize_faculty(person, EECS_CONFIG)["id"] == expected
+
+
 def test_emeritus_and_retired_titles_are_skipped():
     sequin = next(p for p in _scrape() if p["name"] == "Carlo H. Séquin")
     assert sequin["title"] == "Professor Emeritus"
@@ -183,7 +199,7 @@ def test_metadata_keys_are_canonical():
 
 
 # The live server omits a charset header, so requests' resp.text falls back to
-# ISO-8859-1 and mangles UTF-8 names ("Kanté" -> "KantÃ©"). _fetch_soup must
+# ISO-8859-1 and mangles UTF-8 names ("Kanté" -> "KantÃ©"). fetch_soup must
 # parse the response bytes instead.
 UTF8_NO_CHARSET_HTML = """
 <div class="cc-image-list__item__content">
@@ -201,9 +217,10 @@ def test_fetch_soup_is_mojibake_free_without_charset_header(monkeypatch):
     resp._content = UTF8_NO_CHARSET_HTML
     resp.headers["Content-Type"] = "text/html"
     resp.encoding = "ISO-8859-1"  # what requests infers when charset is absent
-    monkeypatch.setattr(ucb.requests, "get", lambda *a, **k: resp)
+    monkeypatch.setattr(ucb_common.requests.Session, "get",
+                        lambda self, *a, **k: resp)
 
-    soup = _fetch_soup("https://example.test/faculty.html")
+    soup = fetch_soup("https://example.test/faculty.html")
     people = _scrape_eecs_faculty_list(soup, EECS_CONFIG["base"])
     assert people[0]["name"] == "Boubacar Kanté"
     opp = normalize_faculty(people[0], EECS_CONFIG)
