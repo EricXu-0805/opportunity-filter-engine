@@ -116,3 +116,70 @@ export function findUniversity(id: string): UniversityEntry {
   if (!found) throw new Error(`Unknown university id: ${id}`);
   return found;
 }
+
+/*
+ * Discovery-scope model (decision 2026-06): which opportunities a user sees
+ * is determined by each opportunity's own audience, NOT the user's school.
+ *   'campus'  — host-school students only (e.g. Berkeley URAP, UIUC campus jobs)
+ *   'open'    — external applicants welcome (e.g. NSF REU, MIT MSRP)
+ *   'unknown' — unconfirmed (e.g. faculty cold-email targets)
+ * Default results = home school's campus items + ALL 'open' items.
+ */
+export type Audience = 'campus' | 'open' | 'unknown';
+
+export interface MockOpportunity {
+  id: string;
+  title: string;
+  org: string;
+  /** Host school id, or null = national program with no single campus host. */
+  hostId: string | null;
+  /** Chip label: school short tag, or program/source name for national items. */
+  hostLabel: string;
+  audience: Audience;
+  matchScore: number;
+  deadline: string;
+}
+
+/** Ranked by interest fit, exactly like the real results page. */
+export const MOCK_RESULTS: MockOpportunity[] = [
+  {
+    id: 'nsf-reu-neuro',
+    title: 'REU Site: Computational Neuroscience & Machine Learning',
+    org: 'Carnegie Mellon University · NSF REU',
+    hostId: null,
+    hostLabel: 'NSF REU',
+    audience: 'open',
+    matchScore: 92,
+    deadline: '2027-02-01',
+  },
+  {
+    id: 'ucb-urap-neuroai',
+    title: 'URAP — Undergraduate Research Apprentice Program (NeuroAI Lab)',
+    org: 'UC Berkeley · EECS',
+    hostId: 'ucb',
+    hostLabel: 'UC Berkeley',
+    audience: 'campus',
+    matchScore: 89,
+    deadline: '2026-08-30',
+  },
+  {
+    id: 'mit-msrp',
+    title: 'MIT Summer Research Program (MSRP)',
+    org: 'Massachusetts Institute of Technology',
+    hostId: 'mit',
+    hostLabel: 'MIT',
+    audience: 'open',
+    matchScore: 86,
+    deadline: '2027-01-15',
+  },
+  {
+    id: 'uiuc-ncsa-spin',
+    title: 'NCSA SPIN — Students Pushing Innovation Internship',
+    org: 'UIUC · National Center for Supercomputing Applications',
+    hostId: 'uiuc',
+    hostLabel: 'UIUC',
+    audience: 'campus',
+    matchScore: 84,
+    deadline: '2026-10-05',
+  },
+];
