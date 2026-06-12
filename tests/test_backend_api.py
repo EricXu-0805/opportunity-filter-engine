@@ -2117,3 +2117,73 @@ class TestRateLimitResolution:
         # The bare list/stats endpoint (no trailing slash) stays generous.
         key = _rate_limit_key("/api/opportunities")
         assert RATE_LIMITS.get(key, DEFAULT_RATE) == DEFAULT_RATE
+
+
+class TestMatchesHomeSchool:
+    """home_school in the POST body flows through ProfileRequest.model_dump()
+    into rank_all's discovery-scope filter (PR #187 Phase 1)."""
+
+    @staticmethod
+    def _opp(ident, school, audience):
+        # Strong-fit record for sample_profile_req so every variant clears the
+        # route's min_match_threshold and lands in a visible (non-low_fit)
+        # bucket — the test isolates the scope filter, not scoring.
+        return {
+            "id": ident,
+            "title": "Undergraduate ML Research Assistant",
+            "organization": "Test University",
+            "on_campus": True,
+            "opportunity_type": "research",
+            "paid": "yes",
+            "is_rolling": True,
+            "school": school,
+            "audience": audience,
+            "description_raw": "Machine learning research with mentorship and training. Python required.",
+            "description_clean": "Machine learning research.",
+            "keywords": ["machine learning"],
+            "eligibility": {
+                "preferred_year": ["freshman", "sophomore"],
+                "majors": ["CS"],
+                "skills_required": ["Python"],
+                "international_friendly": "yes",
+            },
+            "application": {},
+            "metadata": {"is_active": True},
+        }
+
+    @pytest.fixture
+    def scoped_corpus(self, monkeypatch):
+        corpus = [
+            self._opp("uiuc-campus", "uiuc", "campus"),
+            self._opp("ucb-campus", "ucb", "campus"),
+            self._opp("national-open", None, "open"),
+        ]
+        monkeypatch.setattr("backend.routes.matches.load_opportunities", lambda: corpus)
+        monkeypatch.setattr(
+            "backend.routes.matches.load_opportunities_by_id",
+            lambda: {o["id"]: o for o in corpus},
+        )
+        return corpus
+
+    def _result_ids(self, body):
+        resp = client.post("/api/matches", json=body)
+        assert resp.status_code == 200
+        return {r["opportunity_id"] for r in resp.json()["results"]}
+
+    def test_default_home_school_scopes_to_uiuc(self, scoped_corpus, sample_profile_req):
+        ids = self._result_ids(sample_profile_req)
+        assert "uiuc-campus" in ids
+        assert "national-open" in ids
+        assert "ucb-campus" not in ids
+
+    def test_home_school_ucb_flips_campus_visibility(self, scoped_corpus, sample_profile_req):
+        ids = self._result_ids({**sample_profile_req, "home_school": "ucb"})
+        assert "ucb-campus" in ids
+        assert "national-open" in ids
+        assert "uiuc-campus" not in ids
+
+    def test_home_school_is_normalized_to_lowercase_slug(self, scoped_corpus, sample_profile_req):
+        # The schema validator lowercases/strips, so ' UCB ' scopes like 'ucb'.
+        ids = self._result_ids({**sample_profile_req, "home_school": " UCB "})
+        assert "ucb-campus" in ids
+        assert "uiuc-campus" not in ids

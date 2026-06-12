@@ -1059,3 +1059,87 @@ class TestFacultyUpsideReweight:
         rich = score_upside(prof, self._opp(
             "handshake", "mentor training guided publication co-author conference thesis."))[0]
         assert rich > plain
+
+
+# ── School / audience discovery scope (PR #187 Phase 1) ──────────────────────
+
+class TestSchoolScopeFilter:
+    """rank_all excludes another school's campus-only records before scoring;
+    'open' and 'unknown' audiences always pass regardless of host school."""
+
+    @staticmethod
+    def _opp(ident, school, audience):
+        return {
+            "id": ident,
+            "title": f"Research position {ident}",
+            "opportunity_type": "research",
+            "school": school,
+            "audience": audience,
+            "eligibility": {},
+            "metadata": {"is_active": True},
+        }
+
+    @staticmethod
+    def _profile(home_school=None):
+        prof = {
+            "year": "freshman",
+            "major": "CS",
+            "preferences": {"min_match_threshold": 0},
+        }
+        if home_school is not None:
+            prof["home_school"] = home_school
+        return prof
+
+    @pytest.fixture
+    def corpus(self):
+        return [
+            self._opp("uiuc-campus", "uiuc", "campus"),
+            self._opp("ucb-campus", "ucb", "campus"),
+            self._opp("ucb-unknown", "ucb", "unknown"),
+            self._opp("national-open", None, "open"),
+        ]
+
+    def _ids(self, profile, corpus):
+        return {r.opportunity_id for r in rank_all(profile, corpus)}
+
+    def test_default_home_school_is_uiuc_when_absent(self, corpus):
+        # No home_school in the profile → 'uiuc': UIUC campus stays, the other
+        # school's campus-only record is excluded.
+        ids = self._ids(self._profile(), corpus)
+        assert "uiuc-campus" in ids
+        assert "ucb-campus" not in ids
+
+    def test_home_ucb_shows_ucb_campus_and_hides_uiuc_campus(self, corpus):
+        ids = self._ids(self._profile(home_school="ucb"), corpus)
+        assert "ucb-campus" in ids
+        assert "uiuc-campus" not in ids
+
+    def test_open_and_unknown_visible_from_both_homes(self, corpus):
+        for home in (None, "ucb"):
+            ids = self._ids(self._profile(home_school=home), corpus)
+            assert {"national-open", "ucb-unknown"} <= ids, f"home={home}"
+
+    def test_ucb_faculty_unknown_stays_visible_for_uiuc_home(self):
+        # Pins today's behavior: UIUC users see the ~200 UCB faculty
+        # cold-email targets (school='ucb', audience='unknown').
+        ucb_faculty = self._opp("ucb-fac", "ucb", "unknown")
+        ucb_faculty["source"] = "ucb_eecs_faculty"
+        ucb_faculty["source_type"] = "faculty_research"
+        ids = self._ids(self._profile(), [ucb_faculty])
+        assert ids == {"ucb-fac"}
+
+    def test_untagged_and_national_records_always_pass(self):
+        # Records without school/audience (pre-migration shape) and national
+        # records (school=None) are never scope-filtered.
+        corpus = [
+            self._opp("national-open", None, "open"),
+            {
+                "id": "legacy-untagged",
+                "title": "Legacy record",
+                "opportunity_type": "research",
+                "eligibility": {},
+                "metadata": {"is_active": True},
+            },
+        ]
+        ids = self._ids(self._profile(home_school="ucb"), corpus)
+        assert ids == {"national-open", "legacy-untagged"}

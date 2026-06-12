@@ -1367,6 +1367,7 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     search_weight = profile.get("search_weight", 50)
     weights = _compute_weights(search_weight)
 
+    home_school = str(profile.get("home_school") or "uiuc").strip().lower()
     seeking = set(profile.get("seeking_type", []))
     student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
     related_majors_norm: set[str] = set()
@@ -1403,6 +1404,18 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     results = []
     for opp in opportunities:
         if opp.get("metadata", {}).get("is_active") is False:
+            continue
+
+        # Multi-university scope (PR #187 Phase 1): another school's
+        # campus-only posting is not actionable for this user. 'open' and
+        # 'unknown' always pass — hiding 'unknown' would regress e.g. the
+        # UCB faculty cold-email targets UIUC users see today.
+        opp_school = opp.get("school")
+        if (
+            opp_school is not None
+            and opp_school != home_school
+            and opp.get("audience") == "campus"
+        ):
             continue
 
         if profile.get("international_student"):

@@ -180,3 +180,31 @@ def test_partial_scrape_gate_surfaces_in_summary(monkeypatch, tmp_path):
     assert pass_info["skipped_partial_scrape"] == ["uiuc_faculty"]
     saved = json.loads(processed.read_text(encoding="utf-8"))
     assert all(o["metadata"]["is_active"] is True for o in saved)
+
+
+def test_post_merge_pass_stamps_school_audience(monkeypatch, tmp_path):
+    """The school/audience stamp runs in the post-merge block, persists to the
+    processed file, and surfaces its per-source counts in the run summary —
+    same wiring contract as deactivate_stale_faculty."""
+    seeded = [
+        _seed_faculty("uiuc_faculty", "fac-1", days_ago=1),
+        {"id": "man-1", "source": "manual", "title": "Hand import",
+         "school": "MIT", "audience": "open", "metadata": {"is_active": True}},
+        {"id": "man-2", "source": "manual", "title": "Untagged hand import",
+         "metadata": {"is_active": True}},
+    ]
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
+
+    summary = refresh_all.refresh_all(deep=False)
+
+    pass_info = summary["sources"]["school_audience"]
+    assert pass_info["status"] == "ok"
+    assert pass_info["tagged"] == 3
+    assert pass_info["by_source"] == {"uiuc_faculty": 1, "manual": 2}
+
+    saved = {o["id"]: o for o in json.loads(processed.read_text(encoding="utf-8"))}
+    assert (saved["fac-1"]["school"], saved["fac-1"]["audience"]) == ("uiuc", "campus")
+    # Manual explicit values win (school normalized to a lowercase slug)...
+    assert (saved["man-1"]["school"], saved["man-1"]["audience"]) == ("mit", "open")
+    # ...and untagged manual records fall back to the conservative default.
+    assert (saved["man-2"]["school"], saved["man-2"]["audience"]) == (None, "unknown")

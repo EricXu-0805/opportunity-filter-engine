@@ -15,6 +15,7 @@ from pathlib import Path
 
 from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate_stale_faculty
+from src.normalizers.school_audience import apply_school_audience
 
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
@@ -349,6 +350,21 @@ def refresh_all(deep: bool = True) -> dict:
             stale_faculty["newly_deactivated"],
             stale_faculty["kept_fresh"],
             len(stale_faculty["skipped_partial_scrape"]),
+        )
+
+        # Multi-university Phase 1: stamp source-level school + audience on
+        # every record so freshly merged rows can never reach the corpus
+        # untagged (the DQ gate asserts both fields on all records).
+        school_audience_counts = apply_school_audience(all_opps)
+        summary["sources"]["school_audience"] = {
+            "tagged": sum(school_audience_counts.values()),
+            "by_source": school_audience_counts,
+            "status": "ok",
+        }
+        logger.info(
+            "school_audience: %d record(s) stamped across %d source(s)",
+            sum(school_audience_counts.values()),
+            len(school_audience_counts),
         )
 
         with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
