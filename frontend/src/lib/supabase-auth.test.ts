@@ -26,13 +26,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // would NOT work: the import (and thus the module's top-level
 // SUPABASE_CONFIGURED check) runs before the assignment. vi.hoisted
 // runs before all imports — exactly what we need.
-const { mockGetSession, mockUpdateUser, mockSignInWithOtp } = vi.hoisted(() => {
+const {
+  mockGetSession,
+  mockUpdateUser,
+  mockSignInWithOtp,
+  mockSignInWithOAuth,
+} = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
   return {
     mockGetSession: vi.fn(),
     mockUpdateUser: vi.fn(),
     mockSignInWithOtp: vi.fn(),
+    mockSignInWithOAuth: vi.fn(),
   };
 });
 
@@ -42,6 +48,7 @@ vi.mock('@supabase/supabase-js', () => ({
       getSession: mockGetSession,
       updateUser: mockUpdateUser,
       signInWithOtp: mockSignInWithOtp,
+      signInWithOAuth: mockSignInWithOAuth,
       signOut: vi.fn().mockResolvedValue({ error: null }),
       signInAnonymously: vi.fn().mockResolvedValue({
         data: { user: { id: 'new-anon-uid' } },
@@ -56,7 +63,12 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { isAnonymousUser, signInExistingEmail, signInOrLinkEmail } from './supabase';
+import {
+  isAnonymousUser,
+  signInExistingEmail,
+  signInOrLinkEmail,
+  signInWithOAuthProvider,
+} from './supabase';
 
 const REDIRECT = 'https://app.test/auth/callback';
 
@@ -273,6 +285,59 @@ describe('signInExistingEmail — forced sign-in-to-existing path', () => {
     });
 
     const result = await signInExistingEmail('eric@illinois.edu', REDIRECT);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('rate-limited');
+  });
+});
+
+// The OAuth path is dark in production until NEXT_PUBLIC_AUTH_PROVIDERS
+// is set (AuthModal gates the buttons), but the call itself must be
+// correct NOW so flipping the flag is config-only. The azure provider
+// needs `scopes: 'email'` — Entra multi-tenant apps don't assert email
+// by default, and the school auto-detect (Phase A2) depends on it.
+describe('signInWithOAuthProvider', () => {
+  beforeEach(() => {
+    mockSignInWithOAuth.mockReset();
+  });
+
+  it('google → signInWithOAuth with the callback redirect and no scopes', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      data: { provider: 'google', url: 'https://accounts.google.com/x' },
+      error: null,
+    });
+
+    const result = await signInWithOAuthProvider('google', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: REDIRECT, scopes: undefined },
+    });
+  });
+
+  it('azure → signInWithOAuth with scopes:"email"', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      data: { provider: 'azure', url: 'https://login.microsoftonline.com/x' },
+      error: null,
+    });
+
+    const result = await signInWithOAuthProvider('azure', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: 'azure',
+      options: { redirectTo: REDIRECT, scopes: 'email' },
+    });
+  });
+
+  it('maps provider errors through mapAuthError', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'For security purposes, too many requests' },
+    });
+
+    const result = await signInWithOAuthProvider('google', REDIRECT);
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('rate-limited');

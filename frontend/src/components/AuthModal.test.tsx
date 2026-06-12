@@ -16,17 +16,20 @@ const mockSignInExisting = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetAuthState = vi.fn();
 const mockOnAuthChange = vi.fn((_cb: (s: unknown) => void) => () => {});
+const mockOAuth = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   getAuthState: () => mockGetAuthState(),
   onAuthChange: (cb: (s: unknown) => void) => mockOnAuthChange(cb),
   signInOrLinkEmail: (email: string, redirect: string) => mockSignIn(email, redirect),
   signInExistingEmail: (email: string, redirect: string) => mockSignInExisting(email, redirect),
+  signInWithOAuthProvider: (provider: string, redirect: string) => mockOAuth(provider, redirect),
   signOutOfAccount: () => mockSignOut(),
 }));
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
+    locale: 'en',
     t: (key: string, vars?: Record<string, string>) => {
       if (vars?.email) return `${key}:${vars.email}`;
       return key;
@@ -74,6 +77,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe('AuthModal — gating', () => {
@@ -90,7 +94,7 @@ describe('AuthModal — auto phase resolution', () => {
     mockGetAuthState.mockResolvedValue(ANON);
     render(<AuthModal />);
     await waitFor(() => {
-      expect(screen.getByText('auth.modal.signin.title')).toBeInTheDocument();
+      expect(screen.getByText('auth.modal.signin.headline')).toBeInTheDocument();
     });
   });
 
@@ -110,14 +114,14 @@ describe('AuthModal — signin phase', () => {
 
   it('shows the form and a privacy line', async () => {
     render(<AuthModal />);
-    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     expect(screen.getByText('auth.modal.signin.trust')).toBeInTheDocument();
   });
 
   it('transitions to the sent phase on successful submit', async () => {
     mockSignIn.mockResolvedValue({ ok: true, mode: 'link-anon', message: 'check inbox' });
     render(<AuthModal />);
-    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
     fireEvent.submit(input.closest('form')!);
@@ -129,7 +133,7 @@ describe('AuthModal — signin phase', () => {
   it('does NOT transition phase when sign-in returns ok:false', async () => {
     mockSignIn.mockResolvedValue({ ok: false, reason: 'email-taken', message: 'taken' });
     render(<AuthModal />);
-    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
     fireEvent.submit(input.closest('form')!);
@@ -149,7 +153,7 @@ describe('AuthModal — signin phase', () => {
   it('renders Sign-in-existing button when outcome.reason is email-taken', async () => {
     mockSignIn.mockResolvedValue({ ok: false, reason: 'email-taken', message: 'taken' });
     render(<AuthModal />);
-    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
     fireEvent.submit(input.closest('form')!);
@@ -161,7 +165,7 @@ describe('AuthModal — signin phase', () => {
   it('does NOT render Sign-in-existing button for other error reasons', async () => {
     mockSignIn.mockResolvedValue({ ok: false, reason: 'rate-limited', message: 'wait' });
     render(<AuthModal />);
-    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
     fireEvent.submit(input.closest('form')!);
@@ -175,7 +179,7 @@ describe('AuthModal — signin phase', () => {
     mockSignIn.mockResolvedValue({ ok: false, reason: 'email-taken', message: 'taken' });
     mockSignInExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'check inbox' });
     render(<AuthModal />);
-    await waitFor(() => screen.getByText('auth.modal.signin.title'));
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
     fireEvent.submit(input.closest('form')!);
@@ -190,6 +194,160 @@ describe('AuthModal — signin phase', () => {
     await waitFor(() => {
       expect(setPhaseMock).toHaveBeenCalledWith('sent');
     });
+  });
+});
+
+describe('AuthModal — school detection chip', () => {
+  beforeEach(() => {
+    mockGetAuthState.mockResolvedValue(ANON);
+  });
+
+  async function typeEmail(value: string) {
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value } });
+  }
+
+  it('shows the known-school chip (name + auto-set line) for a mapped domain', async () => {
+    await typeEmail('eric@illinois.edu');
+    expect(screen.getByTestId('school-chip')).toBeInTheDocument();
+    expect(screen.getByText('University of Illinois Urbana-Champaign')).toBeInTheDocument();
+    expect(screen.getByText('auth.modal.chip.known')).toBeInTheDocument();
+    expect(screen.queryByTestId('edu-chip')).toBeNull();
+  });
+
+  it('matches subdomains of a mapped domain (cs.berkeley.edu)', async () => {
+    await typeEmail('oski@cs.berkeley.edu');
+    expect(screen.getByTestId('school-chip')).toBeInTheDocument();
+    expect(screen.getByText('University of California, Berkeley')).toBeInTheDocument();
+  });
+
+  it('shows the neutral student-email chip for an unmapped .edu domain', async () => {
+    await typeEmail('x@somewhere.edu');
+    expect(screen.getByTestId('edu-chip')).toBeInTheDocument();
+    expect(screen.getByText('auth.modal.chip.edu.title')).toBeInTheDocument();
+    expect(screen.queryByTestId('school-chip')).toBeNull();
+  });
+
+  it('shows no chip for a non-.edu email', async () => {
+    await typeEmail('eric@gmail.com');
+    expect(screen.queryByTestId('school-chip')).toBeNull();
+    expect(screen.queryByTestId('edu-chip')).toBeNull();
+  });
+
+  it('swaps chips live as the domain changes', async () => {
+    await typeEmail('eric@illinois.edu');
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@somewhere.edu' } });
+    expect(screen.queryByTestId('school-chip')).toBeNull();
+    expect(screen.getByTestId('edu-chip')).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: 'eric@gmail.com' } });
+    expect(screen.queryByTestId('edu-chip')).toBeNull();
+  });
+});
+
+describe('AuthModal — OAuth provider gating', () => {
+  beforeEach(() => {
+    mockGetAuthState.mockResolvedValue(ANON);
+  });
+
+  it('renders no provider buttons (and no divider) when the env flag is absent', async () => {
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    expect(screen.queryByTestId('auth-provider-google')).toBeNull();
+    expect(screen.queryByTestId('auth-provider-azure')).toBeNull();
+    expect(screen.queryByText('auth.modal.divider')).toBeNull();
+  });
+
+  it('renders no provider buttons when the env flag is empty', async () => {
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', '');
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    expect(screen.queryByTestId('auth-provider-google')).toBeNull();
+    expect(screen.queryByTestId('auth-provider-azure')).toBeNull();
+  });
+
+  it('renders both buttons with "google,azure"', async () => {
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google,azure');
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    expect(screen.getByTestId('auth-provider-google')).toBeInTheDocument();
+    expect(screen.getByTestId('auth-provider-azure')).toBeInTheDocument();
+    expect(screen.getByText('auth.modal.divider')).toBeInTheDocument();
+  });
+
+  it('renders only Google with "google"', async () => {
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google');
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    expect(screen.getByTestId('auth-provider-google')).toBeInTheDocument();
+    expect(screen.queryByTestId('auth-provider-azure')).toBeNull();
+  });
+
+  it('tolerates whitespace/case and ignores unknown provider names', async () => {
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', ' Google , apple , AZURE ');
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    expect(screen.getByTestId('auth-provider-google')).toBeInTheDocument();
+    expect(screen.getByTestId('auth-provider-azure')).toBeInTheDocument();
+  });
+});
+
+describe('AuthModal — OAuth click flow', () => {
+  beforeEach(() => {
+    mockGetAuthState.mockResolvedValue(ANON);
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google,azure');
+  });
+
+  it('Google button calls signInWithOAuthProvider with the callback redirect', async () => {
+    mockOAuth.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
+    await waitFor(() => {
+      expect(mockOAuth).toHaveBeenCalledWith('google', 'http://localhost:3000/auth/callback');
+    });
+  });
+
+  it('Microsoft button calls signInWithOAuthProvider with azure', async () => {
+    mockOAuth.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.click(screen.getByTestId('auth-provider-azure'));
+    await waitFor(() => {
+      expect(mockOAuth).toHaveBeenCalledWith('azure', 'http://localhost:3000/auth/callback');
+    });
+  });
+
+  it('surfaces the error message and re-enables the form when OAuth fails', async () => {
+    mockOAuth.mockResolvedValue({ ok: false, reason: 'unknown', message: 'oauth exploded' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
+    await waitFor(() => {
+      expect(screen.getByText('oauth exploded')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('auth-provider-google')).not.toBeDisabled();
+  });
+
+  it('does not transition to the sent phase on OAuth success (browser navigates instead)', async () => {
+    mockOAuth.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
+    await waitFor(() => expect(mockOAuth).toHaveBeenCalled());
+    expect(setPhaseMock).not.toHaveBeenCalledWith('sent');
+  });
+});
+
+describe('AuthModal — chrome', () => {
+  it('closes on Escape', async () => {
+    mockGetAuthState.mockResolvedValue(ANON);
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(closeModalMock).toHaveBeenCalled();
   });
 });
 

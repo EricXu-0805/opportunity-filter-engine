@@ -67,12 +67,28 @@ export const en = {
     modal: {
       signin: {
         title: 'Sign in to OpportunityEngine',
-        subtitle: "Enter your email — we'll send a one-tap sign-in link. No password needed.",
+        headline: 'Pick up where you left off,',
+        headlineAccent: 'anywhere',
+        subline: 'Sign in to sync your profile, favorites, and application progress across phone and laptop.',
         emailLabel: 'Email',
+        emailPlaceholder: 'you@illinois.edu',
         submitting: 'Sending...',
-        submit: 'Email me a link',
-        trust: "We'll send one email. No password, no spam.",
+        submit: 'Send magic link',
+        trust: 'One email, no password, no spam. We only use it to sign you in and sync your data.',
         signInExistingCta: 'Send sign-in link to this email',
+      },
+      prop1: 'Sync everywhere',
+      prop2: 'Never lose work',
+      prop3: 'Weekly matches',
+      google: 'Continue with Google',
+      microsoft: 'School account (Microsoft)',
+      divider: 'or',
+      chip: {
+        known: "We'll set {shortName} as your school",
+        edu: {
+          title: 'Student email detected',
+          body: "We'll ask for your school after you sign in.",
+        },
       },
       sent: {
         title: 'Check your inbox',
@@ -1534,12 +1550,28 @@ export const zh = {
     modal: {
       signin: {
         title: '登录 OpportunityEngine',
-        subtitle: '留一个邮箱，我们发一个一键登录链接。无需密码。',
+        headline: '在任何设备，',
+        headlineAccent: '接着上次继续',
+        subline: '登录后，你的资料、收藏与申请进度在手机、电脑间无缝同步。',
         emailLabel: '邮箱',
+        emailPlaceholder: 'you@illinois.edu',
         submitting: '发送中...',
-        submit: '发送链接',
-        trust: '只会发一封邮件。无密码，无营销。',
+        submit: '发送登录链接',
+        trust: '只发一封登录邮件；邮箱仅用于登录与数据同步。',
         signInExistingCta: '给这个邮箱发送登录链接',
+      },
+      prop1: '全设备同步',
+      prop2: '数据不丢失',
+      prop3: '每周新匹配',
+      google: '使用 Google 继续',
+      microsoft: '用学校账号登录',
+      divider: '或',
+      chip: {
+        known: '将把 {shortName} 设为你的学校',
+        edu: {
+          title: '检测到学生邮箱',
+          body: '登录后再选择学校。',
+        },
       },
       sent: {
         title: '请查收邮件',
