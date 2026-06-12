@@ -70,18 +70,28 @@ function CallbackInner() {
       const hashError = hashRaw ? decodeURIComponent(hashRaw) : null;
       if (queryError || hashError) {
         if (!cancelled) {
-          // linkIdentity conflict: the OAuth identity the user just
-          // consented with already belongs to ANOTHER account. GoTrue
-          // only detects this AFTER the provider consent, so it arrives
-          // here as error params (error_code=identity_already_exists)
-          // rather than as a rejected linkIdentity() call in the modal.
-          // Show the dedicated recovery screen instead of the generic
-          // magic-link error copy.
+          // linkIdentity conflict: the account the user just consented
+          // with already belongs to someone else. GoTrue only detects
+          // this AFTER the provider consent, so it arrives here as error
+          // params rather than as a rejected linkIdentity() call in the
+          // modal. Two flavors: error_code=identity_already_exists (the
+          // OAuth identity is linked to another user) and
+          // error_code=email_exists (the provider email belongs to an
+          // existing email-based account). Both get the dedicated
+          // recovery screen instead of the generic magic-link error
+          // copy; email_exists only when an OAuth provider was stashed,
+          // since that code can also arise outside the OAuth flow.
           const errorCode = params.get('error_code')
             ?? (hashRaw ? new URLSearchParams(hashRaw).get('error_code') : null);
           const description = queryError || hashError || '';
-          if (errorCode === 'identity_already_exists' || /already linked/i.test(description)) {
-            setLinkProvider(readStashedOAuthProvider());
+          const stashedProvider = readStashedOAuthProvider();
+          const identityConflict =
+            errorCode === 'identity_already_exists'
+            || /already linked/i.test(description)
+            || (stashedProvider !== null
+              && (errorCode === 'email_exists' || /already been registered/i.test(description)));
+          if (identityConflict) {
+            setLinkProvider(stashedProvider);
             setStatus('identity-conflict');
           } else {
             setStatus('error');
