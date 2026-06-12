@@ -385,6 +385,41 @@ export async function signInExistingEmail(
   };
 }
 
+export type OAuthProvider = 'google' | 'azure';
+
+/**
+ * OAuth sign-in (Google / Microsoft Entra via the `azure` provider).
+ * On success Supabase navigates the browser to the provider's consent
+ * page, so the resolved outcome is only ever observed on failure (or
+ * in tests). `redirectTo` is the same `/auth/callback` URL the magic-
+ * link flow uses — the callback's exchangeCodeForSession path handles
+ * both. Dark in production until NEXT_PUBLIC_AUTH_PROVIDERS lists the
+ * provider (AuthModal gates the buttons), but the code path is real.
+ */
+export async function signInWithOAuthProvider(
+  provider: OAuthProvider,
+  redirectTo: string,
+): Promise<SignInOutcome> {
+  if (!SUPABASE_CONFIGURED) {
+    return {
+      ok: false,
+      reason: 'not-configured',
+      message: 'Sign-in is unavailable: Supabase is not configured.',
+    };
+  }
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo,
+      // Entra ID multi-tenant apps don't assert email by default; the
+      // school auto-detect (Phase A2) needs it.
+      scopes: provider === 'azure' ? 'email' : undefined,
+    },
+  });
+  if (error) return mapAuthError(error.message);
+  return { ok: true, mode: 'sign-in', message: 'Redirecting to provider…' };
+}
+
 function mapAuthError(raw: string): SignInOutcome {
   const msg = raw || 'Unknown error';
   const lower = msg.toLowerCase();
