@@ -10,6 +10,7 @@ import type {
   StatsResponse,
   TailorResponse,
 } from './types';
+import { bySlug } from './schools';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -51,9 +52,13 @@ export function deriveDesiredFields(interests: string | undefined): string[] {
 }
 
 function toProfileRequest(profile: ProfileData): ProfileRequest {
+  const homeSchool = profile.home_school ?? 'uiuc';
   return {
     name: profile.name ?? '',
-    school: 'UIUC',
+    // Free-text display name (cold-email "…student at {school}");
+    // home_school is the slug the matcher's scope filter consumes.
+    school: bySlug(homeSchool)?.shortName ?? 'UIUC',
+    home_school: homeSchool,
     year: profile.grade.toLowerCase(),
     major: profile.major,
     college: profile.college,

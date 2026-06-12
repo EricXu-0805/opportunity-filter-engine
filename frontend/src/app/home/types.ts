@@ -6,6 +6,7 @@ export type TFunc = ReturnType<typeof useT>['t'];
 export const DEFAULT_PROFILE: ProfileData = {
   name: '',
   institution: 'UIUC - University of Illinois Urbana-Champaign',
+  home_school: 'uiuc',
   college: '',
   major: '',
   grade: '',

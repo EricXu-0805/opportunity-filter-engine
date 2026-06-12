@@ -8,6 +8,8 @@ export interface FilterPresetFilters {
   onCampus: '' | 'yes' | 'no';
   deadline: '' | '7' | '14' | '30' | 'passed';
   minScore: number;
+  // Optional: presets saved before the discovery-scope facet shipped lack it.
+  scope?: '' | 'campus' | 'open';
 }
 
 export interface FilterPreset {

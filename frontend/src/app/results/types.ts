@@ -5,6 +5,7 @@
 // the saved-searches loader widens at the boundary.
 
 import { Filter, Zap, Target, TrendingUp, Star } from 'lucide-react';
+import type { ScopeValue } from '@/lib/discovery-scope';
 import type { ProfileData } from '@/lib/types';
 
 export type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
@@ -22,6 +23,9 @@ export interface Filters {
   onCampus: '' | 'yes' | 'no';
   deadline: '' | '7' | '14' | '30' | 'passed';
   minScore: number;
+  // Discovery scope (PR #187): '' = everything the backend returned,
+  // 'campus' = home-school records only, 'open' = open/unknown audience.
+  scope: ScopeValue;
 }
 
 export const DEFAULT_FILTERS: Filters = {
@@ -31,6 +35,7 @@ export const DEFAULT_FILTERS: Filters = {
   onCampus: '',
   deadline: '',
   minScore: 0,
+  scope: '',
 };
 
 export const TABS: {

@@ -203,6 +203,73 @@ describe('useProfileForm — GitHub auto-import on submit (PR5 ②)', () => {
   });
 });
 
+function SchoolHarness() {
+  const form = useProfileForm(stableT);
+  return (
+    <div>
+      <span data-testid="home-school">{form.profile.home_school ?? ''}</span>
+      <span data-testid="college">{form.profile.college}</span>
+      <span data-testid="major">{form.profile.major}</span>
+      <button data-testid="switch-ucb" onClick={() => form.update('home_school', 'ucb')}>switch</button>
+      <button data-testid="switch-uiuc" onClick={() => form.update('home_school', 'uiuc')}>switch back</button>
+      <button data-testid="set-college" onClick={() => form.update('college', 'College of Engineering')}>college</button>
+      <button data-testid="set-major" onClick={() => form.update('major', 'EECS')}>major</button>
+    </div>
+  );
+}
+
+describe('useProfileForm — home_school (university switcher)', () => {
+  it('defaults home_school to uiuc on a fresh profile', async () => {
+    render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('home-school').textContent).toBe('uiuc'));
+  });
+
+  it('backward compat: a stored profile without home_school keeps working as uiuc', async () => {
+    // Pre-switcher profile shape — no home_school key at all.
+    mockLoadProfile = () => Promise.resolve({
+      college: 'Grainger College of Engineering',
+      major: 'Computer Science',
+      grade: 'Freshman',
+    } as Record<string, unknown>);
+    render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('college').textContent).toBe('Grainger College of Engineering'));
+    expect(screen.getByTestId('home-school').textContent).toBe('uiuc');
+    expect(screen.getByTestId('major').textContent).toBe('Computer Science');
+  });
+
+  it('loads a stored home_school and persists a switch through the save path', async () => {
+    mockLoadProfile = () => Promise.resolve({ home_school: 'ucb' } as Record<string, unknown>);
+    render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('home-school').textContent).toBe('ucb'));
+  });
+
+  it('switching schools updates home_school without clobbering college/major', async () => {
+    render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('home-school').textContent).toBe('uiuc'));
+    fireEvent.click(screen.getByTestId('set-college'));
+    fireEvent.click(screen.getByTestId('set-major'));
+    fireEvent.click(screen.getByTestId('switch-ucb'));
+    expect(screen.getByTestId('home-school').textContent).toBe('ucb');
+    expect(screen.getByTestId('college').textContent).toBe('College of Engineering');
+    expect(screen.getByTestId('major').textContent).toBe('EECS');
+  });
+
+  it('college edits clear the major only under the UIUC catalog, not in free-text mode', async () => {
+    render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('home-school').textContent).toBe('uiuc'));
+    // UIUC catalog mode: picking a college resets the cascaded major.
+    fireEvent.click(screen.getByTestId('set-major'));
+    fireEvent.click(screen.getByTestId('set-college'));
+    expect(screen.getByTestId('major').textContent).toBe('');
+    // Free-text mode (catalog-pending school): college keystrokes must NOT
+    // wipe the major the user typed.
+    fireEvent.click(screen.getByTestId('switch-ucb'));
+    fireEvent.click(screen.getByTestId('set-major'));
+    fireEvent.click(screen.getByTestId('set-college'));
+    expect(screen.getByTestId('major').textContent).toBe('EECS');
+  });
+});
+
 // R67 problem #4: when the auth session transitions on this device
 // (anon → permanent via magic-link convert, or one signed-in account
 // → a different signed-in account), the form must re-fetch the

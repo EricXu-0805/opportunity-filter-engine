@@ -223,11 +223,18 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, []);
 
   const update = useCallback(<K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
-    setProfile((prev) => ({
-      ...prev,
-      [key]: key === 'college' ? value : value,
-      ...(key === 'college' ? { major: '' } : {}),
-    }));
+    setProfile((prev) => {
+      // Picking a different college from the UIUC catalog invalidates the
+      // major (the cascading dropdown). Catalog-pending schools edit college
+      // as free text, where clearing the major on every keystroke would
+      // wipe the user's input.
+      const clearMajor = key === 'college' && (prev.home_school ?? 'uiuc') === 'uiuc';
+      return {
+        ...prev,
+        [key]: value,
+        ...(clearMajor ? { major: '' } : {}),
+      };
+    });
   }, []);
 
   const handleResumeParsed = useCallback((data: ResumeParseResponse) => {

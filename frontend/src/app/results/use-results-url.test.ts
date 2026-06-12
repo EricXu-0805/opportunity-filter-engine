@@ -37,14 +37,15 @@ describe('readInitialFiltersFromUrl', () => {
       onCampus: '',
       deadline: '',
       minScore: 0,
+      scope: '',
     });
     expect(result.searchQuery).toBe('');
     expect(result.sortBy).toBe('score');
   });
 
-  it('hydrates filters from URL keys (loc/dl/min round-trip)', () => {
+  it('hydrates filters from URL keys (loc/dl/min/scope round-trip)', () => {
     const result = readInitialFiltersFromUrl(
-      new URLSearchParams('paid=yes&intl=no&source=uiuc_faculty&loc=yes&dl=14&min=70&sort=deadline&q=ml'),
+      new URLSearchParams('paid=yes&intl=no&source=uiuc_faculty&loc=yes&dl=14&min=70&scope=open&sort=deadline&q=ml'),
     );
     expect(result.filters).toEqual({
       paid: 'yes',
@@ -53,6 +54,7 @@ describe('readInitialFiltersFromUrl', () => {
       onCampus: 'yes',
       deadline: '14',
       minScore: 70,
+      scope: 'open',
     });
     expect(result.sortBy).toBe('deadline');
     expect(result.searchQuery).toBe('ml');
@@ -115,6 +117,7 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
       onCampus: '' as const,
       deadline: '' as const,
       minScore: 0,
+      scope: '' as const,
     },
     sortBy: 'score' as const,
     semanticRerank: true,
@@ -151,6 +154,14 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
     expect(url).toContain('min=60');
     expect(url).toContain('sort=deadline');
     expect(url).toContain('ai=0');
+  });
+
+  it('emits ?scope= when the discovery-scope facet is active, omits when default', () => {
+    renderHook(() => useResultsUrlSync({
+      ...EMPTY_STATE,
+      filters: { ...EMPTY_STATE.filters, scope: 'campus' },
+    }));
+    expect(lastUrl()).toBe('/results?scope=campus');
   });
 
   it('emits ai=0 only when semantic is off', () => {

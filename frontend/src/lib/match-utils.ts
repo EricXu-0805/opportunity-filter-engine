@@ -92,6 +92,7 @@ export function hashProfile(profile: {
   research_interests: string;
   seeking_types?: string[];
   search_weight?: number;
+  home_school?: string;
 }): string {
   const key = JSON.stringify({
     major: profile.major,
@@ -102,6 +103,9 @@ export function hashProfile(profile: {
     interests: profile.research_interests,
     seeking: profile.seeking_types ?? [],
     weight: profile.search_weight ?? 50,
+    // Switching home school changes the backend's candidate pool — the
+    // cached match set must miss, not serve the previous school's results.
+    home: profile.home_school ?? 'uiuc',
   });
   let h = 0;
   for (let i = 0; i < key.length; i++) {

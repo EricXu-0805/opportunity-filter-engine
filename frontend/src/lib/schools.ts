@@ -1,10 +1,22 @@
 /*
- * Known .edu domain → school map, used by AuthModal's live email
- * detection chip. The detected slug is not persisted yet — Phase A2
- * will consume it for home_school, which is why `detectSchoolFromEmail`
- * is exported as a standalone reusable function rather than living
- * inside the modal.
+ * Single school registry: the .edu domain → school map used by
+ * AuthModal's live email detection chip, plus the switcher-facing
+ * metadata (location, coverage) consumed by UniversitySwitcherModal
+ * and the results scope indicator. One list, no parallel copies.
  */
+
+export interface SchoolCoverage {
+  /**
+   * Count of campus-hosted opportunity records in the dataset, or
+   * 'pending' when no campus collector exists yet (the school still
+   * sees every national `audience='open'` record). Hardcoded per the
+   * PR #187 decision; deriving from the dataset at build time is a
+   * tracked follow-up.
+   */
+  campusOpportunities: number | 'pending';
+  /** i18n key for the coverage chip text shown on the switcher card. */
+  note: string;
+}
 
 export interface School {
   slug: string;
@@ -15,7 +27,14 @@ export interface School {
   nameZh: string;
   /** Official brand color, used for the chip dot. */
   color: string;
+  location: string;
+  coverage: SchoolCoverage;
 }
+
+const PENDING_COVERAGE: SchoolCoverage = {
+  campusOpportunities: 'pending',
+  note: 'universitySwitcher.coveragePending',
+};
 
 export const SCHOOLS: School[] = [
   {
@@ -25,6 +44,8 @@ export const SCHOOLS: School[] = [
     shortName: 'UIUC',
     nameZh: '伊利诺伊大学香槟分校',
     color: '#E84A27',
+    location: 'Urbana-Champaign, IL',
+    coverage: { campusOpportunities: 4700, note: 'universitySwitcher.coverageCampusNational' },
   },
   {
     slug: 'ucb',
@@ -33,6 +54,8 @@ export const SCHOOLS: School[] = [
     shortName: 'UC Berkeley',
     nameZh: '加州大学伯克利分校',
     color: '#003262',
+    location: 'Berkeley, CA',
+    coverage: { campusOpportunities: 200, note: 'universitySwitcher.coverageCampus' },
   },
   {
     slug: 'umich',
@@ -41,6 +64,8 @@ export const SCHOOLS: School[] = [
     shortName: 'Michigan',
     nameZh: '密歇根大学',
     color: '#00274C',
+    location: 'Ann Arbor, MI',
+    coverage: PENDING_COVERAGE,
   },
   {
     slug: 'gatech',
@@ -49,6 +74,8 @@ export const SCHOOLS: School[] = [
     shortName: 'Georgia Tech',
     nameZh: '佐治亚理工学院',
     color: '#B3A369',
+    location: 'Atlanta, GA',
+    coverage: PENDING_COVERAGE,
   },
   {
     slug: 'utexas',
@@ -57,6 +84,8 @@ export const SCHOOLS: School[] = [
     shortName: 'UT Austin',
     nameZh: '得克萨斯大学奥斯汀分校',
     color: '#BF5700',
+    location: 'Austin, TX',
+    coverage: PENDING_COVERAGE,
   },
   {
     slug: 'ucla',
@@ -65,6 +94,8 @@ export const SCHOOLS: School[] = [
     shortName: 'UCLA',
     nameZh: '加州大学洛杉矶分校',
     color: '#2774AE',
+    location: 'Los Angeles, CA',
+    coverage: PENDING_COVERAGE,
   },
   {
     slug: 'uw',
@@ -73,6 +104,8 @@ export const SCHOOLS: School[] = [
     shortName: 'UW',
     nameZh: '华盛顿大学',
     color: '#4B2E83',
+    location: 'Seattle, WA',
+    coverage: PENDING_COVERAGE,
   },
   {
     slug: 'wisc',
@@ -81,6 +114,8 @@ export const SCHOOLS: School[] = [
     shortName: 'UW–Madison',
     nameZh: '威斯康星大学麦迪逊分校',
     color: '#C5050C',
+    location: 'Madison, WI',
+    coverage: PENDING_COVERAGE,
   },
   {
     slug: 'stanford',
@@ -89,8 +124,16 @@ export const SCHOOLS: School[] = [
     shortName: 'Stanford',
     nameZh: '斯坦福大学',
     color: '#8C1515',
+    location: 'Stanford, CA',
+    coverage: PENDING_COVERAGE,
   },
 ];
+
+const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));
+
+export function bySlug(slug: string): School | undefined {
+  return BY_SLUG.get(slug);
+}
 
 export type SchoolDetection =
   | { kind: 'school'; school: School }

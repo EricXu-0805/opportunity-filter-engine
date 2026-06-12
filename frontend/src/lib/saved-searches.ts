@@ -7,6 +7,10 @@ export interface SavedSearchFilters {
   onCampus: '' | 'yes' | 'no';
   deadline: '' | '7' | '14' | '30' | 'passed';
   minScore: number;
+  // Optional: rows saved before the discovery-scope facet shipped lack it.
+  // Like minScore, scope is enforced client-side only — the cron-side
+  // matcher (src/saved_searches/filter.py) ignores it.
+  scope?: '' | 'campus' | 'open';
 }
 
 export type SortBy = 'score' | 'deadline' | 'newest';
@@ -270,7 +274,7 @@ export async function markSavedSearchSeen(id: string): Promise<boolean> {
 // URL serialisation for the "Apply saved search" flow: produces a /results
 // URL whose query string matches the params /results writes back to history
 // when filters change. Keep keys in sync with the writer in
-// app/results/use-results-url.ts (paid/intl/source/loc/dl/min/sort/q/tab) —
+// app/results/use-results-url.ts (paid/intl/source/loc/dl/min/scope/sort/q/tab) —
 // any drift here means saved searches won't roundtrip cleanly through the
 // existing URL-driven state init.
 //
@@ -301,6 +305,7 @@ export function savedSearchToUrl(
   if (s.filters.onCampus) params.set('loc', s.filters.onCampus);
   if (s.filters.deadline) params.set('dl', s.filters.deadline);
   if (s.filters.minScore > 0) params.set('min', String(s.filters.minScore));
+  if (s.filters.scope) params.set('scope', s.filters.scope);
   if (s.sort_by && s.sort_by !== 'score') params.set('sort', s.sort_by);
   if (opts?.highlight && opts.highlight.length > 0) {
     params.set('highlight', opts.highlight.join(','));

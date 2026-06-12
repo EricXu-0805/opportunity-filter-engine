@@ -1,0 +1,115 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+
+vi.mock('@/i18n/client', () => ({
+  useT: () => ({
+    locale: 'en',
+    t: (key: string, vars?: Record<string, string | number>) =>
+      vars ? `${key}:${Object.values(vars).join(',')}` : key,
+  }),
+}));
+
+import UniversitySwitcherModal from './UniversitySwitcherModal';
+import { SCHOOLS } from '@/lib/schools';
+
+function renderModal(initialSelectedSlug = 'uiuc') {
+  const onCancel = vi.fn();
+  const onConfirm = vi.fn();
+  render(
+    <UniversitySwitcherModal
+      initialSelectedSlug={initialSelectedSlug}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />,
+  );
+  return { onCancel, onConfirm };
+}
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+describe('UniversitySwitcherModal — rendering', () => {
+  it('renders a card for every registered school', () => {
+    renderModal();
+    for (const school of SCHOOLS) {
+      expect(screen.getByTestId(`university-card-${school.slug}`)).toBeInTheDocument();
+    }
+  });
+
+  it('marks the initial school as selected (aria-pressed)', () => {
+    renderModal('ucb');
+    expect(screen.getByTestId('university-card-ucb')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('university-card-uiuc')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('shows coverage chips: counts for live schools, pending note otherwise', () => {
+    renderModal();
+    expect(screen.getByText('universitySwitcher.coverageCampusNational:4,700')).toBeInTheDocument();
+    expect(screen.getByText('universitySwitcher.coverageCampus:200')).toBeInTheDocument();
+    expect(screen.getAllByText('universitySwitcher.coveragePending').length).toBe(SCHOOLS.length - 2);
+  });
+
+  it('shows the UIUC catalog summary and pending-catalog text for the rest', () => {
+    renderModal();
+    expect(screen.getAllByText(/universitySwitcher\.catalogSummary:/).length).toBe(1);
+    expect(screen.getAllByText('universitySwitcher.catalogPending').length).toBe(SCHOOLS.length - 1);
+  });
+});
+
+describe('UniversitySwitcherModal — search', () => {
+  it('filters cards by name', () => {
+    renderModal();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Berkeley' } });
+    expect(screen.getByTestId('university-card-ucb')).toBeInTheDocument();
+    expect(screen.queryByTestId('university-card-uiuc')).toBeNull();
+  });
+
+  it('filters by Chinese name and by location', () => {
+    renderModal();
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: '斯坦福' } });
+    expect(screen.getByTestId('university-card-stanford')).toBeInTheDocument();
+    expect(screen.queryByTestId('university-card-ucb')).toBeNull();
+    fireEvent.change(input, { target: { value: 'Ann Arbor' } });
+    expect(screen.getByTestId('university-card-umich')).toBeInTheDocument();
+  });
+
+  it('shows the empty state when nothing matches', () => {
+    renderModal();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Hogwarts' } });
+    expect(screen.getByText('universitySwitcher.noMatch:Hogwarts')).toBeInTheDocument();
+  });
+});
+
+describe('UniversitySwitcherModal — select + confirm/cancel', () => {
+  it('select then confirm reports the new slug', () => {
+    const { onConfirm } = renderModal('uiuc');
+    fireEvent.click(screen.getByTestId('university-card-ucb'));
+    expect(screen.getByTestId('university-card-ucb')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByText('universitySwitcher.confirm'));
+    expect(onConfirm).toHaveBeenCalledWith('ucb');
+  });
+
+  it('confirm without changing selection reports the initial slug', () => {
+    const { onConfirm } = renderModal('uiuc');
+    fireEvent.click(screen.getByText('universitySwitcher.confirm'));
+    expect(onConfirm).toHaveBeenCalledWith('uiuc');
+  });
+
+  it('cancel and Escape both call onCancel without confirming', () => {
+    const { onCancel, onConfirm } = renderModal();
+    fireEvent.click(screen.getByText('common.cancel'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(2);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('backdrop click cancels', () => {
+    const { onCancel } = renderModal();
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(dialog.firstElementChild as Element);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
