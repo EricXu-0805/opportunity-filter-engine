@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { matchesScope } from '@/lib/discovery-scope';
 import { daysUntil, expandSearchAliases } from '@/lib/match-utils';
 import type { MatchesResponse, MatchResult } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
@@ -17,6 +18,7 @@ export interface UseResultsFiltersInput {
   showDismissed: boolean;
   page: number;
   pageSize: number;
+  homeSchool: string;
 }
 
 export interface UseResultsFiltersOutput {
@@ -36,6 +38,7 @@ export function useResultsFilters({
   showDismissed,
   page,
   pageSize,
+  homeSchool,
 }: UseResultsFiltersInput): UseResultsFiltersOutput {
   const filtered = useMemo(() => {
     if (!data?.results) return [];
@@ -86,6 +89,9 @@ export function useResultsFilters({
     if (filters.minScore > 0) {
       results = results.filter((m) => m.final_score >= filters.minScore);
     }
+    if (filters.scope) {
+      results = results.filter((m) => matchesScope(m.opportunity, filters.scope, homeSchool));
+    }
 
     if (debouncedQuery.trim()) {
       const q = debouncedQuery.toLowerCase();
@@ -123,7 +129,7 @@ export function useResultsFilters({
     }
 
     return results;
-  }, [data, activeTab, debouncedQuery, filters, favs, sortBy, interactions, showDismissed]);
+  }, [data, activeTab, debouncedQuery, filters, favs, sortBy, interactions, showDismissed, homeSchool]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = useMemo(

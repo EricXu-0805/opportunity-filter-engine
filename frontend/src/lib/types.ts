@@ -9,6 +9,12 @@ export interface SkillWithLevel {
 // ── Frontend Profile (form state) ────────────────────────────────────
 export interface ProfileData {
   institution: string;
+  /**
+   * Lowercase school slug from lib/schools.ts ('uiuc', 'ucb', …).
+   * Optional for backward compatibility with stored profiles that
+   * predate the switcher — readers default to 'uiuc' when absent.
+   */
+  home_school?: string;
   college: string;
   major: string;
   grade: string;
@@ -30,6 +36,8 @@ export interface ProfileData {
 export interface ProfileRequest {
   name: string;
   school: string;
+  /** Lowercase school slug; drives the backend discovery-scope pre-filter. */
+  home_school: string;
   year: string;
   major: string;
   college: string;
@@ -71,6 +79,12 @@ export interface OpportunityMetadata {
   confidence_score: number;
 }
 
+// Multi-university discovery scope (PR #187 / #189). `school` is the
+// lowercase host-school slug, null for national programs; `audience`
+// says who may apply. Both optional: cached results predating #189
+// simply lack them and render without scope chips.
+export type OpportunityAudience = 'campus' | 'open' | 'unknown';
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -85,6 +99,8 @@ export interface Opportunity {
   source?: string;
   source_url?: string;
   source_type?: string;
+  school?: string | null;
+  audience?: OpportunityAudience;
   on_campus: boolean;
   description_clean: string;
   description_raw?: string;

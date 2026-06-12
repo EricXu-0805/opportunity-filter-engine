@@ -35,6 +35,7 @@ export function readInitialFiltersFromUrl(
       onCampus: (searchParams.get('loc') || '') as Filters['onCampus'],
       deadline: (searchParams.get('dl') || '') as Filters['deadline'],
       minScore: Number(searchParams.get('min') || 0),
+      scope: (searchParams.get('scope') || '') as Filters['scope'],
     },
     sortBy: (searchParams.get('sort') as SortKey) || 'score',
   };
@@ -90,6 +91,7 @@ export function useResultsUrlSync(state: {
     if (filters.onCampus) params.set('loc', filters.onCampus);
     if (filters.deadline) params.set('dl', filters.deadline);
     if (filters.minScore > 0) params.set('min', String(filters.minScore));
+    if (filters.scope) params.set('scope', filters.scope);
     if (sortBy !== 'score') params.set('sort', sortBy);
     if (!semanticRerank) params.set('ai', '0');
     const qs = params.toString();

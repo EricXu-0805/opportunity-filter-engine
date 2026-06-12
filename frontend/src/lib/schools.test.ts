@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCHOOLS, detectSchoolFromEmail } from './schools';
+import { SCHOOLS, bySlug, detectSchoolFromEmail } from './schools';
 
 describe('detectSchoolFromEmail — known schools', () => {
   it('matches an exact known domain', () => {
@@ -73,5 +73,36 @@ describe('detectSchoolFromEmail — non-.edu and partial input', () => {
       kind: 'school',
       school: { slug: 'uiuc' },
     });
+  });
+});
+
+describe('registry — switcher metadata', () => {
+  it('bySlug resolves every registered school and rejects unknown slugs', () => {
+    for (const school of SCHOOLS) {
+      expect(bySlug(school.slug)).toBe(school);
+    }
+    expect(bySlug('mit')).toBeUndefined();
+    expect(bySlug('')).toBeUndefined();
+  });
+
+  it('every school carries a location and coverage with an i18n note key', () => {
+    for (const school of SCHOOLS) {
+      expect(school.location.length, school.slug).toBeGreaterThan(0);
+      expect(school.coverage.note.startsWith('universitySwitcher.'), school.slug).toBe(true);
+      const c = school.coverage.campusOpportunities;
+      expect(c === 'pending' || (typeof c === 'number' && c > 0), school.slug).toBe(true);
+    }
+  });
+
+  it('UIUC and UCB are the only schools with live campus coverage', () => {
+    expect(bySlug('uiuc')?.coverage.campusOpportunities).toBe(4700);
+    expect(bySlug('ucb')?.coverage.campusOpportunities).toBe(200);
+    const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
+    expect(pending.length).toBe(SCHOOLS.length - 2);
+  });
+
+  it('slugs are unique', () => {
+    const slugs = SCHOOLS.map((s) => s.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
   });
 });

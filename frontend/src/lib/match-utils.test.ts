@@ -194,4 +194,11 @@ describe('hashProfile', () => {
     const h2 = hashProfile({ ...base, skills: [{ name: 'Python', level: 'expert' }] });
     expect(h1).not.toBe(h2);
   });
+
+  it('switching home_school misses the cache; absent field hashes like uiuc', () => {
+    expect(hashProfile(base)).not.toBe(hashProfile({ ...base, home_school: 'ucb' }));
+    // Backward compat: profiles saved before the switcher (no home_school)
+    // must keep hitting the same cache entry as an explicit 'uiuc'.
+    expect(hashProfile(base)).toBe(hashProfile({ ...base, home_school: 'uiuc' }));
+  });
 });

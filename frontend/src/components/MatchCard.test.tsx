@@ -3,8 +3,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
-    t: (key: string, vars?: Record<string, string | number>) =>
-      vars && 'count' in vars ? `${key}:${vars.count}` : key,
+    t: (key: string, vars?: Record<string, string | number>) => {
+      if (vars && 'count' in vars) return `${key}:${vars.count}`;
+      if (vars && 'host' in vars) return `${key}:${vars.host}`;
+      return key;
+    },
   }),
 }));
 
@@ -13,7 +16,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import MatchCard from './MatchCard';
-import type { MatchResult, Opportunity, MatchBucket } from '@/lib/types';
+import type { MatchResult, Opportunity, MatchBucket, ProfileData } from '@/lib/types';
 
 function makeOpp(overrides: Partial<Opportunity> = {}): Opportunity {
   return {
@@ -386,6 +389,94 @@ describe('MatchCard', () => {
       fireEvent.click(screen.getByText('results.statusMenu.trigger'));
       fireEvent.click(screen.getByText('detail.tracker.statusLabels.interviewing'));
       expect(handler).toHaveBeenCalledWith('opp-track', 'interviewing');
+    });
+  });
+
+  // PR #187 Phase 1: host+audience chip. Home-campus records (the majority)
+  // must stay chipless; only open / unknown / foreign-campus records get one.
+  describe('discovery-scope chip', () => {
+    const SCOPE_KEYS = /^card\.scope\./;
+
+    function makeProfile(homeSchool?: string): ProfileData {
+      return {
+        institution: 'UIUC',
+        home_school: homeSchool,
+        college: 'Grainger College of Engineering',
+        major: 'Computer Science',
+        grade: 'Freshman',
+        is_international: false,
+        research_interests: 'ml',
+        skills: [],
+      };
+    }
+
+    it('renders NO chip for a home-campus record', () => {
+      render(
+        <MatchCard
+          match={makeMatch({ school: 'uiuc', audience: 'campus' })}
+          profile={makeProfile('uiuc')}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.queryByText(SCOPE_KEYS)).toBeNull();
+    });
+
+    it('renders NO chip when the record has no scope metadata (pre-#189 cache)', () => {
+      render(<MatchCard match={makeMatch()} onDraftEmail={() => {}} />);
+      expect(screen.queryByText(SCOPE_KEYS)).toBeNull();
+    });
+
+    it('renders the hostless open chip for a national open record', () => {
+      render(
+        <MatchCard
+          match={makeMatch({ school: null, audience: 'open' })}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.getByText('card.scope.open')).toBeInTheDocument();
+    });
+
+    it('renders host · open for a foreign open record', () => {
+      render(
+        <MatchCard
+          match={makeMatch({ school: 'ucb', audience: 'open' })}
+          profile={makeProfile('uiuc')}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.getByText('card.scope.openWithHost:UC Berkeley')).toBeInTheDocument();
+    });
+
+    it('renders host · unconfirmed for an unknown-audience record', () => {
+      render(
+        <MatchCard
+          match={makeMatch({ school: 'ucb', audience: 'unknown' })}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.getByText('card.scope.unknownWithHost:UC Berkeley')).toBeInTheDocument();
+    });
+
+    it('renders students-only for a foreign campus-only record after a school switch', () => {
+      render(
+        <MatchCard
+          match={makeMatch({ school: 'uiuc', audience: 'campus' })}
+          profile={makeProfile('ucb')}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.getByText('card.scope.campusOnly:UIUC')).toBeInTheDocument();
+    });
+
+    it('defaults the home school to uiuc when the profile predates the switcher', () => {
+      render(
+        <MatchCard
+          match={makeMatch({ school: 'uiuc', audience: 'campus' })}
+          profile={makeProfile(undefined)}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.queryByText(SCOPE_KEYS)).toBeNull();
     });
   });
 });

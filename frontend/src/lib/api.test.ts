@@ -120,6 +120,26 @@ describe('getMatches', () => {
     expect(body.hard_skills).toEqual([{ name: 'Python', level: 'experienced' }]);
   });
 
+  it('defaults home_school to uiuc for profiles that predate the switcher', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile());
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.home_school).toBe('uiuc');
+    expect(body.school).toBe('UIUC');
+  });
+
+  it('sends the stored home_school slug and the matching display name', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile({ home_school: 'ucb' }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.home_school).toBe('ucb');
+    expect(body.school).toBe('UC Berkeley');
+  });
+
   it('appends ?semantic=true when options.semantic is set', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),

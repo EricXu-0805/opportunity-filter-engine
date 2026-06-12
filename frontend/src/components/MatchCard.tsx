@@ -33,6 +33,7 @@ import type { InteractionType } from '@/lib/supabase';
 import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
+import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
 // to keep this card a server-cheap leaf until the user opens the panel).
@@ -96,6 +97,14 @@ function getDeadlineUrgency(deadline: string | undefined): 'passed' | 'urgent' |
   return 'later';
 }
 
+function scopeChipText(chip: ScopeChip, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  if (chip.kind === 'foreignCampus') return t('card.scope.campusOnly', { host: chip.host! });
+  if (chip.kind === 'unknown') {
+    return chip.host ? t('card.scope.unknownWithHost', { host: chip.host }) : t('card.scope.unknown');
+  }
+  return chip.host ? t('card.scope.openWithHost', { host: chip.host }) : t('card.scope.open');
+}
+
 const URGENCY_BORDER: Record<string, string> = {
   urgent: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-red-400 before:rounded-l-2xl',
   soon: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-amber-400 before:rounded-l-2xl',
@@ -118,6 +127,9 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const tier = getBucketLabel(match.bucket, t);
   const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown', t);
   const paid = getPaidBadge(opp.paid, t);
+  // Home-campus records get no chip (the majority — avoid noise); only
+  // open/unknown/foreign-campus records carry the host+audience chip.
+  const scopeChip = scopeChipFor(opp, homeSchoolOf(profile ?? null));
   const urgency = getDeadlineUrgency(opp.deadline);
   const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';
 
@@ -186,6 +198,11 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             {paid.label}
           </Badge>
           {opp.source && <Badge variant="gray">{opp.source}</Badge>}
+          {scopeChip && (
+            <Badge variant={scopeChip.kind === 'open' ? 'green' : 'gray'} dot>
+              {scopeChipText(scopeChip, t)}
+            </Badge>
+          )}
           {opp.deadline && (() => {
             const dl = new Date(opp.deadline + 'T00:00:00');
             const now = new Date();

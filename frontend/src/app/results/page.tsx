@@ -31,6 +31,8 @@ import {
   type MatchFeedbackContext,
   type MatchVerdict,
 } from '@/lib/match-feedback';
+import { hasScopeData, homeSchoolOf } from '@/lib/discovery-scope';
+import { bySlug } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import {
   getAuthState,
@@ -149,6 +151,25 @@ function ResultsContent() {
     ];
   }, [data, t]);
 
+  const homeSchool = homeSchoolOf(profile);
+  // Discovery-scope facet (PR #187), data-derived like sourceOptions:
+  // empty (hidden) when no result carries school/audience metadata.
+  const scopeOptions = useMemo<Array<[string, string]>>(() => {
+    if (!(data?.results ?? []).some((m) => hasScopeData(m.opportunity))) return [];
+    return [
+      ['', t('results.filters.scopeAll')],
+      ['campus', t('results.filters.scopeMySchool')],
+      ['open', t('results.filters.scopeOpen')],
+    ];
+  }, [data, t]);
+  const homeSchoolEntry = bySlug(homeSchool);
+  const scopeIndicator = t(
+    homeSchoolEntry?.coverage.campusOpportunities === 'pending'
+      ? 'results.scopeIndicatorPending'
+      : 'results.scopeIndicator',
+    { school: homeSchoolEntry?.shortName ?? homeSchool },
+  );
+
   const [showDismissed, setShowDismissed] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -253,6 +274,7 @@ function ResultsContent() {
     showDismissed,
     page,
     pageSize: PAGE_SIZE,
+    homeSchool,
   });
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination to page 1 when filter inputs change; key-remount would lose focus on the search box mid-typing, which is worse than the cascading render
@@ -313,7 +335,8 @@ function ResultsContent() {
     (filters.source ? 1 : 0) +
     (filters.onCampus ? 1 : 0) +
     (filters.deadline ? 1 : 0) +
-    (filters.minScore > 0 ? 1 : 0);
+    (filters.minScore > 0 ? 1 : 0) +
+    (filters.scope ? 1 : 0);
 
   const openEmailModal = useCallback(
     (opportunityId: string) => {
@@ -406,7 +429,9 @@ function ResultsContent() {
   }, [filters, sortBy, activeTab, debouncedQuery, t]);
 
   const handleApplyPreset = useCallback((preset: FilterPreset) => {
-    setFilters(preset.filters as typeof DEFAULT_FILTERS);
+    // Merge over defaults: presets saved before newer filter keys (e.g.
+    // scope) existed must not leave those keys undefined in state.
+    setFilters({ ...DEFAULT_FILTERS, ...preset.filters });
     setSortBy(preset.sortBy);
     setActiveTab(preset.tab as Tab);
     setActivePresetId(preset.id);
@@ -519,8 +544,12 @@ function ResultsContent() {
             dismissedCount={dismissedCount}
             activeFilterCount={activeFilterCount}
             sourceOptions={sourceOptions}
+            scopeOptions={scopeOptions}
             t={t}
           />
+          {scopeOptions.length > 0 && (
+            <p className="text-[12px] text-gray-500">{scopeIndicator}</p>
+          )}
         </div>
       )}
 

@@ -17,6 +17,7 @@ function renderRail(overrides: {
   showDismissed?: boolean;
   dismissedCount?: number;
   sourceOptions?: Array<[string, string]>;
+  scopeOptions?: Array<[string, string]>;
 } = {}) {
   const onFiltersChange = vi.fn();
   const onSortByChange = vi.fn();
@@ -32,6 +33,7 @@ function renderRail(overrides: {
       dismissedCount={overrides.dismissedCount ?? 0}
       activeFilterCount={overrides.activeFilterCount ?? 0}
       sourceOptions={overrides.sourceOptions ?? [['', 'All sources'], ['uiuc_faculty', 'UIUC Faculty']]}
+      scopeOptions={overrides.scopeOptions ?? []}
       t={t}
     />,
   );
@@ -131,6 +133,39 @@ describe('FilterRail (R69-B mobile collapse)', () => {
     // must hold at least 6 <select> elements.
     const selects = within(chips!).getAllByRole('combobox');
     expect(selects.length).toBe(6);
+  });
+});
+
+describe('FilterRail — discovery-scope facet', () => {
+  const SCOPE_OPTIONS: Array<[string, string]> = [
+    ['', 'results.filters.scopeAll'],
+    ['campus', 'results.filters.scopeMySchool'],
+    ['open', 'results.filters.scopeOpen'],
+  ];
+
+  it('hides the scope select when scopeOptions is empty (no scope metadata)', () => {
+    renderRail({ scopeOptions: [] });
+    expect(screen.queryByText('results.filters.scopeAll')).toBeNull();
+  });
+
+  it('renders the scope select when options are provided', () => {
+    renderRail({ scopeOptions: SCOPE_OPTIONS });
+    expect(screen.getByText('results.filters.scopeAll')).toBeInTheDocument();
+    expect(screen.getByText('results.filters.scopeMySchool')).toBeInTheDocument();
+    expect(screen.getByText('results.filters.scopeOpen')).toBeInTheDocument();
+    const chips = document.getElementById('filter-rail-chips');
+    expect(within(chips!).getAllByRole('combobox').length).toBe(7);
+  });
+
+  it('selecting a scope updates filters.scope', () => {
+    const { onFiltersChange } = renderRail({ scopeOptions: SCOPE_OPTIONS });
+    const chips = document.getElementById('filter-rail-chips');
+    const scopeSelect = within(chips!)
+      .getAllByRole('combobox')
+      .find((el) => within(el).queryByText('results.filters.scopeMySchool'));
+    expect(scopeSelect).toBeTruthy();
+    fireEvent.change(scopeSelect!, { target: { value: 'campus' } });
+    expect(onFiltersChange).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, scope: 'campus' });
   });
 });
 

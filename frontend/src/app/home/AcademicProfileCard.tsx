@@ -1,10 +1,14 @@
 'use client';
 
-import { CheckCircle2, ChevronDown, Globe, GraduationCap } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
+import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
+import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
 import { COLLEGES, COLLEGE_MAJORS, GRADES } from '@/lib/colleges';
+import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
 import { FORMAT_OPTIONS, SEEKING_TYPES, type TFunc } from './types';
 
@@ -17,6 +21,14 @@ export function AcademicProfileCard({
   update: <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => void;
   t: TFunc;
 }) {
+  const locale = useLocale();
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const homeSchool = profile.home_school ?? 'uiuc';
+  const school = bySlug(homeSchool);
+  const schoolName = school ? (locale === 'zh' ? school.nameZh : school.name) : homeSchool;
+  // Only UIUC has a curated college/major catalog; every other school
+  // degrades to free-text inputs until its catalog ships (PR #187 Phase 2).
+  const hasCatalog = homeSchool === 'uiuc';
   const majors = profile.college ? COLLEGE_MAJORS[profile.college] ?? [] : [];
   const seeking = profile.seeking_types ?? [];
   const format = profile.format_preference ?? 'any';
@@ -66,11 +78,17 @@ export function AcademicProfileCard({
             {t('home.form.institutionLabel')}
           </label>
           <div className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl bg-gray-50">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-sm font-medium text-gray-700">
-              {t('home.form.institutionLocked')}
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+            <span className="text-sm font-medium text-gray-700 truncate">
+              {schoolName}
             </span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-auto" />
+            <button
+              type="button"
+              onClick={() => setSwitcherOpen(true)}
+              className="ml-auto shrink-0 text-[13px] font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              {t('home.form.changeSchool')}
+            </button>
           </div>
         </div>
 
@@ -78,49 +96,74 @@ export function AcademicProfileCard({
           <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-2">
             {t('home.form.collegeLabel')}
           </label>
-          <div className="relative">
-            <select
-              id="college"
-              value={profile.college}
-              onChange={(e) => update('college', e.target.value)}
-              className="w-full appearance-none px-4 py-3.5 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
-            >
-              <option value="">{t('home.form.collegePlaceholder')}</option>
-              {COLLEGES.map((c) => (
-                <option key={c} value={c}>
-                  {translateKey(t, 'colleges', c)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
+          {hasCatalog ? (
+            <div className="relative">
+              <select
+                id="college"
+                value={profile.college}
+                onChange={(e) => update('college', e.target.value)}
+                className="w-full appearance-none px-4 py-3.5 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
+              >
+                <option value="">{t('home.form.collegePlaceholder')}</option>
+                {COLLEGES.map((c) => (
+                  <option key={c} value={c}>
+                    {translateKey(t, 'colleges', c)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          ) : (
+            <>
+              <input
+                id="college"
+                type="text"
+                value={profile.college}
+                onChange={(e) => update('college', e.target.value)}
+                placeholder={t('home.form.collegeFreeTextPlaceholder')}
+                className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300"
+              />
+              <p className="text-xs text-gray-400 mt-1.5">{t('home.form.catalogPendingNote')}</p>
+            </>
+          )}
         </div>
 
         <div>
           <label htmlFor="major" className="block text-sm font-medium text-gray-700 mb-2">
             {t('home.form.majorLabel')}
           </label>
-          <div className="relative">
-            <select
+          {hasCatalog ? (
+            <div className="relative">
+              <select
+                id="major"
+                value={profile.major}
+                onChange={(e) => update('major', e.target.value)}
+                disabled={!profile.college}
+                className="w-full appearance-none px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {profile.college
+                    ? t('home.form.majorPlaceholder')
+                    : t('home.form.majorPlaceholderNoCollege')}
+                </option>
+                {majors.map((m) => (
+                  <option key={m} value={m}>
+                    {translateKey(t, 'majors', m)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          ) : (
+            <input
               id="major"
+              type="text"
               value={profile.major}
               onChange={(e) => update('major', e.target.value)}
-              disabled={!profile.college}
-              className="w-full appearance-none px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {profile.college
-                  ? t('home.form.majorPlaceholder')
-                  : t('home.form.majorPlaceholderNoCollege')}
-              </option>
-              {majors.map((m) => (
-                <option key={m} value={m}>
-                  {translateKey(t, 'majors', m)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
+              placeholder={t('home.form.majorFreeTextPlaceholder')}
+              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300"
+            />
+          )}
         </div>
 
         <div>
@@ -244,6 +287,17 @@ export function AcademicProfileCard({
           />
         </div>
       </div>
+
+      {switcherOpen && (
+        <UniversitySwitcherModal
+          initialSelectedSlug={homeSchool}
+          onCancel={() => setSwitcherOpen(false)}
+          onConfirm={(slug) => {
+            update('home_school', slug);
+            setSwitcherOpen(false);
+          }}
+        />
+      )}
     </Card>
   );
 }

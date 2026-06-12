@@ -19,6 +19,10 @@ export interface FilterRailProps {
    *  results (first entry is the "All" option). Replaces a hardcoded list that
    *  omitted simplify_internships (the 2nd-largest source) and others. */
   sourceOptions: Array<[string, string]>;
+  /** Discovery-scope facet options (PR #187), derived like sourceOptions:
+   *  empty when no result carries school/audience metadata (pre-#189 cached
+   *  data) so the facet hides itself rather than filtering on nothing. */
+  scopeOptions: Array<[string, string]>;
   t: TFunc;
 }
 
@@ -40,6 +44,7 @@ export function FilterRail({
   dismissedCount,
   activeFilterCount,
   sourceOptions,
+  scopeOptions,
   t,
 }: FilterRailProps) {
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -112,6 +117,13 @@ export function FilterRail({
           onChange={(v) => onFiltersChange({ ...filters, source: v })}
           options={sourceOptions}
         />
+        {scopeOptions.length > 0 && (
+          <FilterSelect
+            value={filters.scope}
+            onChange={(v) => onFiltersChange({ ...filters, scope: v as Filters['scope'] })}
+            options={scopeOptions}
+          />
+        )}
         <FilterSelect
           value={filters.onCampus}
           onChange={(v) => onFiltersChange({ ...filters, onCampus: v as Filters['onCampus'] })}
