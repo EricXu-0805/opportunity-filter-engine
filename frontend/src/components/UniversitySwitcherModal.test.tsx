@@ -51,10 +51,14 @@ describe('UniversitySwitcherModal — rendering', () => {
     expect(screen.getAllByText('universitySwitcher.coveragePending').length).toBe(SCHOOLS.length - 2);
   });
 
-  it('shows the UIUC catalog summary and pending-catalog text for the rest', () => {
+  it('shows a real catalog counts line on every card, no pending-catalog note left', () => {
     renderModal();
-    expect(screen.getAllByText(/universitySwitcher\.catalogSummary:/).length).toBe(1);
-    expect(screen.getAllByText('universitySwitcher.catalogPending').length).toBe(SCHOOLS.length - 1);
+    expect(screen.getAllByText(/universitySwitcher\.catalogSummary:/).length).toBe(SCHOOLS.length);
+    expect(screen.queryByText('universitySwitcher.catalogPending')).toBeNull();
+    // Counts come straight from the registry (mock t renders "key:colleges,majors").
+    expect(screen.getByText('universitySwitcher.catalogSummary:12,141')).toBeInTheDocument(); // uiuc
+    expect(screen.getByText('universitySwitcher.catalogSummary:7,136')).toBeInTheDocument(); // ucb
+    expect(screen.getByText('universitySwitcher.catalogSummary:3,71')).toBeInTheDocument(); // stanford
   });
 });
 
