@@ -294,3 +294,47 @@ describe('CallbackPage — linkIdentity conflict (identity_already_exists)', () 
     expect(screen.queryByTestId('callback-oauth-signin-existing')).toBeNull();
   });
 });
+
+// email_exists conflict: a guest's anonymous session tries to link an
+// OAuth identity whose EMAIL already belongs to an existing email-based
+// account (GoTrue rejects with error_code=email_exists, "A user with
+// this email address has already been registered"). Same recovery as
+// identity_already_exists — but only when an OAuth provider was stashed
+// before the redirect, because email_exists can also arise outside the
+// OAuth flow, where the identity-conflict copy would mislead.
+describe('CallbackPage — linkIdentity conflict (email_exists)', () => {
+  const EMAIL_EXISTS_QS =
+    '?error=invalid_request&error_code=email_exists' +
+    '&error_description=A+user+with+this+email+address+has+already+been+registered';
+
+  it('shows the identity-conflict screen with the sign-in CTA when a provider was stashed', async () => {
+    sessionStorage.setItem('ofe_oauth_link_provider', 'google');
+    searchRef.current = EMAIL_EXISTS_QS;
+    mockOAuthExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.identityTakenTitle')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('auth.callback.errTitle')).toBeNull();
+
+    const btn = screen.getByTestId('callback-oauth-signin-existing');
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(mockOAuthExisting).toHaveBeenCalledWith('google', 'http://localhost:3000/auth/callback');
+    });
+  });
+
+  it('keeps the generic error screen when no provider was stashed (non-OAuth email_exists)', async () => {
+    searchRef.current = EMAIL_EXISTS_QS;
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.errTitle')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('auth.callback.identityTakenTitle')).toBeNull();
+    expect(screen.queryByTestId('callback-oauth-signin-existing')).toBeNull();
+  });
+});
