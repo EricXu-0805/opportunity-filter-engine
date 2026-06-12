@@ -20,6 +20,10 @@ class ProfilePreferences(BaseModel):
 class ProfileRequest(BaseModel):
     name: str = ""
     school: str = ""
+    # Lowercase host-school slug ('uiuc', 'ucb', ...) — identity for the
+    # matcher's discovery-scope filter. Distinct from `school`, which is the
+    # free-text display name.
+    home_school: str = "uiuc"
     year: str = ""
     major: str = ""
     college: str = ""
@@ -50,6 +54,11 @@ class ProfileRequest(BaseModel):
     @classmethod
     def cap_name(cls, v: str) -> str:
         return v[:100]
+
+    @field_validator("home_school")
+    @classmethod
+    def normalize_home_school(cls, v: str) -> str:
+        return v.strip().lower()[:50] or "uiuc"
 
     @field_validator("linkedin_url", "github_url")
     @classmethod

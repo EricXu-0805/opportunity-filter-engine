@@ -407,3 +407,69 @@ class TestDeactivatePastLogic:
         assert counts["already_inactive"] == 1
         assert counts["newly_deactivated"] == 0
         assert opp["metadata"]["deactivated_at"] == "2025-12-01"
+
+
+class TestSchoolAudience:
+    """Multi-university Phase 1 (PR #187): every record carries top-level
+    `school` (host-school slug, None = national) + `audience`
+    ('campus'/'open'/'unknown'), stamped from source-level defaults by
+    src/normalizers/school_audience.py. The matcher's discovery-scope filter
+    keys on these fields, so an untagged or mistagged record silently leaks
+    into (or vanishes from) every user's results."""
+
+    _SLUG_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
+
+    def test_every_record_has_valid_audience(self):
+        from src.normalizers.school_audience import VALID_AUDIENCES
+
+        offenders = [
+            (o.get("source"), o.get("id"), o.get("audience"))
+            for o in _load_data()
+            if o.get("audience") not in VALID_AUDIENCES
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records with missing/invalid audience. "
+            f"First 3: {offenders[:3]}"
+        )
+
+    def test_school_is_none_or_lowercase_slug(self):
+        offenders = [
+            (o.get("source"), o.get("id"), o.get("school"))
+            for o in _load_data()
+            if not ("school" in o and (
+                o["school"] is None
+                or (isinstance(o["school"], str) and self._SLUG_RE.match(o["school"]))
+            ))
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records whose school is not None / a non-empty "
+            f"lowercase slug. First 3: {offenders[:3]}"
+        )
+
+    def test_per_source_pairs_match_source_defaults(self):
+        """Pin every non-manual record's (school, audience) to SOURCE_DEFAULTS
+        — manual records may carry per-record overrides, everything else is
+        source-determined in Phase 1. Also fails when a new source ships
+        without an entry in the mapping."""
+        from src.normalizers.school_audience import SOURCE_DEFAULTS
+
+        data = _load_data()
+        unmapped = {
+            o.get("source") for o in data
+            if o.get("source") != "manual" and o.get("source") not in SOURCE_DEFAULTS
+        }
+        assert not unmapped, (
+            f"sources missing from SOURCE_DEFAULTS: {sorted(unmapped)} — add "
+            f"them to src/normalizers/school_audience.py"
+        )
+
+        offenders = [
+            (o.get("source"), o.get("id"), o.get("school"), o.get("audience"))
+            for o in data
+            if o.get("source") != "manual"
+            and (o.get("school"), o.get("audience")) != SOURCE_DEFAULTS[o["source"]]
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records whose (school, audience) drifted from "
+            f"their source default. First 3: {offenders[:3]}"
+        )
