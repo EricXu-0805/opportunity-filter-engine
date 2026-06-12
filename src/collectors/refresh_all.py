@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from src.normalizers.deactivate_past import deactivate_past
+from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate_stale_faculty
 
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
@@ -326,6 +327,29 @@ def refresh_all(deep: bool = True) -> dict:
             simplify_stale = deactivate_simplify_stale(all_opps, simplify_active_ids)
             summary["sources"]["simplify_internships"]["deactivated_stale"] = simplify_stale
             logger.info("Simplify: %d stale internships deactivated", simplify_stale)
+
+        # Faculty records have no deadline, so deactivate_past never retires
+        # them; this source-specific pass deactivates professors who have been
+        # absent from their directory re-scrape past the grace window. Only
+        # sources that reported success in THIS run are eligible.
+        faculty_fetched = {
+            name: info.get("fetched", 0)
+            for name, info in summary["sources"].items()
+            if name in FACULTY_SOURCES and info.get("status") == "ok"
+        }
+        stale_faculty = deactivate_stale_faculty(all_opps, faculty_fetched)
+        summary["sources"]["deactivate_stale_faculty"] = {
+            "newly_deactivated": stale_faculty["newly_deactivated"],
+            "kept_fresh": stale_faculty["kept_fresh"],
+            "skipped_partial_scrape": stale_faculty["skipped_partial_scrape"],
+            "status": "ok",
+        }
+        logger.info(
+            "deactivate_stale_faculty: %d newly deactivated, %d kept fresh, %d source(s) gated",
+            stale_faculty["newly_deactivated"],
+            stale_faculty["kept_fresh"],
+            len(stale_faculty["skipped_partial_scrape"]),
+        )
 
         with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
             json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
