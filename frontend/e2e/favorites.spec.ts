@@ -49,7 +49,11 @@ test.describe('Interaction tracking (dismiss)', () => {
     const firstCard = page.locator('[id^="match-card-"]').first();
     const title = await firstCard.locator('h3').innerText();
 
-    await firstCard.getByRole('button', { name: 'Not interested' }).click();
+    // R69-C (#63): the inline "Not interested" pill row was replaced by the
+    // "Mark status" disclosure menu (portaled to <body>, hence not scoped
+    // to the card).
+    await firstCard.getByRole('button', { name: /^Set application status for/ }).click();
+    await page.getByRole('menuitemradio', { name: 'Not interested' }).click();
     await expect(page.locator('h3', { hasText: title }).first()).not.toBeVisible();
 
     await page.getByRole('button', { name: /Show.*dismissed/i }).click();

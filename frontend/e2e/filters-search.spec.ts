@@ -24,10 +24,23 @@ test.describe('Filters, search, sort', () => {
 
   test('tabs switch and persist to URL', async ({ page }) => {
     await goToResults(page);
+    // R69-A (#61): High Priority is the default tab and the URL
+    // omit-sentinel, so it starts selected with no ?tab= param. Every
+    // other tab — including the explicit 'all' — round-trips via the URL.
+    await expect(page.getByRole('tab', { name: /High Priority/i }))
+      .toHaveAttribute('aria-selected', 'true');
+    await expect(page).not.toHaveURL(/tab=/);
+
+    await page.getByRole('tab', { name: /^All/i }).click();
+    await expect(page).toHaveURL(/tab=all/);
+    await expect(page.getByRole('tab', { name: /^All/i }))
+      .toHaveAttribute('aria-selected', 'true');
+
+    // Switching back to the default drops the param again.
     await page.getByRole('tab', { name: /High Priority/i }).click();
-    await expect(page).toHaveURL(/tab=high_priority/);
-    const currentTab = page.getByRole('tab', { name: /High Priority/i });
-    await expect(currentTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page).not.toHaveURL(/tab=/);
+    await expect(page.getByRole('tab', { name: /High Priority/i }))
+      .toHaveAttribute('aria-selected', 'true');
   });
 
   test('paid filter reduces visible result count', async ({ page }) => {
