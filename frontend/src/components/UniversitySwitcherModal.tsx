@@ -15,7 +15,6 @@
 import { Check, GraduationCap, MapPin, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/i18n/client';
-import { COLLEGES, COLLEGE_MAJORS } from '@/lib/colleges';
 import { SCHOOLS, type School } from '@/lib/schools';
 
 interface UniversitySwitcherModalProps {
@@ -23,8 +22,6 @@ interface UniversitySwitcherModalProps {
   onCancel: () => void;
   onConfirm: (slug: string) => void;
 }
-
-const UIUC_MAJOR_COUNT = Object.values(COLLEGE_MAJORS).reduce((sum, m) => sum + m.length, 0);
 
 function CoverageChip({ school, t }: { school: School; t: ReturnType<typeof useT>['t'] }) {
   const { campusOpportunities, note } = school.coverage;
@@ -153,10 +150,10 @@ export default function UniversitySwitcherModal({
                     </p>
                     <p className="flex items-center gap-1 text-[12px] text-gray-500 mt-1">
                       <GraduationCap className="w-3 h-3 text-gray-400" aria-hidden="true" />
-                      {entry.slug === 'uiuc'
+                      {entry.catalog
                         ? t('universitySwitcher.catalogSummary', {
-                            colleges: COLLEGES.length,
-                            majors: UIUC_MAJOR_COUNT,
+                            colleges: entry.catalog.colleges,
+                            majors: entry.catalog.majors,
                           })
                         : t('universitySwitcher.catalogPending')}
                     </p>

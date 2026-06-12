@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
-import { COLLEGES, COLLEGE_MAJORS, GRADES } from '@/lib/colleges';
+import { GRADES } from '@/lib/colleges';
+import { loadCatalog } from '@/lib/catalogs';
 import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
 import { FORMAT_OPTIONS, SEEKING_TYPES, type TFunc } from './types';
@@ -26,10 +27,34 @@ export function AcademicProfileCard({
   const homeSchool = profile.home_school ?? 'uiuc';
   const school = bySlug(homeSchool);
   const schoolName = school ? (locale === 'zh' ? school.nameZh : school.name) : homeSchool;
-  // Only UIUC has a curated college/major catalog; every other school
-  // degrades to free-text inputs until its catalog ships (PR #187 Phase 2).
-  const hasCatalog = homeSchool === 'uiuc';
-  const majors = profile.college ? COLLEGE_MAJORS[profile.college] ?? [] : [];
+  // Schools with a curated catalog (per the registry) render cascading
+  // college/major dropdowns fed by a code-split catalog chunk; schools
+  // without one degrade to free-text inputs until their catalog ships.
+  const hasCatalog = !!school?.catalog;
+  // Keyed by slug so a resolved load for the previously selected school
+  // can never paint the current one (rapid switching), even before the
+  // cancellation guard drops the stale promise.
+  const [loaded, setLoaded] = useState<{
+    slug: string;
+    data: Record<string, string[]> | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!hasCatalog) return;
+    let cancelled = false;
+    loadCatalog(homeSchool).then(
+      (data) => { if (!cancelled) setLoaded({ slug: homeSchool, data }); },
+      () => { if (!cancelled) setLoaded({ slug: homeSchool, data: null }); },
+    );
+    return () => { cancelled = true; };
+  }, [homeSchool, hasCatalog]);
+
+  // undefined = catalog chunk still loading; null = none for this school.
+  const catalog = loaded?.slug === homeSchool ? loaded.data : undefined;
+  const showCatalog = hasCatalog && catalog !== null;
+  const catalogLoading = showCatalog && catalog === undefined;
+  const colleges = catalog ? Object.keys(catalog) : [];
+  const majors = catalog && profile.college ? catalog[profile.college] ?? [] : [];
   const seeking = profile.seeking_types ?? [];
   const format = profile.format_preference ?? 'any';
 
@@ -96,16 +121,22 @@ export function AcademicProfileCard({
           <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-2">
             {t('home.form.collegeLabel')}
           </label>
-          {hasCatalog ? (
+          {showCatalog ? (
             <div className="relative">
               <select
                 id="college"
                 value={profile.college}
                 onChange={(e) => update('college', e.target.value)}
-                className="w-full appearance-none px-4 py-3.5 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10"
+                disabled={catalogLoading}
+                aria-busy={catalogLoading}
+                className="w-full appearance-none px-4 py-3.5 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-wait disabled:animate-pulse"
               >
-                <option value="">{t('home.form.collegePlaceholder')}</option>
-                {COLLEGES.map((c) => (
+                <option value="">
+                  {catalogLoading
+                    ? t('home.form.catalogLoading')
+                    : t('home.form.collegePlaceholder')}
+                </option>
+                {colleges.map((c) => (
                   <option key={c} value={c}>
                     {translateKey(t, 'colleges', c)}
                   </option>
@@ -132,19 +163,22 @@ export function AcademicProfileCard({
           <label htmlFor="major" className="block text-sm font-medium text-gray-700 mb-2">
             {t('home.form.majorLabel')}
           </label>
-          {hasCatalog ? (
+          {showCatalog ? (
             <div className="relative">
               <select
                 id="major"
                 value={profile.major}
                 onChange={(e) => update('major', e.target.value)}
-                disabled={!profile.college}
+                disabled={catalogLoading || !profile.college}
+                aria-busy={catalogLoading}
                 className="w-full appearance-none px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 outline-none transition-all duration-300 pr-10 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 <option value="">
-                  {profile.college
-                    ? t('home.form.majorPlaceholder')
-                    : t('home.form.majorPlaceholderNoCollege')}
+                  {catalogLoading
+                    ? t('home.form.catalogLoading')
+                    : profile.college
+                      ? t('home.form.majorPlaceholder')
+                      : t('home.form.majorPlaceholderNoCollege')}
                 </option>
                 {majors.map((m) => (
                   <option key={m} value={m}>

@@ -6,6 +6,7 @@ import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/typ
 import { getStats, parseGitHubProfile } from '@/lib/api';
 import { clearMatchCache } from '@/lib/match-cache';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { bySlug } from '@/lib/schools';
 import { loadProfile, onAuthChange, saveProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, type SaveStatus, type TFunc } from './types';
@@ -224,11 +225,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
 
   const update = useCallback(<K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
     setProfile((prev) => {
-      // Picking a different college from the UIUC catalog invalidates the
-      // major (the cascading dropdown). Catalog-pending schools edit college
-      // as free text, where clearing the major on every keystroke would
-      // wipe the user's input.
-      const clearMajor = key === 'college' && (prev.home_school ?? 'uiuc') === 'uiuc';
+      // Picking a different college from a school's catalog invalidates the
+      // major (the cascading dropdown). Schools without a catalog edit
+      // college as free text, where clearing the major on every keystroke
+      // would wipe the user's input.
+      const clearMajor =
+        key === 'college' && bySlug(prev.home_school ?? 'uiuc')?.catalog != null;
       return {
         ...prev,
         [key]: value,

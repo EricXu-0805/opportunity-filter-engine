@@ -1,0 +1,157 @@
+/*
+ * UT Austin — undergraduate college/major catalog.
+ * Generated 2026-06-12 from the officially-verified research dataset; do not hand-edit.
+ * Verified against:
+ *   https://catalog.utexas.edu/undergraduate/the-university/undergraduate-degrees/
+ *   https://catalog.utexas.edu/undergraduate/the-university/degree-programs/
+ *   https://catalog.utexas.edu/undergraduate/liberal-arts/degrees-and-programs/
+ *   https://catalog.utexas.edu/undergraduate/fine-arts/degrees-and-programs/
+ *   https://catalog.utexas.edu/undergraduate/natural-sciences/degrees-and-programs/
+ *   https://socialwork.utexas.edu/bsw/
+ *   https://news.utexas.edu/2024/07/11/lbj-school-launches-bachelor-of-public-affairs-degree/
+ * Note: From the official 2024-2026 undergraduate catalog plus per-college degree pages; majors deduplicated across degree types within a college; concentrations/options excluded; Environmental Science genuinely appears in three colleges.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'School of Architecture': [
+    'Architectural Studies',
+    'Architecture',
+    'Interior Design',
+  ],
+  'Red McCombs School of Business': [
+    'Accounting',
+    'Business Analytics',
+    'Canfield Business Honors',
+    'Finance',
+    'International Business',
+    'Management',
+    'Management Information Systems',
+    'Marketing',
+    'Supply Chain Management',
+  ],
+  'School of Civic Leadership': [
+    'Civics Honors',
+  ],
+  'Moody College of Communication': [
+    'Advertising',
+    'Communication and Leadership',
+    'Communication Studies',
+    'Journalism',
+    'Public Relations',
+    'Radio-Television-Film',
+    'Speech, Language, and Hearing Sciences',
+  ],
+  'College of Education': [
+    'Athletic Training',
+    'Education',
+    'Kinesiology and Health',
+    'Youth and Community Studies',
+  ],
+  'Cockrell School of Engineering': [
+    'Aerospace Engineering',
+    'Architectural Engineering',
+    'Biomedical Engineering',
+    'Chemical Engineering',
+    'Civil Engineering',
+    'Computational Engineering',
+    'Electrical and Computer Engineering',
+    'Environmental Engineering',
+    'Geosystems Engineering',
+    'Mechanical Engineering',
+    'Petroleum Engineering',
+  ],
+  'College of Fine Arts': [
+    'Acting',
+    'Art Education',
+    'Art History',
+    'Arts and Entertainment Technologies',
+    'Composition',
+    'Dance',
+    'Design',
+    'Jazz',
+    'Music',
+    'Music Performance',
+    'Music Studies',
+    'Studio Art',
+    'Theatre and Dance',
+    'Theatre Education',
+  ],
+  'Jackson School of Geosciences': [
+    'Environmental Science',
+    'Geosciences',
+    'Geosystems Engineering',
+  ],
+  'School of Information': [
+    'Informatics',
+  ],
+  'College of Liberal Arts': [
+    'African and African Diaspora Studies',
+    'American Studies',
+    'Anthropology',
+    'Asian American Studies',
+    'Asian Cultures and Languages',
+    'Asian Studies',
+    'Behavioral and Social Data Science',
+    'Classical Languages',
+    'Classical Studies',
+    'Economics',
+    'English',
+    'Environmental Science',
+    'Ethnic Studies',
+    'European Studies',
+    'French Studies',
+    'Geography',
+    'German',
+    'Government',
+    'Health and Society',
+    'History',
+    'Human Dimensions of Organizations',
+    'Humanities',
+    'International Relations and Global Studies',
+    'Italian Studies',
+    'Jewish Studies',
+    'Latin American Studies',
+    'Linguistics',
+    'Mexican American and Latina/o Studies',
+    'Middle Eastern Studies',
+    'Philosophy',
+    'Plan II Honors',
+    'Psychology',
+    'Race, Indigeneity, and Migration',
+    'Religious Studies',
+    'Rhetoric and Writing',
+    'Russian, East European, and Eurasian Studies',
+    'Sociology',
+    'Spanish',
+    'Sustainability Studies',
+    'Urban Studies',
+    'Women\'s and Gender Studies',
+  ],
+  'College of Natural Sciences': [
+    'Astronomy',
+    'Biochemistry',
+    'Biology',
+    'Chemistry',
+    'Computer Science',
+    'Environmental Science',
+    'Human Development and Family Sciences',
+    'Human Ecology',
+    'Mathematics',
+    'Medical Laboratory Science',
+    'Neuroscience',
+    'Nutrition',
+    'Physics',
+    'Public Health',
+    'Statistics and Data Sciences',
+    'Textiles and Apparel',
+  ],
+  'School of Nursing': [
+    'Nursing',
+  ],
+  'Steve Hicks School of Social Work': [
+    'Social Work',
+  ],
+  'Lyndon B. Johnson School of Public Affairs': [
+    'Public Affairs',
+  ],
+};

@@ -212,6 +212,7 @@ function SchoolHarness() {
       <span data-testid="major">{form.profile.major}</span>
       <button data-testid="switch-ucb" onClick={() => form.update('home_school', 'ucb')}>switch</button>
       <button data-testid="switch-uiuc" onClick={() => form.update('home_school', 'uiuc')}>switch back</button>
+      <button data-testid="switch-future" onClick={() => form.update('home_school', 'future-school')}>switch future</button>
       <button data-testid="set-college" onClick={() => form.update('college', 'College of Engineering')}>college</button>
       <button data-testid="set-major" onClick={() => form.update('major', 'EECS')}>major</button>
     </div>
@@ -254,16 +255,21 @@ describe('useProfileForm — home_school (university switcher)', () => {
     expect(screen.getByTestId('major').textContent).toBe('EECS');
   });
 
-  it('college edits clear the major only under the UIUC catalog, not in free-text mode', async () => {
+  it('college edits clear the major under any school catalog, not in free-text mode', async () => {
     render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
     await waitFor(() => expect(screen.getByTestId('home-school').textContent).toBe('uiuc'));
-    // UIUC catalog mode: picking a college resets the cascaded major.
+    // Catalog mode (UIUC): picking a college resets the cascaded major.
     fireEvent.click(screen.getByTestId('set-major'));
     fireEvent.click(screen.getByTestId('set-college'));
     expect(screen.getByTestId('major').textContent).toBe('');
-    // Free-text mode (catalog-pending school): college keystrokes must NOT
-    // wipe the major the user typed.
+    // Catalog mode (UCB — shipped in this PR): same cascading reset.
     fireEvent.click(screen.getByTestId('switch-ucb'));
+    fireEvent.click(screen.getByTestId('set-major'));
+    fireEvent.click(screen.getByTestId('set-college'));
+    expect(screen.getByTestId('major').textContent).toBe('');
+    // Free-text mode (a school with no catalog yet): college keystrokes
+    // must NOT wipe the major the user typed.
+    fireEvent.click(screen.getByTestId('switch-future'));
     fireEvent.click(screen.getByTestId('set-major'));
     fireEvent.click(screen.getByTestId('set-college'));
     expect(screen.getByTestId('major').textContent).toBe('EECS');

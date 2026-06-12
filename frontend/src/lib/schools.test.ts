@@ -105,4 +105,13 @@ describe('registry — switcher metadata', () => {
     const slugs = SCHOOLS.map((s) => s.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
   });
+
+  it('every school ships a catalog with positive counts', () => {
+    // Exact count-vs-data parity is asserted in catalogs/catalogs.test.ts.
+    for (const school of SCHOOLS) {
+      expect(school.catalog, school.slug).not.toBeNull();
+      expect(school.catalog!.colleges, school.slug).toBeGreaterThan(0);
+      expect(school.catalog!.majors, school.slug).toBeGreaterThan(0);
+    }
+  });
 });

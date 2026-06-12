@@ -29,6 +29,14 @@ export interface School {
   color: string;
   location: string;
   coverage: SchoolCoverage;
+  /**
+   * College/major catalog counts shown on the switcher card, or null for
+   * schools whose catalog hasn't shipped (those fall back to free-text
+   * college/major inputs). Static so the cards don't pull every catalog
+   * chunk into the main bundle; catalogs.test.ts asserts these numbers
+   * exactly match the data behind loadCatalog().
+   */
+  catalog: { colleges: number; majors: number } | null;
 }
 
 const PENDING_COVERAGE: SchoolCoverage = {
@@ -46,6 +54,7 @@ export const SCHOOLS: School[] = [
     color: '#E84A27',
     location: 'Urbana-Champaign, IL',
     coverage: { campusOpportunities: 4700, note: 'universitySwitcher.coverageCampusNational' },
+    catalog: { colleges: 12, majors: 141 },
   },
   {
     slug: 'ucb',
@@ -56,6 +65,7 @@ export const SCHOOLS: School[] = [
     color: '#003262',
     location: 'Berkeley, CA',
     coverage: { campusOpportunities: 200, note: 'universitySwitcher.coverageCampus' },
+    catalog: { colleges: 7, majors: 136 },
   },
   {
     slug: 'umich',
@@ -66,6 +76,7 @@ export const SCHOOLS: School[] = [
     color: '#00274C',
     location: 'Ann Arbor, MI',
     coverage: PENDING_COVERAGE,
+    catalog: { colleges: 14, majors: 127 },
   },
   {
     slug: 'gatech',
@@ -76,6 +87,7 @@ export const SCHOOLS: School[] = [
     color: '#B3A369',
     location: 'Atlanta, GA',
     coverage: PENDING_COVERAGE,
+    catalog: { colleges: 6, majors: 43 },
   },
   {
     slug: 'utexas',
@@ -86,6 +98,7 @@ export const SCHOOLS: School[] = [
     color: '#BF5700',
     location: 'Austin, TX',
     coverage: PENDING_COVERAGE,
+    catalog: { colleges: 14, majors: 113 },
   },
   {
     slug: 'ucla',
@@ -96,6 +109,7 @@ export const SCHOOLS: School[] = [
     color: '#2774AE',
     location: 'Los Angeles, CA',
     coverage: PENDING_COVERAGE,
+    catalog: { colleges: 9, majors: 135 },
   },
   {
     slug: 'uw',
@@ -106,6 +120,7 @@ export const SCHOOLS: School[] = [
     color: '#4B2E83',
     location: 'Seattle, WA',
     coverage: PENDING_COVERAGE,
+    catalog: { colleges: 12, majors: 116 },
   },
   {
     slug: 'wisc',
@@ -116,6 +131,7 @@ export const SCHOOLS: School[] = [
     color: '#C5050C',
     location: 'Madison, WI',
     coverage: PENDING_COVERAGE,
+    catalog: { colleges: 8, majors: 146 },
   },
   {
     slug: 'stanford',
@@ -126,6 +142,7 @@ export const SCHOOLS: School[] = [
     color: '#8C1515',
     location: 'Stanford, CA',
     coverage: PENDING_COVERAGE,
+    catalog: { colleges: 3, majors: 71 },
   },
 ];
 
