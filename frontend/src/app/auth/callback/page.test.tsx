@@ -11,18 +11,20 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockGetAuthState = vi.fn();
 const mockGetDataInventory = vi.fn();
 const mockExchangeCodeForSession = vi.fn();
 const mockVerifyOtp = vi.fn();
+const mockOAuthExisting = vi.fn();
 const replaceSpy = vi.fn();
 const searchRef = { current: '?code=stub-code' };
 
 vi.mock('@/lib/supabase', () => ({
   getAuthState: () => mockGetAuthState(),
   getDataInventory: () => mockGetDataInventory(),
+  signInExistingOAuth: (provider: string, redirect: string) => mockOAuthExisting(provider, redirect),
   supabase: {
     auth: {
       exchangeCodeForSession: (code: string) => mockExchangeCodeForSession(code),
@@ -75,6 +77,7 @@ beforeEach(() => {
   searchRef.current = '?code=stub-code';
   cachedParams = null;
   cachedParamsKey = null;
+  sessionStorage.clear();
   mockGetDataInventory.mockResolvedValue(null);
 });
 
@@ -226,5 +229,68 @@ describe('CallbackPage — R68 idempotency guard', () => {
       expect(screen.getByText('auth.callback.errTitle')).toBeInTheDocument();
     });
     expect(screen.getByText('auth.callback.errMissingCode')).toBeInTheDocument();
+  });
+});
+
+// linkIdentity conflict: GoTrue detects "this OAuth identity already
+// belongs to ANOTHER user" only after the provider consent, so the
+// failure lands on /auth/callback as error query params with
+// error_code=identity_already_exists — not as a rejected linkIdentity()
+// call in the modal. The callback must show the dedicated recovery
+// screen (sign in to the existing account via plain OAuth) instead of
+// the generic magic-link error copy.
+describe('CallbackPage — linkIdentity conflict (identity_already_exists)', () => {
+  const CONFLICT_QS =
+    '?error=server_error&error_code=identity_already_exists' +
+    '&error_description=Identity+is+already+linked+to+another+user';
+
+  it('shows the identity-conflict screen instead of the generic error', async () => {
+    searchRef.current = CONFLICT_QS;
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.identityTakenTitle')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('auth.callback.errTitle')).toBeNull();
+    expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+    expect(mockVerifyOtp).not.toHaveBeenCalled();
+  });
+
+  it('offers plain sign-in with the provider stashed before the link redirect', async () => {
+    sessionStorage.setItem('ofe_oauth_link_provider', 'google');
+    searchRef.current = CONFLICT_QS;
+    mockOAuthExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
+
+    render(<CallbackPage />);
+
+    const btn = await screen.findByTestId('callback-oauth-signin-existing');
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(mockOAuthExisting).toHaveBeenCalledWith('google', 'http://localhost:3000/auth/callback');
+    });
+  });
+
+  it('hides the sign-in CTA when no provider was stashed (still shows the explanation)', async () => {
+    searchRef.current = CONFLICT_QS;
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.identityTakenTitle')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('callback-oauth-signin-existing')).toBeNull();
+  });
+
+  it('keeps the generic error screen for non-conflict OAuth errors (behavior pin)', async () => {
+    searchRef.current = '?error=access_denied&error_description=User+denied+access';
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.errTitle')).toBeInTheDocument();
+    });
+    expect(screen.getByText('User denied access')).toBeInTheDocument();
+    expect(screen.queryByTestId('callback-oauth-signin-existing')).toBeNull();
   });
 });
