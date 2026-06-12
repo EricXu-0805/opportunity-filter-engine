@@ -76,7 +76,7 @@
 
 ## Shipped Rounds (Post-V1, in merge order)
 
-The repo has shipped 14 PRs of feature work + hardening on top of the original five phases. Highlights:
+The repo has shipped 179 PRs of feature work + hardening on top of the original five phases (excluding automated data-refresh PRs). Highlights:
 
 - **Round 1** — Next.js 14 → 16, React 18 → 19 upgrade
 - **Round 12** — `/import` paste-text endpoint (LinkedIn / paywalled / no-URL flows)
@@ -91,14 +91,15 @@ The repo has shipped 14 PRs of feature work + hardening on top of the original f
 - **Round 21** — `useEffect` mount-cancellation guards across saved-searches load sites
 - **Round 22** — Playwright e2e coverage for the saved-searches stack
 - **Round 23** — README accuracy refresh
+- **Round 24 (2026-06-11 wave, 19 PRs)** — code-review fixes (#168–#172), UC Berkeley expansion (#156, #161, #167, #173, #176, #182), match-accuracy feedback loop (#174), opt-in weekly email digest (#179), admin saved-search/digest health card (#180), CI hardening (#181, #183), e2e de-flake (#177), generated api-types removal (#175)
 
 ---
 
 ## Open / Planned
 
-- **Email digest** — periodic email summarising new matches per saved search. **Blocked on email-collection UX decision** (where to ask, opt-in policy, frequency, transport reuse vs new).
+- **Email digest** — ✅ shipped in Round 24 (#179): opt-in email at save time, weekly cadence (7-day throttle), HMAC-signed unsubscribe link; Resend transport configured.
 - **USAJobs API integration** — federal positions; not started.
 - **SerpApi for industry internships** — not started.
-- **Multi-university expansion** — config-driven scraper registry; not started.
-- **Full vector embeddings** — sentence-transformers + pgvector replacement for TF-IDF; not started.
-- **Admin dashboard widget for saved-search cron health** — operator-facing surface noted in the R20 handoff queue.
+- **Multi-university expansion** — in progress: UC Berkeley live (URAP #156, Stat faculty #167, EECS faculty #161, matcher integration #173, registered in the refresh pipeline #176, shared scraping machinery consolidated in `ucb_common` #182). Still open: config-driven scraper registry (`sources.yaml`) and cross-school recommendation.
+- **Full vector embeddings** — deliberately deferred: the JSON dataset + TF-IDF + opt-in Gemini-embedding rerank is sufficient at the current ~5k-record scale; revisit sentence-transformers + pgvector if the dataset outgrows it.
+- **Admin dashboard widget for saved-search cron health** — ✅ shipped in Round 24 (#180): refresh-run + digest health card with Resend config status pill.
