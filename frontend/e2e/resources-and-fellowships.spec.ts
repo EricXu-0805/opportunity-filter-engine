@@ -54,7 +54,10 @@ test.describe('/fellowships page', () => {
 
   test('changing the year filter changes the visible count', async ({ page }) => {
     await page.goto('/fellowships');
-    await expect(page.getByText(/Showing \d+ of \d+/)).toBeVisible({ timeout: 20_000 });
+    // The count label renders "Showing 0 of 0" while the fetch is in flight
+    // (FellowshipFilters sits above the loading gate) — wait for a non-zero
+    // total so the captured baseline is the loaded state, not the transient.
+    await expect(page.getByText(/Showing \d+ of [1-9]\d*/)).toBeVisible({ timeout: 20_000 });
     const before = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
 
     await page.getByRole('button', { name: 'Freshman', exact: true }).click();
@@ -69,7 +72,9 @@ test.describe('/fellowships page', () => {
 
   test('clear-filters button resets the state', async ({ page }) => {
     await page.goto('/fellowships');
-    await expect(page.getByText(/Showing \d+ of \d+/)).toBeVisible({ timeout: 20_000 });
+    // Same loaded-state gate as above: capturing during the "0 of 0"
+    // in-flight render made the reset comparison flaky.
+    await expect(page.getByText(/Showing \d+ of [1-9]\d*/)).toBeVisible({ timeout: 20_000 });
     const cleanCount = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
 
     await page.getByRole('button', { name: 'Senior', exact: true }).click();

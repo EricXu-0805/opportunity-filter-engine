@@ -47,6 +47,16 @@ export function useResultsKeyboardNav({
         return;
       }
 
+      // Help must work independently of the list: with the branch below the
+      // empty-list return, `?` was dead on an empty results list, and flaky
+      // right after load — between paint and the passive-effect re-subscribe
+      // a stale listener still closes over paginated=[] and swallows the key.
+      if (e.key === '?' && e.shiftKey) {
+        e.preventDefault();
+        onOpenHelp();
+        return;
+      }
+
       if (paginated.length === 0) return;
 
       if (e.key === 'j' || e.key === 'ArrowDown') {
@@ -74,9 +84,6 @@ export function useResultsKeyboardNav({
         const match = paginated[focusedIdx];
         const url = match?.opportunity.application?.application_url || match?.opportunity.url;
         if (url) window.open(url, '_blank', 'noopener,noreferrer');
-      } else if (e.key === '?' && e.shiftKey) {
-        e.preventDefault();
-        onOpenHelp();
       }
     }
     document.addEventListener('keydown', onKeyDown);
