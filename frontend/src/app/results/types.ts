@@ -114,6 +114,8 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   ucb_urap: 'results.filters.sourceUcbUrap',
   ucb_eecs_faculty: 'results.filters.sourceUcbEecsFaculty',
   ucb_stat_faculty: 'results.filters.sourceUcbStatFaculty',
+  ucb_chem_faculty: 'results.filters.sourceUcbChemFaculty',
+  ucb_cee_faculty: 'results.filters.sourceUcbCeeFaculty',
 };
 
 export function sourceLabel(source: string, t: TFunc): string {

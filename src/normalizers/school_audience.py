@@ -34,6 +34,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     # welcome is professor-specific, so openness stays unconfirmed.
     "ucb_eecs_faculty": ("ucb", "unknown"),
     "ucb_stat_faculty": ("ucb", "unknown"),
+    "ucb_chem_faculty": ("ucb", "unknown"),
+    "ucb_cee_faculty": ("ucb", "unknown"),
     "ucb_urap": ("ucb", "campus"),
 }
 

@@ -178,6 +178,8 @@ describe('sourceLabel (derived source filter)', () => {
     expect(sourceLabel('ucb_urap', t)).toBe('results.filters.sourceUcbUrap');
     expect(sourceLabel('ucb_eecs_faculty', t)).toBe('results.filters.sourceUcbEecsFaculty');
     expect(sourceLabel('ucb_stat_faculty', t)).toBe('results.filters.sourceUcbStatFaculty');
+    expect(sourceLabel('ucb_chem_faculty', t)).toBe('results.filters.sourceUcbChemFaculty');
+    expect(sourceLabel('ucb_cee_faculty', t)).toBe('results.filters.sourceUcbCeeFaculty');
   });
   it('humanizes an unknown source key (e.g. simplify_internships)', () => {
     expect(sourceLabel('simplify_internships', t)).toBe('Simplify Internships');

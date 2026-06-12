@@ -94,7 +94,7 @@ def test_normalize_produces_lite_berkeley_record():
     # international-friendliness can't be verified from the directory.
     assert opp["on_campus"] is False
     assert opp["eligibility"]["international_friendly"] == "unknown"
-    assert opp["eligibility"]["work_auth_notes"] == ""
+    assert opp["eligibility"]["work_auth_notes"] == STAT_CONFIG["work_auth_notes"]
 
 
 def test_keyword_picked_up_from_title_when_present():
