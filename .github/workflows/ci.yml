@@ -114,10 +114,27 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -e "console.log(require('@playwright/test/package.json').version)")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         # Normally <1 min; CDN downloads have stalled for hours, so fail fast.
         timeout-minutes: 5
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps
+        # Browsers restored from cache still need the apt packages each run.
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Run E2E tests
         run: npm run test:e2e -- --project=chromium
