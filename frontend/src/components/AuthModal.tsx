@@ -46,6 +46,7 @@ import {
   getAuthState,
   onAuthChange,
   signInExistingEmail,
+  signInExistingOAuth,
   signInOrLinkEmail,
   signInWithOAuthProvider,
   signOutOfAccount,
@@ -230,11 +231,15 @@ export default function AuthModal() {
   // OAuth path. On success Supabase navigates the browser to the
   // provider's consent page, so we deliberately leave `submitting`
   // true (buttons stay disabled instead of flashing back to idle);
-  // only a failure returns control to the form.
+  // only a failure returns control to the form. We remember the last
+  // provider clicked so the identity-taken fallback below can retry
+  // the SAME provider as a plain sign-in.
+  const [lastProvider, setLastProvider] = useState<OAuthProvider | null>(null);
   const clickProvider = useCallback(async (provider: OAuthProvider) => {
     if (submitting) return;
     setSubmitting(true);
     setOutcome(null);
+    setLastProvider(provider);
     const redirectTo = `${window.location.origin}/auth/callback`;
     const result = await signInWithOAuthProvider(provider, redirectTo);
     if (!result.ok) {
@@ -242,6 +247,22 @@ export default function AuthModal() {
       setSubmitting(false);
     }
   }, [submitting]);
+
+  // OAuth mirror of the email-taken fallback: when linkIdentity reports
+  // that the Google/Microsoft identity already belongs to ANOTHER
+  // account (`identity-taken`), the only way forward is a plain sign-in
+  // to that account. The anon session's data stays under its own
+  // auth.uid() on this device's guest session — same caveat as email.
+  const submitOAuthExisting = useCallback(async () => {
+    if (submitting || !lastProvider) return;
+    setSubmitting(true);
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const result = await signInExistingOAuth(lastProvider, redirectTo);
+    if (!result.ok) {
+      setOutcome(result);
+      setSubmitting(false);
+    }
+  }, [lastProvider, submitting]);
 
   const confirmSignOut = useCallback(async () => {
     await signOutOfAccount();
@@ -421,7 +442,11 @@ export default function AuthModal() {
 
               {outcome && !outcome.ok && (
                 <div className="text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-2">
-                  <p>{outcome.message}</p>
+                  <p>
+                    {outcome.reason === 'identity-taken'
+                      ? t('auth.modal.signin.identityTakenMsg')
+                      : outcome.message}
+                  </p>
                   {outcome.reason === 'email-taken' && (
                     <button
                       type="button"
@@ -431,6 +456,17 @@ export default function AuthModal() {
                       className="w-full py-2 rounded-lg bg-white border border-red-300 text-red-800 text-[12px] font-medium hover:bg-red-50 disabled:opacity-60 transition-colors"
                     >
                       {submitting ? t('auth.modal.signin.submitting') : t('auth.modal.signin.signInExistingCta')}
+                    </button>
+                  )}
+                  {outcome.reason === 'identity-taken' && lastProvider && (
+                    <button
+                      type="button"
+                      onClick={submitOAuthExisting}
+                      disabled={submitting}
+                      data-testid="auth-modal-oauth-signin-existing"
+                      className="w-full py-2 rounded-lg bg-white border border-red-300 text-red-800 text-[12px] font-medium hover:bg-red-50 disabled:opacity-60 transition-colors"
+                    >
+                      {submitting ? t('auth.modal.signin.submitting') : t('auth.modal.signin.oauthSignInExistingCta')}
                     </button>
                   )}
                 </div>

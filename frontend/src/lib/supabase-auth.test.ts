@@ -31,6 +31,7 @@ const {
   mockUpdateUser,
   mockSignInWithOtp,
   mockSignInWithOAuth,
+  mockLinkIdentity,
 } = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
@@ -39,6 +40,7 @@ const {
     mockUpdateUser: vi.fn(),
     mockSignInWithOtp: vi.fn(),
     mockSignInWithOAuth: vi.fn(),
+    mockLinkIdentity: vi.fn(),
   };
 });
 
@@ -49,6 +51,7 @@ vi.mock('@supabase/supabase-js', () => ({
       updateUser: mockUpdateUser,
       signInWithOtp: mockSignInWithOtp,
       signInWithOAuth: mockSignInWithOAuth,
+      linkIdentity: mockLinkIdentity,
       signOut: vi.fn().mockResolvedValue({ error: null }),
       signInAnonymously: vi.fn().mockResolvedValue({
         data: { user: { id: 'new-anon-uid' } },
@@ -66,6 +69,7 @@ vi.mock('@supabase/supabase-js', () => ({
 import {
   isAnonymousUser,
   signInExistingEmail,
+  signInExistingOAuth,
   signInOrLinkEmail,
   signInWithOAuthProvider,
 } from './supabase';
@@ -296,12 +300,21 @@ describe('signInExistingEmail — forced sign-in-to-existing path', () => {
 // correct NOW so flipping the flag is config-only. The azure provider
 // needs `scopes: 'email'` — Entra multi-tenant apps don't assert email
 // by default, and the school auto-detect (Phase A2) depends on it.
+//
+// Branching matrix mirrors signInOrLinkEmail: an ANON session must take
+// linkIdentity (attaches the OAuth identity to the current anonymous
+// user — same auth.uid(), so all RLS-owned rows survive), while no
+// session / a permanent session takes plain signInWithOAuth.
 describe('signInWithOAuthProvider', () => {
   beforeEach(() => {
+    mockGetSession.mockReset();
     mockSignInWithOAuth.mockReset();
+    mockLinkIdentity.mockReset();
+    sessionStorage.clear();
   });
 
-  it('google → signInWithOAuth with the callback redirect and no scopes', async () => {
+  it('no session + google → signInWithOAuth with the callback redirect and no scopes', async () => {
+    mockGetSession.mockResolvedValueOnce(noSession());
     mockSignInWithOAuth.mockResolvedValueOnce({
       data: { provider: 'google', url: 'https://accounts.google.com/x' },
       error: null,
@@ -310,13 +323,16 @@ describe('signInWithOAuthProvider', () => {
     const result = await signInWithOAuthProvider('google', REDIRECT);
 
     expect(result.ok).toBe(true);
+    if (result.ok) expect(result.mode).toBe('sign-in');
     expect(mockSignInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
       options: { redirectTo: REDIRECT, scopes: undefined },
     });
+    expect(mockLinkIdentity).not.toHaveBeenCalled();
   });
 
-  it('azure → signInWithOAuth with scopes:"email"', async () => {
+  it('no session + azure → signInWithOAuth with scopes:"email"', async () => {
+    mockGetSession.mockResolvedValueOnce(noSession());
     mockSignInWithOAuth.mockResolvedValueOnce({
       data: { provider: 'azure', url: 'https://login.microsoftonline.com/x' },
       error: null,
@@ -331,13 +347,149 @@ describe('signInWithOAuthProvider', () => {
     });
   });
 
+  it('permanent session → plain signInWithOAuth (sign-in, not link)', async () => {
+    mockGetSession.mockResolvedValueOnce(permanentSession());
+    mockSignInWithOAuth.mockResolvedValueOnce({ data: {}, error: null });
+
+    const result = await signInWithOAuthProvider('google', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.mode).toBe('sign-in');
+    expect(mockSignInWithOAuth).toHaveBeenCalled();
+    expect(mockLinkIdentity).not.toHaveBeenCalled();
+  });
+
+  it('anon session + google → linkIdentity (preserves auth.uid), NOT signInWithOAuth', async () => {
+    mockGetSession.mockResolvedValueOnce(anonSession());
+    mockLinkIdentity.mockResolvedValueOnce({
+      data: { provider: 'google', url: 'https://accounts.google.com/x' },
+      error: null,
+    });
+
+    const result = await signInWithOAuthProvider('google', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.mode).toBe('link-anon');
+    expect(mockLinkIdentity).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: REDIRECT, scopes: undefined },
+    });
+    expect(mockSignInWithOAuth).not.toHaveBeenCalled();
+  });
+
+  it('anon session + azure → linkIdentity with scopes:"email"', async () => {
+    mockGetSession.mockResolvedValueOnce(anonSession());
+    mockLinkIdentity.mockResolvedValueOnce({
+      data: { provider: 'azure', url: 'https://login.microsoftonline.com/x' },
+      error: null,
+    });
+
+    const result = await signInWithOAuthProvider('azure', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    expect(mockLinkIdentity).toHaveBeenCalledWith({
+      provider: 'azure',
+      options: { redirectTo: REDIRECT, scopes: 'email' },
+    });
+  });
+
+  it('anon session → stashes the provider for the callback conflict fallback', async () => {
+    mockGetSession.mockResolvedValueOnce(anonSession());
+    mockLinkIdentity.mockResolvedValueOnce({ data: {}, error: null });
+
+    await signInWithOAuthProvider('azure', REDIRECT);
+
+    expect(sessionStorage.getItem('ofe_oauth_link_provider')).toBe('azure');
+  });
+
+  it('maps linkIdentity error code identity_already_exists → identity-taken', async () => {
+    mockGetSession.mockResolvedValueOnce(anonSession());
+    mockLinkIdentity.mockResolvedValueOnce({
+      data: { provider: 'google', url: null },
+      error: {
+        message: 'Identity is already linked to another user',
+        code: 'identity_already_exists',
+      },
+    });
+
+    const result = await signInWithOAuthProvider('google', REDIRECT);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('identity-taken');
+    expect(mockSignInWithOAuth).not.toHaveBeenCalled();
+  });
+
+  it('maps an "already linked" message → identity-taken even without a code', async () => {
+    mockGetSession.mockResolvedValueOnce(anonSession());
+    mockLinkIdentity.mockResolvedValueOnce({
+      data: { provider: 'google', url: null },
+      error: { message: 'Identity is already linked' },
+    });
+
+    const result = await signInWithOAuthProvider('google', REDIRECT);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('identity-taken');
+  });
+
   it('maps provider errors through mapAuthError', async () => {
+    mockGetSession.mockResolvedValueOnce(noSession());
     mockSignInWithOAuth.mockResolvedValueOnce({
       data: null,
       error: { message: 'For security purposes, too many requests' },
     });
 
     const result = await signInWithOAuthProvider('google', REDIRECT);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('rate-limited');
+  });
+});
+
+// OAuth twin of signInExistingEmail: after an identity_already_exists
+// conflict, the recovery action must be a PLAIN signInWithOAuth — never
+// another linkIdentity attempt (which would just conflict again), and
+// never a session read (the anon session must not re-route us).
+describe('signInExistingOAuth — forced sign-in-to-existing path', () => {
+  beforeEach(() => {
+    mockGetSession.mockReset();
+    mockSignInWithOAuth.mockReset();
+    mockLinkIdentity.mockReset();
+  });
+
+  it('always calls signInWithOAuth — never linkIdentity, never reads session', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({ data: {}, error: null });
+
+    const result = await signInExistingOAuth('google', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.mode).toBe('sign-in');
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: REDIRECT, scopes: undefined },
+    });
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockLinkIdentity).not.toHaveBeenCalled();
+  });
+
+  it('azure → scopes:"email" (school auto-detect needs the email claim)', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({ data: {}, error: null });
+
+    await signInExistingOAuth('azure', REDIRECT);
+
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: 'azure',
+      options: { redirectTo: REDIRECT, scopes: 'email' },
+    });
+  });
+
+  it('maps errors through mapAuthError', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'For security purposes, too many requests' },
+    });
+
+    const result = await signInExistingOAuth('google', REDIRECT);
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('rate-limited');

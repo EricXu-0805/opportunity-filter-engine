@@ -13,4 +13,5 @@ export const STORAGE_KEYS = {
   JUST_SIGNED_OUT: 'ofe_just_signed_out',
   GUEST_BANNER_DISMISSED: 'ofe_guest_banner_dismissed',
   LOCALE: 'ofe_lang',
+  OAUTH_LINK_PROVIDER: 'ofe_oauth_link_provider',
 } as const;

@@ -17,6 +17,7 @@ const mockSignOut = vi.fn();
 const mockGetAuthState = vi.fn();
 const mockOnAuthChange = vi.fn((_cb: (s: unknown) => void) => () => {});
 const mockOAuth = vi.fn();
+const mockOAuthExisting = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   getAuthState: () => mockGetAuthState(),
@@ -24,6 +25,7 @@ vi.mock('@/lib/supabase', () => ({
   signInOrLinkEmail: (email: string, redirect: string) => mockSignIn(email, redirect),
   signInExistingEmail: (email: string, redirect: string) => mockSignInExisting(email, redirect),
   signInWithOAuthProvider: (provider: string, redirect: string) => mockOAuth(provider, redirect),
+  signInExistingOAuth: (provider: string, redirect: string) => mockOAuthExisting(provider, redirect),
   signOutOfAccount: () => mockSignOut(),
 }));
 
@@ -338,6 +340,56 @@ describe('AuthModal — OAuth click flow', () => {
     fireEvent.click(screen.getByTestId('auth-provider-google'));
     await waitFor(() => expect(mockOAuth).toHaveBeenCalled());
     expect(setPhaseMock).not.toHaveBeenCalledWith('sent');
+  });
+});
+
+// Identity conflict: the user's Google/Microsoft identity already
+// belongs to ANOTHER account, so it can't be linked to the anon user.
+// Mirrors the email-taken fallback: a clear i18n message + an in-place
+// "sign in to that account instead" button that forces the plain
+// signInWithOAuth path via signInExistingOAuth.
+describe('AuthModal — OAuth identity-taken fallback', () => {
+  beforeEach(() => {
+    mockGetAuthState.mockResolvedValue(ANON);
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google,azure');
+  });
+
+  it('renders the i18n conflict message + fallback button (not the raw lib message)', async () => {
+    mockOAuth.mockResolvedValue({ ok: false, reason: 'identity-taken', message: 'raw lib message' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-modal-oauth-signin-existing')).toBeInTheDocument();
+    });
+    expect(screen.getByText('auth.modal.signin.identityTakenMsg')).toBeInTheDocument();
+    expect(screen.queryByText('raw lib message')).toBeNull();
+    // The email-taken button is a different recovery path — must not appear.
+    expect(screen.queryByTestId('auth-modal-signin-existing')).toBeNull();
+  });
+
+  it('fallback button calls signInExistingOAuth with the SAME provider that conflicted', async () => {
+    mockOAuth.mockResolvedValue({ ok: false, reason: 'identity-taken', message: 'taken' });
+    mockOAuthExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.click(screen.getByTestId('auth-provider-azure'));
+    const btn = await screen.findByTestId('auth-modal-oauth-signin-existing');
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(mockOAuthExisting).toHaveBeenCalledWith('azure', 'http://localhost:3000/auth/callback');
+    });
+  });
+
+  it('does NOT render the OAuth fallback button for other error reasons', async () => {
+    mockOAuth.mockResolvedValue({ ok: false, reason: 'unknown', message: 'oauth exploded' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
+    await waitFor(() => {
+      expect(screen.getByText('oauth exploded')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('auth-modal-oauth-signin-existing')).toBeNull();
   });
 });
 

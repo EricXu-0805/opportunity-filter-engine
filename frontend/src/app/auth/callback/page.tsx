@@ -26,19 +26,21 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { CheckCircle, Sparkles } from 'lucide-react';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import {
   getAuthState,
   getDataInventory,
+  signInExistingOAuth,
   supabase,
   type DataInventory,
+  type OAuthProvider,
 } from '@/lib/supabase';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
-type Status = 'pending' | 'success' | 'error';
+type Status = 'pending' | 'success' | 'error' | 'identity-conflict';
 
 const DWELL_MS = 2500;
 const TICK_MS = 100;
@@ -52,6 +54,8 @@ function CallbackInner() {
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [inventory, setInventory] = useState<DataInventory | null>(null);
   const [remainingMs, setRemainingMs] = useState<number>(DWELL_MS);
+  const [linkProvider, setLinkProvider] = useState<OAuthProvider | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   // ============ exchange + load inventory ============
   useEffect(() => {
@@ -60,13 +64,29 @@ function CallbackInner() {
     (async () => {
       // Surface OAuth-style errors before attempting the exchange.
       const queryError = params.get('error_description') || params.get('error');
-      const hashError = typeof window !== 'undefined' && window.location.hash.includes('error')
-        ? decodeURIComponent(window.location.hash.replace(/^#/, ''))
+      const hashRaw = typeof window !== 'undefined' && window.location.hash.includes('error')
+        ? window.location.hash.replace(/^#/, '')
         : null;
+      const hashError = hashRaw ? decodeURIComponent(hashRaw) : null;
       if (queryError || hashError) {
         if (!cancelled) {
-          setStatus('error');
-          setErrorMsg(queryError || hashError);
+          // linkIdentity conflict: the OAuth identity the user just
+          // consented with already belongs to ANOTHER account. GoTrue
+          // only detects this AFTER the provider consent, so it arrives
+          // here as error params (error_code=identity_already_exists)
+          // rather than as a rejected linkIdentity() call in the modal.
+          // Show the dedicated recovery screen instead of the generic
+          // magic-link error copy.
+          const errorCode = params.get('error_code')
+            ?? (hashRaw ? new URLSearchParams(hashRaw).get('error_code') : null);
+          const description = queryError || hashError || '';
+          if (errorCode === 'identity_already_exists' || /already linked/i.test(description)) {
+            setLinkProvider(readStashedOAuthProvider());
+            setStatus('identity-conflict');
+          } else {
+            setStatus('error');
+            setErrorMsg(queryError || hashError);
+          }
         }
         return;
       }
@@ -99,6 +119,7 @@ function CallbackInner() {
         try {
           sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
           sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
+          sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
         } catch { /* private mode */ }
         return;
       }
@@ -197,6 +218,24 @@ function CallbackInner() {
     return () => window.clearInterval(interval);
   }, [status, router]);
 
+  // ============ identity-conflict recovery ============
+  // Plain sign-in to the account that already owns the OAuth identity.
+  // On success the browser navigates to the provider's consent page, so
+  // `retrying` only ever resets on failure.
+  const signInToExistingAccount = useCallback(async () => {
+    if (!linkProvider || retrying) return;
+    setRetrying(true);
+    const result = await signInExistingOAuth(
+      linkProvider,
+      `${window.location.origin}/auth/callback`,
+    );
+    if (!result.ok) {
+      setRetrying(false);
+      setStatus('error');
+      setErrorMsg(result.message);
+    }
+  }, [linkProvider, retrying]);
+
   const secondsLeft = Math.ceil(remainingMs / 1000);
   const inventoryLine = buildInventoryLine(inventory, t);
 
@@ -244,6 +283,39 @@ function CallbackInner() {
               className="px-4 py-2 rounded-full bg-gray-900 text-white text-sm font-medium hover:bg-black transition-colors"
             >
               {t('auth.callback.goHomeNow')}
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {status === 'identity-conflict' && (
+        <div className="text-center">
+          <h1 className="text-lg font-semibold text-gray-900">
+            {t('auth.callback.identityTakenTitle')}
+          </h1>
+          <p className="mt-2 text-sm text-gray-600">
+            {t('auth.callback.identityTakenBody')}
+          </p>
+          <p className="mt-3 text-xs text-gray-400">
+            {t('auth.callback.identityTakenHint')}
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            {linkProvider && (
+              <button
+                type="button"
+                onClick={signInToExistingAccount}
+                disabled={retrying}
+                data-testid="callback-oauth-signin-existing"
+                className="px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+              >
+                {t('auth.callback.identityTakenCta')}
+              </button>
+            )}
+            <Link
+              href="/"
+              className="px-4 py-2 rounded-full text-gray-600 text-sm font-medium hover:bg-black/[0.04] transition-colors"
+            >
+              {t('auth.callback.goHome')}
             </Link>
           </div>
         </div>
@@ -300,6 +372,17 @@ function buildInventoryLine(
   if (inv.savedSearches > 0) parts.push(t('auth.callback.invSavedSearches', { count: inv.savedSearches }));
   if (parts.length === 0) return null;
   return t('auth.callback.inventoryPrefix') + ' ' + joinHuman(parts, t);
+}
+
+/** Provider stashed by signInWithOAuthProvider just before the
+ *  linkIdentity redirect — lets the identity-conflict screen offer a
+ *  one-click "sign in to that account instead" without re-asking which
+ *  provider the user picked. */
+function readStashedOAuthProvider(): OAuthProvider | null {
+  try {
+    const v = sessionStorage.getItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
+    return v === 'google' || v === 'azure' ? v : null;
+  } catch { return null; }
 }
 
 /** "a, b, and c" / "a 和 b" — defers list joining to i18n where the

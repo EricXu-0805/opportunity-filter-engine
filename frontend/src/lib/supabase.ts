@@ -261,7 +261,7 @@ export function onAuthChange(cb: (state: AuthState) => void): () => void {
 
 export type SignInOutcome =
   | { ok: true; mode: 'link-anon' | 'sign-in'; message: string }
-  | { ok: false; reason: 'not-configured' | 'invalid-email' | 'rate-limited' | 'email-taken' | 'unknown'; message: string };
+  | { ok: false; reason: 'not-configured' | 'invalid-email' | 'rate-limited' | 'email-taken' | 'identity-taken' | 'unknown'; message: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -387,8 +387,43 @@ export async function signInExistingEmail(
 
 export type OAuthProvider = 'google' | 'azure';
 
+function oauthOptions(provider: OAuthProvider, redirectTo: string) {
+  return {
+    redirectTo,
+    // Entra ID multi-tenant apps don't assert email by default; the
+    // school auto-detect (Phase A2) needs it.
+    scopes: provider === 'azure' ? 'email' : undefined,
+  };
+}
+
+/**
+ * Remember which provider initiated a linkIdentity redirect. The
+ * identity-already-linked-to-ANOTHER-account conflict
+ * (`identity_already_exists`) is detected by GoTrue AFTER the provider
+ * consent, so it lands on /auth/callback as error query params — at
+ * that point the callback page needs to know the provider to offer
+ * "sign in to that account instead" (plain signInWithOAuth).
+ */
+function stashOAuthLinkProvider(provider: OAuthProvider): void {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.setItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER, provider); } catch { /* private mode */ }
+}
+
 /**
  * OAuth sign-in (Google / Microsoft Entra via the `azure` provider).
+ *
+ * Branches on the current session, mirroring signInOrLinkEmail:
+ *   - anon session present → `linkIdentity()` — attaches the OAuth
+ *     identity to the CURRENT anonymous user. Same auth.uid() before
+ *     and after, so every RLS-owned row (profiles / favorites /
+ *     interactions / saved_searches / match_feedback) stays owned by
+ *     the same UUID — zero data migration, exactly like the magic-link
+ *     flow's updateUser conversion. Requires "manual linking" enabled
+ *     in the Supabase dashboard (Auth settings) — same config milestone
+ *     as enabling the providers themselves.
+ *   - no session / already permanent → plain `signInWithOAuth()`
+ *     (sign-in to an existing or new permanent account).
+ *
  * On success Supabase navigates the browser to the provider's consent
  * page, so the resolved outcome is only ever observed on failure (or
  * in tests). `redirectTo` is the same `/auth/callback` URL the magic-
@@ -407,22 +442,69 @@ export async function signInWithOAuthProvider(
       message: 'Sign-in is unavailable: Supabase is not configured.',
     };
   }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user && isAnonymousUser(session)) {
+    stashOAuthLinkProvider(provider);
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: oauthOptions(provider, redirectTo),
+    });
+    if (error) return mapAuthError(error.message, error.code);
+    return { ok: true, mode: 'link-anon', message: 'Redirecting to provider…' };
+  }
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: {
-      redirectTo,
-      // Entra ID multi-tenant apps don't assert email by default; the
-      // school auto-detect (Phase A2) needs it.
-      scopes: provider === 'azure' ? 'email' : undefined,
-    },
+    options: oauthOptions(provider, redirectTo),
   });
-  if (error) return mapAuthError(error.message);
+  if (error) return mapAuthError(error.message, error.code);
   return { ok: true, mode: 'sign-in', message: 'Redirecting to provider…' };
 }
 
-function mapAuthError(raw: string): SignInOutcome {
+/**
+ * OAuth twin of `signInExistingEmail`: forces a PLAIN signInWithOAuth
+ * regardless of the current session. Used after an
+ * `identity_already_exists` conflict — the Google/Microsoft identity
+ * already belongs to ANOTHER account, so linking is impossible and the
+ * only way forward is signing into that account. The anon session's
+ * data stays under its own auth.uid() (not destroyed, but not visible
+ * to the permanent user until Flow B cross-device merge ships) — the
+ * same caveat the email-taken path warns about.
+ */
+export async function signInExistingOAuth(
+  provider: OAuthProvider,
+  redirectTo: string,
+): Promise<SignInOutcome> {
+  if (!SUPABASE_CONFIGURED) {
+    return {
+      ok: false,
+      reason: 'not-configured',
+      message: 'Sign-in is unavailable: Supabase is not configured.',
+    };
+  }
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: oauthOptions(provider, redirectTo),
+  });
+  if (error) return mapAuthError(error.message, error.code);
+  return { ok: true, mode: 'sign-in', message: 'Redirecting to provider…' };
+}
+
+function mapAuthError(raw: string, code?: string): SignInOutcome {
   const msg = raw || 'Unknown error';
   const lower = msg.toLowerCase();
+  // GoTrue's identity_already_exists: the OAuth identity is already
+  // linked to a DIFFERENT user, so linkIdentity can't proceed (message
+  // form: "Identity is already linked to another user"). The caller
+  // offers signInExistingOAuth as the recovery path.
+  if (code === 'identity_already_exists' || lower.includes('already linked')) {
+    return {
+      ok: false,
+      reason: 'identity-taken',
+      message: 'This Google/Microsoft account already belongs to another account. Sign in to that account instead — your current guest data stays on this device.',
+    };
+  }
   // Supabase returns these strings for an email that's already registered
   // when we try to convert an anon user. We surface a friendlier path:
   // "use the sign-in link instead" (caller can offer to redo signInWithOtp).
