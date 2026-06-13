@@ -152,17 +152,23 @@ function ResultsContent() {
   }, [data, t]);
 
   const homeSchool = homeSchoolOf(profile);
+  const homeSchoolEntry = bySlug(homeSchool);
   // Discovery-scope facet (PR #187), data-derived like sourceOptions:
-  // empty (hidden) when no result carries school/audience metadata.
+  // empty (hidden) when no result carries school/audience metadata. The
+  // "My school" option is suppressed for schools with no campus coverage
+  // yet (campusOpportunities: 'pending') — offering it would only ever
+  // return zero results with the facet still shown.
+  const hasCampusCoverage = homeSchoolEntry?.coverage.campusOpportunities !== 'pending';
   const scopeOptions = useMemo<Array<[string, string]>>(() => {
     if (!(data?.results ?? []).some((m) => hasScopeData(m.opportunity))) return [];
     return [
       ['', t('results.filters.scopeAll')],
-      ['campus', t('results.filters.scopeMySchool')],
+      ...(hasCampusCoverage
+        ? [['campus', t('results.filters.scopeMySchool')] as [string, string]]
+        : []),
       ['open', t('results.filters.scopeOpen')],
     ];
-  }, [data, t]);
-  const homeSchoolEntry = bySlug(homeSchool);
+  }, [data, t, hasCampusCoverage]);
   const scopeIndicator = t(
     homeSchoolEntry?.coverage.campusOpportunities === 'pending'
       ? 'results.scopeIndicatorPending'
