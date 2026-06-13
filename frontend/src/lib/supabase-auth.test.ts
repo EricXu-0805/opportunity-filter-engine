@@ -206,6 +206,22 @@ describe('signInOrLinkEmail — error mapping', () => {
     if (!result.ok) expect(result.reason).toBe('email-taken');
   });
 
+  it('maps email_address_invalid to invalid-email, NOT email-taken', async () => {
+    // A validation rejection (malformed / disposable / blocked domain) is
+    // unrelated to account existence — it must not get the "sign in instead"
+    // CTA, which would re-submit the same bad address in a loop.
+    mockGetSession.mockResolvedValueOnce(noSession());
+    mockSignInWithOtp.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Email address is invalid', code: 'email_address_invalid' },
+    });
+
+    const result = await signInOrLinkEmail('eric@x.invalid', REDIRECT);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('invalid-email');
+  });
+
   it('maps rate-limit errors to rate-limited', async () => {
     mockGetSession.mockResolvedValueOnce(noSession());
     mockSignInWithOtp.mockResolvedValueOnce({
@@ -430,6 +446,20 @@ describe('signInWithOAuthProvider', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('identity-taken');
+  });
+
+  it('clears the provider stash when linkIdentity errors before the redirect', async () => {
+    // The redirect never happened, so a surviving stash would leak into a
+    // later flow's callback and misroute a non-OAuth email_exists conflict.
+    mockGetSession.mockResolvedValueOnce(anonSession());
+    mockLinkIdentity.mockResolvedValueOnce({
+      data: { provider: 'google', url: null },
+      error: { message: 'Identity is already linked', code: 'identity_already_exists' },
+    });
+
+    await signInWithOAuthProvider('google', REDIRECT);
+
+    expect(sessionStorage.getItem('ofe_oauth_link_provider')).toBeNull();
   });
 
   it('maps provider errors through mapAuthError', async () => {
