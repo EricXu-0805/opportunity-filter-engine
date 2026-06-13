@@ -4,6 +4,15 @@
  * each one into its own chunk instead of shipping all nine in the main
  * bundle. UIUC re-exports the existing colleges.ts data (already in the
  * main bundle via its static importers) through the same interface.
+ *
+ * i18n note (intentional, not a regression): these catalogs carry the
+ * schools' real English college/major names as scraped from official
+ * catalogs. Only UIUC's colleges/majors dictionary namespaces have zh
+ * entries (home-utils translateKey), so under the zh locale the non-UIUC
+ * dropdowns
+ * render the English program names verbatim — a deliberate tradeoff
+ * (recognizable official names over machine-translated ones). Revisit only
+ * if a zh translation pass for the 8 schools is explicitly scoped.
  */
 
 type CatalogModule = { COLLEGE_MAJORS: Record<string, string[]> };
