@@ -32,6 +32,8 @@ STAT_CONFIG = {
     "base": "https://statistics.berkeley.edu",
     "majors": ["Statistics", "Data Science", "Applied Mathematics"],
     "keywords": ["statistics"],
+    "work_auth_notes": "External campus (UC Berkeley) — work "
+                       "authorization depends on the arrangement",
     "selectors": {
         "card": "article.node--type-faculty",
         "name": "h3 a",                              # name text (also the link)

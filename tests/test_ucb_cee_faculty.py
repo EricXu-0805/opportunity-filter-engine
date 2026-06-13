@@ -155,3 +155,21 @@ def test_known_record_id_is_byte_stable():
     corpus on the next scrape. Pin a real corpus id."""
     norm = next(p for p in _scrape() if p["name"] == "Norman Abrahamson")
     assert normalize_faculty(norm, CEE_CONFIG)["id"] == "faculty-ucb-cee-03e55076"
+
+
+def test_cee_domain_terms_yield_topical_keywords():
+    """KEYWORD_BANK carries civil/environmental terms so CEE records rank by
+    topical fit instead of 58/64 of them sharing the broad department keyword
+    (measured against the live directory when the bank was extended)."""
+    person = {
+        "name": "Test Professor",
+        "url": "https://ce.berkeley.edu/people/faculty/test",
+        "title": "Professor",
+        "research_areas": "Geotechnical engineering, earthquake engineering, "
+                          "transportation infrastructure, air quality modeling",
+    }
+    opp = normalize_faculty(person, CEE_CONFIG)
+    for kw in ("geotechnical", "earthquake engineering", "transportation",
+               "infrastructure", "air quality"):
+        assert kw in opp["keywords"], kw
+    assert "civil and environmental engineering" not in opp["keywords"]

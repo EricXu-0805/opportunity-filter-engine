@@ -22,7 +22,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.collectors.refresh_all as refresh_all
 
-UCB_FACULTY_SOURCES = {"ucb_eecs_faculty", "ucb_stat_faculty"}
+UCB_FACULTY_SOURCES = {
+    "ucb_eecs_faculty",
+    "ucb_stat_faculty",
+    "ucb_chem_faculty",
+    "ucb_cee_faculty",
+}
 
 
 def _stub_all_collectors(monkeypatch, tmp_path):
@@ -53,12 +58,13 @@ def test_quick_run_skips_ucb_faculty_but_keeps_ucb_urap(monkeypatch, tmp_path):
 def test_eecs_merges_before_stat(monkeypatch, tmp_path):
     _stub_all_collectors(monkeypatch, tmp_path)
     order: list[str] = []
-    monkeypatch.setattr(refresh_all, "merge_ucb_eecs",
-                        lambda opps: (order.append("eecs"), (0, 0))[1])
-    monkeypatch.setattr(refresh_all, "merge_ucb_stat",
-                        lambda opps: (order.append("stat"), (0, 0))[1])
+    for dept in ("eecs", "stat", "chem", "cee"):
+        monkeypatch.setattr(refresh_all, f"merge_ucb_{dept}",
+                            lambda opps, dept=dept: (order.append(dept), (0, 0))[1])
     refresh_all.refresh_all(deep=True)
-    assert order == ["eecs", "stat"]
+    # EECS-before-STAT is the binding constraint (joint-appointment dedup
+    # keeps the richer EECS record); chem/cee just follow.
+    assert order == ["eecs", "stat", "chem", "cee"]
 
 
 def test_ucb_faculty_error_is_isolated(monkeypatch, tmp_path):

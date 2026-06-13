@@ -127,7 +127,13 @@ def test_already_inactive_excluded_from_gate_denominator():
 def test_faculty_sources_match_refresh_all_registrations():
     import src.collectors.refresh_all  # noqa: F401 — import must not blow up
 
-    assert FACULTY_SOURCES == {"uiuc_faculty", "ucb_eecs_faculty", "ucb_stat_faculty"}
+    assert FACULTY_SOURCES == {
+        "uiuc_faculty",
+        "ucb_eecs_faculty",
+        "ucb_stat_faculty",
+        "ucb_chem_faculty",
+        "ucb_cee_faculty",
+    }
 
 
 # --- Reactivation round-trip through the real merges -------------------------

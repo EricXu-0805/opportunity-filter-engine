@@ -26,7 +26,13 @@ from datetime import date, datetime, timedelta
 logger = logging.getLogger(__name__)
 
 # Faculty collectors wired into refresh_all; all emit source_type='faculty_research'.
-FACULTY_SOURCES = frozenset({"uiuc_faculty", "ucb_eecs_faculty", "ucb_stat_faculty"})
+FACULTY_SOURCES = frozenset({
+    "uiuc_faculty",
+    "ucb_eecs_faculty",
+    "ucb_stat_faculty",
+    "ucb_chem_faculty",
+    "ucb_cee_faculty",
+})
 
 GRACE_DAYS = 14
 MIN_SCRAPE_RATIO = 0.7

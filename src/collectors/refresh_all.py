@@ -23,6 +23,10 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
+from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
+from .ucb_chem_faculty import fetch_and_normalize as fetch_ucb_chem
+from .ucb_common import merge_into_processed as merge_ucb_cee
+from .ucb_common import merge_into_processed as merge_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_eecs
 from .ucb_common import merge_into_processed as merge_ucb_stat
 from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
@@ -244,11 +248,15 @@ def refresh_all(deep: bool = True) -> dict:
     # (~0.75s politeness delay each) and EECS scrapes an external campus site.
     # Order matters: EECS must merge before STAT so the ucb_common
     # joint-appointment dedup keeps the EECS record (richer keywords) and drops
-    # the STAT duplicate.
+    # the STAT duplicate. For the rest the dedup's existing-corpus-wins policy
+    # decides, so their relative order only fixes which record survives a
+    # from-scratch rebuild.
     if deep:
         for source_name, fetch_fn, merge_fn in [
             ("ucb_eecs_faculty", fetch_ucb_eecs, merge_ucb_eecs),
             ("ucb_stat_faculty", fetch_ucb_stat, merge_ucb_stat),
+            ("ucb_chem_faculty", fetch_ucb_chem, merge_ucb_chem),
+            ("ucb_cee_faculty", fetch_ucb_cee, merge_ucb_cee),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

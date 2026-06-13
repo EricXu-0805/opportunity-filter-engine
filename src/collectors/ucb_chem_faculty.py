@@ -33,6 +33,8 @@ CHEM_CONFIG = {
     "base": "https://chemistry.berkeley.edu",
     "majors": ["Chemistry", "Chemical Biology", "Biochemistry"],
     "keywords": ["chemistry"],
+    "work_auth_notes": "External campus (UC Berkeley) — work "
+                       "authorization depends on the arrangement",
     "selectors": {
         "card": "div.node-openberkeley-person",
         "name": "h2",                                          # name text

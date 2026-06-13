@@ -106,6 +106,12 @@ KEYWORD_BANK = [
     "stochastic processes",
     "organic chemistry", "inorganic chemistry", "physical chemistry",
     "chemical biology", "catalysis", "spectroscopy",
+    "structural engineering", "earthquake engineering", "geotechnical",
+    "transportation", "air quality", "air pollution", "water treatment",
+    "hydrology", "environmental microbiology", "construction",
+    "infrastructure", "climate", "sustainability", "fluid mechanics",
+    "computational mechanics", "structural health monitoring",
+    "energy systems",
 ]
 
 SKILL_MAP = {
