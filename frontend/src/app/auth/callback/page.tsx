@@ -391,6 +391,10 @@ function buildInventoryLine(
 function readStashedOAuthProvider(): OAuthProvider | null {
   try {
     const v = sessionStorage.getItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
+    // Single-use, like the PKCE verifier it shadows: consume on read so a
+    // stash from an abandoned OAuth attempt can't survive to misroute a
+    // later non-OAuth email_exists conflict into the OAuth recovery screen.
+    sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
     return v === 'google' || v === 'azure' ? v : null;
   } catch { return null; }
 }

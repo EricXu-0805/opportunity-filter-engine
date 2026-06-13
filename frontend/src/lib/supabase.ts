@@ -409,6 +409,16 @@ function stashOAuthLinkProvider(provider: OAuthProvider): void {
   try { sessionStorage.setItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER, provider); } catch { /* private mode */ }
 }
 
+/** Drop the link-provider stash so it can't outlive its flow. A stash that
+ *  survives an abandoned/errored OAuth attempt would defeat the callback's
+ *  gate and misroute a LATER non-OAuth email_exists conflict into the
+ *  "sign in with Google/Microsoft" recovery screen. Cleared on sign-out and
+ *  whenever a link attempt fails before the redirect. */
+function clearOAuthLinkProvider(): void {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER); } catch { /* private mode */ }
+}
+
 /**
  * OAuth sign-in (Google / Microsoft Entra via the `azure` provider).
  *
@@ -450,7 +460,9 @@ export async function signInWithOAuthProvider(
       provider,
       options: oauthOptions(provider, redirectTo),
     });
-    if (error) return mapAuthError(error.message, error.code);
+    // The redirect never happened — drop the stash we just set so it can't
+    // leak into a later flow's callback (see clearOAuthLinkProvider).
+    if (error) { clearOAuthLinkProvider(); return mapAuthError(error.message, error.code); }
     return { ok: true, mode: 'link-anon', message: 'Redirecting to provider…' };
   }
 
@@ -505,14 +517,28 @@ function mapAuthError(raw: string, code?: string): SignInOutcome {
       message: 'This Google/Microsoft account already belongs to another account. Sign in to that account instead — your current guest data stays on this device.',
     };
   }
+  // GoTrue's email_address_invalid is a VALIDATION rejection (malformed /
+  // disposable / blocked domain), unrelated to account existence. Keep it
+  // out of the email-taken branch below — misclassifying it told the user
+  // "this email already has an account, sign in instead" and rendered a
+  // sign-in CTA that re-submits the same bad address in a dead loop. The
+  // 'invalid-email' reason renders as a plain message with no CTA.
+  if (
+    lower.includes('email_address_invalid') ||
+    lower.includes('email address is invalid')
+  ) {
+    return {
+      ok: false,
+      reason: 'invalid-email',
+      message: 'That email address looks invalid. Please check it and try again.',
+    };
+  }
   // Supabase returns these strings for an email that's already registered
   // when we try to convert an anon user. We surface a friendlier path:
   // "use the sign-in link instead" (caller can offer to redo signInWithOtp).
   if (
     lower.includes('already registered') ||
     lower.includes('already been registered') ||
-    lower.includes('email_address_invalid') ||
-    lower.includes('email address is invalid') ||
     lower.includes('user already registered')
   ) {
     return {
@@ -542,6 +568,7 @@ function mapAuthError(raw: string, code?: string): SignInOutcome {
 export async function signOutOfAccount(): Promise<string | null> {
   const { error } = await supabase.auth.signOut();
   if (error) console.warn('[ofe] signOut failed:', error.message);
+  clearOAuthLinkProvider(); // don't let a stale link-provider stash cross sessions
   return ensureAnonSession();
 }
 
