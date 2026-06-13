@@ -57,6 +57,26 @@ describe('match-cache', () => {
     expect((opp.eligibility as Record<string, unknown>).eligibility_text_raw).toBeUndefined();
   });
 
+  it('preserves school + audience so the scope facet survives a cache-hit return', () => {
+    // Regression guard for the discovery-scope facet (PR #191): if these
+    // fields are dropped on projection, every cache-hit return strips scope
+    // metadata — the facet hides itself and a persisted scope=campus filters
+    // to zero results. school: null (national records) must round-trip too.
+    const resp = makeResponse(2);
+    (resp.results[0].opportunity as unknown as Record<string, unknown>).school = 'uiuc';
+    (resp.results[0].opportunity as unknown as Record<string, unknown>).audience = 'campus';
+    (resp.results[1].opportunity as unknown as Record<string, unknown>).school = null;
+    (resp.results[1].opportunity as unknown as Record<string, unknown>).audience = 'open';
+    writeMatchCache('h1', false, resp);
+    const out = readMatchCache('h1', false)!;
+    const a = out.results[0].opportunity as unknown as Record<string, unknown>;
+    const b = out.results[1].opportunity as unknown as Record<string, unknown>;
+    expect(a.school).toBe('uiuc');
+    expect(a.audience).toBe('campus');
+    expect(b.school).toBeNull(); // national record: null must survive, not become undefined
+    expect(b.audience).toBe('open');
+  });
+
   it('hasMatchCache reflects presence', () => {
     expect(hasMatchCache()).toBe(false);
     writeMatchCache('h1', false, makeResponse());

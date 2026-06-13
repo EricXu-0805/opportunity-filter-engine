@@ -25,10 +25,15 @@ const DESC_CHARS = 200; // keep a snippet so the free-text search still matches 
 // Exactly the opportunity fields the results list, filters and sort read
 // (see MatchCard + use-results-filters/sort). Everything else — metadata,
 // full descriptions, the bulky eligibility/application sub-objects — is dropped.
+// school + audience back the discovery-scope facet + MatchCard scope chip
+// (PR #191); omitting them strips scope metadata on every cache-hit return,
+// hiding the facet and turning a persisted scope=campus into a zero-result
+// no-op — see match-cache.test.ts round-trip.
 const OPP_FIELDS = [
   'id', 'title', 'organization', 'department', 'opportunity_type', 'paid',
   'deadline', 'source', 'on_campus', 'posted_date', 'location', 'url',
   'duration', 'compensation_details', 'keywords', 'lab_or_program', 'pi_name',
+  'school', 'audience',
 ] as const;
 const ELIG_FIELDS = ['international_friendly', 'skills_required', 'skills_preferred'] as const;
 const APP_FIELDS = [
