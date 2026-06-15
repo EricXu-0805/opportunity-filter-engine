@@ -74,6 +74,8 @@ export default async function RootLayout({
   const footerDisclaimer = locale === 'zh'
     ? '与 UIUC 无附属关系。独立学生项目。'
     : 'Not affiliated with UIUC. Independent student project.';
+  const privacyLabel = locale === 'zh' ? '隐私政策' : 'Privacy Policy';
+  const termsLabel = locale === 'zh' ? '服务条款' : 'Terms of Service';
 
   return (
     <html lang={locale} className={inter.variable}>
@@ -108,6 +110,14 @@ export default async function RootLayout({
                   <p className="text-[12px] text-gray-400">
                     © {new Date().getFullYear()} OpportunityEngine
                   </p>
+                  <nav className="flex items-center gap-4">
+                    <a href="/privacy" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
+                      {privacyLabel}
+                    </a>
+                    <a href="/terms" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
+                      {termsLabel}
+                    </a>
+                  </nav>
                   <p className="text-[11px] text-gray-400 text-center">
                     {footerDisclaimer}
                   </p>
