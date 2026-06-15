@@ -1116,7 +1116,20 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
         substring = (len(kw) >= 4 and kw in interest) or (
             canon != kw and len(canon) >= 4 and canon in interest
         )
-        if exact or substring:
+        # Token overlap: a multi-word curated keyword aligns when it shares any
+        # specific (non-generic) word with the student's interests. The prior
+        # checks only fired when the WHOLE keyword phrase appeared verbatim in
+        # the interest text, so "computer vision" interest missed a "computer
+        # vision and pattern recognition" keyword, and "machine learning" missed
+        # "machine learning and ai" — burying 38% of faculty incl. the best
+        # topical fits (RANK-7). Stopword/generic filtering keeps this from
+        # aligning on filler ("and", "research"); a genuinely off-topic lab
+        # (zero shared specific token) still gets the mismatch penalty.
+        keyword_tokens = {
+            t for t in _tokenize(kw) if t not in _GENERIC_INTEREST_WORDS
+        }
+        token_overlap = bool(keyword_tokens & interest_tokens)
+        if exact or substring or token_overlap:
             return 1.0
     return TOPIC_MISMATCH_PENALTY
 
