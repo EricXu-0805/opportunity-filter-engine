@@ -673,6 +673,34 @@ class TestTopicAlignmentPenalty:
         prof = self._profile(interest="computer vision and robotics")
         assert _topic_alignment_penalty(prof, opp) == 1.0
 
+    # RANK-7: a curated keyword that is a SUPERSET phrase of the student's
+    # interest (or just worded differently) must align on the shared specific
+    # token. The prior checks only fired when the whole keyword phrase appeared
+    # verbatim in the interest text, so these real faculty keywords were wrongly
+    # penalized — burying 38% of UIUC faculty incl. the best ML/CV topical fits
+    # (found 2026-06-15 dogfooding a real F-1 profile).
+    def test_superset_phrase_keyword_aligns(self):
+        # interest "computer vision" vs Prof. Schwing's real keyword
+        opp = self._research(["computer vision and pattern recognition"])
+        assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
+    def test_variant_phrasing_ml_keyword_aligns(self):
+        # interest "machine learning" vs a "machine learning and ai" keyword,
+        # alongside pollution ("associate editor") that must not block alignment
+        opp = self._research(["machine learning and ai", "associate editor"])
+        assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
+    def test_shared_specific_token_aligns(self):
+        # "machine vision" shares "vision"/"machine" with the interest
+        opp = self._research(["cognitive computing", "machine vision"])
+        assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
+    def test_plural_token_still_does_not_falsely_align(self):
+        # guard preserved: the new token-overlap path must keep "computer"
+        # (singular interest) from aligning with "computers and education"
+        opp = self._research(["computers and education"])
+        assert _topic_alignment_penalty(self._profile(), opp) == TOPIC_MISMATCH_PENALTY
+
 
 class TestTopicAlignmentRankingRegression:
     """Golden regression: the topic penalty must move final_score in the right
