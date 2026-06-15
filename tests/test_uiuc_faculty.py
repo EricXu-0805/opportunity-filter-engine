@@ -347,6 +347,25 @@ def test_is_junk_keyword_keeps_legit_areas_that_brush_the_cv_rules():
         assert not _is_junk_keyword(k), k
 
 
+def test_is_junk_keyword_catches_editorial_service_roles():
+    # Editorial / leadership service titles scrape from a bio's service section
+    # as topic-shaped phrases but are never research areas (found 2026-06-15
+    # auditing live UIUC data: 12 faculty carried "associate editor"-class junk).
+    for k in ["associate editor", "senior editor", "managing editor",
+              "guest editor", "editor-in-chief", "editorial board", "co-founder",
+              "cofounder", "board member",
+              "computer graphics forum (cgf): associate editor"]:
+        assert _is_junk_keyword(k), k
+
+
+def test_is_junk_keyword_keeps_editing_research_and_plain_editorial():
+    # "editing" (gene/genome/video) is a real area and must not be clipped by the
+    # service-role rule; a bare "editorial" without "board" is also left alone.
+    for k in ["gene editing", "genome editing", "video editing",
+              "image editing", "editorial"]:
+        assert not _is_junk_keyword(k), k
+
+
 def test_split_compound_keywords_atomizes_comma_joined():
     rows = [
         _fac_kw("Computer Science",

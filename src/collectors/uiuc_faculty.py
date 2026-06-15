@@ -1139,6 +1139,20 @@ _TRUNCATION_STUBS = frozenset({
     "uni", "univ", "universi", "cam", "conc", "int", "fl", "pr", "introductio",
 })
 
+# Editorial / leadership service titles ("associate editor", "editorial board",
+# company "co-founder", "board member") scrape from a faculty bio's service
+# section as topic-shaped phrases but are never a research area. Matches the
+# "<role> editor" form and the composite "<journal> ...: associate editor".
+# "editing" (gene/genome/video) is intentionally not matched — it is not "editor".
+_SERVICE_ROLE_RE = re.compile(
+    r"\b(?:associate|senior|managing|guest|handling|deputy|area|founding|section|chief|co)\s+editor\b|"
+    r"\beditor[\s-]*in[\s-]*chief\b|"
+    r"\beditorial\s+board\b|"
+    r"\bco-?founder\b|"
+    r"\bboard member\b",
+    re.IGNORECASE,
+)
+
 
 def _is_junk_keyword(k: str) -> bool:
     """True for a keyword that is page furniture, a course listing, a
@@ -1146,6 +1160,8 @@ def _is_junk_keyword(k: str) -> bool:
     research areas."""
     kl = k.lower().strip()
     if _PAGE_FURNITURE_RE.search(kl):
+        return True
+    if _SERVICE_ROLE_RE.search(kl):
         return True
     if _COURSE_CODE_RE.search(kl):  # scraped course listings ("cs 591 sn - ...")
         return True
