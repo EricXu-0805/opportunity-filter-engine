@@ -591,7 +591,12 @@ def score_eligibility(
     intl_score = 100.0
     if profile.get("international_student"):
         friendly = elig.get("international_friendly", "unknown")
-        if friendly == "no":
+        # Honor an explicit citizenship_required flag even when the tagger never
+        # reconciled international_friendly (it can stay 'unknown') — otherwise a
+        # US-only posting shows an F-1 student a clean ~60 "verify" match instead
+        # of a restricted one. Same restriction the 'no' branch applies; matters
+        # as domestic / US-only sources enter the corpus.
+        if friendly == "no" or elig.get("citizenship_required") is True:
             intl_score = 0.0
             reasons_gap.append("Requires US citizenship or permanent residency")
         elif friendly == "unknown":
@@ -751,8 +756,17 @@ def score_upside(
     # On-campus convenience (10%)
     campus_score = 80.0 if opportunity.get("on_campus") else 50.0
     if opportunity.get("on_campus") and profile.get("international_student"):
-        campus_score = 90.0
-        reasons_fit.append("On-campus — no work authorization concerns")
+        # The F-1 "no work-authorization concerns" advantage only holds on the
+        # student's OWN campus. Withhold it only when we KNOW the campus is a
+        # different school (a foreign campus stamped on_campus=True — a future
+        # multi-school data error). Missing home_school or national/legacy
+        # (school=None) records keep the original behavior — an F-1 can't work on
+        # another school's campus, but we never penalize on incomplete data.
+        opp_school = opportunity.get("school")
+        home_school = profile.get("home_school")
+        if opp_school is None or not home_school or opp_school == home_school:
+            campus_score = 90.0
+            reasons_fit.append("On-campus — no work authorization concerns")
 
     # Brand/prestige (15%)
     # Simple heuristic for V1 — can be refined
@@ -1420,7 +1434,7 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
 
         if profile.get("international_student"):
             elig = opp.get("eligibility", {})
-            if elig.get("international_friendly") == "no":
+            if elig.get("international_friendly") == "no" or elig.get("citizenship_required") is True:
                 if profile.get("preferences", {}).get("exclude_citizenship_restricted", True):
                     continue
 

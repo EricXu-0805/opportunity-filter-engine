@@ -729,6 +729,76 @@ class TestInternationalUnknownChip:
         assert not any("CPT/OPT" in g for g in gap)
 
 
+class TestCitizenshipRequiredHonored:
+    """BUG A (filter-correctness gate, 2026-06-15): the matcher must honor
+    eligibility.citizenship_required even when international_friendly was never
+    reconciled to 'no' — otherwise a US-only posting shows an F-1 student a clean
+    ~60 'verify' match. Latent today (every citizenship_required=True record also
+    has friendly='no') but bites as domestic / US-only sources enter the corpus."""
+
+    def _us_only(self):
+        return {
+            "id": "us-only", "opportunity_type": "research", "title": "US Only Lab",
+            "eligibility": {"citizenship_required": True, "international_friendly": "unknown"},
+            "application": {},
+        }
+
+    def _restricted(self, gap):
+        return any("citizenship" in g.lower() or "permanent residency" in g.lower() for g in gap)
+
+    def test_f1_flagged_when_required_but_friendly_unknown(self):
+        _, _fit, gap = score_eligibility({"international_student": True}, self._us_only())
+        assert self._restricted(gap)
+
+    def test_domestic_not_penalized_by_citizenship_required(self):
+        _, _fit, gap = score_eligibility({"international_student": False}, self._us_only())
+        assert not self._restricted(gap)
+
+    def test_f1_hard_filtered_out(self):
+        profile = {"international_student": True,
+                   "preferences": {"exclude_citizenship_restricted": True}}
+        results = rank_all(profile, [self._us_only()])
+        assert all(r.opportunity_id != "us-only" for r in results)
+
+    def test_domestic_keeps_it(self):
+        results = rank_all({"international_student": False}, [self._us_only()])
+        assert any(r.opportunity_id == "us-only" for r in results)
+
+
+class TestForeignCampusWorkAuthBonus:
+    """BUG B (filter-correctness gate, 2026-06-15): a foreign campus stamped
+    on_campus=True must not earn an F-1 the 'no work authorization concerns'
+    bonus — they can't work on another school's campus. The student's own campus,
+    a national/legacy (school=None) row, or incomplete data still earns it."""
+
+    def _on_campus(self, school):
+        return {"id": f"oc-{school}", "opportunity_type": "research", "on_campus": True,
+                "school": school, "eligibility": {}, "application": {}}
+
+    def _f1(self, home):
+        return {"international_student": True, "home_school": home, "research_interests_text": ""}
+
+    def _has_bonus(self, fit):
+        return any("work authorization" in f.lower() for f in fit)
+
+    def test_own_campus_earns_bonus(self):
+        _, fit, _ = score_upside(self._f1("uiuc"), self._on_campus("uiuc"))
+        assert self._has_bonus(fit)
+
+    def test_foreign_campus_does_not_earn_bonus(self):
+        _, fit, _ = score_upside(self._f1("uiuc"), self._on_campus("uw"))
+        assert not self._has_bonus(fit)
+
+    def test_missing_home_school_keeps_bonus(self):
+        _, fit, _ = score_upside({"international_student": True, "research_interests_text": ""},
+                                 self._on_campus("uiuc"))
+        assert self._has_bonus(fit)
+
+    def test_national_legacy_row_keeps_bonus(self):
+        _, fit, _ = score_upside(self._f1("ucb"), self._on_campus(None))
+        assert self._has_bonus(fit)
+
+
 class TestMajorFitSingleCount:
     """RANK-3: major fit is weighted once (inside score_eligibility). A
     cross-domain mismatch is still clearly demoted, but the signal is not
