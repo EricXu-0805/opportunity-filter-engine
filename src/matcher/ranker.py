@@ -335,6 +335,7 @@ SKILL_SYNONYMS: dict[str, set[str]] = {
     "machine learning":  {"ml", "machine learning", "machine-learning"},
     "deep learning":     {"dl", "deep learning", "deep-learning", "neural networks", "neural network", "nn"},
     "natural language processing": {"nlp", "natural language processing", "text mining"},
+    "large language models": {"llm", "llms", "large language model", "large language models"},
     "computer vision":   {"cv", "computer vision", "image processing", "image recognition"},
     "data science":      {"data science", "data analysis", "data analytics"},
     "python":            {"python", "python3"},
@@ -921,6 +922,22 @@ _GENERIC_KEYWORDS = frozenset({
     "engineering", "science", "technology", "department",
 })
 
+# Tokens too broad to carry topic alignment ON THEIR OWN. A single shared
+# "science"/"computer"/"data" token between a CompE/ML student and a
+# "computational social science" lab is corpus noise, not a topical match — it
+# floated humanities/soc-sci labs into good_match (RANK-9 false promote). A
+# multi-word real area still aligns on its distinctive token ("computer VISION",
+# "MACHINE learning"); only the lone broad token is suppressed. Deliberately
+# curated (NOT derived from _GENERIC_KEYWORDS, which contains the real areas
+# "machine learning"/"artificial intelligence" that MUST stay alignable).
+_LOW_SIGNAL_ALIGN_TOKENS: frozenset[str] = frozenset({
+    "science", "sciences", "scientific", "computer", "computers",
+    "computational", "data", "social", "technology", "technologies",
+    "engineering", "information", "systems", "system", "studies", "applied",
+    "general", "theory", "analysis", "methods", "design", "development",
+    "advanced", "modern", "interdisciplinary", "quantitative",
+})
+
 
 # Role / format / process tokens that describe the POSTING, not the lab's
 # research area. They are multi-word (so they slip past the single-token
@@ -1116,7 +1133,21 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     if not specific:
         return TOPIC_UNKNOWN_PENALTY
 
-    for kw in specific:
+    # Align over the FULL keyword list (minus broad department fields), not just
+    # `specific`: a curated keyword like "machine learning"/"artificial
+    # intelligence" is dropped from `specific` as a corpus-broad area, but when
+    # it IS the student's stated interest it is a true alignment, not a data gap.
+    # Without this, an ML/NLP/LLM lab whose only "specific" keyword was "natural
+    # language processing" got the mismatch penalty for an ML student whose best
+    # signal ("machine learning") had been stripped (RANK-9 false demote). The
+    # `specific` gate above still decides whether the lab has ANY topic signal at
+    # all, so this does not start penalizing broad-field-only labs.
+    interest_meaningful = interest_tokens - _LOW_SIGNAL_ALIGN_TOKENS
+    candidates = [
+        k.lower() for k in (opportunity.get("keywords") or [])
+        if k.lower() not in _BROAD_FIELDS
+    ]
+    for kw in candidates:
         canon = _canonicalize_skill(kw)
         # Whole-token / canonical equality aligns regardless of length, so a
         # short acronym keyword ("nlp") or a short canonicalized interest still
@@ -1130,20 +1161,18 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
         substring = (len(kw) >= 4 and kw in interest) or (
             canon != kw and len(canon) >= 4 and canon in interest
         )
-        # Token overlap: a multi-word curated keyword aligns when it shares any
-        # specific (non-generic) word with the student's interests. The prior
-        # checks only fired when the WHOLE keyword phrase appeared verbatim in
-        # the interest text, so "computer vision" interest missed a "computer
-        # vision and pattern recognition" keyword, and "machine learning" missed
-        # "machine learning and ai" — burying 38% of faculty incl. the best
-        # topical fits (RANK-7). Stopword/generic filtering keeps this from
-        # aligning on filler ("and", "research"); a genuinely off-topic lab
-        # (zero shared specific token) still gets the mismatch penalty.
-        keyword_tokens = {
-            t for t in _tokenize(kw) if t not in _GENERIC_INTEREST_WORDS
+        # Token overlap must share a MEANINGFUL (non-broad, non-filler) token.
+        # The prior check fired on any shared non-stopword token, so a lone
+        # "science"/"computer"/"data" floated a "computational social science"
+        # lab in for a CompE/ML profile (RANK-9 false promote). A genuinely
+        # off-topic lab (zero shared meaningful token) still gets the mismatch
+        # penalty, and a student who typed the exact broad phrase still aligns
+        # via the `substring` check above.
+        keyword_meaningful = {
+            t for t in _tokenize(kw)
+            if t not in _GENERIC_INTEREST_WORDS and t not in _LOW_SIGNAL_ALIGN_TOKENS
         }
-        token_overlap = bool(keyword_tokens & interest_tokens)
-        if exact or substring or token_overlap:
+        if exact or substring or (keyword_meaningful & interest_meaningful):
             return 1.0
     return TOPIC_MISMATCH_PENALTY
 
