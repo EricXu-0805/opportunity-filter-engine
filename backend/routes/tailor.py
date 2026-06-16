@@ -37,7 +37,7 @@ from fastapi import APIRouter, HTTPException
 from backend.data_loader import load_opportunities_by_id
 from backend.lib.grounding import LENIENT_PROSE
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
-from backend.lib.llm import chat_completion, is_configured
+from backend.lib.llm import chat_completion, is_configured, strong_model
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import (
     ExtractBulletsRequest,
@@ -276,6 +276,7 @@ def _ai_tailor_bullets(
         max_tokens=2000,
         temperature=0.4,
         reasoning_effort="low",
+        model=strong_model(),
     )
     if not raw:
         return None
@@ -520,13 +521,16 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
     accepted: list[TailoredBullet] = []
     warnings: list[str] = []
     for i, item in enumerate(bullets):
-        # LENIENT_PROSE, not STRICT. The corpus already includes the
-        # opportunity text, so a token is only fabricated when it carries a
-        # concreteness signal (CamelCase brand, digit-versioned tool, +/#, or
-        # pinned tech term) and is still ungrounded. STRICT's blocklist of
-        # generic English rejected natural phrasing like "demonstrating
-        # foundational understanding", nuking every draft to the passthrough
-        # fallback. This is the policy cold-email already runs in production.
+        # LENIENT_PROSE, not STRICT. Claim-level grounding against the
+        # STUDENT-ONLY corpus (the opportunity text is deliberately excluded —
+        # see _build_evidence_corpus / TAILOR-2): a token is only fabricated
+        # when it carries a concreteness signal (CamelCase brand, digit-
+        # versioned tool, +/#, or pinned tech term) AND is ungrounded in the
+        # student's material. So the model may freely rephrase/emphasize and
+        # mirror the posting's generic vocabulary, but cannot smuggle in a
+        # concrete skill/tool the student never listed. STRICT's blocklist of
+        # generic English rejected natural phrasing ("demonstrating foundational
+        # understanding"), nuking every draft to the passthrough fallback.
         passed, fabricated = _validate_no_fabrication(
             item["text"], evidence_corpus, policy=LENIENT_PROSE,
         )
