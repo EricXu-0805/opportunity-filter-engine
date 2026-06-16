@@ -15,7 +15,14 @@ Provider chain (same as the historical inline copies):
 
 Gemini models need ``reasoning_effort: none`` in ``extra_body`` or they
 default to extended thinking and blow past ``max_tokens`` with reasoning
-tokens that never reach the user. We attach it automatically.
+tokens that never reach the user. We attach it automatically (keyed on the
+effective model, so an overridden strong model still gets it).
+
+Quality-sensitive features (resume tailoring, cold email) can opt into a
+stronger model than the cheap default via the ``OFE_STRONG_MODEL`` env var —
+see ``strong_model()``. It must name a model the *active* provider serves (a
+Gemini id when GEMINI_API_KEY is resolved, a GPT id when OPENAI_API_KEY, etc.);
+when unset, those features use the provider's default model unchanged.
 
 All public functions return ``None`` on any failure (no provider configured,
 SDK missing, network error, model refusal). Callers should fall back to a
@@ -66,16 +73,27 @@ def _resolve() -> Optional[_ResolvedProvider]:
     return None
 
 
+def strong_model() -> Optional[str]:
+    """The model id quality-sensitive features (resume tailor, cold email)
+    should use, from ``OFE_STRONG_MODEL``. ``None`` -> use the active provider's
+    default model. Must be a model that provider serves (e.g. a Gemini id when
+    GEMINI_API_KEY is the resolved provider, a GPT id when OPENAI_API_KEY)."""
+    return os.environ.get("OFE_STRONG_MODEL", "").strip() or None
+
+
 def chat_completion(
     messages: list[dict],
     *,
     max_tokens: int = 400,
     temperature: float = 0.4,
     reasoning_effort: str = "none",
+    model: Optional[str] = None,
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
 
-    Returns the assistant text, or ``None`` when:
+    ``model`` overrides the provider's default model (used by quality-sensitive
+    callers via :func:`strong_model`); it must be a model the resolved provider
+    serves. Returns the assistant text, or ``None`` when:
       * no provider env var is set,
       * the ``openai`` SDK isn't importable,
       * the upstream call raises for any reason.
@@ -93,17 +111,18 @@ def chat_completion(
     except ImportError:
         return None
 
+    effective_model = model or provider.model
     client_kwargs: dict = {"api_key": provider.api_key, "timeout": _REQUEST_TIMEOUT_SECONDS}
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 
     call_kwargs: dict = {
-        "model": provider.model,
+        "model": effective_model,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
-    if provider.model.startswith("gemini-"):
+    if effective_model.startswith("gemini-"):
         call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
 
     last_error: Optional[Exception] = None
@@ -121,7 +140,7 @@ def chat_completion(
     logger.warning(
         "LLM chat_completion failed after %d attempt(s) (model=%s): %s",
         _MAX_ATTEMPTS,
-        provider.model,
+        effective_model,
         last_error,
     )
     return None
