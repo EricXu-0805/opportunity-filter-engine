@@ -10,6 +10,9 @@ import {
   CheckCircle,
   RefreshCw,
   Info,
+  Pencil,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { tailorResume, getTailorStatus, extractResumeBullets } from '@/lib/api';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -233,6 +236,14 @@ export default function TailorModal({
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
   // R71-G: smart-extract (LLM resume → bullets) loading state.
   const [extracting, setExtracting] = useState(false);
+  // R73: per-bullet review — `rejected` indices are excluded from copy /
+  // use-as-originals; `edits` override a bullet's text in place; `editingIdx`
+  // is the card currently in inline-edit mode. Reset on every new result so
+  // a prior round's decisions don't bleed into the next tailor.
+  const [rejected, setRejected] = useState<Set<number>>(new Set());
+  const [edits, setEdits] = useState<Record<number, string>>({});
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState('');
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -258,6 +269,10 @@ export default function TailorModal({
       setCopiedBulletIdx(null);
       setLoading(false);
       setSubmittedBullets([]);
+      setRejected(new Set());
+      setEdits({});
+      setEditingIdx(null);
+      setEditDraft('');
     }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, heuristicPrefill, opportunityId]);
@@ -377,6 +392,10 @@ export default function TailorModal({
     setLoading(true);
     setError(null);
     setCopied(false);
+    // R73: a fresh tailor clears the previous round's review decisions.
+    setRejected(new Set());
+    setEdits({});
+    setEditingIdx(null);
     // R71-E: snapshot before the await so a textarea edit during the
     // request can't desync the rendered pairing.
     setSubmittedBullets(bullets);
@@ -390,25 +409,74 @@ export default function TailorModal({
     }
   }
 
-  // R71-G: promote the AI rewrite back into the draft so the user can
-  // iterate (tweak a bullet, re-tailor) without retyping. Clearing the
-  // result resets the right panel to the empty prompt and flips the CTA
-  // back to "Tailor with AI" — the originals are now the rewritten text.
+  // R73: a bullet's effective text = the user's inline edit if present,
+  // else the model's rewrite. The kept set excludes rejected indices.
+  const effectiveText = useCallback(
+    (i: number, fallback: string) => edits[i] ?? fallback,
+    [edits],
+  );
+
+  const keptTexts = useCallback((): string[] => {
+    if (!resp) return [];
+    return resp.tailored_bullets
+      .map((b, i) => ({ i, text: effectiveText(i, b.text) }))
+      .filter(({ i }) => !rejected.has(i))
+      .map(({ text }) => text);
+  }, [resp, rejected, effectiveText]);
+
+  function toggleReject(i: number) {
+    setRejected((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+    if (editingIdx === i) setEditingIdx(null);
+  }
+
+  function startEdit(i: number, current: string) {
+    setEditingIdx(i);
+    setEditDraft(current);
+  }
+
+  function saveEdit(i: number) {
+    const trimmed = editDraft.trim();
+    setEdits((prev) => ({
+      ...prev,
+      [i]: trimmed || (resp?.tailored_bullets[i]?.text ?? ''),
+    }));
+    setEditingIdx(null);
+    setEditDraft('');
+  }
+
+  function cancelEdit() {
+    setEditingIdx(null);
+    setEditDraft('');
+  }
+
+  // R71-G: promote the (kept + edited) AI rewrite back into the draft so the
+  // user can iterate without retyping. Clearing the result resets the right
+  // panel to the empty prompt and flips the CTA back to "Tailor with AI".
   function handleUseAsOriginals() {
-    if (!resp || resp.tailored_bullets.length === 0) return;
-    const next = resp.tailored_bullets.map((b) => b.text).join('\n');
+    const kept = keptTexts();
+    if (kept.length === 0) return;
+    const next = kept.join('\n');
     setDraft(next);
     saveDraft(opportunityId, next);
     setDraftRestored(false);
     setResp(null);
     setSubmittedBullets([]);
+    setRejected(new Set());
+    setEdits({});
+    setEditingIdx(null);
     setError(null);
     setCopied(false);
   }
 
   async function handleCopyAll() {
-    if (!resp || resp.tailored_bullets.length === 0) return;
-    const text = resp.tailored_bullets.map((b) => `• ${b.text}`).join('\n');
+    const kept = keptTexts();
+    if (kept.length === 0) return;
+    const text = kept.map((b) => `• ${b}`).join('\n');
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -434,6 +502,10 @@ export default function TailorModal({
   const warningMessage = resp ? pickWarningMessage(resp.warnings, t) : null;
   const isFallback = resp?.method === 'fallback';
   const hasResults = resp !== null && resp.tailored_bullets.length > 0;
+  // R73: review is offered only on a genuine AI rewrite (fallback echoes the
+  // user's own originals — nothing to accept/reject there).
+  const reviewable = resp?.method === 'ai' && hasResults;
+  const keptCount = keptTexts().length;
 
   return (
     <div
@@ -573,17 +645,24 @@ export default function TailorModal({
               >
                 {t('tailor.tailoredHeading')}
               </label>
-              {resp && (
-                <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                    isFallback
-                      ? 'bg-amber-50 text-amber-700'
-                      : 'bg-indigo-100 text-indigo-700'
-                  }`}
-                >
-                  {isFallback ? t('tailor.methodFallback') : t('tailor.methodAi')}
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {reviewable && rejected.size > 0 && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-gray-100 text-gray-500">
+                    {t('tailor.keptCount', { kept: keptCount, total: resp!.tailored_bullets.length })}
+                  </span>
+                )}
+                {resp && (
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      isFallback
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-indigo-100 text-indigo-700'
+                    }`}
+                  >
+                    {isFallback ? t('tailor.methodFallback') : t('tailor.methodAi')}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
@@ -646,6 +725,14 @@ export default function TailorModal({
                   </p>
                 )}
 
+              {/* R73: one-line nudge that this is a review surface — edit or
+                  reject any bullet before copying. */}
+              {!loading && !error && reviewable && (
+                <p className="text-[11.5px] text-gray-400 px-1">
+                  {keptCount === 0 ? t('tailor.allRejectedHint') : t('tailor.reviewHint')}
+                </p>
+              )}
+
               {!loading && !error && hasResults && (
                 <ul className="space-y-3">
                   {resp.tailored_bullets.map((b: TailoredBullet, i: number) => {
@@ -656,66 +743,156 @@ export default function TailorModal({
                     // suspenders for stale snapshots.
                     const original = submittedBullets[b.source_index] ?? '';
                     const isFallbackBullet = b.source_evidence === 'original';
+                    // R73: render the effective text — the user's inline edit
+                    // wins over the model's rewrite.
+                    const current = effectiveText(i, b.text);
+                    const isEdited = edits[i] !== undefined;
+                    const isRejected = rejected.has(i);
+                    const isEditing = editingIdx === i;
                     const sameAsOriginal =
-                      isFallbackBullet || original.trim() === b.text.trim();
+                      isFallbackBullet || original.trim() === current.trim();
+                    // Review controls only on a real AI rewrite, never on a
+                    // fallback echo of the user's own originals.
+                    const canReview = reviewable && !isFallbackBullet;
 
                     return (
                       <li
                         key={i}
-                        className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden"
+                        className={`bg-white border rounded-xl shadow-sm overflow-hidden transition-opacity ${
+                          isRejected ? 'opacity-50 border-dashed border-gray-300' : 'border-gray-200'
+                        }`}
                       >
                         {/* Original (R71-E side-by-side). Hidden when the
                             backend echoed the original verbatim — showing
                             the same text twice adds noise without value. */}
-                        {original && !sameAsOriginal && (
+                        {original && !sameAsOriginal && !isEditing && (
                           <div className="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
                               {t('tailor.originalRowLabel')}
                             </p>
                             <p className="text-[12.5px] text-gray-500 leading-relaxed">
-                              <DiffLine original={original} tailored={b.text} side="original" />
+                              <DiffLine original={original} tailored={current} side="original" />
                             </p>
                           </div>
                         )}
                         <div className="px-4 py-3 relative">
-                          <div className="flex items-start justify-between gap-2">
-                            {!sameAsOriginal && (
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">
-                                {t('tailor.tailoredRowLabel')}
-                              </p>
-                            )}
-                            {/* R71-F per-bullet copy. Sits in the top-
-                                right of each card so the user can grab
-                                just the bullet they like without taking
-                                everything via Copy All. */}
-                            <button
-                              type="button"
-                              onClick={() => handleCopyBullet(i, b.text)}
-                              className={`ml-auto inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md transition-colors ${
-                                copiedBulletIdx === i
-                                  ? 'text-emerald-600 bg-emerald-50'
-                                  : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
-                              }`}
-                              aria-label={t('tailor.copyBulletAria')}
-                            >
-                              {copiedBulletIdx === i ? (
-                                <>
-                                  <CheckCircle className="w-3 h-3" aria-hidden="true" />
-                                  {t('tailor.copyBulletCopied')}
-                                </>
-                              ) : (
-                                <Copy className="w-3 h-3" aria-hidden="true" />
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {!sameAsOriginal && !isEditing && (
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">
+                                  {t('tailor.tailoredRowLabel')}
+                                </p>
                               )}
-                            </button>
-                          </div>
-                          <p className="mt-1 text-[13.5px] text-gray-800 leading-relaxed">
-                            {sameAsOriginal ? (
-                              b.text
-                            ) : (
-                              <DiffLine original={original} tailored={b.text} side="tailored" />
+                              {isEdited && !isEditing && (
+                                <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-50 text-amber-600">
+                                  {t('tailor.edited')}
+                                </span>
+                              )}
+                            </div>
+                            {/* R73 review controls: edit / reject (or restore),
+                                plus the R71-F per-bullet copy. */}
+                            {!isEditing && (
+                              <div className="ml-auto flex items-center gap-0.5 shrink-0">
+                                {canReview && !isRejected && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => startEdit(i, current)}
+                                      className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                      aria-label={t('tailor.editBulletAria')}
+                                    >
+                                      <Pencil className="w-3 h-3" aria-hidden="true" />
+                                      {t('tailor.edit')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleReject(i)}
+                                      className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                      aria-label={t('tailor.rejectBulletAria')}
+                                    >
+                                      <Trash2 className="w-3 h-3" aria-hidden="true" />
+                                      {t('tailor.reject')}
+                                    </button>
+                                  </>
+                                )}
+                                {canReview && isRejected && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleReject(i)}
+                                    className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                    aria-label={t('tailor.restoreBulletAria')}
+                                  >
+                                    <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                                    {t('tailor.restore')}
+                                  </button>
+                                )}
+                                {!isRejected && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyBullet(i, current)}
+                                    className={`inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md transition-colors ${
+                                      copiedBulletIdx === i
+                                        ? 'text-emerald-600 bg-emerald-50'
+                                        : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
+                                    }`}
+                                    aria-label={t('tailor.copyBulletAria')}
+                                  >
+                                    {copiedBulletIdx === i ? (
+                                      <>
+                                        <CheckCircle className="w-3 h-3" aria-hidden="true" />
+                                        {t('tailor.copyBulletCopied')}
+                                      </>
+                                    ) : (
+                                      <Copy className="w-3 h-3" aria-hidden="true" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
                             )}
-                          </p>
-                          {b.source_evidence && (
+                          </div>
+
+                          {isEditing ? (
+                            <div className="mt-1.5">
+                              <textarea
+                                value={editDraft}
+                                onChange={(e) => setEditDraft(e.target.value)}
+                                rows={3}
+                                className="w-full px-3 py-2 border border-indigo-300 rounded-lg text-[13.5px] text-gray-800 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 outline-none resize-y"
+                                aria-label={t('tailor.editBulletAria')}
+                              />
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => saveEdit(i)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11.5px] font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                >
+                                  <CheckCircle className="w-3 h-3" aria-hidden="true" />
+                                  {t('tailor.save')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  className="px-2.5 py-1 rounded-md text-[11.5px] font-medium text-gray-500 hover:bg-gray-100 transition-colors"
+                                >
+                                  {t('tailor.cancelEdit')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p
+                              className={`mt-1 text-[13.5px] leading-relaxed ${
+                                isRejected ? 'line-through text-gray-400' : 'text-gray-800'
+                              }`}
+                            >
+                              {sameAsOriginal || isEdited ? (
+                                current
+                              ) : (
+                                <DiffLine original={original} tailored={current} side="tailored" />
+                              )}
+                            </p>
+                          )}
+
+                          {b.source_evidence && !isEditing && (
                             <p className="mt-2 text-[11.5px] text-gray-500 italic">
                               <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">
                                 {t('tailor.sourceLabel')}:
@@ -741,7 +918,8 @@ export default function TailorModal({
             <button
               type="button"
               onClick={handleUseAsOriginals}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors mr-auto"
+              disabled={keptCount === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mr-auto"
             >
               <RefreshCw className="w-4 h-4" aria-hidden="true" />
               {t('tailor.useAsOriginals')}
@@ -751,7 +929,8 @@ export default function TailorModal({
             <button
               type="button"
               onClick={handleCopyAll}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              disabled={keptCount === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {copied ? (
                 <>
