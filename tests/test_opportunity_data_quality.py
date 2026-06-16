@@ -154,6 +154,30 @@ class TestR70ADataQuality:
             f"(first_seen/scraped_at). First 3: {offenders[:3]}"
         )
 
+    def test_ranker_dereferenced_fields_are_well_typed(self):
+        """The matcher dereferences ``eligibility``/``metadata`` as dicts and
+        iterates ``keywords`` as a list on every served record (rank_all,
+        score_eligibility, _similarity_corpus). A collector that emits one of
+        these as None or a wrong type would crash the matcher mid-request.
+        Guard the contract at the data boundary (the right place) rather than
+        with defensive None-checks in the hot ranking loop."""
+        offenders: list[tuple] = []
+        for o in _load_data():
+            elig = o.get("eligibility", {})
+            meta = o.get("metadata", {})
+            kws = o.get("keywords", [])
+            if not isinstance(elig, dict):
+                offenders.append((o.get("id"), "eligibility", type(elig).__name__))
+            if not isinstance(meta, dict):
+                offenders.append((o.get("id"), "metadata", type(meta).__name__))
+            if not isinstance(kws, list):
+                offenders.append((o.get("id"), "keywords", type(kws).__name__))
+        assert not offenders, (
+            f"{len(offenders)} records have a matcher-dereferenced field with the "
+            f"wrong type (eligibility/metadata must be dicts, keywords a list). "
+            f"First 5: {offenders[:5]}"
+        )
+
     def test_no_corrupted_contact_emails(self):
         """R70-B: pi_enricher used to extract phone-number-prefixed or
         capitalized-label-mashed addresses from HTML pages where adjacent

@@ -701,6 +701,50 @@ class TestTopicAlignmentPenalty:
         opp = self._research(["computers and education"])
         assert _topic_alignment_penalty(self._profile(), opp) == TOPIC_MISMATCH_PENALTY
 
+    # RANK-9 (2026-06-16 dogfooding a real F-1 ML/NLP profile): the exact area
+    # "machine learning"/"artificial intelligence" is in _GENERIC_KEYWORDS and was
+    # stripped before alignment, so an ML/NLP/LLM lab whose remaining keyword was
+    # "natural language processing" got the mismatch penalty for an ML student and
+    # was buried into low_fit. Align over the FULL keyword list so the student's
+    # own stated area can match.
+    def test_exact_ml_keyword_aligns_when_it_is_the_interest(self):
+        opp = self._research(["machine learning", "natural language processing"])
+        prof = self._profile(interest="machine learning, computer vision")
+        assert _topic_alignment_penalty(prof, opp) == 1.0
+
+    def test_llm_keyword_aligns_with_llm_interest(self):
+        opp = self._research(["large language models"])
+        prof = self._profile(interest="llm-based retrieval and reinforcement")
+        assert _topic_alignment_penalty(prof, opp) == 1.0
+
+    def test_ml_keyword_does_not_align_for_unrelated_student(self):
+        # the demotion fix must not become "ML keyword always aligns": a history
+        # student gets the mismatch penalty on an ML lab.
+        opp = self._research(["machine learning", "robotics"])
+        prof = self._profile(interest="medieval history and poetry")
+        assert _topic_alignment_penalty(prof, opp) == TOPIC_MISMATCH_PENALTY
+
+    # RANK-9 false-promote: a lone broad token ("science"/"computer"/"data"/
+    # "computational") shared between a CompE/ML profile and a humanities/soc-sci
+    # lab is corpus noise, not topical alignment — those labs floated into
+    # good_match. The overlap now requires a MEANINGFUL shared token.
+    def test_lone_broad_token_does_not_falsely_align(self):
+        opp = self._research(["computational social science", "sociology of culture"])
+        prof = self._profile(interest="data science and machine learning")
+        assert _topic_alignment_penalty(prof, opp) == TOPIC_MISMATCH_PENALTY
+
+    def test_data_science_keyword_does_not_bleed_into_ml_profile(self):
+        opp = self._research(["data science"])
+        prof = self._profile(interest="machine learning and computer vision")
+        assert _topic_alignment_penalty(prof, opp) == TOPIC_MISMATCH_PENALTY
+
+    def test_student_who_typed_the_broad_phrase_still_aligns(self):
+        # the substring path preserves a genuine match: a student who literally
+        # typed "data science" still aligns with a "data science" lab.
+        opp = self._research(["data science"])
+        prof = self._profile(interest="data science and visualization")
+        assert _topic_alignment_penalty(prof, opp) == 1.0
+
 
 class TestTopicAlignmentRankingRegression:
     """Golden regression: the topic penalty must move final_score in the right
