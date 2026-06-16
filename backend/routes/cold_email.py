@@ -82,6 +82,7 @@ def _extract_subject_and_body(email_text: str) -> tuple[str, str]:
 
 def _build_mailto_link(to: str, subject: str, body: str) -> str:
     """Build a mailto: link with pre-filled subject and body."""
+    to = to or ""  # faculty rows null their (shared-admin) email; quote(None) raises
     params = []
     if subject:
         params.append(f"subject={quote(subject)}")
@@ -351,7 +352,7 @@ async def generate_email_variants(request: ColdEmailRequest):
     raw_variants = generate_variants(profile_dict, opp)
     lab_type = _detect_lab_type(opp)
 
-    recipient_email = opp.get("contact_email", "")
+    recipient_email = opp.get("contact_email") or ""  # key exists but is None on nulled faculty emails
 
     results = []
     for v in raw_variants:

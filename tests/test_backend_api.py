@@ -2187,3 +2187,35 @@ class TestMatchesHomeSchool:
         ids = self._result_ids({**sample_profile_req, "home_school": " UCB "})
         assert "ucb-campus" in ids
         assert "uiuc-campus" not in ids
+
+
+class TestColdEmailVariantsNullRecipient:
+    """Regression: faculty rows null their (shared-admin) contact_email. The
+    variants endpoint read it with ``.get("contact_email", "")`` — which returns
+    None when the key exists and is None — then passed None to ``quote()`` and
+    500'd. "Draft email" on any null-email faculty opportunity was broken.
+    """
+
+    @pytest.fixture
+    def null_email_opp_id(self):
+        by_id = data_loader.load_opportunities_by_id()
+        opp_id = next(
+            (oid for oid, o in by_id.items() if o.get("contact_email") is None),
+            None,
+        )
+        if opp_id is None:
+            pytest.skip("No opportunity with a null contact_email in the dataset")
+        return opp_id
+
+    def test_variants_endpoint_handles_null_recipient(self, sample_profile_req, null_email_opp_id):
+        resp = client.post(
+            "/api/cold-email/variants",
+            json={"profile": sample_profile_req, "opportunity_id": null_email_opp_id},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["variants"], "should still return draft variants"
+        for v in body["variants"]:
+            # empty recipient (user fills the To field) — never None, never a 500
+            assert v["recipient_email"] == ""
+            assert v["mailto_link"].startswith("mailto:")
