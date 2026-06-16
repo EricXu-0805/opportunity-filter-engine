@@ -94,14 +94,32 @@ jobs:
           INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
           MSG="chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode)"
           BRANCH="auto/refresh-data-${{ github.run_id }}"
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
+
+          # A deep scrape runs ~2.5h, during which other PRs can merge to main and
+          # rewrite these same data files. Branching from the run-start checkout would
+          # then conflict at PR-open time — and GitHub schedules NO pull_request CI on a
+          # PR it can't compute a merge commit for, so the required checks below would
+          # never register and this job would hang then fail. Re-base onto the *latest*
+          # main and replay the freshly scraped data on top, so the PR is conflict-free.
+          cp data/processed/opportunities.json /tmp/refresh-opportunities.json
+          cp data/processed/collector_status.json /tmp/refresh-collector_status.json
+          git fetch "$REMOTE" main
+          git checkout -f -B "$BRANCH" FETCH_HEAD
+          cp /tmp/refresh-opportunities.json data/processed/opportunities.json
+          cp /tmp/refresh-collector_status.json data/processed/collector_status.json
+
           git add data/processed/opportunities.json data/processed/collector_status.json
+          if git diff --cached --quiet; then
+            echo "Latest main already matches this scrape — nothing to ship."
+            exit 0
+          fi
           git commit -m "$MSG"
           # Push via PAT so the PR triggers CI (the default GITHUB_TOKEN does not).
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH"
+          git push "$REMOTE" "$BRANCH"
 
           gh pr create --base main --head "$BRANCH" --title "$MSG" \
             --body "Automated ${MODE} data refresh. Merges automatically once Backend + Frontend checks pass."
