@@ -19,12 +19,13 @@ import {
   trackInteraction,
   updateInteractionDetails,
 } from '@/lib/supabase';
-import type { ProfileData, EmailVariant, LabType, ColdEmailFallbackReason } from '@/lib/types';
+import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
 
 const AI_VARIANT_ID = 'ai';
+const STYLE_KEYS: readonly EmailStyle[] = ['professional', 'warm', 'friendly', 'lively'];
 
 interface ColdEmailModalProps {
   isOpen: boolean;
@@ -139,6 +140,10 @@ export default function ColdEmailModal({
   const [aiLoading, setAiLoading] = useState(false);
   const [activeVariant, setActiveVariant] = useState(0);
   const [labType, setLabType] = useState<LabType | null>(null);
+  // Voice overlay for the AI draft. `selectedStyle` seeds from the lab-type
+  // recommendation once variants load; the picker re-generates on change.
+  const [selectedStyle, setSelectedStyle] = useState<EmailStyle>('professional');
+  const [recommendedStyle, setRecommendedStyle] = useState<EmailStyle | null>(null);
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -168,6 +173,9 @@ export default function ColdEmailModal({
         data.lab_type
         ?? (data.variants.find((v) => v.lab_type)?.lab_type ?? null);
       setLabType(inferredLabType);
+      const rec = data.recommended_style ?? null;
+      setRecommendedStyle(rec);
+      if (rec) setSelectedStyle(rec);
       if (data.variants.length > 0) {
         const first = data.variants[0];
         setSubject(first.subject);
@@ -199,6 +207,8 @@ export default function ColdEmailModal({
       setAiVariant(null);
       setAiLoading(false);
       setLabType(null);
+      setSelectedStyle('professional');
+      setRecommendedStyle(null);
       setSubject('');
       setBody('');
       setCopied(false);
@@ -276,23 +286,20 @@ export default function ColdEmailModal({
     ]);
   }
 
-  async function handleAiPillClick() {
+  // Generate (or re-generate) the AI draft in a given voice. Used by both the
+  // ✨ AI pill (current/recommended tone) and the tone picker (switches voice).
+  const generateAi = useCallback(async (style: EmailStyle) => {
     if (aiLoading) return;
     const aiIdx = variants.length;
-
-    if (aiVariant) {
-      selectVariant(aiIdx);
-      return;
-    }
-
     setAiLoading(true);
+    setSelectedStyle(style);
     setChatMessages((prev) => [
       ...prev,
-      { role: 'assistant', content: t('coldEmail.aiGenerating') },
+      { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
     ]);
 
     try {
-      const resp = await generateColdEmail(profile, opportunityId, { engine: 'ai' });
+      const resp = await generateColdEmail(profile, opportunityId, { engine: 'ai', style });
       const v: EmailVariant = {
         id: AI_VARIANT_ID,
         label: t('coldEmail.aiVariantLabel'),
@@ -325,6 +332,20 @@ export default function ColdEmailModal({
     } finally {
       setAiLoading(false);
     }
+  }, [aiLoading, variants.length, profile, opportunityId, labType, t]);
+
+  function handleAiPillClick() {
+    if (aiLoading) return;
+    if (aiVariant) {
+      selectVariant(variants.length);
+      return;
+    }
+    generateAi(selectedStyle);
+  }
+
+  function handleToneClick(style: EmailStyle) {
+    if (aiLoading) return;
+    generateAi(style);
   }
 
   function handleQuickAction(key: QuickActionKey) {
@@ -504,6 +525,42 @@ export default function ColdEmailModal({
                     ) : null}
                     {t('coldEmail.aiVariantLabel')}
                   </button>
+                </div>
+
+                {/* Tone picker — drives the AI draft's voice. The recommended
+                    tone is derived from the detected lab type (no scraping). */}
+                <div className="flex items-center gap-1.5 px-5 pb-2 shrink-0 flex-wrap">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-0.5">
+                    {t('coldEmail.tone.label')}
+                  </span>
+                  {STYLE_KEYS.map((s) => {
+                    const isActive = activeVariant === variants.length && aiVariant != null && selectedStyle === s;
+                    const isRecommended = recommendedStyle === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => handleToneClick(s)}
+                        disabled={aiLoading}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-indigo-50/70 text-indigo-600 hover:bg-indigo-100'
+                        }`}
+                      >
+                        {t(`coldEmail.tone.${s}`)}
+                        {isRecommended && (
+                          <span
+                            className={`text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded ${
+                              isActive ? 'bg-white/25 text-white' : 'bg-indigo-100 text-indigo-500'
+                            }`}
+                          >
+                            {t('coldEmail.tone.recommended')}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">

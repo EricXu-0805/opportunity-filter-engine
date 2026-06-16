@@ -5,6 +5,7 @@ import type {
   OpportunitiesResponse,
   ColdEmailEngine,
   ColdEmailResponse,
+  EmailStyle,
   EmailVariantsResponse,
   ResumeParseResponse,
   StatsResponse,
@@ -234,13 +235,14 @@ export async function getOpportunitiesByIds(ids: string[]): Promise<Record<strin
 export async function generateColdEmail(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle } = {},
 ): Promise<ColdEmailResponse> {
   const body: Record<string, unknown> = {
     profile: toProfileRequest(profile),
     opportunity_id: opportunityId,
   };
   if (options.engine) body.engine = options.engine;
+  if (options.style) body.style = options.style;
   return request<ColdEmailResponse>('/cold-email', {
     method: 'POST',
     body: JSON.stringify(body),

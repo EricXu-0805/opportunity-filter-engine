@@ -159,6 +159,9 @@ export interface MatchesResponse {
  */
 export type LabType = 'wet' | 'dry' | 'humanities';
 
+/** Voice overlay for the AI engine — mirrors `ColdEmailRequest.style`. */
+export type EmailStyle = 'professional' | 'warm' | 'friendly' | 'lively';
+
 export type ColdEmailFallbackReason =
   | 'not_configured'
   | 'unavailable'
@@ -172,6 +175,10 @@ export interface ColdEmailResponse {
   mailto_link: string;
   method: 'template' | 'ai';
   lab_type?: LabType | null;
+  /** The voice overlay applied (null on the template path). */
+  style?: EmailStyle | null;
+  /** Suggested default tone for this lab_type (UI badges it). */
+  recommended_style?: EmailStyle | null;
   /** R72-A: why the template was served when AI was requested (null on success). */
   fallback_reason?: ColdEmailFallbackReason | null;
 }
@@ -196,6 +203,7 @@ export interface EmailVariant {
 export interface EmailVariantsResponse {
   variants: EmailVariant[];
   lab_type?: LabType | null;
+  recommended_style?: EmailStyle | null;
 }
 
 // ── Tailor (resume bullet rewriter, R71) ─────────────────────────────

@@ -1096,6 +1096,15 @@ export const en = {
     aiFallbackGeneric: 'AI couldn\'t produce a usable draft — showing the template version.',
     templateFallbackBadge: 'Template (not AI)',
     aiFailed: 'AI generation failed. Try again, or pick a template variant.',
+    tone: {
+      label: 'Tone',
+      recommended: 'Recommended',
+      generating: 'Writing an AI draft in a {style} tone...',
+      professional: 'Professional',
+      warm: 'Warm',
+      friendly: 'Friendly',
+      lively: 'Lively',
+    },
     quickActions: {
       formal: 'More formal',
       shorter: 'Shorter',
@@ -2614,6 +2623,15 @@ export const zh = {
     aiFallbackGeneric: 'AI 无法生成可用草稿 —— 显示模板版本。',
     templateFallbackBadge: '模板(非 AI)',
     aiFailed: 'AI 生成失败。请重试,或选择一个模板版本。',
+    tone: {
+      label: '语气',
+      recommended: '推荐',
+      generating: '正在用「{style}」语气生成 AI 草稿...',
+      professional: '专业',
+      warm: '亲切',
+      friendly: '友好',
+      lively: '活泼',
+    },
     quickActions: {
       formal: '更正式',
       shorter: '更简短',

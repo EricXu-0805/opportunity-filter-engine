@@ -334,7 +334,34 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
-      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai' });
+      // No recommended_style in this variants mock → seeds the default tone.
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional' });
+    });
+
+    it('regenerates the AI draft in the chosen tone when a tone pill is clicked', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], recommended_style: 'warm' });
+      mockGenerateColdEmail.mockResolvedValue({
+        subject: 'AI Subject',
+        body: 'AI Body',
+        recipient_email: 'p@x.edu',
+        mailto_link: 'mailto:p@x.edu',
+        method: 'ai',
+        style: 'lively',
+      });
+      const profile = makeProfile();
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={profile}
+          opportunityId="opp-7"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.tone.lively'));
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively' });
     });
 
     it('R72-A: shows the fabrication fallback hint when the AI draft is rejected', async () => {
