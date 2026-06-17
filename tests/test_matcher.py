@@ -15,11 +15,16 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.matcher.config import TOPIC_MISMATCH_PENALTY, TOPIC_UNKNOWN_PENALTY
+from src.matcher.config import (
+    EXPLORE_MAJOR_MISMATCH_FLOOR,
+    TOPIC_MISMATCH_PENALTY,
+    TOPIC_UNKNOWN_PENALTY,
+)
 from src.matcher.ranker import (
     BUCKET_THRESHOLDS,
     MatchResult,
     _assign_buckets,
+    _compute_weights,
     _is_undergrad,
     _major_match_score,
     _normalize_type_key,
@@ -1333,3 +1338,126 @@ class TestSchoolScopeFilter:
         ]
         ids = self._ids(self._profile(home_school="ucb"), corpus)
         assert ids == {"national-open", "legacy-untagged"}
+
+
+class TestExploreMajorFloor:
+    """exploring=True lifts both major-mismatch tiers to a single floor so an
+    undecided student's other-domain options aren't buried as 'wrong major'."""
+
+    def test_cross_domain_mismatch_lifted(self):
+        normal = _major_match_score(["Spanish"], ["CS"])
+        explore = _major_match_score(["Spanish"], ["CS"], exploring=True)
+        assert normal <= 10.0
+        assert explore > normal
+        assert explore == EXPLORE_MAJOR_MISMATCH_FLOOR
+
+    def test_same_domain_mismatch_lifted(self):
+        normal = _major_match_score(["Biology"], ["CS"])
+        explore = _major_match_score(["Biology"], ["CS"], exploring=True)
+        assert explore >= normal
+        assert explore == EXPLORE_MAJOR_MISMATCH_FLOOR
+
+    def test_exact_and_related_unchanged(self):
+        # exploring must not change a real match — only lift the mismatch floor.
+        assert _major_match_score(["ECE"], ["ECE"], exploring=True) == 100.0
+        assert _major_match_score(["ECE"], ["CS"], exploring=True) == 70.0
+
+
+class TestExploreTopicPenalty:
+    """An explorer is never topic-penalized — a 'mismatch' is the breadth they
+    want, not a poor fit."""
+
+    def _research(self, keywords):
+        return {"opportunity_type": "research", "keywords": keywords}
+
+    def test_confirmed_mismatch_not_penalized_when_exploring(self):
+        opp = self._research(["computers and education", "computer science"])
+        interest = "machine learning, computer vision, deep learning"
+        # Normally this is a confirmed mismatch …
+        assert _topic_alignment_penalty({"research_interests_text": interest}, opp) == TOPIC_MISMATCH_PENALTY
+        # … but an explorer with the same stated interests sees no penalty.
+        assert _topic_alignment_penalty(
+            {"research_interests_text": interest, "exploring": True}, opp
+        ) == 1.0
+
+
+class TestExploreWeights:
+    def test_exploring_de_emphasizes_readiness(self):
+        base = _compute_weights(50, exploring=False)
+        expl = _compute_weights(50, exploring=True)
+        assert expl["readiness"] < base["readiness"]
+        assert expl["eligibility"] >= base["eligibility"]
+        assert expl["upside"] >= base["upside"]
+        # weights still sum to 1 and stay valid
+        assert abs(sum(expl.values()) - 1.0) < 1e-9
+        assert expl["readiness"] >= 0.05
+
+    def test_default_path_weights_unchanged(self):
+        # the guardrail: exploring=False must leave the blend untouched.
+        assert _compute_weights(50, exploring=False) == _compute_weights(50)
+
+
+class TestExploreDiversity:
+    """exploring=True diversity-samples the top buckets so the visible order
+    spans research areas / opportunity types instead of one cluster — WITHOUT
+    changing which bucket anything lands in (the quality floor is untouched)."""
+
+    def _opps(self):
+        # 18 research postings across 3 areas, all near-identical score so the
+        # default order would clump them area-by-area (insertion order).
+        opps = []
+        areas = [("nlp", "ml-lab"), ("robotics", "robo-lab"), ("genomics", "bio-lab")]
+        for area, dept in areas:
+            for i in range(6):
+                opps.append({
+                    "id": f"{area}-{i}",
+                    "title": f"{area} lab {i}",
+                    "opportunity_type": "research",
+                    "is_rolling": True,
+                    "department": dept,
+                    "keywords": [area],
+                    "eligibility": {
+                        "preferred_year": ["freshman", "sophomore", "junior"],
+                        "majors": [],
+                        "international_friendly": "yes",
+                    },
+                    "metadata": {"is_active": True},
+                })
+        return opps
+
+    def _profile(self, exploring):
+        return {
+            "year": "freshman", "major": "ECE", "secondary_interests": [],
+            "international_student": False, "hard_skills": [],
+            "seeking_type": ["research"], "research_interests_text": "",
+            "search_weight": 50, "exploring": exploring,
+            "preferences": {"min_match_threshold": 0},
+        }
+
+    def _areas_of(self, results, opps):
+        by_id = {o["id"]: o for o in opps}
+        return [by_id[r.opportunity_id]["keywords"][0] for r in results]
+
+    def test_default_order_is_unchanged_without_flag(self):
+        opps = self._opps()
+        a = [r.opportunity_id for r in rank_all(self._profile(False), opps)]
+        # default = no diversity reorder; insertion-stable within equal scores
+        assert a == [o["id"] for o in opps]
+
+    def test_exploring_interleaves_areas_at_the_top(self):
+        opps = self._opps()
+        res = rank_all(self._profile(True), opps)
+        head = self._areas_of(res, opps)[:6]
+        # the first 6 rows should NOT be a single clustered area; with 3 areas a
+        # round-robin yields each area at least once in the first 3 slots.
+        assert len(set(head[:3])) == 3
+        assert len(set(head)) == 3
+
+    def test_buckets_unchanged_by_diversify(self):
+        opps = self._opps()
+        plain = rank_all(self._profile(False), opps)
+        expl = rank_all(self._profile(True), opps)
+        # same multiset of (id -> bucket): diversify only reorders within a band.
+        assert {r.opportunity_id: r.bucket for r in plain} == {
+            r.opportunity_id: r.bucket for r in expl
+        }

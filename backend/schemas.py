@@ -43,6 +43,10 @@ class ProfileRequest(BaseModel):
     linkedin_url: str = ""
     github_url: str = ""
     search_weight: int = 50
+    # "I'm still exploring" — widens matching (lifts cross-domain major floors,
+    # suppresses the topic-alignment penalty, de-emphasizes readiness, and
+    # diversity-samples the top buckets) for students without a settled direction.
+    exploring: bool = False
     preferences: Optional[ProfilePreferences] = None
 
     @field_validator("research_interests_text")

@@ -76,6 +76,7 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     linkedin_url: profile.linkedin_url ?? '',
     github_url: profile.github_url ?? '',
     search_weight: profile.search_weight ?? 50,
+    exploring: profile.exploring ?? false,
   };
 }
 

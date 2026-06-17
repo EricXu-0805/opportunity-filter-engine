@@ -67,7 +67,13 @@ function HomePageInner() {
             onGitHubImport={handleGitHubImport}
             t={t}
           />
-          <SearchFocusCard searchWeight={searchWeight} setSearchWeight={setSearchWeight} t={t} />
+          <SearchFocusCard
+            searchWeight={searchWeight}
+            setSearchWeight={setSearchWeight}
+            exploring={profile.exploring ?? false}
+            setExploring={(v) => update('exploring', v)}
+            t={t}
+          />
           <LiveDatabaseCard oppCount={oppCount} lastUpdated={lastUpdated} t={t} />
         </div>
       </div>
