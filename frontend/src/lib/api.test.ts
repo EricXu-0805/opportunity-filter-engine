@@ -140,12 +140,12 @@ describe('getMatches', () => {
     expect(body.school).toBe('UC Berkeley');
   });
 
-  it('appends ?semantic=true when options.semantic is set', async () => {
+  it('appends ?llm=true when options.llm is set (AI smart match)', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
-    await getMatches(makeProfile(), { semantic: true });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?semantic=true');
+    await getMatches(makeProfile(), { llm: true });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=true');
   });
 });
 
