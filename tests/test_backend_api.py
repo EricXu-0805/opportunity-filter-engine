@@ -450,7 +450,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_ai_generate_email_text",
-            lambda profile, opp: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
+            lambda profile, opp, style=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -466,7 +466,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_ai_generate_email_text",
-            lambda profile, opp: "I will not write that email.",
+            lambda profile, opp, style=None: "I will not write that email.",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -490,7 +490,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_ai_generate_email_text",
-            lambda profile, opp: (
+            lambda profile, opp, style=None: (
                 "Subject: ML research fit\n\n"
                 "Dear Professor,\n"
                 "I am an expert in PyTorch and have deployed Kubernetes "
@@ -516,7 +516,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_ai_generate_email_text",
-            lambda profile, opp: (
+            lambda profile, opp, style=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\n"
                 "I have experience with Python and machine learning from CS 124 "
@@ -530,6 +530,90 @@ class TestColdEmailEngine:
         body = resp.json()
         assert body["method"] == "ai"
         assert body["fallback_reason"] is None
+
+
+class TestColdEmailStyle:
+    """A: the cold-email tone picker — a `style` voice overlay plus a
+    lab-type-derived recommendation. Tone changes voice only; the
+    anti-fabrication gate is unchanged (covered by TestColdEmailEngine)."""
+
+    @pytest.fixture
+    def base_body(self, sample_profile_req):
+        opps = data_loader.load_opportunities()
+        return {"profile": sample_profile_req, "opportunity_id": opps[0]["id"]}
+
+    def test_invalid_style_rejected(self, base_body):
+        resp = client.post("/api/cold-email", json={**base_body, "style": "aggressive"})
+        assert resp.status_code == 422
+
+    def test_variants_returns_recommended_style(self, base_body):
+        resp = client.post("/api/cold-email/variants", json=base_body)
+        assert resp.status_code == 200
+        assert resp.json()["recommended_style"] in (
+            "professional", "warm", "friendly", "lively",
+        )
+
+    def test_template_path_style_null_recommended_present(self, base_body):
+        # engine defaults to template → no voice overlay applied (style=None),
+        # but the recommendation is still surfaced so the UI can badge it.
+        resp = client.post("/api/cold-email", json={**base_body, "style": "lively"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "template"
+        assert body["style"] is None
+        assert body["recommended_style"] in (
+            "professional", "warm", "friendly", "lively",
+        )
+
+    def test_ai_path_echoes_applied_style(self, base_body, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+        monkeypatch.setattr(
+            ce_module, "_ai_generate_email_text",
+            lambda profile, opp, style=None: (
+                "Subject: Python research fit\n\n"
+                "Dear Professor,\nI have experience with Python and machine "
+                "learning from CS 124 and would be grateful to contribute.\n"
+                "Best,\nTest"
+            ),
+        )
+        resp = client.post(
+            "/api/cold-email", json={**base_body, "engine": "ai", "style": "warm"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert body["style"] == "warm"
+
+    def test_recommended_style_maps_from_lab_type(self):
+        from backend.routes.cold_email import _recommended_style
+        assert _recommended_style("dry") == "professional"
+        assert _recommended_style("wet") == "warm"
+        assert _recommended_style("humanities") == "friendly"
+        assert _recommended_style(None) == "professional"  # safe default
+
+    def test_tone_overlay_in_system_prompt(self, sample_profile_req, monkeypatch):
+        """The selected tone appends a voice overlay onto the lab-type system
+        prompt; style=None leaves the prompt unchanged (no overlay marker)."""
+        import backend.routes.cold_email as ce_module
+        from backend.schemas import ProfileRequest
+
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            return None
+
+        monkeypatch.setattr(ce_module, "chat_completion", fake_chat)
+        profile_dict = ProfileRequest(**sample_profile_req).model_dump()
+        opp = data_loader.load_opportunities()[0]
+
+        ce_module._ai_generate_email_text(profile_dict, opp, style="lively")
+        assert "TONE OVERLAY" in captured["system"]
+        assert ce_module._TONE_INSTRUCTIONS["lively"] in captured["system"]
+
+        ce_module._ai_generate_email_text(profile_dict, opp, style=None)
+        assert "TONE OVERLAY" not in captured["system"]
 
 
 class TestGroundingShadowTelemetry:
@@ -706,7 +790,7 @@ class TestColdEmailSubjectParsing:
         monkeypatch.setattr(
             ce_module,
             "_ai_generate_email_text",
-            lambda profile, opp: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
+            lambda profile, opp, style=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
         )
         opps = data_loader.load_opportunities()
         payload = {

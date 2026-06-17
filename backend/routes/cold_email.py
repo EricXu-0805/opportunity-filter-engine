@@ -192,7 +192,49 @@ _SYSTEM_PROMPTS_BY_LAB_TYPE = {
 }
 
 
-def _ai_generate_email_text(profile_dict: dict, opp: dict) -> str | None:
+# Tone overlay appended to the lab-type system prompt. Tone changes VOICE
+# only (word choice, warmth) — the lab-type block still drives structure and
+# the anti-fabrication gate still runs after generation, so a tone never
+# licenses a new factual claim.
+_TONE_INSTRUCTIONS: dict[str, str] = {
+    "professional": (
+        "Voice: professional and measured. Courteous, precise, no slang. "
+        "Let competence and specificity carry the message."
+    ),
+    "warm": (
+        "Voice: warm and personable while staying professional. A genuine, "
+        "human tone — express sincere interest in the work itself, not just "
+        "the position."
+    ),
+    "friendly": (
+        "Voice: friendly and approachable. Conversational but still respectful "
+        "of the professor's time; relaxed phrasing, never stiff or formulaic."
+    ),
+    "lively": (
+        "Voice: energetic and enthusiastic. Convey real excitement about the "
+        "research — but ground every statement in a specific fact and keep the "
+        "banned-filler rules. Show enthusiasm through specifics, never through "
+        "adjectives like 'passionate', 'thrilled', or 'excited'."
+    ),
+}
+
+# Suggested default tone per detected lab type. Honest heuristic from the
+# lab_type signal we already have — NOT from any professor-personality data
+# (that would need non-public admit history; out of scope on compliance).
+_RECOMMENDED_STYLE_BY_LAB_TYPE: dict[str, str] = {
+    "dry": "professional",
+    "wet": "warm",
+    "humanities": "friendly",
+}
+
+
+def _recommended_style(lab_type: str | None) -> str:
+    return _RECOMMENDED_STYLE_BY_LAB_TYPE.get(lab_type or "", "professional")
+
+
+def _ai_generate_email_text(
+    profile_dict: dict, opp: dict, style: str | None = None
+) -> str | None:
     """Compose a cold-email draft using the shared LLM helper.
 
     Returns the raw model output (expected ``Subject: ...\\n\\n<body>``) or
@@ -201,8 +243,9 @@ def _ai_generate_email_text(profile_dict: dict, opp: dict) -> str | None:
 
     The system prompt is selected from ``_SYSTEM_PROMPTS_BY_LAB_TYPE``
     using ``_detect_lab_type(opp)`` so wet/dry/humanities emails get
-    tone-appropriate guidance (mirrors AcadeLink's per-lab-type
-    contact-tips taxonomy).
+    structure-appropriate guidance (mirrors AcadeLink's per-lab-type
+    contact-tips taxonomy). An optional ``style`` appends a voice overlay
+    (``_TONE_INSTRUCTIONS``) on top — voice only, never a new claim.
     """
     p = _common_parts(profile_dict, opp)
 
@@ -216,6 +259,12 @@ def _ai_generate_email_text(profile_dict: dict, opp: dict) -> str | None:
     system = _SYSTEM_PROMPTS_BY_LAB_TYPE.get(
         p["lab_type"], _SYSTEM_PROMPTS_BY_LAB_TYPE["dry"],
     )
+    tone = _TONE_INSTRUCTIONS.get(style or "")
+    if tone:
+        system = (
+            f"{system}\n\nTONE OVERLAY (voice only — never licenses a new "
+            f"factual claim):\n{tone}"
+        )
 
     name = _sanitize_field(p["name"], max_len=100) or "(unnamed)"
     research_interests = _sanitize_field(p["research_interests"]) or "(none stated)"
@@ -302,7 +351,7 @@ async def generate_email(request: ColdEmailRequest):
         if not is_configured():
             fallback_reason = "not_configured"
         else:
-            ai_text = _ai_generate_email_text(profile_dict, opp)
+            ai_text = _ai_generate_email_text(profile_dict, opp, request.style)
             ai_subject, ai_body = _extract_subject_and_body(ai_text) if ai_text else ("", "")
             if not ai_subject or not ai_body:
                 fallback_reason = "unavailable" if not ai_text else "invalid_output"
@@ -331,6 +380,7 @@ async def generate_email(request: ColdEmailRequest):
 
     recipient_email = opp.get("contact_email", "") or ""
     mailto_link = _build_mailto_link(recipient_email, subject, body)
+    lab_type = _detect_lab_type(opp)
 
     return ColdEmailResponse(
         subject=subject,
@@ -338,7 +388,11 @@ async def generate_email(request: ColdEmailRequest):
         recipient_email=recipient_email,
         mailto_link=mailto_link,
         method=method,
-        lab_type=_detect_lab_type(opp),
+        lab_type=lab_type,
+        # echo the applied voice (only meaningful on the AI path) + the
+        # suggested default so the UI can badge it.
+        style=request.style if method == "ai" else None,
+        recommended_style=_recommended_style(lab_type),
         fallback_reason=fallback_reason,
     )
 
@@ -368,7 +422,11 @@ async def generate_email_variants(request: ColdEmailRequest):
             "lab_type": v.get("lab_type") or lab_type,
         })
 
-    return {"variants": results, "lab_type": lab_type}
+    return {
+        "variants": results,
+        "lab_type": lab_type,
+        "recommended_style": _recommended_style(lab_type),
+    }
 
 
 class EmailRefineRequest(BaseModel):

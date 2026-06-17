@@ -142,12 +142,23 @@ class ColdEmailRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
     engine: str = "template"
+    # Voice overlay for the AI engine. None = no overlay (lab-type default).
+    style: Optional[str] = None
 
     @field_validator("engine")
     @classmethod
     def valid_engine(cls, v: str) -> str:
         if v not in ("template", "ai"):
             raise ValueError("engine must be 'template' or 'ai'")
+        return v
+
+    @field_validator("style")
+    @classmethod
+    def valid_style(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("professional", "warm", "friendly", "lively"):
+            raise ValueError(
+                "style must be one of: professional, warm, friendly, lively"
+            )
         return v
 
 
@@ -158,6 +169,11 @@ class ColdEmailResponse(BaseModel):
     mailto_link: str
     method: str = "template"
     lab_type: Optional[str] = None
+    # The voice overlay actually applied (echoes request.style; None on the
+    # template path), plus the tone we suggest for this lab_type so the UI can
+    # badge a default without re-deriving the mapping.
+    style: Optional[str] = None
+    recommended_style: Optional[str] = None
     # R72-A: when an AI draft was requested but we served the template,
     # this says why so the UI can show an accurate hint. None when method
     # is "ai" or the caller asked for the template engine directly.
