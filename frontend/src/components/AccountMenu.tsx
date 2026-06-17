@@ -18,7 +18,8 @@
  * doesn't break the existing tabindex tests).
  */
 
-import { LogOut, Sparkles } from 'lucide-react';
+import { LogOut, Sparkles, UserRound } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {
   getAuthState,
@@ -164,11 +165,20 @@ export default function AccountMenu({
           <div className="px-3.5 py-2.5 border-b border-gray-100">
             <p className="text-[13px] font-medium text-gray-800 truncate">{email}</p>
           </div>
+          <Link
+            href="/account"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            className="w-full flex items-center gap-2 text-left px-3.5 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <UserRound className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
+            {t('account.navLink')}
+          </Link>
           <button
             type="button"
             role="menuitem"
             onClick={() => { setMenuOpen(false); openModal({ reason: 'header', phase: 'signout-confirm' }); }}
-            className="w-full flex items-center gap-2 text-left px-3.5 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center gap-2 text-left px-3.5 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
           >
             <LogOut className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
             {t('auth.modal.account.signOut')}
