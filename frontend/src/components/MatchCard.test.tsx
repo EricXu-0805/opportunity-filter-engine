@@ -329,6 +329,43 @@ describe('MatchCard', () => {
       expect(link).not.toBeNull();
       expect(link!.getAttribute('href')).toBe('https://opp.example');
     });
+
+    it('faculty record shows "Email Professor" + secondary "Faculty Page", never "Apply Now"', () => {
+      // application_url on a faculty record is the prof's directory page, not
+      // an apply form — surfacing it as "Apply Now" dead-ends, so we don't.
+      const match = makeMatch({
+        source_type: 'faculty_research',
+        url: 'https://faculty.example/prof',
+        application: {
+          application_effort: 'medium',
+          requires_resume: 'no',
+          contact_method: 'email',
+          application_url: 'https://faculty.example/prof',
+        },
+      });
+      render(<MatchCard match={match} onDraftEmail={() => {}} />);
+      expect(screen.queryByText('card.applyNow')).toBeNull();
+      expect(screen.getByText('card.emailProfessor')).toBeInTheDocument();
+      const facultyLink = screen.getByText('card.viewFacultyPage').closest('a');
+      expect(facultyLink!.getAttribute('href')).toBe('https://faculty.example/prof');
+    });
+
+    it('faculty "Email Professor" button triggers onDraftEmail', () => {
+      const handler = vi.fn();
+      const match = makeMatch({
+        id: 'fac-1',
+        source_type: 'faculty_research',
+        application: {
+          application_effort: 'low',
+          requires_resume: 'no',
+          contact_method: 'email',
+          application_url: 'https://faculty.example/prof',
+        },
+      });
+      render(<MatchCard match={match} onDraftEmail={handler} />);
+      fireEvent.click(screen.getByText('card.emailProfessor'));
+      expect(handler).toHaveBeenCalledWith('fac-1');
+    });
   });
 
   describe('interaction tracker (R69-C menu)', () => {

@@ -133,6 +133,17 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const urgency = getDeadlineUrgency(opp.deadline);
   const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';
 
+  // Faculty "Research with Prof. X" records set application_url to the
+  // professor's directory page (not an application form), and you actually
+  // apply by emailing the PI. So for them the honest primary CTA is "Email
+  // Professor", with the directory link demoted to a secondary "Faculty Page"
+  // — never "Apply Now", which dead-ends on a bio page.
+  const isFaculty = opp.source_type === 'faculty_research';
+  const applyUrl = opp.application?.application_url;
+  const facultyPageUrl = applyUrl || opp.url;
+  const showApplyNow = !!applyUrl && !isFaculty;
+  const emailIsPrimary = isFaculty || !showApplyNow;
+
   return (
     <>
     <div className={`relative bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300 overflow-hidden ${urgencyBorder}`}>
@@ -277,9 +288,9 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {opp.application?.application_url ? (
+          {showApplyNow ? (
             <a
-              href={opp.application.application_url}
+              href={applyUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl hover:from-emerald-700 hover:to-emerald-600 shadow-sm hover:shadow transition-all duration-200"
@@ -292,13 +303,13 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             type="button"
             onClick={() => onDraftEmail(opp.id)}
             className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
-              opp.application?.application_url
-                ? 'text-gray-600 bg-black/[0.04] hover:bg-black/[0.08]'
-                : 'text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow px-5 py-2.5'
+              emailIsPrimary
+                ? 'text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow px-5 py-2.5'
+                : 'text-gray-600 bg-black/[0.04] hover:bg-black/[0.08]'
             }`}
           >
             <Mail className="w-3.5 h-3.5" />
-            {t('card.draftEmail')}
+            {isFaculty ? t('card.emailProfessor') : t('card.draftEmail')}
           </button>
           {profile && (
             <button
@@ -310,7 +321,19 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.tailorResume')}
             </button>
           )}
-          {opp.url && !opp.application?.application_url && (
+          {/* Faculty: the directory page is a secondary "Faculty Page", not the
+              primary CTA. Non-faculty with no apply portal: source "Details". */}
+          {isFaculty && facultyPageUrl ? (
+            <a
+              href={facultyPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              {t('card.viewFacultyPage')}
+            </a>
+          ) : opp.url && !applyUrl ? (
             <a
               href={opp.url}
               target="_blank"
@@ -320,7 +343,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               <FileText className="w-3.5 h-3.5" />
               {t('card.viewDetails')}
             </a>
-          )}
+          ) : null}
           {onTrackInteraction && (
             <InteractionStatusMenu
               opportunityId={opp.id}
