@@ -118,6 +118,16 @@ describe('getMatches', () => {
     expect(body.year).toBe('sophomore');
     expect(body.research_interests_text).toBe('machine learning');
     expect(body.hard_skills).toEqual([{ name: 'Python', level: 'experienced' }]);
+    expect(body.exploring).toBe(false);
+  });
+
+  it('sends exploring=true when the profile opts into explore mode', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile({ exploring: true }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.exploring).toBe(true);
   });
 
   it('defaults home_school to uiuc for profiles that predate the switcher', async () => {

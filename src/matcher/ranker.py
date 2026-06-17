@@ -17,6 +17,8 @@ from .config import (
     COURSEWORK_PER_COURSE,
     COURSEWORK_RELEVANCE_BONUS,
     DEADLINE_PASSED_PENALTY,
+    EXPLORE_MAJOR_MISMATCH_FLOOR,
+    EXPLORE_READINESS_DROP,
     GRAD_LEVEL_PENALTY,
     HIGH_PRIORITY_TARGET_COUNT,
     INTEREST_BONUS_CAP,
@@ -188,7 +190,9 @@ _SOCIAL_SCIENCE_MAJORS = frozenset({
 })
 
 
-def _major_match_score(student_majors: list[str], required_majors: list[str]) -> float:
+def _major_match_score(
+    student_majors: list[str], required_majors: list[str], exploring: bool = False
+) -> float:
     if not required_majors:
         return 30.0  # No requirement = open, but no signal of good fit
 
@@ -202,6 +206,12 @@ def _major_match_score(student_majors: list[str], required_majors: list[str]) ->
         related = RELATED_MAJORS.get(sm, [])
         if any(r in r_normalized for r in related):
             return 70.0
+
+    # An explorer hasn't picked a field, so a "wrong" major is breadth, not a
+    # poor fit — lift both mismatch tiers to a single floor so other-domain
+    # opportunities aren't buried below same-domain ones.
+    if exploring:
+        return EXPLORE_MAJOR_MISMATCH_FLOOR
 
     # Cross-domain mismatch (humanities student ↔ STEM-only opp) is worse
     # than same-domain mismatch (CS ↔ ECE w/o related edge). Penalize harder
@@ -582,7 +592,9 @@ def score_eligibility(
 
     # Major match (20% weight)
     student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])
-    major_score = _major_match_score(student_majors, elig.get("majors", []))
+    major_score = _major_match_score(
+        student_majors, elig.get("majors", []), exploring=bool(profile.get("exploring"))
+    )
     if major_score >= 100:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
     elif major_score >= 70:
@@ -901,7 +913,7 @@ def _stretch_score(raw: float) -> float:
     return max(0.0, min(100.0, blended))
 
 
-def _compute_weights(search_weight: int) -> dict[str, float]:
+def _compute_weights(search_weight: int, exploring: bool = False) -> dict[str, float]:
     """Blend scoring weights based on the search_weight slider (0-100).
 
     0   = pure research interests  → boost upside (keyword/interest matching)
@@ -914,7 +926,20 @@ def _compute_weights(search_weight: int) -> dict[str, float]:
     elig = WEIGHTS_DEFAULT.eligibility - 0.05 * abs(t - 0.5) * 2
     readiness = (WEIGHTS_DEFAULT.readiness - 0.10) + 0.20 * t
     upside = 1.0 - elig - readiness
-    return {"eligibility": elig, "readiness": readiness, "upside": max(0.05, upside)}
+    weights = {"eligibility": elig, "readiness": readiness, "upside": max(0.05, upside)}
+
+    if exploring:
+        # De-emphasize readiness (resume/skills): an explorer is early-stage and
+        # shouldn't rank primarily on application-readiness. Move the freed weight
+        # to eligibility + upside (fit + intrinsic appeal). Bounded so readiness
+        # never drops below 0.05.
+        drop = min(EXPLORE_READINESS_DROP, weights["readiness"] - 0.05)
+        if drop > 0:
+            weights["readiness"] -= drop
+            weights["eligibility"] += drop * 0.5
+            weights["upside"] += drop * 0.5
+
+    return weights
 
 
 _GENERIC_KEYWORDS = frozenset({
@@ -1115,6 +1140,11 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     "computer" / "computers and education" false positive per-token matching had).
     """
     if opportunity.get("opportunity_type", "") != "research":
+        return 1.0
+
+    # An explorer should see other research areas, not be steered off them — a
+    # topic "mismatch" is exactly the breadth they're looking for, so no penalty.
+    if profile.get("exploring"):
         return 1.0
 
     interest = (profile.get("research_interests_text") or "").strip().lower()
@@ -1427,10 +1457,88 @@ def semantic_rerank(
     return results
 
 
+def _diversity_group(opp: dict) -> tuple[str, str]:
+    """Coarse (type, area) key for explore-mode de-clustering. The area is the
+    posting's first distinctive keyword, falling back to its department, so two
+    NLP labs share a group but an NLP lab and a robotics lab do not."""
+    otype = opp.get("opportunity_type") or "other"
+    area = ""
+    for kw in _extract_specific_keywords(opp):
+        kl = kw.lower()
+        if kl not in _BROAD_FIELDS:
+            area = kl
+            break
+    if not area:
+        area = (opp.get("department") or "").lower().strip()
+    return (otype, area)
+
+
+def _round_robin_by_group(
+    items: list[MatchResult], key_of: dict[str, tuple[str, str]]
+) -> list[MatchResult]:
+    """Interleave items across diversity groups, preserving each group's internal
+    (score) order. Groups lead in order of their best member, so the strongest
+    cluster still comes first but no single cluster monopolizes the top rows."""
+    groups: dict[tuple[str, str], list[MatchResult]] = {}
+    order: list[tuple[str, str]] = []
+    for it in items:
+        k = key_of.get(it.opportunity_id, ("other", ""))
+        if k not in groups:
+            groups[k] = []
+            order.append(k)
+        groups[k].append(it)
+
+    if len(order) < 2:
+        return items
+
+    out: list[MatchResult] = []
+    while len(out) < len(items):
+        for k in order:
+            bucket = groups[k]
+            if bucket:
+                out.append(bucket.pop(0))
+    return out
+
+
+def _diversify_explore(
+    results: list[MatchResult], opportunities_by_id: dict[str, dict]
+) -> list[MatchResult]:
+    """Reorder WITHIN each actionable band (high_priority / good_match / reach)
+    so an explorer sees breadth across research areas / opportunity types instead
+    of one cluster. Within-bucket only: bucket membership (hence the quality
+    floor) is untouched, and the low_fit tail keeps pure score order."""
+    if len(results) < 4:
+        return results
+
+    key_of = {
+        r.opportunity_id: _diversity_group(opportunities_by_id[r.opportunity_id])
+        for r in results
+        if r.opportunity_id in opportunities_by_id
+    }
+
+    by_bucket: dict[str, list[MatchResult]] = {}
+    order: list[str] = []
+    for r in results:
+        if r.bucket not in by_bucket:
+            by_bucket[r.bucket] = []
+            order.append(r.bucket)
+        by_bucket[r.bucket].append(r)
+
+    for b in ("high_priority", "good_match", "reach"):
+        if len(by_bucket.get(b, [])) > 2:
+            by_bucket[b] = _round_robin_by_group(by_bucket[b], key_of)
+
+    out: list[MatchResult] = []
+    for b in order:
+        out.extend(by_bucket[b])
+    return out
+
+
 def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     """Rank all opportunities for a profile. Returns sorted by final_score desc."""
     search_weight = profile.get("search_weight", 50)
-    weights = _compute_weights(search_weight)
+    exploring = bool(profile.get("exploring"))
+    weights = _compute_weights(search_weight, exploring=exploring)
 
     home_school = str(profile.get("home_school") or "uiuc").strip().lower()
     seeking = set(profile.get("seeking_type", []))
@@ -1518,5 +1626,9 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
 
     results.sort(key=lambda r: r.final_score, reverse=True)
     _assign_buckets(results)
+
+    if exploring:
+        opportunities_by_id = {o["id"]: o for o in opportunities if o.get("id")}
+        results = _diversify_explore(results, opportunities_by_id)
 
     return results
