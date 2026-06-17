@@ -98,7 +98,7 @@ export default async function OGImage() {
         >
           <span>🎯 1,700+ opportunities</span>
           <span>·</span>
-          <span>🤖 AI semantic ranking</span>
+          <span>🤖 AI smart match</span>
           <span>·</span>
           <span>⚡ Free · Privacy-first</span>
         </div>
