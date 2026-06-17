@@ -93,7 +93,10 @@ export function useResultsUrlSync(state: {
     if (filters.minScore > 0) params.set('min', String(filters.minScore));
     if (filters.scope) params.set('scope', filters.scope);
     if (sortBy !== 'score') params.set('sort', sortBy);
-    if (!semanticRerank) params.set('ai', '0');
+    // Write the AI-match state symmetrically (ai=1 on / ai=0 off) so a copied
+    // URL round-trips on any device — previously only the off state was written,
+    // so a shared "AI smart match ON" link silently opened with it off.
+    params.set('ai', semanticRerank ? '1' : '0');
     const qs = params.toString();
     const newUrl = qs ? `/results?${qs}` : '/results';
     window.history.replaceState(null, '', newUrl);
