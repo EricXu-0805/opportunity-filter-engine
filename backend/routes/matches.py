@@ -18,10 +18,10 @@ from backend.schemas import (
 )
 from src.matcher.ranker import (
     _assign_buckets,
+    _diversify_explore,
     _profile_query_text,
     rank_all,
     rank_opportunity,
-    semantic_rerank,
 )
 from src.recommender.resume_advisor import analyze_gaps
 
@@ -45,6 +45,7 @@ _LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "openai/gpt-4o-mini")
 _LLM_RERANK_TOPK = int(os.environ.get("OFE_LLM_RERANK_TOPK", "40"))
 _LLM_RERANK_BATCH = int(os.environ.get("OFE_LLM_RERANK_BATCH", "12"))
 _LLM_RERANK_WEIGHT = float(os.environ.get("OFE_LLM_RERANK_W", "0.35"))
+_LLM_RERANK_CACHE_MAX = int(os.environ.get("OFE_LLM_RERANK_CACHE_MAX", "1000"))
 _llm_rerank_cache: dict[str, dict[str, float]] = {}
 
 
@@ -133,11 +134,15 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
     cand: list[tuple[str, str]] = []
     for r in top:
         o = opportunities_by_id.get(r.opportunity_id, {})
+        # Opportunity fields are scraped (untrusted) text — flatten each through
+        # the shared sanitizer so a newline-laden title/keyword can't forge
+        # numbered lines or inject instructions into the rerank prompt, matching
+        # the _llm_explanation path.
         area = " — ".join(
             p for p in (
-                (o.get("title") or "").strip(),
-                (o.get("lab_or_program") or "").strip(),
-                " ".join(o.get("keywords", []) or []),
+                _sanitize_field(o.get("title") or "", max_len=120),
+                _sanitize_field(o.get("lab_or_program") or "", max_len=120),
+                _sanitize_field(" ".join(o.get("keywords", []) or []), max_len=150),
             ) if p
         )
         cand.append((r.opportunity_id, area[:300]))
@@ -150,6 +155,12 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
         scores = _llm_score_candidates(query, cand)
         if scores is None:
             return results
+        # Bounded hygiene: this cache is a process-global keyed by query + model
+        # + candidate set, so a long-lived server could accumulate entries
+        # unboundedly. The real cost ceiling is the paid OpenRouter call per
+        # miss; this just keeps the dict from growing without limit.
+        if len(_llm_rerank_cache) >= _LLM_RERANK_CACHE_MAX:
+            _llm_rerank_cache.clear()
         _llm_rerank_cache[cache_key] = scores
 
     for r in top:
@@ -168,7 +179,6 @@ async def get_matches(
     profile: ProfileRequest,
     limit: int | None = Query(default=None, ge=1, le=MAX_RESULTS_PER_REQUEST),
     offset: int = Query(default=0, ge=0),
-    semantic: bool = Query(default=False),
     llm: bool = Query(default=False),
 ):
     """Score and rank opportunities for the given profile.
@@ -181,9 +191,10 @@ async def get_matches(
     The full bucket counts are always returned so the client knows the total
     picture.
 
-    Set ``semantic=true`` to blend LLM/TF-IDF semantic similarity into
-    the top 50 results (30% weight). Adds ~200-800ms latency when
-    OpenAI key is configured; free when falling back to TF-IDF.
+    Set ``llm=true`` for the opt-in "AI smart match" pass: a bounded OpenRouter
+    relevance rerank of the top results (no-op when unconfigured; rule order is
+    the floor). The retired embedding ``semantic`` blend was removed — it
+    regressed faculty ranking (see memory `ofe-semantic-rerank-regresses`).
     """
     opportunities = load_opportunities()
     if not opportunities:
@@ -203,16 +214,6 @@ async def get_matches(
 
     opp_lookup = load_opportunities_by_id()
 
-    if semantic:
-        results = await asyncio.to_thread(
-            semantic_rerank,
-            profile_dict,
-            results,
-            opp_lookup,
-            200,
-            0.5,
-        )
-
     # LLM rerank (opt-in, OpenRouter). Runs after the rule rank; a strict no-op
     # when OpenRouter is unconfigured or any call fails, so the rule order holds.
     if llm:
@@ -222,6 +223,12 @@ async def get_matches(
             results,
             opp_lookup,
         )
+        # llm_rerank re-sorts and re-buckets, which discards the explore-mode
+        # diversity ordering rank_all applied. Re-interleave the top bands so an
+        # exploring student keeps breadth across areas/types after the rerank.
+        # Within-bucket only — bucket membership / quality floor unchanged.
+        if profile_dict.get("exploring"):
+            results = await asyncio.to_thread(_diversify_explore, results, opp_lookup)
 
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
     visible_results = []
