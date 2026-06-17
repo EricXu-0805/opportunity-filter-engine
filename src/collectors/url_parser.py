@@ -40,6 +40,12 @@ PAGE_FETCH_TIMEOUT_S = 15
 LLM_BODY_EXCERPT_CHARS = 4000
 LLM_MAX_TOKENS = 700
 
+# Hard cap on a fetched body. The timeout bounds one slow connection but not a
+# fast multi-GB stream, so an attacker-controlled URL could OOM the dyno by
+# returning an unbounded body. 5 MB is generous for any real job/lab/posting
+# page; anything larger is rejected before it is buffered into memory.
+MAX_FETCH_BYTES = 5 * 1024 * 1024
+
 # Paste-text validation bounds. Below the floor the LLM has nothing useful
 # to chew on (a one-line title is better imported as a URL search), and
 # above the ceiling the body excerpt truncation drops most of the input
@@ -48,13 +54,20 @@ PASTE_TEXT_MIN_CHARS = 50
 PASTE_TEXT_MAX_CHARS = 50_000
 
 
-def parse_url(url: str) -> Optional[RawOpportunity]:
-    """V1: OG-meta + regex deadline scrape. No LLM."""
-    resp = _safe_fetch(url)
-    if resp is None:
-        return None
+def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunity]:
+    """V1: OG-meta + regex deadline scrape. No LLM.
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    Pass an already-fetched ``html`` body to reuse it instead of fetching again
+    — parse_url_llm needs both the parsed V1 fields and the raw text, and would
+    otherwise round-trip to the same URL twice.
+    """
+    if html is None:
+        resp = _safe_fetch(url)
+        if resp is None:
+            return None
+        html = resp.text
+
+    soup = BeautifulSoup(html, "html.parser")
 
     title = ""
     og_title = soup.find("meta", property="og:title")
@@ -186,15 +199,31 @@ def _safe_fetch(url: str) -> Optional[requests.Response]:
                 return None
             resp = requests.get(
                 current, timeout=PAGE_FETCH_TIMEOUT_S, headers=headers,
-                allow_redirects=False,
+                allow_redirects=False, stream=True,
             )
             if resp.is_redirect:
+                resp.close()
                 location = resp.headers.get("Location")
                 if not location:
                     break
                 current = urljoin(current, location)
                 continue
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+                declared = resp.headers.get("Content-Length")
+                if declared and declared.isdigit() and int(declared) > MAX_FETCH_BYTES:
+                    return None
+                # Stream the body with a running byte budget so a missing/lying
+                # Content-Length can't sneak an unbounded payload into memory.
+                body = bytearray()
+                for chunk in resp.iter_content(64 * 1024):
+                    body.extend(chunk)
+                    if len(body) > MAX_FETCH_BYTES:
+                        return None
+                resp._content = bytes(body)
+                resp._content_consumed = True
+            finally:
+                resp.close()
             return resp
     except Exception:
         return None
@@ -209,13 +238,15 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     Caller code should always assume V2 is best-effort enrichment on top
     of V1.
     """
-    base = parse_url(url)
-    if base is None:
-        return None
-
+    # Fetch once and reuse the body for both V1 parsing and the LLM excerpt
+    # (was two separate _safe_fetch round-trips to the same URL).
     raw_text = _fetch_text(url)
     if raw_text is None:
-        return base
+        return None
+
+    base = parse_url(url, html=raw_text)
+    if base is None:
+        return None
 
     body_excerpt = _strip_to_text(raw_text)[:LLM_BODY_EXCERPT_CHARS]
     enriched = _run_llm_extraction(
