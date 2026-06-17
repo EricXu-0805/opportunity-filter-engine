@@ -63,7 +63,7 @@ export function useResultsData(
     setError(null);
     (async () => {
       try {
-        const result = await getMatches(profile!, { semantic: semanticRerank });
+        const result = await getMatches(profile!, { llm: semanticRerank });
         if (cancelled) return;
         setData(result);
         writeMatchCache(hash, semanticRerank, result);

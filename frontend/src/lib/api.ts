@@ -83,9 +83,12 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
 /** POST /api/matches — get ranked opportunities for a profile */
 export async function getMatches(
   profile: ProfileData,
-  options: { semantic?: boolean } = {},
+  options: { llm?: boolean } = {},
 ): Promise<MatchesResponse> {
-  const qs = options.semantic ? '?semantic=true' : '';
+  // The "AI smart match" toggle routes to the LLM reranker (?llm=true), which
+  // scores the top results' topical fit via OpenRouter. The older embedding
+  // ?semantic path is retired — it regressed the ranking; this replaces it.
+  const qs = options.llm ? '?llm=true' : '';
   return request<MatchesResponse>(`/matches${qs}`, {
     method: 'POST',
     body: JSON.stringify(toProfileRequest(profile)),

@@ -236,6 +236,74 @@ class TestSemanticRerank:
         assert [r.final_score for r in results] == original
 
 
+class TestLLMRerank:
+    """Opt-in LLM rerank (OpenRouter). The rule order is always the floor: a
+    no-op when OpenRouter is unconfigured or any call fails, never a 5xx."""
+
+    def _results(self, ids_scores):
+        from src.matcher.ranker import MatchResult
+        return [
+            MatchResult(opportunity_id=i, eligibility_score=s, readiness_score=s,
+                        upside_score=s, final_score=float(s), bucket="good_match",
+                        reasons_fit=[], reasons_gap=[], next_steps=[])
+            for i, s in ids_scores
+        ]
+
+    def _lookup(self, ids):
+        return {i: {"id": i, "title": f"Lab {i}", "keywords": ["machine learning"]} for i in ids}
+
+    def test_parse_score_map_tolerates_fences_and_garbage(self):
+        from backend.routes.matches import _parse_score_map
+        assert _parse_score_map('```json\n{"0": 80, "1": 35}\n```', 2) == {0: 80.0, 1: 35.0}
+        assert _parse_score_map("not json at all", 2) is None
+        assert _parse_score_map('{"5": 90}', 2) is None  # index out of range → empty → None
+        assert _parse_score_map('{"0": 250}', 1) == {0: 100.0}  # clamped
+
+    def test_noop_without_openrouter(self, monkeypatch):
+        from backend.routes import matches
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: None)
+        results = self._results([("a", 80), ("b", 70)])
+        before = [r.final_score for r in results]
+        out = matches.llm_rerank({"research_interests_text": "ml"}, results,
+                                 self._lookup(["a", "b"]))
+        assert [r.final_score for r in out] == before
+
+    def test_noop_on_llm_failure(self, monkeypatch):
+        from backend.routes import matches
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(matches, "chat_completion", lambda *a, **k: None)
+        results = self._results([("a", 80), ("b", 70)])
+        before = [r.final_score for r in results]
+        out = matches.llm_rerank({"research_interests_text": "ml"}, results,
+                                 self._lookup(["a", "b"]))
+        assert [r.final_score for r in out] == before  # rule order held
+
+    def test_blends_and_reorders_on_scores(self, monkeypatch):
+        from backend.routes import matches
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        # LLM rates the lowest rule-scored candidate as the best topical fit.
+        monkeypatch.setattr(matches, "chat_completion",
+                            lambda *a, **k: '{"0": 0, "1": 0, "2": 100}')
+        results = self._results([("a", 80), ("b", 70), ("c", 60)])
+        out = matches.llm_rerank({"research_interests_text": "unique-query-xyz"}, results,
+                                 self._lookup(["a", "b", "c"]))
+        assert out[0].opportunity_id == "c"  # promoted by the LLM signal
+
+    def test_route_llm_true_is_graceful_without_key(self):
+        # No OPENROUTER_API_KEY in the test env → rerank is a no-op, never 5xx.
+        profile_req = {
+            "name": "Test", "year": "sophomore", "major": "CS",
+            "college": "Grainger College of Engineering", "international_student": True,
+            "hard_skills": [{"name": "Python", "level": "experienced"}],
+            "coursework": ["CS 124"], "research_interests_text": "machine learning",
+            "seeking_type": ["research"],
+        }
+        resp = client.post("/api/matches?llm=true&limit=20", json=profile_req)
+        assert resp.status_code == 200
+        scores = [r["final_score"] for r in resp.json()["results"]]
+        assert all(scores[i] >= scores[i + 1] for i in range(len(scores) - 1))
+
+
 class TestSimilarOpportunities:
     def test_returns_similar_list(self):
         opps = data_loader.load_opportunities()
