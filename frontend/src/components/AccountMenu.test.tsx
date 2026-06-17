@@ -110,11 +110,23 @@ describe('AccountMenu — permanent (signed-in) variant', () => {
     });
   });
 
-  it('opens the auth modal on click (which will show the account phase)', async () => {
+  it('opens an inline account dropdown on click — not an involuntary modal (Option C)', async () => {
     render(<AccountMenu />);
     await waitFor(() => screen.getByTestId('account-menu'));
     screen.getByTestId('account-menu').click();
-    expect(mockOpenModal).toHaveBeenCalledTimes(1);
+    // Dropdown surfaces the full email + a sign-out action; the auth
+    // modal is NOT opened just because a valid session was clicked.
+    expect(await screen.findByText('eric@illinois.edu')).toBeInTheDocument();
+    expect(screen.getByText('auth.modal.account.signOut')).toBeInTheDocument();
+    expect(mockOpenModal).not.toHaveBeenCalled();
+  });
+
+  it('Sign out opens the signout-confirm dialog, preserving the data-loss warning', async () => {
+    render(<AccountMenu />);
+    await waitFor(() => screen.getByTestId('account-menu'));
+    screen.getByTestId('account-menu').click();
+    (await screen.findByText('auth.modal.account.signOut')).click();
+    expect(mockOpenModal).toHaveBeenCalledWith({ reason: 'header', phase: 'signout-confirm' });
   });
 });
 

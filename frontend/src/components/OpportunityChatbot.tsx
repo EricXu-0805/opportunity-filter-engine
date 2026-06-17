@@ -137,7 +137,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
               <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
                 <Bot className="w-3.5 h-3.5 text-indigo-600" aria-hidden="true" />
               </div>
-              <div className="flex-1 bg-gray-50 rounded-2xl rounded-tl-sm px-3 py-2 text-[13px] text-gray-700 leading-relaxed">
+              <div className="flex-1 bg-gray-50 rounded-2xl rounded-tl-sm border border-gray-100 px-3 py-2 text-[13px] text-gray-700 leading-relaxed">
                 {t('chatbot.welcome', { title: opportunity.title })}
               </div>
             </div>
@@ -162,14 +162,14 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-              msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-indigo-50 text-indigo-600'
+              msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600'
             }`}>
               {msg.role === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
             </div>
             <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
               msg.role === 'user'
-                ? 'bg-blue-500 text-white rounded-tr-sm'
-                : 'bg-gray-50 text-gray-800 rounded-tl-sm'
+                ? 'bg-indigo-600 text-white rounded-tr-sm'
+                : 'bg-gray-50 text-gray-800 rounded-tl-sm border border-gray-100'
             }`}>
               {msg.content}
             </div>
@@ -181,7 +181,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
             <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
               <Bot className="w-3.5 h-3.5 text-indigo-600" aria-hidden="true" />
             </div>
-            <div className="bg-gray-50 rounded-2xl rounded-tl-sm px-3 py-2 text-[13px] text-gray-500 inline-flex items-center gap-2">
+            <div className="bg-gray-50 rounded-2xl rounded-tl-sm border border-gray-100 px-3 py-2 text-[13px] text-gray-500 inline-flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               {t('chatbot.thinking')}
             </div>

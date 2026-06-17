@@ -493,9 +493,9 @@ export default function TailorModal({
         )}
 
         {/* Body — two panel layout */}
-        <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
           {/* Left panel — originals */}
-          <div className="flex-1 flex flex-col md:border-r border-gray-100 min-w-0">
+          <div className="flex-1 flex flex-col lg:border-r border-gray-100 min-w-0">
             <div className="px-5 pt-4 pb-2 shrink-0">
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <label
@@ -566,7 +566,7 @@ export default function TailorModal({
           </div>
 
           {/* Right panel — tailored output */}
-          <div className="w-full md:w-1/2 lg:w-[480px] flex flex-col bg-gray-50/60 min-w-0 border-t md:border-t-0 border-gray-100">
+          <div className="w-full lg:w-[480px] flex flex-col bg-gray-50/60 min-w-0 border-t lg:border-t-0 border-gray-100">
             <div className="flex items-center justify-between gap-2 px-5 pt-4 pb-2 shrink-0">
               <label
                 className="block text-xs font-semibold text-gray-500 uppercase tracking-wider"

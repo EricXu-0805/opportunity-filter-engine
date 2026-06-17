@@ -120,7 +120,7 @@ export default function OpportunityDetail({
           </div>
         </main>
 
-        <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-6 lg:self-start lg:shrink-0">
+        <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
             <OpportunityChatbot opportunity={opp} profile={profile} />
           </div>

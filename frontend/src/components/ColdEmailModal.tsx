@@ -491,8 +491,8 @@ export default function ColdEmailModal({
         {/* Two-panel layout */}
         {!loading && !error && (
           <>
-            <div className="flex-1 flex flex-col md:flex-row min-h-0">
-              <div className="flex-1 flex flex-col md:border-r border-gray-100 min-w-0">
+            <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+              <div className="flex-1 flex flex-col lg:border-r border-gray-100 min-w-0">
                 {/* Variant tabs */}
                 <div className="flex items-center gap-1 px-5 pt-4 pb-2 shrink-0">
                   {variants.map((v, i) => (
@@ -612,7 +612,7 @@ export default function ColdEmailModal({
                 </div>
               </div>
 
-              <div className="w-full md:w-72 lg:w-80 flex flex-col bg-gray-50/60 min-w-0 border-t md:border-t-0 border-gray-100">
+              <div className="w-full lg:w-80 flex flex-col bg-gray-50/60 min-w-0 border-t lg:border-t-0 border-gray-100">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
                   <Sparkles className="w-4 h-4 text-indigo-500" />
                   <span className="text-sm font-semibold text-gray-700">{t('coldEmail.refine')}</span>

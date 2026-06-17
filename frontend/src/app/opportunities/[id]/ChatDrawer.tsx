@@ -28,7 +28,7 @@ export function ChatDrawer({
         <button
           type="button"
           onClick={onOpen}
-          className="lg:hidden fixed bottom-6 right-6 z-30 inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-600 text-white shadow-[0_4px_20px_rgba(79,70,229,0.4)] hover:bg-indigo-700 active:scale-95 transition-all"
+          className="lg:hidden fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-30 inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-600 text-white shadow-[0_4px_20px_rgba(79,70,229,0.4)] hover:bg-indigo-700 active:scale-95 transition-all"
           aria-label={t('chatbot.openAria')}
         >
           <Sparkles className="w-6 h-6" aria-hidden="true" />
@@ -42,7 +42,7 @@ export function ChatDrawer({
             onClick={onClose}
             aria-hidden="true"
           />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[88vh] h-[88vh] animate-in">
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[88dvh] h-[88dvh] pb-[env(safe-area-inset-bottom)] animate-in">
             <OpportunityChatbot
               opportunity={opp}
               profile={profile}

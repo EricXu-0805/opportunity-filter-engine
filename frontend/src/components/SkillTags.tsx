@@ -48,6 +48,15 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
       s.toLowerCase().includes(search.toLowerCase()),
   );
 
+  // Let users add a skill we don't carry as a preset (the ~80 ALL_SKILLS
+  // are a starter set, not a closed list). Offered only when the typed
+  // value isn't already selected or an exact preset (case-insensitive).
+  const trimmed = search.trim();
+  const canAddCustom =
+    trimmed.length > 0 &&
+    !selectedNames.has(trimmed) &&
+    !ALL_SKILLS.some((s) => s.toLowerCase() === trimmed.toLowerCase());
+
   function addSkill(name: string) {
     onChange([...selected, { name, level: 'beginner' }]);
     setSearch('');
@@ -119,13 +128,20 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
             onChange={(e) => setSearch(e.target.value)}
             onFocus={() => setIsOpen(true)}
             onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (available.length > 0) addSkill(available[0]);
+                else if (canAddCustom) addSkill(trimmed);
+              }
+            }}
             placeholder={selected.length === 0 ? 'Select skills...' : 'Add more...'}
             className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
           />
         </div>
       </div>
 
-      {isOpen && available.length > 0 && (
+      {isOpen && (available.length > 0 || canAddCustom) && (
         <div className="absolute z-20 mt-1.5 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
           {available.map((skill) => (
             <button
@@ -140,6 +156,19 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
               {skill}
             </button>
           ))}
+          {canAddCustom && (
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addSkill(trimmed);
+              }}
+              className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100 first:border-t-0 first:rounded-t-xl last:rounded-b-xl"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              Add &ldquo;{trimmed}&rdquo;
+            </button>
+          )}
         </div>
       )}
     </div>
