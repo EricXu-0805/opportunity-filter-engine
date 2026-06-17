@@ -2304,6 +2304,102 @@ class TestRateLimitResolution:
         assert RATE_LIMITS.get(key, DEFAULT_RATE) == DEFAULT_RATE
 
 
+class TestClientIpTrustAndGlobalCeiling:
+    """SEC: the per-IP limiter must key on the trusted-proxy-appended client IP
+    (rightmost X-Forwarded-For hop), not the spoofable leftmost value, and a
+    global second-tier ceiling must bound total paid-LLM / email volume even when
+    per-IP attribution is evaded — the denial-of-wallet backstop."""
+
+    def test_client_ip_takes_trusted_rightmost_hop(self):
+        from starlette.requests import Request
+
+        from backend import main as main_mod
+
+        def _req(xff=None, xreal=None, client_host="5.5.5.5"):
+            headers = []
+            if xff is not None:
+                headers.append((b"x-forwarded-for", xff.encode()))
+            if xreal is not None:
+                headers.append((b"x-real-ip", xreal.encode()))
+            return Request(
+                {
+                    "type": "http",
+                    "method": "GET",
+                    "headers": headers,
+                    "client": (client_host, 0) if client_host else None,
+                }
+            )
+
+        # Render appends the real client IP to the RIGHT of any client-sent value.
+        assert main_mod._client_ip(_req("1.2.3.4, 9.9.9.9")) == "9.9.9.9"
+        # Rotating the spoofable leftmost value no longer changes the identity.
+        assert main_mod._client_ip(_req("7.7.7.7, 9.9.9.9")) == "9.9.9.9"
+        # A single value (no proxy chain) → that value.
+        assert main_mod._client_ip(_req("9.9.9.9")) == "9.9.9.9"
+        # No XFF → x-real-ip → client.host fallbacks unchanged.
+        assert main_mod._client_ip(_req(None, "8.8.8.8")) == "8.8.8.8"
+        assert main_mod._client_ip(_req(None, None, "5.5.5.5")) == "5.5.5.5"
+
+    @staticmethod
+    def _arm_rate_limiting(monkeypatch):
+        from backend import main as main_mod
+        from backend.routes import email as email_mod
+
+        monkeypatch.setattr(main_mod, "RATE_LIMIT_DISABLED", False)
+        main_mod._rate_buckets.clear()
+        main_mod._global_buckets.clear()
+        main_mod._last_purge = 0.0
+        email_mod._recipient_sends.clear()
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+
+        async def _noop(**kwargs):
+            return None
+
+        monkeypatch.setattr(email_mod, "_send_via_resend", _noop)
+        return main_mod
+
+    def test_rotating_leftmost_xff_no_longer_evades_per_ip(self, monkeypatch):
+        # Distinct recipients (per-recipient cap never fires) + a rotating spoofed
+        # leftmost XFF but a FIXED trusted rightmost hop. The per-IP bucket keys on
+        # the rightmost now, so the 3/hr limit binds at the 4th request.
+        main_mod = self._arm_rate_limiting(monkeypatch)
+        limit = main_mod.RATE_LIMITS["/api/email/send-matches"][0]
+        for i in range(limit):
+            r = client.post(
+                "/api/email/send-matches",
+                json={"email": f"u{i}@example.com", "items": [{"title": "opp"}]},
+                headers={"x-forwarded-for": f"1.2.3.{i}, 9.9.9.9"},
+            )
+            assert r.status_code == 200, r.text
+        r = client.post(
+            "/api/email/send-matches",
+            json={"email": "u-final@example.com", "items": [{"title": "opp"}]},
+            headers={"x-forwarded-for": f"1.2.3.{limit}, 9.9.9.9"},
+        )
+        assert r.status_code == 429
+
+    def test_global_email_ceiling_binds_across_distinct_ips(self, monkeypatch):
+        # Distinct rightmost IPs (per-IP never trips) + distinct recipients
+        # (per-recipient never trips) — only the global email ceiling can stop
+        # this, and it must, at the 3rd send.
+        main_mod = self._arm_rate_limiting(monkeypatch)
+        monkeypatch.setattr(main_mod, "GLOBAL_EMAIL_PER_HOUR", 2)
+        for i in range(2):
+            r = client.post(
+                "/api/email/send-matches",
+                json={"email": f"v{i}@example.com", "items": [{"title": "opp"}]},
+                headers={"x-forwarded-for": f"9.9.9.{i}"},
+            )
+            assert r.status_code == 200, r.text
+        r = client.post(
+            "/api/email/send-matches",
+            json={"email": "v-final@example.com", "items": [{"title": "opp"}]},
+            headers={"x-forwarded-for": "9.9.9.250"},
+        )
+        assert r.status_code == 429
+
+
 class TestMatchesHomeSchool:
     """home_school in the POST body flows through ProfileRequest.model_dump()
     into rank_all's discovery-scope filter (PR #187 Phase 1)."""

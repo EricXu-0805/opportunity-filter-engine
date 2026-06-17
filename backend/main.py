@@ -93,15 +93,76 @@ def _rate_limit_key(path: str) -> str:
 
 _last_purge = 0.0
 
+# Number of trusted reverse-proxy hops in front of the app. On Render exactly one
+# trusted edge proxy sits in front and APPENDS the real client IP to the right of
+# any client-supplied X-Forwarded-For, so the trustworthy address is the value
+# _TRUSTED_PROXY_HOPS from the RIGHT. The old code took the leftmost value, which
+# is fully client-controlled — an attacker rotated it to mint a fresh rate-limit
+# bucket per request and bypass every per-IP limit (denial-of-wallet on the
+# shared LLM key). Tunable via env if the proxy topology ever changes.
+_TRUSTED_PROXY_HOPS = max(1, int(os.environ.get("OFE_TRUSTED_PROXY_HOPS", "1")))
+
 
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            # Count _TRUSTED_PROXY_HOPS from the right (the hop the trusted proxy
+            # appended); clamp to the leftmost when the client sent fewer hops.
+            return parts[max(0, len(parts) - _TRUSTED_PROXY_HOPS)]
     real = request.headers.get("x-real-ip", "")
     if real:
         return real.strip()
     return request.client.host if request.client else "unknown"
+
+
+# Second-tier GLOBAL ceilings across ALL clients — the denial-of-wallet backstop
+# that still bounds the bill if per-IP attribution is imperfect or an attacker
+# spreads load over many real IPs (botnet). Set generously above real
+# single-user load, low enough to cap a runaway OpenRouter spend / Resend quota.
+# Per-worker (in-memory); on a multi-worker deploy the effective ceiling is N×,
+# still a backstop. Tunable via env.
+_global_buckets: dict[str, list[float]] = defaultdict(list)
+GLOBAL_LLM_PER_MIN = int(os.environ.get("OFE_GLOBAL_LLM_PER_MIN", "240"))
+GLOBAL_EMAIL_PER_HOUR = int(os.environ.get("OFE_GLOBAL_EMAIL_PER_HOUR", "60"))
+
+_LLM_COST_PREFIXES = ("/api/cold-email", "/api/import-url", "/api/import-text")
+_EMAIL_SEND_PATHS = frozenset(
+    {
+        "/api/email/send-matches",
+        "/api/email/send-favorites",
+        "/api/email/restore-link",
+    }
+)
+
+
+def _billable_class(request: Request, path: str) -> str | None:
+    """Which global ceiling this request draws on — "llm", "email", or None for
+    the cheap reads (list/stat/detail GETs, status probes) that must never be
+    throttled by a global cap."""
+    if request.method != "POST":
+        return None
+    if path in _EMAIL_SEND_PATHS:
+        return "email"
+    if path.startswith("/api/tailor") and not path.startswith("/api/tailor/status"):
+        return "llm"
+    if path.startswith(_LLM_COST_PREFIXES):
+        return "llm"
+    if path.startswith("/api/opportunities/") and path.endswith("/chat"):
+        return "llm"
+    if path == "/api/matches" and request.query_params.get("llm", "").lower() in ("1", "true"):
+        return "llm"
+    return None
+
+
+def _rate_limited(window: int) -> Response:
+    return Response(
+        content='{"detail":"Rate limit exceeded. Try again later."}',
+        status_code=429,
+        media_type="application/json",
+        headers={"Retry-After": str(window)},
+    )
 
 
 RATE_LIMIT_DISABLED = os.environ.get("OFE_DISABLE_RATE_LIMIT") == "1"
@@ -132,12 +193,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ]
 
         if len(_rate_buckets[bucket_key]) >= max_requests:
-            return Response(
-                content='{"detail":"Rate limit exceeded. Try again later."}',
-                status_code=429,
-                media_type="application/json",
-                headers={"Retry-After": str(window)},
+            return _rate_limited(window)
+
+        # Second-tier GLOBAL ceiling on the billable (paid-LLM / email) endpoints:
+        # bounds total spend even when the per-IP key is evaded or spread across
+        # many real IPs, which the per-IP cap alone cannot.
+        klass = _billable_class(request, path)
+        if klass is not None:
+            gwindow, gmax = (
+                (60, GLOBAL_LLM_PER_MIN) if klass == "llm" else (3600, GLOBAL_EMAIL_PER_HOUR)
             )
+            _global_buckets[klass] = [
+                t for t in _global_buckets[klass] if t > now - gwindow
+            ]
+            if len(_global_buckets[klass]) >= gmax:
+                logger.warning(
+                    "Global %s ceiling reached (%d/%ds) — throttling; possible abuse or viral spike",
+                    klass, gmax, gwindow,
+                )
+                return _rate_limited(gwindow)
+            _global_buckets[klass].append(now)
 
         _rate_buckets[bucket_key].append(now)
         response = await call_next(request)
