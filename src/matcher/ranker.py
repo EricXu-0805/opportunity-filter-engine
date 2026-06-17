@@ -21,6 +21,7 @@ from .config import (
     HIGH_PRIORITY_TARGET_COUNT,
     INTEREST_BONUS_CAP,
     INTEREST_BONUS_PER_HIT,
+    INTL_UNKNOWN_INTERNSHIP_SCORE,
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
     SEMANTIC_RERANK_FALLBACK_CAP,
@@ -601,17 +602,18 @@ def score_eligibility(
             intl_score = 0.0
             reasons_gap.append("Requires US citizenship or permanent residency")
         elif friendly == "unknown":
-            intl_score = INTL_UNKNOWN_SCORE
             # DQ-6: "unknown" covers 37% of the corpus (mostly internships whose
             # source sponsorship field was blank). For internships specifically,
             # a flat deterrent over-discourages the primary audience — most allow
-            # CPT/OPT — so frame it as verify-don't-rule-out.
+            # CPT/OPT — so both the score and the message stay verify-don't-rule-out.
             if opportunity.get("opportunity_type") == "internship":
+                intl_score = INTL_UNKNOWN_INTERNSHIP_SCORE
                 reasons_gap.append(
                     "International eligibility unclear — many internships qualify "
                     "for CPT/OPT; confirm with the employer"
                 )
             else:
+                intl_score = INTL_UNKNOWN_SCORE
                 reasons_gap.append("International eligibility unclear — verify before applying")
         else:
             reasons_fit.append("Open to international students")
@@ -1211,13 +1213,20 @@ def rank_opportunity(
     # confirmed the eligibility term alone keeps a cross-domain mismatch (e.g. a
     # Spanish major vs a CS-only lab) firmly in low_fit, so the multiplier is
     # removed and major fit lives in exactly one place.
+    # All confidence-reducing penalties (topic mismatch, passed deadline,
+    # grad-level reach) are applied AFTER the stretch transform so each is a
+    # clean multiplicative haircut on the final score. Previously the topic
+    # penalty multiplied the pre-stretch `raw` while deadline/grad multiplied
+    # the post-stretch score — an asymmetry that made the topic penalty's
+    # effective magnitude depend non-linearly on where a posting sat on the
+    # sigmoid. Now the order is uniform.
+    final = _stretch_score(raw)
+
     topic_penalty = _topic_alignment_penalty(profile, opportunity)
     if topic_penalty < 1.0:
-        raw *= topic_penalty
+        final *= topic_penalty
         if topic_penalty <= TOPIC_MISMATCH_PENALTY:
             elig_gap.append("Research area looks different from your stated interests")
-
-    final = _stretch_score(raw)
 
     deadline = opportunity.get("deadline", "")
     if deadline and len(deadline) >= 8 and deadline[4] == "-":

@@ -302,6 +302,44 @@ class TestEligibilityScoring:
         assert 0 <= score <= 100
 
 
+class TestInternationalUnknownScoring:
+    """F-1 'unknown' internships score higher than other 'unknown' postings —
+    most internships allow CPT/OPT, so a flat deterrent over-discourages the
+    primary audience."""
+
+    def _unknown_opp(self, opp_type):
+        return {
+            "id": f"opp-unk-{opp_type}",
+            "title": "Some Role",
+            "opportunity_type": opp_type,
+            "on_campus": False,
+            "paid": "yes",
+            "eligibility": {
+                "preferred_year": ["freshman", "sophomore"],
+                "majors": ["ECE", "CS"],
+                "skills_required": ["Python"],
+                "international_friendly": "unknown",
+            },
+            "application": {"contact_method": "email", "application_effort": "low"},
+        }
+
+    def test_internship_unknown_beats_research_unknown_for_f1(self):
+        # seeking both types so the type-preference term is symmetric — the only
+        # remaining difference is the international-unknown score split.
+        f1 = {
+            "year": "sophomore", "major": "ECE", "international_student": True,
+            "seeking_type": ["research", "internship"],
+            "hard_skills": ["Python"], "coursework": ["CS 124"],
+        }
+        intern_score, _, _ = score_eligibility(f1, self._unknown_opp("internship"))
+        research_score, _, _ = score_eligibility(f1, self._unknown_opp("research"))
+        assert intern_score > research_score
+
+    def test_internship_unknown_message_mentions_cpt_opt(self, sample_profile):
+        _, _, gap = score_eligibility(sample_profile, self._unknown_opp("internship"))
+        assert any("cpt" in g.lower() or "opt" in g.lower() for g in gap)
+
+
 class TestReadinessScoring:
     def test_ready_student(self, sample_profile, good_match_opportunity):
         score, fit, gap = score_readiness(sample_profile, good_match_opportunity)
@@ -428,6 +466,16 @@ class TestGraduateLevelGating:
         grad_result = rank_opportunity(sample_profile, grad_opp)
         assert grad_result.final_score < undergrad_result.final_score
         assert any("graduate" in g.lower() for g in grad_result.reasons_gap)
+
+    def test_grad_penalty_is_softened_and_post_stretch(self, sample_profile, good_match_opportunity):
+        # The grad penalty (softened 0.5 -> 0.65) is applied AFTER the stretch
+        # transform as a clean multiplier, so a grad reach keeps ~65% of the
+        # undergrad final score rather than being near-halved.
+        base = rank_opportunity(sample_profile, good_match_opportunity)
+        grad_opp = dict(good_match_opportunity)
+        grad_opp["title"] = good_match_opportunity["title"] + " (PhD Intern)"
+        grad = rank_opportunity(sample_profile, grad_opp)
+        assert grad.final_score == pytest.approx(base.final_score * 0.65, rel=0.05)
 
 
 class TestRankAll:

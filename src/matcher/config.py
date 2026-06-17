@@ -58,6 +58,10 @@ PROFICIENCY_WEIGHTS: dict[str, float] = {
 }
 
 INTL_UNKNOWN_SCORE = _env_float("OFE_INTL_UNKNOWN", 60.0)
+# Internships whose sponsorship field is blank still mostly allow CPT/OPT, so a
+# flat 60 over-deters F-1 students from their primary audience. Score "unknown"
+# internships higher than research/other postings — verify-don't-rule-out.
+INTL_UNKNOWN_INTERNSHIP_SCORE = _env_float("OFE_INTL_UNKNOWN_INTERNSHIP", 72.0)
 
 COURSEWORK_PER_COURSE = _env_float("OFE_COURSE_PER", 12.0)
 COURSEWORK_MAX_FROM_COUNT = _env_float("OFE_COURSE_MAX_COUNT", 70.0)
@@ -68,7 +72,7 @@ INTEREST_BONUS_PER_HIT = _env_float("OFE_INTEREST_BONUS_PER_HIT", 3.0)
 
 DEADLINE_PASSED_PENALTY = _env_float("OFE_DEADLINE_PENALTY", 0.7)
 
-GRAD_LEVEL_PENALTY = _env_float("OFE_GRAD_LEVEL_PENALTY", 0.5)
+GRAD_LEVEL_PENALTY = _env_float("OFE_GRAD_LEVEL_PENALTY", 0.65)
 
 # Research-topic alignment: when a student names specific research interests,
 # a research posting whose curated areas *contradict* them is demoted. "Unknown"
