@@ -14,12 +14,14 @@ vi.mock('@/i18n/client', () => ({
 }));
 
 const mockChat = vi.fn<
-  (oppId: string, msg: string, history: unknown[], profile: ProfileData | null) => Promise<ChatResponse>
+  (oppId: string, msg: string, history: unknown[], profile: ProfileData | null, model?: string) => Promise<ChatResponse>
 >();
+const mockGetChatModels = vi.fn<() => Promise<{ id: string; label: string }[]>>();
 
 vi.mock('@/lib/api', () => ({
-  chatWithOpportunity: (oppId: string, msg: string, history: unknown[], profile: ProfileData | null) =>
-    mockChat(oppId, msg, history, profile),
+  chatWithOpportunity: (oppId: string, msg: string, history: unknown[], profile: ProfileData | null, model?: string) =>
+    mockChat(oppId, msg, history, profile, model),
+  getChatModels: () => mockGetChatModels(),
 }));
 
 import OpportunityChatbot from './OpportunityChatbot';
@@ -64,6 +66,10 @@ const PROFILE: ProfileData = {
 
 beforeEach(() => {
   mockChat.mockReset();
+  mockGetChatModels.mockReset();
+  // Default: no OpenRouter configured → empty list → picker hidden, so the
+  // pre-existing tests render unchanged.
+  mockGetChatModels.mockResolvedValue([]);
   Element.prototype.scrollIntoView = vi.fn();
 });
 
@@ -115,7 +121,8 @@ describe('OpportunityChatbot — welcome + suggested prompts', () => {
     fireEvent.click(screen.getByRole('button', { name: /chatbot.suggested.fit/ }));
 
     await waitFor(() =>
-      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'chatbot.suggested.fit', [], null),
+      // 5th arg is the picked model — undefined when the picker is on "Auto".
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'chatbot.suggested.fit', [], null, undefined),
     );
   });
 });
@@ -130,7 +137,7 @@ describe('OpportunityChatbot — send flow', () => {
     fireEvent.submit(textarea.closest('form')!);
 
     await waitFor(() =>
-      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'tell me more', [], PROFILE),
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'tell me more', [], PROFILE, undefined),
     );
   });
 
@@ -262,7 +269,7 @@ describe('OpportunityChatbot — profile share toggle', () => {
     fireEvent.change(textarea, { target: { value: 'hi' } });
     fireEvent.submit(textarea.closest('form')!);
 
-    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null));
+    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, undefined));
   });
 });
 
@@ -275,7 +282,7 @@ describe('OpportunityChatbot — keyboard + clear', () => {
     fireEvent.change(textarea, { target: { value: 'kbd' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
 
-    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'kbd', [], null));
+    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'kbd', [], null, undefined));
   });
 
   it('Shift+Enter does NOT submit (newline path)', async () => {
@@ -335,7 +342,37 @@ describe('OpportunityChatbot — chat history propagation', () => {
           { role: 'assistant', content: 'first-reply' },
         ],
         null,
+        undefined,
       ),
+    );
+  });
+});
+
+describe('OpportunityChatbot — model picker', () => {
+  it('hides the picker when no models are available', async () => {
+    mockGetChatModels.mockResolvedValue([]);
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+    await waitFor(() => expect(mockGetChatModels).toHaveBeenCalled());
+    expect(screen.queryByLabelText(/chatbot.modelAria/)).toBeNull();
+  });
+
+  it('shows the picker and sends the chosen model on the next message', async () => {
+    mockGetChatModels.mockResolvedValue([
+      { id: 'gemini-flash', label: 'Gemini Flash' },
+      { id: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
+    ]);
+    mockChat.mockResolvedValue({ reply: 'ok', method: 'llm' });
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+
+    const select = (await screen.findByLabelText(/chatbot.modelAria/)) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 'llama-3.3-70b' } });
+
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/);
+    fireEvent.change(textarea, { target: { value: 'hi' } });
+    fireEvent.submit(textarea.closest('form')!);
+
+    await waitFor(() =>
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, 'llama-3.3-70b'),
     );
   });
 });

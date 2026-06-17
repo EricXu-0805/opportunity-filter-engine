@@ -100,3 +100,67 @@ class TestModelOverride:
         llm.chat_completion([{"role": "user", "content": "hi"}], model="gpt-5.5")
         assert _CAPTURED["model"] == "gpt-5.5"
         assert "extra_body" not in _CAPTURED
+
+
+class TestProviderTargeting:
+    def test_provider_id_targets_openrouter(self, monkeypatch):
+        # GEMINI is first in the chain, but provider_id="openrouter" must route
+        # to OpenRouter (its key is also set here).
+        for v in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.setenv(v, "test-key")
+        import openai
+        monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
+        _CAPTURED.clear()
+        out = llm.chat_completion(
+            [{"role": "user", "content": "hi"}],
+            model="meta-llama/llama-3.3-70b-instruct",
+            provider_id="openrouter",
+        )
+        assert out == "ok"
+        assert _CAPTURED["model"] == "meta-llama/llama-3.3-70b-instruct"
+
+    def test_provider_id_unconfigured_returns_none(self, monkeypatch):
+        # Only GEMINI set; asking for openrouter must not silently use gemini.
+        for v in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(v, raising=False)
+        monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+        out = llm.chat_completion(
+            [{"role": "user", "content": "hi"}],
+            model="google/gemini-2.0-flash-001", provider_id="openrouter",
+        )
+        assert out is None
+
+
+class TestChatModelOptions:
+    def test_empty_without_openrouter(self, monkeypatch):
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        assert llm.chat_model_options() == []
+        assert llm.chat_model_slug("gemini-flash") is None
+
+    def test_default_list_when_openrouter_set(self, monkeypatch):
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        monkeypatch.delenv("OFE_CHAT_MODELS", raising=False)
+        opts = llm.chat_model_options()
+        ids = {o["id"] for o in opts}
+        assert "gemini-flash" in ids
+        assert all("label" in o and "id" in o for o in opts)
+        # slug is resolvable server-side but never leaked in the public list.
+        assert all("slug" not in o for o in opts)
+        assert llm.chat_model_slug("gemini-flash") == "google/gemini-2.0-flash-001"
+
+    def test_unknown_id_has_no_slug(self, monkeypatch):
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        assert llm.chat_model_slug("not-a-real-id") is None
+
+    def test_env_override_parses_pipe_format(self, monkeypatch):
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        monkeypatch.setenv("OFE_CHAT_MODELS", "x|X Model|vendor/x-1, bad-entry, y|Y|vendor/y-2")
+        opts = llm.chat_model_options()
+        assert [o["id"] for o in opts] == ["x", "y"]
+        assert llm.chat_model_slug("x") == "vendor/x-1"
+
+    def test_all_malformed_env_falls_back_to_default(self, monkeypatch):
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        monkeypatch.setenv("OFE_CHAT_MODELS", "garbage,more-garbage")
+        ids = {o["id"] for o in llm.chat_model_options()}
+        assert "gemini-flash" in ids  # default table

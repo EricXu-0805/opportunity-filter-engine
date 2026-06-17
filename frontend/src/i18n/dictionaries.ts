@@ -1036,6 +1036,9 @@ export const en = {
     profileNotSharedHint: 'AI does not see your profile (generic answers).',
     useProfile: 'Use my profile',
     errorGeneric: 'Something went wrong. Try again in a moment.',
+    modelLabel: 'Model',
+    modelAuto: 'Auto',
+    modelAria: 'Choose the AI model',
   },
   email: {
     title: 'Email me a copy',
@@ -2577,6 +2580,9 @@ export const zh = {
     profileNotSharedHint: 'AI 不读取你的档案（通用回答）。',
     useProfile: '使用我的档案',
     errorGeneric: '出错了，请稍后再试。',
+    modelLabel: '模型',
+    modelAuto: '自动',
+    modelAria: '选择 AI 模型',
   },
   email: {
     title: '发一份到邮箱',
