@@ -16,6 +16,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import Header from './Header';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 
 beforeEach(() => {
   pathnameRef.current = '/';
@@ -191,7 +192,7 @@ describe('Header', () => {
   });
 
   it('routes "Find Matches" to /results when a match cache is present', async () => {
-    localStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
     render(<Header />);
     // Wait for the useEffect that reads sessionStorage to run.
     await new Promise((r) => setTimeout(r, 0));
@@ -205,7 +206,7 @@ describe('Header', () => {
   });
 
   it('keeps active styling on "Find Matches" when on /results, even when href has switched to /results', async () => {
-    localStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
     pathnameRef.current = '/results';
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
@@ -217,7 +218,7 @@ describe('Header', () => {
   });
 
   it('only swaps the Find Matches link — other nav items keep their hrefs', async () => {
-    localStorage.setItem('ofe_match_results', JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
     const favoritesLinks = screen

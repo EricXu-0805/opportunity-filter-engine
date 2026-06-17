@@ -3,7 +3,12 @@
 // profiles/preferences silently disappear.
 export const STORAGE_KEYS = {
   PROFILE: 'ofe_profile',
-  MATCH_RESULTS: 'ofe_match_results',
+  // Bumped to _v2 after #226 switched the opt-in rerank from the (regressing)
+  // embedding blend to the LLM "AI smart match". A returning user's pre-#226
+  // cache held embedding-ranked sets that would otherwise be served — and
+  // badged as AI smart match — for up to the 7-day TTL. The cache is
+  // regenerable (just match results), so invalidating it is safe.
+  MATCH_RESULTS: 'ofe_match_results_v2',
   SEMANTIC_RERANK: 'ofe_semantic_rerank',
   FILTER_PRESETS: 'ofe_filter_presets',
   CUSTOM_IMPORTS: 'ofe_custom_imports',

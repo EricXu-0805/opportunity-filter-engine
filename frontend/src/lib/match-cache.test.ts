@@ -6,7 +6,10 @@ import {
   readMatchCache,
   writeMatchCache,
 } from './match-cache';
+import { STORAGE_KEYS } from './storage-keys';
 import type { MatchResult, MatchesResponse } from './types';
+
+const MATCH_KEY = STORAGE_KEYS.MATCH_RESULTS;
 
 function makeResult(id: string, bucket: MatchResult['bucket'] = 'good_match'): MatchResult {
   return {
@@ -35,7 +38,7 @@ describe('match-cache', () => {
 
   it('projects opportunities to display fields (drops metadata, raw desc, truncates clean)', () => {
     writeMatchCache('h1', false, makeResponse(1));
-    const raw = localStorage.getItem('ofe_match_results')!;
+    const raw = localStorage.getItem(MATCH_KEY)!;
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');
     expect(raw).not.toContain('x'.repeat(500)); // full description not stored
@@ -91,9 +94,9 @@ describe('match-cache', () => {
 
   it('expires after the TTL', () => {
     writeMatchCache('h1', false, makeResponse());
-    const c = JSON.parse(localStorage.getItem('ofe_match_results')!);
+    const c = JSON.parse(localStorage.getItem(MATCH_KEY)!);
     c.savedAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
-    localStorage.setItem('ofe_match_results', JSON.stringify(c));
+    localStorage.setItem(MATCH_KEY, JSON.stringify(c));
     expect(hasMatchCache()).toBe(false);
     expect(readMatchCache('h1', false)).toBeNull();
   });

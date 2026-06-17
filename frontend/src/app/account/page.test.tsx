@@ -65,6 +65,15 @@ describe('AccountPage — identity', () => {
     fireEvent.click(screen.getByText('account.saveAccount'));
     expect(mockOpenModal).toHaveBeenCalledWith({ reason: 'header' });
   });
+
+  it('does not strand on the loading spinner when a load promise rejects', async () => {
+    mockGetAuthState.mockRejectedValue(new Error('network down'));
+    render(<AccountPage />);
+    // The loading text must clear (finally) and the page renders the guest state
+    // instead of an infinite "Loading…".
+    await waitFor(() => expect(screen.queryByText('account.loading')).not.toBeInTheDocument());
+    expect(screen.getByText('account.saveAccount')).toBeInTheDocument();
+  });
 });
 
 describe('AccountPage — profile snapshot', () => {

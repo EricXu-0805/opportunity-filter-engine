@@ -120,22 +120,24 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
       scope: '' as const,
     },
     sortBy: 'score' as const,
-    semanticRerank: true,
+    // AI smart match defaults to OFF (the rule ranking is the accurate default);
+    // the writer now emits ai=0/ai=1 symmetrically so a shared URL round-trips.
+    semanticRerank: false,
   };
 
   it('omits ?tab= when activeTab is the new default "high_priority"', () => {
     renderHook(() => useResultsUrlSync(EMPTY_STATE));
-    expect(lastUrl()).toBe('/results');
+    expect(lastUrl()).toBe('/results?ai=0');
   });
 
   it('emits ?tab=all when activeTab is "all" (now an explicit, non-default tab)', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, activeTab: 'all' }));
-    expect(lastUrl()).toBe('/results?tab=all');
+    expect(lastUrl()).toBe('/results?tab=all&ai=0');
   });
 
   it('emits ?tab=starred for non-default tabs', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, activeTab: 'starred' }));
-    expect(lastUrl()).toBe('/results?tab=starred');
+    expect(lastUrl()).toBe('/results?tab=starred&ai=0');
   });
 
   it('round-trips multiple state pieces in one URL', () => {
@@ -161,16 +163,16 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
       ...EMPTY_STATE,
       filters: { ...EMPTY_STATE.filters, scope: 'campus' },
     }));
-    expect(lastUrl()).toBe('/results?scope=campus');
+    expect(lastUrl()).toBe('/results?scope=campus&ai=0');
   });
 
-  it('emits ai=0 only when semantic is off', () => {
+  it('emits ai=0 when AI smart match is off (the default)', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, semanticRerank: false }));
     expect(lastUrl()).toBe('/results?ai=0');
   });
 
-  it('omits ai param when semantic is on (the default)', () => {
-    renderHook(() => useResultsUrlSync(EMPTY_STATE));
-    expect(lastUrl()).toBe('/results');
+  it('emits ai=1 when AI smart match is on (so a shared URL round-trips)', () => {
+    renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, semanticRerank: true }));
+    expect(lastUrl()).toBe('/results?ai=1');
   });
 });

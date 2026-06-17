@@ -622,9 +622,6 @@ export const en = {
     },
     rankedFor: '{count} opportunities ranked for you',
     aiBadge: 'AI',
-    aiToggle: 'AI ranking',
-    aiToggleOn: 'ON',
-    aiToggleOff: 'OFF',
     tabs: {
       all: 'All',
       highPriority: 'High Priority',
@@ -2218,9 +2215,6 @@ export const zh = {
     },
     rankedFor: '为你排名了 {count} 个机会',
     aiBadge: 'AI',
-    aiToggle: 'AI 排序',
-    aiToggleOn: '开',
-    aiToggleOff: '关',
     tabs: {
       all: '全部',
       highPriority: '高优先级',

@@ -57,7 +57,7 @@ function toSnapshot(raw: Record<string, unknown> | null): Snapshot {
     year,
     interests,
     skillCount: skills.length,
-    hasProfile: Boolean(major || interests || skills.length || school),
+    hasProfile: Boolean(major || interests || skills.length || school || year),
   };
 }
 
@@ -73,18 +73,26 @@ export default function AccountPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [authState, profile, favs, interactions] = await Promise.all([
-        getAuthState(),
-        loadProfile(),
-        getFavorites(),
-        getInteractionsFull(),
-      ]);
-      if (cancelled) return;
-      setAuth(authState);
-      setSnapshot(toSnapshot(profile));
-      setFavCount(favs.size);
-      setTrackCount(interactions.size);
-      setLoading(false);
+      try {
+        const [authState, profile, favs, interactions] = await Promise.all([
+          getAuthState(),
+          loadProfile(),
+          getFavorites(),
+          getInteractionsFull(),
+        ]);
+        if (cancelled) return;
+        setAuth(authState);
+        setSnapshot(toSnapshot(profile));
+        setFavCount(favs.size);
+        setTrackCount(interactions.size);
+      } catch {
+        // A rejected auth/storage promise must never strand the page on the
+        // loading spinner — fall through to render the guest + empty-profile
+        // state instead of an infinite "Loading…".
+        if (!cancelled) setSnapshot(toSnapshot(null));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
     load();
     const unsub = onAuthChange((s) => { if (!cancelled) setAuth(s); });
