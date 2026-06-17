@@ -24,6 +24,11 @@ see ``strong_model()``. It must name a model the *active* provider serves (a
 Gemini id when GEMINI_API_KEY is resolved, a GPT id when OPENAI_API_KEY, etc.);
 when unset, those features use the provider's default model unchanged.
 
+The Ask-AI chat, by contrast, can let the user pick among a few OpenRouter
+models (``chat_model_options`` / ``chat_model_slug`` + ``OFE_CHAT_MODELS``);
+``chat_completion(provider_id="openrouter", model=slug)`` routes one call to a
+specific provider instead of the chain's first.
+
 All public functions return ``None`` on any failure (no provider configured,
 SDK missing, network error, model refusal). Callers should fall back to a
 local template — never raise from a chat-completion attempt.
@@ -43,18 +48,35 @@ _MAX_ATTEMPTS = 2
 _RETRY_BASE_DELAY_SECONDS = 0.5
 _REQUEST_TIMEOUT_SECONDS = 20.0
 
-_PROVIDERS: tuple[tuple[str, str, str], ...] = (
-    ("OPENAI_API_KEY", "", "gpt-4o-mini"),
+# (id, env_var, base_url, default_model). The id lets a caller target a
+# specific provider (e.g. the Ask-AI chat picker routes through "openrouter").
+_PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
+    ("openai", "OPENAI_API_KEY", "", "gpt-4o-mini"),
     (
+        "gemini",
         "GEMINI_API_KEY",
         "https://generativelanguage.googleapis.com/v1beta/openai/",
         "gemini-2.5-flash",
     ),
     (
+        "openrouter",
         "OPENROUTER_API_KEY",
         "https://openrouter.ai/api/v1",
         "google/gemini-2.0-flash-lite-001",
     ),
+)
+
+# Ask-AI chat lets the user pick among a few OpenRouter models (the formal
+# flows — résumé tailoring, cold email — stay pinned to strong_model()). Kept
+# small and env-overridable via OFE_CHAT_MODELS ("id|label|slug,id|label|slug")
+# so a stale slug is fixable without a deploy. Surfaced ONLY when
+# OPENROUTER_API_KEY is set; otherwise the picker stays hidden and chat uses
+# the default provider chain.
+_DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
+    ("gemini-flash", "Gemini Flash", "google/gemini-2.0-flash-001"),
+    ("gpt-4o-mini", "GPT-4o mini", "openai/gpt-4o-mini"),
+    ("llama-3.3-70b", "Llama 3.3 70B", "meta-llama/llama-3.3-70b-instruct"),
+    ("deepseek-v3", "DeepSeek V3", "deepseek/deepseek-chat"),
 )
 
 
@@ -65,11 +87,50 @@ class _ResolvedProvider:
     model: str
 
 
-def _resolve() -> Optional[_ResolvedProvider]:
-    for env_var, base_url, model in _PROVIDERS:
+def _resolve(provider_id: Optional[str] = None) -> Optional[_ResolvedProvider]:
+    """First configured provider, or — when ``provider_id`` is given — that
+    specific provider only if its key is set (else ``None``)."""
+    for pid, env_var, base_url, model in _PROVIDERS:
+        if provider_id is not None and pid != provider_id:
+            continue
         api_key = os.environ.get(env_var)
         if api_key:
             return _ResolvedProvider(api_key=api_key, base_url=base_url, model=model)
+    return None
+
+
+def _chat_models() -> tuple[tuple[str, str, str], ...]:
+    """The (id, label, slug) chat-model table, from OFE_CHAT_MODELS or the
+    built-in default. Malformed env entries are skipped; an all-malformed env
+    falls back to the default rather than emptying the picker."""
+    raw = os.environ.get("OFE_CHAT_MODELS", "").strip()
+    if not raw:
+        return _DEFAULT_CHAT_MODELS
+    parsed: list[tuple[str, str, str]] = []
+    for entry in raw.split(","):
+        parts = [p.strip() for p in entry.split("|")]
+        if len(parts) == 3 and all(parts):
+            parsed.append((parts[0], parts[1], parts[2]))
+    return tuple(parsed) or _DEFAULT_CHAT_MODELS
+
+
+def chat_model_options() -> list[dict]:
+    """Public chat-model list for the Ask-AI picker: ``[{"id","label"}]``.
+    Empty when OPENROUTER_API_KEY is unset, so the UI hides the picker and
+    chat stays on the default provider chain."""
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        return []
+    return [{"id": mid, "label": label} for mid, label, _slug in _chat_models()]
+
+
+def chat_model_slug(model_id: str) -> Optional[str]:
+    """Resolve a picker model id → its OpenRouter slug, or ``None`` when the id
+    is unknown or OpenRouter isn't configured (caller falls back to default)."""
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        return None
+    for mid, _label, slug in _chat_models():
+        if mid == model_id:
+            return slug
     return None
 
 
@@ -88,13 +149,17 @@ def chat_completion(
     temperature: float = 0.4,
     reasoning_effort: str = "none",
     model: Optional[str] = None,
+    provider_id: Optional[str] = None,
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
 
     ``model`` overrides the provider's default model (used by quality-sensitive
     callers via :func:`strong_model`); it must be a model the resolved provider
-    serves. Returns the assistant text, or ``None`` when:
-      * no provider env var is set,
+    serves. ``provider_id`` targets a specific provider (e.g. ``"openrouter"``
+    for the chat model picker) instead of the chain's first — returns ``None``
+    if that provider isn't configured. Returns the assistant text, or ``None``
+    when:
+      * no (matching) provider env var is set,
       * the ``openai`` SDK isn't importable,
       * the upstream call raises for any reason.
 
@@ -102,7 +167,7 @@ def chat_completion(
     surface as a 5xx to the user. The provider chain is order-dependent;
     see ``_PROVIDERS`` for the canonical priority.
     """
-    provider = _resolve()
+    provider = _resolve(provider_id)
     if provider is None:
         return None
 

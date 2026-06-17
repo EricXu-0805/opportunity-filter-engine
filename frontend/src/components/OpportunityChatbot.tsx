@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, X, Loader2, AlertCircle, User, Bot, RotateCcw } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
-import { chatWithOpportunity, type ChatMessage } from '@/lib/api';
+import { chatWithOpportunity, getChatModels, type ChatMessage, type ChatModelOption } from '@/lib/api';
 import { useT } from '@/i18n/client';
 
 interface Props {
@@ -21,6 +21,10 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shareProfile, setShareProfile] = useState(true);
+  // Ask-AI model picker. `chatModels` is empty unless OpenRouter is configured
+  // server-side, so the picker stays hidden by default; '' = Auto (default chain).
+  const [chatModels, setChatModels] = useState<ChatModelOption[]>([]);
+  const [selectedModel, setSelectedModel] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -29,6 +33,14 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  useEffect(() => {
+    let ignore = false;
+    getChatModels().then((m) => {
+      if (!ignore) setChatModels(m);
+    });
+    return () => { ignore = true; };
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -45,6 +57,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
         trimmed,
         historyForApi,
         shareProfile ? profile : null,
+        selectedModel || undefined,
       );
       setMessages((prev) => [...prev, { role: 'assistant', content: resp.reply }]);
     } catch (err) {
@@ -55,7 +68,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
       setLoading(false);
       inputRef.current?.focus();
     }
-  }, [opportunity.id, profile, shareProfile, messages, loading, t]);
+  }, [opportunity.id, profile, shareProfile, selectedModel, messages, loading, t]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +126,23 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
         </div>
       </header>
 
+      {chatModels.length > 0 && (
+        <div className="px-4 py-2 border-b border-gray-100 shrink-0 flex items-center gap-2">
+          <span className="text-[11px] font-medium text-gray-400 shrink-0">{t('chatbot.modelLabel')}</span>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            aria-label={t('chatbot.modelAria')}
+            className="text-[12px] text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+          >
+            <option value="">{t('chatbot.modelAuto')}</option>
+            {chatModels.map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {profile && (
         <div className="px-4 py-2 border-b border-gray-100 shrink-0 flex items-center justify-between gap-2">
           <span className="text-[11px] text-gray-500 leading-snug truncate">
@@ -137,7 +167,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
               <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
                 <Bot className="w-3.5 h-3.5 text-indigo-600" aria-hidden="true" />
               </div>
-              <div className="flex-1 bg-gray-50 rounded-2xl rounded-tl-sm px-3 py-2 text-[13px] text-gray-700 leading-relaxed">
+              <div className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-3 py-2 text-[13px] text-gray-700 leading-relaxed">
                 {t('chatbot.welcome', { title: opportunity.title })}
               </div>
             </div>
@@ -162,14 +192,14 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-              msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-indigo-50 text-indigo-600'
+              msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600'
             }`}>
               {msg.role === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
             </div>
             <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
               msg.role === 'user'
-                ? 'bg-blue-500 text-white rounded-tr-sm'
-                : 'bg-gray-50 text-gray-800 rounded-tl-sm'
+                ? 'bg-indigo-600 text-white rounded-tr-sm'
+                : 'bg-gray-50 text-gray-800 border border-gray-100 rounded-tl-sm'
             }`}>
               {msg.content}
             </div>
@@ -181,7 +211,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
             <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
               <Bot className="w-3.5 h-3.5 text-indigo-600" aria-hidden="true" />
             </div>
-            <div className="bg-gray-50 rounded-2xl rounded-tl-sm px-3 py-2 text-[13px] text-gray-500 inline-flex items-center gap-2">
+            <div className="bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-3 py-2 text-[13px] text-gray-500 inline-flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               {t('chatbot.thinking')}
             </div>

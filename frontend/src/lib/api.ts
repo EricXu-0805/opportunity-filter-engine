@@ -180,11 +180,18 @@ export interface ChatResponse {
   method: 'llm' | 'local';
 }
 
+/** One Ask-AI model the picker may offer (mirrors `llm.chat_model_options`). */
+export interface ChatModelOption {
+  id: string;
+  label: string;
+}
+
 export async function chatWithOpportunity(
   opportunityId: string,
   message: string,
   history: ChatMessage[],
   profile: ProfileData | null,
+  model?: string,
 ): Promise<ChatResponse> {
   return request<ChatResponse>(
     `/opportunities/${encodeURIComponent(opportunityId)}/chat`,
@@ -194,9 +201,21 @@ export async function chatWithOpportunity(
         message,
         history,
         profile: profile ? toProfileRequest(profile) : null,
+        ...(model ? { model } : {}),
       }),
     },
   );
+}
+
+/** Ask-AI model options — empty array when OpenRouter isn't configured
+ * (the picker then stays hidden). Never throws — returns [] on any error. */
+export async function getChatModels(): Promise<ChatModelOption[]> {
+  try {
+    const res = await request<{ models: ChatModelOption[] }>('/chat/models');
+    return res.models ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getMatchExplanation(

@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
-from backend.lib.llm import chat_completion
+from backend.lib.llm import chat_completion, chat_model_options, chat_model_slug
 from backend.schemas import ProfileRequest
 
 router = APIRouter()
@@ -262,6 +262,9 @@ class ChatRequest(BaseModel):
     message: str = Field(..., max_length=2000)
     history: list[ChatMessage] = Field(default_factory=list)
     profile: ProfileRequest | None = None
+    # Optional Ask-AI model id from chat_model_options(); unknown ids and an
+    # unconfigured OpenRouter both fall back to the default chain (no 5xx).
+    model: str | None = Field(default=None, max_length=64)
 
 
 def _format_skill_list(skills: list) -> str:
@@ -338,7 +341,19 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
     return "\n".join(lines)
 
 
-def _llm_chat_call(messages: list[dict]) -> str | None:
+def _llm_chat_call(messages: list[dict], model_id: str | None = None) -> str | None:
+    # User picked an OpenRouter model → route there; on any miss (unknown id,
+    # OpenRouter unconfigured or failing) fall through to the default chain so
+    # the picker can never make chat worse than the default.
+    if model_id:
+        slug = chat_model_slug(model_id)
+        if slug:
+            reply = chat_completion(
+                messages, max_tokens=400, temperature=0.4,
+                model=slug, provider_id="openrouter",
+            )
+            if reply is not None:
+                return reply
     return chat_completion(messages, max_tokens=400, temperature=0.4)
 
 
@@ -381,10 +396,17 @@ async def chat_with_opportunity(opportunity_id: str, body: ChatRequest):
     messages.append({"role": "user", "content": body.message})
 
     try:
-        reply = await asyncio.to_thread(_llm_chat_call, messages)
+        reply = await asyncio.to_thread(_llm_chat_call, messages, body.model)
     except Exception:
         logger.exception("chat LLM call failed for opportunity %s", opportunity_id)
         reply = None
     if reply:
         return {"reply": reply, "method": "llm"}
     return {"reply": _local_chat_fallback(opp, body.message), "method": "local"}
+
+
+@router.get("/chat/models")
+async def chat_models() -> dict:
+    """Ask-AI model picker options — ``[]`` (picker hidden) unless OpenRouter
+    is configured. See ``backend.lib.llm.chat_model_options``."""
+    return {"models": chat_model_options()}
