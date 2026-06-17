@@ -260,7 +260,10 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., max_length=2000)
-    history: list[ChatMessage] = Field(default_factory=list)
+    # Cap the turn list so an oversized payload is rejected (422) before we build
+    # every item — the per-IP rate bucket keys on a client-controllable header,
+    # so the length cap is the real guard. Only the last 10 are used downstream.
+    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
     profile: ProfileRequest | None = None
     # Optional Ask-AI model id from chat_model_options(); unknown ids and an
     # unconfigured OpenRouter both fall back to the default chain (no 5xx).
