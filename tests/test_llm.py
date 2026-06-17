@@ -164,3 +164,13 @@ class TestChatModelOptions:
         monkeypatch.setenv("OFE_CHAT_MODELS", "garbage,more-garbage")
         ids = {o["id"] for o in llm.chat_model_options()}
         assert "gemini-flash" in ids  # default table
+
+    def test_default_models_are_only_disclosed_us_providers(self, monkeypatch):
+        # Privacy invariant: the default Ask-AI picker must route only to the
+        # vetted, US-operated providers named in the privacy policy (OpenAI,
+        # Google). The chat prompt carries profile PII incl. the F-1 flag, so a
+        # China-based / undisclosed provider must never slip into the default set.
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        monkeypatch.delenv("OFE_CHAT_MODELS", raising=False)
+        slugs = [llm.chat_model_slug(o["id"]) for o in llm.chat_model_options()]
+        assert slugs and all(s.startswith(("openai/", "google/")) for s in slugs), slugs
