@@ -593,4 +593,101 @@ describe('TailorModal', () => {
       ),
     );
   });
+
+  it('R73: rejecting a bullet excludes it from "use as originals"', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        { text: 'Kept rewrite', source_evidence: 'Python', source_index: 0 },
+        { text: 'Rejected rewrite', source_evidence: 'CS 225', source_index: 1 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'orig one\norig two' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /tailor\.rejectBulletAria/ }).length).toBe(2),
+    );
+    // Reject the second bullet, then promote — only the kept one carries over.
+    fireEvent.click(screen.getAllByRole('button', { name: /tailor\.rejectBulletAria/ })[1]);
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.useAsOriginals/ }));
+    expect(textarea.value).toBe('Kept rewrite');
+  });
+
+  it('R73: editing a bullet overrides its text on promote', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        { text: 'Original rewrite', source_evidence: 'Python', source_index: 0 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'orig one' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /tailor\.editBulletAria/ })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.editBulletAria/ }));
+    // In edit mode the edit button is replaced by a labeled textarea.
+    const editArea = screen.getByLabelText('tailor.editBulletAria') as HTMLTextAreaElement;
+    fireEvent.change(editArea, { target: { value: 'My hand-edited bullet' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.save/ }));
+
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.useAsOriginals/ }));
+    expect(textarea.value).toBe('My hand-edited bullet');
+  });
+
+  it('R73: restoring a rejected bullet re-includes it', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        { text: 'Bullet one', source_evidence: 'Python', source_index: 0 },
+        { text: 'Bullet two', source_evidence: 'CS 225', source_index: 1 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'a\nb' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /tailor\.rejectBulletAria/ }).length).toBe(2),
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: /tailor\.rejectBulletAria/ })[0]);
+    const restore = await screen.findByRole('button', { name: /tailor\.restoreBulletAria/ });
+    fireEvent.click(restore);
+
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.useAsOriginals/ }));
+    expect(textarea.value).toBe('Bullet one\nBullet two');
+  });
+
+  it('R73: review controls are absent on fallback results', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'fallback',
+      warnings: ['llm_not_configured'],
+      tailored_bullets: [
+        { text: 'original bullet', source_evidence: 'original', source_index: 0 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'original bullet' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => expect(screen.getByText('tailor.methodFallback')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: /tailor\.editBulletAria/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /tailor\.rejectBulletAria/ })).toBeNull();
+  });
 });
