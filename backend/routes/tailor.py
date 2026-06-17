@@ -237,9 +237,15 @@ def _ai_tailor_bullets(
     original_block = "\n".join(original_lines) or "(no bullets provided)"
 
     eligibility = opp.get("eligibility") or {}
-    required = ", ".join(str(s) for s in (eligibility.get("skills_required") or [])[:8]) or "(none specified)"
-    preferred = ", ".join(str(s) for s in (eligibility.get("skills_preferred") or [])[:8]) or "(none specified)"
-    keywords = ", ".join(str(k) for k in (opp.get("keywords") or [])[:8]) or "(none)"
+    required = _sanitize_field(
+        ", ".join(str(s) for s in (eligibility.get("skills_required") or [])[:8]), max_len=300
+    ) or "(none specified)"
+    preferred = _sanitize_field(
+        ", ".join(str(s) for s in (eligibility.get("skills_preferred") or [])[:8]), max_len=300
+    ) or "(none specified)"
+    keywords = _sanitize_field(
+        ", ".join(str(k) for k in (opp.get("keywords") or [])[:8]), max_len=300
+    ) or "(none)"
     opp_desc = _sanitize_field(
         opp.get("description_clean") or opp.get("description_raw") or "",
         max_len=_DEFAULT_OPP_TOKEN_BUDGET,
