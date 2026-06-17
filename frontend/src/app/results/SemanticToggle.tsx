@@ -16,6 +16,7 @@ export function SemanticToggle({
     <button
       type="button"
       role="switch"
+      data-testid="semantic-toggle"
       aria-checked={value}
       aria-label={t('results.semantic.aria')}
       disabled={disabled}

@@ -601,7 +601,7 @@ export const en = {
   results: {
     title: 'Your Matches',
     analyzing: 'Analyzing your profile...',
-    analyzingAi: 'Analyzing with AI semantic ranking...',
+    analyzingAi: 'Analyzing with AI smart match...',
     loadingPhases: {
       readingProfile: 'Reading your profile...',
       scanning: 'Scanning {count} opportunities...',
@@ -2197,7 +2197,7 @@ export const zh = {
   results: {
     title: '你的匹配',
     analyzing: '正在分析你的档案...',
-    analyzingAi: '正在进行 AI 语义排序...',
+    analyzingAi: '正在进行 AI 智能匹配...',
     loadingPhases: {
       readingProfile: '正在读取你的档案...',
       scanning: '正在扫描 {count} 个机会...',
