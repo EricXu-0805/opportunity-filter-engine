@@ -20,13 +20,53 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from backend.main import app
 from src.collectors.base import RawOpportunity
 from src.collectors.url_parser import (
+    MAX_FETCH_BYTES,
     _merge_llm_into_base,
     _parse_llm_json,
+    _safe_fetch,
     is_safe_url,
     parse_url_llm,
 )
 
 client = TestClient(app)
+
+
+def _streamed_mock(text: str, *, content_length=None, status=200,
+                   is_redirect=False, location=None):
+    """A minimal stand-in for a streamed requests.Response: yields the body via
+    iter_content (so _safe_fetch's byte-budget loop runs) and decodes .text from
+    the bytes _safe_fetch caps and assigns to _content."""
+    body = text.encode("utf-8")
+
+    class _R:
+        def __init__(self):
+            self.status_code = status
+            self.is_redirect = is_redirect
+            self.headers: dict = {}
+            if content_length is not None:
+                self.headers["Content-Length"] = str(content_length)
+            if location is not None:
+                self.headers["Location"] = location
+            self._content: object = False
+
+        def iter_content(self, chunk_size):
+            step = max(1, chunk_size)
+            for i in range(0, len(body), step):
+                yield body[i:i + step]
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise Exception("http error")
+
+        def close(self):
+            pass
+
+        @property
+        def text(self):
+            data = self._content if self._content is not False else body
+            return data.decode("utf-8")
+
+    return _R()
 
 
 # ---------- is_safe_url ----------
@@ -233,15 +273,7 @@ class TestParseUrlLlm:
             yield
 
     def _mock_response(self, text: str):
-        class R:
-            status_code = 200
-            is_redirect = False
-            headers: dict = {}
-            def raise_for_status(self):
-                pass
-        r = R()
-        r.text = text
-        return r
+        return _streamed_mock(text)
 
     def test_returns_v1_when_no_llm_configured(self):
         with patch("src.collectors.url_parser.requests.get") as mock_get:
@@ -285,6 +317,44 @@ class TestParseUrlLlm:
         with patch("src.collectors.url_parser.requests.get", side_effect=Exception("connect refused")):
             result = parse_url_llm("https://example.com/job")
         assert result is None
+
+    def test_fetches_url_only_once(self):
+        # SSRF/DoS: the V1 parse and the LLM-excerpt must share a single fetch,
+        # not round-trip to the (attacker-controllable) URL twice.
+        with patch("src.collectors.url_parser._safe_fetch") as mock_sf:
+            mock_sf.return_value = _streamed_mock(self.SAMPLE_HTML)
+            with patch("backend.lib.llm.is_configured", return_value=False):
+                result = parse_url_llm("https://example.com/job")
+        assert result is not None
+        assert mock_sf.call_count == 1
+
+
+class TestSafeFetchByteCap:
+    """SSRF/DoS: _safe_fetch must bound how much it buffers, so an attacker URL
+    serving an unbounded body can't OOM the dyno."""
+
+    @pytest.fixture(autouse=True)
+    def _stub_dns_resolution(self):
+        with patch("src.collectors.url_parser._host_resolves_to_blocked_ip", return_value=False):
+            yield
+
+    def test_rejects_oversized_content_length(self):
+        with patch("src.collectors.url_parser.requests.get") as mock_get:
+            mock_get.return_value = _streamed_mock("ok", content_length=MAX_FETCH_BYTES + 1)
+            assert _safe_fetch("https://example.com/big") is None
+
+    def test_caps_streamed_body_without_content_length(self):
+        big = "x" * (MAX_FETCH_BYTES + 100)
+        with patch("src.collectors.url_parser.requests.get") as mock_get:
+            mock_get.return_value = _streamed_mock(big)  # no Content-Length header
+            assert _safe_fetch("https://example.com/big") is None
+
+    def test_returns_capped_body_under_limit(self):
+        with patch("src.collectors.url_parser.requests.get") as mock_get:
+            mock_get.return_value = _streamed_mock("<html>ok</html>")
+            resp = _safe_fetch("https://example.com/ok")
+        assert resp is not None
+        assert resp.text == "<html>ok</html>"
 
 
 # ---------- /api/import-url route ----------
