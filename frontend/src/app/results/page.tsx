@@ -52,6 +52,7 @@ import { MatchList } from './MatchList';
 import { ResultsHeader } from './ResultsHeader';
 import { ResultsSearch } from './ResultsSearch';
 import { ResultsTabs } from './ResultsTabs';
+import { ProfileCompletenessHint } from './ProfileCompletenessHint';
 import { SaveSearchDialog } from './SaveSearchDialog';
 import { SkeletonCard } from './SkeletonCard';
 import {
@@ -511,6 +512,10 @@ function ResultsContent() {
 
       {!loading && data && (
         <ResultsTabs activeTab={activeTab} onChange={setActiveTab} counts={counts} t={t} />
+      )}
+
+      {!loading && data && profile && (
+        <ProfileCompletenessHint profile={profile} onEdit={() => router.push('/')} t={t} />
       )}
 
       {(loading || !data) && (

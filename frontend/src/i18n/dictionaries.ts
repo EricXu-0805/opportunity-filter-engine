@@ -573,6 +573,16 @@ export const en = {
       polishing: 'Almost there — polishing results...',
     },
     slowHint: 'Still working — our free-tier backend takes ~30s to wake up on first use.',
+    completeness: {
+      summary: 'Profile {complete}/{total} complete — add {missing} for sharper matches.',
+      edit: 'Edit profile',
+      fields: {
+        interests: 'research interests',
+        skills: 'skills',
+        coursework: 'coursework',
+        resume: 'résumé',
+      },
+    },
     rankedFor: '{count} opportunities ranked for you',
     aiBadge: 'AI',
     aiToggle: 'AI ranking',
@@ -752,6 +762,8 @@ export const en = {
   // the full opportunity-detail page.
   card: {
     applyNow: 'Apply Now',
+    emailProfessor: 'Email Professor',
+    viewFacultyPage: 'Faculty Page',
     draftEmail: 'Draft Email',
     tailorResume: 'Tailor Resume',
     viewDetails: 'View Details',
@@ -2096,6 +2108,16 @@ export const zh = {
       polishing: '快好了 —— 正在打磨结果...',
     },
     slowHint: '仍在处理中 —— 免费后端首次唤醒大约需要 30 秒。',
+    completeness: {
+      summary: '档案完成度 {complete}/{total} —— 补上{missing}可让匹配更精准。',
+      edit: '编辑档案',
+      fields: {
+        interests: '研究兴趣',
+        skills: '技能',
+        coursework: '课程',
+        resume: '简历',
+      },
+    },
     rankedFor: '为你排名了 {count} 个机会',
     aiBadge: 'AI',
     aiToggle: 'AI 排序',
@@ -2272,6 +2294,8 @@ export const zh = {
   // 与 detail.* 区分 —— 后者用于完整详情页。
   card: {
     applyNow: '立即申请',
+    emailProfessor: '给教授发邮件',
+    viewFacultyPage: '教授主页',
     draftEmail: '起草邮件',
     tailorResume: '定制简历',
     viewDetails: '查看详情',
