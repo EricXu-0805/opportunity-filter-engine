@@ -84,6 +84,19 @@ GRAD_LEVEL_PENALTY = _env_float("OFE_GRAD_LEVEL_PENALTY", 0.65)
 TOPIC_UNKNOWN_PENALTY = _env_float("OFE_TOPIC_UNKNOWN_PEN", 1.0)
 TOPIC_MISMATCH_PENALTY = _env_float("OFE_TOPIC_MISMATCH_PEN", 0.80)
 
+# "I'm still exploring" mode (profile.exploring=True): a student who hasn't
+# settled on a direction. The matcher then WIDENS rather than narrows —
+#   * cross/same-domain major mismatches lift to a single floor (a "wrong" major
+#     is breadth, not poor fit),
+#   * the topic-alignment penalty is suppressed (don't steer an explorer away
+#     from areas they haven't ruled out),
+#   * readiness (resume/skills) is de-emphasized (early-stage students shouldn't
+#     rank on application-readiness),
+#   * the top buckets are diversity-sampled so the explorer sees breadth across
+#     research areas / opportunity types instead of one lab cluster.
+EXPLORE_MAJOR_MISMATCH_FLOOR = _env_float("OFE_EXPLORE_MAJOR_FLOOR", 25.0)
+EXPLORE_READINESS_DROP = _env_float("OFE_EXPLORE_READINESS_DROP", 0.10)
+
 STRETCH_SIGMOID_K = _env_float("OFE_STRETCH_K", 0.07)
 STRETCH_MIDPOINT = _env_float("OFE_STRETCH_MID", 55.0)
 STRETCH_BLEND = _env_float("OFE_STRETCH_BLEND", 0.45)

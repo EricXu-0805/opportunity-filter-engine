@@ -24,6 +24,8 @@ export interface ProfileData {
   resume_text?: string;
   coursework?: string[];
   search_weight?: number;
+  /** "I'm still exploring" — widens matching for undecided students. */
+  exploring?: boolean;
   linkedin_url?: string;
   github_url?: string;
   seeking_types?: string[];
@@ -54,6 +56,7 @@ export interface ProfileRequest {
   linkedin_url: string;
   github_url: string;
   search_weight: number;  // 0-100: 0=pure interests, 100=pure experience
+  exploring: boolean;     // widen matching for undecided students
 }
 
 // ── Opportunity (backend shape) ──────────────────────────────────────

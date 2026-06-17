@@ -476,6 +476,8 @@ export const en = {
       searchWeightInterests: 'Prioritizing your research interests',
       searchWeightExperience: 'Prioritizing your resume & experience',
       searchWeightBalanced: 'Balanced between interests & experience',
+      exploringLabel: "I'm still exploring",
+      exploringHint: 'Show a wider mix of areas and types instead of narrowing to one focus',
     },
     actions: {
       generate: 'Generate Matches',
@@ -2023,6 +2025,8 @@ export const zh = {
       searchWeightInterests: '优先匹配你的研究兴趣',
       searchWeightExperience: '优先匹配你的简历与经验',
       searchWeightBalanced: '在兴趣与经验之间平衡',
+      exploringLabel: '我还在探索',
+      exploringHint: '展示更广领域和类型的组合，而不是收窄到某一个方向',
     },
     actions: {
       generate: '生成匹配',
