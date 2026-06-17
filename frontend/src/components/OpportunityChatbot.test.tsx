@@ -359,20 +359,20 @@ describe('OpportunityChatbot — model picker', () => {
   it('shows the picker and sends the chosen model on the next message', async () => {
     mockGetChatModels.mockResolvedValue([
       { id: 'gemini-flash', label: 'Gemini Flash' },
-      { id: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
+      { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
     ]);
     mockChat.mockResolvedValue({ reply: 'ok', method: 'llm' });
     render(<OpportunityChatbot opportunity={OPP} profile={null} />);
 
     const select = (await screen.findByLabelText(/chatbot.modelAria/)) as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: 'llama-3.3-70b' } });
+    fireEvent.change(select, { target: { value: 'gpt-4o-mini' } });
 
     const textarea = screen.getByPlaceholderText(/chatbot.placeholder/);
     fireEvent.change(textarea, { target: { value: 'hi' } });
     fireEvent.submit(textarea.closest('form')!);
 
     await waitFor(() =>
-      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, 'llama-3.3-70b'),
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, 'gpt-4o-mini'),
     );
   });
 });

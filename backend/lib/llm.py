@@ -67,16 +67,19 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 )
 
 # Ask-AI chat lets the user pick among a few OpenRouter models (the formal
-# flows — résumé tailoring, cold email — stay pinned to strong_model()). Kept
-# small and env-overridable via OFE_CHAT_MODELS ("id|label|slug,id|label|slug")
-# so a stale slug is fixable without a deploy. Surfaced ONLY when
-# OPENROUTER_API_KEY is set; otherwise the picker stays hidden and chat uses
-# the default provider chain.
+# flows — résumé tailoring, cold email — stay pinned to strong_model()). The
+# default set is deliberately restricted to vetted, US-operated providers
+# (OpenAI, Google) that the privacy policy names as subprocessors — the chat
+# prompt embeds profile PII incl. the international-student flag, so we do NOT
+# default-route F-1 users' data to undisclosed / non-US operators (e.g. DeepSeek
+# was dropped for this reason). Still env-overridable via OFE_CHAT_MODELS
+# ("id|label|slug,...") so a stale slug is fixable without a deploy; if you add a
+# model from a new provider here or via env, disclose it in the privacy policy.
+# Surfaced ONLY when OPENROUTER_API_KEY is set; otherwise the picker stays hidden
+# and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
     ("gemini-flash", "Gemini Flash", "google/gemini-2.5-flash"),
     ("gpt-4o-mini", "GPT-4o mini", "openai/gpt-4o-mini"),
-    ("llama-3.3-70b", "Llama 3.3 70B", "meta-llama/llama-3.3-70b-instruct"),
-    ("deepseek-v3", "DeepSeek V3", "deepseek/deepseek-chat"),
 )
 
 

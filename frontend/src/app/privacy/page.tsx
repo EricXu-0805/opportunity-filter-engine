@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     'How Opportunity Filter Engine collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'June 15, 2026';
+const EFFECTIVE_DATE = 'June 17, 2026';
 
 const CONTENT = `# Privacy Policy
 
@@ -51,7 +51,7 @@ Our hosting providers (Vercel, Render) record standard server logs — IP addres
 
 ### 2.5 Email addresses for optional features
 
-If you ask us to email your matches or favorites to yourself, or to email you a profile restore link, you provide an email address for that delivery. We pass it to our email provider (Resend) to send the message and **do not store it in our database**.
+If you ask us to email your matches or favorites to yourself, or to email you a profile restore link, you provide an email address for that one-off delivery. We pass it to our email provider (Resend) to send the message and do not retain it afterward. **One exception:** if you turn on the **weekly email digest** for a saved search, we store that email address in our database (alongside the saved search) until you turn the digest off or delete the saved search, so we can send the recurring email — see §4 and §5.
 
 We do **not** knowingly collect government identifiers, financial-account numbers, precise geolocation, health data, or biometric data.
 
@@ -60,14 +60,14 @@ We do **not** knowingly collect government identifiers, financial-account number
 - To **match** your profile to opportunities and explain why each matched.
 - To **draft application materials** (résumé tailoring, cold-email drafts) using AI, *at your request, per generation* — see §5 for the AI subprocessors involved.
 - To **save** your profile, favorites, tracking, and saved searches so they persist.
-- To **send** transactional emails you request (your matches/favorites, restore links).
+- To **send** transactional emails you request (your matches/favorites, restore links) and, if you opt in, a recurring weekly email digest for a saved search.
 - To **secure and operate** the service (rate limiting, abuse prevention, debugging).
 
 We do **not** sell your personal information, and we do **not** use it for third-party advertising.
 
 ## 4. Where your data is stored
 
-- **Your profile, favorites, tracking, saved searches, and match feedback** are stored in a Supabase Postgres database, in rows that are access-restricted to your own identity by database row-level security — other users cannot read your rows.
+- **Your profile, favorites, tracking, saved searches, and match feedback** are stored in a Supabase Postgres database, in rows that are access-restricted to your own identity by database row-level security — other users cannot read your rows. If you enable the weekly email digest for a saved search, the email address you provide for it is stored alongside that saved search until you turn the digest off.
 - **Attachments** you add to tracked opportunities are stored in Supabase Storage under a folder private to your identity (≤5 MB per file; PDF, common image, DOCX, TXT, Markdown).
 - **In your browser:** your profile and some preferences are also cached in your browser's local storage so the app works smoothly and offline-tolerantly. You can clear this at any time via your browser settings.
 
@@ -77,15 +77,15 @@ We rely on the following service providers. We share only what each needs to per
 
 | Provider | Role | What it receives |
 |---|---|---|
-| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in |
+| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; and a digest email address if you enable a saved-search email digest |
 | **Vercel** (US) | Frontend hosting | Standard request logs (IP, user-agent, path) |
 | **Render** (US) | Backend hosting | API request contents and server logs |
-| **AI language-model provider** — one of **OpenAI**, **Google (Gemini)**, or **OpenRouter**, depending on configuration | Generating résumé drafts, cold-email drafts, match explanations, and opportunity Q&A | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
-| **Resend** (US) | Sending transactional email | The recipient email address you provide and the content of that email |
+| **AI language-model provider** — **OpenAI** and/or **Google (Gemini)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact chat models offered are operator-configurable. | Generating résumé drafts, cold-email drafts, match explanations, and opportunity Q&A | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
+| **Resend** (US) | Sending transactional email | The recipient email address you provide and the content of that email (including the weekly saved-search digest, if you enable it) |
 | **GitHub API** | Importing your public GitHub profile (only if you use that feature) | The public GitHub username you enter |
 | **Sentry** (US, optional) | Error monitoring | Error diagnostics with personal data masking enabled (request bodies, IPs, and cookies are not captured) |
 
-**Important — AI processing disclosure.** When you ask OFE to tailor a résumé, draft a cold email, explain a match, or answer questions about an opportunity, the relevant parts of your profile (which can include your name, academic details, skills, and your own résumé text) are sent to a third-party large-language-model provider listed above to generate that output. These providers process the data under their own terms; we do not control their retention. If you do not want your data processed by an AI provider, **do not use the résumé-tailoring, cold-email, match-explanation, or chat features** — the core matching and saving features do not require sending your profile to an AI provider.
+**Important — AI processing disclosure.** When you ask OFE to tailor a résumé, draft a cold email, explain a match, or answer questions about an opportunity, the relevant parts of your profile (which can include your name, academic details, skills, and your own résumé text) are sent to one of the AI providers named above (OpenAI or Google, reached directly or through the OpenRouter gateway) to generate that output. These providers process the data under their own terms; we do not control their retention. If you do not want your data processed by an AI provider, **do not use the résumé-tailoring, cold-email, match-explanation, or chat features** — the core matching and saving features do not require sending your profile to an AI provider.
 
 ## 6. How long we keep your data
 
