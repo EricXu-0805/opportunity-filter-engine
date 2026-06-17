@@ -146,7 +146,7 @@ class TestChatModelOptions:
         assert all("label" in o and "id" in o for o in opts)
         # slug is resolvable server-side but never leaked in the public list.
         assert all("slug" not in o for o in opts)
-        assert llm.chat_model_slug("gemini-flash") == "google/gemini-2.0-flash-001"
+        assert llm.chat_model_slug("gemini-flash") == "google/gemini-2.5-flash"
 
     def test_unknown_id_has_no_slug(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")

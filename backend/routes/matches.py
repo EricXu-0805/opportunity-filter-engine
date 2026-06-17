@@ -1,18 +1,28 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+import os
+import re
 
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
-from backend.lib.llm import chat_completion
+from backend.lib.llm import _resolve, chat_completion
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import (
     MatchesResponse,
     MatchResultResponse,
     ProfileRequest,
 )
-from src.matcher.ranker import rank_all, rank_opportunity, semantic_rerank
+from src.matcher.ranker import (
+    _assign_buckets,
+    _profile_query_text,
+    rank_all,
+    rank_opportunity,
+    semantic_rerank,
+)
 from src.recommender.resume_advisor import analyze_gaps
 
 router = APIRouter()
@@ -22,6 +32,136 @@ _REDACTED_FIELDS = frozenset({"contact_email", "pi_email"})
 # every visible result so all advertised buckets are browsable — see below.
 MAX_RESULTS_PER_REQUEST = 2000
 
+# ── LLM rerank (opt-in, OpenRouter-routed) ────────────────────────────────
+# A bounded, batched LLM relevance pass over the top rule-ranked results. It
+# reads each candidate's research AREA (title + lab + keywords — NOT the
+# templated description: embeddings proved the boilerplate washes out the
+# signal and collapses faculty to one score; see the project memory
+# `ofe-semantic-rerank-regresses`) and scores topical fit 0-100, blended with
+# the rule score. It is a strict no-op when OpenRouter isn't configured or any
+# call fails — the rule order is the floor, never a 5xx. Results are cached per
+# (student query, candidate set, model) so a results reload doesn't re-pay.
+_LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "openai/gpt-4o-mini")
+_LLM_RERANK_TOPK = int(os.environ.get("OFE_LLM_RERANK_TOPK", "40"))
+_LLM_RERANK_BATCH = int(os.environ.get("OFE_LLM_RERANK_BATCH", "12"))
+_LLM_RERANK_WEIGHT = float(os.environ.get("OFE_LLM_RERANK_W", "0.35"))
+_llm_rerank_cache: dict[str, dict[str, float]] = {}
+
+
+def _parse_score_map(reply: str | None, n: int) -> dict[int, float] | None:
+    """Parse the model's ``{"0": 80, "1": 35}`` reply into ``{idx: score}``.
+
+    Tolerates code fences / prose around the JSON object. Returns ``None`` when
+    nothing usable is found so the caller can treat the batch as failed.
+    """
+    if not reply:
+        return None
+    m = re.search(r"\{.*\}", reply, re.S)
+    if not m:
+        return None
+    try:
+        raw = json.loads(m.group(0))
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    out: dict[int, float] = {}
+    for k, v in raw.items():
+        try:
+            idx = int(k)
+            val = float(v)
+        except (ValueError, TypeError):
+            continue
+        if 0 <= idx < n:
+            out[idx] = max(0.0, min(100.0, val))
+    return out or None
+
+
+def _llm_score_candidates(query: str, cand: list[tuple[str, str]]) -> dict[str, float] | None:
+    """Batch the candidates through the OpenRouter model; return
+    ``{opportunity_id: score}`` or ``None`` if every batch failed."""
+    out: dict[str, float] = {}
+    any_ok = False
+    for i in range(0, len(cand), _LLM_RERANK_BATCH):
+        batch = cand[i:i + _LLM_RERANK_BATCH]
+        listing = "\n".join(f"{j}. {area}" for j, (_id, area) in enumerate(batch))
+        system = (
+            "You match a student to research/internship opportunities. Given the "
+            "student's interests and a numbered list of opportunities (title + "
+            "research area), rate how well each fits the student's stated "
+            "interests from 0 (unrelated) to 100 (perfect topical match). Judge "
+            "topical research-area fit only — ignore prestige, pay, and location. "
+            'Respond with ONLY a JSON object mapping each number to its score, '
+            'e.g. {"0": 80, "1": 35}.'
+        )
+        user = f"STUDENT INTERESTS:\n{query}\n\nOPPORTUNITIES:\n{listing}"
+        reply = chat_completion(
+            [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            max_tokens=500,
+            temperature=0.0,
+            provider_id="openrouter",
+            model=_LLM_RERANK_MODEL,
+        )
+        parsed = _parse_score_map(reply, len(batch))
+        if parsed is None:
+            continue
+        any_ok = True
+        for j, (opp_id, _area) in enumerate(batch):
+            if j in parsed:
+                out[opp_id] = parsed[j]
+    return out if any_ok else None
+
+
+def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
+               weight=_LLM_RERANK_WEIGHT):
+    """Re-rank the top ``top_k`` rule-ranked results with an LLM relevance pass.
+
+    Blend: ``final = (1 - w) * rule_score + w * llm_score``. Mutates ``results``
+    in place and returns the re-sorted list. No-op (returns ``results``
+    unchanged) when OpenRouter is unconfigured, the profile has no interests,
+    or every LLM batch fails — the rule ranking is always the floor.
+    """
+    if not results or top_k <= 0 or weight <= 0:
+        return results
+    if _resolve("openrouter") is None:
+        return results
+    query = _profile_query_text(profile)
+    if not query.strip():
+        return results
+
+    top = results[:min(top_k, len(results))]
+    cand: list[tuple[str, str]] = []
+    for r in top:
+        o = opportunities_by_id.get(r.opportunity_id, {})
+        area = " — ".join(
+            p for p in (
+                (o.get("title") or "").strip(),
+                (o.get("lab_or_program") or "").strip(),
+                " ".join(o.get("keywords", []) or []),
+            ) if p
+        )
+        cand.append((r.opportunity_id, area[:300]))
+
+    cache_key = hashlib.md5(
+        f"{query}|{_LLM_RERANK_MODEL}|{','.join(c[0] for c in cand)}".encode()
+    ).hexdigest()
+    scores = _llm_rerank_cache.get(cache_key)
+    if scores is None:
+        scores = _llm_score_candidates(query, cand)
+        if scores is None:
+            return results
+        _llm_rerank_cache[cache_key] = scores
+
+    for r in top:
+        llm = scores.get(r.opportunity_id)
+        if llm is None:
+            continue
+        r.final_score = round(max(0.0, min(100.0, (1 - weight) * r.final_score + weight * llm)), 1)
+
+    results.sort(key=lambda r: r.final_score, reverse=True)
+    _assign_buckets(results)
+    return results
+
 
 @router.post("/matches", response_model=MatchesResponse)
 async def get_matches(
@@ -29,6 +169,7 @@ async def get_matches(
     limit: int | None = Query(default=None, ge=1, le=MAX_RESULTS_PER_REQUEST),
     offset: int = Query(default=0, ge=0),
     semantic: bool = Query(default=False),
+    llm: bool = Query(default=False),
 ):
     """Score and rank opportunities for the given profile.
 
@@ -70,6 +211,16 @@ async def get_matches(
             opp_lookup,
             200,
             0.5,
+        )
+
+    # LLM rerank (opt-in, OpenRouter). Runs after the rule rank; a strict no-op
+    # when OpenRouter is unconfigured or any call fails, so the rule order holds.
+    if llm:
+        results = await asyncio.to_thread(
+            llm_rerank,
+            profile_dict,
+            results,
+            opp_lookup,
         )
 
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}

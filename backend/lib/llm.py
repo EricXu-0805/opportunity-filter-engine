@@ -73,7 +73,7 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # OPENROUTER_API_KEY is set; otherwise the picker stays hidden and chat uses
 # the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
-    ("gemini-flash", "Gemini Flash", "google/gemini-2.0-flash-001"),
+    ("gemini-flash", "Gemini Flash", "google/gemini-2.5-flash"),
     ("gpt-4o-mini", "GPT-4o mini", "openai/gpt-4o-mini"),
     ("llama-3.3-70b", "Llama 3.3 70B", "meta-llama/llama-3.3-70b-instruct"),
     ("deepseek-v3", "DeepSeek V3", "deepseek/deepseek-chat"),
