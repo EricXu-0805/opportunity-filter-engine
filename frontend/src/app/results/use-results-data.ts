@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getMatches } from '@/lib/api';
+import { trackOnce } from '@/lib/analytics';
 import { hashProfile } from '@/lib/match-utils';
 import { readMatchCache, writeMatchCache } from '@/lib/match-cache';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
@@ -55,6 +56,7 @@ export function useResultsData(
     if (cached) {
       setData(cached);
       setLoading(false);
+      trackOnce('matches_generated', { llm: semanticRerank, cached: true });
       return;
     }
 
@@ -67,6 +69,7 @@ export function useResultsData(
         if (cancelled) return;
         setData(result);
         writeMatchCache(hash, semanticRerank, result);
+        trackOnce('matches_generated', { llm: semanticRerank });
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : t('results.loadFailed'));
       } finally {
