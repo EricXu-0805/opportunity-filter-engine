@@ -10,6 +10,7 @@ import {
   updateInteractionDetails,
 } from '@/lib/supabase';
 import type { InteractionType, InteractionRecord } from '@/lib/supabase';
+import { track } from '@/lib/analytics';
 import { suggestReminderForStatusChange, type ReminderSuggestion } from '@/lib/status-suggestions';
 
 export interface UseOpportunityDetailResult {
@@ -41,6 +42,7 @@ export function useOpportunityDetail(opp: { id: string; title: string }): UseOpp
   const interaction = interactionDetail?.type;
 
   useEffect(() => {
+    track('match_opened', { opportunity_id: opp.id });
     getFavorites().then((set) => {
       if (set.has(opp.id)) setIsFavorited(true);
     }).catch(() => {});

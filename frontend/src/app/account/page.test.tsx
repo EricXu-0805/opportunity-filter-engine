@@ -12,6 +12,8 @@ const mockGetAuthState = vi.fn();
 const mockLoadProfile = vi.fn();
 const mockGetFavorites = vi.fn();
 const mockGetInteractions = vi.fn();
+const mockJoinWaitlist = vi.fn();
+const mockTrack = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   getAuthState: () => mockGetAuthState(),
@@ -19,6 +21,11 @@ vi.mock('@/lib/supabase', () => ({
   loadProfile: () => mockLoadProfile(),
   getFavorites: () => mockGetFavorites(),
   getInteractionsFull: () => mockGetInteractions(),
+  joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
+}));
+
+vi.mock('@/lib/analytics', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
 }));
 
 vi.mock('@/lib/auth-modal-context', () => ({
@@ -35,6 +42,7 @@ beforeEach(() => {
   mockGetFavorites.mockResolvedValue(new Set(['a', 'b', 'c']));
   mockGetInteractions.mockResolvedValue(new Map([['x', {}], ['y', {}]]));
   mockLoadProfile.mockResolvedValue(null);
+  mockJoinWaitlist.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -118,5 +126,31 @@ describe('AccountPage — activity links', () => {
     expect(screen.getByText('2')).toBeInTheDocument(); // tracker
     const links = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
     expect(links).toEqual(expect.arrayContaining(['/favorites', '/tracker', '/dashboard']));
+  });
+});
+
+describe('AccountPage — paid-intent CTA', () => {
+  beforeEach(() => {
+    mockGetAuthState.mockResolvedValue({
+      session: {}, user: { id: 'u1', is_anonymous: false }, isAnonymous: false,
+      email: 'eric@example.com',
+    });
+  });
+
+  it('records intent on click and writes a waitlist row (prefilled email) on submit', async () => {
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.intentCta')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('account.intentCta'));
+    expect(mockTrack).toHaveBeenCalledWith('intent_clicked', { source: 'account' });
+
+    const input = screen.getByLabelText('account.intentEmailPlaceholder') as HTMLInputElement;
+    expect(input.value).toBe('eric@example.com');
+
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() =>
+      expect(mockJoinWaitlist).toHaveBeenCalledWith('eric@example.com', { source: 'account' }),
+    );
+    await waitFor(() => expect(screen.getByText('account.intentDone')).toBeInTheDocument());
   });
 });

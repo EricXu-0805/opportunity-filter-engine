@@ -1,7 +1,8 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import FeaturedFellowships from '@/components/FeaturedFellowships';
+import { trackOnce } from '@/lib/analytics';
 import { useT } from '@/i18n/client';
 
 import { AcademicProfileCard } from './home/AcademicProfileCard';
@@ -45,6 +46,10 @@ function HomePageInner() {
     handleResumeParsed,
     handleGitHubImport,
   } = useProfileForm(t);
+
+  useEffect(() => {
+    trackOnce('landing_view');
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

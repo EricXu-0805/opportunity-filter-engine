@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     'How Opportunity Filter Engine collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'June 17, 2026';
+const EFFECTIVE_DATE = 'June 18, 2026';
 
 const CONTENT = `# Privacy Policy
 
@@ -53,6 +53,10 @@ Our hosting providers (Vercel, Render) record standard server logs — IP addres
 
 If you ask us to email your matches or favorites to yourself, or to email you a profile restore link, you provide an email address for that one-off delivery. We pass it to our email provider (Resend) to send the message and do not retain it afterward. **One exception:** if you turn on the **weekly email digest** for a saved search, we store that email address in our database (alongside the saved search) until you turn the digest off or delete the saved search, so we can send the recurring email — see §4 and §5.
 
+### 2.6 Product analytics and interest signals
+
+To understand how the product is used and where it falls short, we record a small set of in-product events tied to your anonymous identifier — for example, that you landed on the site, generated matches, opened an opportunity, used an AI feature, or clicked the "apply for me" help. These events are stored in our database (Supabase, §5); we do not sell them or use them for advertising. If you register interest in paid "apply for me" help, we also store the email address you provide for that, so we can contact you, until you ask us to remove it.
+
 We do **not** knowingly collect government identifiers, financial-account numbers, precise geolocation, health data, or biometric data.
 
 ## 3. How we use your information
@@ -61,6 +65,7 @@ We do **not** knowingly collect government identifiers, financial-account number
 - To **draft application materials** (résumé tailoring, cold-email drafts) using AI, *at your request, per generation* — see §5 for the AI subprocessors involved.
 - To **save** your profile, favorites, tracking, and saved searches so they persist.
 - To **send** transactional emails you request (your matches/favorites, restore links) and, if you opt in, a recurring weekly email digest for a saved search.
+- To **understand and improve** the product — which steps you reach and where people drop off — via in-product analytics events, and to follow up if you register interest in paid help.
 - To **secure and operate** the service (rate limiting, abuse prevention, debugging).
 
 We do **not** sell your personal information, and we do **not** use it for third-party advertising.
@@ -68,6 +73,7 @@ We do **not** sell your personal information, and we do **not** use it for third
 ## 4. Where your data is stored
 
 - **Your profile, favorites, tracking, saved searches, and match feedback** are stored in a Supabase Postgres database, in rows that are access-restricted to your own identity by database row-level security — other users cannot read your rows. If you enable the weekly email digest for a saved search, the email address you provide for it is stored alongside that saved search until you turn the digest off.
+- **Product-analytics events and any paid-help interest you register** (including the contact email you provide) are stored in the same Supabase database, scoped to your own anonymous identity.
 - **Attachments** you add to tracked opportunities are stored in Supabase Storage under a folder private to your identity (≤5 MB per file; PDF, common image, DOCX, TXT, Markdown).
 - **In your browser:** your profile and some preferences are also cached in your browser's local storage so the app works smoothly and offline-tolerantly. You can clear this at any time via your browser settings.
 
@@ -77,7 +83,7 @@ We rely on the following service providers. We share only what each needs to per
 
 | Provider | Role | What it receives |
 |---|---|---|
-| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; and a digest email address if you enable a saved-search email digest |
+| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; and any "apply for me" interest you register (with the contact email you provide) |
 | **Vercel** (US) | Frontend hosting | Standard request logs (IP, user-agent, path) |
 | **Render** (US) | Backend hosting | API request contents and server logs |
 | **AI language-model provider** — **OpenAI** and/or **Google (Gemini)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact chat models offered are operator-configurable. | Generating résumé drafts, cold-email drafts, match explanations, and opportunity Q&A | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
