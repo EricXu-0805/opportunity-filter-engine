@@ -77,6 +77,10 @@ NOISE_EMAILS = frozenset({
     "inquiries@stat.berkeley.edu", "info@stat.berkeley.edu",
     "webmaster@stat.berkeley.edu",
     "no_email@eecs.berkeley.edu",
+    # Math lists its front-office mailbox as a second mailto on every profile;
+    # without this, faculty whose personal address is non-Berkeley would resolve
+    # to it (the extractor prefers a berkeley.edu address).
+    "frontoffice@math.berkeley.edu",
 })
 
 # Department directories mix retired faculty into the same card list; they are
