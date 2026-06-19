@@ -12,9 +12,9 @@ research signal on the listing is a `research-area-<slug>` CSS class drawn from
 a fixed 5-term vocabulary (like Berkeley EECS's umbrella tags), so the parser
 maps those slugs to readable areas and BIOE_AREA_KEYWORDS turns each into
 topical keywords via the shared area_keywords path. Email is not on the listing;
-the shared per-profile enrichment hop recovers it (a mailto: link on each
-profile). Profiles carry no labeled research section, so research comes solely
-from the listing's area tags.
+the per-profile enrichment hop recovers it (a mailto: link). Each profile also
+carries a "Research Description" accordion whose lab prose is appended to the
+area tags for a richer description (the tags still drive the keywords).
 
 Records with no email found ship "lite" (contact_email=None,
 confidence_score=0.5); the 4 faculty with no area tag fall back to the broad
@@ -33,20 +33,27 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
+import time
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
+    PROFILE_DELAY,
     clean_name,
     dedup_by_profile_url,
-    enrich_faculty_from_profiles,
+    extract_email_from_profile,
     fetch_soup,
     normalize_faculty,
 )
 
 logger = logging.getLogger(__name__)
+
+# Profiles expose a lab description in a Beaver Builder accordion whose button
+# label is "Research Description"; the prose lives in the item's content panel.
+_RESEARCH_LABEL_RE = re.compile(r"Research Description", re.IGNORECASE)
 
 # The listing encodes each professor's research area(s) as a `research-area-*`
 # CSS class from this fixed 5-term vocabulary. Map the slugs to readable names.
@@ -132,19 +139,73 @@ def _scrape_bioe_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
     return faculty
 
 
+def _research_from_profile(soup: BeautifulSoup) -> str:
+    """Pull the lab description from the "Research Description" accordion.
+
+    The profile renders a Beaver Builder accordion whose button label is
+    "Research Description"; the prose is in that item's `.fl-accordion-content`.
+    Returns "" when no such accordion is present.
+    """
+    for button in soup.select("a.fl-accordion-button-label, .fl-accordion-button"):
+        if _RESEARCH_LABEL_RE.search(button.get_text(" ", strip=True)):
+            item = button.find_parent(class_=re.compile("fl-accordion-item"))
+            content = item.select_one(".fl-accordion-content") if item else None
+            if content:
+                return content.get_text(" ", strip=True)
+            break
+    return ""
+
+
+def _enrich_bioe_profiles(faculty: list[dict], config: dict) -> list[dict]:
+    """Visit each profile for the contact email (mailto) and lab description.
+
+    The listing already set research_areas to the area tag(s); the profile's
+    "Research Description" prose is appended (kept, so the area tags still drive
+    area_keywords) for a richer description. Polite delay; failed fetch skipped.
+    """
+    total = len(faculty)
+    found = with_research = 0
+    for i, person in enumerate(faculty):
+        url = person.get("url")
+        if not url:
+            continue
+        soup = fetch_soup(url)
+        if soup:
+            email = extract_email_from_profile(soup, config)
+            if email:
+                person["email"] = email
+                found += 1
+            description = _research_from_profile(soup)
+            if description:
+                areas = person.get("research_areas", "")
+                person["research_areas"] = (
+                    f"{areas}; {description[:600]}" if areas else description[:600]
+                )
+                with_research += 1
+        if i < total - 1:
+            time.sleep(PROFILE_DELAY)
+        if (i + 1) % 10 == 0:
+            logger.info(f"  Enriched {i + 1}/{total} profiles ({found} emails)")
+    logger.info(
+        f"  Recovered {found}/{total} emails and {with_research}/{total} "
+        f"research descriptions from profile pages"
+    )
+    return faculty
+
+
 def fetch_and_normalize(enrich: bool = True) -> list[dict]:
     """Scrape BioE faculty and return normalized opportunity records.
 
-    The listing supplies name + link + title + research areas; with enrich=True
-    (default) each profile page is visited to recover the contact email (a
-    mailto: link the listing omits).
+    The listing supplies name + link + title + research area(s); with
+    enrich=True (default) each profile page is visited to recover the contact
+    email and append the lab's "Research Description" prose.
     """
     soup = fetch_soup(BIOE_CONFIG["url"])
     if not soup:
         return []
     raw = dedup_by_profile_url(_scrape_bioe_faculty_list(soup, BIOE_CONFIG["base"]))
     if enrich:
-        raw = enrich_faculty_from_profiles(raw, BIOE_CONFIG)
+        raw = _enrich_bioe_profiles(raw, BIOE_CONFIG)
     normalized = [n for n in (normalize_faculty(p, BIOE_CONFIG) for p in raw) if n]
     logger.info(f"Normalized {len(normalized)} BIOE faculty opportunities")
     return normalized
