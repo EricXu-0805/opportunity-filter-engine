@@ -121,6 +121,10 @@ KEYWORD_BANK = [
     "microfabrication", "nanomanufacturing", "biomechanics", "mechatronics",
     "vibration", "acoustics", "tribology", "energy efficiency", "mems",
     "dynamics and control",
+    "nuclear physics", "nuclear chemistry", "nuclear reactors", "reactor physics",
+    "nuclear fuel", "radioactive waste", "fission", "fusion", "neutron detection",
+    "radiation detection", "isotopes", "radiochemistry", "nuclear security",
+    "nonproliferation", "molten salt reactors", "nuclear materials",
 ]
 
 SKILL_MAP = {
