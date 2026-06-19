@@ -77,6 +77,10 @@ NOISE_EMAILS = frozenset({
     "inquiries@stat.berkeley.edu", "info@stat.berkeley.edu",
     "webmaster@stat.berkeley.edu",
     "no_email@eecs.berkeley.edu",
+    # Physics lists its department admin mailbox as a second mailto on every
+    # profile; without this, faculty whose personal address is non-Berkeley
+    # (e.g. an @lbl.gov address) would resolve to it.
+    "physics_admin@berkeley.edu",
 })
 
 # Department directories mix retired faculty into the same card list; they are
