@@ -22,7 +22,11 @@ from src.collectors.ucb_common import (
     extract_email_from_profile,
     normalize_faculty,
 )
-from src.collectors.ucb_me_faculty import ME_CONFIG, _scrape_me_faculty_list
+from src.collectors.ucb_me_faculty import (
+    ME_CONFIG,
+    _research_from_profile,
+    _scrape_me_faculty_list,
+)
 
 
 def _card(slug: str, name: str, title_html: str = "") -> str:
@@ -51,6 +55,18 @@ LISTING_HTML = f"""
 
 PROFILE_HTML = '<div class="node"><a href="mailto:reza.alam@berkeley.edu">email</a></div>'
 PROFILE_NO_EMAIL_HTML = '<div class="node"><p>No contact listed.</p></div>'
+
+# Profiles render the research block as "<strong>Research Description</strong>:"
+# followed by the interest text in the next <p> (real markup).
+PROFILE_WITH_RESEARCH_HTML = """
+<div class="node">
+  <a href="mailto:reza.alam@berkeley.edu">email</a>
+  <p><strong>Research Description</strong>:
+    <p>Theoretical Fluid Dynamics, Nonlinear Wave Mechanics, Ocean Renewable Energy</p>
+  </p>
+</div>
+"""
+PROFILE_NO_RESEARCH_HTML = '<div class="node"><p><strong>Education</strong>: PhD MIT</p></div>'
 
 
 def _scrape():
@@ -106,6 +122,33 @@ def test_output_shape_matches_other_faculty_collectors():
     assert opp["on_campus"] is False
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["eligibility"]["work_auth_notes"] == ME_CONFIG["work_auth_notes"]
+
+
+def test_research_description_extracted_from_profile():
+    soup = BeautifulSoup(PROFILE_WITH_RESEARCH_HTML, "html.parser")
+    research = _research_from_profile(soup)
+    assert "Research Description" not in research  # label not included
+    assert "fluid dynamics" in research.lower()
+    assert "wave mechanics" in research.lower()
+
+
+def test_no_research_block_returns_empty():
+    soup = BeautifulSoup(PROFILE_NO_RESEARCH_HTML, "html.parser")
+    assert _research_from_profile(soup) == ""
+
+
+def test_research_description_yields_topical_keywords():
+    """KEYWORD_BANK carries mechanical-engineering terms so ME records rank by
+    topical fit instead of all sharing the broad department keyword."""
+    person = {
+        "name": "Test Professor", "url": "x", "title": "Professor",
+        "research_areas": "Theoretical Fluid Dynamics, Nonlinear Wave Mechanics, "
+                          "Ocean Renewable Energy, additive manufacturing",
+    }
+    opp = normalize_faculty(person, ME_CONFIG)
+    for kw in ("fluid dynamics", "wave mechanics", "additive manufacturing"):
+        assert kw in opp["keywords"], kw
+    assert "mechanical engineering" not in opp["keywords"]
 
 
 def test_lite_record_falls_back_to_broad_keyword():

@@ -6,11 +6,14 @@ Open-Berkeley Drupal directory).
 
 The ME faculty directory (`/faculty/`) is a Beaver Builder grid where each
 faculty member is a `div.fl-post-grid-post` with the name + profile link in
-`h3.fl-post-title a` (href `/people/<slug>/`). Unlike BioE it carries no rank
-text or research-area classes on the listing (the title slot is JS-populated
-and the by-research-area page is JS-filtered), so records are "lite": name +
-profile link, with the contact email recovered from each profile's mailto via
-the shared enrichment hop. Research falls back to the broad department keyword.
+`h3.fl-post-title a` (href `/people/<slug>/`). The listing carries no rank or
+research text (the title slot is JS-populated, the by-research-area page is
+JS-filtered), so each profile page is visited to recover the contact email
+(a mailto:) and the research interests, which the profile exposes as a
+free-text block under a `<strong>Research Description</strong>:` label (not a
+CSS-class field, so it needs a bespoke extractor rather than the shared
+selector-driven one). Those interests yield topical keywords via KEYWORD_BANK;
+records with no research block keep the broad department keyword.
 
 Records with no email found ship "lite" (contact_email=None,
 confidence_score=0.5). Emeritus faculty are not listed on `/faculty/`, and the
@@ -28,20 +31,27 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
+import time
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
+    PROFILE_DELAY,
     clean_name,
     dedup_by_profile_url,
-    enrich_faculty_from_profiles,
+    extract_email_from_profile,
     fetch_soup,
     normalize_faculty,
 )
 
 logger = logging.getLogger(__name__)
+
+# Profiles label the research block "Research Description" (some "Research
+# Interests"); the text follows in the next <p>.
+_RESEARCH_LABEL_RE = re.compile(r"^\s*Research (Description|Interests)\s*$", re.IGNORECASE)
 
 ME_CONFIG = {
     "source": "ucb_me_faculty",
@@ -90,18 +100,65 @@ def _scrape_me_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
     return faculty
 
 
+def _research_from_profile(soup: BeautifulSoup) -> str:
+    """Pull the free-text research block labeled "Research Description".
+
+    The profile renders `<strong>Research Description</strong>:` followed by the
+    interest text in the next `<p>`. Returns "" when no such block is present.
+    """
+    label = soup.find("strong", string=_RESEARCH_LABEL_RE)
+    if not label:
+        return ""
+    para = label.find_next("p")
+    return para.get_text(" ", strip=True) if para else ""
+
+
+def _enrich_me_profiles(faculty: list[dict], config: dict) -> list[dict]:
+    """Visit each profile for the contact email (mailto) and research block.
+
+    Research is label-based, not a CSS field, so it can't use the shared
+    selector-driven extractor. Polite delay between requests; a profile that
+    fails to fetch is skipped (the record stays lite).
+    """
+    total = len(faculty)
+    found = with_research = 0
+    for i, person in enumerate(faculty):
+        url = person.get("url")
+        if not url:
+            continue
+        soup = fetch_soup(url)
+        if soup:
+            email = extract_email_from_profile(soup, config)
+            if email:
+                person["email"] = email
+                found += 1
+            research = _research_from_profile(soup)
+            if research:
+                person["research_areas"] = research
+                with_research += 1
+        if i < total - 1:
+            time.sleep(PROFILE_DELAY)
+        if (i + 1) % 10 == 0:
+            logger.info(f"  Enriched {i + 1}/{total} profiles ({found} emails)")
+    logger.info(
+        f"  Recovered {found}/{total} emails and {with_research}/{total} "
+        f"research blocks from profile pages"
+    )
+    return faculty
+
+
 def fetch_and_normalize(enrich: bool = True) -> list[dict]:
     """Scrape ME faculty and return normalized opportunity records.
 
     The listing supplies name + link; with enrich=True (default) each profile
-    page is visited to recover the contact email (a mailto: link).
+    page is visited to recover the contact email and research interests.
     """
     soup = fetch_soup(ME_CONFIG["url"])
     if not soup:
         return []
     raw = dedup_by_profile_url(_scrape_me_faculty_list(soup, ME_CONFIG["base"]))
     if enrich:
-        raw = enrich_faculty_from_profiles(raw, ME_CONFIG)
+        raw = _enrich_me_profiles(raw, ME_CONFIG)
     normalized = [n for n in (normalize_faculty(p, ME_CONFIG) for p in raw) if n]
     logger.info(f"Normalized {len(normalized)} ME faculty opportunities")
     return normalized
