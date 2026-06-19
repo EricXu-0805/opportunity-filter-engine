@@ -18,12 +18,51 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors.ucb_bioe_faculty import BIOE_CONFIG, _scrape_bioe_faculty_list
+from src.collectors.ucb_bioe_faculty import (
+    BIOE_CONFIG,
+    _research_from_profile,
+    _scrape_bioe_faculty_list,
+)
 from src.collectors.ucb_common import (
     dedup_by_profile_url,
     extract_email_from_profile,
     normalize_faculty,
 )
+
+# Profile renders the lab description in a Beaver Builder accordion whose button
+# label is "Research Description"; the prose is in the item's content panel.
+PROFILE_WITH_RESEARCH_HTML = """
+<div class="fl-accordion">
+  <div class="fl-accordion-item">
+    <a class="fl-accordion-button-label">Research Description</a>
+    <div class="fl-accordion-content"><p>Anderson Lab develops new applications and
+    tools for the Synthetic Biology community.</p></div>
+  </div>
+  <div class="fl-accordion-item">
+    <a class="fl-accordion-button-label">Education</a>
+    <div class="fl-accordion-content"><p>PhD, Caltech</p></div>
+  </div>
+</div>
+"""
+PROFILE_NO_RESEARCH_HTML = """
+<div class="fl-accordion"><div class="fl-accordion-item">
+  <a class="fl-accordion-button-label">Education</a>
+  <div class="fl-accordion-content"><p>PhD, MIT</p></div>
+</div></div>
+"""
+
+
+def test_research_description_extracted_from_accordion():
+    soup = BeautifulSoup(PROFILE_WITH_RESEARCH_HTML, "html.parser")
+    research = _research_from_profile(soup)
+    assert "Anderson Lab" in research
+    assert "Synthetic Biology" in research
+    assert "PhD" not in research  # only the Research Description panel, not Education
+
+
+def test_no_research_accordion_returns_empty():
+    soup = BeautifulSoup(PROFILE_NO_RESEARCH_HTML, "html.parser")
+    assert _research_from_profile(soup) == ""
 
 
 def _card(slug_part: str, name: str, title: str, area_classes: str = "") -> str:
