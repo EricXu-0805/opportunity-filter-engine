@@ -112,6 +112,11 @@ KEYWORD_BANK = [
     "infrastructure", "climate", "sustainability", "fluid mechanics",
     "computational mechanics", "structural health monitoring",
     "energy systems",
+    "fluid dynamics", "wave mechanics", "ocean engineering", "thermodynamics",
+    "heat transfer", "combustion", "manufacturing", "additive manufacturing",
+    "microfabrication", "nanomanufacturing", "biomechanics", "mechatronics",
+    "vibration", "acoustics", "tribology", "energy efficiency", "mems",
+    "dynamics and control",
 ]
 
 SKILL_MAP = {
