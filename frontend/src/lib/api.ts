@@ -11,6 +11,7 @@ import type {
   StatsResponse,
   TailorResponse,
 } from './types';
+import { track } from './analytics';
 import { bySlug } from './schools';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -198,6 +199,7 @@ export async function chatWithOpportunity(
   profile: ProfileData | null,
   model?: string,
 ): Promise<ChatResponse> {
+  void track('ai_feature_used', { feature: 'chat' });
   return request<ChatResponse>(
     `/opportunities/${encodeURIComponent(opportunityId)}/chat`,
     {
@@ -260,6 +262,7 @@ export async function generateColdEmail(
   opportunityId: string,
   options: { engine?: ColdEmailEngine; style?: EmailStyle } = {},
 ): Promise<ColdEmailResponse> {
+  void track('ai_feature_used', { feature: 'cold_email' });
   const body: Record<string, unknown> = {
     profile: toProfileRequest(profile),
     opportunity_id: opportunityId,
@@ -335,6 +338,7 @@ export async function tailorResume(
   originalBullets: string[],
   options: { locale?: string } = {},
 ): Promise<TailorResponse> {
+  void track('ai_feature_used', { feature: 'tailor' });
   const body: Record<string, unknown> = {
     profile: toProfileRequest(profile),
     opportunity_id: opportunityId,

@@ -725,6 +725,31 @@ export async function toggleFavorite(opportunityId: string, isFaved: boolean): P
   return true;
 }
 
+// Concierge paid-intent capture: the user asked us to tailor + send their
+// outreach for them ("apply for me"). Writes one row to the waitlist table under
+// the same per-user RLS as favorites; `email` is how we reach them (their
+// account email, or one they type if anonymous). Returns false on failure so the
+// caller can keep the UI honest. See supabase/migrations/015_analytics_waitlist.sql.
+export async function joinWaitlist(
+  email: string | null,
+  props: Record<string, unknown> = {},
+): Promise<boolean> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return false;
+
+  const { error } = await supabase.from('waitlist').insert({
+    device_id: deviceId,
+    email: email || null,
+    intent: 'apply_for_me',
+    props,
+  });
+  if (error) {
+    console.warn('[ofe] waitlist insert failed:', error.message);
+    return false;
+  }
+  return true;
+}
+
 export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
 
 export interface InteractionRecord {

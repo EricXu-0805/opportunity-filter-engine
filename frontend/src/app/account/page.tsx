@@ -22,11 +22,13 @@ import {
 } from 'lucide-react';
 import Card from '@/components/Card';
 import { useT } from '@/i18n/client';
+import { track } from '@/lib/analytics';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import {
   getAuthState,
   getFavorites,
   getInteractionsFull,
+  joinWaitlist,
   loadProfile,
   onAuthChange,
   type AuthState,
@@ -238,19 +240,81 @@ export default function AccountPage() {
                 {t('account.currentBadge')}
               </span>
             </div>
-            <div className="flex items-center justify-between gap-4 pt-4 opacity-70">
+            <div className="flex items-center justify-between gap-4 pt-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900">{t('account.premiumTitle')}</p>
                 <p className="text-[13px] text-gray-500 mt-0.5">{t('account.premiumDesc')}</p>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-600 shrink-0">
-                {t('account.comingSoon')}
-              </span>
+              <PremiumIntent defaultEmail={email} />
             </div>
           </Card>
         </div>
       )}
     </div>
+  );
+}
+
+// Concierge paid-intent CTA. Clicking records the intent (funnel signal);
+// submitting an email writes a waitlist row we follow up on by hand. No hard
+// price is shown — pricing isn't finalized, so this captures interest only.
+function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
+  const { t } = useT();
+  const [phase, setPhase] = useState<'idle' | 'form' | 'done'>('idle');
+  const [email, setEmail] = useState(defaultEmail);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (phase === 'done') {
+    return (
+      <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 shrink-0">
+        {t('account.intentDone')}
+      </span>
+    );
+  }
+
+  if (phase === 'idle') {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          void track('intent_clicked', { source: 'account' });
+          setPhase('form');
+        }}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shrink-0"
+      >
+        {t('account.intentCta')}
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
+        const ok = await joinWaitlist(email.trim() || null, { source: 'account' });
+        setSubmitting(false);
+        if (ok) setPhase('done');
+      }}
+      className="flex items-center gap-2 shrink-0"
+    >
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder={t('account.intentEmailPlaceholder')}
+        aria-label={t('account.intentEmailPlaceholder')}
+        className="w-40 sm:w-48 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-200"
+      />
+      <button
+        type="submit"
+        disabled={submitting}
+        className="px-3 py-1.5 rounded-full text-[13px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+      >
+        {t('account.intentSubmit')}
+      </button>
+    </form>
   );
 }
 

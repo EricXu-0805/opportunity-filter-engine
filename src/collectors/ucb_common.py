@@ -81,6 +81,10 @@ NOISE_EMAILS = frozenset({
     # without this, faculty whose personal address is non-Berkeley would resolve
     # to it (the extractor prefers a berkeley.edu address).
     "frontoffice@math.berkeley.edu",
+    # Physics lists its department admin mailbox as a second mailto on every
+    # profile; without this, faculty whose personal address is non-Berkeley
+    # (e.g. an @lbl.gov address) would resolve to it.
+    "physics_admin@berkeley.edu",
 })
 
 # Department directories mix retired faculty into the same card list; they are
@@ -116,6 +120,11 @@ KEYWORD_BANK = [
     "infrastructure", "climate", "sustainability", "fluid mechanics",
     "computational mechanics", "structural health monitoring",
     "energy systems",
+    "fluid dynamics", "wave mechanics", "ocean engineering", "thermodynamics",
+    "heat transfer", "combustion", "manufacturing", "additive manufacturing",
+    "microfabrication", "nanomanufacturing", "biomechanics", "mechatronics",
+    "vibration", "acoustics", "tribology", "energy efficiency", "mems",
+    "dynamics and control",
 ]
 
 SKILL_MAP = {
