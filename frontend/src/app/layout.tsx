@@ -5,6 +5,7 @@ import BackendWaker from '@/components/BackendWaker';
 import GuestBanner from '@/components/GuestBanner';
 import Header from '@/components/Header';
 import { AuthModalProvider } from '@/lib/auth-modal-context';
+import { SITE_URL } from '@/lib/site';
 import { getServerLocale, getServerT } from '@/i18n/server';
 import { LanguageProvider } from '@/i18n/client';
 import './globals.css';
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
   },
   description:
     'AI-powered matching engine connecting UIUC undergraduates with 1,700+ research positions, internships, and summer programs that actually fit their background.',
-  metadataBase: new URL('https://opportunity-filter-engine.vercel.app'),
+  metadataBase: new URL(SITE_URL),
   applicationName: 'OpportunityEngine',
   authors: [{ name: 'Eric Xu', url: 'https://github.com/EricXu-0805' }],
   keywords: [
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     alternateLocale: 'zh_CN',
-    url: 'https://opportunity-filter-engine.vercel.app',
+    url: SITE_URL,
   },
   twitter: {
     card: 'summary_large_image',
@@ -53,10 +54,10 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   alternates: {
-    canonical: 'https://opportunity-filter-engine.vercel.app',
+    canonical: SITE_URL,
     languages: {
-      'en': 'https://opportunity-filter-engine.vercel.app?lang=en',
-      'zh': 'https://opportunity-filter-engine.vercel.app?lang=zh',
+      'en': `${SITE_URL}?lang=en`,
+      'zh': `${SITE_URL}?lang=zh`,
     },
   },
 };
