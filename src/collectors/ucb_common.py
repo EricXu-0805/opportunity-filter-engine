@@ -129,6 +129,9 @@ KEYWORD_BANK = [
     "nuclear fuel", "radioactive waste", "fission", "fusion", "neutron detection",
     "radiation detection", "isotopes", "radiochemistry", "nuclear security",
     "nonproliferation", "molten salt reactors", "nuclear materials",
+    "operations research", "game theory", "integer programming", "supply chain",
+    "logistics", "queueing", "scheduling", "revenue management", "inventory",
+    "healthcare systems",
 ]
 
 SKILL_MAP = {
