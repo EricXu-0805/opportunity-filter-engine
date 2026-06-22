@@ -20,7 +20,32 @@ from bs4 import BeautifulSoup
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.collectors.ucb_common import dedup_by_profile_url, normalize_faculty
-from src.collectors.ucb_mcb_faculty import MCB_CONFIG, _scrape_mcb_faculty_list
+from src.collectors.ucb_mcb_faculty import (
+    MCB_CONFIG,
+    _name_key,
+    _scrape_directory_emails,
+    _scrape_mcb_faculty_list,
+)
+
+# The directory table page: Name/Phone/Email/Office, with separate Faculty,
+# Lecturers, and Emeriti sections. Emails come from here, joined by name.
+DIRECTORY_HTML = """
+<div class="region region-content">
+  <h2>Faculty</h2>
+  <table>
+    <tr><th>Name</th><th>Phone</th><th>Email</th><th>Office</th></tr>
+    <tr><td><a href="/directory/search/detail/1/"><strong>Hillel Adesnik</strong></a><br/>Associate Professor</td>
+        <td>(510) 642-2107</td><td><a href="mailto:hadesnik@berkeley.edu">hadesnik@berkeley.edu</a></td><td>201 Weill</td></tr>
+    <tr><td><a href="/directory/search/detail/2/"><strong>Jennifer A. Doudna</strong></a><br/>Professor</td>
+        <td></td><td><a href="mailto:doudna@berkeley.edu">doudna@berkeley.edu</a></td><td>708 Stanley</td></tr>
+  </table>
+  <h2>Emeriti</h2>
+  <table>
+    <tr><td><a href="/directory/search/detail/9/"><strong>Old Timer</strong></a></td>
+        <td></td><td><a href="mailto:oldtimer@berkeley.edu">oldtimer@berkeley.edu</a></td><td>1 Hall</td></tr>
+  </table>
+</div>
+"""
 
 # Two active faculty + one emeritus (dropped at normalize) + a division-nav
 # link (must NOT be parsed as a person).
@@ -110,6 +135,29 @@ def test_lite_output_shape_no_email():
     assert opp["on_campus"] is False
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["eligibility"]["work_auth_notes"] == MCB_CONFIG["work_auth_notes"]
+
+
+def test_directory_emails_parsed_and_emeriti_section_skipped():
+    soup = BeautifulSoup(DIRECTORY_HTML, "html.parser")
+    emails = _scrape_directory_emails(soup)
+    assert emails[("hillel", "adesnik")] == "hadesnik@berkeley.edu"
+    assert emails[("jennifer", "doudna")] == "doudna@berkeley.edu"
+    # The Emeriti table is skipped.
+    assert ("old", "timer") not in emails
+
+
+def test_name_key_tolerates_middle_initial():
+    # research page "Jennifer A. Doudna" must join the directory "Jennifer Doudna".
+    assert _name_key("Jennifer A. Doudna") == _name_key("Jennifer Doudna")
+
+
+def test_email_joined_by_name_into_record():
+    person = next(p for p in _scrape() if p["name"] == "Jennifer A. Doudna")
+    emails = _scrape_directory_emails(BeautifulSoup(DIRECTORY_HTML, "html.parser"))
+    person["email"] = emails.get(_name_key(person["name"]))
+    opp = normalize_faculty(person, MCB_CONFIG)
+    assert opp["contact_email"] == "doudna@berkeley.edu"
+    assert opp["metadata"]["confidence_score"] == 0.7
 
 
 def test_known_record_id_is_byte_stable():
