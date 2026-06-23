@@ -137,6 +137,9 @@ KEYWORD_BANK = [
     "evolutionary biology", "ecology", "plant-microbe interactions",
     "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
     "plant genetics", "plant pathology", "crop science",
+    "nutrition", "nutritional science", "metabolism", "metabolic biology",
+    "toxicology", "obesity", "diabetes", "endocrinology", "physiology",
+    "gut microbiome", "aging", "stem cells", "biochemistry",
 ]
 
 SKILL_MAP = {
