@@ -129,6 +129,10 @@ KEYWORD_BANK = [
     "nuclear fuel", "radioactive waste", "fission", "fusion", "neutron detection",
     "radiation detection", "isotopes", "radiochemistry", "nuclear security",
     "nonproliferation", "molten salt reactors", "nuclear materials",
+    "astronomy", "astrophysics", "cosmology", "exoplanets", "galaxies",
+    "star formation", "black holes", "stellar astrophysics",
+    "observational astronomy", "radio astronomy", "interstellar medium",
+    "planetary science",
 ]
 
 SKILL_MAP = {
