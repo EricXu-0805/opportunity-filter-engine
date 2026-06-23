@@ -132,6 +132,10 @@ KEYWORD_BANK = [
     "operations research", "game theory", "integer programming", "supply chain",
     "logistics", "queueing", "scheduling", "revenue management", "inventory",
     "healthcare systems",
+    "plant biology", "microbiology", "genetics", "evolution",
+    "evolutionary biology", "ecology", "plant-microbe interactions",
+    "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
+    "plant genetics", "plant pathology", "crop science",
 ]
 
 SKILL_MAP = {
