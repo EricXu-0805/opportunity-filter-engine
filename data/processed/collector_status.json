@@ -1,45 +1,47 @@
 {
-  "duration_seconds": 2964.8,
+  "duration_seconds": 4360.7,
   "sources": {
     "deactivate_past": {
-      "already_inactive": 229,
-      "kept_active": 7,
-      "newly_deactivated": 427,
-      "skipped_rolling": 2873,
+      "already_inactive": 253,
+      "kept_active": 5,
+      "newly_deactivated": 407,
+      "skipped_rolling": 3743,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 1839,
-      "newly_deactivated": 152,
-      "skipped_partial_scrape": [],
+      "kept_fresh": 316,
+      "newly_deactivated": 0,
+      "skipped_partial_scrape": [
+        "uiuc_faculty"
+      ],
       "status": "ok"
     },
     "nsf_reu": {
-      "fetched": 427,
-      "new": 8,
+      "fetched": 407,
+      "new": 4,
       "status": "ok",
-      "updated": 419
+      "updated": 403
     },
     "pi_enricher": {
-      "already_had": 2795,
-      "enriched": 427,
-      "renulled_shared_emails": 15,
-      "scraped": 446,
+      "already_had": 2927,
+      "enriched": 275,
+      "renulled_shared_emails": 0,
+      "scraped": 309,
       "status": "ok"
     },
     "school_audience": {
       "by_source": {
         "handshake": 71,
         "manual": 33,
-        "nsf_reu": 581,
-        "simplify_internships": 2039,
+        "nsf_reu": 585,
+        "simplify_internships": 2079,
         "ucb_cee_faculty": 63,
         "ucb_chem_faculty": 52,
-        "ucb_eecs_faculty": 153,
+        "ucb_eecs_faculty": 154,
         "ucb_stat_faculty": 47,
         "ucb_urap": 1,
         "uiuc_drp": 2,
-        "uiuc_faculty": 2005,
+        "uiuc_faculty": 1995,
         "uiuc_other": 7,
         "uiuc_our_rss": 26,
         "uiuc_siebel": 14,
@@ -48,14 +50,38 @@
         "uiuc_ursa": 1
       },
       "status": "ok",
-      "tagged": 5375
+      "tagged": 5410
     },
     "simplify_internships": {
-      "deactivated_stale": 103,
-      "fetched": 1330,
-      "new": 130,
+      "deactivated_stale": 98,
+      "fetched": 1283,
+      "new": 40,
       "status": "ok",
-      "updated": 1200
+      "updated": 1243
+    },
+    "ucb_cee_faculty": {
+      "fetched": 64,
+      "new": 0,
+      "status": "ok",
+      "updated": 63
+    },
+    "ucb_chem_faculty": {
+      "fetched": 52,
+      "new": 0,
+      "status": "ok",
+      "updated": 52
+    },
+    "ucb_eecs_faculty": {
+      "fetched": 153,
+      "new": 1,
+      "status": "ok",
+      "updated": 152
+    },
+    "ucb_stat_faculty": {
+      "fetched": 55,
+      "new": 0,
+      "status": "ok",
+      "updated": 45
     },
     "ucb_urap": {
       "fetched": 1,
@@ -70,17 +96,17 @@
       "updated": 1
     },
     "uiuc_faculty": {
-      "enriched": false,
-      "fetched": 2178,
-      "new": 160,
+      "enriched": true,
+      "fetched": 1070,
+      "new": 77,
       "status": "ok",
-      "updated": 2018
+      "updated": 993
     },
     "uiuc_other": {
       "fetched": 7,
       "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 1
     },
     "uiuc_our_rss": {
       "fetched": 25,
@@ -89,13 +115,13 @@
       "updated": 25
     },
     "uiuc_siebel": {
-      "fetched": 14,
+      "fetched": 10,
       "new": 0,
       "status": "ok",
       "updated": 0
     },
     "uiuc_sro": {
-      "deep": false,
+      "deep": true,
       "fetched": 278,
       "new": 0,
       "status": "ok",
@@ -114,8 +140,8 @@
       "updated": 0
     }
   },
-  "timestamp": "2026-06-18T10:07:55.651891",
-  "total_in_file": 5375,
-  "total_new": 298,
-  "total_updated": 3941
+  "timestamp": "2026-06-22T12:21:02.674206",
+  "total_in_file": 5410,
+  "total_new": 122,
+  "total_updated": 3256
 }

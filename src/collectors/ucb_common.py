@@ -133,6 +133,10 @@ KEYWORD_BANK = [
     "immunology", "genetics", "structural biology", "microbiology", "virology",
     "developmental biology", "gene expression", "crispr", "stem cells",
     "cancer biology", "systems biology", "rna biology", "gene regulation",
+    "plant biology", "microbiology", "genetics", "evolution",
+    "evolutionary biology", "ecology", "plant-microbe interactions",
+    "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
+    "plant genetics", "plant pathology", "crop science",
 ]
 
 SKILL_MAP = {
