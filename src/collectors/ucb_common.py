@@ -129,6 +129,10 @@ KEYWORD_BANK = [
     "nuclear fuel", "radioactive waste", "fission", "fusion", "neutron detection",
     "radiation detection", "isotopes", "radiochemistry", "nuclear security",
     "nonproliferation", "molten salt reactors", "nuclear materials",
+    "molecular biology", "cell biology", "biochemistry", "biophysics",
+    "immunology", "genetics", "structural biology", "microbiology", "virology",
+    "developmental biology", "gene expression", "crispr", "stem cells",
+    "cancer biology", "systems biology", "rna biology", "gene regulation",
     "earth science", "geology", "geophysics", "geochemistry", "seismology",
     "mineralogy", "paleontology", "stratigraphy", "tectonics",
     "planetary science", "oceanography", "climate science", "volcanology",
@@ -141,6 +145,9 @@ KEYWORD_BANK = [
     "environmental policy", "wildlife biology", "natural resources",
     "fire ecology", "biodiversity", "environmental economics", "agroecology",
     "soil science", "restoration ecology", "pest management",
+    "nutrition", "nutritional science", "metabolism", "metabolic biology",
+    "toxicology", "obesity", "diabetes", "endocrinology", "physiology",
+    "gut microbiome", "aging", "stem cells", "biochemistry",
 ]
 
 SKILL_MAP = {
