@@ -129,6 +129,10 @@ KEYWORD_BANK = [
     "nuclear fuel", "radioactive waste", "fission", "fusion", "neutron detection",
     "radiation detection", "isotopes", "radiochemistry", "nuclear security",
     "nonproliferation", "molten salt reactors", "nuclear materials",
+    "earth science", "geology", "geophysics", "geochemistry", "seismology",
+    "mineralogy", "paleontology", "stratigraphy", "tectonics",
+    "planetary science", "oceanography", "climate science", "volcanology",
+    "geobiology", "geomorphology",
 ]
 
 SKILL_MAP = {
