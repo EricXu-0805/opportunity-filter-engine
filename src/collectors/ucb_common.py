@@ -129,6 +129,10 @@ KEYWORD_BANK = [
     "nuclear fuel", "radioactive waste", "fission", "fusion", "neutron detection",
     "radiation detection", "isotopes", "radiochemistry", "nuclear security",
     "nonproliferation", "molten salt reactors", "nuclear materials",
+    "plant biology", "microbiology", "genetics", "evolution",
+    "evolutionary biology", "ecology", "plant-microbe interactions",
+    "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
+    "plant genetics", "plant pathology", "crop science",
 ]
 
 SKILL_MAP = {
