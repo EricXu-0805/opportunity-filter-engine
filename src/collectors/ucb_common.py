@@ -147,6 +147,10 @@ KEYWORD_BANK = [
     "nutrition", "nutritional science", "metabolism", "metabolic biology",
     "toxicology", "obesity", "diabetes", "endocrinology", "physiology",
     "gut microbiome", "aging", "stem cells", "biochemistry",
+    "economics", "microeconomics", "macroeconomics", "industrial organization",
+    "labor economics", "development economics", "behavioral economics",
+    "public economics", "international economics", "economic theory", "finance",
+    "antitrust", "welfare economics", "auctions", "market design",
 ]
 
 SKILL_MAP = {
