@@ -147,6 +147,10 @@ KEYWORD_BANK = [
     "nutrition", "nutritional science", "metabolism", "metabolic biology",
     "toxicology", "obesity", "diabetes", "endocrinology", "physiology",
     "gut microbiome", "aging", "stem cells", "biochemistry",
+    "psychology", "cognitive psychology", "clinical psychology",
+    "social psychology", "developmental psychology", "cognitive neuroscience",
+    "perception", "attention", "memory", "emotion regulation",
+    "behavioral science", "psychopathology", "personality",
 ]
 
 SKILL_MAP = {
