@@ -132,6 +132,10 @@ KEYWORD_BANK = [
     "operations research", "game theory", "integer programming", "supply chain",
     "logistics", "queueing", "scheduling", "revenue management", "inventory",
     "healthcare systems",
+    "molecular biology", "cell biology", "biochemistry", "biophysics",
+    "immunology", "genetics", "structural biology", "microbiology", "virology",
+    "developmental biology", "gene expression", "crispr", "stem cells",
+    "cancer biology", "systems biology", "rna biology", "gene regulation",
     "earth science", "geology", "geophysics", "geochemistry", "seismology",
     "mineralogy", "paleontology", "stratigraphy", "tectonics",
     "planetary science", "oceanography", "climate science", "volcanology",
@@ -140,6 +144,9 @@ KEYWORD_BANK = [
     "evolutionary biology", "ecology", "plant-microbe interactions",
     "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
     "plant genetics", "plant pathology", "crop science",
+    "nutrition", "nutritional science", "metabolism", "metabolic biology",
+    "toxicology", "obesity", "diabetes", "endocrinology", "physiology",
+    "gut microbiome", "aging", "stem cells", "biochemistry",
 ]
 
 SKILL_MAP = {
