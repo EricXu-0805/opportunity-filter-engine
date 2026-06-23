@@ -133,10 +133,17 @@ KEYWORD_BANK = [
     "star formation", "black holes", "stellar astrophysics",
     "observational astronomy", "radio astronomy", "interstellar medium",
     "planetary science",
+    "earth science", "geology", "geophysics", "geochemistry", "seismology",
+    "mineralogy", "paleontology", "stratigraphy", "tectonics",
+    "planetary science", "oceanography", "climate science", "volcanology",
+    "geobiology", "geomorphology",
     "plant biology", "microbiology", "genetics", "evolution",
     "evolutionary biology", "ecology", "plant-microbe interactions",
     "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
     "plant genetics", "plant pathology", "crop science",
+    "nutrition", "nutritional science", "metabolism", "metabolic biology",
+    "toxicology", "obesity", "diabetes", "endocrinology", "physiology",
+    "gut microbiome", "aging", "stem cells", "biochemistry",
 ]
 
 SKILL_MAP = {
