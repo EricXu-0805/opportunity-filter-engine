@@ -137,6 +137,10 @@ KEYWORD_BANK = [
     "evolutionary biology", "ecology", "plant-microbe interactions",
     "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
     "plant genetics", "plant pathology", "crop science",
+    "environmental science", "conservation biology", "forestry", "entomology",
+    "environmental policy", "wildlife biology", "natural resources",
+    "fire ecology", "biodiversity", "environmental economics", "agroecology",
+    "soil science", "restoration ecology", "pest management",
 ]
 
 SKILL_MAP = {
