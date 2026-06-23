@@ -13,10 +13,11 @@ IEOR profile page renders the same footer/admin addresses (e.g.
 ieor-student-services@berkeley.edu) in its markup, so the shared
 extract_email_from_profile's page-wide scan would attach a wrong address to any
 professor who lists none. A real faculty email here appears only as a mailto:
-link, so this collector reads email from mailto ONLY. Research interests, when
-present, live in a `div.group-faculty-research` field (recovered via the shared
-selector-driven extractor). Both signals are sparse, so most records ship
-"lite" (contact_email=None, confidence_score=0.5, broad department keyword).
+link or an "(at)"-obfuscated address, so this collector reads email from those
+ONLY. Research interests live in a Beaver Builder "Research" accordion present
+on every profile (with the older `div.group-faculty-research` field as a
+fallback). Records with no email found ship "lite" (contact_email=None,
+confidence_score=0.5, broad department keyword).
 
 Directory: https://ieor.berkeley.edu/people/faculty/
 
@@ -90,11 +91,32 @@ IEOR_CONFIG = {
     "keywords": ["operations research"],
     "work_auth_notes": "External campus (UC Berkeley) — work "
                        "authorization depends on the arrangement",
-    # Only the profile research field; email is handled mailto-only below.
+    # Fallback research field (older profiles); the "Research" accordion below
+    # is the primary, present-on-every-profile source.
     "selectors": {
         "research_interests": ["div.group-faculty-research"],
     },
 }
+
+
+def _research_from_profile(soup: BeautifulSoup, config: dict) -> str:
+    """Recover research interests from the profile.
+
+    Every IEOR profile carries a Beaver Builder "Research" accordion (distinct
+    from the "Publications" one); its content panel is the primary source. Falls
+    back to the older `div.group-faculty-research` field. A leading
+    "Research Areas:" label, when present, is stripped.
+    """
+    for button in soup.select("a.fl-accordion-button-label, .fl-accordion-button"):
+        label = button.get_text(" ", strip=True)
+        if re.search(r"\bResearch\b", label, re.IGNORECASE) and "Publication" not in label:
+            item = button.find_parent(class_=re.compile("fl-accordion-item"))
+            content = item.select_one(".fl-accordion-content") if item else None
+            if content:
+                text = content.get_text(" ", strip=True)
+                return re.sub(r"^\s*Research Areas?\s*:?\s*", "", text, flags=re.IGNORECASE)
+            break
+    return extract_research_interests(soup, config)
 
 
 def _scrape_ieor_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
@@ -151,9 +173,9 @@ def _enrich_ieor_profiles(faculty: list[dict], config: dict) -> list[dict]:
             if email:
                 person["email"] = email
                 found += 1
-            interests = extract_research_interests(soup, config)
+            interests = _research_from_profile(soup, config)
             if interests:
-                person["research_areas"] = interests
+                person["research_areas"] = interests[:600]
                 with_interests += 1
         if i < total - 1:
             time.sleep(PROFILE_DELAY)

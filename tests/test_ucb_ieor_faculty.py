@@ -4,8 +4,9 @@ No network: fixtures mirror IEOR's real markup — a Beaver Builder callout grid
 where each professor is a div.fl-callout with name + profile link in
 h2.fl-callout-title a and rank in div.fl-callout-text. Email appears only as a
 mailto: link (the page also carries footer/admin addresses that must NOT be
-picked up); research, when present, is in a div.group-faculty-research field.
-Locks in the bespoke parser, mailto-only + footer-safe email extraction,
+picked up); research lives in a "Research" accordion on every profile (with an
+older div.group-faculty-research field as fallback). Locks in the bespoke
+parser, mailto + (at)-obfuscated + footer-safe email extraction, accordion
 research extraction, the no-signal fallback, dedup, output shape, and id
 stability.
 """
@@ -24,8 +25,51 @@ from src.collectors.ucb_ieor_faculty import (
     IEOR_CONFIG,
     _email_from_profile,
     _enrich_ieor_profiles,
+    _research_from_profile,
     _scrape_ieor_faculty_list,
 )
+
+# Every IEOR profile has a "Research" accordion (distinct from "Publications");
+# a "Research Areas:" label, when present, must be stripped. An older
+# div.group-faculty-research field is the fallback when no accordion is present.
+PROFILE_RESEARCH_ACCORDION = """
+<div class="fl-page">
+  <div class="fl-accordion-item">
+    <a class="fl-accordion-button-label">Research</a>
+    <div class="fl-accordion-content"><p>Research Areas: Integer optimization, logistics, power systems</p></div>
+  </div>
+  <div class="fl-accordion-item">
+    <a class="fl-accordion-button-label">Publications</a>
+    <div class="fl-accordion-content"><p>Too many to list</p></div>
+  </div>
+</div>
+"""
+PROFILE_RESEARCH_FALLBACK = """
+<div class="fl-page"><div class="group-faculty-research">Mathematical Programming Game Theory</div></div>
+"""
+
+
+def test_research_extracted_from_accordion_and_label_stripped():
+    soup = BeautifulSoup(PROFILE_RESEARCH_ACCORDION, "html.parser")
+    research = _research_from_profile(soup, IEOR_CONFIG)
+    assert research.startswith("Integer optimization")  # "Research Areas:" stripped
+    assert "logistics" in research.lower()
+    assert "Too many to list" not in research  # not the Publications panel
+
+
+def test_research_falls_back_to_group_field():
+    soup = BeautifulSoup(PROFILE_RESEARCH_FALLBACK, "html.parser")
+    research = _research_from_profile(soup, IEOR_CONFIG)
+    assert "Mathematical Programming" in research
+
+
+def test_accordion_research_yields_topical_keywords():
+    person = {"name": "Test", "url": "x", "title": "Professor",
+              "research_areas": "Integer optimization, logistics, supply chain, game theory"}
+    opp = normalize_faculty(person, IEOR_CONFIG)
+    for kw in ("optimization", "logistics", "supply chain", "game theory"):
+        assert kw in opp["keywords"], kw
+    assert "operations research" not in opp["keywords"]  # not the broad fallback
 
 
 def _callout(slug: str, name: str, title_html: str, has_link: bool = True) -> str:
