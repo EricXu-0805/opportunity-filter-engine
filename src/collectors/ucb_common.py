@@ -159,6 +159,10 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "political science", "international relations", "comparative politics",
+    "political economy", "political theory", "american politics",
+    "public policy", "political behavior", "democracy", "elections",
+    "formal theory", "international political economy", "political methodology",
 ]
 
 SKILL_MAP = {
