@@ -159,6 +159,12 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "architectural design", "urban design", "sustainable design",
+    "computational design", "design computation", "digital fabrication",
+    "building technology", "building science", "building performance",
+    "historic preservation", "architectural history", "housing", "urbanism",
+    "environmental design", "materials research", "landscape architecture",
+    "city planning", "urban planning",
 ]
 
 SKILL_MAP = {
