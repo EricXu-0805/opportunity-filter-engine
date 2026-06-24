@@ -38,7 +38,7 @@ describe('OnboardingIntro', () => {
     expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull();
   });
 
-  it('keeps Skip available on every slide and reveals Back only after the first', async () => {
+  it('keeps Skip available through the feature slides and reveals Back only after the first', async () => {
     render(<OnboardingIntro />);
     await waitFor(() => screen.getByTestId('onboarding-skip'));
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
@@ -51,10 +51,10 @@ describe('OnboardingIntro', () => {
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
   });
 
-  it('pages through to the end and completes via "Try it" (marks seen + tracks)', async () => {
+  it('pages through to the end and completes via the school gate (default UIUC: seen + tracked + persisted)', async () => {
     const { container } = render(<OnboardingIntro />);
     await waitFor(() => screen.getByTestId('onboarding-primary'));
-    // Advance to the last slide, then one more click completes the tour.
+    // Advance to the final (school) slide, then one more click confirms the default.
     for (let k = 0; k < SLIDE_COUNT; k += 1) {
       fireEvent.click(screen.getByTestId('onboarding-primary'));
     }
@@ -62,17 +62,29 @@ describe('OnboardingIntro', () => {
       expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull(),
     );
     expect(localStorage.getItem('ofe_onboarding_seen')).toBe('1');
-    expect(mockTrack).toHaveBeenCalledWith('onboarding_completed');
+    expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'uiuc' });
+    expect(JSON.parse(localStorage.getItem('ofe_profile') ?? '{}').home_school).toBe('uiuc');
   });
 
-  it('Skip on the first slide marks seen and closes without tracking completion', async () => {
+  it('Skip routes to the forced school gate (does not close until a campus is confirmed)', async () => {
     const { container } = render(<OnboardingIntro />);
     await waitFor(() => screen.getByTestId('onboarding-skip'));
+
+    // Skip jumps straight to the gate rather than dismissing.
     fireEvent.click(screen.getByTestId('onboarding-skip'));
+    expect(screen.getByTestId('onboarding-school-list')).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="onboarding-intro"]')).not.toBeNull();
+    expect(screen.queryByTestId('onboarding-skip')).toBeNull();
+    expect(mockTrack).not.toHaveBeenCalled();
+
+    // Pick a non-default campus, then confirm.
+    fireEvent.click(screen.getByTestId('onboarding-school-ucb'));
+    fireEvent.click(screen.getByTestId('onboarding-primary'));
     await waitFor(() =>
       expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull(),
     );
     expect(localStorage.getItem('ofe_onboarding_seen')).toBe('1');
-    expect(mockTrack).not.toHaveBeenCalled();
+    expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'ucb' });
+    expect(JSON.parse(localStorage.getItem('ofe_profile') ?? '{}').home_school).toBe('ucb');
   });
 });
