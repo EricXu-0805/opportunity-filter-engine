@@ -159,6 +159,12 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "investigative journalism", "data journalism", "computational journalism",
+    "documentary film", "documentary", "photojournalism",
+    "narrative nonfiction", "science journalism", "environmental journalism",
+    "health journalism", "broadcast journalism", "political reporting",
+    "media studies", "press freedom", "audio storytelling",
+    "visual journalism", "magazine journalism", "digital media",
 ]
 
 SKILL_MAP = {
