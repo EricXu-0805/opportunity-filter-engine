@@ -85,6 +85,9 @@ NOISE_EMAILS = frozenset({
     # profile; without this, faculty whose personal address is non-Berkeley
     # (e.g. an @lbl.gov address) would resolve to it.
     "physics_admin@berkeley.edu",
+    # History (and its cross-listed area-studies depts) list a department
+    # mailbox as a second mailto on every profile; the personal address is first.
+    "history@berkeley.edu",
 })
 
 # Department directories mix retired faculty into the same card list; they are
@@ -159,6 +162,14 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "history of science", "early modern europe", "late modern europe",
+    "modern europe", "medieval", "byzantine", "ancient greece",
+    "ancient history", "east asia", "south asia", "southeast asia",
+    "middle east", "north america", "latin america", "africa",
+    "environmental history", "intellectual history", "cultural history",
+    "social history", "economic history", "political history",
+    "gender history", "jewish history", "history of capitalism",
+    "colonialism", "empire", "migration",
 ]
 
 SKILL_MAP = {
