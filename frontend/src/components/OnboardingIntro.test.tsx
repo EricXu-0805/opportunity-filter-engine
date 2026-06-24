@@ -1,7 +1,7 @@
 /*
- * OnboardingIntro: first-visit gate (localStorage) + CTA/skip dismissal.
- * analytics is mocked; i18n returns the key verbatim. localStorage is real in
- * jsdom and cleared between tests.
+ * OnboardingIntro: 8-slide product tour. First-visit gate (localStorage),
+ * Back/Next paging, and "Try it" completion. analytics is mocked; i18n returns
+ * the key verbatim. localStorage is real in jsdom and cleared between tests.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,8 @@ vi.mock('@/lib/analytics', () => ({ track: (...args: unknown[]) => mockTrack(...
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
 
 import OnboardingIntro from './OnboardingIntro';
+
+const SLIDE_COUNT = 8;
 
 beforeEach(() => {
   localStorage.clear();
@@ -36,10 +38,23 @@ describe('OnboardingIntro', () => {
     expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull();
   });
 
-  it('CTA marks seen, tracks completion, and closes', async () => {
+  it('starts on the first slide with Skip, and reveals Back after advancing', async () => {
+    render(<OnboardingIntro />);
+    await waitFor(() => screen.getByTestId('onboarding-skip'));
+    expect(screen.queryByTestId('onboarding-back')).toBeNull();
+    fireEvent.click(screen.getByTestId('onboarding-primary'));
+    expect(screen.getByTestId('onboarding-back')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('onboarding-back'));
+    expect(screen.getByTestId('onboarding-skip')).toBeInTheDocument();
+  });
+
+  it('pages through to the end and completes via "Try it" (marks seen + tracks)', async () => {
     const { container } = render(<OnboardingIntro />);
-    await waitFor(() => screen.getByTestId('onboarding-cta'));
-    fireEvent.click(screen.getByTestId('onboarding-cta'));
+    await waitFor(() => screen.getByTestId('onboarding-primary'));
+    // Advance to the last slide, then one more click completes the tour.
+    for (let k = 0; k < SLIDE_COUNT; k += 1) {
+      fireEvent.click(screen.getByTestId('onboarding-primary'));
+    }
     await waitFor(() =>
       expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull(),
     );
@@ -47,10 +62,10 @@ describe('OnboardingIntro', () => {
     expect(mockTrack).toHaveBeenCalledWith('onboarding_completed');
   });
 
-  it('Skip marks seen and closes without tracking completion', async () => {
+  it('Skip on the first slide marks seen and closes without tracking completion', async () => {
     const { container } = render(<OnboardingIntro />);
-    await waitFor(() => screen.getByText('onboarding.skip'));
-    fireEvent.click(screen.getByText('onboarding.skip'));
+    await waitFor(() => screen.getByTestId('onboarding-skip'));
+    fireEvent.click(screen.getByTestId('onboarding-skip'));
     await waitFor(() =>
       expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull(),
     );
