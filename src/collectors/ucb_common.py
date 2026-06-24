@@ -159,6 +159,13 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "urban planning", "city planning", "regional planning",
+    "transportation planning", "land use", "urban design", "urbanism",
+    "housing", "community development", "economic development",
+    "environmental planning", "spatial analysis", "public transportation",
+    "urban economics", "real estate development", "climate adaptation",
+    "sustainable development", "urban policy", "geographic information systems",
+    "landscape architecture",
 ]
 
 SKILL_MAP = {
