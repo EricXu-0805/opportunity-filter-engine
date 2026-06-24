@@ -159,6 +159,10 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "anthropology", "archaeology", "biological anthropology",
+    "sociocultural anthropology", "medical anthropology",
+    "linguistic anthropology", "cultural anthropology", "ethnography",
+    "folklore", "bioarchaeology", "paleoanthropology",
 ]
 
 SKILL_MAP = {
