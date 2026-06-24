@@ -159,6 +159,13 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "social work", "social welfare", "social policy", "child welfare",
+    "family policy", "welfare policy", "poverty", "child poverty",
+    "homelessness", "foster care", "child abuse", "gerontology",
+    "mental health", "substance use", "trauma", "social services",
+    "racial equity", "health disparities", "community mental health",
+    "behavioral health", "social determinants of health", "immigrant families",
+    "aging and health", "youth development",
 ]
 
 SKILL_MAP = {
