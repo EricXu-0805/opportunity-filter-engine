@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'JoinALab — AI-powered UIUC research & internship matching';
+export const alt = 'JoinALab — AI-powered research & internship matching';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -84,7 +84,7 @@ export default async function OGImage() {
             lineHeight: 1.4,
           }}
         >
-          AI-powered matching for 1,700+ UIUC opportunities · built by students, for students
+          AI-powered matching for research, internships & fellowships · built by students, for students
         </p>
 
         <div
@@ -96,7 +96,7 @@ export default async function OGImage() {
             color: 'rgba(255,255,255,0.6)',
           }}
         >
-          <span>🎯 1,700+ opportunities</span>
+          <span>🎯 thousands of opportunities</span>
           <span>·</span>
           <span>🤖 AI smart match</span>
           <span>·</span>
