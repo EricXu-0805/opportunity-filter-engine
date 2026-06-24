@@ -1611,6 +1611,19 @@ export const en = {
     error: "Couldn't send. Please try again.",
     close: 'Close',
   },
+  onboarding: {
+    title: 'Welcome to JoinALab',
+    subtitle: 'Find research, labs, and internships that actually fit you — in three steps.',
+    step1Title: 'Tell us about you',
+    step1Body: 'Your major, year, skills, and interests — no account needed.',
+    step2Title: 'Get matched by AI',
+    step2Body: 'We rank thousands of positions by how well they fit you.',
+    step3Title: 'Reach out, ready to send',
+    step3Body: 'Tailored résumé lines and a draft email for every match.',
+    cta: 'Try it',
+    skip: 'Skip',
+    close: 'Close',
+  },
 } as const;
 
 export const zh = {
@@ -3214,6 +3227,19 @@ export const zh = {
     sending: '发送中…',
     thanks: '收到,谢谢你!🙏',
     error: '发送失败,请重试。',
+    close: '关闭',
+  },
+  onboarding: {
+    title: '欢迎来到 JoinALab',
+    subtitle: '三步,找到真正适合你的研究、实验室和实习。',
+    step1Title: '介绍一下你自己',
+    step1Body: '专业、年级、技能、兴趣 —— 无需注册。',
+    step2Title: 'AI 帮你匹配',
+    step2Body: '从上千个机会里,按契合度为你排序。',
+    step3Title: '一键准备好外联',
+    step3Body: '为每个匹配生成定制简历要点和外联邮件草稿。',
+    cta: '开始体验',
+    skip: '跳过',
     close: '关闭',
   },
 } as const;
