@@ -1,5 +1,5 @@
 self.addEventListener('push', (event) => {
-  let payload = { title: 'OpportunityEngine', body: 'Reminder', url: '/dashboard' };
+  let payload = { title: 'JoinALab', body: 'Reminder', url: '/dashboard' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (_) { /* malformed */ }

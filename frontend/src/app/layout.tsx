@@ -6,7 +6,7 @@ import GuestBanner from '@/components/GuestBanner';
 import Header from '@/components/Header';
 import { AuthModalProvider } from '@/lib/auth-modal-context';
 import { SITE_URL } from '@/lib/site';
-import { getServerLocale, getServerT } from '@/i18n/server';
+import { getServerLocale } from '@/i18n/server';
 import { LanguageProvider } from '@/i18n/client';
 import './globals.css';
 
@@ -18,13 +18,13 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'OpportunityEngine — UIUC Research & Internship Matching',
-    template: '%s · OpportunityEngine',
+    default: 'JoinALab — UIUC Research & Internship Matching',
+    template: '%s · JoinALab',
   },
   description:
     'AI-powered matching engine connecting UIUC undergraduates with 1,700+ research positions, internships, and summer programs that actually fit their background.',
   metadataBase: new URL(SITE_URL),
-  applicationName: 'OpportunityEngine',
+  applicationName: 'JoinALab',
   authors: [{ name: 'Eric Xu', url: 'https://github.com/EricXu-0805' }],
   keywords: [
     'UIUC research', 'UIUC internships', 'undergraduate research',
@@ -32,10 +32,10 @@ export const metadata: Metadata = {
     'Grainger Engineering', 'summer programs', 'AI opportunity matching',
   ],
   openGraph: {
-    title: 'OpportunityEngine — UIUC Research & Internship Matching',
+    title: 'JoinALab — UIUC Research & Internship Matching',
     description:
       'Find research and internship opportunities at UIUC that actually match your background. AI-powered, free, built by students.',
-    siteName: 'OpportunityEngine',
+    siteName: 'JoinALab',
     type: 'website',
     locale: 'en_US',
     alternateLocale: 'zh_CN',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'OpportunityEngine — UIUC Research Matching',
+    title: 'JoinALab — UIUC Research Matching',
     description:
       'AI-powered matching engine for 1,700+ UIUC research positions and internships.',
     creator: '@EricXu_0805',
@@ -68,10 +68,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const locale = await getServerLocale();
-  const t = await getServerT();
-  const skipLabel = t('common.appName') === 'OpportunityEngine' && locale === 'zh'
-    ? '跳到主要内容'
-    : 'Skip to main content';
+  const skipLabel = locale === 'zh' ? '跳到主要内容' : 'Skip to main content';
   const footerDisclaimer = locale === 'zh'
     ? '与 UIUC 无附属关系。独立学生项目。'
     : 'Not affiliated with UIUC. Independent student project.';
@@ -109,7 +106,7 @@ export default async function RootLayout({
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                   <p className="text-[12px] text-gray-400">
-                    © {new Date().getFullYear()} OpportunityEngine
+                    © {new Date().getFullYear()} JoinALab
                   </p>
                   <nav className="flex items-center gap-4">
                     <a href="/privacy" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">

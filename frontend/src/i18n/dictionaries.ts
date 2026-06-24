@@ -4,7 +4,7 @@ export const DEFAULT_LOCALE: Locale = 'en';
 
 export const en = {
   common: {
-    appName: 'OpportunityEngine',
+    appName: 'JoinALab',
     loading: 'Loading...',
     retry: 'Retry',
     back: 'Back',
@@ -66,7 +66,7 @@ export const en = {
     },
     modal: {
       signin: {
-        title: 'Sign in to OpportunityEngine',
+        title: 'Sign in to JoinALab',
         headline: 'Pick up where you left off,',
         headlineAccent: 'anywhere',
         subline: 'Sign in to sync your profile, favorites, and application progress across phone and laptop.',
@@ -132,7 +132,7 @@ export const en = {
       tryAgain: 'Request a new link',
       goHome: 'Go home',
       identityTakenTitle: 'That account already exists',
-      identityTakenBody: 'This Google or Microsoft account — or its email address — already has its own OpportunityEngine account, so it can\'t be attached to your guest session.',
+      identityTakenBody: 'This Google or Microsoft account — or its email address — already has its own JoinALab account, so it can\'t be attached to your guest session.',
       identityTakenHint: 'You can sign in to that existing account instead. Your current guest data stays on this device\'s guest session.',
       identityTakenCta: 'Sign in to that account instead',
     },
@@ -1099,7 +1099,7 @@ export const en = {
     rateLimit: 'Too many emails sent — try again in an hour.',
     sendFailed: 'Failed to send. Please try again.',
     privacyNote: 'We only use your email for this one message. No marketing, no account.',
-    subjectMatches: 'Your top {count} matches from OpportunityEngine',
+    subjectMatches: 'Your top {count} matches from JoinALab',
     subjectFavorites: 'Your {count} saved opportunities',
     restoreTitle: 'Restore on a new device',
     restoreSubtitle: 'Send yourself a link that reopens this profile elsewhere.',
@@ -1602,7 +1602,7 @@ export const en = {
 
 export const zh = {
   common: {
-    appName: 'OpportunityEngine',
+    appName: 'JoinALab',
     loading: '加载中...',
     retry: '重试',
     back: '返回',
@@ -1663,7 +1663,7 @@ export const zh = {
     },
     modal: {
       signin: {
-        title: '登录 OpportunityEngine',
+        title: '登录 JoinALab',
         headline: '在任何设备，',
         headlineAccent: '接着上次继续',
         subline: '登录后，你的资料、收藏与申请进度在手机、电脑间无缝同步。',
@@ -1729,7 +1729,7 @@ export const zh = {
       tryAgain: '重新申请链接',
       goHome: '返回首页',
       identityTakenTitle: '该账号已存在',
-      identityTakenBody: '这个 Google / Microsoft 账号（或其邮箱）已经有对应的 OpportunityEngine 账户，无法再挂到当前的游客会话上。',
+      identityTakenBody: '这个 Google / Microsoft 账号（或其邮箱）已经有对应的 JoinALab 账户，无法再挂到当前的游客会话上。',
       identityTakenHint: '你可以改为登录那个已有账户。当前的游客数据会留在这台设备的游客会话里。',
       identityTakenCta: '改为登录该账户',
     },
@@ -2691,7 +2691,7 @@ export const zh = {
     rateLimit: '发送过于频繁 —— 一小时后再试。',
     sendFailed: '发送失败，请重试。',
     privacyNote: '我们仅用你的邮箱发送这一封邮件。不做营销，不创建账号。',
-    subjectMatches: 'OpportunityEngine · 你的 {count} 条最佳匹配',
+    subjectMatches: 'JoinALab · 你的 {count} 条最佳匹配',
     subjectFavorites: '你的 {count} 个已保存机会',
     restoreTitle: '在新设备上恢复',
     restoreSubtitle: '发一个链接到邮箱，新设备点开即可恢复档案。',
