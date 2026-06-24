@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `${title} — JoinALab`,
-    description: description || `${opp.opportunity_type} opportunity at ${opp.organization ?? 'UIUC'}.`,
+    description: description || `${opp.opportunity_type} opportunity${opp.organization ? ` at ${opp.organization}` : ''}.`,
     keywords: keywords.length > 0 ? keywords : undefined,
     openGraph: {
       title,
@@ -63,7 +63,7 @@ export default async function OpportunityPage({ params }: PageProps) {
     employmentType: opp.opportunity_type === 'research' ? 'PART_TIME' : 'INTERN',
     hiringOrganization: {
       '@type': 'Organization',
-      name: opp.organization ?? 'University of Illinois Urbana-Champaign',
+      name: opp.organization ?? 'Host institution',
     },
     jobLocation: {
       '@type': 'Place',

@@ -161,7 +161,7 @@ export async function GET(
             color: '#64748b',
           }}
         >
-          <span>Find research &amp; internships at UIUC</span>
+          <span>Find research &amp; internships that fit you</span>
           {opp.deadline && <span>Deadline: {opp.deadline}</span>}
         </div>
       </div>

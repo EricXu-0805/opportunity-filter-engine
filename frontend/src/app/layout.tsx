@@ -20,23 +20,23 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'JoinALab — UIUC Research & Internship Matching',
+    default: 'JoinALab — Research & Internship Matching for Students',
     template: '%s · JoinALab',
   },
   description:
-    'AI-powered matching engine connecting UIUC undergraduates with 1,700+ research positions, internships, and summer programs that actually fit their background.',
+    'AI-powered matching that connects students with research positions, internships, and fellowships that actually fit their background — across a growing list of top universities.',
   metadataBase: new URL(SITE_URL),
   applicationName: 'JoinALab',
   authors: [{ name: 'Eric Xu', url: 'https://github.com/EricXu-0805' }],
   keywords: [
-    'UIUC research', 'UIUC internships', 'undergraduate research',
-    'REU', 'research matching', 'Illinois research opportunities',
-    'Grainger Engineering', 'summer programs', 'AI opportunity matching',
+    'research matching', 'undergraduate research', 'REU',
+    'internships', 'fellowships', 'summer programs',
+    'find a research lab', 'AI opportunity matching',
   ],
   openGraph: {
-    title: 'JoinALab — UIUC Research & Internship Matching',
+    title: 'JoinALab — Research & Internship Matching',
     description:
-      'Find research and internship opportunities at UIUC that actually match your background. AI-powered, free, built by students.',
+      'Find research and internship opportunities that actually match your background. AI-powered, free, built by students.',
     siteName: 'JoinALab',
     type: 'website',
     locale: 'en_US',
@@ -45,9 +45,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'JoinALab — UIUC Research Matching',
+    title: 'JoinALab — Research Matching',
     description:
-      'AI-powered matching engine for 1,700+ UIUC research positions and internships.',
+      'AI-powered matching for research positions, internships, and fellowships.',
     creator: '@EricXu_0805',
   },
   robots: {
@@ -72,8 +72,8 @@ export default async function RootLayout({
   const locale = await getServerLocale();
   const skipLabel = locale === 'zh' ? '跳到主要内容' : 'Skip to main content';
   const footerDisclaimer = locale === 'zh'
-    ? '与 UIUC 无附属关系。独立学生项目。'
-    : 'Not affiliated with UIUC. Independent student project.';
+    ? '与所列大学无附属关系。独立学生项目。'
+    : 'Not affiliated with any listed university. Independent student project.';
   const privacyLabel = locale === 'zh' ? '隐私政策' : 'Privacy Policy';
   const termsLabel = locale === 'zh' ? '服务条款' : 'Terms of Service';
 
