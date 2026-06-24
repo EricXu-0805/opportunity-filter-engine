@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     'How JoinALab collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'June 18, 2026';
+const EFFECTIVE_DATE = 'June 24, 2026';
 
 const CONTENT = `# Privacy Policy
 
@@ -59,13 +59,17 @@ To understand how the product is used and where it falls short, we record a smal
 
 We do **not** knowingly collect government identifiers, financial-account numbers, precise geolocation, health data, or biometric data.
 
+### 2.7 Feedback you send us
+
+If you use the in-app feedback widget to send a comment, bug report, or suggestion, we store the message text you submit — and the email address you optionally provide for a reply — tied to your anonymous identifier, in our database (Supabase, §5). We use it solely to read, understand, and act on your feedback; we do not sell it or use it for advertising. Please don't include sensitive personal information in a feedback message.
+
 ## 3. How we use your information
 
 - To **match** your profile to opportunities and explain why each matched.
 - To **draft application materials** (résumé tailoring, cold-email drafts) using AI, *at your request, per generation* — see §5 for the AI subprocessors involved.
 - To **save** your profile, favorites, tracking, and saved searches so they persist.
 - To **send** transactional emails you request (your matches/favorites, restore links) and, if you opt in, a recurring weekly email digest for a saved search.
-- To **understand and improve** the product — which steps you reach and where people drop off — via in-product analytics events, and to follow up if you register interest in paid help.
+- To **understand and improve** the product — which steps you reach and where people drop off — via in-product analytics events, to follow up if you register interest in paid help, and to read and act on any feedback you send us.
 - To **secure and operate** the service (rate limiting, abuse prevention, debugging).
 
 We do **not** sell your personal information, and we do **not** use it for third-party advertising.
@@ -83,7 +87,7 @@ We rely on the following service providers. We share only what each needs to per
 
 | Provider | Role | What it receives |
 |---|---|---|
-| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; and any "apply for me" interest you register (with the contact email you provide) |
+| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; any "apply for me" interest you register (with the contact email you provide); and feedback you submit (with the optional reply email) |
 | **Vercel** (US) | Frontend hosting | Standard request logs (IP, user-agent, path) |
 | **Render** (US) | Backend hosting | API request contents and server logs |
 | **AI language-model provider** — **OpenAI** and/or **Google (Gemini)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact chat models offered are operator-configurable. | Generating résumé drafts, cold-email drafts, match explanations, and opportunity Q&A | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
