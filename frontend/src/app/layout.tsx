@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import AuthModal from '@/components/AuthModal';
 import BackendWaker from '@/components/BackendWaker';
 import GuestBanner from '@/components/GuestBanner';
+import FeedbackWidget from '@/components/FeedbackWidget';
 import Header from '@/components/Header';
 import { AuthModalProvider } from '@/lib/auth-modal-context';
 import { SITE_URL } from '@/lib/site';
@@ -122,6 +123,9 @@ export default async function RootLayout({
                 </div>
               </div>
             </footer>
+
+            {/* Floating feedback affordance — always available, bottom-right. */}
+            <FeedbackWidget />
 
             {/* Single modal mount-point. Visible only when openModal()
                 is called from anywhere in the tree. */}

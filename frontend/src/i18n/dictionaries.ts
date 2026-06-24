@@ -1598,6 +1598,19 @@ export const en = {
     viewInFavorites: 'View in Saved',
     persistNote: 'Saved imports live in your browser only — clearing site data removes them. Use "Copy as JSON" for a more durable backup.',
   },
+  feedback: {
+    button: 'Feedback',
+    open: 'Open the feedback form',
+    title: 'Send feedback',
+    subtitle: 'A bug, an idea, anything you wish existed — we read every one.',
+    placeholder: "What's working, what's broken, what you'd love to see…",
+    emailPlaceholder: 'Email (optional — only if you want a reply)',
+    send: 'Send',
+    sending: 'Sending…',
+    thanks: 'Got it — thank you. 🙏',
+    error: "Couldn't send. Please try again.",
+    close: 'Close',
+  },
 } as const;
 
 export const zh = {
@@ -3189,6 +3202,19 @@ export const zh = {
     alreadySaved: '已在列表中',
     viewInFavorites: '查看我的收藏',
     persistNote: '保存的导入只存在你的浏览器里 —— 清理站点数据会丢失。如需更稳的备份,用"复制为 JSON"。',
+  },
+  feedback: {
+    button: '反馈',
+    open: '打开反馈表单',
+    title: '发送反馈',
+    subtitle: 'bug、想法、你希望有的功能 —— 每一条我们都看。',
+    placeholder: '哪里好用、哪里有问题、你最想要什么…',
+    emailPlaceholder: '邮箱(可选 —— 想收到回复就填)',
+    send: '发送',
+    sending: '发送中…',
+    thanks: '收到,谢谢你!🙏',
+    error: '发送失败,请重试。',
+    close: '关闭',
   },
 } as const;
 
