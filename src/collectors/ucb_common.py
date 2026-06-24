@@ -85,6 +85,9 @@ NOISE_EMAILS = frozenset({
     # profile; without this, faculty whose personal address is non-Berkeley
     # (e.g. an @lbl.gov address) would resolve to it.
     "physics_admin@berkeley.edu",
+    # Philosophy lists its department mailbox as a second mailto on every
+    # profile; the professor's personal address is the first mailto.
+    "phildept@berkeley.edu",
 })
 
 # Department directories mix retired faculty into the same card list; they are
@@ -159,6 +162,14 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "metaphysics", "epistemology", "philosophy of mind",
+    "philosophy of language", "philosophy of science", "philosophy of physics",
+    "philosophy of mathematics", "philosophy of biology", "political philosophy",
+    "moral philosophy", "moral psychology", "metaethics", "normative ethics",
+    "applied ethics", "bioethics", "ancient philosophy", "early modern philosophy",
+    "philosophy of action", "philosophy of logic", "mathematical logic",
+    "aesthetics", "phenomenology", "feminist philosophy", "decision theory",
+    "epistemology and metaphysics",
 ]
 
 SKILL_MAP = {
