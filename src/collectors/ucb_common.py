@@ -85,6 +85,9 @@ NOISE_EMAILS = frozenset({
     # profile; without this, faculty whose personal address is non-Berkeley
     # (e.g. an @lbl.gov address) would resolve to it.
     "physics_admin@berkeley.edu",
+    # Public Health lists its school-wide contact mailbox as a second mailto on
+    # every profile; the professor's personal address is the first mailto.
+    "publichealth@berkeley.edu",
 })
 
 # Department directories mix retired faculty into the same card list; they are
@@ -159,6 +162,18 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "public health", "epidemiology", "global health",
+    "health policy", "environmental health", "occupational health",
+    "infectious disease", "infectious diseases", "chronic disease",
+    "health equity", "health disparities", "social determinants of health",
+    "maternal and child health", "reproductive health", "community health",
+    "health economics", "health services research", "implementation science",
+    "vaccines", "immunization", "disease surveillance", "outbreak",
+    "cancer epidemiology", "molecular epidemiology", "social epidemiology",
+    "exposure assessment", "health behavior",
+    "tobacco control", "substance use",
+    "maternal health", "one health", "antimicrobial resistance",
+    "health informatics", "digital health", "behavioral health",
 ]
 
 SKILL_MAP = {
