@@ -159,6 +159,10 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "geography", "geographic information systems", "gis", "political ecology",
+    "cartography", "human geography", "physical geography", "urban geography",
+    "biogeography", "geospatial analysis", "land use", "environmental justice",
+    "critical geography",
 ]
 
 SKILL_MAP = {
