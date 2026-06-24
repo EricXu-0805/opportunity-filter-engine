@@ -159,6 +159,12 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "landscape architecture", "environmental planning", "ecological design",
+    "landscape ecology", "urban ecology", "green infrastructure",
+    "ecological restoration", "landscape design", "land use",
+    "stormwater management", "regional planning", "climate adaptation",
+    "environmental design", "ecological planning", "resilient design",
+    "urban design", "open space", "environmental justice",
 ]
 
 SKILL_MAP = {
