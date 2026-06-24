@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'OpportunityEngine — AI-powered UIUC research & internship matching';
+export const alt = 'JoinALab — AI-powered UIUC research & internship matching';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -43,10 +43,10 @@ export default async function OGImage() {
               color: 'white',
             }}
           >
-            O
+            J
           </div>
           <span style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-1.5px' }}>
-            OpportunityEngine
+            JoinALab
           </span>
         </div>
 

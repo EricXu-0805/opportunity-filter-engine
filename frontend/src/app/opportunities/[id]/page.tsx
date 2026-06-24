@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const opp = await fetchOpportunityServer(id);
   if (!opp) {
-    return { title: 'Opportunity not found — OpportunityEngine' };
+    return { title: 'Opportunity not found — JoinALab' };
   }
 
   const org = opp.organization ? ` at ${opp.organization}` : '';
@@ -22,14 +22,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const ogImage = `/api/og/opportunity/${encodeURIComponent(opp.id)}`;
 
   return {
-    title: `${title} — OpportunityEngine`,
+    title: `${title} — JoinALab`,
     description: description || `${opp.opportunity_type} opportunity at ${opp.organization ?? 'UIUC'}.`,
     keywords: keywords.length > 0 ? keywords : undefined,
     openGraph: {
       title,
       description: description || undefined,
       type: 'article',
-      siteName: 'OpportunityEngine',
+      siteName: 'JoinALab',
       publishedTime: opp.posted_date,
       images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
