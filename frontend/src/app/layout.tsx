@@ -76,6 +76,8 @@ export default async function RootLayout({
     : 'Not affiliated with any listed university. Independent student project.';
   const privacyLabel = locale === 'zh' ? '隐私政策' : 'Privacy Policy';
   const termsLabel = locale === 'zh' ? '服务条款' : 'Terms of Service';
+  const contactLabel = locale === 'zh' ? '联系' : 'Contact';
+  const builtByLabel = locale === 'zh' ? '由 Guoyi (Eric) Xu 打造' : 'Built by Guoyi (Eric) Xu';
 
   return (
     <html lang={locale} className={inter.variable}>
@@ -117,11 +119,28 @@ export default async function RootLayout({
                     <a href="/terms" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
                       {termsLabel}
                     </a>
+                    <a href="/about" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
+                      {contactLabel}
+                    </a>
+                    <a
+                      href="https://github.com/EricXu-0805/opportunity-filter-engine"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      GitHub
+                    </a>
                   </nav>
                   <p className="text-[11px] text-gray-400 text-center">
                     {footerDisclaimer}
                   </p>
                 </div>
+                <p className="mt-3 text-center text-[11px] text-gray-300">
+                  {builtByLabel} ·{' '}
+                  <a href="mailto:eric.guoyi.xu@gmail.com" className="hover:text-gray-600 transition-colors">
+                    eric.guoyi.xu@gmail.com
+                  </a>
+                </p>
               </div>
             </footer>
 
