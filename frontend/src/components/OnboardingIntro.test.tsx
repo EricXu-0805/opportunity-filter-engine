@@ -38,14 +38,17 @@ describe('OnboardingIntro', () => {
     expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull();
   });
 
-  it('starts on the first slide with Skip, and reveals Back after advancing', async () => {
+  it('keeps Skip available on every slide and reveals Back only after the first', async () => {
     render(<OnboardingIntro />);
     await waitFor(() => screen.getByTestId('onboarding-skip'));
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
     fireEvent.click(screen.getByTestId('onboarding-primary'));
+    // Skip stays put once advanced; Back now appears alongside it.
+    expect(screen.getByTestId('onboarding-skip')).toBeInTheDocument();
     expect(screen.getByTestId('onboarding-back')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('onboarding-back'));
     expect(screen.getByTestId('onboarding-skip')).toBeInTheDocument();
+    expect(screen.queryByTestId('onboarding-back')).toBeNull();
   });
 
   it('pages through to the end and completes via "Try it" (marks seen + tracks)', async () => {

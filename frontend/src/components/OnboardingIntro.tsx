@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { X, ArrowLeft, ArrowRight, Star, Check, Sparkles, Calendar, Target, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Star, Check, Sparkles, Calendar, Target, Send, MapPin } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { track } from '@/lib/analytics';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -15,16 +15,29 @@ const SLIDES: SlideKey[] = [
   'welcome', 'generate', 'favorites', 'compare', 'tracker', 'dashboard', 'roadmap', 'ready',
 ];
 
-// ---- per-feature mini visuals (illustrative, language-neutral where possible) ----
+// Feature slides that carry a "where to find it" location chip (welcome/ready don't).
+const LOCATIONS: Partial<Record<SlideKey, string>> = {
+  generate: 'generateLoc',
+  favorites: 'favoritesLoc',
+  compare: 'compareLoc',
+  tracker: 'trackerLoc',
+  dashboard: 'dashboardLoc',
+  roadmap: 'roadmapLoc',
+};
 
-function WelcomeVisual() {
+// ---- per-feature mini visuals — each "assembles" on view (staggered .ob-* anims) ----
+
+function WelcomeVisual({ t }: { t: T }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-2">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg">
-        <Sparkles className="w-7 h-7 text-white" strokeWidth={2.2} aria-hidden="true" />
+    <div className="flex flex-col items-center justify-center gap-3.5 py-2">
+      <div className="ob-pop w-[72px] h-[72px] rounded-[20px] bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+        <Sparkles className="w-9 h-9 text-white" strokeWidth={2.2} aria-hidden="true" />
       </div>
-      <p className="text-[20px] font-bold tracking-tight text-gray-900">
+      <p className="ob-rise text-[24px] font-bold tracking-tight text-gray-900" style={{ animationDelay: '0.12s' }}>
         JoinA<span className="text-blue-600">Lab</span>
+      </p>
+      <p className="ob-rise text-[13px] text-gray-500" style={{ animationDelay: '0.22s' }}>
+        {t('onboarding.welcomeTitle')}
       </p>
     </div>
   );
@@ -32,37 +45,58 @@ function WelcomeVisual() {
 
 function ResultsVisual({ t }: { t: T }) {
   const rows = [
-    { pct: '94%', tier: t('onboarding.tierHigh'), dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700' },
-    { pct: '88%', tier: t('onboarding.tierGood'), dot: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700' },
-    { pct: '71%', tier: t('onboarding.tierReach'), dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' },
+    { title: t('onboarding.exResearch'), pct: 94, tier: t('onboarding.tierHigh'), bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700' },
+    { title: t('onboarding.exInternship'), pct: 88, tier: t('onboarding.tierGood'), bar: 'bg-blue-500', dot: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700' },
+    { title: t('onboarding.exFellowship'), pct: 71, tier: t('onboarding.tierReach'), bar: 'bg-amber-500', dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' },
   ];
   return (
-    <div className="space-y-2">
-      {rows.map((r) => (
-        <div key={r.pct} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm">
-          <span className={`shrink-0 w-2 h-2 rounded-full ${r.dot}`} />
-          <div className="flex-1 min-w-0">
-            <div className="h-2.5 w-3/4 rounded bg-gray-200 mb-1.5" />
-            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${r.badge}`}>{r.tier}</span>
+    <div className="w-full max-w-[360px] mx-auto space-y-2.5">
+      {rows.map((r, idx) => (
+        <div
+          key={r.title}
+          className="ob-rise rounded-xl border border-gray-100 bg-white px-3.5 py-2.5 shadow-sm"
+          style={{ animationDelay: `${idx * 0.1}s` }}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className={`shrink-0 w-2 h-2 rounded-full ${r.dot}`} />
+            <span className="flex-1 min-w-0 truncate text-[13px] font-medium text-gray-800">{r.title}</span>
+            <span className="text-[13px] font-bold text-gray-900 tabular-nums">{r.pct}%</span>
           </div>
-          <span className="text-[13px] font-bold text-gray-900">{r.pct}</span>
+          <div className="mt-2 flex items-center gap-2.5">
+            <span className="h-1.5 flex-1 rounded-full bg-gray-100 overflow-hidden">
+              <span
+                className={`block h-full rounded-full ob-bar ${r.bar}`}
+                style={{ width: `${r.pct}%`, animationDelay: `${idx * 0.1 + 0.15}s` }}
+              />
+            </span>
+            <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded ${r.badge}`}>{r.tier}</span>
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
-function FavoritesVisual() {
+function FavoritesVisual({ t }: { t: T }) {
+  const cards = [t('onboarding.exResearch'), t('onboarding.exInternship')];
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      {[0, 1].map((k) => (
-        <div key={k} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="h-2 w-12 rounded bg-gray-200" />
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
+    <div className="grid grid-cols-2 gap-3 w-full max-w-[340px] mx-auto">
+      {cards.map((title, k) => (
+        <div
+          key={title}
+          className="ob-rise rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm"
+          style={{ animationDelay: `${k * 0.12}s` }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12.5px] font-medium text-gray-800 leading-snug">{title}</span>
+            <Star
+              className="ob-pop shrink-0 w-4 h-4 fill-amber-400 text-amber-400"
+              style={{ animationDelay: `${k * 0.12 + 0.22}s` }}
+              aria-hidden="true"
+            />
           </div>
-          <div className="mt-2.5 h-2 w-full rounded bg-gray-100" />
-          <div className="mt-1.5 h-2 w-2/3 rounded bg-gray-100" />
+          <div className="mt-3 h-1.5 w-full rounded bg-gray-100" />
+          <div className="mt-1.5 h-1.5 w-2/3 rounded bg-gray-100" />
         </div>
       ))}
     </div>
@@ -70,7 +104,7 @@ function FavoritesVisual() {
 }
 
 function RadarVisual({ t }: { t: T }) {
-  const cx = 100, cy = 86, r = 54;
+  const cx = 100, cy = 86, r = 58;
   const labels = [
     t('onboarding.dimSkill'), t('onboarding.dimEligibility'), t('onboarding.dimEffort'),
     t('onboarding.dimPay'), t('onboarding.dimDeadline'), t('onboarding.dimIntl'),
@@ -84,7 +118,7 @@ function RadarVisual({ t }: { t: T }) {
   const poly = (vals: number[]) => vals.map((v, idx) => pt(idx, v).join(',')).join(' ');
   const ring = (scale: number) => Array.from({ length: 6 }, (_, idx) => pt(idx, scale * 100).join(',')).join(' ');
   return (
-    <svg viewBox="0 0 200 178" className="w-full max-w-[260px] mx-auto" role="img" aria-label={t('onboarding.compareTitle')}>
+    <svg viewBox="0 0 200 182" className="w-full max-w-[300px] mx-auto" role="img" aria-label={t('onboarding.compareTitle')}>
       {[0.34, 0.67, 1].map((s) => (
         <polygon key={s} points={ring(s)} fill="none" stroke="#e5e7eb" strokeWidth={1} />
       ))}
@@ -92,12 +126,14 @@ function RadarVisual({ t }: { t: T }) {
         const [x, y] = pt(idx, 100);
         return <line key={idx} x1={cx} y1={cy} x2={x} y2={y} stroke="#e5e7eb" strokeWidth={1} />;
       })}
-      <polygon points={poly(b)} fill="rgba(245,158,11,0.16)" stroke="#f59e0b" strokeWidth={1.5} />
-      <polygon points={poly(a)} fill="rgba(37,99,235,0.18)" stroke="#2563eb" strokeWidth={1.5} />
+      <g className="ob-grow">
+        <polygon points={poly(b)} fill="rgba(245,158,11,0.16)" stroke="#f59e0b" strokeWidth={1.5} />
+        <polygon points={poly(a)} fill="rgba(37,99,235,0.18)" stroke="#2563eb" strokeWidth={1.5} />
+      </g>
       {labels.map((lab, idx) => {
-        const [x, y] = pt(idx, 134);
+        const [x, y] = pt(idx, 138);
         return (
-          <text key={lab} x={x} y={y} fontSize={8.5} fill="#6b7280" textAnchor="middle" dominantBaseline="middle">
+          <text key={lab} x={x} y={y} fontSize={9} fill="#6b7280" textAnchor="middle" dominantBaseline="middle">
             {lab}
           </text>
         );
@@ -113,66 +149,98 @@ function TrackerVisual({ t }: { t: T }) {
     { l: t('onboarding.statInterview'), c: 'bg-violet-50 text-violet-700' },
   ];
   return (
-    <div className="flex items-center justify-center gap-1.5 flex-wrap py-3">
+    <div className="flex items-center justify-center gap-2 flex-wrap py-3">
       {stages.map((s, idx) => (
-        <span key={s.l} className="flex items-center gap-1.5">
-          <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${s.c}`}>{s.l}</span>
-          {idx < stages.length - 1 && <ArrowRight className="w-3.5 h-3.5 text-gray-300" aria-hidden="true" />}
+        <span key={s.l} className="flex items-center gap-2">
+          <span
+            className={`ob-pop text-[13px] font-medium px-3 py-1.5 rounded-full ${s.c}`}
+            style={{ animationDelay: `${idx * 0.2}s` }}
+          >
+            {s.l}
+          </span>
+          {idx < stages.length - 1 && (
+            <ArrowRight
+              className="ob-pop w-4 h-4 text-gray-300"
+              style={{ animationDelay: `${idx * 0.2 + 0.1}s` }}
+              aria-hidden="true"
+            />
+          )}
         </span>
       ))}
     </div>
   );
 }
 
-function DashboardVisual() {
+function DashboardVisual({ t }: { t: T }) {
   const tiles = [
     { n: '128', Icon: Target, c: 'text-blue-600 bg-blue-50' },
     { n: '12', Icon: Star, c: 'text-amber-600 bg-amber-50' },
     { n: '4', Icon: Send, c: 'text-emerald-600 bg-emerald-50' },
   ];
   return (
-    <div className="space-y-2.5">
-      <div className="grid grid-cols-3 gap-2.5">
-        {tiles.map((tile) => (
-          <div key={tile.n} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-            <span className={`inline-flex w-6 h-6 rounded-lg items-center justify-center ${tile.c}`}>
-              <tile.Icon className="w-3.5 h-3.5" aria-hidden="true" />
+    <div className="w-full max-w-[340px] mx-auto space-y-3">
+      <div className="grid grid-cols-3 gap-3">
+        {tiles.map((tile, idx) => (
+          <div
+            key={tile.n}
+            className="ob-pop rounded-xl border border-gray-100 bg-white p-3 shadow-sm"
+            style={{ animationDelay: `${idx * 0.1}s` }}
+          >
+            <span className={`inline-flex w-7 h-7 rounded-lg items-center justify-center ${tile.c}`}>
+              <tile.Icon className="w-4 h-4" aria-hidden="true" />
             </span>
-            <p className="mt-2 text-[18px] font-bold text-gray-900 leading-none">{tile.n}</p>
+            <p className="mt-2 text-[20px] font-bold text-gray-900 leading-none tabular-nums">{tile.n}</p>
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 shadow-sm">
-        <Calendar className="w-3.5 h-3.5 text-rose-500" aria-hidden="true" />
-        <div className="h-2 w-1/2 rounded bg-gray-200" />
-        <span className="ml-auto text-[11px] font-semibold text-rose-600">5d</span>
+      <div className="ob-rise flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3.5 py-2.5 shadow-sm" style={{ animationDelay: '0.32s' }}>
+        <Calendar className="w-4 h-4 text-rose-500 shrink-0" aria-hidden="true" />
+        <span className="text-[12px] text-gray-600">{t('onboarding.dimDeadline')}</span>
+        <span className="ml-auto text-[12px] font-semibold text-rose-600 animate-pulse">5d</span>
       </div>
     </div>
   );
 }
 
-function RoadmapVisual() {
-  const steps = [true, true, false, false];
+function RoadmapVisual({ t }: { t: T }) {
+  const items = [
+    { label: t('onboarding.roadmapEx1'), tag: t('onboarding.roadmapHave'), done: true },
+    { label: t('onboarding.roadmapEx2'), tag: t('onboarding.roadmapHave'), done: true },
+    { label: t('onboarding.roadmapEx3'), tag: t('onboarding.roadmapGap'), done: false },
+    { label: t('onboarding.roadmapEx4'), tag: t('onboarding.roadmapGap'), done: false },
+  ];
   return (
-    <div className="space-y-2 py-1">
-      {steps.map((done, k) => (
-        <div key={k} className="flex items-center gap-2.5">
-          <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${done ? 'bg-emerald-500 text-white' : 'border-2 border-gray-200'}`}>
-            {done && <Check className="w-3 h-3" strokeWidth={3} aria-hidden="true" />}
+    <div className="w-full max-w-[300px] mx-auto space-y-2.5">
+      {items.map((it, k) => (
+        <div
+          key={it.label}
+          className="ob-rise flex items-center gap-3"
+          style={{ animationDelay: `${k * 0.1}s` }}
+        >
+          <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${it.done ? 'bg-emerald-500 text-white' : 'border-2 border-gray-200 bg-white'}`}>
+            {it.done
+              ? <Check className="ob-pop w-3.5 h-3.5" strokeWidth={3} style={{ animationDelay: `${k * 0.1 + 0.18}s` }} aria-hidden="true" />
+              : <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
           </span>
-          <div className={`h-2.5 rounded ${done ? 'bg-gray-200 w-2/3' : 'bg-gray-100 w-3/4'}`} />
+          <span className="flex-1 text-[13px] font-medium text-gray-800">{it.label}</span>
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${it.done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+            {it.tag}
+          </span>
         </div>
       ))}
     </div>
   );
 }
 
-function ReadyVisual() {
+function ReadyVisual({ t }: { t: T }) {
   return (
-    <div className="flex items-center justify-center py-4">
-      <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg">
-        <Check className="w-8 h-8 text-white" strokeWidth={2.5} aria-hidden="true" />
+    <div className="flex flex-col items-center justify-center gap-3 py-3">
+      <div className="ob-pop w-[72px] h-[72px] rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+        <Check className="w-10 h-10 text-white" strokeWidth={2.5} aria-hidden="true" />
       </div>
+      <p className="ob-rise text-[13px] text-gray-500" style={{ animationDelay: '0.14s' }}>
+        {t('onboarding.readyTitle')}
+      </p>
     </div>
   );
 }
@@ -180,21 +248,22 @@ function ReadyVisual() {
 function SlideVisual({ slide, t }: { slide: SlideKey; t: T }) {
   switch (slide) {
     case 'generate': return <ResultsVisual t={t} />;
-    case 'favorites': return <FavoritesVisual />;
+    case 'favorites': return <FavoritesVisual t={t} />;
     case 'compare': return <RadarVisual t={t} />;
     case 'tracker': return <TrackerVisual t={t} />;
-    case 'dashboard': return <DashboardVisual />;
-    case 'roadmap': return <RoadmapVisual />;
-    case 'ready': return <ReadyVisual />;
-    default: return <WelcomeVisual />;
+    case 'dashboard': return <DashboardVisual t={t} />;
+    case 'roadmap': return <RoadmapVisual t={t} />;
+    case 'ready': return <ReadyVisual t={t} />;
+    default: return <WelcomeVisual t={t} />;
   }
 }
 
-// First-visit product tour. Eight switchable slides — each pairs a mini visual
-// of a real feature with a one-line explanation — that the user pages through
-// (Back / Next, progress dots) and finishes with "Try it" into the engine.
-// Shown once, gated on localStorage. Server renders nothing; client upgrades
-// after mount to avoid a hydration mismatch.
+// First-visit product tour. Eight switchable slides — each pairs an animated
+// "demo" of a real feature (assembles on view) with a one-line explanation and
+// a "where to find it" location chip — paged Back / Next, finishing with "Try
+// it" into the engine. A Skip button is always available (top bar). Shown once,
+// gated on localStorage; server renders nothing, client upgrades after mount to
+// avoid a hydration mismatch.
 export default function OnboardingIntro() {
   const { t } = useT();
   const [show, setShow] = useState(false);
@@ -224,6 +293,7 @@ export default function OnboardingIntro() {
 
   const slide = SLIDES[i];
   const isLast = i === SLIDES.length - 1;
+  const locKey = LOCATIONS[slide];
   const next = () => (isLast ? dismiss(true) : setI((n) => n + 1));
   const back = () => setI((n) => Math.max(0, n - 1));
 
@@ -240,33 +310,46 @@ export default function OnboardingIntro() {
         onClick={() => dismiss(false)}
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <button
-          type="button"
-          onClick={() => dismiss(false)}
-          aria-label={t('onboarding.close')}
-          className="absolute top-3.5 right-3.5 z-10 p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+        {/* top bar: step counter + always-available Skip */}
+        <div className="flex items-center justify-between px-5 sm:px-7 pt-4">
+          <span className="text-[12px] font-medium text-gray-400 tabular-nums">
+            {i + 1} / {SLIDES.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => dismiss(false)}
+            data-testid="onboarding-skip"
+            className="text-[13px] font-medium text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            {t('onboarding.skipTour')}
+          </button>
+        </div>
 
-        <div className="px-6 pt-8 pb-5">
-          {/* visual + copy re-key on slide change so .animate-in replays (the
-              "streaming" page-to-page feel) */}
-          <div key={i} className="animate-in">
-            <div className="min-h-[176px] flex flex-col justify-center">
+        <div className="px-5 sm:px-7 pt-3 pb-5">
+          {/* the stage re-keys on slide change so the .ob-* demo animations replay */}
+          <div key={i}>
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 ring-1 ring-black/[0.04] px-4 sm:px-6 py-6 min-h-[208px] sm:min-h-[224px] flex flex-col justify-center">
               <SlideVisual slide={slide} t={t} />
             </div>
-            <h2 className="mt-4 text-[18px] font-bold tracking-tight text-gray-900">
+
+            {locKey && (
+              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-[12px] font-medium">
+                <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t(`onboarding.${locKey}`)}</span>
+              </div>
+            )}
+
+            <h2 className="mt-3 text-[20px] sm:text-[22px] font-bold tracking-tight text-gray-900">
               {t(`onboarding.${slide}Title`)}
             </h2>
-            <p className="mt-1.5 text-[13.5px] leading-relaxed text-gray-500 min-h-[60px]">
+            <p className="mt-2 text-[14.5px] leading-relaxed text-gray-500 min-h-[44px]">
               {t(`onboarding.${slide}Body`)}
             </p>
           </div>
 
           {/* progress dots */}
-          <div className="mt-4 flex items-center justify-center gap-1.5" aria-hidden="true">
+          <div className="mt-5 flex items-center justify-center gap-1.5" aria-hidden="true">
             {SLIDES.map((s, idx) => (
               <span
                 key={s}
@@ -276,16 +359,9 @@ export default function OnboardingIntro() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-black/[0.05]">
+        <div className="flex items-center justify-between gap-3 px-5 sm:px-7 py-4 border-t border-black/[0.05]">
           {i === 0 ? (
-            <button
-              type="button"
-              onClick={() => dismiss(false)}
-              data-testid="onboarding-skip"
-              className="text-[13px] font-medium text-gray-400 hover:text-gray-700 transition-colors"
-            >
-              {t('onboarding.skip')}
-            </button>
+            <span />
           ) : (
             <button
               type="button"
