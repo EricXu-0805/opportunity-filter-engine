@@ -19,4 +19,5 @@ export const STORAGE_KEYS = {
   GUEST_BANNER_DISMISSED: 'ofe_guest_banner_dismissed',
   LOCALE: 'ofe_lang',
   OAUTH_LINK_PROVIDER: 'ofe_oauth_link_provider',
+  ONBOARDING_SEEN: 'ofe_onboarding_seen',
 } as const;

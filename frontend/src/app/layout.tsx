@@ -4,6 +4,7 @@ import AuthModal from '@/components/AuthModal';
 import BackendWaker from '@/components/BackendWaker';
 import GuestBanner from '@/components/GuestBanner';
 import FeedbackWidget from '@/components/FeedbackWidget';
+import OnboardingIntro from '@/components/OnboardingIntro';
 import Header from '@/components/Header';
 import { AuthModalProvider } from '@/lib/auth-modal-context';
 import { SITE_URL } from '@/lib/site';
@@ -130,6 +131,9 @@ export default async function RootLayout({
             {/* Single modal mount-point. Visible only when openModal()
                 is called from anywhere in the tree. */}
             <AuthModal />
+
+            {/* First-visit product intro — top-most overlay (z-60), shown once. */}
+            <OnboardingIntro />
           </AuthModalProvider>
         </LanguageProvider>
       </body>
