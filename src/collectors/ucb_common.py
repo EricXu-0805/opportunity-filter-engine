@@ -159,6 +159,10 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "linguistics", "phonology", "phonetics", "syntax", "semantics",
+    "morphology", "psycholinguistics", "computational linguistics",
+    "historical linguistics", "sociolinguistics", "language documentation",
+    "pragmatics", "language acquisition",
 ]
 
 SKILL_MAP = {
