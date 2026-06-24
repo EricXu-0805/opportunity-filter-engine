@@ -159,6 +159,10 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "sociology", "social movements", "inequality", "race and ethnicity",
+    "immigration", "demography", "social stratification", "political sociology",
+    "economic sociology", "criminology", "urban sociology", "gender",
+    "social networks", "historical sociology",
 ]
 
 SKILL_MAP = {
