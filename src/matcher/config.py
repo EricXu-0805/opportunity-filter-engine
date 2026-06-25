@@ -122,3 +122,31 @@ SEASONAL_BOOST_MONTHS: frozenset[int] = frozenset(
 # a large multiplier to reach usable scores. (Embeddings power semantic_rerank,
 # which blends cosine*100 directly and does not use this scale.)
 SIMILARITY_SCALE_TFIDF = _env_float("OFE_SIM_SCALE_TFIDF", 400.0)
+
+# Major→topic implicit keyword bridge. A student who hasn't written explicit
+# research interests still steers ranking through field-typical keywords derived
+# from their major. CAPPED well below an explicit-interest match (which reaches
+# 75-100 in keyword_score) so the implicit signal only reorders the 25.0 baseline
+# tier — it can never outrank a real stated interest. This is the numeric
+# "explicit interests LEAD, major DRIVES" guarantee.
+IMPLICIT_MAJOR_KEYWORD_CEILING = _env_float("OFE_IMPLICIT_MAJOR_CEIL", 55.0)
+IMPLICIT_MAJOR_PER_HIT = _env_float("OFE_IMPLICIT_MAJOR_PER_HIT", 10.0)
+
+# Major's share of the eligibility layer. Raised from the original 0.20 so the
+# student's major actually steers ranking (it was too weak to reorder), but kept
+# moderate so it MODULATES rather than OVERRIDES an explicit stated interest — a
+# vet major who writes "computer vision" must still see CV work near the top.
+# The remaining (1 - this) is split across year/intl/skill/type in the original
+# 30:20:15:15 proportion, so the eligibility layer always sums to 1.0.
+ELIG_MAJOR_WEIGHT = _env_float("OFE_ELIG_MAJOR_W", 0.24)
+
+# College→department affinity: a small additive nudge (pre-stretch, like the
+# interest bonus) when the opportunity's department matches the student's college.
+# Strictly below INTEREST_BONUS_CAP (8.0) so college stays a tiebreaker, not a
+# driver. Missing department → no bonus, never a penalty.
+COLLEGE_AFFINITY_MAX = _env_float("OFE_COLLEGE_AFFINITY_MAX", 4.0)
+
+# Thin-inventory honesty: when a profile has fewer than this many topically
+# relevant visible results, the client shows "few matches in your field" instead
+# of implying the padded generic total is all field-relevant.
+THIN_INVENTORY_FLOOR = int(_env_float("OFE_THIN_INVENTORY_FLOOR", 8))

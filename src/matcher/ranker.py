@@ -13,14 +13,18 @@ from dataclasses import dataclass
 
 from .config import (
     BUCKET_THRESHOLDS,
+    COLLEGE_AFFINITY_MAX,
     COURSEWORK_MAX_FROM_COUNT,
     COURSEWORK_PER_COURSE,
     COURSEWORK_RELEVANCE_BONUS,
     DEADLINE_PASSED_PENALTY,
+    ELIG_MAJOR_WEIGHT,
     EXPLORE_MAJOR_MISMATCH_FLOOR,
     EXPLORE_READINESS_DROP,
     GRAD_LEVEL_PENALTY,
     HIGH_PRIORITY_TARGET_COUNT,
+    IMPLICIT_MAJOR_KEYWORD_CEILING,
+    IMPLICIT_MAJOR_PER_HIT,
     INTEREST_BONUS_CAP,
     INTEREST_BONUS_PER_HIT,
     INTL_UNKNOWN_INTERNSHIP_SCORE,
@@ -51,6 +55,10 @@ class MatchResult:
     reasons_fit: list[str]
     reasons_gap: list[str]
     next_steps: list[str]
+    # True when the opportunity's keywords topically match the student's stated
+    # interests OR their major-derived field — used for the "N strong matches in
+    # your field" count so a thin field isn't padded by generic high-quality opps.
+    field_relevant: bool = False
 
 
 # --- Field matching utilities ---
@@ -83,6 +91,7 @@ MAJOR_GROUPS = {
     "CHEM": {"Chemistry", "CHEM"},
     "BIO": {"Biology", "Integrative Biology", "Molecular & Cellular Biology", "MCB", "Plant Biotechnology",
             "Animal Sciences", "Neuroscience", "Brain & Cognitive Science"},
+    "VET": {"Veterinary Medicine", "VET", "Pre-Veterinary Medicine", "Veterinary Sciences"},
     "ECON": {"Economics", "ECON", "Agricultural & Consumer Economics", "Finance"},
     "PSYCH": {"Psychology", "PSYCH"},
     "ACCY": {"Accountancy", "ACCY", "Accountancy + Data Science"},
@@ -135,7 +144,8 @@ RELATED_MAJORS = {
     "AE": ["MECHSE", "PHYS", "ECE"],
     "IE": ["STAT", "CS", "ECON"],
     "CHEM": ["CHEME", "BIO", "PHYS"],
-    "BIO": ["CHEM", "BIOE", "PSYCH", "AGE"],
+    "BIO": ["CHEM", "BIOE", "PSYCH", "AGE", "VET"],
+    "VET": ["BIO", "AGE", "CHEM"],
     "ECON": ["STAT", "MATH", "ACCY", "IE"],
     "PSYCH": ["BIO", "SOC", "LING"],
     "ACCY": ["ECON", "IS"],
@@ -180,7 +190,7 @@ def _normalize_major(major: str) -> str:
 
 _STEM_MAJORS = frozenset({
     "CS", "ECE", "STAT", "IS", "MATH", "PHYS", "CHEME", "BIOE", "MECHSE",
-    "CEE", "MSE", "AE", "IE", "NPRE", "CHEM", "BIO", "ATMS", "AGE",
+    "CEE", "MSE", "AE", "IE", "NPRE", "CHEM", "BIO", "VET", "ATMS", "AGE",
 })
 _HUMANITIES_MAJORS = frozenset({
     "SPAN", "ENGL", "LING", "HIST", "PHIL", "REL", "CLASS", "FREN", "GERM",
@@ -191,6 +201,125 @@ _SOCIAL_SCIENCE_MAJORS = frozenset({
     "PSYCH", "SOC", "ANTH", "POLS", "ECON", "GEOG", "GWS", "AFRO", "AAS",
     "LAS", "URB",
 })
+
+# Major → field-typical research keywords. Keyed by the normalized major group
+# (`_normalize_major` output). Every token here is verified to exist in the
+# corpus keyword vocabulary so the bridge actually has inventory to surface — a
+# token with zero corpus presence would be dead weight. Groups with no corpus
+# inventory (most humanities) are intentionally omitted: they fall back through
+# RELATED_MAJORS, and if that is also empty the student simply gets no implicit
+# steer (pure generic quality, unchanged). This is data, not policy.
+MAJOR_TOPIC_KEYWORDS: dict[str, list[str]] = {
+    "CS": ["machine learning", "artificial intelligence", "software engineering", "data science",
+           "computer vision", "natural language processing", "algorithms", "robotics", "deep learning",
+           "distributed systems", "cybersecurity", "human-computer interaction"],
+    "ECE": ["embedded systems", "hardware", "signal processing", "circuits", "integrated circuits",
+            "control systems", "photonics", "power systems", "semiconductor", "networks", "robotics"],
+    "STAT": ["statistics", "data science", "machine learning", "optimization", "quantitative finance",
+             "causal inference"],
+    "IS": ["information science", "data science", "machine learning", "human-computer interaction"],
+    "MATH": ["mathematics", "optimization", "statistics", "machine learning", "algorithms"],
+    "PHYS": ["physics", "condensed matter physics", "quantum", "photonics", "nanotechnology",
+             "astrophysics", "applied physics", "astronomy"],
+    "CHEME": ["chemistry", "materials science", "catalysis", "polymer", "drug discovery"],
+    "BIOE": ["bioengineering", "computational biology", "neuroscience", "bioinformatics", "biomedical"],
+    "MECHSE": ["robotics", "materials science", "control systems"],
+    "CEE": ["civil engineering", "environmental sciences", "transportation", "structural engineering",
+            "sustainability", "renewable energy"],
+    "MSE": ["materials science", "nanotechnology", "condensed matter physics", "polymer", "semiconductor"],
+    "AE": ["autonomous systems", "robotics", "control systems"],
+    "IE": ["optimization", "operations research", "statistics"],
+    "NPRE": ["renewable energy", "materials science", "physics"],
+    "CHEM": ["chemistry", "organic chemistry", "physical chemistry", "materials science", "catalysis",
+             "spectroscopy", "drug discovery"],
+    "BIO": ["integrative biology", "molecular biology", "computational biology", "neuroscience",
+            "genomics", "ecology", "bioinformatics", "animal sciences"],
+    "VET": ["animal sciences", "integrative biology", "molecular biology", "neuroscience", "genomics",
+            "ecology"],
+    "ECON": ["economics", "quantitative finance", "statistics", "optimization"],
+    "ACCY": ["quantitative finance", "economics", "statistics"],
+    "PSYCH": ["psychology", "neuroscience"],
+    "ATMS": ["climate", "atmospheric sciences", "remote sensing", "environmental sciences", "geology"],
+    "AGE": ["crop sciences", "food science", "animal sciences", "ecology", "sustainability"],
+    "LING": ["linguistics", "natural language processing"],
+    "POLS": ["political science"],
+    "ANTH": ["anthropology"],
+    "COMM": ["communication", "communications"],
+    "HIST": ["history"],
+}
+
+# College → opportunity-`department` substring stems. Opportunities carry no
+# usable `college` field (only 26 records), but ~54% carry a free-text
+# `department`, so the student's college becomes a signal via stem matching.
+# Stems are lowercase and chosen to match the real corpus department strings
+# (e.g. "engineering" matches both "Electrical & Computer Engineering" and UCB's
+# "Electrical Engineering and Computer Sciences" — sidestepping wording drift).
+# Keyed by the frontend college display string (frontend/src/lib/colleges.ts).
+COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
+    "Grainger College of Engineering": [
+        "engineering", "computer scien", "computing", "siebel", "electrical",
+        "mechanical", "aerospace", "bioengineering", "materials", "nuclear", "civil",
+    ],
+    "Liberal Arts & Sciences (LAS)": [
+        "physics", "chemistr", "statistic", "mathematic", "molecular & cellular",
+        "integrative biology", "psycholog", "econom", "linguistic", "english",
+        "histor", "philosoph", "political science", "anthropolog", "sociolog",
+        "astronom", "atmospheric", "earth science", "communication",
+    ],
+    "College of ACES": [
+        "crop science", "animal science", "food science", "natural resources",
+        "agricultur", "nutrition",
+    ],
+    "College of Veterinary Medicine": [
+        "animal science", "molecular & cellular", "integrative biology",
+        "pathobiolog", "comparative", "veterinary",
+    ],
+    "School of Information Sciences (iSchool)": ["information science"],
+    "Gies College of Business": ["econom", "business", "finance", "accountan"],
+    "College of Fine & Applied Arts": [
+        "music", "art", "architecture", "theatre", "dance", "landscape", "urban",
+    ],
+    "College of Media": ["journalism", "advertising", "media"],
+    "College of Education": ["education", "curriculum"],
+    "College of Applied Health Sciences": [
+        "kinesiology", "health", "speech", "recreation",
+    ],
+    "School of Social Work": ["social work"],
+}
+
+
+def _profile_implicit_keywords(profile: dict) -> set[str]:
+    """Field-typical keywords derived from the student's major (+ secondary
+    interests) — the implicit steer for students who haven't written explicit
+    research interests. Reuses `_normalize_major` and falls back through
+    `RELATED_MAJORS` so an unmapped major still gets *some* field signal."""
+    majors = [profile.get("major", "")] + list(profile.get("secondary_interests", []) or [])
+    out: set[str] = set()
+    for m in majors:
+        if not m:
+            continue
+        group = _normalize_major(m)
+        direct = MAJOR_TOPIC_KEYWORDS.get(group)
+        if direct:
+            out.update(direct)
+        else:
+            for rel in RELATED_MAJORS.get(group, []):
+                out.update(MAJOR_TOPIC_KEYWORDS.get(rel, []))
+    return {k.lower() for k in out}
+
+
+def _college_affinity(profile: dict, opportunity: dict) -> float:
+    """Additive bonus (0..COLLEGE_AFFINITY_MAX) when the opportunity's department
+    matches the student's college. Missing department → 0.0 (never a penalty),
+    so the ~46% of records without a department degrade gracefully."""
+    college = (profile.get("college") or "").strip()
+    stems = COLLEGE_DEPARTMENT_SIGNALS.get(college)
+    if not stems:
+        return 0.0
+    dept = (opportunity.get("department") or "").lower()
+    if not dept:
+        return 0.0
+    return COLLEGE_AFFINITY_MAX if any(stem in dept for stem in stems) else 0.0
 
 
 def _major_match_score(
@@ -699,7 +828,23 @@ def score_eligibility(
     elif type_score < 50:
         reasons_gap.append(f"This is a {_otype_label} — not your primary target type")
 
-    total = 0.30 * year_score + 0.20 * major_score + 0.20 * intl_score + 0.15 * skill_score + 0.15 * type_score
+    # Major is the product's core differentiator, so it carries more of the
+    # eligibility layer than the original 0.20 (which was too weak to reorder — an
+    # exact major match moved final score only ~9%). ELIG_MAJOR_WEIGHT (default
+    # 0.24) is moderate on purpose: strong enough to steer, not so strong it
+    # OVERRIDES an explicit stated interest. The remaining weight keeps the
+    # original year:intl:skill:type = 30:20:15:15 proportion so the layer sums to
+    # 1.0. Deliberately NOT a second raw multiplier (the RANK-3 regression) —
+    # major fit still lives in exactly one place.
+    mw = ELIG_MAJOR_WEIGHT
+    rem = 1.0 - mw
+    total = (
+        rem * 0.375 * year_score
+        + mw * major_score
+        + rem * 0.25 * intl_score
+        + rem * 0.1875 * skill_score
+        + rem * 0.1875 * type_score
+    )
     return total, reasons_fit, reasons_gap
 
 
@@ -751,10 +896,12 @@ def score_upside(
     profile: dict,
     opportunity: dict,
     precomputed_sim: float | None = None,
+    implicit_keywords: set[str] | None = None,
 ) -> tuple[float, list[str], list[str]]:
     """Score upside (0-100). ``precomputed_sim`` lets rank_all supply a batched
     research-interest similarity (identical to the per-pair value) instead of
-    recomputing it here per opportunity."""
+    recomputing it here per opportunity. ``implicit_keywords`` is the student's
+    major-derived field steer (see ``_profile_implicit_keywords``)."""
     reasons_fit = []
     reasons_gap = []
 
@@ -820,6 +967,19 @@ def score_upside(
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
             interest_reason = f"Matches your interests: {', '.join(interest_overlap)}"
             reasons_fit.append(interest_reason)
+
+    # Implicit major→topic steer: lifts the 25.0 baseline tier for a student who
+    # gave no explicit interests, so changing major actually reorders results.
+    # CAPPED at IMPLICIT_MAJOR_KEYWORD_CEILING (below the good_match bucket floor)
+    # and max()-folded, so it never raises an opportunity above a real explicit
+    # interest match. Silent — explicit/structural signals carry the headline.
+    if implicit_keywords and opp_keywords:
+        imp_hits = len(opp_keywords & implicit_keywords)
+        if imp_hits:
+            keyword_score = max(
+                keyword_score,
+                min(IMPLICIT_MAJOR_KEYWORD_CEILING, 25.0 + imp_hits * IMPLICIT_MAJOR_PER_HIT),
+            )
 
     research_text = profile.get("research_interests_text", "").lower()
     lab = opportunity.get("lab_or_program", "")
@@ -1238,13 +1398,16 @@ def rank_opportunity(
     precomputed_eligibility: tuple[float, list[str], list[str]] | None = None,
     precomputed_sim: float | None = None,
     today=None,
+    implicit_keywords: set[str] | None = None,
 ) -> MatchResult:
     if precomputed_eligibility is not None:
         elig_score, elig_fit, elig_gap = precomputed_eligibility
     else:
         elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
-    up_score, up_fit, up_gap = score_upside(profile, opportunity, precomputed_sim=precomputed_sim)
+    up_score, up_fit, up_gap = score_upside(
+        profile, opportunity, precomputed_sim=precomputed_sim, implicit_keywords=implicit_keywords
+    )
 
     w = weights or {
         "eligibility": WEIGHTS_DEFAULT.eligibility,
@@ -1258,7 +1421,8 @@ def rank_opportunity(
     )
 
     interest_bonus = _interest_bonus(profile, opportunity)
-    raw = min(100.0, raw + interest_bonus)
+    college_bonus = _college_affinity(profile, opportunity)
+    raw = min(100.0, raw + interest_bonus + college_bonus)
 
     # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
     # eligibility layer). A separate raw multiplier here double-counted the same
@@ -1329,6 +1493,16 @@ def rank_opportunity(
 
     next_steps = _generate_next_steps(profile, opportunity, all_gap)
 
+    # Field-relevant = the opportunity topically matches the student's stated
+    # interests OR their major-derived field. Drives the "N strong matches in
+    # your field" count so a thin field isn't padded with generic high-quality opps.
+    opp_kw_set = {k.lower() for k in opportunity.get("keywords", [])}
+    field_relevant = bool(opp_kw_set & {f.lower() for f in profile.get("desired_fields", [])})
+    if not field_relevant and implicit_keywords:
+        field_relevant = bool(opp_kw_set & implicit_keywords)
+    if not field_relevant and precomputed_sim is not None and precomputed_sim > 0.15:
+        field_relevant = True
+
     return MatchResult(
         opportunity_id=opportunity.get("id", ""),
         eligibility_score=round(elig_score, 1),
@@ -1339,6 +1513,7 @@ def rank_opportunity(
         reasons_fit=all_fit,
         reasons_gap=all_gap,
         next_steps=next_steps,
+        field_relevant=field_relevant,
     )
 
 
@@ -1582,6 +1757,17 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     # parsing it per opp (inside score_eligibility) was ~12% of rank_all's time.
     profile_skill_map = _parse_skills(profile.get("hard_skills", []))
 
+    # Major-derived field steer, computed once (identical per request). Applied
+    # ONLY when the student gave no explicit interests — with a stated interest,
+    # the implicit major keywords would compete with and dilute it (e.g. a vet
+    # major + "computer vision" interest must still surface CV work, not biology).
+    # So "explicit interests LEAD, major DRIVES the rest" holds by construction.
+    has_explicit_interest = (
+        len((profile.get("research_interests_text") or "").strip()) >= 4
+        or bool(profile.get("desired_fields"))
+    )
+    implicit_kw = _profile_implicit_keywords(profile) if not has_explicit_interest else set()
+
     # Batch the upside research-interest similarity once for the whole corpus.
     # This pass is TF-IDF only (allow_embeddings=False): embedding the full ~4.4k
     # corpus per request would fan out into dozens of provider calls and is
@@ -1651,6 +1837,7 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             profile, opp, weights,
             precomputed_eligibility=elig_triple,
             precomputed_sim=sims_by_id.get(opp.get("id")),
+            implicit_keywords=implicit_kw,
         )
         if result.final_score >= min_threshold:
             results.append(result)
