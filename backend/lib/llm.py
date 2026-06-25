@@ -67,10 +67,10 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 )
 
 # Ask-AI chat lets the user pick among a few OpenRouter models (the formal
-# flows — résumé tailoring, cold email — stay pinned to strong_model()). The
-# default set is deliberately restricted to vetted, US-operated providers
-# (OpenAI, Google) that the privacy policy names as subprocessors — the chat
-# prompt embeds profile PII incl. the international-student flag, so we do NOT
+# flows — résumé tailoring, cold email — route via model_for()). The default set
+# is deliberately restricted to vetted, US-operated providers (OpenAI, Google,
+# Anthropic) that the privacy policy names as subprocessors — the chat prompt
+# embeds profile PII incl. the international-student flag, so we do NOT
 # default-route F-1 users' data to undisclosed / non-US operators (e.g. DeepSeek
 # was dropped for this reason). Still env-overridable via OFE_CHAT_MODELS
 # ("id|label|slug,...") so a stale slug is fixable without a deploy; if you add a
@@ -78,8 +78,9 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # Surfaced ONLY when OPENROUTER_API_KEY is set; otherwise the picker stays hidden
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
+    ("claude-sonnet", "Claude Sonnet 4.6", "anthropic/claude-sonnet-4.6"),
+    ("gpt-4o", "GPT-4o", "openai/gpt-4o"),
     ("gemini-flash", "Gemini Flash", "google/gemini-2.5-flash"),
-    ("gpt-4o-mini", "GPT-4o mini", "openai/gpt-4o-mini"),
 )
 
 
@@ -143,6 +144,36 @@ def strong_model() -> Optional[str]:
     default model. Must be a model that provider serves (e.g. a Gemini id when
     GEMINI_API_KEY is the resolved provider, a GPT id when OPENAI_API_KEY)."""
     return os.environ.get("OFE_STRONG_MODEL", "").strip() or None
+
+
+# Best-fit model per quality-sensitive task ("right tool for each job"): cold
+# email + résumé tailoring are writing/instruction tasks Claude excels at;
+# import extraction is structured parsing. Each is env-overridable
+# (OFE_MODEL_<TASK>) so a model can be retuned without a deploy — e.g. bump
+# cold_email to anthropic/claude-opus-4.8 or a gpt-5.x. Slugs are OpenRouter ids
+# (verified against the live catalog).
+_TASK_MODEL_DEFAULTS: dict[str, str] = {
+    "cold_email": "anthropic/claude-sonnet-4.6",
+    "tailor": "anthropic/claude-sonnet-4.6",
+    "extract": "anthropic/claude-sonnet-4.6",
+}
+
+
+def model_for(task: str) -> dict:
+    """Routing kwargs for a quality-sensitive task, splat into ``chat_completion``.
+
+    When ``OPENROUTER_API_KEY`` is set, route to the best-fit model per task via
+    OpenRouter (overridable per task with ``OFE_MODEL_<TASK>``). Otherwise fall
+    back to ``strong_model()`` against the default-provider chain, so the feature
+    still works without OpenRouter configured.
+    """
+    slug = (
+        os.environ.get(f"OFE_MODEL_{task.upper()}", "").strip()
+        or _TASK_MODEL_DEFAULTS.get(task, "")
+    )
+    if slug and os.environ.get("OPENROUTER_API_KEY"):
+        return {"provider_id": "openrouter", "model": slug}
+    return {"model": strong_model()}
 
 
 def chat_completion(

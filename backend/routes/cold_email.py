@@ -13,7 +13,7 @@ from backend.lib.grounding import (
     policy_divergence,
     validate_no_fabrication,
 )
-from backend.lib.llm import chat_completion, is_configured, strong_model
+from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.recommender.cold_email import (
@@ -314,7 +314,7 @@ def _ai_generate_email_text(
         max_tokens=1500,
         temperature=0.5,
         reasoning_effort="low",
-        model=strong_model(),
+        **model_for("cold_email"),
     )
 
 
@@ -500,7 +500,7 @@ async def refine_email(request: EmailRefineRequest):
             "Return the edited email body only."
         )},
     ]
-    edited = chat_completion(messages, max_tokens=800, temperature=0.7, model=strong_model())
+    edited = chat_completion(messages, max_tokens=800, temperature=0.7, **model_for("cold_email"))
     if edited is None:
         return _local_refine(request.current_body, request.instruction)
 

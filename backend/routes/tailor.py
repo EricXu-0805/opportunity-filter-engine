@@ -37,7 +37,7 @@ from fastapi import APIRouter, HTTPException
 from backend.data_loader import load_opportunities_by_id
 from backend.lib.grounding import LENIENT_PROSE
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
-from backend.lib.llm import chat_completion, is_configured, strong_model
+from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import (
     ExtractBulletsRequest,
@@ -282,7 +282,7 @@ def _ai_tailor_bullets(
         max_tokens=2000,
         temperature=0.4,
         reasoning_effort="low",
-        model=strong_model(),
+        **model_for("tailor"),
     )
     if not raw:
         return None
