@@ -44,6 +44,47 @@ Validate CSS selectors for `uiuc_sro.py` against live DOM. Scrape SRO database.
 ### Phase D — URL Parser Semi-Auto (Ongoing)
 Paste-and-parse new URLs as they surface. Manual review before insertion.
 
+## UC Berkeley Campus Opportunity Graph (`ucb_campus`)
+
+Berkeley coverage used to be just `ucb_urap` + faculty directories. The campus
+collector (`src/collectors/ucb_campus.py`, driven by the registry in
+`src/collectors/ucb_sources.py`) broadens it into the rest of the research
+graph. URAP is now one node, not the backbone.
+
+**Five source types** (carried per-record on `ucb_source_type`):
+
+| Type | What | Example sources |
+|------|------|-----------------|
+| `announcement` | Campus-wide research bulletins / OURS feeds / newsletters | OURS hub, VCR research news, OURS newsletter, CDSS/Engineering news |
+| `program` | Named programs, fellowships, summer research | SURF, SURF Rose Hills, SPUR, Amgen Scholars, Haas Scholars, McNair, BSP, Cal NERDS, Data Science Discovery, LBL SULI, Math/Physics REU |
+| `department` | Department/college research pages | EECS, Statistics, MCB, Physics, BioE, Chemistry, ME, MSE, Astro, IB, Psych, Econ, CDSS, Math, NE, IEOR, ESPM, PMB, NST, Neuro |
+| `career` | Career-center / internship / RA boards (campus-controlled) | Career Engagement, Work-Study RA jobs, College of Engineering research |
+| `lab` | "Join our lab" / center recruiting (cold-email targets) | BAIR, BIDS, RDI, Sky Computing, Simons Institute, CITRIS, SSL, BSAC |
+
+**Three emit buckets** (the downstream `source` value → school/audience, so the
+multi-school discovery-scope filter and the DQ gate stay correct):
+
+| `source` | school / audience | Who sees it |
+|----------|-------------------|-------------|
+| `ucb_research_programs` | ucb / campus | Berkeley-home users (enrollment-gated programs, dept pages, on-campus jobs) |
+| `ucb_external_research` | national / open | everyone (external fellowships + REU-style listings hosted on Berkeley pages) |
+| `ucb_labs` | ucb / unknown | everyone (lab/center cold-email targets; cross-school openness is per-lab) |
+
+**Crawl strategy.** The curated seed layer runs unconditionally (stdlib, no
+network) so coverage survives a page going down or its markup drifting. In deep
+mode a keyword-prioritized BFS (depth 1–3, same-site, capped) refines open/closed
+status + descriptions and discovers additional postings (lower confidence,
+deduped). Run `python -m src.collectors.ucb_campus --report` for the source
+breakdown, or `python -m scripts.ucb_source_report` for the ranked feed.
+
+**Dedup.** `src/normalizers/ucb_dedup.py` collapses duplicates across pages via
+URL canonicalization + normalized-title matching (faculty-page vs department-page
+vs newsletter reposts), with an optional embedding-similarity refinement.
+
+**Seasonal boost.** `summer_program` records get a small ranking lift (Feb–Jul)
+so summer research surfaces when its application cycles are open
+(`src/matcher/config.py: SEASONAL_BOOST_*`).
+
 ## Data Quality Rules
 - Every record must have: title, url, source, opportunity_type
 - `international_friendly` must be tagged (yes/no/unknown)
