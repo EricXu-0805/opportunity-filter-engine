@@ -165,6 +165,12 @@ KEYWORD_BANK = [
     "health journalism", "broadcast journalism", "political reporting",
     "media studies", "press freedom", "audio storytelling",
     "visual journalism", "magazine journalism", "digital media",
+    "landscape architecture", "environmental planning", "ecological design",
+    "landscape ecology", "urban ecology", "green infrastructure",
+    "ecological restoration", "landscape design", "land use",
+    "stormwater management", "regional planning", "climate adaptation",
+    "environmental design", "ecological planning", "resilient design",
+    "urban design", "open space", "environmental justice",
 ]
 
 SKILL_MAP = {

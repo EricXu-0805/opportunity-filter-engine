@@ -1,4 +1,4 @@
-import { FileText, Sparkles, Send, Shield, Github, ArrowUpRight } from 'lucide-react';
+import { FileText, Sparkles, Send, Shield, Github, ArrowUpRight, Mail, User } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
 
 const STEPS = [
@@ -8,7 +8,7 @@ const STEPS = [
 ] as const;
 
 const STACK = [
-  { label: 'Next.js 14', categoryKey: 'about.stackCategories.frontend' },
+  { label: 'Next.js 16', categoryKey: 'about.stackCategories.frontend' },
   { label: 'Tailwind CSS', categoryKey: 'about.stackCategories.frontend' },
   { label: 'FastAPI', categoryKey: 'about.stackCategories.backend' },
   { label: 'Python 3.11', categoryKey: 'about.stackCategories.backend' },
@@ -93,25 +93,48 @@ export default async function AboutPage() {
         </div>
       </div>
 
-      <div className="flex justify-center mb-16">
-        <a
-          href="https://github.com/EricXu-0805/opportunity-filter-engine"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gray-900 text-white text-[13px] font-medium hover:bg-gray-800 transition-colors duration-300"
-        >
-          <Github className="w-4 h-4" />
-          {t('about.viewOnGithub')}
-          <ArrowUpRight className="w-3 h-3" />
-        </a>
+      <div className="mb-16">
+        <h2 className="text-[13px] font-semibold text-gray-400 uppercase tracking-widest text-center mb-12">
+          {t('about.behindTitle')}
+        </h2>
+        <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
+            {/* Photo placeholder — reserved; swap the inner block for an <Image /> when the portrait is ready. */}
+            <div className="shrink-0 flex flex-col items-center gap-2">
+              <div className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                <User className="w-9 h-9 text-gray-300" aria-hidden="true" />
+              </div>
+              <span className="text-[11px] text-gray-300">{t('about.photoComing')}</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-[17px] font-semibold text-gray-900">{t('about.author')}</p>
+              <p className="text-[13px] text-gray-400 mt-1">{t('about.authorRole')}</p>
+              <p className="text-[14px] text-gray-500 leading-relaxed mt-4">{t('about.behindBody')}</p>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mt-5">
+                <a
+                  href="mailto:eric.guoyi.xu@gmail.com"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-900 text-white text-[13px] font-medium hover:bg-gray-800 transition-colors duration-300"
+                >
+                  <Mail className="w-4 h-4" />
+                  {t('about.emailLabel')}
+                </a>
+                <a
+                  href="https://github.com/EricXu-0805/opportunity-filter-engine"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white ring-1 ring-black/[0.06] text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors duration-300"
+                >
+                  <Github className="w-4 h-4" />
+                  {t('about.viewOnGithub')}
+                  <ArrowUpRight className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="text-center">
-        <p className="text-[15px] text-gray-900 font-medium">{t('about.author')}</p>
-        <p className="text-[13px] text-gray-400 mt-1">{t('about.authorRole')}</p>
-      </div>
-
-      <div className="mt-12 text-center">
         <p className="text-[11px] text-gray-400 leading-relaxed max-w-md mx-auto">
           {t('about.disclaimer')}
         </p>
