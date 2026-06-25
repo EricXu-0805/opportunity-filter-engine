@@ -26,6 +26,9 @@ from .config import (
     INTL_UNKNOWN_INTERNSHIP_SCORE,
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
+    SEASONAL_BOOST_ENABLED,
+    SEASONAL_BOOST_FACTOR,
+    SEASONAL_BOOST_MONTHS,
     SEMANTIC_RERANK_FALLBACK_CAP,
     SIMILARITY_SCALE_TFIDF,
     STRETCH_BLEND,
@@ -1209,12 +1212,32 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     return TOPIC_MISMATCH_PENALTY
 
 
+def _seasonal_multiplier(opportunity: dict, today=None) -> float:
+    """Return a >=1.0 lift for summer-research postings during the apply-for-
+    summer window (Feb-Jul by default). Gated to opportunity_type
+    'summer_program' so a non-seasonal posting's score is never perturbed.
+
+    ``today`` is injectable for deterministic tests; defaults to the wall clock.
+    """
+    if not SEASONAL_BOOST_ENABLED:
+        return 1.0
+    if opportunity.get("opportunity_type") != "summer_program":
+        return 1.0
+    if today is None:
+        from datetime import date
+        today = date.today()
+    if today.month in SEASONAL_BOOST_MONTHS:
+        return SEASONAL_BOOST_FACTOR
+    return 1.0
+
+
 def rank_opportunity(
     profile: dict,
     opportunity: dict,
     weights: dict[str, float] | None = None,
     precomputed_eligibility: tuple[float, list[str], list[str]] | None = None,
     precomputed_sim: float | None = None,
+    today=None,
 ) -> MatchResult:
     if precomputed_eligibility is not None:
         elig_score, elig_fit, elig_gap = precomputed_eligibility
@@ -1275,6 +1298,14 @@ def rank_opportunity(
     if _is_undergrad(profile) and _requires_graduate_standing(opportunity):
         final *= GRAD_LEVEL_PENALTY
         elig_gap.append("Targets graduate / PhD students — a reach for undergraduates")
+
+    # Seasonal boost: a summer-research posting is most actionable in the
+    # spring-into-summer apply window. Multiplicative lift, capped at 100, so it
+    # nudges ordering without overriding hard eligibility signals.
+    seasonal = _seasonal_multiplier(opportunity, today=today)
+    if seasonal > 1.0:
+        final = min(100.0, final * seasonal)
+        elig_fit.append("Summer research — in season; applications are typically active now")
 
     bucket = "low_fit"
     for threshold, label in BUCKET_THRESHOLDS:
