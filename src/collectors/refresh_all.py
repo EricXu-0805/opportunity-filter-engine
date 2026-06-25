@@ -39,11 +39,17 @@ from .ucb_common import merge_into_processed as merge_ucb_faculty
 from .ucb_common import merge_into_processed as merge_ucb_stat
 from .ucb_dcrp_faculty import fetch_and_normalize as fetch_ucb_dcrp
 from .ucb_econ_faculty import fetch_and_normalize as fetch_ucb_econ
+from .ucb_education_faculty import fetch_and_normalize as fetch_ucb_education
 from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
+from .ucb_english_faculty import fetch_and_normalize as fetch_ucb_english
 from .ucb_eps_faculty import fetch_and_normalize as fetch_ucb_eps
 from .ucb_espm_faculty import fetch_and_normalize as fetch_ucb_espm
+from .ucb_geog_faculty import fetch_and_normalize as fetch_ucb_geog
+from .ucb_haas_faculty import fetch_and_normalize as fetch_ucb_haas
+from .ucb_history_faculty import fetch_and_normalize as fetch_ucb_history
 from .ucb_ib_faculty import fetch_and_normalize as fetch_ucb_ib
 from .ucb_ieor_faculty import fetch_and_normalize as fetch_ucb_ieor
+from .ucb_journalism_faculty import fetch_and_normalize as fetch_ucb_journalism
 from .ucb_larch_faculty import fetch_and_normalize as fetch_ucb_larch
 from .ucb_law_faculty import fetch_and_normalize as fetch_ucb_law
 from .ucb_ling_faculty import fetch_and_normalize as fetch_ucb_ling
@@ -53,11 +59,14 @@ from .ucb_me_faculty import fetch_and_normalize as fetch_ucb_me
 from .ucb_mse_faculty import fetch_and_normalize as fetch_ucb_mse
 from .ucb_ne_faculty import fetch_and_normalize as fetch_ucb_ne
 from .ucb_nst_faculty import fetch_and_normalize as fetch_ucb_nst
+from .ucb_philos_faculty import fetch_and_normalize as fetch_ucb_philos
 from .ucb_physics_faculty import fetch_and_normalize as fetch_ucb_physics
 from .ucb_pmb_faculty import fetch_and_normalize as fetch_ucb_pmb
 from .ucb_polisci_faculty import fetch_and_normalize as fetch_ucb_polisci
 from .ucb_psych_faculty import fetch_and_normalize as fetch_ucb_psych
 from .ucb_soc_faculty import fetch_and_normalize as fetch_ucb_soc
+from .ucb_socwel_faculty import fetch_and_normalize as fetch_ucb_socwel
+from .ucb_sph_faculty import fetch_and_normalize as fetch_ucb_sph
 from .ucb_stat_faculty import fetch_and_normalize as fetch_ucb_stat
 from .ucb_urap import fetch_and_normalize as fetch_ucb_urap
 from .ucb_urap import merge_into_processed as merge_ucb_urap
@@ -343,6 +352,15 @@ def refresh_all(deep: bool = True) -> dict:
             ("ucb_polisci_faculty", fetch_ucb_polisci, merge_ucb_faculty),
             ("ucb_psych_faculty", fetch_ucb_psych, merge_ucb_faculty),
             ("ucb_soc_faculty", fetch_ucb_soc, merge_ucb_faculty),
+            ("ucb_education_faculty", fetch_ucb_education, merge_ucb_faculty),
+            ("ucb_english_faculty", fetch_ucb_english, merge_ucb_faculty),
+            ("ucb_geog_faculty", fetch_ucb_geog, merge_ucb_faculty),
+            ("ucb_haas_faculty", fetch_ucb_haas, merge_ucb_faculty),
+            ("ucb_history_faculty", fetch_ucb_history, merge_ucb_faculty),
+            ("ucb_journalism_faculty", fetch_ucb_journalism, merge_ucb_faculty),
+            ("ucb_philos_faculty", fetch_ucb_philos, merge_ucb_faculty),
+            ("ucb_socwel_faculty", fetch_ucb_socwel, merge_ucb_faculty),
+            ("ucb_sph_faculty", fetch_ucb_sph, merge_ucb_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

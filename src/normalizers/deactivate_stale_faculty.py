@@ -60,6 +60,15 @@ FACULTY_SOURCES = frozenset({
     "ucb_polisci_faculty",
     "ucb_psych_faculty",
     "ucb_soc_faculty",
+    "ucb_education_faculty",
+    "ucb_english_faculty",
+    "ucb_geog_faculty",
+    "ucb_haas_faculty",
+    "ucb_history_faculty",
+    "ucb_journalism_faculty",
+    "ucb_philos_faculty",
+    "ucb_socwel_faculty",
+    "ucb_sph_faculty",
 })
 
 GRACE_DAYS = 14
