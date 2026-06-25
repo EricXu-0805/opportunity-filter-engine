@@ -14,7 +14,7 @@ afterEach(cleanup);
 function setup(selected: SkillWithLevel[] = []) {
   const onChange = vi.fn();
   render(<SkillTags selected={selected} onChange={onChange} />);
-  const input = screen.getByPlaceholderText(/select skills|add more/i);
+  const input = screen.getByPlaceholderText(/search or add|add more/i);
   fireEvent.focus(input);
   return { onChange, input };
 }

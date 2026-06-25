@@ -78,7 +78,7 @@ export function ResultsHeader({
           <button
             type="button"
             onClick={onOpenHelp}
-            className="hidden md:inline-flex items-center justify-center h-6 px-2 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+            className="hidden md:inline-flex items-center justify-center h-6 px-2 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
             aria-label={t('results.keyboardHelp.open_aria_show')}
             title={t('results.keyboardHelp.open_title')}
           >

@@ -107,8 +107,8 @@ export default function EmailMeButton({
             </button>
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
                 <h2 className="text-[16px] font-semibold text-gray-900">{t('email.title')}</h2>
@@ -127,7 +127,7 @@ export default function EmailMeButton({
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   disabled={state === 'sending' || state === 'sent'}
-                  className="mt-1.5 w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none disabled:bg-gray-50"
+                  className="mt-1.5 w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
                 />
               </label>
 
@@ -155,7 +155,7 @@ export default function EmailMeButton({
                 <button
                   type="submit"
                   disabled={state === 'sending' || state === 'sent' || !email.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {state === 'sending' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {state === 'sent' ? t('email.sent') : t('email.send')}

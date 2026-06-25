@@ -74,11 +74,11 @@ export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnch
     <div
       role="region"
       data-testid="save-favorites-anchor"
-      className="mb-6 rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 px-5 py-4"
+      className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-50 px-5 py-4"
     >
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-white shrink-0 flex items-center justify-center shadow-sm">
-          <Sparkles className="w-5 h-5 text-blue-600" aria-hidden="true" />
+          <Sparkles className="w-5 h-5 text-indigo-600" aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-[14px] font-semibold text-gray-900">
@@ -91,7 +91,7 @@ export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnch
             <button
               type="button"
               onClick={() => openModal({ reason: 'save-favorites-anchor' })}
-              className="px-3.5 py-1.5 rounded-full bg-blue-600 text-white text-[12px] font-medium hover:bg-blue-700 transition-colors"
+              className="px-3.5 py-1.5 rounded-full bg-indigo-600 text-white text-[12px] font-medium hover:bg-indigo-700 transition-colors"
             >
               {t('auth.anchor.favorites3.cta')}
             </button>

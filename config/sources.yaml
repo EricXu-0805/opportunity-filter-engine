@@ -57,6 +57,56 @@ sources:
       international_friendly: "no"
       paid: "yes"
 
+  # UC Berkeley campus-wide opportunity graph. The detailed per-source registry
+  # (seed URLs, crawl strategy, parse rules) lives in code at
+  # src/collectors/ucb_sources.py (richer than YAML allows — it carries curated
+  # parse rules + fallback records). These three entries document the emit
+  # buckets the collector writes into; each maps to a (school, audience) pair in
+  # src/normalizers/school_audience.py.
+  ucb_research_programs:
+    name: "UC Berkeley Campus Research Programs"
+    type: html_scrape
+    base_url: "https://research.berkeley.edu/our/"
+    schedule: weekly
+    enabled: true
+    collector: ucb_campus
+    notes: >-
+      Announcements, signature programs, department research pages, and
+      on-campus career/RA boards. Berkeley-enrollment-gated (campus audience).
+    default_tags:
+      source_type: campus_program
+      school: ucb
+      audience: campus
+
+  ucb_external_research:
+    name: "UC Berkeley-Hosted External Research (REU / Fellowships)"
+    type: html_scrape
+    base_url: "https://education.lbl.gov/internships/"
+    schedule: seasonal
+    enabled: true
+    collector: ucb_campus
+    notes: >-
+      External fellowships + REU-style listings hosted on Berkeley pages that
+      welcome applicants from any school (national, open audience).
+    default_tags:
+      source_type: external_reu
+      audience: open
+
+  ucb_labs:
+    name: "UC Berkeley Lab / Center Recruiting"
+    type: html_scrape
+    base_url: "https://bair.berkeley.edu/"
+    schedule: monthly
+    enabled: true
+    collector: ucb_campus
+    notes: >-
+      "Join our lab" / research-center recruiting pages — cold-email targets
+      whose cross-school openness is per-lab (unknown audience).
+    default_tags:
+      source_type: lab_recruiting
+      school: ucb
+      audience: unknown
+
   manual:
     name: "Manual Entries"
     type: manual

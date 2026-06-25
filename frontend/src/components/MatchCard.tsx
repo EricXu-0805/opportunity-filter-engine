@@ -165,7 +165,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 <a
                   href={`/opportunities/${encodeURIComponent(opp.id)}`}
                   onClick={e => e.stopPropagation()}
-                  className="hover:text-blue-600 focus:outline-none focus-visible:underline decoration-blue-500 underline-offset-4 transition-colors"
+                  className="hover:text-indigo-600 focus:outline-none focus-visible:underline decoration-indigo-500 underline-offset-4 transition-colors"
                 >
                   {opp.title}
                 </a>
@@ -234,7 +234,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             )}
             {opp.duration && (
               <span className="inline-flex items-center gap-1">
-                <Clock className="w-3 h-3 text-blue-400" />
+                <Clock className="w-3 h-3 text-indigo-400" />
                 {opp.duration}
               </span>
             )}
@@ -304,7 +304,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             onClick={() => onDraftEmail(opp.id)}
             className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
               emailIsPrimary
-                ? 'text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow px-5 py-2.5'
+                ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
                 : 'text-gray-600 bg-black/[0.04] hover:bg-black/[0.08]'
             }`}
           >
@@ -403,13 +403,13 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
 
             {match.next_steps.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2.5">
+                <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2.5">
                   Next steps
                 </h4>
                 <ul className="space-y-2">
                   {match.next_steps.map((n, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[13px] text-gray-600 leading-relaxed">
-                      <ArrowRight className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                      <ArrowRight className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
                       <span>{n}</span>
                     </li>
                   ))}
@@ -469,7 +469,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 {gaps.suggested_coursework.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-teal-600 uppercase tracking-widest mb-2">
-                      Recommended UIUC courses
+                      Recommended courses
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {gaps.suggested_coursework.map((c) => (

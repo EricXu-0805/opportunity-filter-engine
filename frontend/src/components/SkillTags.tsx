@@ -15,7 +15,8 @@ const ALL_SKILLS = [
   'AWS', 'GCP', 'Azure', 'Firebase',
   'Docker', 'Kubernetes', 'Git', 'Linux', 'Bash',
   'Figma', 'Adobe Suite', 'Unity', 'Unreal Engine',
-  'ROS', 'Arduino', 'Raspberry Pi', 'FPGA', 'Verilog', 'VHDL',
+  'ROS', 'Arduino', 'Raspberry Pi', 'STM32', 'FPGA', 'Verilog', 'VHDL', 'SystemVerilog',
+  'Vivado', 'Quartus', 'Altium', 'KiCad', 'Cadence', 'LTspice', 'Eagle', 'Embedded C',
   'Solidworks', 'AutoCAD', 'ANSYS', 'COMSOL',
   'LaTeX', 'Excel', 'Tableau', 'Power BI',
   'SPSS', 'SAS', 'Stata', 'Mathematica',
@@ -24,7 +25,7 @@ const ALL_SKILLS = [
 
 const LEVEL_CONFIG: Record<SkillLevel, { label: string; color: string; bg: string; ring: string }> = {
   beginner:    { label: 'Beginner',    color: 'text-slate-600',  bg: 'bg-slate-100',  ring: 'ring-slate-200' },
-  experienced: { label: 'Experienced', color: 'text-blue-700',   bg: 'bg-blue-50',    ring: 'ring-blue-200' },
+  experienced: { label: 'Experienced', color: 'text-indigo-700',   bg: 'bg-indigo-50',    ring: 'ring-indigo-200' },
   expert:      { label: 'Expert',      color: 'text-violet-700', bg: 'bg-violet-50',  ring: 'ring-violet-200' },
 };
 
@@ -80,7 +81,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
   return (
     <div className="relative">
       <div
-        className="min-h-[44px] flex flex-wrap items-center gap-2 px-3 py-2 border border-gray-300 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400 transition-all cursor-text"
+        className="min-h-[44px] flex flex-wrap items-center gap-2 px-3 py-2 border border-gray-300 rounded-xl bg-white focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-400 transition-all cursor-text"
         onClick={() => {
           setIsOpen(true);
           inputRef.current?.focus();
@@ -135,7 +136,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                 else if (canAddCustom) addSkill(trimmed);
               }
             }}
-            placeholder={selected.length === 0 ? 'Select skills...' : 'Add more...'}
+            placeholder={selected.length === 0 ? 'Search or add a skill…' : 'Add more…'}
             className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
           />
         </div>
@@ -151,7 +152,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                 e.preventDefault();
                 addSkill(skill);
               }}
-              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors first:rounded-t-xl last:rounded-b-xl"
+              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors first:rounded-t-xl last:rounded-b-xl"
             >
               {skill}
             </button>
@@ -163,7 +164,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                 e.preventDefault();
                 addSkill(trimmed);
               }}
-              className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100 first:border-t-0 first:rounded-t-xl last:rounded-b-xl"
+              className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 transition-colors border-t border-gray-100 first:border-t-0 first:rounded-t-xl last:rounded-b-xl"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               Add &ldquo;{trimmed}&rdquo;

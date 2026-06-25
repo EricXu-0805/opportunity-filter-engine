@@ -25,7 +25,7 @@ export default function EmptyState({ hasFilters, onClearFilters }: EmptyStatePro
         <button
           type="button"
           onClick={onClearFilters}
-          className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors"
+          className="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors"
         >
           {t('fellowships.empty.clear')}
         </button>

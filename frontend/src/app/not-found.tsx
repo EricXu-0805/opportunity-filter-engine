@@ -10,7 +10,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-colors"
       >
         <Sparkles className="w-3.5 h-3.5" />
         Back to Home

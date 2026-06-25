@@ -298,7 +298,7 @@ export default function AuthModal() {
         <button
           type="button"
           onClick={closeModal}
-          className="absolute top-3 right-3 p-1 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="absolute top-3 right-3 p-1 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           aria-label={t('common.close')}
         >
           <X className="w-4 h-4 text-gray-400" />
@@ -313,7 +313,7 @@ export default function AuthModal() {
                 className="text-2xl font-bold text-gray-900 tracking-tight leading-tight"
               >
                 {t('auth.modal.signin.headline')}{' '}
-                <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-indigo-600 to-indigo-400 bg-clip-text text-transparent">
                   {t('auth.modal.signin.headlineAccent')}
                 </span>
               </h2>
@@ -325,7 +325,7 @@ export default function AuthModal() {
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-2.5">
               {VALUE_PROPS.map(p => (
                 <div key={p.key} className="flex flex-col items-center text-center gap-1">
-                  <p.icon className="w-4 h-4 text-blue-600" aria-hidden="true" />
+                  <p.icon className="w-4 h-4 text-indigo-600" aria-hidden="true" />
                   <p className="text-[11px] font-medium text-gray-700 leading-tight">
                     {t(p.key)}
                   </p>
@@ -387,7 +387,7 @@ export default function AuthModal() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder={t('auth.modal.signin.emailPlaceholder')}
                   disabled={submitting}
-                  className="mt-1.5 w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none disabled:bg-gray-50"
+                  className="mt-1.5 w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
                 />
               </label>
 
@@ -475,7 +475,7 @@ export default function AuthModal() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-[14px] font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-[14px] font-medium hover:bg-indigo-700 disabled:opacity-60 transition-colors"
               >
                 {submitting ? t('auth.modal.signin.submitting') : t('auth.modal.signin.submit')}
               </button>
@@ -542,7 +542,7 @@ export default function AuthModal() {
         {resolved === 'account' && isSignedIn && (
           <>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-[15px] uppercase">
+              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-[15px] uppercase">
                 {firstLetter(currentEmail)}
               </div>
               <div className="min-w-0">
@@ -626,7 +626,7 @@ export default function AuthModal() {
             <button
               type="button"
               onClick={() => setPhase('signin')}
-              className="mt-2 underline text-sm text-blue-600"
+              className="mt-2 underline text-sm text-indigo-600"
             >
               {t('auth.modal.signin.title')}
             </button>

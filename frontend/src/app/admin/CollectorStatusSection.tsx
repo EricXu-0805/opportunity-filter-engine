@@ -27,7 +27,7 @@ export function CollectorStatusSection({ status, t }: { status: CollectorStatus 
                 <tr key={s.source} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {s.source}
-                    {s.deep && <span className="ml-2 text-[10px] text-blue-600 font-medium">DEEP</span>}
+                    {s.deep && <span className="ml-2 text-[10px] text-indigo-600 font-medium">DEEP</span>}
                   </td>
                   <td className="px-4 py-3">
                     {s.status === 'ok' ? (
