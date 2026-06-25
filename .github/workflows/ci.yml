@@ -87,7 +87,10 @@ jobs:
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Headroom over the typical run; the suite now boots a production server
+    # (see the build step below + playwright.config webServer) instead of the
+    # slow on-demand-compiling dev server, so it completes well inside this.
+    timeout-minutes: 30
     needs: [backend, frontend]
     defaults:
       run:
@@ -135,6 +138,14 @@ jobs:
         # Browsers restored from cache still need the apt packages each run.
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
+
+      - name: Build frontend (E2E runs against a production server, not dev)
+        # next dev compiles each route on first hit, which made the suite blow
+        # past the job timeout. Building once + `next start` (see
+        # playwright.config webServer) serves pre-compiled routes, cutting the
+        # run dramatically. The Frontend job already proves `npm run build`
+        # passes in CI.
+        run: npm run build
 
       - name: Run E2E tests
         run: npm run test:e2e -- --project=chromium

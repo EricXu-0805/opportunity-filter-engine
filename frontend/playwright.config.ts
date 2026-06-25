@@ -10,7 +10,10 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  // One retry in CI (down from 2): still absorbs a single flake, but halves the
+  // worst-case time a failing test adds — part of keeping the suite inside the
+  // job timeout. Kept serial (workers: 1) so cross-file state stays predictable.
+  retries: 1,
   workers: 1,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
@@ -44,7 +47,13 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
-      command: `npm run dev -- --port ${PORT} --hostname 127.0.0.1`,
+      // In CI, serve the pre-built production app (`next start`) — the CI job
+      // runs `npm run build` first. `next start` serves already-compiled routes,
+      // avoiding the per-route on-demand compilation of `next dev` that pushed
+      // the suite past the job timeout. Locally keep `next dev` for HMR.
+      command: process.env.CI
+        ? `npm run start -- --port ${PORT} --hostname 127.0.0.1`
+        : `npm run dev -- --port ${PORT} --hostname 127.0.0.1`,
       url: BASE_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
