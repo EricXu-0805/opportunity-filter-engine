@@ -13,6 +13,15 @@ import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
 import { FORMAT_OPTIONS, SEEKING_TYPES, type TFunc } from './types';
 
+// Top research domains in the corpus — clickable chips that seed the interests
+// box (the main matching lever). English on purpose: matched against English
+// corpus keywords. Kept short so the row stays scannable.
+const SUGGESTED_INTERESTS = [
+  'Machine Learning', 'Artificial Intelligence', 'Data Science', 'Computer Vision',
+  'Robotics', 'Embedded Systems', 'Neuroscience', 'Bioinformatics',
+  'Materials Science', 'Chemistry', 'Quantitative Finance', 'Sustainability',
+] as const;
+
 export function AcademicProfileCard({
   profile,
   update,
@@ -70,6 +79,21 @@ export function AcademicProfileCard({
     'in-person': 'home.form.formatInPerson',
     remote: 'home.form.formatRemote',
   } as const;
+
+  // Clickable research-area chips (seeded from the corpus's top domains) — the
+  // free-text interests box is the main matching lever, so make it discoverable.
+  // Values stay English because they're matched against English corpus keywords.
+  const have = new Set(
+    (profile.research_interests || '')
+      .split(/[,;\n]/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const remainingInterests = SUGGESTED_INTERESTS.filter((s) => !have.has(s.toLowerCase()));
+  const addInterest = (term: string) => {
+    const base = (profile.research_interests || '').replace(/[,\s]+$/, '');
+    update('research_interests', base ? `${base}, ${term}` : term);
+  };
 
   return (
     <Card>
@@ -309,6 +333,21 @@ export function AcademicProfileCard({
             placeholder={t('home.form.interestsPlaceholder')}
             className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300 resize-y leading-relaxed"
           />
+          {remainingInterests.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-gray-400 mr-0.5">{t('home.form.interestSuggestLabel')}</span>
+              {remainingInterests.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => addInterest(s)}
+                  className="px-2.5 py-1 rounded-full text-[12px] text-indigo-700 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                >
+                  + {s}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

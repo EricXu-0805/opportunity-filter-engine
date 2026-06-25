@@ -499,6 +499,7 @@ export const en = {
       courseworkHint: 'Courses you\u2019ve completed',
       interestsLabel: 'Research Interests',
       interestsPlaceholder: "e.g., I'm interested in machine learning applications in healthcare, particularly medical image analysis using deep learning. I've taken courses in probability, data structures, and intro ML...",
+      interestSuggestLabel: 'Quick add:',
       resumeLabel: 'Resume (optional)',
       resumeHint: 'PDF only · Max 5 MB',
       githubLabel: 'GitHub username (optional)',
@@ -601,6 +602,12 @@ export const en = {
       noResults: 'We couldn\'t load fellowships right now. Refresh in a moment.',
       clear: 'Clear all filters',
     },
+  },
+  skills: {
+    searchPlaceholder: 'Search or add a skill…',
+    addMorePlaceholder: 'Add more…',
+    addCustom: 'Add “{skill}”',
+    addAnyHint: 'Don\'t see yours? Type any skill and press Enter to add it.',
   },
   results: {
     title: 'Your Matches',
@@ -2171,6 +2178,7 @@ export const zh = {
       courseworkHint: '你已完成的课程',
       interestsLabel: '研究兴趣',
       interestsPlaceholder: '例如：我对机器学习在医疗中的应用感兴趣，尤其是利用深度学习进行医学影像分析。已修过概率、数据结构、机器学习入门...',
+      interestSuggestLabel: '快速添加：',
       resumeLabel: '简历（可选）',
       resumeHint: '仅 PDF · 最大 5 MB',
       githubLabel: 'GitHub 用户名（可选）',
@@ -2273,6 +2281,12 @@ export const zh = {
       noResults: '暂时无法加载奖学金。请稍后刷新。',
       clear: '清除所有筛选',
     },
+  },
+  skills: {
+    searchPlaceholder: '搜索或添加技能…',
+    addMorePlaceholder: '继续添加…',
+    addCustom: '添加“{skill}”',
+    addAnyHint: '没有你的技能？直接输入并回车即可添加。',
   },
   results: {
     title: '你的匹配',

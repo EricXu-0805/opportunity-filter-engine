@@ -3,23 +3,47 @@
 import { useState, useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { SkillWithLevel, SkillLevel } from '@/lib/types';
+import { useT } from '@/i18n/client';
 
+// A multi-domain STARTER set, not a closed list — students can type any skill we
+// don't carry (see the custom-add path + the always-visible hint below the input).
+// Grouped by domain so coverage gaps are visible; wet-lab / bio-chem and
+// mechanical were the biggest holes for non-CS majors.
 const ALL_SKILLS = [
+  // Programming languages
   'Python', 'Java', 'C++', 'C', 'C#', 'JavaScript', 'TypeScript',
-  'R', 'MATLAB', 'Rust', 'Go', 'Kotlin', 'Swift', 'Ruby', 'PHP',
+  'R', 'MATLAB', 'Rust', 'Go', 'Kotlin', 'Swift', 'Ruby', 'PHP', 'Julia',
   'SQL', 'NoSQL', 'HTML/CSS',
-  'PyTorch', 'TensorFlow', 'scikit-learn', 'Keras', 'HuggingFace',
-  'pandas', 'NumPy', 'SciPy', 'OpenCV', 'NLTK', 'spaCy',
+  // ML / AI / data
+  'PyTorch', 'TensorFlow', 'scikit-learn', 'Keras', 'JAX', 'HuggingFace', 'LangChain',
+  'pandas', 'NumPy', 'SciPy', 'OpenCV', 'NLTK', 'spaCy', 'Jupyter',
+  'Spark', 'Hadoop', 'Databricks', 'dbt', 'Airflow',
+  // Web / backend / infra
   'React', 'Next.js', 'Vue', 'Angular', 'Node.js', 'Express',
   'Flask', 'Django', 'FastAPI', 'Spring Boot',
+  'GraphQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Kafka',
   'AWS', 'GCP', 'Azure', 'Firebase',
-  'Docker', 'Kubernetes', 'Git', 'Linux', 'Bash',
-  'Figma', 'Adobe Suite', 'Unity', 'Unreal Engine',
+  'Docker', 'Kubernetes', 'Terraform', 'Git', 'Linux', 'Bash', 'CI/CD',
+  // Hardware / embedded / EDA
   'ROS', 'Arduino', 'Raspberry Pi', 'STM32', 'FPGA', 'Verilog', 'VHDL', 'SystemVerilog',
   'Vivado', 'Quartus', 'Altium', 'KiCad', 'Cadence', 'LTspice', 'Eagle', 'Embedded C',
-  'Solidworks', 'AutoCAD', 'ANSYS', 'COMSOL',
-  'LaTeX', 'Excel', 'Tableau', 'Power BI',
-  'SPSS', 'SAS', 'Stata', 'Mathematica',
+  // Mechanical / CAD / simulation
+  'Solidworks', 'AutoCAD', 'Fusion 360', 'CATIA', 'Creo', 'ANSYS', 'Abaqus', 'COMSOL',
+  'Simulink', 'LabVIEW', '3D Printing', 'GD&T',
+  // Wet lab / biology / chemistry
+  'PCR', 'qPCR', 'CRISPR', 'Cell Culture', 'Western Blot', 'Flow Cytometry',
+  'Mass Spectrometry', 'HPLC', 'NMR', 'Microscopy', 'Gel Electrophoresis', 'ELISA',
+  'DNA/RNA Sequencing', 'Immunohistochemistry', 'Chromatography', 'Titration', 'Spectroscopy',
+  'Bioinformatics', 'Biopython', 'Bioconductor', 'BLAST',
+  // Statistics / analysis / GIS
+  'LaTeX', 'Excel', 'Tableau', 'Power BI', 'SPSS', 'SAS', 'Stata', 'JMP',
+  'Mathematica', 'Stan', 'Regression Analysis', 'ArcGIS', 'QGIS', 'Remote Sensing',
+  // Business / product
+  'Product Management', 'Financial Modeling', 'Bloomberg Terminal', 'QuickBooks',
+  // Research / communication
+  'Technical Writing', 'Data Analysis', 'Literature Review',
+  // Design / creative
+  'Figma', 'Adobe Suite', 'Unity', 'Unreal Engine',
   'Blender', 'Maya', 'Photoshop', 'Illustrator',
 ] as const;
 
@@ -37,6 +61,7 @@ interface SkillTagsProps {
 }
 
 export default function SkillTags({ selected, onChange }: SkillTagsProps) {
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -136,7 +161,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                 else if (canAddCustom) addSkill(trimmed);
               }
             }}
-            placeholder={selected.length === 0 ? 'Search or add a skill…' : 'Add more…'}
+            placeholder={selected.length === 0 ? t('skills.searchPlaceholder') : t('skills.addMorePlaceholder')}
             className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
           />
         </div>
@@ -167,11 +192,17 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
               className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 transition-colors border-t border-gray-100 first:border-t-0 first:rounded-t-xl last:rounded-b-xl"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
-              Add &ldquo;{trimmed}&rdquo;
+              {t('skills.addCustom', { skill: trimmed })}
             </button>
           )}
         </div>
       )}
+
+      {/* Always-visible hint so students know the presets aren't a closed list —
+          custom-add was previously only discoverable inside the dropdown. */}
+      <p className="mt-1.5 text-[11px] text-gray-400 leading-snug">
+        {t('skills.addAnyHint')}
+      </p>
     </div>
   );
 }
