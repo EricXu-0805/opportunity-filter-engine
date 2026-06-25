@@ -144,6 +144,11 @@ export interface MatchesResponse {
   reach: number;
   low_fit: number;
   results: MatchResult[];
+  // Visible results that topically match the student's stated interests OR
+  // major-derived field. Optional: absent on older backends (degrade to the
+  // plain total). `thin_inventory` true → the field has few openings right now.
+  field_relevant_count?: number;
+  thin_inventory?: boolean;
 }
 
 // ── Cold Email ───────────────────────────────────────────────────────
