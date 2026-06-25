@@ -166,6 +166,12 @@ KEYWORD_BANK = [
     "racial equity", "health disparities", "community mental health",
     "behavioral health", "social determinants of health", "immigrant families",
     "aging and health", "youth development",
+    "landscape architecture", "environmental planning", "ecological design",
+    "landscape ecology", "urban ecology", "green infrastructure",
+    "ecological restoration", "landscape design", "land use",
+    "stormwater management", "regional planning", "climate adaptation",
+    "environmental design", "ecological planning", "resilient design",
+    "urban design", "open space", "environmental justice",
 ]
 
 SKILL_MAP = {
