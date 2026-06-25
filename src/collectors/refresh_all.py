@@ -23,14 +23,14 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
+from .ucb_campus import fetch_and_normalize as fetch_ucb_campus
+from .ucb_campus import merge_into_processed as merge_ucb_campus
 from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
 from .ucb_chem_faculty import fetch_and_normalize as fetch_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_cee
 from .ucb_common import merge_into_processed as merge_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_eecs
 from .ucb_common import merge_into_processed as merge_ucb_stat
-from .ucb_campus import fetch_and_normalize as fetch_ucb_campus
-from .ucb_campus import merge_into_processed as merge_ucb_campus
 from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
 from .ucb_stat_faculty import fetch_and_normalize as fetch_ucb_stat
 from .ucb_urap import fetch_and_normalize as fetch_ucb_urap

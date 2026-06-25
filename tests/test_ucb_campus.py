@@ -14,7 +14,6 @@ from src.collectors import ucb_campus
 from src.collectors import ucb_sources as reg
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
 
-
 # --- Registry integrity ----------------------------------------------------
 
 class TestRegistry:
