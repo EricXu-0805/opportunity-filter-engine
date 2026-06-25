@@ -7,9 +7,9 @@ import HighlightLabType from './HighlightLabType';
 import { DATABASES, LAB_TYPES } from './types';
 
 export const metadata: Metadata = {
-  title: 'Resources — Cold-email guides & UIUC research databases',
+  title: 'Resources — Cold-email guides & research databases',
   description:
-    'Per-lab-type cold-email guides (wet, dry, humanities) and curated links to Illinois Experts, NIH Reporter, NSF Awards, and Google Scholar — the four databases UIUC undergrads use to research professors before reaching out.',
+    'Per-lab-type cold-email guides (wet, dry, humanities) and curated links to Illinois Experts, NIH Reporter, NSF Awards, and Google Scholar — four databases students use to research professors before reaching out.',
 };
 
 export default async function ResourcesPage() {

@@ -129,6 +129,10 @@ KEYWORD_BANK = [
     "nuclear fuel", "radioactive waste", "fission", "fusion", "neutron detection",
     "radiation detection", "isotopes", "radiochemistry", "nuclear security",
     "nonproliferation", "molten salt reactors", "nuclear materials",
+    "astronomy", "astrophysics", "cosmology", "exoplanets", "galaxies",
+    "star formation", "black holes", "stellar astrophysics",
+    "observational astronomy", "radio astronomy", "interstellar medium",
+    "planetary science",
     "operations research", "game theory", "integer programming", "supply chain",
     "logistics", "queueing", "scheduling", "revenue management", "inventory",
     "healthcare systems",
@@ -144,6 +148,10 @@ KEYWORD_BANK = [
     "evolutionary biology", "ecology", "plant-microbe interactions",
     "plant immunity", "photosynthesis", "fungal biology", "microbial ecology",
     "plant genetics", "plant pathology", "crop science",
+    "environmental science", "conservation biology", "forestry", "entomology",
+    "environmental policy", "wildlife biology", "natural resources",
+    "fire ecology", "biodiversity", "environmental economics", "agroecology",
+    "soil science", "restoration ecology", "pest management",
     "nutrition", "nutritional science", "metabolism", "metabolic biology",
     "toxicology", "obesity", "diabetes", "endocrinology", "physiology",
     "gut microbiome", "aging", "stem cells", "biochemistry",
@@ -151,6 +159,10 @@ KEYWORD_BANK = [
     "labor economics", "development economics", "behavioral economics",
     "public economics", "international economics", "economic theory", "finance",
     "antitrust", "welfare economics", "auctions", "market design",
+    "psychology", "cognitive psychology", "clinical psychology",
+    "social psychology", "developmental psychology", "cognitive neuroscience",
+    "perception", "attention", "memory", "emotion regulation",
+    "behavioral science", "psychopathology", "personality",
 ]
 
 SKILL_MAP = {
