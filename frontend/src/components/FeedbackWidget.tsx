@@ -51,7 +51,7 @@ export default function FeedbackWidget() {
         onClick={() => { setStatus('idle'); setOpen(true); }}
         aria-label={t('feedback.open')}
         data-testid="feedback-open"
-        className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-gray-900 text-white text-[13px] font-medium pl-3 pr-4 py-2.5 shadow-lg hover:bg-gray-800 transition-colors"
+        className="fixed bottom-4 right-2 sm:right-3 z-40 inline-flex items-center gap-2 rounded-full bg-gray-900 text-white text-[13px] font-medium pl-3 pr-4 py-2.5 shadow-lg hover:bg-gray-800 transition-colors"
       >
         <MessageSquarePlus className="w-4 h-4" aria-hidden="true" />
         <span className="hidden sm:inline">{t('feedback.button')}</span>
@@ -64,7 +64,7 @@ export default function FeedbackWidget() {
       role="dialog"
       aria-label={t('feedback.title')}
       data-testid="feedback-panel"
-      className="fixed bottom-4 right-4 z-40 w-[calc(100vw-2rem)] max-w-sm rounded-2xl bg-white shadow-2xl border border-black/[0.06] overflow-hidden"
+      className="fixed bottom-4 right-2 sm:right-3 z-40 w-[calc(100vw-1rem)] max-w-sm rounded-2xl bg-white shadow-2xl border border-black/[0.06] overflow-hidden"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
         <p className="text-[14px] font-semibold text-gray-900">{t('feedback.title')}</p>
