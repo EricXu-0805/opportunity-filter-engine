@@ -12,6 +12,7 @@ Usage:
 import hashlib
 import json
 import logging
+import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -355,6 +356,49 @@ def _detect_paid_status(text: str) -> str:
     return "unknown"
 
 
+# paid_info concatenates ±40-char windows around paid keywords with ' | ', which
+# leaks adjacent metadata into compensation_details ("… Duration 10 weeks
+# Compensation $7,000 Citizenship Requirement No …"). Extract the real value.
+# Mirrors frontend cleanCompensation (detail-utils.ts) so source + display agree.
+_COMP_DOLLAR_RE = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:/|per)\s?\w+)?", re.IGNORECASE)
+_COMP_QUAL_RE = re.compile(
+    r"compensation\s+(paid(?:\s+program)?|stipend(?:\s+provided)?|funded|unpaid)",
+    re.IGNORECASE,
+)
+_COMP_DIRTY_RE = re.compile(
+    r"citizenship requirement|duration\s+\d|compensation\s+(?:\$|paid|stipend|unpaid)",
+    re.IGNORECASE,
+)
+
+
+def _clean_compensation(raw: str) -> str:
+    """Reduce a deep-scraped paid_info blob to a clean compensation value.
+
+    A clean value passes through untouched; a dirty blob yields the dollar
+    amount, then a qualitative label ("Paid Program"/"Stipend Provided"), then a
+    bare mention, then '' when nothing is usable (caller shows the paid badge).
+    """
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    looks_dirty = " | " in text or bool(_COMP_DIRTY_RE.search(text)) or len(text) > 120
+    if not looks_dirty:
+        return text
+    m = _COMP_DOLLAR_RE.search(text)
+    if m:
+        return re.sub(r"\s+", " ", m.group(0)).strip()
+    m = _COMP_QUAL_RE.search(text)
+    if m:
+        return re.sub(r"\s+", " ", m.group(1)).strip().title()
+    if re.search(r"\bstipend\b", text, re.IGNORECASE):
+        return "Stipend provided"
+    if re.search(r"\bpaid\b", text, re.IGNORECASE):
+        return "Paid"
+    if re.search(r"\bunpaid\b", text, re.IGNORECASE):
+        return "Unpaid"
+    return ""
+
+
 def _research_area_to_majors(area: str) -> list[str]:
     """Map SRO research areas to approximate majors."""
     area_lower = area.lower()
@@ -438,7 +482,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         "remote_option": "unknown",
         "opportunity_type": "summer_program",
         "paid": paid,
-        "compensation_details": extra.get("paid_info", ""),
+        "compensation_details": _clean_compensation(extra.get("paid_info", "")),
         "deadline": deadline,
         "is_rolling": is_rolling,
         "posted_date": None,
