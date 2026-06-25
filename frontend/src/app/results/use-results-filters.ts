@@ -25,7 +25,24 @@ export interface UseResultsFiltersOutput {
   filtered: MatchResult[];
   paginated: MatchResult[];
   totalPages: number;
+  /**
+   * Per-tab counts that reflect the ACTIVE field filters (source, scope, paid,
+   * search, …) — every badge equals exactly what its tab shows when clicked.
+   * Computed from the same `base` set as `filtered` (all non-tab filters
+   * applied), so e.g. filtering by a source with no high-priority matches
+   * shows `high_priority: 0` instead of the misleading global count above an
+   * empty list.
+   */
+  counts: Record<Tab, number>;
 }
+
+const EMPTY_COUNTS: Record<Tab, number> = {
+  all: 0,
+  high_priority: 0,
+  good_match: 0,
+  reach: 0,
+  starred: 0,
+};
 
 export function useResultsFilters({
   data,
@@ -40,22 +57,18 @@ export function useResultsFilters({
   pageSize,
   homeSchool,
 }: UseResultsFiltersInput): UseResultsFiltersOutput {
-  const filtered = useMemo(() => {
+  // `base` is every result that passes the active *field* filters (paid, intl,
+  // source, on-campus, deadline, min-score, scope, search) and the dismissed
+  // toggle — but NOT the tab/bucket selection or favorites. Both the per-tab
+  // counts and the displayed list derive from it, so the badge for a tab and
+  // the list under that tab can never disagree.
+  const base = useMemo(() => {
     if (!data?.results) return [];
-    let results: MatchResult[];
-
-    if (activeTab === 'starred') {
-      results = data.results.filter((m) => favs.has(m.opportunity.id));
-    } else if (activeTab === 'all') {
-      results = data.results.filter((m) => m.bucket !== 'low_fit');
-    } else {
-      results = data.results.filter((m) => m.bucket === activeTab);
-    }
+    let results = data.results;
 
     if (!showDismissed) {
       results = results.filter((m) => interactions.get(m.opportunity.id) !== 'dismissed');
     }
-
     if (filters.paid) {
       results = results.filter((m) =>
         filters.paid === 'yes'
@@ -114,6 +127,32 @@ export function useResultsFilters({
       });
     }
 
+    return results;
+  }, [data, debouncedQuery, filters, interactions, showDismissed, homeSchool]);
+
+  const counts = useMemo<Record<Tab, number>>(() => {
+    if (!data?.results) return EMPTY_COUNTS;
+    const c: Record<Tab, number> = { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 };
+    for (const m of base) {
+      if (m.bucket !== 'low_fit') c.all += 1;
+      if (m.bucket === 'high_priority') c.high_priority += 1;
+      else if (m.bucket === 'good_match') c.good_match += 1;
+      else if (m.bucket === 'reach') c.reach += 1;
+      if (favs.has(m.opportunity.id)) c.starred += 1;
+    }
+    return c;
+  }, [base, favs, data]);
+
+  const filtered = useMemo(() => {
+    let results: MatchResult[];
+    if (activeTab === 'starred') {
+      results = base.filter((m) => favs.has(m.opportunity.id));
+    } else if (activeTab === 'all') {
+      results = base.filter((m) => m.bucket !== 'low_fit');
+    } else {
+      results = base.filter((m) => m.bucket === activeTab);
+    }
+
     if (sortBy === 'deadline') {
       results = [...results].sort((a, b) => {
         const da = a.opportunity.deadline || '9999';
@@ -129,7 +168,7 @@ export function useResultsFilters({
     }
 
     return results;
-  }, [data, activeTab, debouncedQuery, filters, favs, sortBy, interactions, showDismissed, homeSchool]);
+  }, [base, activeTab, favs, sortBy]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = useMemo(
@@ -137,5 +176,5 @@ export function useResultsFilters({
     [filtered, page, pageSize],
   );
 
-  return { filtered, paginated, totalPages };
+  return { filtered, paginated, totalPages, counts };
 }
