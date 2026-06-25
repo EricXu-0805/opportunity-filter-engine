@@ -163,6 +163,19 @@ KEYWORD_BANK = [
     "morphology", "psycholinguistics", "computational linguistics",
     "historical linguistics", "sociolinguistics", "language documentation",
     "pragmatics", "language acquisition",
+    "urban planning", "city planning", "regional planning",
+    "transportation planning", "land use", "urban design", "urbanism",
+    "housing", "community development", "economic development",
+    "environmental planning", "spatial analysis", "public transportation",
+    "urban economics", "real estate development", "climate adaptation",
+    "sustainable development", "urban policy", "geographic information systems",
+    "landscape architecture",
+    "landscape architecture", "environmental planning", "ecological design",
+    "landscape ecology", "urban ecology", "green infrastructure",
+    "ecological restoration", "landscape design", "land use",
+    "stormwater management", "regional planning", "climate adaptation",
+    "environmental design", "ecological planning", "resilient design",
+    "urban design", "open space", "environmental justice",
 ]
 
 SKILL_MAP = {
