@@ -21,13 +21,12 @@ from datetime import date, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.collectors.refresh_all as refresh_all
+from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 
-UCB_FACULTY_SOURCES = {
-    "ucb_eecs_faculty",
-    "ucb_stat_faculty",
-    "ucb_chem_faculty",
-    "ucb_cee_faculty",
-}
+# All Berkeley faculty collectors wired into refresh_all's deep block. Derived
+# from the canonical FACULTY_SOURCES set so this stays in lockstep as new
+# department directories are added.
+UCB_FACULTY_SOURCES = {s for s in FACULTY_SOURCES if s.startswith("ucb_")}
 
 
 def _stub_all_collectors(monkeypatch, tmp_path):
@@ -45,6 +44,33 @@ def test_deep_run_registers_all_ucb_collectors(monkeypatch, tmp_path):
     sources = summary["sources"]
     for name in {"ucb_urap", *UCB_FACULTY_SOURCES}:
         assert sources[name]["status"] == "ok", name
+
+
+def test_every_wired_faculty_source_is_registered(monkeypatch, tmp_path):
+    """Guardrail against FACULTY_SOURCES drift.
+
+    Every faculty collector wired into refresh_all (each emits a summary key
+    ending in ``_faculty``) MUST be registered in
+    deactivate_stale_faculty.FACULTY_SOURCES — otherwise a professor removed
+    from that department's directory would never be marked inactive, because
+    the stale-deactivation pass only considers sources it knows about.
+
+    This catches the exact failure mode "added a collector to refresh_all but
+    forgot to register it for stale detection": the new source appears in the
+    run summary but is absent from FACULTY_SOURCES, and this assertion fails
+    loudly in CI. Introspects the real run (not the source text), so it can't
+    drift out of sync with the actual wiring.
+    """
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True)
+    wired_faculty = {name for name in summary["sources"] if name.endswith("_faculty")}
+    unregistered = wired_faculty - FACULTY_SOURCES
+    assert not unregistered, (
+        "faculty collectors wired into refresh_all but missing from "
+        "FACULTY_SOURCES (stale detection would never retire their professors): "
+        f"{sorted(unregistered)} — add them to "
+        "src/normalizers/deactivate_stale_faculty.py"
+    )
 
 
 def test_quick_run_skips_ucb_faculty_but_keeps_ucb_urap(monkeypatch, tmp_path):
