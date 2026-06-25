@@ -20,7 +20,7 @@ export function WorstFieldsSection({
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-[15px] font-semibold text-gray-900">{t('admin.worstFields')}</h2>
         {activeFilter && (
-          <button type="button" onClick={onClearFilter} className="inline-flex items-center gap-1.5 text-[12px] text-blue-600 hover:text-blue-800">
+          <button type="button" onClick={onClearFilter} className="inline-flex items-center gap-1.5 text-[12px] text-indigo-600 hover:text-indigo-800">
             <X className="w-3 h-3" />
             {t('admin.filterActive', { field: activeFilter })} · {t('admin.clearFilter')}
           </button>

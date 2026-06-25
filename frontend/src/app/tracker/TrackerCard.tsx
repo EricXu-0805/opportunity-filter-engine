@@ -38,11 +38,11 @@ export function TrackerCard({
           href={opp.url || undefined}
           target="_blank"
           rel="noopener noreferrer"
-          className="group flex-1 text-sm font-semibold leading-snug text-gray-900 hover:text-blue-700"
+          className="group flex-1 text-sm font-semibold leading-snug text-gray-900 hover:text-indigo-700"
         >
           {opp.title}
           {opp.url && (
-            <ExternalLink className="ml-1 inline-block h-3 w-3 align-baseline text-gray-300 group-hover:text-blue-400" />
+            <ExternalLink className="ml-1 inline-block h-3 w-3 align-baseline text-gray-300 group-hover:text-indigo-400" />
           )}
         </a>
       </div>
@@ -112,7 +112,7 @@ export function TrackerCard({
         onBlur={() => { if (draft !== (notes ?? '')) onSaveNotes(opp.id, draft); }}
         placeholder={t('tracker.notesPlaceholder')}
         rows={2}
-        className="mt-3 w-full resize-y rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-700 placeholder:text-gray-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-500/20 outline-none"
+        className="mt-3 w-full resize-y rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/20 outline-none"
       />
     </div>
   );

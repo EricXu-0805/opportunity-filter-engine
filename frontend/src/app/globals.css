@@ -67,6 +67,31 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
+  /* Onboarding tour "demo" animations — each visual replays on slide change
+     (the slide stage re-keys per slide), so the feature appears to assemble
+     itself. animation-delay is set inline per element for a staggered build.
+     prefers-reduced-motion (below) collapses all of these to an instant snap. */
+  .ob-rise { animation: obRise 0.5s both cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  @keyframes obRise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .ob-pop { animation: obPop 0.5s both cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes obPop {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .ob-bar { transform-origin: left center; animation: obBar 0.7s both cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  @keyframes obBar {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  .ob-grow { transform-box: view-box; transform-origin: center; animation: obGrow 0.6s both cubic-bezier(0.34, 1.4, 0.64, 1); }
+  @keyframes obGrow {
+    from { opacity: 0; transform: scale(0.3); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
   /* Apple-style smooth scroll */
   html { scroll-behavior: smooth; }
 

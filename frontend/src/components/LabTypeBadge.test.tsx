@@ -24,7 +24,7 @@ describe('LabTypeBadge', () => {
     render(<LabTypeBadge labType="dry" />);
     const el = screen.getByText('Dry Lab');
     expect(el).toBeInTheDocument();
-    expect(el).toHaveClass('bg-blue-50', 'text-blue-700');
+    expect(el).toHaveClass('bg-indigo-50', 'text-indigo-700');
   });
 
   it('renders the Humanities label with amber styling', () => {

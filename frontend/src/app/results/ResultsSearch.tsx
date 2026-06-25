@@ -45,7 +45,7 @@ export function ResultsSearch({
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
           placeholder={t('results.search.placeholder')}
-          className="w-full pl-11 pr-24 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
+          className="w-full pl-11 pr-24 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-300"
         />
         <kbd className="absolute right-10 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center justify-center h-5 px-1.5 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded">
           /
@@ -78,7 +78,7 @@ export function ResultsSearch({
               <button
                 type="button"
                 onClick={onSavePreset}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
                 title={t('results.savePresetTitle')}
               >
                 <BookmarkPlus className="w-3 h-3" />

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { CollectorHistoryEntry, TFunc } from './types';
 
 const SOURCE_COLORS = [
-  '#2563eb', '#16a34a', '#dc2626', '#f59e0b', '#8b5cf6',
+  '#4f46e5', '#16a34a', '#dc2626', '#f59e0b', '#8b5cf6',
   '#0ea5e9', '#db2777', '#65a30d', '#475569', '#ea580c',
 ];
 

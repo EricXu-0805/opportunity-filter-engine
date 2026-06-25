@@ -41,7 +41,7 @@ export function SelectionFooter({
             type="button"
             onClick={onConfirm}
             disabled={selectedCount < MIN_COMPARE}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[0_2px_12px_rgba(79,70,229,0.25)]"
           >
             <GitCompare className="w-4 h-4" aria-hidden="true" />
             {t('favorites.confirmCompare')}

@@ -259,7 +259,7 @@ async def _lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="Opportunity Filter Engine API",
+    title="JoinALab API",
     description="Personalized research & internship matching for UIUC undergrads",
     version=API_VERSION,
     docs_url=None,

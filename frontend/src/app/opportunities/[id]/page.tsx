@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const opp = await fetchOpportunityServer(id);
   if (!opp) {
-    return { title: 'Opportunity not found — OpportunityEngine' };
+    return { title: 'Opportunity not found — JoinALab' };
   }
 
   const org = opp.organization ? ` at ${opp.organization}` : '';
@@ -22,14 +22,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const ogImage = `/api/og/opportunity/${encodeURIComponent(opp.id)}`;
 
   return {
-    title: `${title} — OpportunityEngine`,
-    description: description || `${opp.opportunity_type} opportunity at ${opp.organization ?? 'UIUC'}.`,
+    title: `${title} — JoinALab`,
+    description: description || `${opp.opportunity_type} opportunity${opp.organization ? ` at ${opp.organization}` : ''}.`,
     keywords: keywords.length > 0 ? keywords : undefined,
     openGraph: {
       title,
       description: description || undefined,
       type: 'article',
-      siteName: 'OpportunityEngine',
+      siteName: 'JoinALab',
       publishedTime: opp.posted_date,
       images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
@@ -63,7 +63,7 @@ export default async function OpportunityPage({ params }: PageProps) {
     employmentType: opp.opportunity_type === 'research' ? 'PART_TIME' : 'INTERN',
     hiringOrganization: {
       '@type': 'Organization',
-      name: opp.organization ?? 'University of Illinois Urbana-Champaign',
+      name: opp.organization ?? 'Host institution',
     },
     jobLocation: {
       '@type': 'Place',

@@ -70,7 +70,7 @@ export function OpportunityCard({
         className={`bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden transition-all ${
           selectionMode
             ? isSelected
-              ? 'ring-2 ring-blue-500 shadow-[0_4px_20px_rgba(37,99,235,0.15)]'
+              ? 'ring-2 ring-indigo-500 shadow-[0_4px_20px_rgba(79,70,229,0.15)]'
               : canSelect
               ? 'hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]'
               : 'opacity-50'
@@ -86,7 +86,7 @@ export function OpportunityCard({
                 ) : (
                   <a
                     href={`/opportunities/${encodeURIComponent(opp.id)}`}
-                    className="hover:text-blue-600 focus:outline-none focus-visible:underline decoration-blue-500 underline-offset-4 transition-colors"
+                    className="hover:text-indigo-600 focus:outline-none focus-visible:underline decoration-indigo-500 underline-offset-4 transition-colors"
                   >
                     {opp.title}
                   </a>
@@ -115,7 +115,7 @@ export function OpportunityCard({
                 aria-label={opp._customId ? t('favorites.removeCustomAria') : t('favorites.removeAria')}
               >
                 {opp._customId ? (
-                  <Bookmark className="w-4.5 h-4.5 fill-blue-500 text-blue-500" />
+                  <Bookmark className="w-4.5 h-4.5 fill-indigo-500 text-indigo-500" />
                 ) : (
                   <Star className="w-4.5 h-4.5 fill-amber-400 text-amber-400" />
                 )}
@@ -153,7 +153,7 @@ export function OpportunityCard({
                 <button
                   type="button"
                   onClick={() => onOpenEmailModal(opp)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-xl hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow transition-all duration-200"
                 >
                   <Mail className="w-3.5 h-3.5" />
                   {t('card.draftEmail')}
@@ -248,15 +248,15 @@ export function OpportunityCard({
           disabled={!!opp._customId || (!isSelected && !canSelect)}
           aria-pressed={isSelected}
           aria-label={t('favorites.toggleSelectAria', { title: opp.title })}
-          className={`absolute inset-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+          className={`absolute inset-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 ${
             opp._customId
               ? 'bg-gray-500/[0.05] cursor-not-allowed'
-              : isSelected ? 'bg-blue-500/[0.05]' : canSelect ? 'hover:bg-blue-500/[0.03]' : 'cursor-not-allowed'
+              : isSelected ? 'bg-indigo-500/[0.05]' : canSelect ? 'hover:bg-indigo-500/[0.03]' : 'cursor-not-allowed'
           }`}
         >
           <span className={`absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
             isSelected
-              ? 'bg-blue-600 text-white'
+              ? 'bg-indigo-600 text-white'
               : canSelect
               ? 'bg-white border-2 border-gray-300'
               : 'bg-gray-100 border-2 border-gray-200'
