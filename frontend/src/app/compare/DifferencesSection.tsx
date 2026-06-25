@@ -5,6 +5,7 @@ import { Check, X, ChevronDown } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { FIELD_SCORERS, type OppScore } from './scores';
 import { useT } from '@/i18n/client';
+import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
@@ -18,7 +19,7 @@ interface FieldSpec {
 }
 
 const FIELDS: FieldSpec[] = [
-  { key: 'compensation', labelKey: 'compare.fields.compensation', value: (o) => o.compensation_details || (o.paid && o.paid !== 'unknown' ? o.paid : undefined) },
+  { key: 'compensation', labelKey: 'compare.fields.compensation', value: (o) => cleanCompensation(o.compensation_details) || (o.paid && o.paid !== 'unknown' ? o.paid : undefined) },
   { key: 'paid', labelKey: 'compare.fields.paid', value: (o) => o.paid },
   { key: 'international', labelKey: 'compare.fields.international', value: (o) => o.eligibility?.international_friendly },
   { key: 'citizenship', labelKey: 'compare.fields.citizenship', value: (o) => (o.eligibility?.citizenship_required ? 'yes' : 'no') },
