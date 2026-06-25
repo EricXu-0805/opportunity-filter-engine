@@ -7,6 +7,8 @@ Not a job board. A decision engine that answers three questions:
 2. **Should I apply?** (Readiness)
 3. **What should I do next?** (Actionable guidance)
 
+Matching is **field-aware**: your stated research interests lead the ranking, while your major and college steer it — so a veterinary student and a CS student searching the same words see different, field-appropriate labs.
+
 Built for the students each campus serves worst — including international students, who often can't tell what's realistic, what requires citizenship, or where to even start. It launched at the University of Illinois Urbana-Champaign and is rolling out to more campuses (UC Berkeley is live; others are queued).
 
 **[Live](https://joinalab.com)** | **[API](https://opportunity-filter-engine-api.onrender.com/api/health)**
@@ -14,12 +16,12 @@ Built for the students each campus serves worst — including international stud
 ## Screenshots
 
 ### Profile Builder
-Two-column form with college/major cascading dropdowns, international-student filtering, resume upload with auto-skill extraction, and a research interest/experience balance slider.
+Two-column form with college/major cascading dropdowns, a multi-domain skill picker (add your own), clickable research-interest suggestions, international-student filtering, resume upload with auto-skill extraction, and a research interest/experience balance slider.
 
 ![Profile Page](docs/screenshots/01-profile.png)
 
 ### Ranked Results
-Every opportunity is scored (Eligibility 0.45 + Readiness 0.35 + Upside 0.20) and bucketed into High Priority, Good Match, or Reach. Each card explains *why it fits* and *what gaps you have*.
+Every opportunity is scored (Eligibility 0.45 + Readiness 0.35 + Upside 0.20) and bucketed into High Priority, Good Match, or Reach. Your major and college steer the ranking while your stated interests lead it, and the header surfaces how many opportunities truly match your field. Each card explains *why it fits* and *what gaps you have*.
 
 ![Results Page](docs/screenshots/02-results.png)
 
@@ -56,7 +58,7 @@ International students have it worst: they can't tell what's realistic, what req
 | Backend | FastAPI, Python 3.11, Pydantic v2 |
 | Database | Supabase (profiles, favorites, interactions, saved searches, attachments, version history) |
 | Data Collection | BeautifulSoup, feedparser, requests, NSF Awards API |
-| Matching | Three-layer scoring (eligibility × readiness × upside) + TF-IDF semantic similarity |
+| Matching | Field-aware three-layer scoring (eligibility × readiness × upside) — interests lead, major/college steer — + TF-IDF semantic similarity |
 | LLM | OpenRouter for cold-email refinement and the Ask-AI assistant |
 | Deploy | Vercel (frontend) + Render (backend), GitHub Actions (twice-weekly data refresh, daily saved-search refresh) |
 
@@ -73,7 +75,8 @@ Normalization Pipeline (raw text → structured fields → skill/keyword inferen
 Opportunity Database (5,400+ normalized records, auto-refreshed twice weekly)
         │
         ▼
-Matching Engine (eligibility × readiness × upside + TF-IDF semantic similarity)
+Matching Engine (field-aware: eligibility × readiness × upside + TF-IDF semantic
+                similarity; stated interests lead, major + college steer)
         │
         ▼
 Web Interface (Next.js + FastAPI + Supabase)
