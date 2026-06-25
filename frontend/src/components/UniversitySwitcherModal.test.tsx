@@ -10,7 +10,7 @@ vi.mock('@/i18n/client', () => ({
 }));
 
 import UniversitySwitcherModal from './UniversitySwitcherModal';
-import { SCHOOLS } from '@/lib/schools';
+import { SCHOOLS, UCB_CAMPUS_OPPORTUNITIES } from '@/lib/schools';
 
 function renderModal(initialSelectedSlug = 'uiuc') {
   const onCancel = vi.fn();
@@ -47,7 +47,13 @@ describe('UniversitySwitcherModal — rendering', () => {
   it('shows coverage chips: counts for live schools, pending note otherwise', () => {
     renderModal();
     expect(screen.getByText('universitySwitcher.coverageCampusNational:4,700')).toBeInTheDocument();
-    expect(screen.getByText('universitySwitcher.coverageCampus:200')).toBeInTheDocument();
+    // Derived from the config-driven estimate (not a hardcoded 200) so this
+    // tracks the schools.ts constant as UCB coverage is refreshed.
+    expect(
+      screen.getByText(
+        `universitySwitcher.coverageCampus:${UCB_CAMPUS_OPPORTUNITIES.toLocaleString()}`,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('universitySwitcher.coveragePending').length).toBe(SCHOOLS.length - 2);
   });
 
