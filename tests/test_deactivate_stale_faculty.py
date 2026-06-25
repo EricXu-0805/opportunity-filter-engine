@@ -125,15 +125,28 @@ def test_already_inactive_excluded_from_gate_denominator():
 
 
 def test_faculty_sources_match_refresh_all_registrations():
-    import src.collectors.refresh_all  # noqa: F401 — import must not blow up
+    """FACULTY_SOURCES must exactly equal the set of faculty sources refresh_all
+    actually processes — derived from the wiring, not a hardcoded literal, so it
+    can't go stale as departments are added. A source wired but unregistered
+    would never have its stale professors retired; a registered source not wired
+    would never be scraped. Both directions are bugs, so assert equality.
+    """
+    import pathlib
+    import re
 
-    assert FACULTY_SOURCES == {
-        "uiuc_faculty",
-        "ucb_eecs_faculty",
-        "ucb_stat_faculty",
-        "ucb_chem_faculty",
-        "ucb_cee_faculty",
-    }
+    import src.collectors.refresh_all as refresh_all  # import must not blow up
+
+    src = pathlib.Path(refresh_all.__file__).read_text(encoding="utf-8")
+    # Every faculty source name appears as a quoted source-name literal in
+    # refresh_all (the ucb deep-loop tuples + the uiuc_faculty summary key).
+    # Anchored to the source-naming convention so unrelated "*_faculty" strings
+    # (e.g. the "deactivate_stale_faculty" summary key) aren't miscounted.
+    wired = set(re.findall(r'"(ucb_\w+_faculty|uiuc_faculty)"', src))
+    assert wired == set(FACULTY_SOURCES), (
+        "FACULTY_SOURCES is out of sync with refresh_all's faculty wiring.\n"
+        f"  wired but unregistered: {sorted(wired - set(FACULTY_SOURCES))}\n"
+        f"  registered but not wired: {sorted(set(FACULTY_SOURCES) - wired)}"
+    )
 
 
 # --- Reactivation round-trip through the real merges -------------------------
