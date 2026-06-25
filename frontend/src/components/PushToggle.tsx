@@ -46,9 +46,9 @@ export default function PushToggle() {
       type="button"
       onClick={handleClick}
       disabled={busy}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40 ${
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 ${
         subscribed
-          ? 'bg-blue-50 text-blue-700 border-blue-200'
+          ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
           : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
       }`}
       aria-pressed={subscribed}

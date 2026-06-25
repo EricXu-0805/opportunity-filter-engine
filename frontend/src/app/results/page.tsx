@@ -579,7 +579,7 @@ function ResultsContent() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="text-sm text-blue-600 underline hover:text-blue-700"
+            className="text-sm text-indigo-600 underline hover:text-indigo-700"
           >
             {t('common.retry')}
           </button>
@@ -628,7 +628,7 @@ function ResultsContent() {
         >
           <div className="h-[2px] bg-black/[0.03]">
             <div
-              className="h-full bg-blue-500 rounded-r-full transition-[width] duration-700 ease-out"
+              className="h-full bg-indigo-500 rounded-r-full transition-[width] duration-700 ease-out"
               style={{ width: `${loadingPhase.percent}%` }}
             />
           </div>

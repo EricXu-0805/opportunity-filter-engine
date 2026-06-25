@@ -21,9 +21,9 @@ export const LAB_TYPES: LabTypeMeta[] = [
   {
     key: 'dry',
     icon: Cpu,
-    ringClass: 'ring-blue-200',
-    textClass: 'text-blue-700',
-    bgClass: 'bg-blue-50/60',
+    ringClass: 'ring-indigo-200',
+    textClass: 'text-indigo-700',
+    bgClass: 'bg-indigo-50/60',
   },
   {
     key: 'humanities',

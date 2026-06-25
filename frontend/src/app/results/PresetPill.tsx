@@ -18,7 +18,7 @@ export function PresetPill({
   return (
     <span className={`inline-flex items-center gap-1 rounded-full text-[11px] font-medium border transition-colors ${
       active
-        ? 'bg-blue-600 border-blue-600 text-white'
+        ? 'bg-indigo-600 border-indigo-600 text-white'
         : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
     }`}>
       <button

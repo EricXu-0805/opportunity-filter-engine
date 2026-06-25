@@ -7,9 +7,9 @@ import HighlightLabType from './HighlightLabType';
 import { DATABASES, LAB_TYPES } from './types';
 
 export const metadata: Metadata = {
-  title: 'Resources — Cold-email guides & UIUC research databases',
+  title: 'Resources — Cold-email guides & research databases',
   description:
-    'Per-lab-type cold-email guides (wet, dry, humanities) and curated links to Illinois Experts, NIH Reporter, NSF Awards, and Google Scholar — the four databases UIUC undergrads use to research professors before reaching out.',
+    'Per-lab-type cold-email guides (wet, dry, humanities) and curated links to Illinois Experts, NIH Reporter, NSF Awards, and Google Scholar — four databases students use to research professors before reaching out.',
 };
 
 export default async function ResourcesPage() {
@@ -28,7 +28,7 @@ export default async function ResourcesPage() {
 
       <section aria-labelledby="contact-tips-heading" className="mb-16 sm:mb-20">
         <div className="flex items-center gap-3 mb-6">
-          <Mail className="w-5 h-5 text-blue-600" aria-hidden="true" />
+          <Mail className="w-5 h-5 text-indigo-600" aria-hidden="true" />
           <h2 id="contact-tips-heading" className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
             {t('resources.contactTipsHeading')}
           </h2>
@@ -45,7 +45,7 @@ export default async function ResourcesPage() {
 
       <section aria-labelledby="databases-heading">
         <div className="flex items-center gap-3 mb-6">
-          <BookOpen className="w-5 h-5 text-blue-600" aria-hidden="true" />
+          <BookOpen className="w-5 h-5 text-indigo-600" aria-hidden="true" />
           <h2 id="databases-heading" className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
             {t('resources.databasesHeading')}
           </h2>

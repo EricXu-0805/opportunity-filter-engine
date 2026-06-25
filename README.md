@@ -1,18 +1,20 @@
-# OpportunityEngine
+# JoinALab
 
-A personalized research and internship matching engine for UIUC undergraduates. Automatically collects 4,600+ opportunities from 12 sources (UIUC SRO, NSF REU, faculty directories, Handshake, Simplify, OUR RSS, Research Park, manual entries), then ranks and explains each match based on your profile.
+A personalized research, internship, and fellowship matching engine for university students. JoinALab collects thousands of opportunities — campus research databases, faculty directories, NSF REU programs, internship boards, and more — then ranks and explains each match against your profile.
 
 Not a job board. A decision engine that answers three questions:
 1. **Can I apply?** (Eligibility)
 2. **Should I apply?** (Readiness)
-3. **What should I do next?** (Actionable Guidance)
+3. **What should I do next?** (Actionable guidance)
 
-**[Live Demo](https://opportunity-filter-engine.vercel.app)** | **[API](https://opportunity-filter-engine-api.onrender.com/api/health)**
+Built for the students each campus serves worst — including international students, who often can't tell what's realistic, what requires citizenship, or where to even start. It launched at the University of Illinois Urbana-Champaign and is rolling out to more campuses (UC Berkeley is live; others are queued).
+
+**[Live](https://joinalab.com)** | **[API](https://opportunity-filter-engine-api.onrender.com/api/health)**
 
 ## Screenshots
 
 ### Profile Builder
-Two-column form with college/major cascading dropdowns, international student filtering, resume upload with auto-skill extraction, and a research interest/experience balance slider.
+Two-column form with college/major cascading dropdowns, international-student filtering, resume upload with auto-skill extraction, and a research interest/experience balance slider.
 
 ![Profile Page](docs/screenshots/01-profile.png)
 
@@ -22,7 +24,7 @@ Every opportunity is scored (Eligibility 0.45 + Readiness 0.35 + Upside 0.20) an
 ![Results Page](docs/screenshots/02-results.png)
 
 ### Cold Email Generator
-One-click draft with pre-filled subject line and body, personalized to your profile and the specific opportunity. Copy to clipboard or open directly in your email client.
+One-click draft with a pre-filled subject line and body, personalized to your profile and the specific opportunity. Copy to clipboard or open directly in your email client.
 
 ![Cold Email Modal](docs/screenshots/03-cold-email.png)
 
@@ -33,18 +35,18 @@ Live stats across all scraped sources: total opportunities, paid positions, inte
 
 ## Why This Exists
 
-UIUC scatters opportunities across 7+ platforms with no unified view:
+Every campus scatters opportunities across a dozen disconnected platforms with no unified, eligibility-aware view. The launch campus (UIUC) is a representative example of the fragmentation JoinALab unifies:
 
 | Source | What it has | Problem | Our solution |
 |--------|------------|---------|------|
-| OUR Blog | Faculty-posted research positions | RSS feed exists but nobody parses it | ✅ Auto-parsed |
-| SRO Database | 272+ external summer programs | 12 pages of unfiltered Drupal listings | ✅ 279 scraped |
+| Research blogs / RSS | Faculty-posted research positions | Feeds exist but nobody parses them | ✅ Auto-parsed |
+| Summer research databases | Hundreds of external programs | Pages of unfiltered listings | ✅ Scraped + normalized |
 | Handshake | Jobs + some research | Login-gated, mixes everything together | ✅ Cookie-auth collector |
-| Department pages | Lab-specific openings | Scattered across 50+ faculty sites | ✅ 2,000+ faculty from 30+ depts |
-| External REUs | 500+ NSF-funded programs | Requires knowing where to look | ✅ 570 from NSF API |
-| Research Park | 800+ intern positions/year | Separate site, not linked to research | ✅ Scraped |
+| Department / faculty pages | Lab-specific openings | Scattered across 50+ sites per school | ✅ Faculty directories, multi-school |
+| External REUs | 500+ NSF-funded programs | Requires knowing where to look | ✅ Pulled from the NSF Awards API |
+| Research parks / internships | Hundreds of positions per year | Separate sites, not linked to research | ✅ Scraped |
 
-International freshmen have it worst: they can't tell what's realistic, what requires citizenship, or where to even start.
+International students have it worst: they can't tell what's realistic, what requires citizenship, or where to even start. JoinALab makes eligibility a first-class signal, not an afterthought.
 
 ## Tech Stack
 
@@ -55,19 +57,20 @@ International freshmen have it worst: they can't tell what's realistic, what req
 | Database | Supabase (profiles, favorites, interactions, saved searches, attachments, version history) |
 | Data Collection | BeautifulSoup, feedparser, requests, NSF Awards API |
 | Matching | Three-layer scoring (eligibility × readiness × upside) + TF-IDF semantic similarity |
-| LLM | OpenRouter / OpenAI for email refinement |
-| Deploy | Vercel (frontend) + Render (backend), GitHub Actions (Mon/Thu data refresh, daily saved-search refresh) |
+| LLM | OpenRouter for cold-email refinement and the Ask-AI assistant |
+| Deploy | Vercel (frontend) + Render (backend), GitHub Actions (twice-weekly data refresh, daily saved-search refresh) |
 
 ## Architecture
 
 ```
-Data Sources (12+ collectors: SRO, NSF REU, Faculty Dirs, Handshake, Simplify, OUR RSS, Research Park, Manual, …)
+Data Sources (multi-school collectors: faculty directories, research DBs,
+              NSF REU, Handshake, Simplify, RSS feeds, research parks, manual, …)
         │
         ▼
 Normalization Pipeline (raw text → structured fields → skill/keyword inference)
         │
         ▼
-Opportunity Database (4,600+ normalized records, auto-refreshed Mon/Thu)
+Opportunity Database (5,400+ normalized records, auto-refreshed twice weekly)
         │
         ▼
 Matching Engine (eligibility × readiness × upside + TF-IDF semantic similarity)
@@ -76,11 +79,13 @@ Matching Engine (eligibility × readiness × upside + TF-IDF semantic similarity
 Web Interface (Next.js + FastAPI + Supabase)
   ├── Profile form with resume parsing, GitHub import, auto-save
   ├── Ranked results with lab-specific explanations + filters
-  ├── Cold email generator (3 variants + LLM refinement)
-  ├── Favorites + saved searches (cross-device sync, daily new-match cron)
-  ├── Manual import (paste URL or paste full posting → AI extraction)
-  └── Dashboard with live stats + user feedback tracking
+  ├── Cold email generator (multiple tones + LLM refinement)
+  ├── Compare (6-axis radar), favorites + saved searches (cross-device sync)
+  ├── Application tracker, dashboard, and a skill-gap roadmap
+  └── Manual import (paste a URL or a full posting → AI extraction)
 ```
+
+Adding a school is a config + collector exercise: a school registry (`src/collectors/school_config.py`) plus a shared faculty-collector base let new campuses reuse the same normalization and matching pipeline.
 
 ## Run Locally
 
@@ -106,23 +111,23 @@ Open http://localhost:3000. The frontend proxies API requests to the backend aut
 ### Tests
 
 ```bash
-# Backend: pytest — 380 unit + integration + API tests
+# Backend: pytest — unit + integration + API tests
 pytest tests/ -v
 
-# Frontend unit tests: vitest — 278 tests over lib/ modules, components + helpers
+# Frontend unit tests: vitest — 1,000+ tests over lib/ modules, components + helpers
 cd frontend
 npm test
 
-# Frontend E2E: playwright — 82 tests per browser project, real browser, runs both servers
-# (a small handful auto-skip in environments without NEXT_PUBLIC_SUPABASE_*)
+# Frontend E2E: playwright — real-browser specs, runs both servers
+# (some auto-skip in environments without NEXT_PUBLIC_SUPABASE_*)
 cd frontend
 npx playwright install chromium       # one-time browser download
 npm run test:e2e                      # headless
 npm run test:e2e:ui                   # watch/debug UI
 ```
 
-All three suites run automatically in CI on every push/PR (see
-`.github/workflows/ci.yml`).
+The backend and frontend-unit suites run automatically in CI on every push/PR
+(see `.github/workflows/ci.yml`).
 
 ## Project Structure
 
@@ -139,35 +144,35 @@ opportunity-filter-engine/
 │       └── saved_searches.py # POST /cron/saved-searches/refresh
 ├── frontend/                 # Next.js 16 app
 │   ├── src/
-│   │   ├── app/              # Pages (home, results, favorites, import, dashboard, …)
-│   │   ├── components/       # MatchCard, ColdEmailModal, ResumeUpload, etc.
-│   │   └── lib/              # API client, supabase wrapper, saved-searches, types
+│   │   ├── app/              # Pages (home, results, favorites, compare, tracker, dashboard, roadmap, …)
+│   │   ├── components/       # MatchCard, ColdEmailModal, OnboardingIntro, etc.
+│   │   └── lib/              # API client, supabase wrapper, schools registry, types
 │   └── e2e/                  # Playwright specs
 ├── src/                      # Core Python engine
-│   ├── collectors/           # 12+ source-specific scrapers
-│   │   ├── uiuc_sro.py       # SRO database (279 opportunities)
-│   │   ├── nsf_reu.py        # NSF REU Awards API (570)
-│   │   ├── uiuc_faculty.py   # Faculty directories, 30+ depts (2000+)
-│   │   ├── handshake.py      # Handshake with cookie auth (71)
-│   │   ├── uiuc_our_rss.py   # OUR RSS feed (26)
-│   │   ├── uiuc_other.py     # Research Park, LAS hubs, URAP, Grainger, etc.
-│   │   └── …                 # uiuc_drp, uiuc_siebel, uiuc_urap, uiuc_ursa
+│   ├── collectors/           # Source- and school-specific scrapers
+│   │   ├── school_config.py  # School registry (org, location, id prefixes)
+│   │   ├── faculty_base.py   # Shared faculty-collector base
+│   │   ├── uiuc_*.py         # UIUC: SRO, faculty dirs, OUR RSS, Research Park, …
+│   │   ├── ucb_*.py          # UC Berkeley faculty directories (EECS, Chem, BioE, …)
+│   │   ├── nsf_reu.py        # NSF REU Awards API
+│   │   └── handshake.py      # Handshake with cookie auth
 │   ├── matcher/              # Three-layer scoring + TF-IDF
 │   │   ├── ranker.py         # Eligibility × readiness × upside
-│   │   └── embeddings.py     # Semantic similarity (TF-IDF / OpenAI)
+│   │   └── embeddings.py     # Semantic similarity (TF-IDF / embeddings)
 │   └── recommender/          # Cold email + resume gap advisor
 ├── supabase/
-│   └── migrations/           # SQL migrations (RLS, anon auth, saved searches, …)
+│   └── migrations/           # SQL migrations (RLS, anon auth, saved searches, analytics, feedback, …)
 ├── data/
-│   ├── processed/            # 4,600+ normalized opportunities
+│   ├── processed/            # 5,400+ normalized opportunities
 │   └── manual_entries/       # Hand-curated entries
-├── .github/workflows/        # CI + Mon/Thu refresh + daily saved-search cron
+├── .github/workflows/        # CI + twice-weekly refresh + daily saved-search cron
 └── tests/                    # Integration tests
 ```
 
 ## Author
 
-Guoyi Xu (Eric) - UIUC Electrical & Computer Engineering
+Guoyi (Eric) Xu — UIUC Electrical & Computer Engineering
+[eric.guoyi.xu@gmail.com](mailto:eric.guoyi.xu@gmail.com) · [GitHub](https://github.com/EricXu-0805)
 
 ## License
 

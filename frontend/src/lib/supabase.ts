@@ -750,6 +750,32 @@ export async function joinWaitlist(
   return true;
 }
 
+// In-app feedback: a free-text comment / bug report / suggestion the user
+// sends via the feedback widget, stored under the same per-user RLS as
+// favorites. `email` is optional (only if they want a reply). Insert-only —
+// the client cannot read feedback back. Returns false on failure so the
+// widget stays honest. See supabase/migrations/016_feedback.sql.
+export async function submitFeedback(
+  message: string,
+  email: string | null,
+  props: Record<string, unknown> = {},
+): Promise<boolean> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return false;
+
+  const { error } = await supabase.from('feedback').insert({
+    device_id: deviceId,
+    message,
+    email: email || null,
+    props,
+  });
+  if (error) {
+    console.warn('[ofe] feedback insert failed:', error.message);
+    return false;
+  }
+  return true;
+}
+
 export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
 
 export interface InteractionRecord {

@@ -54,7 +54,7 @@ export default function EmailTipsPanel({ labType }: EmailTipsPanelProps) {
       <Link
         href={`/resources?lab=${labType}#tips-card-${labType}`}
         data-testid="tips-read-more"
-        className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 hover:text-blue-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50/60"
+        className="inline-flex items-center gap-1 text-[12px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50/60"
       >
         {t('coldEmail.tips.readMore')}
         <ArrowRight className="w-3 h-3" aria-hidden="true" />

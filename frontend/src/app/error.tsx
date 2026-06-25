@@ -50,7 +50,7 @@ export default function GlobalError({
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => reset()}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-medium transition-colors"
               >
                 <RotateCw className="w-3.5 h-3.5" aria-hidden="true" />
                 Try again
