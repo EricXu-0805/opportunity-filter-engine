@@ -31,7 +31,7 @@ export function FavoritesHeader({
           {opportunities.length === 0 ? t('favorites.empty') : t('favorites.count', { count: opportunities.length })}
         </p>
         {selectionMode && (
-          <p className="mt-1 text-[13px] text-blue-600 font-medium">
+          <p className="mt-1 text-[13px] text-indigo-600 font-medium">
             {t('favorites.selectionHint', { min: MIN_COMPARE, max: MAX_COMPARE })}
           </p>
         )}
@@ -65,7 +65,7 @@ export function FavoritesHeader({
           <button
             type="button"
             onClick={onEnterSelection}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 transition-colors shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_2px_12px_rgba(79,70,229,0.25)]"
           >
             <GitCompare className="w-4 h-4" aria-hidden="true" />
             {t('favorites.compare')}

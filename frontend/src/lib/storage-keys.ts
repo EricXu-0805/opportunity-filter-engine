@@ -19,4 +19,10 @@ export const STORAGE_KEYS = {
   GUEST_BANNER_DISMISSED: 'ofe_guest_banner_dismissed',
   LOCALE: 'ofe_lang',
   OAUTH_LINK_PROVIDER: 'ofe_oauth_link_provider',
+  ONBOARDING_SEEN: 'ofe_onboarding_seen',
 } as const;
+
+// Window CustomEvent fired when the onboarding school gate sets the campus, so a
+// home profile form that already mounted (and already read its profile) updates
+// its home_school live instead of waiting for a reload. detail = school slug.
+export const HOME_SCHOOL_EVENT = 'ofe:home-school';

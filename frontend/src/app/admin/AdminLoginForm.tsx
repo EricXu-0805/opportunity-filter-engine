@@ -28,7 +28,7 @@ export function AdminLoginForm({
         </Link>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-            <Database className="w-7 h-7 text-blue-600" />
+            <Database className="w-7 h-7 text-indigo-600" />
             {t('admin.title')}
           </h1>
           <p className="mt-2 text-[14px] text-gray-500">{t('admin.subtitle')}</p>
@@ -47,11 +47,11 @@ export function AdminLoginForm({
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
               placeholder="Admin token"
-              className="flex-1 px-3.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none"
+              className="flex-1 px-3.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none"
               autoFocus
               autoComplete="off"
             />
-            <button type="submit" disabled={!tokenInput || loading} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            <button type="submit" disabled={!tokenInput || loading} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
               {loading ? '...' : 'Load'}
             </button>
           </form>

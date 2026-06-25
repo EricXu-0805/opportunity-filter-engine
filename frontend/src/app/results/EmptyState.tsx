@@ -20,7 +20,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={onClearFilters}
-          className="mt-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
+          className="mt-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors"
         >
           {t('results.empty.clearAll')}
         </button>

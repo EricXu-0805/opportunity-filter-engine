@@ -127,7 +127,7 @@ def _render_digest_email(
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white;padding:32px 24px">
   <tr><td>
-    <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.5px">OpportunityEngine</div>
+    <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.5px">JoinALab</div>
     <h1 style="font-size:24px;margin:20px 0 8px;color:#111827">{_html_escape(subject)}</h1>
     <p style="color:#6b7280;font-size:14px;margin:0 0 20px">
       Your weekly digest: new opportunities that started matching this saved search.
@@ -386,7 +386,7 @@ _UNSUB_CONFIRMATION_HTML = f"""<!doctype html><html><head><meta charset="utf-8">
   <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px">
     已退订 — 该保存搜索不会再发送每周摘要邮件，可随时在「我的收藏」中重新开启。
   </p>
-  <a href="{FRONTEND_BASE}/favorites" style="color:#2563eb;font-size:14px;text-decoration:none">OpportunityEngine →</a>
+  <a href="{FRONTEND_BASE}/favorites" style="color:#2563eb;font-size:14px;text-decoration:none">JoinALab →</a>
 </div>
 </body></html>"""
 

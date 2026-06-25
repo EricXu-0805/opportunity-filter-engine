@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'OpportunityEngine — AI-powered UIUC research & internship matching';
+export const alt = 'JoinALab — AI-powered research & internship matching';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -36,17 +36,17 @@ export default async function OGImage() {
               width: 96,
               height: 96,
               borderRadius: 24,
-              background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)',
+              background: 'linear-gradient(135deg, #818cf8 0%, #a78bfa 100%)',
               fontSize: 64,
               fontWeight: 900,
               letterSpacing: '-3px',
               color: 'white',
             }}
           >
-            O
+            J
           </div>
           <span style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-1.5px' }}>
-            OpportunityEngine
+            JoinALab
           </span>
         </div>
 
@@ -64,7 +64,7 @@ export default async function OGImage() {
           Find research & internships that{' '}
           <span
             style={{
-              background: 'linear-gradient(90deg, #60a5fa 0%, #a78bfa 100%)',
+              background: 'linear-gradient(90deg, #818cf8 0%, #a78bfa 100%)',
               backgroundClip: 'text',
               color: 'transparent',
             }}
@@ -84,7 +84,7 @@ export default async function OGImage() {
             lineHeight: 1.4,
           }}
         >
-          AI-powered matching for 1,700+ UIUC opportunities · built by students, for students
+          AI-powered matching for research, internships & fellowships · built by students, for students
         </p>
 
         <div
@@ -96,7 +96,7 @@ export default async function OGImage() {
             color: 'rgba(255,255,255,0.6)',
           }}
         >
-          <span>🎯 1,700+ opportunities</span>
+          <span>🎯 thousands of opportunities</span>
           <span>·</span>
           <span>🤖 AI smart match</span>
           <span>·</span>

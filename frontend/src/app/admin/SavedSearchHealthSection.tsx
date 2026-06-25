@@ -12,7 +12,7 @@ export function SavedSearchHealthSection({ health, t }: { health: SavedSearchHea
   return (
     <section className="mt-10">
       <h2 className="text-[15px] font-semibold text-gray-900 mb-3 flex items-center gap-2">
-        <Mail className="w-4 h-4 text-blue-600" />
+        <Mail className="w-4 h-4 text-indigo-600" />
         {t('admin.savedSearch.title')}
       </h2>
       {health.status !== 'ok' ? (

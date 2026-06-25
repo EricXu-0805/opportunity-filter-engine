@@ -13,7 +13,7 @@ type BadgeVariant =
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
   green: 'bg-emerald-50/80 text-emerald-600',
   red: 'bg-red-50/80 text-red-600',
-  blue: 'bg-blue-50/80 text-blue-600',
+  blue: 'bg-indigo-50/80 text-indigo-600',
   yellow: 'bg-amber-50/80 text-amber-600',
   orange: 'bg-orange-50/80 text-orange-600',
   gray: 'bg-gray-100/80 text-gray-500',
