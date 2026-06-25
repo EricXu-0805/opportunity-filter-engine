@@ -146,7 +146,7 @@ class TestChatModelOptions:
         assert all("label" in o and "id" in o for o in opts)
         # slug is resolvable server-side but never leaked in the public list.
         assert all("slug" not in o for o in opts)
-        assert llm.chat_model_slug("gemini-flash") == "google/gemini-2.5-flash"
+        assert llm.chat_model_slug("gemini-flash") == "google/gemini-3.5-flash"
 
     def test_unknown_id_has_no_slug(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
@@ -168,9 +168,46 @@ class TestChatModelOptions:
     def test_default_models_are_only_disclosed_us_providers(self, monkeypatch):
         # Privacy invariant: the default Ask-AI picker must route only to the
         # vetted, US-operated providers named in the privacy policy (OpenAI,
-        # Google). The chat prompt carries profile PII incl. the F-1 flag, so a
-        # China-based / undisclosed provider must never slip into the default set.
+        # Google, Anthropic). The chat prompt carries profile PII incl. the F-1
+        # flag, so a China-based / undisclosed provider must never slip into the
+        # default set.
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
         monkeypatch.delenv("OFE_CHAT_MODELS", raising=False)
         slugs = [llm.chat_model_slug(o["id"]) for o in llm.chat_model_options()]
-        assert slugs and all(s.startswith(("openai/", "google/")) for s in slugs), slugs
+        assert slugs and all(
+            s.startswith(("openai/", "google/", "anthropic/")) for s in slugs
+        ), slugs
+
+
+class TestModelFor:
+    def _clear(self, monkeypatch):
+        for v in ("OPENROUTER_API_KEY", "OFE_STRONG_MODEL",
+                  "OFE_MODEL_COLD_EMAIL", "OFE_MODEL_TAILOR"):
+            monkeypatch.delenv(v, raising=False)
+
+    def test_routes_to_openrouter_best_fit_when_configured(self, monkeypatch):
+        self._clear(monkeypatch)
+        monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+        assert llm.model_for("cold_email") == {
+            "provider_id": "openrouter",
+            "model": "anthropic/claude-opus-4.8",
+        }
+
+    def test_per_task_env_override(self, monkeypatch):
+        self._clear(monkeypatch)
+        monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+        monkeypatch.setenv("OFE_MODEL_COLD_EMAIL", "anthropic/claude-opus-4.8")
+        out = llm.model_for("cold_email")
+        assert out["provider_id"] == "openrouter"
+        assert out["model"] == "anthropic/claude-opus-4.8"
+
+    def test_falls_back_to_strong_model_without_openrouter(self, monkeypatch):
+        self._clear(monkeypatch)
+        monkeypatch.setenv("OFE_STRONG_MODEL", "gemini-2.5-pro")
+        out = llm.model_for("cold_email")
+        assert out == {"model": "gemini-2.5-pro"}
+        assert "provider_id" not in out
+
+    def test_unknown_task_without_openrouter_uses_strong_model(self, monkeypatch):
+        self._clear(monkeypatch)
+        assert llm.model_for("nonsense") == {"model": None}
