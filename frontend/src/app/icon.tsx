@@ -17,13 +17,13 @@ export default function Icon() {
           background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
           borderRadius: '14px',
           color: 'white',
-          fontSize: 38,
+          fontSize: 30,
           fontWeight: 800,
-          letterSpacing: '-1px',
+          letterSpacing: '-1.5px',
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        O
+        JL
       </div>
     ),
     size,

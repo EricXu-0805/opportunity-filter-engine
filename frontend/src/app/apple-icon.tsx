@@ -16,13 +16,13 @@ export default function AppleIcon() {
           height: '100%',
           background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
           color: 'white',
-          fontSize: 112,
+          fontSize: 88,
           fontWeight: 800,
-          letterSpacing: '-3px',
+          letterSpacing: '-4px',
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        O
+        JL
       </div>
     ),
     size,
