@@ -18,6 +18,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
   const { t } = useT();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
+  const [askedKeys, setAskedKeys] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shareProfile, setShareProfile] = useState(true);
@@ -75,10 +76,21 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
     sendMessage(input);
   }, [input, sendMessage]);
 
+  // Asking a suggested question marks it used so it drops out of the list; the
+  // un-asked ones stay visible (previously the whole strip vanished after the
+  // first question, forcing users to retype the others).
+  const askSuggestion = useCallback((key: string) => {
+    setAskedKeys((prev) => new Set(prev).add(key));
+    sendMessage(t(`chatbot.suggested.${key}`));
+  }, [sendMessage, t]);
+
+  const remainingSuggestions = SUGGESTED_KEYS.filter((k) => !askedKeys.has(k));
+
   const handleClear = useCallback(() => {
     setMessages([]);
     setError(null);
     setInput('');
+    setAskedKeys(new Set());
     inputRef.current?.focus();
   }, []);
 
@@ -175,11 +187,11 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
               {t('chatbot.tryAsking')}
             </p>
             <div className="flex flex-col gap-1.5">
-              {SUGGESTED_KEYS.map((key) => (
+              {remainingSuggestions.map((key) => (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => sendMessage(t(`chatbot.suggested.${key}`))}
+                  onClick={() => askSuggestion(key)}
                   className="text-left px-3 py-2 rounded-xl bg-white border border-gray-200 text-[12.5px] text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
                 >
                   {t(`chatbot.suggested.${key}`)}
@@ -225,6 +237,21 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
           </div>
         )}
       </div>
+
+      {messages.length > 0 && !loading && remainingSuggestions.length > 0 && (
+        <div className="shrink-0 px-3 pt-2 flex flex-wrap gap-1.5">
+          {remainingSuggestions.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => askSuggestion(key)}
+              className="px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[11.5px] text-indigo-700 hover:bg-indigo-100 transition-colors"
+            >
+              {t(`chatbot.suggested.${key}`)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="border-t border-gray-100 shrink-0 p-3">
         <div className="flex items-end gap-2">

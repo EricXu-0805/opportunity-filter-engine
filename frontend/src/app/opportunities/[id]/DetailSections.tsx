@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { Opportunity } from '@/lib/types';
-import { friendlyLabel } from './detail-utils';
+import { cleanCompensation, friendlyLabel } from './detail-utils';
 import type { TFunc } from './types';
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -61,6 +61,7 @@ export function DescriptionSection({ description, t }: { description: string; t:
 }
 
 export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
+  const compensation = cleanCompensation(opp.compensation_details);
   return (
     <Section title={t('detail.sections.atGlance')}>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
@@ -86,8 +87,8 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         {opp.duration && (
           <DetailRow icon={<Clock />} label={t('detail.fields.duration')} value={opp.duration} />
         )}
-        {opp.compensation_details && (
-          <DetailRow icon={<DollarSign />} label={t('detail.fields.compensation')} value={opp.compensation_details} />
+        {compensation && (
+          <DetailRow icon={<DollarSign />} label={t('detail.fields.compensation')} value={compensation} />
         )}
         {opp.posted_date && (
           <DetailRow icon={<Calendar />} label={t('detail.fields.posted')} value={opp.posted_date} />

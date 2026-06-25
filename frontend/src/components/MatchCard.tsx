@@ -34,6 +34,7 @@ import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
+import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
 // to keep this card a server-cheap leaf until the user opens the panel).
@@ -124,6 +125,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const { t } = useT();
 
   const { opportunity: opp } = match;
+  const compensation = cleanCompensation(opp.compensation_details);
   const tier = getBucketLabel(match.bucket, t);
   const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown', t);
   const paid = getPaidBadge(opp.paid, t);
@@ -224,12 +226,12 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           })()}
         </div>
 
-        {(opp.compensation_details || opp.duration || opp.application?.requires_resume === 'yes' || opp.application?.requires_recommendation === 'yes') && (
+        {(compensation || opp.duration || opp.application?.requires_resume === 'yes' || opp.application?.requires_recommendation === 'yes') && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-gray-400 mb-4">
-            {opp.compensation_details && (
+            {compensation && (
               <span className="inline-flex items-center gap-1">
                 <DollarSign className="w-3 h-3 text-emerald-400" />
-                {opp.compensation_details}
+                {compensation}
               </span>
             )}
             {opp.duration && (
