@@ -181,6 +181,17 @@ describe('sourceLabel (derived source filter)', () => {
     expect(sourceLabel('ucb_chem_faculty', t)).toBe('results.filters.sourceUcbChemFaculty');
     expect(sourceLabel('ucb_cee_faculty', t)).toBe('results.filters.sourceUcbCeeFaculty');
   });
+  it('uses i18n keys for the UC Berkeley campus opportunity-graph sources', () => {
+    // These three emit buckets must map to real labels — not the humanized
+    // fallback ("Ucb Research Programs"), which reads as a bug in the UI.
+    expect(sourceLabel('ucb_research_programs', t)).toBe(
+      'results.filters.sourceUcbResearchPrograms',
+    );
+    expect(sourceLabel('ucb_external_research', t)).toBe(
+      'results.filters.sourceUcbExternalResearch',
+    );
+    expect(sourceLabel('ucb_labs', t)).toBe('results.filters.sourceUcbLabs');
+  });
   it('humanizes an unknown source key (e.g. simplify_internships)', () => {
     expect(sourceLabel('simplify_internships', t)).toBe('Simplify Internships');
   });

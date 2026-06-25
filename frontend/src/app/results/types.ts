@@ -116,6 +116,10 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   ucb_stat_faculty: 'results.filters.sourceUcbStatFaculty',
   ucb_chem_faculty: 'results.filters.sourceUcbChemFaculty',
   ucb_cee_faculty: 'results.filters.sourceUcbCeeFaculty',
+  // UC Berkeley campus-wide opportunity graph (campus collector emit buckets).
+  ucb_research_programs: 'results.filters.sourceUcbResearchPrograms',
+  ucb_external_research: 'results.filters.sourceUcbExternalResearch',
+  ucb_labs: 'results.filters.sourceUcbLabs',
 };
 
 export function sourceLabel(source: string, t: TFunc): string {
