@@ -26,12 +26,40 @@ from datetime import date, datetime, timedelta
 logger = logging.getLogger(__name__)
 
 # Faculty collectors wired into refresh_all; all emit source_type='faculty_research'.
+# MUST stay in lockstep with the deep faculty loop in refresh_all.py — a source
+# wired there but absent here would never have its stale professors retired.
+# test_refresh_all guards this invariant in both directions.
 FACULTY_SOURCES = frozenset({
     "uiuc_faculty",
     "ucb_eecs_faculty",
     "ucb_stat_faculty",
     "ucb_chem_faculty",
     "ucb_cee_faculty",
+    "ucb_anthro_faculty",
+    "ucb_arch_faculty",
+    "ucb_astro_faculty",
+    "ucb_bioe_faculty",
+    "ucb_cbe_faculty",
+    "ucb_dcrp_faculty",
+    "ucb_econ_faculty",
+    "ucb_eps_faculty",
+    "ucb_espm_faculty",
+    "ucb_ib_faculty",
+    "ucb_ieor_faculty",
+    "ucb_larch_faculty",
+    "ucb_law_faculty",
+    "ucb_ling_faculty",
+    "ucb_math_faculty",
+    "ucb_mcb_faculty",
+    "ucb_me_faculty",
+    "ucb_mse_faculty",
+    "ucb_ne_faculty",
+    "ucb_nst_faculty",
+    "ucb_physics_faculty",
+    "ucb_pmb_faculty",
+    "ucb_polisci_faculty",
+    "ucb_psych_faculty",
+    "ucb_soc_faculty",
 })
 
 GRACE_DAYS = 14
