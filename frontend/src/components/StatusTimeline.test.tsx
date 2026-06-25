@@ -133,7 +133,7 @@ describe('StatusTimeline', () => {
       />,
     );
     await waitFor(() => expect(screen.getAllByText(/^Label:/).length).toBe(5));
-    expect(container.querySelector('.bg-blue-500')).not.toBeNull();
+    expect(container.querySelector('.bg-indigo-500')).not.toBeNull();
     expect(container.querySelector('.bg-violet-500')).not.toBeNull();
     expect(container.querySelector('.bg-amber-500')).not.toBeNull();
     expect(container.querySelector('.bg-gray-400')).not.toBeNull();

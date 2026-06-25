@@ -25,7 +25,7 @@ import { collectReminders, formatReminderLabel, type ReminderInfo } from '@/lib/
 import PushToggle from '@/components/PushToggle';
 
 const STATUS_CONFIG: Record<InteractionType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  applied: { label: 'Applied', icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
+  applied: { label: 'Applied', icon: Send, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   replied: { label: 'Replied', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   rejected: { label: 'Rejected', icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
   interviewing: { label: 'Interviewing', icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
@@ -113,7 +113,7 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <AlertCircle className="w-8 h-8 text-red-400" />
         <p className="text-gray-600 font-medium">{error || 'No data'}</p>
-        <button type="button" onClick={() => window.location.reload()} className="text-[13px] text-blue-600 hover:underline">
+        <button type="button" onClick={() => window.location.reload()} className="text-[13px] text-indigo-600 hover:underline">
           Retry
         </button>
       </div>
@@ -131,7 +131,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-        <StatCard value={statusCounts.applied} label="Applied" color="text-blue-600" />
+        <StatCard value={statusCounts.applied} label="Applied" color="text-indigo-600" />
         <StatCard value={statusCounts.replied} label="Replied" color="text-emerald-600" />
         <StatCard value={statusCounts.interviewing} label="Interviewing" color="text-violet-600" />
         <StatCard value={favCount} label="Saved" color="text-amber-500" />
@@ -189,7 +189,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => router.push('/')}
-            className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors"
           >
             Find Matches <ArrowRight className="w-3.5 h-3.5" />
           </button>
@@ -283,7 +283,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
         <StatCard value={stats.total} label={tr('dashboard.stats.total')} />
         <StatCard value={stats.active} label={tr('dashboard.stats.active')} color="text-emerald-600" />
-        <StatCard value={stats.paid_total} label={tr('dashboard.stats.paid')} color="text-blue-600" />
+        <StatCard value={stats.paid_total} label={tr('dashboard.stats.paid')} color="text-indigo-600" />
         <StatCard value={stats.international_friendly_total} label={tr('dashboard.stats.intl')} color="text-indigo-600" />
       </div>
 
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                 <span className="text-[13px] text-gray-500 w-36 truncate shrink-0">{type}</span>
                 <div className="flex-1 h-2 bg-black/[0.04] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-400 rounded-full transition-all duration-700"
+                    className="h-full bg-indigo-400 rounded-full transition-all duration-700"
                     style={{ width: `${Math.max(pct, 2)}%` }}
                   />
                 </div>

@@ -120,7 +120,7 @@ export default function AccountPage() {
           <Card>
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
-                <span className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 text-lg font-semibold uppercase flex items-center justify-center shrink-0">
+                <span className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 text-lg font-semibold uppercase flex items-center justify-center shrink-0">
                   {email ? email[0].toUpperCase() : <UserRound className="w-6 h-6" aria-hidden="true" />}
                 </span>
                 <div className="min-w-0">
@@ -149,7 +149,7 @@ export default function AccountPage() {
                 <button
                   type="button"
                   onClick={() => openModal({ reason: 'header' })}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors shrink-0"
                 >
                   <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                   {t('account.saveAccount')}

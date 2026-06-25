@@ -105,6 +105,18 @@ SEMANTIC_RERANK_TOPK = int(_env_float("OFE_SEMANTIC_TOPK", 200))
 SEMANTIC_RERANK_WEIGHT = _env_float("OFE_SEMANTIC_W", 0.5)
 SEMANTIC_RERANK_FALLBACK_CAP = _env_float("OFE_SEMANTIC_FALLBACK_CAP", 0.2)
 
+# Seasonal boost: summer research / REU postings are most actionable in the
+# spring-into-summer window when their cycles are open, so they get a small
+# multiplicative lift during those months. Applied AFTER the stretch transform
+# (like the deadline/grad multipliers) and gated to opportunity_type
+# 'summer_program' so it never perturbs the score of a non-seasonal posting.
+# Months are 1-12; default Feb-July covers the apply-now-for-summer window.
+SEASONAL_BOOST_ENABLED = os.environ.get("OFE_SEASONAL_BOOST", "1") not in ("0", "false", "False")
+SEASONAL_BOOST_FACTOR = _env_float("OFE_SEASONAL_FACTOR", 1.10)
+SEASONAL_BOOST_MONTHS: frozenset[int] = frozenset(
+    int(m) for m in os.environ.get("OFE_SEASONAL_MONTHS", "2,3,4,5,6,7").split(",") if m.strip()
+)
+
 # Upside keyword_score maps a raw similarity via 15 + sim * SCALE. The base
 # upside layer is corpus-fitted TF-IDF, whose cosines top out ~0.16, so it needs
 # a large multiplier to reach usable scores. (Embeddings power semantic_rerank,

@@ -39,11 +39,11 @@ const BUCKET_STYLE: Record<CompareBucket, {
     labelKey: 'compare.bucket.top',
   },
   backup: {
-    borderClass: 'border border-blue-200',
+    borderClass: 'border border-indigo-200',
     bgClass: 'bg-white',
-    badgeBg: 'bg-blue-500',
+    badgeBg: 'bg-indigo-500',
     badgeText: 'text-white',
-    scoreText: 'text-blue-600',
+    scoreText: 'text-indigo-600',
     applyClass: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
     Icon: Shield,
     labelKey: 'compare.bucket.backup',
@@ -139,7 +139,7 @@ export default function BucketCards({ rows, profile }: Props) {
 
               <a
                 href={`/opportunities/${encodeURIComponent(opp.id)}`}
-                className="text-[15px] font-bold text-gray-900 leading-snug line-clamp-2 hover:text-blue-600 transition-colors"
+                className="text-[15px] font-bold text-gray-900 leading-snug line-clamp-2 hover:text-indigo-600 transition-colors"
               >
                 {opp.title}
               </a>

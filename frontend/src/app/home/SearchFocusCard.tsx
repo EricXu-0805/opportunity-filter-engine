@@ -31,10 +31,10 @@ export function SearchFocusCard({
 
       <div className={exploring ? 'opacity-50 pointer-events-none' : undefined}>
         <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-3">
-          <span className={searchWeight < 50 ? 'text-blue-600 font-semibold' : ''}>
+          <span className={searchWeight < 50 ? 'text-indigo-600 font-semibold' : ''}>
             {t('home.form.searchWeightLeft')}
           </span>
-          <span className={searchWeight > 50 ? 'text-blue-600 font-semibold' : ''}>
+          <span className={searchWeight > 50 ? 'text-indigo-600 font-semibold' : ''}>
             {t('home.form.searchWeightRight')}
           </span>
         </div>
@@ -45,7 +45,7 @@ export function SearchFocusCard({
           value={searchWeight}
           disabled={exploring}
           onChange={(e) => setSearchWeight(Number(e.target.value))}
-          className="w-full h-2 rounded-full appearance-none cursor-pointer accent-blue-600 bg-gray-200 disabled:cursor-not-allowed"
+          className="w-full h-2 rounded-full appearance-none cursor-pointer accent-indigo-600 bg-gray-200 disabled:cursor-not-allowed"
         />
         <p className="mt-2 text-xs text-gray-400 text-center">
           {searchWeight < 40

@@ -16,7 +16,7 @@ export default function OpportunityNotFound() {
       </p>
       <Link
         href="/results"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-[14px] font-semibold hover:bg-blue-700 transition-colors"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-[14px] font-semibold hover:bg-indigo-700 transition-colors"
       >
         Browse matches
       </Link>
