@@ -375,6 +375,25 @@ class TestR70ADataQuality:
             f"shared emails {dup_emails} / shared names {dup_names}"
         )
 
+    def test_no_ucb_institution_pi_names(self):
+        """A directory card occasionally mis-selects a non-person element (a
+        "UC Berkeley" footer link, a breadcrumb) as a faculty name, entering the
+        corpus as pi_name="Berkeley". Caught here even as a single record — the
+        joint-appointment test only fires when two such records collide."""
+        from src.collectors.ucb_common import _is_person_name
+
+        offenders = [
+            (o.get("id"), o.get("pi_name"))
+            for o in _load_data()
+            if (o.get("source") or "").startswith("ucb_")
+            and o.get("pi_name")
+            and not _is_person_name(o["pi_name"])
+        ]
+        assert not offenders, (
+            f"{len(offenders)} ucb_* records have an institution/place pi_name "
+            f"(scrape mis-selected a non-person element). First: {offenders[:5]}"
+        )
+
 
 class TestDeactivatePastLogic:
     """Deterministic guard for the deactivate_past normalizer itself, using an
