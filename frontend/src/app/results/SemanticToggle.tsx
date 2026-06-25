@@ -22,9 +22,9 @@ export function SemanticToggle({
       disabled={disabled}
       onClick={() => onChange(!value)}
       title={value ? t('results.semantic.titleOn') : t('results.semantic.titleOff')}
-      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed ${
         value
-          ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white border-transparent shadow-sm'
+          ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-sm'
           : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
       }`}
     >

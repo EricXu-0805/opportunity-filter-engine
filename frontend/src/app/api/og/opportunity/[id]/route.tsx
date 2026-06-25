@@ -43,7 +43,7 @@ export async function GET(
 
   const badges: Array<{ label: string; bg: string; fg: string }> = [];
   const typeLabel = (opp.opportunity_type ?? '').replace(/_/g, ' ');
-  if (typeLabel) badges.push({ label: capitalize(typeLabel), bg: '#dbeafe', fg: '#1d4ed8' });
+  if (typeLabel) badges.push({ label: capitalize(typeLabel), bg: '#e0e7ff', fg: '#4338ca' });
   if (opp.paid === 'yes' || opp.paid === 'stipend') {
     badges.push({ label: opp.paid === 'stipend' ? 'Stipend' : 'Paid', bg: '#d1fae5', fg: '#047857' });
   }
@@ -82,7 +82,7 @@ export async function GET(
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -94,7 +94,7 @@ export async function GET(
             JL
           </div>
           <div style={{ display: 'flex', fontSize: 22, fontWeight: 700, color: '#111827' }}>
-            JoinA<span style={{ color: '#2563eb' }}>Lab</span>
+            JoinA<span style={{ color: '#4f46e5' }}>Lab</span>
           </div>
         </div>
 

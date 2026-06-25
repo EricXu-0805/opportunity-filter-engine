@@ -43,10 +43,10 @@ function FellowshipPreviewCard({
   const body = (
     <>
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="text-[14px] font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+        <h3 className="text-[14px] font-semibold text-gray-900 line-clamp-2 group-hover:text-indigo-600 transition-colors">
           {opp.title}
         </h3>
-        <Sparkles className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-1" aria-hidden="true" />
+        <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-1" aria-hidden="true" />
       </div>
       {opp.organization && (
         <p className="text-[12px] text-gray-500 mb-3 line-clamp-1">{opp.organization}</p>
@@ -58,7 +58,7 @@ function FellowshipPreviewCard({
           </span>
         )}
         {intl && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-medium">
             <Globe className="w-2.5 h-2.5" aria-hidden="true" />
             {labelIntl}
           </span>
@@ -121,14 +121,14 @@ export default function FeaturedFellowships() {
       <div className="flex items-end justify-between mb-4 gap-3">
         <div>
           <h2 id="featured-fellowships-heading" className="flex items-center gap-2 text-[15px] font-semibold text-gray-900 tracking-tight">
-            <GraduationCap className="w-4 h-4 text-blue-600" aria-hidden="true" />
+            <GraduationCap className="w-4 h-4 text-indigo-600" aria-hidden="true" />
             {t('home.featured.title')}
           </h2>
           <p className="mt-1 text-[12px] text-gray-500">{t('home.featured.subtitle')}</p>
         </div>
         <Link
           href="/fellowships"
-          className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 hover:text-blue-700 transition-colors shrink-0"
+          className="inline-flex items-center gap-1 text-[12px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors shrink-0"
         >
           {t('home.featured.cta')}
           <ArrowRight className="w-3 h-3" aria-hidden="true" />

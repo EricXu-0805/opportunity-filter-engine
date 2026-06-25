@@ -13,7 +13,7 @@ import { TrackerCard } from './TrackerCard';
 import { TRACKER_COLUMNS, useTrackerData } from './use-tracker-data';
 
 const COLUMN_ACCENT: Record<InteractionType, string> = {
-  applied: 'text-blue-700',
+  applied: 'text-indigo-700',
   replied: 'text-emerald-700',
   interviewing: 'text-violet-700',
   rejected: 'text-gray-500',

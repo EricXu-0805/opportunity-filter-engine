@@ -34,7 +34,7 @@ function CoverageChip({ school, t }: { school: School; t: ReturnType<typeof useT
   }
   const cls = campusOpportunities >= 1000
     ? 'bg-emerald-50/80 text-emerald-600'
-    : 'bg-blue-50/80 text-blue-600';
+    : 'bg-indigo-50/80 text-indigo-600';
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium ${cls}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" aria-hidden="true" />
@@ -89,7 +89,7 @@ export default function UniversitySwitcherModal({
           <button
             type="button"
             onClick={onCancel}
-            className="p-2 -mr-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="p-2 -mr-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             aria-label={t('universitySwitcher.closeAria')}
           >
             <X className="w-4 h-4 text-gray-400" aria-hidden="true" />
@@ -106,7 +106,7 @@ export default function UniversitySwitcherModal({
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('universitySwitcher.searchPlaceholder')}
               aria-label={t('universitySwitcher.searchAria')}
-              className="w-full pl-9 pr-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none"
+              className="w-full pl-9 pr-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none"
             />
           </div>
         </div>
@@ -131,14 +131,14 @@ export default function UniversitySwitcherModal({
                     onClick={() => setSelectedSlug(entry.slug)}
                     aria-pressed={isSelected}
                     data-testid={`university-card-${entry.slug}`}
-                    className={`relative text-left rounded-xl border p-4 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                    className={`relative text-left rounded-xl border p-4 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                       isSelected
-                        ? 'border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/30'
+                        ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/30'
                         : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                     }`}
                   >
                     {isSelected && (
-                      <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
+                      <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
                         <Check className="w-3 h-3 text-white" aria-hidden="true" />
                       </span>
                     )}
@@ -188,7 +188,7 @@ export default function UniversitySwitcherModal({
               type="button"
               onClick={() => onConfirm(selectedSlug)}
               disabled={!selected}
-              className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t('universitySwitcher.confirm')}
             </button>

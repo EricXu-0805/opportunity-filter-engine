@@ -28,7 +28,7 @@ export default async function ResourcesPage() {
 
       <section aria-labelledby="contact-tips-heading" className="mb-16 sm:mb-20">
         <div className="flex items-center gap-3 mb-6">
-          <Mail className="w-5 h-5 text-blue-600" aria-hidden="true" />
+          <Mail className="w-5 h-5 text-indigo-600" aria-hidden="true" />
           <h2 id="contact-tips-heading" className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
             {t('resources.contactTipsHeading')}
           </h2>
@@ -45,7 +45,7 @@ export default async function ResourcesPage() {
 
       <section aria-labelledby="databases-heading">
         <div className="flex items-center gap-3 mb-6">
-          <BookOpen className="w-5 h-5 text-blue-600" aria-hidden="true" />
+          <BookOpen className="w-5 h-5 text-indigo-600" aria-hidden="true" />
           <h2 id="databases-heading" className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
             {t('resources.databasesHeading')}
           </h2>
