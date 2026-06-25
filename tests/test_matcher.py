@@ -24,10 +24,12 @@ from src.matcher.ranker import (
     BUCKET_THRESHOLDS,
     MatchResult,
     _assign_buckets,
+    _college_affinity,
     _compute_weights,
     _is_undergrad,
     _major_match_score,
     _normalize_type_key,
+    _profile_implicit_keywords,
     _requires_graduate_standing,
     _skill_overlap_score,
     _summarize_research,
@@ -1426,8 +1428,12 @@ class TestExploreDiversity:
         return opps
 
     def _profile(self, exploring):
+        # No major: this fixture tests diversity reordering in isolation, so the
+        # opps must stay equal-scored. A major would (correctly) let the implicit
+        # major→keyword bridge lift its field's area (e.g. ECE→robotics) above the
+        # others — real behavior, but orthogonal to what these tests assert.
         return {
-            "year": "freshman", "major": "ECE", "secondary_interests": [],
+            "year": "freshman", "major": "", "secondary_interests": [],
             "international_student": False, "hard_skills": [],
             "seeking_type": ["research"], "research_interests_text": "",
             "search_weight": 50, "exploring": exploring,
@@ -1461,3 +1467,131 @@ class TestExploreDiversity:
         assert {r.opportunity_id: r.bucket for r in plain} == {
             r.opportunity_id: r.bucket for r in expl
         }
+
+
+class TestMajorTopicBridge:
+    """Major→topical-keyword bridge: a student with no explicit interests still
+    gets a field steer from their major, but it never outranks a stated interest."""
+
+    def test_cs_major_yields_cs_keywords(self):
+        kw = _profile_implicit_keywords({"major": "Computer Science"})
+        assert {"machine learning", "artificial intelligence"} <= kw
+
+    def test_vet_major_yields_bio_keywords(self):
+        kw = _profile_implicit_keywords({"major": "Veterinary Medicine"})
+        assert "animal sciences" in kw and "integrative biology" in kw
+
+    def test_secondary_interests_contribute(self):
+        kw = _profile_implicit_keywords({"major": "", "secondary_interests": ["Statistics"]})
+        assert "statistics" in kw
+
+    def test_unmapped_major_never_raises(self):
+        # A major with no group and no related edge returns a set, never errors.
+        assert isinstance(_profile_implicit_keywords({"major": "Underwater Basket Weaving"}), set)
+
+    def _opp(self, keywords):
+        return {"id": "x", "keywords": keywords, "paid": "unknown", "eligibility": {},
+                "source_type": "", "lab_or_program": "", "pi_name": ""}
+
+    def test_implicit_lifts_a_baseline_opportunity(self):
+        prof = {"desired_fields": [], "research_interests_text": ""}
+        opp = self._opp(["robotics"])
+        without = score_upside(prof, opp)[0]
+        with_impl = score_upside(prof, opp, implicit_keywords={"robotics"})[0]
+        assert with_impl > without
+
+    def test_implicit_never_outranks_an_explicit_match(self):
+        # max()-fold precedence: an opp the student EXPLICITLY matches scores the
+        # same with or without the implicit major signal — explicit always leads.
+        prof = {"desired_fields": ["machine learning"], "research_interests_text": ""}
+        opp = self._opp(["machine learning"])
+        explicit_only = score_upside(prof, opp)[0]
+        with_impl = score_upside(prof, opp, implicit_keywords={"machine learning"})[0]
+        assert with_impl == explicit_only
+
+
+class TestStructuralMajorWeight:
+    """Major carries more of the eligibility layer than before, but the layer
+    still sums to 1.0 and exact match lifts a field-restricted opportunity."""
+
+    def test_eligibility_subweights_sum_to_one(self):
+        from src.matcher.config import ELIG_MAJOR_WEIGHT
+        rem = 1.0 - ELIG_MAJOR_WEIGHT
+        total = ELIG_MAJOR_WEIGHT + rem * (0.375 + 0.25 + 0.1875 + 0.1875)
+        assert abs(total - 1.0) < 1e-9
+
+    def _restricted_opp(self):
+        return {
+            "id": "r", "opportunity_type": "research", "is_rolling": True,
+            "keywords": [], "eligibility": {
+                "preferred_year": ["freshman", "sophomore", "junior"],
+                "majors": ["CS"], "international_friendly": "yes",
+            },
+        }
+
+    def test_exact_major_lifts_eligibility_over_cross_domain(self):
+        opp = self._restricted_opp()
+        cs = {"year": "sophomore", "major": "Computer Science", "secondary_interests": [],
+              "hard_skills": [], "seeking_type": ["research"]}
+        spanish = {"year": "sophomore", "major": "Spanish", "secondary_interests": [],
+                   "hard_skills": [], "seeking_type": ["research"]}
+        assert score_eligibility(cs, opp)[0] > score_eligibility(spanish, opp)[0]
+
+
+class TestCollegeAffinity:
+    """College → opportunity.department affinity: a small bonus when they match,
+    and never a penalty when the department is missing or the college unknown."""
+
+    def test_matching_department_gives_bonus(self):
+        from src.matcher.config import COLLEGE_AFFINITY_MAX
+        prof = {"college": "Grainger College of Engineering"}
+        opp = {"department": "Electrical & Computer Engineering"}
+        assert _college_affinity(prof, opp) == COLLEGE_AFFINITY_MAX
+
+    def test_missing_department_no_bonus_no_penalty(self):
+        prof = {"college": "Grainger College of Engineering"}
+        assert _college_affinity(prof, {"department": ""}) == 0.0
+        assert _college_affinity(prof, {}) == 0.0
+
+    def test_unknown_college_no_bonus(self):
+        assert _college_affinity({"college": "Hogwarts"}, {"department": "Potions"}) == 0.0
+
+    def test_non_matching_department_no_bonus(self):
+        prof = {"college": "Grainger College of Engineering"}
+        assert _college_affinity(prof, {"department": "Department of History"}) == 0.0
+
+
+class TestMajorDriveRealCorpus:
+    """On the real corpus: an empty-interest student's results actually change
+    with their major, and the field-relevant count is honest (thin for a field
+    the corpus barely covers)."""
+
+    def _opps(self):
+        path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
+        if not os.path.exists(path):
+            pytest.skip("No processed data file")
+        with open(path) as f:
+            data = json.load(f)
+        return data["opportunities"] if isinstance(data, dict) and "opportunities" in data else data
+
+    def _profile(self, major):
+        return {"year": "sophomore", "major": major, "secondary_interests": [],
+                "international_student": False, "hard_skills": [], "coursework": [],
+                "seeking_type": ["research", "summer_program"], "research_interests_text": "",
+                "desired_fields": [], "search_weight": 50,
+                "preferences": {"min_match_threshold": 25}}
+
+    def test_empty_interest_major_changes_results(self):
+        opps = self._opps()
+        cs = [r.opportunity_id for r in rank_all(self._profile("Computer Science"), opps)[:10]]
+        vet = [r.opportunity_id for r in rank_all(self._profile("Veterinary Medicine"), opps)[:10]]
+        assert cs != vet  # major now reorders an otherwise-identical (empty-interest) query
+
+    def test_field_relevant_count_is_honest(self):
+        opps = self._opps()
+        cs = rank_all(self._profile("Computer Science"), opps)
+        vet = rank_all(self._profile("Veterinary Medicine"), opps)
+        cs_rel = sum(1 for r in cs if r.bucket != "low_fit" and r.field_relevant)
+        vet_rel = sum(1 for r in vet if r.bucket != "low_fit" and r.field_relevant)
+        # The CS-dominated corpus has far more CS-relevant inventory than vet.
+        assert cs_rel > vet_rel

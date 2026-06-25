@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -47,7 +47,7 @@ class ProfileRequest(BaseModel):
     # suppresses the topic-alignment penalty, de-emphasizes readiness, and
     # diversity-samples the top buckets) for students without a settled direction.
     exploring: bool = False
-    preferences: Optional[ProfilePreferences] = None
+    preferences: ProfilePreferences | None = None
 
     @field_validator("research_interests_text")
     @classmethod
@@ -140,6 +140,11 @@ class MatchesResponse(BaseModel):
     reach: int
     low_fit: int
     results: list[MatchResultResponse]
+    # Visible results that topically match the student's stated interests OR
+    # major-derived field. `thin_inventory` true → the client shows "few matches
+    # in your field" instead of implying the padded total is all field-relevant.
+    field_relevant_count: int = 0
+    thin_inventory: bool = False
 
 
 class ColdEmailRequest(BaseModel):
@@ -147,7 +152,7 @@ class ColdEmailRequest(BaseModel):
     opportunity_id: str
     engine: str = "template"
     # Voice overlay for the AI engine. None = no overlay (lab-type default).
-    style: Optional[str] = None
+    style: str | None = None
 
     @field_validator("engine")
     @classmethod
@@ -158,7 +163,7 @@ class ColdEmailRequest(BaseModel):
 
     @field_validator("style")
     @classmethod
-    def valid_style(cls, v: Optional[str]) -> Optional[str]:
+    def valid_style(cls, v: str | None) -> str | None:
         if v is not None and v not in ("professional", "warm", "friendly", "lively"):
             raise ValueError(
                 "style must be one of: professional, warm, friendly, lively"
@@ -172,18 +177,18 @@ class ColdEmailResponse(BaseModel):
     recipient_email: str
     mailto_link: str
     method: str = "template"
-    lab_type: Optional[str] = None
+    lab_type: str | None = None
     # The voice overlay actually applied (echoes request.style; None on the
     # template path), plus the tone we suggest for this lab_type so the UI can
     # badge a default without re-deriving the mapping.
-    style: Optional[str] = None
-    recommended_style: Optional[str] = None
+    style: str | None = None
+    recommended_style: str | None = None
     # R72-A: when an AI draft was requested but we served the template,
     # this says why so the UI can show an accurate hint. None when method
     # is "ai" or the caller asked for the template engine directly.
     # Values: "not_configured" | "unavailable" | "invalid_output" |
     # "fabrication".
-    fallback_reason: Optional[str] = None
+    fallback_reason: str | None = None
 
 
 class GapAnalysisResponse(BaseModel):

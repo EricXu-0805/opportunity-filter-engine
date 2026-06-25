@@ -16,6 +16,7 @@ from backend.schemas import (
     MatchResultResponse,
     ProfileRequest,
 )
+from src.matcher.config import THIN_INVENTORY_FLOOR
 from src.matcher.ranker import (
     _assign_buckets,
     _diversify_explore,
@@ -232,10 +233,13 @@ async def get_matches(
 
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
     visible_results = []
+    field_relevant_count = 0
     for r in results:
         buckets[r.bucket] = buckets.get(r.bucket, 0) + 1
         if r.bucket != "low_fit":
             visible_results.append(r)
+            if getattr(r, "field_relevant", False):
+                field_relevant_count += 1
 
     page = visible_results[offset:offset + limit] if limit is not None else visible_results[offset:]
     page_response = [
@@ -262,6 +266,8 @@ async def get_matches(
         reach=buckets["reach"],
         low_fit=buckets["low_fit"],
         results=page_response,
+        field_relevant_count=field_relevant_count,
+        thin_inventory=field_relevant_count < THIN_INVENTORY_FLOOR,
     )
 
 
