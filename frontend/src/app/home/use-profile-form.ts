@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { getStats, parseGitHubProfile } from '@/lib/api';
 import { clearMatchCache } from '@/lib/match-cache';
-import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 import { bySlug } from '@/lib/schools';
 import { loadProfile, onAuthChange, saveProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
@@ -174,6 +174,21 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       });
     });
     return () => unsub();
+  }, []);
+
+  // The onboarding school gate (a layout-level overlay) finishes *after* this
+  // form has already mounted and loaded its profile, so its localStorage write
+  // alone would never be reflected here. It also broadcasts the chosen campus on
+  // a window event; apply it live so the Institution field updates immediately.
+  // The form's own auto-save then persists the full profile.
+  useEffect(() => {
+    const onHomeSchool = (e: Event) => {
+      const slug = (e as CustomEvent<string>).detail;
+      if (typeof slug !== 'string' || !slug) return;
+      setProfile((prev) => (prev.home_school === slug ? prev : { ...prev, home_school: slug }));
+    };
+    window.addEventListener(HOME_SCHOOL_EVENT, onHomeSchool);
+    return () => window.removeEventListener(HOME_SCHOOL_EVENT, onHomeSchool);
   }, []);
 
   const handleShare = useCallback(async () => {

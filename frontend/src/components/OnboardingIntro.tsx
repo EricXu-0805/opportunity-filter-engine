@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Star, Check, Sparkles, Calendar, Target, Send, MapPin } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { track } from '@/lib/analytics';
-import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 import { SCHOOLS } from '@/lib/schools';
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
@@ -26,12 +26,16 @@ const LOCATIONS: Partial<Record<SlideKey, string>> = {
   roadmap: 'roadmapLoc',
 };
 
-// The first-visit school choice is handed to the home profile form by merging it
-// into the persisted local profile blob — the same key loadProfile() reads first.
-// A first-visit user (the only one who sees this tour) has no Supabase profile row
-// yet, so loadProfile() returns this local copy and the form opens on the chosen
-// campus. Local-only on purpose: keeps this component off the supabase client (and
-// its jsdom test trivial); a later form submit syncs the full profile to Supabase.
+// The first-visit school choice is handed to the home profile form two ways:
+//   1. merged into the persisted local profile blob — the same key loadProfile()
+//      reads first — so a *fresh* load (no Supabase row yet, which is every
+//      first-visit user) opens on the chosen campus;
+//   2. broadcast on a window event, because the home form usually mounts and
+//      reads its profile *before* the tour finishes — so a plain localStorage
+//      write would never be re-read. The form listens and updates home_school
+//      live (see use-profile-form.ts).
+// Local-only persistence keeps this component off the supabase client (and its
+// jsdom test trivial); a later form submit syncs the full profile to Supabase.
 function persistHomeSchool(slug: string): void {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
@@ -39,6 +43,9 @@ function persistHomeSchool(slug: string): void {
     const base = parsed && typeof parsed === 'object' ? parsed : {};
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ ...base, home_school: slug }));
   } catch { /* storage unavailable */ }
+  try {
+    window.dispatchEvent(new CustomEvent(HOME_SCHOOL_EVENT, { detail: slug }));
+  } catch { /* SSR / no window */ }
 }
 
 // ---- per-feature mini visuals — each "assembles" on view (staggered .ob-* anims) ----
