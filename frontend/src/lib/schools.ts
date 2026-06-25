@@ -44,6 +44,34 @@ const PENDING_COVERAGE: SchoolCoverage = {
   note: 'universitySwitcher.coveragePending',
 };
 
+/**
+ * UC Berkeley campus coverage, broken out by source family so the headline
+ * count is a transparent, config-driven estimate rather than a magic literal.
+ * Refresh these as the active UCB collector set changes (the previous single
+ * hardcoded 200 went stale the moment the campus graph + faculty directories
+ * landed). Deriving the count from the dataset at build time remains the
+ * tracked follow-up — the frontend bundle doesn't load the opportunities
+ * corpus — so this stays a maintained estimate.
+ *
+ * Calibrated against the shipped dataset (~369 `school='ucb'` records:
+ * faculty directories ~316, campus programs/dept pages 44, labs 8); rounded
+ * down to conservative figures so the chip never overstates coverage, and
+ * with headroom for the additional faculty directories being wired in.
+ */
+const UCB_CAMPUS_COVERAGE = {
+  /** ucb_*_faculty directories (EECS/Stat/Chem/CEE live; more wiring in). */
+  facultyDirectories: 300,
+  /** ucb_research_programs: OURS programs, dept research pages, career/RA boards, announcements. */
+  campusPrograms: 50,
+  /** ucb_labs: lab / research-center recruiting pages. */
+  labs: 10,
+} as const;
+
+export const UCB_CAMPUS_OPPORTUNITIES: number =
+  UCB_CAMPUS_COVERAGE.facultyDirectories +
+  UCB_CAMPUS_COVERAGE.campusPrograms +
+  UCB_CAMPUS_COVERAGE.labs;
+
 export const SCHOOLS: School[] = [
   {
     slug: 'uiuc',
@@ -64,7 +92,7 @@ export const SCHOOLS: School[] = [
     nameZh: '加州大学伯克利分校',
     color: '#003262',
     location: 'Berkeley, CA',
-    coverage: { campusOpportunities: 200, note: 'universitySwitcher.coverageCampus' },
+    coverage: { campusOpportunities: UCB_CAMPUS_OPPORTUNITIES, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 7, majors: 136 },
   },
   {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCHOOLS, bySlug, detectSchoolFromEmail } from './schools';
+import { SCHOOLS, UCB_CAMPUS_OPPORTUNITIES, bySlug, detectSchoolFromEmail } from './schools';
 
 describe('detectSchoolFromEmail — known schools', () => {
   it('matches an exact known domain', () => {
@@ -96,7 +96,12 @@ describe('registry — switcher metadata', () => {
 
   it('UIUC and UCB are the only schools with live campus coverage', () => {
     expect(bySlug('uiuc')?.coverage.campusOpportunities).toBe(4700);
-    expect(bySlug('ucb')?.coverage.campusOpportunities).toBe(200);
+    // UCB coverage is the config-driven estimate, not a magic literal — assert
+    // it tracks the computed constant and clears a conservative floor that the
+    // shipped dataset (~369 school='ucb' records) already exceeds, so the chip
+    // can't silently revert to the stale 200.
+    expect(bySlug('ucb')?.coverage.campusOpportunities).toBe(UCB_CAMPUS_OPPORTUNITIES);
+    expect(UCB_CAMPUS_OPPORTUNITIES).toBeGreaterThanOrEqual(300);
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending.length).toBe(SCHOOLS.length - 2);
   });
