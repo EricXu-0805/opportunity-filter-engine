@@ -46,6 +46,33 @@ def test_deep_run_registers_all_ucb_collectors(monkeypatch, tmp_path):
         assert sources[name]["status"] == "ok", name
 
 
+def test_ucb_campus_runs_in_both_quick_and_deep(monkeypatch, tmp_path):
+    """Acceptance: the UC Berkeley campus opportunity graph (ucb_campus) is
+    wired into refresh_all and runs in BOTH modes — its curated seed layer is
+    network-free so it is not gated behind deep mode (only its live crawl is).
+    Asserted explicitly so the campus collector can't be silently dropped from
+    the pipeline the way it had no test coverage before."""
+    for deep in (True, False):
+        _stub_all_collectors(monkeypatch, tmp_path)
+        summary = refresh_all.refresh_all(deep=deep)
+        assert "ucb_campus" in summary["sources"], f"ucb_campus missing (deep={deep})"
+        assert summary["sources"]["ucb_campus"]["status"] == "ok", deep
+
+
+def test_no_silent_ucb_source_omissions(monkeypatch, tmp_path):
+    """Acceptance / no-silent-omissions: a deep run must exercise EVERY UC
+    Berkeley collector the system knows about — the campus graph (ucb_campus),
+    URAP, and all faculty directories (FACULTY_SOURCES). Dropping any of them
+    from refresh_all (e.g. forgetting to wire a newly added collector) makes
+    this fail loudly instead of silently shrinking coverage."""
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True)
+    ran = {name for name, info in summary["sources"].items() if info.get("status") == "ok"}
+    expected = {"ucb_campus", "ucb_urap", *UCB_FACULTY_SOURCES}
+    missing = expected - ran
+    assert not missing, f"UC Berkeley collectors wired but not executed by refresh_all: {sorted(missing)}"
+
+
 def test_every_wired_faculty_source_is_registered(monkeypatch, tmp_path):
     """Guardrail against FACULTY_SOURCES drift.
 
