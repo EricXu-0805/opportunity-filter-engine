@@ -15,7 +15,8 @@ const ALL_SKILLS = [
   'AWS', 'GCP', 'Azure', 'Firebase',
   'Docker', 'Kubernetes', 'Git', 'Linux', 'Bash',
   'Figma', 'Adobe Suite', 'Unity', 'Unreal Engine',
-  'ROS', 'Arduino', 'Raspberry Pi', 'FPGA', 'Verilog', 'VHDL',
+  'ROS', 'Arduino', 'Raspberry Pi', 'STM32', 'FPGA', 'Verilog', 'VHDL', 'SystemVerilog',
+  'Vivado', 'Quartus', 'Altium', 'KiCad', 'Cadence', 'LTspice', 'Eagle', 'Embedded C',
   'Solidworks', 'AutoCAD', 'ANSYS', 'COMSOL',
   'LaTeX', 'Excel', 'Tableau', 'Power BI',
   'SPSS', 'SAS', 'Stata', 'Mathematica',
@@ -135,7 +136,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                 else if (canAddCustom) addSkill(trimmed);
               }
             }}
-            placeholder={selected.length === 0 ? 'Select skills...' : 'Add more...'}
+            placeholder={selected.length === 0 ? 'Search or add a skill…' : 'Add more…'}
             className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
           />
         </div>
