@@ -85,6 +85,9 @@ NOISE_EMAILS = frozenset({
     # profile; without this, faculty whose personal address is non-Berkeley
     # (e.g. an @lbl.gov address) would resolve to it.
     "physics_admin@berkeley.edu",
+    # History (and its cross-listed area-studies depts) list a department
+    # mailbox as a second mailto on every profile; the personal address is first.
+    "history@berkeley.edu",
     # Public Health lists its school-wide contact mailbox as a second mailto on
     # every profile; the professor's personal address is the first mailto.
     "publichealth@berkeley.edu",
@@ -166,6 +169,14 @@ KEYWORD_BANK = [
     "social psychology", "developmental psychology", "cognitive neuroscience",
     "perception", "attention", "memory", "emotion regulation",
     "behavioral science", "psychopathology", "personality",
+    "history of science", "early modern europe", "late modern europe",
+    "modern europe", "medieval", "byzantine", "ancient greece",
+    "ancient history", "east asia", "south asia", "southeast asia",
+    "middle east", "north america", "latin america", "africa",
+    "environmental history", "intellectual history", "cultural history",
+    "social history", "economic history", "political history",
+    "gender history", "jewish history", "history of capitalism",
+    "colonialism", "empire", "migration",
     "public health", "epidemiology", "global health",
     "health policy", "environmental health", "occupational health",
     "infectious disease", "infectious diseases", "chronic disease",
