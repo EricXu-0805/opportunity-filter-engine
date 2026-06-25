@@ -16,6 +16,7 @@ from pathlib import Path
 from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate_stale_faculty
 from src.normalizers.school_audience import apply_school_audience
+from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
@@ -477,6 +478,37 @@ def refresh_all(deep: bool = True) -> dict:
             "school_audience: %d record(s) stamped across %d source(s)",
             sum(school_audience_counts.values()),
             len(school_audience_counts),
+        )
+
+        # Rule-based auto-tag: fill unknown paid / international-friendly / skill /
+        # year fields from text heuristics (free — no LLM). Collectors leave these
+        # "unknown" when the listing doesn't state them; resolving the easy ones
+        # gives the matcher more signal (esp. international_friendly, the F-1
+        # lever). The LLM tagging pass stays a manual opt-in (cost-controlled).
+        tagged = 0
+        for opp in all_opps:
+            if needs_tagging(opp) and apply_updates(opp, rule_based_tag(opp)):
+                tagged += 1
+        summary["sources"]["auto_tagger"] = {"rule_based_tagged": tagged, "status": "ok"}
+        logger.info("auto_tagger: %d record(s) rule-tagged (filled unknown fields)", tagged)
+
+        # Observability (MASTER_PLAN §2.5): the set the matcher historically
+        # mishandled — citizenship_required=True yet international_friendly still
+        # "unknown". rank_all hard-filters citizenship_required, so this is a
+        # defense-in-depth tripwire: a non-zero count flags a reconciliation gap a
+        # future scrape introduced, not a live F-1 leak.
+        unreconciled = sum(
+            1 for o in all_opps
+            if (o.get("eligibility") or {}).get("citizenship_required") is True
+            and (o.get("eligibility") or {}).get("international_friendly") == "unknown"
+        )
+        summary["sources"]["intl_reconciliation"] = {
+            "citizenship_required_but_intl_unknown": unreconciled,
+            "status": "ok",
+        }
+        logger.info(
+            "intl_reconciliation: %d record(s) citizenship_required + intl unknown",
+            unreconciled,
         )
 
         with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
