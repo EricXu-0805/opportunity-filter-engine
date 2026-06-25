@@ -46,7 +46,7 @@ export const TABS: {
 }[] = [
   { key: 'all', labelKey: 'results.tabs.all', icon: Filter, color: 'text-gray-600' },
   { key: 'high_priority', labelKey: 'results.tabs.highPriority', icon: Zap, color: 'text-emerald-600' },
-  { key: 'good_match', labelKey: 'results.tabs.goodMatch', icon: Target, color: 'text-blue-600' },
+  { key: 'good_match', labelKey: 'results.tabs.goodMatch', icon: Target, color: 'text-indigo-600' },
   { key: 'reach', labelKey: 'results.tabs.reach', icon: TrendingUp, color: 'text-amber-600' },
   { key: 'starred', labelKey: 'results.tabs.starred', icon: Star, color: 'text-amber-500' },
 ];

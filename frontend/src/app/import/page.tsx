@@ -176,13 +176,13 @@ export default function ImportPage() {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder={t('import.urlPlaceholder')}
                 disabled={loading}
-                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none disabled:bg-gray-50"
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
                 autoFocus
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {loading ? (
                   <>
@@ -210,7 +210,7 @@ export default function ImportPage() {
                 placeholder={t('import.textPlaceholder')}
                 disabled={loading}
                 rows={10}
-                className="mt-2 block w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] leading-relaxed focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none disabled:bg-gray-50 resize-y"
+                className="mt-2 block w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50 resize-y"
                 autoFocus
               />
             </label>
@@ -218,7 +218,7 @@ export default function ImportPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             >
               {loading ? (
                 <>
@@ -325,7 +325,7 @@ function ResultCard({
         <span
           className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium ${
             llmEnriched
-              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
               : 'bg-gray-50 text-gray-500 border border-gray-200'
           }`}
         >
@@ -385,7 +385,7 @@ function ResultCard({
           <button
             type="button"
             onClick={onSave}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors"
           >
             <Bookmark className="w-3.5 h-3.5" />
             {t('import.saveToList')}
@@ -453,7 +453,7 @@ function SkillRow({
   variant: 'required' | 'preferred';
 }) {
   const chipClass = variant === 'required'
-    ? 'bg-blue-50 text-blue-700 border-blue-100'
+    ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
     : 'bg-gray-50 text-gray-600 border-gray-200';
   return (
     <div className="mb-4">

@@ -33,7 +33,7 @@ export function InteractionPills({
               type="button"
               aria-pressed={active}
               onClick={() => onTrack(type)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 active ? INTERACTION_PILL[type] : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
               }`}
             >

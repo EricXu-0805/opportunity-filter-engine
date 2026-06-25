@@ -30,7 +30,7 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
   const prefillHref = buildPrefillHref(opp);
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:border-blue-300 hover:shadow-md transition-all flex flex-col">
+    <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:border-indigo-300 hover:shadow-md transition-all flex flex-col">
       <div className="flex items-start justify-between gap-3 mb-2">
         <h3 className="text-base font-semibold text-gray-900 leading-snug">
           {external ? (
@@ -38,12 +38,12 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
               href={linkHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-blue-600 transition-colors"
+              className="hover:text-indigo-600 transition-colors"
             >
               {opp.title}
             </a>
           ) : (
-            <Link href={linkHref} className="hover:text-blue-600 transition-colors">
+            <Link href={linkHref} className="hover:text-indigo-600 transition-colors">
               {opp.title}
             </Link>
           )}
@@ -64,7 +64,7 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
           </span>
         )}
         {intl && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200">
             {t('fellowships.badges.intl')}
           </span>
         )}
@@ -94,7 +94,7 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
       <Link
         href={prefillHref}
         data-testid="match-like-this"
-        className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 hover:text-blue-700 transition-colors self-start"
+        className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors self-start"
       >
         {t('fellowships.matchLikeThis')}
         <ArrowRight className="w-3 h-3" aria-hidden="true" />

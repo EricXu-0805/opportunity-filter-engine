@@ -452,8 +452,8 @@ export default function ColdEmailModal({
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center" aria-hidden="true">
-              <Mail className="w-5 h-5 text-blue-600" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center" aria-hidden="true">
+              <Mail className="w-5 h-5 text-indigo-600" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -466,7 +466,7 @@ export default function ColdEmailModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
             aria-label={t('coldEmail.closeAria')}
           >
             <X className="w-5 h-5 text-gray-400" aria-hidden="true" />
@@ -476,7 +476,7 @@ export default function ColdEmailModal({
         {/* Loading / Error */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
             <p className="text-sm text-gray-500">{t('coldEmail.generating')}</p>
           </div>
         )}
@@ -484,7 +484,7 @@ export default function ColdEmailModal({
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <AlertCircle className="w-8 h-8 text-red-500" />
             <p className="text-sm text-red-600">{error}</p>
-            <button type="button" onClick={fetchVariants} className="text-sm text-blue-600 underline hover:text-blue-700">{t('coldEmail.tryAgain')}</button>
+            <button type="button" onClick={fetchVariants} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
           </div>
         )}
 
@@ -502,7 +502,7 @@ export default function ColdEmailModal({
                       onClick={() => selectVariant(i)}
                       className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 ${
                         activeVariant === i
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-indigo-600 text-white'
                           : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
                       }`}
                     >
@@ -578,7 +578,7 @@ export default function ColdEmailModal({
                       value={recipient}
                       onChange={(e) => setRecipient(e.target.value)}
                       placeholder={t('coldEmail.toPlaceholder')}
-                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
                   </div>
                   <div>
@@ -587,7 +587,7 @@ export default function ColdEmailModal({
                       type="text"
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all"
                     />
                   </div>
                   <div className="flex-1 flex flex-col">
@@ -606,7 +606,7 @@ export default function ColdEmailModal({
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
                       rows={12}
-                      className="w-full flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none transition-all resize-y"
+                      className="w-full flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
                     />
                   </div>
                 </div>
@@ -631,7 +631,7 @@ export default function ColdEmailModal({
                       <div
                         className={`max-w-[90%] px-3 py-2 rounded-xl text-[13px] leading-relaxed ${
                           msg.role === 'user'
-                            ? 'bg-blue-600 text-white rounded-br-sm'
+                            ? 'bg-indigo-600 text-white rounded-br-sm'
                             : 'bg-white text-gray-700 border border-gray-200 rounded-bl-sm shadow-sm'
                         }`}
                       >
@@ -669,12 +669,12 @@ export default function ColdEmailModal({
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder={t('coldEmail.refinePlaceholder')}
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
                     />
                     <button
                       type="submit"
                       disabled={!chatInput.trim()}
-                      className="p-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                      className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                     >
                       <Send className="w-4 h-4" />
                     </button>
@@ -740,17 +740,17 @@ export default function ColdEmailModal({
                   type="button"
                   disabled={!recipient.trim()}
                   onClick={() => { window.open(getMailtoLink('default'), '_blank'); markContacted(); }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ExternalLink className="w-4 h-4" />
                   {t('coldEmail.openInEmail')}
                 </button>
-                <div className="w-px bg-blue-400" />
+                <div className="w-px bg-indigo-400" />
                 <button
                   type="button"
                   disabled={!recipient.trim()}
                   onClick={() => { window.open(getMailtoLink('gmail'), '_blank'); markContacted(); }}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openGmailTitle')}
                 >
                   {t('coldEmail.gmail')}
@@ -759,7 +759,7 @@ export default function ColdEmailModal({
                   type="button"
                   disabled={!recipient.trim()}
                   onClick={() => { window.open(getMailtoLink('outlook'), '_blank'); markContacted(); }}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-blue-100 bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openOutlookTitle')}
                 >
                   {t('coldEmail.outlook')}

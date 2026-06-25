@@ -29,7 +29,7 @@ export function ResultsTabs({ activeTab, onChange, counts, t }: ResultsTabsProps
             role="tab"
             aria-selected={activeTab === key}
             onClick={() => onChange(key)}
-            className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-[12px] sm:text-[13px] font-medium whitespace-nowrap transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+            className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-[12px] sm:text-[13px] font-medium whitespace-nowrap transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
               ${
                 activeTab === key
                   ? 'bg-white text-gray-900 shadow-sm'

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 const VALID_LAB_TYPES = new Set(['wet', 'dry', 'humanities']);
-const RING_CLASSES = ['ring-2', 'ring-blue-400', 'ring-offset-2', 'ring-offset-white'];
+const RING_CLASSES = ['ring-2', 'ring-indigo-400', 'ring-offset-2', 'ring-offset-white'];
 
 export default function HighlightLabType() {
   useEffect(() => {

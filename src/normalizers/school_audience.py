@@ -37,6 +37,17 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_chem_faculty": ("ucb", "unknown"),
     "ucb_cee_faculty": ("ucb", "unknown"),
     "ucb_urap": ("ucb", "campus"),
+    # Campus-wide opportunity graph (src/collectors/ucb_campus.py). Three emit
+    # buckets, audience chosen so the discovery-scope filter stays correct:
+    #   * ucb_research_programs — Berkeley-enrollment-gated programs, department
+    #     pages, on-campus jobs, announcements → campus-only.
+    #   * ucb_external_research — external fellowships + REU-style listings
+    #     hosted on Berkeley pages that welcome any-school applicants → open.
+    #   * ucb_labs — "join our lab" / center recruiting pages (cold-email
+    #     targets); cross-school openness is per-lab → unknown.
+    "ucb_research_programs": ("ucb", "campus"),
+    "ucb_external_research": (None, "open"),
+    "ucb_labs": ("ucb", "unknown"),
 }
 
 
