@@ -625,6 +625,8 @@ export const en = {
       },
     },
     rankedFor: '{count} opportunities ranked for you',
+    fieldMatches: '{count} strong matches in your field',
+    thinInventory: 'few openings in your field right now — ranked by relevance',
     aiBadge: 'AI',
     tabs: {
       all: 'All',
@@ -2322,6 +2324,8 @@ export const zh = {
       },
     },
     rankedFor: '为你排名了 {count} 个机会',
+    fieldMatches: '你的方向有 {count} 个强匹配',
+    thinInventory: '你的方向目前对口机会较少 —— 已按相关度排序',
     aiBadge: 'AI',
     tabs: {
       all: '全部',

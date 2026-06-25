@@ -65,6 +65,14 @@ export function ResultsHeader({
               )
               : t('common.loading')}
         </p>
+        {!loading && data && typeof data.field_relevant_count === 'number' && data.field_relevant_count > 0 && (
+          <p className="mt-1 text-[12px] sm:text-[13px] font-medium text-indigo-700">
+            {t('results.fieldMatches', { count: data.field_relevant_count })}
+            {data.thin_inventory && (
+              <span className="ml-1.5 font-normal text-gray-400">· {t('results.thinInventory')}</span>
+            )}
+          </p>
+        )}
         {loading && showSlowHint && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
