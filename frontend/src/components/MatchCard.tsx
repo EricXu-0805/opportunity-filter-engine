@@ -469,7 +469,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 {gaps.suggested_coursework.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-teal-600 uppercase tracking-widest mb-2">
-                      Recommended UIUC courses
+                      Recommended courses
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {gaps.suggested_coursework.map((c) => (

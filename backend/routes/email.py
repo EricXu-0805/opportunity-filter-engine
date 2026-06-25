@@ -174,7 +174,7 @@ def _safe_url(url: str) -> str:
     """Return the URL only if it is http(s); otherwise "".
 
     send-matches/send-favorites accept caller-supplied item URLs and render
-    them as clickable links under the OpportunityEngine brand. Restricting the
+    them as clickable links under the JoinALab brand. Restricting the
     scheme blocks javascript:/data:/other-scheme links from riding the sending
     domain's reputation. Non-http(s) items render as plain text, not links.
     """
@@ -184,7 +184,7 @@ def _safe_url(url: str) -> str:
 
 
 def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str, str, str]:
-    title_line = subject_hint or f"Your top {len(items)} matches from OpportunityEngine"
+    title_line = subject_hint or f"Your top {len(items)} matches from JoinALab"
     rows_html = []
     rows_text = []
     for i, m in enumerate(items, 1):
@@ -215,7 +215,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white;padding:32px 24px">
   <tr><td>
-    <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.5px">OpportunityEngine</div>
+    <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.5px">JoinALab</div>
     <h1 style="font-size:24px;margin:20px 0 8px;color:#111827">{_html_escape(title_line)}</h1>
     <p style="color:#6b7280;font-size:14px;margin:0 0 20px">
       Here {'is' if len(items) == 1 else 'are'} {len(items)} opportunit{'y' if len(items) == 1 else 'ies'} we surfaced for you.
@@ -225,7 +225,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
       {''.join(rows_html)}
     </table>
     <p style="margin-top:28px;color:#9ca3af;font-size:11px">
-      Sent from OpportunityEngine · <a href="{FRONTEND_BASE}" style="color:#9ca3af">{FRONTEND_BASE}</a>
+      Sent from JoinALab · <a href="{FRONTEND_BASE}" style="color:#9ca3af">{FRONTEND_BASE}</a>
     </p>
   </td></tr>
 </table>
@@ -234,7 +234,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
     text = (
         f"{title_line}\n\n"
         + "".join(rows_text)
-        + f"\n---\nSent from OpportunityEngine · {FRONTEND_BASE}\n"
+        + f"\n---\nSent from JoinALab · {FRONTEND_BASE}\n"
     )
     return title_line, html, text
 
@@ -289,7 +289,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white;padding:32px 24px">
   <tr><td>
-    <div style="font-size:22px;font-weight:700;color:#0f172a">OpportunityEngine</div>
+    <div style="font-size:22px;font-weight:700;color:#0f172a">JoinALab</div>
     <h1 style="font-size:24px;margin:20px 0 8px">{_html_escape(subject)}</h1>
     <p style="color:#6b7280;font-size:14px;margin:0 0 20px">
       Your saved opportunities, with any notes and status you've tracked.
@@ -298,13 +298,13 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
       {''.join(rows_html)}
     </table>
     <p style="margin-top:28px;color:#9ca3af;font-size:11px">
-      Sent from OpportunityEngine · <a href="{FRONTEND_BASE}/favorites" style="color:#9ca3af">View in app</a>
+      Sent from JoinALab · <a href="{FRONTEND_BASE}/favorites" style="color:#9ca3af">View in app</a>
     </p>
   </td></tr>
 </table>
 </body></html>"""
 
-    text = f"{subject}\n\n" + "".join(rows_text) + f"\n---\nOpenEngine · {FRONTEND_BASE}/favorites\n"
+    text = f"{subject}\n\n" + "".join(rows_text) + f"\n---\nJoinALab · {FRONTEND_BASE}/favorites\n"
     return subject, html, text
 
 
@@ -385,10 +385,10 @@ async def restore_link(req: RestoreLinkRequest):
             return {"ok": True, "note": "email-disabled"}
         raise
 
-    subject = "Your OpportunityEngine restore link"
+    subject = "Your JoinALab restore link"
     html = f"""<!doctype html><html><body style="font-family:sans-serif;padding:24px;background:#fafafa">
 <div style="max-width:500px;margin:0 auto;background:white;padding:32px;border-radius:12px">
-  <h1 style="font-size:20px;margin:0 0 12px">Restore your OpportunityEngine session</h1>
+  <h1 style="font-size:20px;margin:0 0 12px">Restore your JoinALab session</h1>
   <p style="color:#4b5563;font-size:14px;line-height:1.5">
     Click the button below on any device to load your saved profile,
     favorites, and application notes. The link works for {RESTORE_TOKEN_TTL_HOURS // 24} days.
@@ -402,7 +402,7 @@ async def restore_link(req: RestoreLinkRequest):
 </div>
 </body></html>"""
     text = (
-        f"Restore your OpportunityEngine session:\n\n{url}\n\n"
+        f"Restore your JoinALab session:\n\n{url}\n\n"
         f"The link works for {RESTORE_TOKEN_TTL_HOURS // 24} days. "
         f"If you didn't request this, ignore the email.\n"
     )

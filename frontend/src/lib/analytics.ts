@@ -5,7 +5,9 @@ export type FunnelEvent =
   | 'matches_generated'
   | 'match_opened'
   | 'ai_feature_used'
-  | 'intent_clicked';
+  | 'intent_clicked'
+  | 'feedback_submitted'
+  | 'onboarding_completed';
 
 // Fire-and-forget funnel instrumentation. NEVER throws and NEVER blocks the UI:
 // a failed insert (offline, no session, RLS) is swallowed — analytics must not

@@ -11,7 +11,7 @@ const MIN_COMPARE = 2;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Compare opportunities — OpportunityEngine',
+    title: 'Compare opportunities — JoinALab',
     robots: { index: false },
   };
 }

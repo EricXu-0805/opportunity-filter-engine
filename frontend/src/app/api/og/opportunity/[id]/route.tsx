@@ -30,7 +30,7 @@ export async function GET(
       (
         <div style={notFoundStyle}>
           <div style={{ fontSize: 44, fontWeight: 700 }}>Opportunity not found</div>
-          <div style={{ fontSize: 22, color: '#9ca3af', marginTop: 12 }}>OpportunityEngine</div>
+          <div style={{ fontSize: 22, color: '#9ca3af', marginTop: 12 }}>JoinALab</div>
         </div>
       ),
       { width: OG_WIDTH, height: OG_HEIGHT },
@@ -91,10 +91,10 @@ export async function GET(
               fontSize: 24,
             }}
           >
-            OE
+            JL
           </div>
           <div style={{ display: 'flex', fontSize: 22, fontWeight: 700, color: '#111827' }}>
-            Opportunity<span style={{ color: '#2563eb' }}>Engine</span>
+            JoinA<span style={{ color: '#2563eb' }}>Lab</span>
           </div>
         </div>
 
@@ -161,7 +161,7 @@ export async function GET(
             color: '#64748b',
           }}
         >
-          <span>Find research &amp; internships at UIUC</span>
+          <span>Find research &amp; internships that fit you</span>
           {opp.deadline && <span>Deadline: {opp.deadline}</span>}
         </div>
       </div>

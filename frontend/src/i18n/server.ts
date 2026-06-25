@@ -1,4 +1,4 @@
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { normalizeLocale, translate, DEFAULT_LOCALE } from './translate';
 import type { Locale } from './translate';
@@ -15,16 +15,10 @@ export async function getServerLocale(): Promise<Locale> {
   } catch {
     /* outside request context */
   }
-  try {
-    const headerStore = await headers();
-    const accept = headerStore.get('accept-language');
-    if (accept) {
-      const first = accept.split(',')[0]?.trim();
-      if (first) return normalizeLocale(first);
-    }
-  } catch {
-    /* outside request context */
-  }
+  // First-visit default is English. We intentionally do NOT infer the locale
+  // from the Accept-Language header — the site presents in English by default
+  // for its international audience; a visitor's explicit switch (persisted in
+  // the cookie above) is the only thing that flips it.
   return DEFAULT_LOCALE;
 }
 

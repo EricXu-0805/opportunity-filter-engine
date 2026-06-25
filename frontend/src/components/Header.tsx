@@ -110,7 +110,7 @@ export default function Header() {
               <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} aria-hidden="true" />
             </div>
             <span className="hidden sm:inline text-[15px] font-semibold text-gray-900 tracking-tight">
-              Opportunity<span className="text-blue-600">Engine</span>
+              JoinA<span className="text-blue-600">Lab</span>
             </span>
           </Link>
 
