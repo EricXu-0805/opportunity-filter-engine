@@ -13,7 +13,7 @@ export function FilterSelect({
       onChange={(e) => onChange(e.target.value)}
       className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer outline-none ${
         value
-          ? 'bg-blue-50 border-blue-200 text-blue-700'
+          ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
           : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
       }`}
     >

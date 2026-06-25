@@ -36,9 +36,9 @@ export function DocumentsCard({
 
       <ResumeUpload onParsed={onResumeParsed} alreadyUploaded={!!profile.resume_text} />
 
-      <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50/60">
-        <Upload className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-        <p className="text-xs text-blue-600 leading-relaxed">{t('home.cards.resumePrivacy')}</p>
+      <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-indigo-50/60">
+        <Upload className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
+        <p className="text-xs text-indigo-600 leading-relaxed">{t('home.cards.resumePrivacy')}</p>
       </div>
     </Card>
   );

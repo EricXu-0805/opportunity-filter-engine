@@ -13,9 +13,9 @@ const STYLE_BY_TYPE: Record<LabType, { icon: typeof FlaskConical; ring: string; 
   },
   dry: {
     icon: Cpu,
-    ring: 'ring-blue-200',
-    text: 'text-blue-700',
-    bg: 'bg-blue-50',
+    ring: 'ring-indigo-200',
+    text: 'text-indigo-700',
+    bg: 'bg-indigo-50',
   },
   humanities: {
     icon: BookOpen,

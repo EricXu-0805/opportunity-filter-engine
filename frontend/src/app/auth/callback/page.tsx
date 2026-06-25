@@ -253,8 +253,8 @@ function CallbackInner() {
     <div className="max-w-md mx-auto px-4 py-16">
       {status === 'pending' && (
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 mb-4">
-            <Sparkles className="w-7 h-7 text-blue-600 animate-pulse" aria-hidden="true" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 mb-4">
+            <Sparkles className="w-7 h-7 text-indigo-600 animate-pulse" aria-hidden="true" />
           </div>
           <h1 className="text-[18px] font-semibold text-gray-900">
             {t('auth.callback.verifying')}
@@ -316,7 +316,7 @@ function CallbackInner() {
                 onClick={signInToExistingAccount}
                 disabled={retrying}
                 data-testid="callback-oauth-signin-existing"
-                className="px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition-colors"
               >
                 {t('auth.callback.identityTakenCta')}
               </button>
@@ -345,7 +345,7 @@ function CallbackInner() {
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
               href="/auth/sign-in"
-              className="px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
               {t('auth.callback.tryAgain')}
             </Link>

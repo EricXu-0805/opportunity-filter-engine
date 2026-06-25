@@ -61,7 +61,7 @@ export function SaveCta({ t }: { t: TFunc }) {
       aria-label={t('home.saveCta.title')}
       data-testid="home-save-cta"
     >
-      <div className="relative rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white px-6 py-5 shadow-[0_1px_8px_rgba(37,99,235,0.08)]">
+      <div className="relative rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white px-6 py-5 shadow-[0_1px_8px_rgba(79,70,229,0.08)]">
         <button
           type="button"
           onClick={handleDismiss}
@@ -73,8 +73,8 @@ export function SaveCta({ t }: { t: TFunc }) {
         </button>
 
         <div className="flex items-start gap-3 pr-6">
-          <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-blue-600" aria-hidden="true" />
+          <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4 text-indigo-600" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="text-[14px] font-semibold text-gray-900">
@@ -87,7 +87,7 @@ export function SaveCta({ t }: { t: TFunc }) {
               type="button"
               onClick={handleClick}
               data-testid="home-save-cta-button"
-              className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-[0_1px_4px_rgba(37,99,235,0.25)]"
+              className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-[0_1px_4px_rgba(79,70,229,0.25)]"
             >
               <Sparkles className="w-3 h-3" aria-hidden="true" />
               {t('home.saveCta.cta')}

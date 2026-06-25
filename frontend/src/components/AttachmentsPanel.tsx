@@ -98,7 +98,7 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={!!uploading}
-          className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-wait transition-colors"
+          className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors"
         >
           {uploading ? (
             <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
@@ -152,7 +152,7 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
                 ) : (
                   <ExternalLink className="w-3 h-3 text-gray-400 shrink-0" aria-hidden="true" />
                 )}
-                <span className="truncate text-gray-700 group-hover:text-blue-700">{f.name}</span>
+                <span className="truncate text-gray-700 group-hover:text-indigo-700">{f.name}</span>
                 <span className="ml-auto text-[10px] text-gray-400 shrink-0 tabular-nums">
                   {formatBytes(f.sizeBytes, t)}
                 </span>

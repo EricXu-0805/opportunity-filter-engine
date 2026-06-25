@@ -69,12 +69,12 @@ export function FilterRail({
               ? t('results.filtersMobileCollapseAria')
               : t('results.filtersMobileExpandAria')
           }
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white border border-gray-200 text-gray-700 hover:border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white border border-gray-200 text-gray-700 hover:border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{t('results.filtersMobileToggle')}</span>
           {activeFilterCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700">
               {activeFilterCount}
             </span>
           )}

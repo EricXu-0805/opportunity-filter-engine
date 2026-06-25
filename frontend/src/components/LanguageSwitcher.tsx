@@ -21,7 +21,7 @@ export default function LanguageSwitcher() {
         setLocale(other);
         router.refresh();
       }}
-      className="inline-flex items-center justify-center h-7 px-2 rounded-full text-[11px] font-medium text-gray-500 hover:text-gray-900 hover:bg-black/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+      className="inline-flex items-center justify-center h-7 px-2 rounded-full text-[11px] font-medium text-gray-500 hover:text-gray-900 hover:bg-black/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
       aria-label={locale === 'en' ? 'Switch to Chinese' : 'Switch to English'}
       lang={other}
     >

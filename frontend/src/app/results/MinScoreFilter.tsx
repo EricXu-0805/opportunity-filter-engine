@@ -21,7 +21,7 @@ export function MinScoreFilter({
         onClick={() => setOpen(o => !o)}
         className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer outline-none ${
           active
-            ? 'bg-blue-50 border-blue-200 text-blue-700'
+            ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
             : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
         }`}
       >
@@ -40,7 +40,7 @@ export function MinScoreFilter({
             step={5}
             value={value}
             onChange={(e) => onChange(Number(e.target.value))}
-            className="w-full accent-blue-600"
+            className="w-full accent-indigo-600"
           />
           <div className="flex justify-between mt-3">
             <button
@@ -53,7 +53,7 @@ export function MinScoreFilter({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
+              className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
             >
               {t('results.minScore.done')}
             </button>
