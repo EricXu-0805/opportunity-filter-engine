@@ -106,11 +106,11 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-12">
           <Link href="/" className="flex items-center gap-2 group shrink-0" onClick={close}>
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center shrink-0">
               <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} aria-hidden="true" />
             </div>
             <span className="hidden sm:inline text-[15px] font-semibold text-gray-900 tracking-tight">
-              JoinA<span className="text-blue-600">Lab</span>
+              JoinA<span className="text-indigo-600">Lab</span>
             </span>
           </Link>
 
@@ -148,7 +148,7 @@ export default function Header() {
               aria-expanded={open}
               aria-controls="mobile-nav-panel"
               data-testid="mobile-nav-toggle"
-              className="inline-flex items-center justify-center w-9 h-7 rounded-full text-gray-600 hover:text-gray-900 hover:bg-black/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+              className="inline-flex items-center justify-center w-9 h-7 rounded-full text-gray-600 hover:text-gray-900 hover:bg-black/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
             >
               {open ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>

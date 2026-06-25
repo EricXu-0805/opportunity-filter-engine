@@ -92,7 +92,7 @@ export default async function RootLayout({
             <BackendWaker />
             <a
               href="#main-content"
-              className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:border focus:border-blue-500 focus:rounded-lg focus:text-sm focus:font-medium focus:text-blue-700 focus:shadow-lg"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:border focus:border-indigo-500 focus:rounded-lg focus:text-sm focus:font-medium focus:text-indigo-700 focus:shadow-lg"
             >
               {skipLabel}
             </a>

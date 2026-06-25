@@ -53,11 +53,11 @@ function persistHomeSchool(slug: string): void {
 function WelcomeVisual({ t }: { t: T }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3.5 py-2">
-      <div className="ob-pop w-[72px] h-[72px] rounded-[20px] bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+      <div className="ob-pop w-[72px] h-[72px] rounded-[20px] bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
         <Sparkles className="w-9 h-9 text-white" strokeWidth={2.2} aria-hidden="true" />
       </div>
       <p className="ob-rise text-[24px] font-bold tracking-tight text-gray-900" style={{ animationDelay: '0.12s' }}>
-        JoinA<span className="text-blue-600">Lab</span>
+        JoinA<span className="text-indigo-600">Lab</span>
       </p>
       <p className="ob-rise text-[13px] text-gray-500" style={{ animationDelay: '0.22s' }}>
         {t('onboarding.welcomeTitle')}
@@ -69,7 +69,7 @@ function WelcomeVisual({ t }: { t: T }) {
 function ResultsVisual({ t }: { t: T }) {
   const rows = [
     { title: t('onboarding.exResearch'), pct: 94, tier: t('onboarding.tierHigh'), bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700' },
-    { title: t('onboarding.exInternship'), pct: 88, tier: t('onboarding.tierGood'), bar: 'bg-blue-500', dot: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700' },
+    { title: t('onboarding.exInternship'), pct: 88, tier: t('onboarding.tierGood'), bar: 'bg-indigo-500', dot: 'bg-indigo-500', badge: 'bg-indigo-50 text-indigo-700' },
     { title: t('onboarding.exFellowship'), pct: 71, tier: t('onboarding.tierReach'), bar: 'bg-amber-500', dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' },
   ];
   return (
@@ -151,7 +151,7 @@ function RadarVisual({ t }: { t: T }) {
       })}
       <g className="ob-grow">
         <polygon points={poly(b)} fill="rgba(245,158,11,0.16)" stroke="#f59e0b" strokeWidth={1.5} />
-        <polygon points={poly(a)} fill="rgba(37,99,235,0.18)" stroke="#2563eb" strokeWidth={1.5} />
+        <polygon points={poly(a)} fill="rgba(79,70,229,0.18)" stroke="#4f46e5" strokeWidth={1.5} />
       </g>
       {labels.map((lab, idx) => {
         const [x, y] = pt(idx, 138);
@@ -167,7 +167,7 @@ function RadarVisual({ t }: { t: T }) {
 
 function TrackerVisual({ t }: { t: T }) {
   const stages = [
-    { l: t('onboarding.statApplied'), c: 'bg-blue-50 text-blue-700' },
+    { l: t('onboarding.statApplied'), c: 'bg-indigo-50 text-indigo-700' },
     { l: t('onboarding.statReplied'), c: 'bg-emerald-50 text-emerald-700' },
     { l: t('onboarding.statInterview'), c: 'bg-violet-50 text-violet-700' },
   ];
@@ -196,7 +196,7 @@ function TrackerVisual({ t }: { t: T }) {
 
 function DashboardVisual({ t }: { t: T }) {
   const tiles = [
-    { n: '128', Icon: Target, c: 'text-blue-600 bg-blue-50' },
+    { n: '128', Icon: Target, c: 'text-indigo-600 bg-indigo-50' },
     { n: '12', Icon: Star, c: 'text-amber-600 bg-amber-50' },
     { n: '4', Icon: Send, c: 'text-emerald-600 bg-emerald-50' },
   ];
@@ -286,7 +286,7 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
             aria-pressed={isSel}
             data-testid={`onboarding-school-${s.slug}`}
             className={`w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
-              isSel ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500' : 'border-gray-200 bg-white hover:bg-gray-50'
+              isSel ? 'border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500' : 'border-gray-200 bg-white hover:bg-gray-50'
             }`}
           >
             <span className="shrink-0 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} aria-hidden="true" />
@@ -302,7 +302,7 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
               {t(live ? 'onboarding.schoolLiveBadge' : 'onboarding.schoolSoonBadge')}
             </span>
             {isSel
-              ? <Check className="shrink-0 w-4 h-4 text-blue-600" aria-hidden="true" />
+              ? <Check className="shrink-0 w-4 h-4 text-indigo-600" aria-hidden="true" />
               : <span className="shrink-0 w-4 h-4" aria-hidden="true" />}
           </button>
         );
@@ -411,12 +411,12 @@ export default function OnboardingIntro() {
               </div>
             ) : (
               <>
-                <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 ring-1 ring-black/[0.04] px-4 sm:px-6 py-6 min-h-[208px] sm:min-h-[224px] flex flex-col justify-center">
+                <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50/50 ring-1 ring-black/[0.04] px-4 sm:px-6 py-6 min-h-[208px] sm:min-h-[224px] flex flex-col justify-center">
                   <SlideVisual slide={slide} t={t} />
                 </div>
 
                 {locKey && (
-                  <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-[12px] font-medium">
+                  <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-indigo-50 text-indigo-700 px-3 py-1 text-[12px] font-medium">
                     <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>{t(`onboarding.${locKey}`)}</span>
                   </div>

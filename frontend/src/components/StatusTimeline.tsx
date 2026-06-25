@@ -5,7 +5,7 @@ import { getStatusChanges, type InteractionType, type StatusChange } from '@/lib
 import { useT } from '@/i18n/client';
 
 const STATUS_COLORS: Record<string, { dot: string; pill: string }> = {
-  applied: { dot: 'bg-blue-500', pill: 'bg-blue-50 text-blue-700' },
+  applied: { dot: 'bg-indigo-500', pill: 'bg-indigo-50 text-indigo-700' },
   replied: { dot: 'bg-violet-500', pill: 'bg-violet-50 text-violet-700' },
   interviewing: { dot: 'bg-amber-500', pill: 'bg-amber-50 text-amber-700' },
   rejected: { dot: 'bg-gray-400', pill: 'bg-gray-100 text-gray-600' },

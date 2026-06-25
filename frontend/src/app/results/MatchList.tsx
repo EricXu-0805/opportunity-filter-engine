@@ -80,7 +80,7 @@ export function MatchList({
         {matches.map((match: MatchResult, idx: number) => {
           const isNew = highlightSet.has(match.opportunity.id);
           const ringClass = focusedIdx === idx
-            ? 'ring-2 ring-blue-500/40 rounded-2xl'
+            ? 'ring-2 ring-indigo-500/40 rounded-2xl'
             : isNew
             ? 'ring-2 ring-amber-400/70 rounded-2xl'
             : '';

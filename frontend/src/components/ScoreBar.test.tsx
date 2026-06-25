@@ -48,8 +48,8 @@ describe('ScoreBar', () => {
 
     it('uses blue gradient for 60 <= score < 80', () => {
       const { container } = render(<ScoreBar score={70} />);
-      expect(getFillBar(container).className).toMatch(/from-blue-400/);
-      expect(screen.getByText('70%')).toHaveClass('text-blue-600');
+      expect(getFillBar(container).className).toMatch(/from-indigo-400/);
+      expect(screen.getByText('70%')).toHaveClass('text-indigo-600');
     });
 
     it('uses amber gradient for 40 <= score < 60', () => {
@@ -86,7 +86,7 @@ describe('ScoreBar', () => {
 
     it('falls back to score thresholds when no bucket is given', () => {
       const { container } = render(<ScoreBar score={79} />);
-      expect(getFillBar(container).className).toMatch(/from-blue-400/);
+      expect(getFillBar(container).className).toMatch(/from-indigo-400/);
     });
   });
 

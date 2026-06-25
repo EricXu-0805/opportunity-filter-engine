@@ -16,7 +16,7 @@ interface Props {
 
 const COLORS: Record<CompareBucket, { stroke: string; fill: string; bullet: string; text: string }> = {
   top:    { stroke: '#10b981', fill: 'rgba(16,185,129,0.22)', bullet: 'bg-emerald-500', text: 'text-emerald-700' },
-  backup: { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.18)', bullet: 'bg-blue-500',    text: 'text-blue-700' },
+  backup: { stroke: '#6366f1', fill: 'rgba(99,102,241,0.18)', bullet: 'bg-indigo-500',    text: 'text-indigo-700' },
   reach:  { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.18)', bullet: 'bg-amber-500',   text: 'text-amber-700' },
 };
 
@@ -52,7 +52,7 @@ export default function RadarChart({ rows }: Props) {
   const sortedForLegend = [...rows].sort((a, b) => b.score.overall - a.score.overall);
 
   return (
-    <section className="bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-2xl p-6 mb-8">
+    <section className="bg-gradient-to-br from-gray-50 to-indigo-50/30 rounded-2xl p-6 mb-8">
       <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 px-1">
         {t('compare.radar.title')}
       </h2>

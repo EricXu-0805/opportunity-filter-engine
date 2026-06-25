@@ -74,7 +74,7 @@ export function AdminDashboard({
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-              <Database className="w-7 h-7 text-blue-600" />
+              <Database className="w-7 h-7 text-indigo-600" />
               {t('admin.title')}
             </h1>
             <p className="mt-2 text-[14px] text-gray-500">{t('admin.subtitle')}</p>
