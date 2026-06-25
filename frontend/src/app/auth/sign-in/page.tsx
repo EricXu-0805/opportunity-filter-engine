@@ -46,7 +46,7 @@ export default function SignInDeepLinkPage() {
         <button
           type="button"
           onClick={() => openModal({ reason: 'deep-link' })}
-          className="mt-6 inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+          className="mt-6 inline-flex items-center justify-center px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
         >
           {t('auth.deepLink.reopen')}
         </button>

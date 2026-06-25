@@ -125,23 +125,23 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
         className={`relative flex flex-col items-center justify-center gap-3 p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
           ${
             dragOver
-              ? 'border-blue-400 bg-blue-50/80 scale-[1.01]'
+              ? 'border-indigo-400 bg-indigo-50/80 scale-[1.01]'
               : state === 'success'
                 ? 'border-emerald-300 bg-emerald-50/50'
                 : state === 'error'
                   ? 'border-red-300 bg-red-50/50'
-                  : 'border-gray-300 bg-gray-50/50 hover:border-blue-300 hover:bg-blue-50/30'
+                  : 'border-gray-300 bg-gray-50/50 hover:border-indigo-300 hover:bg-indigo-50/30'
           }`}
       >
         {state === 'idle' && (
           <>
-            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Upload className="w-6 h-6 text-blue-500" />
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <Upload className="w-6 h-6 text-indigo-500" />
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-gray-700">
                 {t('resume.dropHere')}{' '}
-                <span className="text-blue-600">{t('resume.browse')}</span>
+                <span className="text-indigo-600">{t('resume.browse')}</span>
               </p>
               <p className="mt-1 text-xs text-gray-400">{t('resume.pdfOnly')}</p>
             </div>
@@ -150,17 +150,17 @@ export default function ResumeUpload({ onParsed, alreadyUploaded }: ResumeUpload
 
         {state === 'uploading' && (
           <>
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
             <div className="w-full max-w-[200px]">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs text-gray-500 truncate max-w-[140px]">
                   {fileName}
                 </span>
-                <span className="text-xs font-medium text-blue-600">{progress}%</span>
+                <span className="text-xs font-medium text-indigo-600">{progress}%</span>
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>

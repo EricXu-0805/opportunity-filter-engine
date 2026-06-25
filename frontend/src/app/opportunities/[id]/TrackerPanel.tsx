@@ -63,7 +63,7 @@ export function TrackerPanel({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2 text-[12px] text-gray-500 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+        className="w-full flex items-center gap-2 text-[12px] text-gray-500 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
         aria-expanded={open}
       >
         <StickyNote className="w-3.5 h-3.5" aria-hidden="true" />
@@ -104,7 +104,7 @@ export function TrackerPanel({
                 onClick={() => setNotesMode('edit')}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
                   notesMode === 'edit'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-indigo-600 text-white'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
               >
@@ -117,7 +117,7 @@ export function TrackerPanel({
                 onClick={() => setNotesMode('preview')}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
                   notesMode === 'preview'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-indigo-600 text-white'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
               >
@@ -133,7 +133,7 @@ export function TrackerPanel({
                   maxLength={2000}
                   rows={3}
                   placeholder={t('detail.tracker.notesPlaceholder')}
-                  className="w-full px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 resize-y"
+                  className="w-full px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 resize-y"
                 />
                 <div className="flex justify-between mt-1 text-[10px] text-gray-400">
                   <span className="italic">{t('detail.tracker.markdownHint')}</span>
@@ -160,7 +160,7 @@ export function TrackerPanel({
               type="date"
               value={remindAt}
               onChange={(e) => setRemindAt(e.target.value)}
-              className="px-2 py-1 text-[12px] bg-white border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="px-2 py-1 text-[12px] bg-white border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
             />
             {remindAt && (
               <button

@@ -37,7 +37,7 @@ export default function FellowshipFilters({
           <button
             type="button"
             onClick={() => onChange(DEFAULT_FELLOWSHIP_FILTERS)}
-            className="text-[12px] font-medium text-blue-600 hover:text-blue-700"
+            className="text-[12px] font-medium text-indigo-600 hover:text-indigo-700"
           >
             {t('fellowships.clearFilters')}
           </button>
@@ -123,7 +123,7 @@ function FilterPill({
       aria-pressed={active}
       className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
         active
-          ? 'bg-blue-600 text-white'
+          ? 'bg-indigo-600 text-white'
           : 'bg-black/[0.04] text-gray-600 hover:bg-black/[0.08]'
       }`}
     >

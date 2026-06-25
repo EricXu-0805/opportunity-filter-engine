@@ -16,7 +16,7 @@ export function FavoritesEmptyState({ t }: { t: TFunc }) {
         <button
           type="button"
           onClick={() => router.push('/')}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 text-white text-[13px] font-medium hover:bg-blue-700 transition-colors duration-300"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 text-white text-[13px] font-medium hover:bg-indigo-700 transition-colors duration-300"
         >
           {t('favorites.browseMatches')}
         </button>

@@ -241,10 +241,10 @@ describe('ResumeUpload — drag and drop', () => {
     const zone = screen.getByText(/resume.dropHere/).closest('div')!.parentElement!;
 
     fireEvent.dragOver(zone);
-    expect(zone.className).toContain('border-blue-400');
+    expect(zone.className).toContain('border-indigo-400');
 
     fireEvent.dragLeave(zone);
-    expect(zone.className).not.toContain('border-blue-400');
+    expect(zone.className).not.toContain('border-indigo-400');
   });
 
   it('drop with a PDF file kicks off the upload', async () => {
