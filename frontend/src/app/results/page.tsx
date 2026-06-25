@@ -270,7 +270,7 @@ function ResultsContent() {
     setPage(1);
   }, [setData]);
 
-  const { filtered, paginated, totalPages } = useResultsFilters({
+  const { filtered, paginated, totalPages, counts } = useResultsFilters({
     data,
     activeTab,
     debouncedQuery,
@@ -317,17 +317,12 @@ function ResultsContent() {
     [interactions],
   );
 
-  const counts = useMemo(() => {
-    if (!data) return { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 } as Record<Tab, number>;
-    const withoutLowFit = data.total - data.low_fit;
-    return {
-      all: withoutLowFit,
-      high_priority: data.high_priority,
-      good_match: data.good_match,
-      reach: data.reach,
-      starred: favs.size,
-    } as Record<Tab, number>;
-  }, [data, favs]);
+  // `counts` now comes from useResultsFilters so each tab badge reflects the
+  // active field filters (source/scope/search/…) and matches the list under
+  // that tab — see the hook for the rationale. (Previously these were the
+  // global server-side bucket counts, which disagreed with a filtered list,
+  // e.g. "high_priority 25" above an empty list when a source filter excluded
+  // all 25.)
 
   const loadingPhase = useLoadingNarrative({
     loading,
