@@ -166,6 +166,12 @@ KEYWORD_BANK = [
     "urban economics", "real estate development", "climate adaptation",
     "sustainable development", "urban policy", "geographic information systems",
     "landscape architecture",
+    "landscape architecture", "environmental planning", "ecological design",
+    "landscape ecology", "urban ecology", "green infrastructure",
+    "ecological restoration", "landscape design", "land use",
+    "stormwater management", "regional planning", "climate adaptation",
+    "environmental design", "ecological planning", "resilient design",
+    "urban design", "open space", "environmental justice",
 ]
 
 SKILL_MAP = {

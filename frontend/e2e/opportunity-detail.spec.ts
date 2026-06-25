@@ -10,7 +10,7 @@ test.describe('Opportunity detail page', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     const title = await page.title();
-    expect(title).toContain('OpportunityEngine');
+    expect(title).toContain('JoinALab');
 
     const ogTitle = await page.locator('meta[property="og:title"]').getAttribute('content');
     expect(ogTitle).toBeTruthy();
