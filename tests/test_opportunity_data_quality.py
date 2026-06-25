@@ -128,6 +128,24 @@ class TestR70ADataQuality:
             f"{[o.get('id') for o in over_cap[:3]]})"
         )
 
+    def test_compensation_details_not_leaked_metadata_blob(self):
+        """uiuc_sro deep-scrape built compensation_details by concatenating
+        ±40-char windows around paid keywords with ' | ', leaking adjacent
+        Duration/Citizenship metadata ("… Duration 10 weeks Compensation $7,000
+        Citizenship Requirement No …"). The collector now extracts the real
+        value (_clean_compensation); no record may carry the leaked-blob
+        signature."""
+        leaked = re.compile(r" \| |citizenship requirement|duration\s+\d", re.IGNORECASE)
+        offenders = [
+            (o.get("id"), (o.get("compensation_details") or "")[:80])
+            for o in _load_data()
+            if leaked.search(o.get("compensation_details") or "")
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records have a leaked-metadata compensation_details "
+            f"blob (collector should emit a clean value). First 3: {offenders[:3]}"
+        )
+
     def test_ids_unique(self):
         """Every record has a unique id."""
         data = _load_data()
