@@ -341,6 +341,38 @@ def clean_name(name: str) -> str:
     return re.sub(r"\s{2,}", " ", name)
 
 
+# A directory card's name selector occasionally matches a non-person element —
+# a "UC Berkeley" footer link, a breadcrumb, a section heading — yielding a
+# "name" like "Berkeley". These are never valid PI names and, sharing a
+# normalized value, trip the joint-appointment dedup gate and block the refresh.
+_INSTITUTION_WORDS = frozenset({
+    "berkeley", "uc", "ucb", "university", "universities", "college",
+    "department", "institute", "school", "campus", "california", "faculty",
+    "directory", "of", "the", "and", "for", "at",
+})
+_INSTITUTION_PREFIX_RE = re.compile(
+    r"(?i)^\s*(department|school|college|division|office|center|institute|"
+    r"university|faculty|directory)\b"
+)
+
+
+def _is_person_name(name: str) -> bool:
+    """True when `name` plausibly names a person, not an institution/place.
+
+    A real name carries at least one token that isn't an institution/place word
+    and doesn't lead with an institutional phrase ("Department of …"). A bare
+    place/institution label ("Berkeley", "UC Berkeley", "University of
+    California") fails both tests.
+    """
+    name = (name or "").strip()
+    if len(name) < 3:
+        return False
+    if _INSTITUTION_PREFIX_RE.match(name):
+        return False
+    tokens = re.findall(r"[a-z]+", name.lower())
+    return bool(tokens) and any(t not in _INSTITUTION_WORDS for t in tokens)
+
+
 def scrape_open_berkeley_faculty(soup: BeautifulSoup, config: dict) -> list[dict]:
     """Parse an Open-Berkeley Drupal directory into [{name, url, title}].
 
@@ -515,7 +547,7 @@ def infer_skills_from_research(person: dict) -> list[str]:
 def normalize_faculty(person: dict, config: dict) -> dict | None:
     """Convert a scraped faculty entry into the normalized opportunity schema."""
     name = person.get("name", "")
-    if not name or len(name) < 3:
+    if not _is_person_name(name):
         return None
 
     email = person.get("email", "")
