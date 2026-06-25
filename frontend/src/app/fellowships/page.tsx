@@ -34,7 +34,7 @@ export default function FellowshipsPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
       <header className="mb-10">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-white flex items-center justify-center">
             <GraduationCap className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
@@ -49,7 +49,7 @@ export default function FellowshipsPage() {
         <div className="mt-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
           >
             {t('fellowships.toMatcher')}
             <ArrowRight className="w-4 h-4" aria-hidden="true" />

@@ -57,7 +57,7 @@ function RestoreInner() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
         {state === 'verifying' && (
           <>
-            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mx-auto mb-4" />
             <h1 className="text-[17px] font-semibold text-gray-900">{t('restore.verifying')}</h1>
             <p className="text-[13px] text-gray-500 mt-1">{t('restore.verifyingHint')}</p>
           </>
@@ -79,7 +79,7 @@ function RestoreInner() {
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="mt-6 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700"
+              className="mt-6 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700"
             >
               {t('restore.goHome')}
             </button>

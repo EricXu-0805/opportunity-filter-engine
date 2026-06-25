@@ -23,6 +23,8 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
+from .ucb_campus import fetch_and_normalize as fetch_ucb_campus
+from .ucb_campus import merge_into_processed as merge_ucb_campus
 from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
 from .ucb_chem_faculty import fetch_and_normalize as fetch_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_cee
@@ -242,6 +244,29 @@ def refresh_all(deep: bool = True) -> dict:
         except Exception as e:
             logger.error(f"{source_name} collection failed: {e}")
             summary["sources"][source_name] = {"status": "error", "error": str(e)}
+
+    # 5a. UC Berkeley campus-wide opportunity graph (announcements, programs,
+    # department pages, career boards, lab recruiting). The curated seed layer
+    # runs unconditionally (no network); the keyword-prioritized BFS crawl that
+    # refines status and discovers extra postings only runs in deep mode.
+    logger.info("=" * 50)
+    logger.info(f"Collecting from UC Berkeley campus sources (deep={deep})...")
+    try:
+        campus_opps = fetch_ucb_campus(deep=deep)
+        added, updated = merge_ucb_campus(campus_opps)
+        summary["sources"]["ucb_campus"] = {
+            "fetched": len(campus_opps),
+            "new": added,
+            "updated": updated,
+            "deep": deep,
+            "status": "ok",
+        }
+        summary["total_new"] += added
+        summary["total_updated"] += updated
+        logger.info(f"UCB campus: {len(campus_opps)} fetched, {added} new, {updated} updated")
+    except Exception as e:
+        logger.error(f"UCB campus collection failed: {e}")
+        summary["sources"]["ucb_campus"] = {"status": "error", "error": str(e)}
 
     # 5b. UC Berkeley faculty directories — deep-only, same class as the
     # uiuc_faculty enrichment hop: STAT visits every profile page for the email

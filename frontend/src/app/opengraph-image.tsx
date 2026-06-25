@@ -36,7 +36,7 @@ export default async function OGImage() {
               width: 96,
               height: 96,
               borderRadius: 24,
-              background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)',
+              background: 'linear-gradient(135deg, #818cf8 0%, #a78bfa 100%)',
               fontSize: 64,
               fontWeight: 900,
               letterSpacing: '-3px',
@@ -64,7 +64,7 @@ export default async function OGImage() {
           Find research & internships that{' '}
           <span
             style={{
-              background: 'linear-gradient(90deg, #60a5fa 0%, #a78bfa 100%)',
+              background: 'linear-gradient(90deg, #818cf8 0%, #a78bfa 100%)',
               backgroundClip: 'text',
               color: 'transparent',
             }}

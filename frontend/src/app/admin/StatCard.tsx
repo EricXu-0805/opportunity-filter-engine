@@ -20,12 +20,12 @@ export function StatCard({
   onClick?: () => void;
 }) {
   const colors = {
-    blue: 'text-blue-700 bg-blue-50',
+    blue: 'text-indigo-700 bg-indigo-50',
     amber: 'text-amber-700 bg-amber-50',
     green: 'text-emerald-700 bg-emerald-50',
     gray: 'text-gray-700 bg-gray-50',
   }[color];
-  const className = `rounded-2xl p-4 transition-all ${colors} ${active ? 'ring-2 ring-blue-500 shadow-sm' : ''} ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`;
+  const className = `rounded-2xl p-4 transition-all ${colors} ${active ? 'ring-2 ring-indigo-500 shadow-sm' : ''} ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`;
   const Tag = onClick ? 'button' : 'div';
   return (
     <Tag type={onClick ? 'button' : undefined} onClick={onClick} className={`${className} text-left w-full`}>

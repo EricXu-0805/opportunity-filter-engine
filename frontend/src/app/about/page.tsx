@@ -27,7 +27,7 @@ export default async function AboutPage() {
         <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1]">
           {t('about.heroLine1')}
           <br />
-          <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-indigo-600 to-indigo-400 bg-clip-text text-transparent">
             {t('about.heroLine2')}
           </span>
         </h1>
@@ -51,7 +51,7 @@ export default async function AboutPage() {
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <step.icon className="w-5 h-5 text-blue-500" />
+                  <step.icon className="w-5 h-5 text-indigo-500" />
                   <h3 className="text-[17px] font-semibold text-gray-900">{t(step.titleKey)}</h3>
                 </div>
                 <p className="text-[15px] text-gray-400 leading-relaxed">
@@ -81,8 +81,8 @@ export default async function AboutPage() {
 
       <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8 mb-20">
         <div className="flex items-start gap-5">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/[0.08] flex items-center justify-center shrink-0">
-            <Shield className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-xl bg-indigo-600/[0.08] flex items-center justify-center shrink-0">
+            <Shield className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
             <h3 className="text-[15px] font-semibold text-gray-900 mb-1.5">{t('about.privacy')}</h3>
