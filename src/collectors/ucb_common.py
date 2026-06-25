@@ -165,6 +165,12 @@ KEYWORD_BANK = [
     "historic preservation", "architectural history", "housing", "urbanism",
     "environmental design", "materials research", "landscape architecture",
     "city planning", "urban planning",
+    "landscape architecture", "environmental planning", "ecological design",
+    "landscape ecology", "urban ecology", "green infrastructure",
+    "ecological restoration", "landscape design", "land use",
+    "stormwater management", "regional planning", "climate adaptation",
+    "environmental design", "ecological planning", "resilient design",
+    "urban design", "open space", "environmental justice",
 ]
 
 SKILL_MAP = {

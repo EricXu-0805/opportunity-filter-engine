@@ -4,22 +4,22 @@ import MarkdownPreview from '@/components/MarkdownPreview';
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'How Opportunity Filter Engine collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
+    'How JoinALab collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'June 18, 2026';
+const EFFECTIVE_DATE = 'June 24, 2026';
 
 const CONTENT = `# Privacy Policy
 
 **Effective date:** ${EFFECTIVE_DATE}
-**Operator:** Guoyi (Eric) Xu, sole proprietor, operating "Opportunity Filter Engine" ("OFE", "we", "us"), located in Illinois, United States.
+**Operator:** Guoyi (Eric) Xu, sole proprietor, operating "JoinALab" ("we", "us"), located in Illinois, United States.
 **Contact for privacy requests:** eric.guoyi.xu@gmail.com
 
 ---
 
 ## 1. What this service is
 
-OFE helps students discover research, internship, fellowship, and summer-program opportunities, and helps them prepare application materials (a tailored résumé draft and a draft cold-outreach email). You provide a profile; we match it against a catalog of opportunities and, on request, use AI to draft application materials **that you review and send yourself**. OFE does not send emails to professors or programs on your behalf without your explicit action.
+JoinALab helps students discover research, internship, fellowship, and summer-program opportunities, and helps them prepare application materials (a tailored résumé draft and a draft cold-outreach email). You provide a profile; we match it against a catalog of opportunities and, on request, use AI to draft application materials **that you review and send yourself**. JoinALab does not send emails to professors or programs on your behalf without your explicit action.
 
 ## 2. Information we collect
 
@@ -42,8 +42,8 @@ Only school, college, major, and academic year are required; everything else is 
 
 ### 2.3 Account / authentication information
 
-- OFE works **without an account** by default: your browser is assigned an anonymous identifier so your data is private to you.
-- If you choose to save your profile across devices, you can sign in by email (magic link) or link a Google / GitHub / Microsoft account. Your email address and any linked-account identifiers are held by our authentication provider (Supabase, §5); they are **not** stored in OFE's own application database.
+- JoinALab works **without an account** by default: your browser is assigned an anonymous identifier so your data is private to you.
+- If you choose to save your profile across devices, you can sign in by email (magic link) or link a Google / GitHub / Microsoft account. Your email address and any linked-account identifiers are held by our authentication provider (Supabase, §5); they are **not** stored in JoinALab's own application database.
 
 ### 2.4 Information collected automatically
 
@@ -59,13 +59,17 @@ To understand how the product is used and where it falls short, we record a smal
 
 We do **not** knowingly collect government identifiers, financial-account numbers, precise geolocation, health data, or biometric data.
 
+### 2.7 Feedback you send us
+
+If you use the in-app feedback widget to send a comment, bug report, or suggestion, we store the message text you submit — and the email address you optionally provide for a reply — tied to your anonymous identifier, in our database (Supabase, §5). We use it solely to read, understand, and act on your feedback; we do not sell it or use it for advertising. Please don't include sensitive personal information in a feedback message.
+
 ## 3. How we use your information
 
 - To **match** your profile to opportunities and explain why each matched.
 - To **draft application materials** (résumé tailoring, cold-email drafts) using AI, *at your request, per generation* — see §5 for the AI subprocessors involved.
 - To **save** your profile, favorites, tracking, and saved searches so they persist.
 - To **send** transactional emails you request (your matches/favorites, restore links) and, if you opt in, a recurring weekly email digest for a saved search.
-- To **understand and improve** the product — which steps you reach and where people drop off — via in-product analytics events, and to follow up if you register interest in paid help.
+- To **understand and improve** the product — which steps you reach and where people drop off — via in-product analytics events, to follow up if you register interest in paid help, and to read and act on any feedback you send us.
 - To **secure and operate** the service (rate limiting, abuse prevention, debugging).
 
 We do **not** sell your personal information, and we do **not** use it for third-party advertising.
@@ -83,7 +87,7 @@ We rely on the following service providers. We share only what each needs to per
 
 | Provider | Role | What it receives |
 |---|---|---|
-| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; and any "apply for me" interest you register (with the contact email you provide) |
+| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; any "apply for me" interest you register (with the contact email you provide); and feedback you submit (with the optional reply email) |
 | **Vercel** (US) | Frontend hosting | Standard request logs (IP, user-agent, path) |
 | **Render** (US) | Backend hosting | API request contents and server logs |
 | **AI language-model provider** — **OpenAI** and/or **Google (Gemini)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact chat models offered are operator-configurable. | Generating résumé drafts, cold-email drafts, match explanations, and opportunity Q&A | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
@@ -91,13 +95,13 @@ We rely on the following service providers. We share only what each needs to per
 | **GitHub API** | Importing your public GitHub profile (only if you use that feature) | The public GitHub username you enter |
 | **Sentry** (US, optional) | Error monitoring | Error diagnostics with personal data masking enabled (request bodies, IPs, and cookies are not captured) |
 
-**Important — AI processing disclosure.** When you ask OFE to tailor a résumé, draft a cold email, explain a match, or answer questions about an opportunity, the relevant parts of your profile (which can include your name, academic details, skills, and your own résumé text) are sent to one of the AI providers named above (OpenAI or Google, reached directly or through the OpenRouter gateway) to generate that output. These providers process the data under their own terms; we do not control their retention. If you do not want your data processed by an AI provider, **do not use the résumé-tailoring, cold-email, match-explanation, or chat features** — the core matching and saving features do not require sending your profile to an AI provider.
+**Important — AI processing disclosure.** When you ask JoinALab to tailor a résumé, draft a cold email, explain a match, or answer questions about an opportunity, the relevant parts of your profile (which can include your name, academic details, skills, and your own résumé text) are sent to one of the AI providers named above (OpenAI or Google, reached directly or through the OpenRouter gateway) to generate that output. These providers process the data under their own terms; we do not control their retention. If you do not want your data processed by an AI provider, **do not use the résumé-tailoring, cold-email, match-explanation, or chat features** — the core matching and saving features do not require sending your profile to an AI provider.
 
 ## 6. How long we keep your data
 
 - **Account and profile data** is retained until you delete it (see §7) or until your account is closed.
 - **Browser local storage** persists in your browser until you clear it.
-- **Email content** is not retained by OFE after sending; the email provider retains it per its own policy.
+- **Email content** is not retained by JoinALab after sending; the email provider retains it per its own policy.
 - **Server and error logs** are retained by our hosting and monitoring providers per their standard retention windows.
 
 ## 7. Your choices and rights
@@ -106,7 +110,7 @@ Depending on where you live (including California residents under the CCPA/CPRA)
 
 - **Access / view:** your profile, favorites, tracking, and saved searches are visible to you in the app at any time. You can also email your matches and favorites to yourself.
 - **Correct:** edit your profile in the app at any time.
-- **Delete or export:** OFE does not yet offer a one-click self-serve delete/export button. **To delete or export all your data, email eric.guoyi.xu@gmail.com from the address or with the account associated with your data, and we will action your request within 30 days.** We will verify the request is genuinely yours before acting.
+- **Delete or export:** JoinALab does not yet offer a one-click self-serve delete/export button. **To delete or export all your data, email eric.guoyi.xu@gmail.com from the address or with the account associated with your data, and we will action your request within 30 days.** We will verify the request is genuinely yours before acting.
 - **Clear local data:** clear your browser's local storage / site data to remove the locally cached copy.
 
 We do not sell personal information, so there is no "do not sell" action to take.
@@ -120,11 +124,11 @@ We do not sell personal information, so there is no "do not sell" action to take
 
 ## 9. International users
 
-OFE is operated from the United States and stored with U.S.-based providers. If you access OFE from outside the U.S., you understand your information will be processed in the U.S.
+JoinALab is operated from the United States and stored with U.S.-based providers. If you access JoinALab from outside the U.S., you understand your information will be processed in the U.S.
 
 ## 10. Children
 
-OFE is intended for college and university applicants and students. You must be at least 18 to use OFE on your own. If you are between 13 and 17, you may use OFE only with the consent and involvement of a parent or guardian. OFE is not directed to children under 13, and we do not knowingly collect personal information from children under 13.
+JoinALab is intended for college and university applicants and students. You must be at least 18 to use JoinALab on your own. If you are between 13 and 17, you may use JoinALab only with the consent and involvement of a parent or guardian. JoinALab is not directed to children under 13, and we do not knowingly collect personal information from children under 13.
 
 ## 11. Changes to this policy
 
