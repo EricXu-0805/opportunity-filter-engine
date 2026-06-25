@@ -15,7 +15,7 @@ export const INTERACTION_OPTIONS: InteractionType[] = [
 ];
 
 const INTERACTION_PILL_CLASS: Record<InteractionType, string> = {
-  applied: 'bg-blue-50 text-blue-700 border-blue-200',
+  applied: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   replied: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   interviewing: 'bg-violet-50 text-violet-700 border-violet-200',
   rejected: 'bg-gray-100 text-gray-500 border-gray-200',
@@ -23,7 +23,7 @@ const INTERACTION_PILL_CLASS: Record<InteractionType, string> = {
 };
 
 const INTERACTION_DOT_CLASS: Record<InteractionType, string> = {
-  applied: 'bg-blue-500',
+  applied: 'bg-indigo-500',
   replied: 'bg-emerald-500',
   interviewing: 'bg-violet-500',
   rejected: 'bg-gray-400',
@@ -134,7 +134,7 @@ export function InteractionStatusMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('results.statusMenu.ariaTrigger', { title: opportunityTitle })}
-        className={`inline-flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-start px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${triggerClass}`}
+        className={`inline-flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-start px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${triggerClass}`}
       >
         {interaction && (
           <span
@@ -175,7 +175,7 @@ export function InteractionStatusMenu({
                 }}
                 className={`flex items-center w-full gap-2 px-3 py-2 text-[13px] text-left transition-colors duration-150 ${
                   isActive
-                    ? 'bg-blue-50/50 text-gray-900 font-medium'
+                    ? 'bg-indigo-50/50 text-gray-900 font-medium'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -184,7 +184,7 @@ export function InteractionStatusMenu({
                   className={`w-1.5 h-1.5 rounded-full shrink-0 ${INTERACTION_DOT_CLASS[type]}`}
                 />
                 <span className="flex-1">{t(`detail.tracker.statusLabels.${type}`)}</span>
-                {isActive && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" aria-hidden="true" />}
+                {isActive && <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" aria-hidden="true" />}
               </button>
             );
           })}

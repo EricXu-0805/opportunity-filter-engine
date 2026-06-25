@@ -75,7 +75,7 @@ export function SaveSearchDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="p-2 -mr-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="p-2 -mr-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             aria-label={t('results.saveSearchDialog.closeAria')}
           >
             <X className="w-4 h-4 text-gray-400" aria-hidden="true" />

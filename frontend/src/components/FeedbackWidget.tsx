@@ -84,7 +84,7 @@ export default function FeedbackWidget() {
           <button
             type="button"
             onClick={close}
-            className="mt-4 text-[13px] font-medium text-blue-600 hover:text-blue-700"
+            className="mt-4 text-[13px] font-medium text-indigo-600 hover:text-indigo-700"
           >
             {t('feedback.close')}
           </button>
@@ -98,14 +98,14 @@ export default function FeedbackWidget() {
             placeholder={t('feedback.placeholder')}
             rows={4}
             aria-label={t('feedback.title')}
-            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t('feedback.emailPlaceholder')}
-            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           {status === 'error' && (
             <p className="text-[12px] text-red-600" role="alert">{t('feedback.error')}</p>

@@ -89,7 +89,7 @@ Questions: **eric.guoyi.xu@gmail.com**.
 export default function TermsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <article className="prose prose-sm sm:prose-base prose-gray max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-a:text-blue-600 prose-table:text-sm">
+      <article className="prose prose-sm sm:prose-base prose-gray max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-a:text-indigo-600 prose-table:text-sm">
         <MarkdownPreview>{CONTENT}</MarkdownPreview>
       </article>
     </div>
