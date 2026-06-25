@@ -163,6 +163,12 @@ KEYWORD_BANK = [
     "political economy", "political theory", "american politics",
     "public policy", "political behavior", "democracy", "elections",
     "formal theory", "international political economy", "political methodology",
+    "landscape architecture", "environmental planning", "ecological design",
+    "landscape ecology", "urban ecology", "green infrastructure",
+    "ecological restoration", "landscape design", "land use",
+    "stormwater management", "regional planning", "climate adaptation",
+    "environmental design", "ecological planning", "resilient design",
+    "urban design", "open space", "environmental justice",
 ]
 
 SKILL_MAP = {

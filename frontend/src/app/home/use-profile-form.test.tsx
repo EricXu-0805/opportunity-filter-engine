@@ -63,6 +63,7 @@ vi.mock('@/lib/supabase', () => ({
 import { useProfileForm } from './use-profile-form';
 import { saveProfile } from '@/lib/supabase';
 import { parseGitHubProfile } from '@/lib/api';
+import { HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 
 const RESUME = (suggested_interests: string) => ({
   extracted_skills: [] as string[],
@@ -242,6 +243,17 @@ describe('useProfileForm — home_school (university switcher)', () => {
     mockLoadProfile = () => Promise.resolve({ home_school: 'ucb' } as Record<string, unknown>);
     render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
     await waitFor(() => expect(screen.getByTestId('home-school').textContent).toBe('ucb'));
+  });
+
+  it('applies a campus chosen via the onboarding gate event after the form already mounted', async () => {
+    // Reproduces the gate hand-off: the form mounts + loads (default uiuc)
+    // before the tour finishes, so only the live window event updates it.
+    render(<Suspense fallback={null}><SchoolHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('home-school').textContent).toBe('uiuc'));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(HOME_SCHOOL_EVENT, { detail: 'ucb' }));
+    });
+    expect(screen.getByTestId('home-school').textContent).toBe('ucb');
   });
 
   it('switching schools updates home_school without clobbering college/major', async () => {
