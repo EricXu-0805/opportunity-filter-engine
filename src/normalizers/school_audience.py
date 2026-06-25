@@ -64,6 +64,15 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_polisci_faculty": ("ucb", "unknown"),
     "ucb_psych_faculty": ("ucb", "unknown"),
     "ucb_soc_faculty": ("ucb", "unknown"),
+    "ucb_education_faculty": ("ucb", "unknown"),
+    "ucb_english_faculty": ("ucb", "unknown"),
+    "ucb_geog_faculty": ("ucb", "unknown"),
+    "ucb_haas_faculty": ("ucb", "unknown"),
+    "ucb_history_faculty": ("ucb", "unknown"),
+    "ucb_journalism_faculty": ("ucb", "unknown"),
+    "ucb_philos_faculty": ("ucb", "unknown"),
+    "ucb_socwel_faculty": ("ucb", "unknown"),
+    "ucb_sph_faculty": ("ucb", "unknown"),
     "ucb_urap": ("ucb", "campus"),
     # Campus-wide opportunity graph (src/collectors/ucb_campus.py). Three emit
     # buckets, audience chosen so the discovery-scope filter stays correct:
