@@ -192,6 +192,27 @@ describe('sourceLabel (derived source filter)', () => {
     );
     expect(sourceLabel('ucb_labs', t)).toBe('results.filters.sourceUcbLabs');
   });
+  it('every UC Berkeley faculty source maps to a label (no humanized fallback)', () => {
+    // Mirrors the ucb_*_faculty collectors wired in refresh_all
+    // (deactivate_stale_faculty.FACULTY_SOURCES). Each MUST resolve to a real
+    // i18n key — never the "Ucb <Dept> Faculty" humanizer fallback, which reads
+    // as a bug in the source filter once these collectors' records ship.
+    const UCB_FACULTY_SOURCES = [
+      'ucb_eecs_faculty', 'ucb_stat_faculty', 'ucb_chem_faculty', 'ucb_cee_faculty',
+      'ucb_anthro_faculty', 'ucb_arch_faculty', 'ucb_astro_faculty', 'ucb_bioe_faculty',
+      'ucb_cbe_faculty', 'ucb_dcrp_faculty', 'ucb_econ_faculty', 'ucb_eps_faculty',
+      'ucb_espm_faculty', 'ucb_ib_faculty', 'ucb_ieor_faculty', 'ucb_larch_faculty',
+      'ucb_law_faculty', 'ucb_ling_faculty', 'ucb_math_faculty', 'ucb_mcb_faculty',
+      'ucb_me_faculty', 'ucb_mse_faculty', 'ucb_ne_faculty', 'ucb_nst_faculty',
+      'ucb_physics_faculty', 'ucb_pmb_faculty', 'ucb_polisci_faculty',
+      'ucb_psych_faculty', 'ucb_soc_faculty',
+    ];
+    for (const src of UCB_FACULTY_SOURCES) {
+      // identity t returns the key when one is mapped; the humanizer would
+      // return a "Ucb …" string with no 'results.filters.' prefix.
+      expect(sourceLabel(src, t), src).toMatch(/^results\.filters\.sourceUcb\w+Faculty$/);
+    }
+  });
   it('humanizes an unknown source key (e.g. simplify_internships)', () => {
     expect(sourceLabel('simplify_internships', t)).toBe('Simplify Internships');
   });
