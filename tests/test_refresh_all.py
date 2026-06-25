@@ -21,13 +21,12 @@ from datetime import date, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.collectors.refresh_all as refresh_all
+from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 
-UCB_FACULTY_SOURCES = {
-    "ucb_eecs_faculty",
-    "ucb_stat_faculty",
-    "ucb_chem_faculty",
-    "ucb_cee_faculty",
-}
+# All Berkeley faculty collectors wired into refresh_all's deep block. Derived
+# from the canonical FACULTY_SOURCES set so this stays in lockstep as new
+# department directories are added (all 21 today).
+UCB_FACULTY_SOURCES = {s for s in FACULTY_SOURCES if s.startswith("ucb_")}
 
 
 def _stub_all_collectors(monkeypatch, tmp_path):

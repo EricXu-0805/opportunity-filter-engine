@@ -23,13 +23,31 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
+from .ucb_astro_faculty import fetch_and_normalize as fetch_ucb_astro
+from .ucb_bioe_faculty import fetch_and_normalize as fetch_ucb_bioe
+from .ucb_cbe_faculty import fetch_and_normalize as fetch_ucb_cbe
 from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
 from .ucb_chem_faculty import fetch_and_normalize as fetch_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_cee
 from .ucb_common import merge_into_processed as merge_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_eecs
+from .ucb_common import merge_into_processed as merge_ucb_faculty
 from .ucb_common import merge_into_processed as merge_ucb_stat
 from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
+from .ucb_eps_faculty import fetch_and_normalize as fetch_ucb_eps
+from .ucb_espm_faculty import fetch_and_normalize as fetch_ucb_espm
+from .ucb_ib_faculty import fetch_and_normalize as fetch_ucb_ib
+from .ucb_ieor_faculty import fetch_and_normalize as fetch_ucb_ieor
+from .ucb_law_faculty import fetch_and_normalize as fetch_ucb_law
+from .ucb_math_faculty import fetch_and_normalize as fetch_ucb_math
+from .ucb_mcb_faculty import fetch_and_normalize as fetch_ucb_mcb
+from .ucb_me_faculty import fetch_and_normalize as fetch_ucb_me
+from .ucb_mse_faculty import fetch_and_normalize as fetch_ucb_mse
+from .ucb_ne_faculty import fetch_and_normalize as fetch_ucb_ne
+from .ucb_nst_faculty import fetch_and_normalize as fetch_ucb_nst
+from .ucb_physics_faculty import fetch_and_normalize as fetch_ucb_physics
+from .ucb_pmb_faculty import fetch_and_normalize as fetch_ucb_pmb
+from .ucb_psych_faculty import fetch_and_normalize as fetch_ucb_psych
 from .ucb_stat_faculty import fetch_and_normalize as fetch_ucb_stat
 from .ucb_urap import fetch_and_normalize as fetch_ucb_urap
 from .ucb_urap import merge_into_processed as merge_ucb_urap
@@ -244,19 +262,42 @@ def refresh_all(deep: bool = True) -> dict:
             summary["sources"][source_name] = {"status": "error", "error": str(e)}
 
     # 5b. UC Berkeley faculty directories — deep-only, same class as the
-    # uiuc_faculty enrichment hop: STAT visits every profile page for the email
-    # (~0.75s politeness delay each) and EECS scrapes an external campus site.
-    # Order matters: EECS must merge before STAT so the ucb_common
-    # joint-appointment dedup keeps the EECS record (richer keywords) and drops
-    # the STAT duplicate. For the rest the dedup's existing-corpus-wins policy
-    # decides, so their relative order only fixes which record survives a
-    # from-scratch rebuild.
+    # uiuc_faculty enrichment hop: each collector visits every profile page for
+    # the email (~0.75s politeness delay each) and a few scrape external campus
+    # sites. All 21 department directories run here.
+    #
+    # Order matters for joint-appointment dedup (ucb_common drops an incoming
+    # record whose email/name already exists under another ucb_* source, keeping
+    # the one already merged this run). EECS must merge before STAT so the EECS
+    # record (richer inline keywords) wins their shared appointments; the rest
+    # follow alphabetically, so the dedup's existing-corpus-wins policy just
+    # fixes which department keeps a cross-listed professor on a from-scratch
+    # rebuild. Every collector shares ucb_common.merge_into_processed
+    # (merge_ucb_faculty); the four originals keep their own merge_ucb_<dept>
+    # aliases so the eecs-before-stat ordering test can monkeypatch them.
     if deep:
         for source_name, fetch_fn, merge_fn in [
             ("ucb_eecs_faculty", fetch_ucb_eecs, merge_ucb_eecs),
             ("ucb_stat_faculty", fetch_ucb_stat, merge_ucb_stat),
             ("ucb_chem_faculty", fetch_ucb_chem, merge_ucb_chem),
             ("ucb_cee_faculty", fetch_ucb_cee, merge_ucb_cee),
+            ("ucb_astro_faculty", fetch_ucb_astro, merge_ucb_faculty),
+            ("ucb_bioe_faculty", fetch_ucb_bioe, merge_ucb_faculty),
+            ("ucb_cbe_faculty", fetch_ucb_cbe, merge_ucb_faculty),
+            ("ucb_eps_faculty", fetch_ucb_eps, merge_ucb_faculty),
+            ("ucb_espm_faculty", fetch_ucb_espm, merge_ucb_faculty),
+            ("ucb_ib_faculty", fetch_ucb_ib, merge_ucb_faculty),
+            ("ucb_ieor_faculty", fetch_ucb_ieor, merge_ucb_faculty),
+            ("ucb_law_faculty", fetch_ucb_law, merge_ucb_faculty),
+            ("ucb_math_faculty", fetch_ucb_math, merge_ucb_faculty),
+            ("ucb_mcb_faculty", fetch_ucb_mcb, merge_ucb_faculty),
+            ("ucb_me_faculty", fetch_ucb_me, merge_ucb_faculty),
+            ("ucb_mse_faculty", fetch_ucb_mse, merge_ucb_faculty),
+            ("ucb_ne_faculty", fetch_ucb_ne, merge_ucb_faculty),
+            ("ucb_nst_faculty", fetch_ucb_nst, merge_ucb_faculty),
+            ("ucb_physics_faculty", fetch_ucb_physics, merge_ucb_faculty),
+            ("ucb_pmb_faculty", fetch_ucb_pmb, merge_ucb_faculty),
+            ("ucb_psych_faculty", fetch_ucb_psych, merge_ucb_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

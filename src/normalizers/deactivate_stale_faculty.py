@@ -32,6 +32,23 @@ FACULTY_SOURCES = frozenset({
     "ucb_stat_faculty",
     "ucb_chem_faculty",
     "ucb_cee_faculty",
+    "ucb_astro_faculty",
+    "ucb_bioe_faculty",
+    "ucb_cbe_faculty",
+    "ucb_eps_faculty",
+    "ucb_espm_faculty",
+    "ucb_ib_faculty",
+    "ucb_ieor_faculty",
+    "ucb_law_faculty",
+    "ucb_math_faculty",
+    "ucb_mcb_faculty",
+    "ucb_me_faculty",
+    "ucb_mse_faculty",
+    "ucb_ne_faculty",
+    "ucb_nst_faculty",
+    "ucb_physics_faculty",
+    "ucb_pmb_faculty",
+    "ucb_psych_faculty",
 })
 
 GRACE_DAYS = 14

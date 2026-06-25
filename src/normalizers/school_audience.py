@@ -36,6 +36,26 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_stat_faculty": ("ucb", "unknown"),
     "ucb_chem_faculty": ("ucb", "unknown"),
     "ucb_cee_faculty": ("ucb", "unknown"),
+    # Remaining Berkeley department directories wired into refresh_all. Same
+    # (ucb, unknown) as the originals — faculty cold-email targets whose
+    # cross-school openness is professor-specific.
+    "ucb_astro_faculty": ("ucb", "unknown"),
+    "ucb_bioe_faculty": ("ucb", "unknown"),
+    "ucb_cbe_faculty": ("ucb", "unknown"),
+    "ucb_eps_faculty": ("ucb", "unknown"),
+    "ucb_espm_faculty": ("ucb", "unknown"),
+    "ucb_ib_faculty": ("ucb", "unknown"),
+    "ucb_ieor_faculty": ("ucb", "unknown"),
+    "ucb_law_faculty": ("ucb", "unknown"),
+    "ucb_math_faculty": ("ucb", "unknown"),
+    "ucb_mcb_faculty": ("ucb", "unknown"),
+    "ucb_me_faculty": ("ucb", "unknown"),
+    "ucb_mse_faculty": ("ucb", "unknown"),
+    "ucb_ne_faculty": ("ucb", "unknown"),
+    "ucb_nst_faculty": ("ucb", "unknown"),
+    "ucb_physics_faculty": ("ucb", "unknown"),
+    "ucb_pmb_faculty": ("ucb", "unknown"),
+    "ucb_psych_faculty": ("ucb", "unknown"),
     "ucb_urap": ("ucb", "campus"),
 }
 
