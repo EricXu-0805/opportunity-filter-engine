@@ -146,7 +146,7 @@ class TestChatModelOptions:
         assert all("label" in o and "id" in o for o in opts)
         # slug is resolvable server-side but never leaked in the public list.
         assert all("slug" not in o for o in opts)
-        assert llm.chat_model_slug("gemini-flash") == "google/gemini-2.5-flash"
+        assert llm.chat_model_slug("gemini-flash") == "google/gemini-3.5-flash"
 
     def test_unknown_id_has_no_slug(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
@@ -190,7 +190,7 @@ class TestModelFor:
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
         assert llm.model_for("cold_email") == {
             "provider_id": "openrouter",
-            "model": "anthropic/claude-sonnet-4.6",
+            "model": "anthropic/claude-opus-4.8",
         }
 
     def test_per_task_env_override(self, monkeypatch):

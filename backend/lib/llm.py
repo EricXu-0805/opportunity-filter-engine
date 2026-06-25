@@ -79,8 +79,8 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
     ("claude-sonnet", "Claude Sonnet 4.6", "anthropic/claude-sonnet-4.6"),
-    ("gpt-4o", "GPT-4o", "openai/gpt-4o"),
-    ("gemini-flash", "Gemini Flash", "google/gemini-2.5-flash"),
+    ("gpt-5.1", "GPT-5.1", "openai/gpt-5.1"),
+    ("gemini-flash", "Gemini 3.5 Flash", "google/gemini-3.5-flash"),
 )
 
 
@@ -146,14 +146,18 @@ def strong_model() -> Optional[str]:
     return os.environ.get("OFE_STRONG_MODEL", "").strip() or None
 
 
-# Best-fit model per quality-sensitive task ("right tool for each job"): cold
-# email + résumé tailoring are writing/instruction tasks Claude excels at;
-# import extraction is structured parsing. Each is env-overridable
-# (OFE_MODEL_<TASK>) so a model can be retuned without a deploy — e.g. bump
-# cold_email to anthropic/claude-opus-4.8 or a gpt-5.x. Slugs are OpenRouter ids
-# (verified against the live catalog).
+# Best-fit model per quality-sensitive task ("right tool for each job"), chosen
+# against the live OpenRouter catalog. Claude leads on natural, persuasive
+# writing, so the user-facing materials are Claude:
+#   * cold_email — highest-stakes personalized writing (lands a research spot) →
+#     the flagship Opus 4.8.
+#   * tailor — constrained, anti-fabrication-validated bullet rewriting →
+#     Sonnet 4.6 (matches Opus on this bounded task, faster).
+#   * extract — background structured parsing → Sonnet 4.6.
+# Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
+# — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.5 or google/gemini-3.1-pro-preview.
 _TASK_MODEL_DEFAULTS: dict[str, str] = {
-    "cold_email": "anthropic/claude-sonnet-4.6",
+    "cold_email": "anthropic/claude-opus-4.8",
     "tailor": "anthropic/claude-sonnet-4.6",
     "extract": "anthropic/claude-sonnet-4.6",
 }
