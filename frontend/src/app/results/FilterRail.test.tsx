@@ -176,6 +176,7 @@ describe('sourceLabel (derived source filter)', () => {
   });
   it('uses i18n keys for the UC Berkeley sources', () => {
     expect(sourceLabel('ucb_urap', t)).toBe('results.filters.sourceUcbUrap');
+    expect(sourceLabel('ucb_urap_projects', t)).toBe('results.filters.sourceUcbUrapProjects');
     expect(sourceLabel('ucb_eecs_faculty', t)).toBe('results.filters.sourceUcbEecsFaculty');
     expect(sourceLabel('ucb_stat_faculty', t)).toBe('results.filters.sourceUcbStatFaculty');
     expect(sourceLabel('ucb_chem_faculty', t)).toBe('results.filters.sourceUcbChemFaculty');

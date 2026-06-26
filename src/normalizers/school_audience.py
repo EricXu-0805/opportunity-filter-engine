@@ -74,6 +74,9 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_socwel_faculty": ("ucb", "unknown"),
     "ucb_sph_faculty": ("ucb", "unknown"),
     "ucb_urap": ("ucb", "campus"),
+    # URAP live project DB (urapprojects.berkeley.edu) — Berkeley-matriculated
+    # students only, like the URAP overview.
+    "ucb_urap_projects": ("ucb", "campus"),
     # Campus-wide opportunity graph (src/collectors/ucb_campus.py). Three emit
     # buckets, audience chosen so the discovery-scope filter stays correct:
     #   * ucb_research_programs — Berkeley-enrollment-gated programs, department
