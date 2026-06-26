@@ -103,7 +103,10 @@ export const SCHOOLS: School[] = [
     nameZh: '密歇根大学',
     color: '#00274C',
     location: 'Ann Arbor, MI',
-    coverage: PENDING_COVERAGE,
+    // Second school on the campus-graph engine. Conservative seed-floor count
+    // (UROP hub + grants, summer fellowships, dept research, career, institutes);
+    // the deep crawl discovers more in CI. Maintained estimate, like UCB.
+    coverage: { campusOpportunities: 9, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 127 },
   },
   {

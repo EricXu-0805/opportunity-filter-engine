@@ -13,9 +13,11 @@ touches the refresh wiring again — only this list grows.
 from __future__ import annotations
 
 from .princeton import SCHOOL as PRINCETON
+from .umich import SCHOOL as UMICH
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
 # order; new schools (Top-50 rollout) append here.
 SCHOOL_CONFIGS: list[dict] = [
     PRINCETON,
+    UMICH,
 ]

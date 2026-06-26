@@ -94,7 +94,7 @@ describe('registry — switcher metadata', () => {
     }
   });
 
-  it('UIUC, UCB, and Princeton are the schools with live campus coverage', () => {
+  it('UIUC, UCB, Princeton, and Michigan are the schools with live campus coverage', () => {
     expect(bySlug('uiuc')?.coverage.campusOpportunities).toBe(4700);
     // UCB coverage is the config-driven estimate, not a magic literal — assert
     // it tracks the computed constant and clears a conservative floor that the
@@ -102,11 +102,14 @@ describe('registry — switcher metadata', () => {
     // can't silently revert to the stale 200.
     expect(bySlug('ucb')?.coverage.campusOpportunities).toBe(UCB_CAMPUS_OPPORTUNITIES);
     expect(UCB_CAMPUS_OPPORTUNITIES).toBeGreaterThanOrEqual(300);
-    // Princeton is the first campus-graph school (US-News Top-50 rollout): a
-    // conservative seed-floor count, not 'pending'.
+    // Campus-graph schools (US-News Top-50 rollout): conservative seed-floor
+    // counts, not 'pending'.
     expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(9);
+    expect(bySlug('umich')?.coverage.campusOpportunities).toBe(9);
     const live = SCHOOLS.filter((s) => s.coverage.campusOpportunities !== 'pending');
-    expect(new Set(live.map((s) => s.slug))).toEqual(new Set(['uiuc', 'ucb', 'princeton']));
+    expect(new Set(live.map((s) => s.slug))).toEqual(
+      new Set(['uiuc', 'ucb', 'princeton', 'umich']),
+    );
   });
 
   it('slugs are unique', () => {
