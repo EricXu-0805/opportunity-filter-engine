@@ -80,7 +80,7 @@ EMIT_TO_SCHOOL_AUDIENCE: dict[str, tuple[str, str | None, str]] = {
 # Crawl tuning.
 _CRAWL_TIMEOUT = 20
 _MAX_PAGES_PER_SOURCE = 25      # hard cap so a recursive crawl can't run away
-_MAX_DISCOVERED_PER_SOURCE = 12
+_MAX_DISCOVERED_PER_SOURCE = 20
 _DESC_CAP = 1500
 
 
@@ -309,6 +309,30 @@ def _looks_like_opportunity(text: str) -> bool:
     return any(kw in low for kw in reg.PRIORITY_KEYWORDS)
 
 
+# Generic section/CTA anchors that carry a priority keyword but aren't a
+# concrete posting ("Undergraduate Research" nav item, "Apply", "Learn more").
+# Emitting them as discovered records adds noise (and DQ-gate surface area), so
+# a discovered anchor must say something beyond one of these bare phrases.
+_GENERIC_ANCHOR = frozenset({
+    "undergraduate research", "research", "research opportunities",
+    "research opportunity", "summer research", "opportunities", "opportunity",
+    "apply", "apply now", "apply here", "learn more", "read more", "more",
+    "join our lab", "join the lab", "internships", "internship",
+    "research assistant", "fellowships", "fellowship", "get involved",
+    "for students", "prospective students", "current students",
+})
+
+
+def _is_specific_opportunity(anchor: str) -> bool:
+    """A discovered anchor must read like a concrete posting — not a bare
+    section/CTA link. Requires a priority keyword, reasonable length, and that
+    it isn't just one of the generic phrases above."""
+    a = anchor.strip().lower().rstrip(" »›>").strip()
+    if a in _GENERIC_ANCHOR or len(anchor.strip()) < 12:
+        return False
+    return _looks_like_opportunity(anchor)
+
+
 def _same_site(seed: str, candidate: str) -> bool:
     """Keep the crawl on the seed's host (and its subdomains under berkeley.edu)
     so a BFS can't wander off-campus."""
@@ -386,8 +410,7 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict]]:
             if (
                 len(discovered) < _MAX_DISCOVERED_PER_SOURCE
                 and href not in discovered_urls
-                and _looks_like_opportunity(anchor)
-                and len(anchor) >= 12
+                and _is_specific_opportunity(anchor)
             ):
                 discovered_urls.add(href)
                 discovered.append(

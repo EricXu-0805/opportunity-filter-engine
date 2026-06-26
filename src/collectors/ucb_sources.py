@@ -86,13 +86,24 @@ PRIORITY_KEYWORDS = (
     "join the lab",
     "research assistant",
     "research opportunit",      # opportunity / opportunities
+    "research program",
+    "research experience",
+    "directed research",
+    "independent study",
+    "honors thesis",
+    "design team",
     "internship",
     "fellowship",
+    "scholarship",
     "reu",
     "apply",
     "recruiting",
     "open position",
+    "open positions",
+    "lab opening",
     "now hiring",
+    "get involved",
+    "work with us",
 )
 
 
