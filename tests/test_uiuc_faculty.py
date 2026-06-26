@@ -30,6 +30,7 @@ from src.collectors.uiuc_faculty import (
     _split_compound_keywords,
     _strip_fragment_keywords,
     _strip_pi_name_credentials,
+    missing_departments,
     normalize_faculty,
 )
 
@@ -712,3 +713,28 @@ def test_is_junk_keyword_preserves_genuine_areas():
     ]
     for k in real:
         assert not _is_junk_keyword(k), k
+
+
+# --- missing_departments: the silent-scrape-failure guard (MatSE rotted its URL
+# and scraped 0 unnoticed). These are offline; the live scrape runs in the refresh
+# pipeline, where refresh_all surfaces the empties in the run summary. ---
+
+def test_missing_departments_flags_an_empty_dept():
+    present = [{"department": v["name"]} for k, v in DEPARTMENTS.items() if k != "matse"]
+    assert missing_departments(present) == [DEPARTMENTS["matse"]["name"]]
+
+
+def test_missing_departments_empty_when_all_present():
+    present = [{"department": v["name"]} for v in DEPARTMENTS.values()]
+    assert missing_departments(present) == []
+
+
+def test_missing_departments_total_failure_lists_all():
+    assert set(missing_departments([])) == {v["name"] for v in DEPARTMENTS.values()}
+
+
+def test_missing_departments_honors_subset():
+    assert missing_departments([], departments=["matse"]) == [DEPARTMENTS["matse"]["name"]]
+    assert missing_departments(
+        [{"department": DEPARTMENTS["matse"]["name"]}], departments=["matse"]
+    ) == []

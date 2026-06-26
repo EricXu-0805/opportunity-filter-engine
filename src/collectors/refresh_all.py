@@ -76,6 +76,7 @@ from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import _null_shared_admin_emails
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
+from .uiuc_faculty import missing_departments as faculty_missing_departments
 from .uiuc_other import fetch_and_normalize as fetch_other
 from .uiuc_other import merge_into_processed as merge_other
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss
@@ -238,11 +239,22 @@ def refresh_all(deep: bool = True) -> dict:
     try:
         faculty_opps = fetch_faculty(enrich=deep)
         added, updated = merge_faculty(faculty_opps)
+        # Surface the silent-scrape-failure class (a declared department whose
+        # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
+        # bare warning is invisible in the run log, so list empties in the
+        # summary and ERROR-log each so the refresh's audit file flags it.
+        empty_depts = faculty_missing_departments(faculty_opps)
+        for dept in empty_depts:
+            logger.error(
+                "UIUC faculty department scraped ZERO records — likely URL rot / "
+                f"directory layout change (silent failure): {dept}"
+            )
         summary["sources"]["uiuc_faculty"] = {
             "fetched": len(faculty_opps),
             "new": added,
             "updated": updated,
             "enriched": deep,
+            "empty_departments": empty_depts,
             "status": "ok",
         }
         summary["total_new"] += added
