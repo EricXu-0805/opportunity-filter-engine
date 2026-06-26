@@ -567,6 +567,40 @@ def _strip_nav_furniture(text: str) -> str:
     return re.sub(r"\s{2,}", " ", text).strip(" ;,")
 
 
+# Funding-signal detection. Faculty directories almost never state compensation
+# (it's lab/grant-specific — the reason paid defaults to "unknown"). So we only
+# UPGRADE paid when the scraped text carries explicit funding language, and
+# otherwise keep "unknown" but return a helpful note instead of a blank field.
+_FUNDING_PAID_RE = re.compile(
+    r"\b(salary|salaried|hourly\s+wage|paid\s+position|paid\s+research|"
+    r"paid\s+undergraduate|paid\s+intern)\b",
+    re.IGNORECASE,
+)
+_FUNDING_STIPEND_RE = re.compile(
+    r"\b(stipend|funded\s+position|funding\s+available|work[-\s]?study|"
+    r"research\s+assistantship|\bRA\s+position)\b",
+    re.IGNORECASE,
+)
+_FUNDING_DEFAULT_NOTE = (
+    "Funding varies by lab — ask about paid RA, work-study, or course-credit "
+    "(199 units) options when you reach out."
+)
+
+
+def _detect_funding(text: str) -> tuple[str, str]:
+    """Return (paid, compensation_details) from scraped text.
+
+    Only an explicit signal upgrades ``paid`` off "unknown"; conservative by
+    design so we never fabricate a compensation claim a directory didn't make.
+    """
+    t = text or ""
+    if _FUNDING_PAID_RE.search(t):
+        return "yes", "Listing mentions a paid position — confirm details with the professor."
+    if _FUNDING_STIPEND_RE.search(t):
+        return "stipend", "Listing mentions funding/stipend — confirm details with the professor."
+    return "unknown", _FUNDING_DEFAULT_NOTE
+
+
 def normalize_faculty(person: dict, config: dict) -> dict | None:
     """Convert a scraped faculty entry into the normalized opportunity schema."""
     name = person.get("name", "")
@@ -604,6 +638,8 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     research_summary = f" ({', '.join(keywords[:3])})" if keywords else ""
     opp_title = f"Research with Prof. {name} — {dept_short}{research_summary}"
 
+    paid, compensation_details = _detect_funding(f"{research_areas} {description} {title}")
+
     return {
         "id": opp_id,
         "source": config["source"],
@@ -620,8 +656,8 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "on_campus": False,
         "remote_option": "unknown",
         "opportunity_type": "research",
-        "paid": "unknown",
-        "compensation_details": "",
+        "paid": paid,
+        "compensation_details": compensation_details,
         "deadline": None,
         "posted_date": None,
         "start_date": None,

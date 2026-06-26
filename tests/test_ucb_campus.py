@@ -109,3 +109,23 @@ class TestSourceBreakdown:
         assert bd["total"] == len(seed_records)
         assert sum(bd["by_source_type"].values()) == len(seed_records)
         assert sum(bd["by_emit_bucket"].values()) == len(seed_records)
+
+
+class TestCrawlDiscoverySpecificity:
+    """The crawl only emits a discovered record for a *specific* posting anchor,
+    not a bare section/CTA link — keeps discovery from flooding the corpus (and
+    the DQ gate) with generic 'Undergraduate Research' / 'Apply' rows."""
+
+    def test_generic_anchors_rejected(self):
+        for a in ["Undergraduate Research", "Research", "Apply", "Apply now",
+                  "Learn more", "internships", "Fellowship", "Get involved"]:
+            assert ucb_campus._is_specific_opportunity(a) is False, a
+
+    def test_specific_anchors_accepted(self):
+        for a in ["SURF Summer Research Fellowship",
+                  "Sky Computing Lab — Undergraduate Researchers",
+                  "Join the Smith Lab (research assistant)"]:
+            assert ucb_campus._is_specific_opportunity(a) is True, a
+
+    def test_too_short_rejected(self):
+        assert ucb_campus._is_specific_opportunity("REU") is False
