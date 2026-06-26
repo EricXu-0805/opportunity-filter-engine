@@ -105,7 +105,7 @@ describe('registry — switcher metadata', () => {
     // Campus-graph schools (US-News Top-50 rollout): conservative seed-floor
     // counts, not 'pending'.
     expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(9);
-    expect(bySlug('umich')?.coverage.campusOpportunities).toBe(9);
+    expect(bySlug('umich')?.coverage.campusOpportunities).toBe(50);
     const live = SCHOOLS.filter((s) => s.coverage.campusOpportunities !== 'pending');
     expect(new Set(live.map((s) => s.slug))).toEqual(
       new Set(['uiuc', 'ucb', 'princeton', 'umich']),
