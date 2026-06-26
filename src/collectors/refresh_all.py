@@ -71,6 +71,8 @@ from .ucb_sph_faculty import fetch_and_normalize as fetch_ucb_sph
 from .ucb_stat_faculty import fetch_and_normalize as fetch_ucb_stat
 from .ucb_urap import fetch_and_normalize as fetch_ucb_urap
 from .ucb_urap import merge_into_processed as merge_ucb_urap
+from .ucb_urap_projects import fetch_and_normalize as fetch_ucb_urap_projects
+from .ucb_urap_projects import merge_into_processed as merge_ucb_urap_projects
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import _null_shared_admin_emails
@@ -380,6 +382,28 @@ def refresh_all(deep: bool = True) -> dict:
             except Exception as e:
                 logger.error(f"{source_name} collection failed: {e}")
                 summary["sources"][source_name] = {"status": "error", "error": str(e)}
+
+        # 5b-ii. URAP live project database (deep + seasonal). Scrapes the
+        # status=Open listings at urapprojects.berkeley.edu — hundreds of
+        # faculty-posted projects during the application window, 0 off-season
+        # (the merge leaves the corpus untouched on an empty scrape).
+        logger.info("=" * 50)
+        logger.info("Collecting from UC Berkeley URAP project database...")
+        try:
+            urap_proj = fetch_ucb_urap_projects()
+            added, updated = merge_ucb_urap_projects(urap_proj)
+            summary["sources"]["ucb_urap_projects"] = {
+                "fetched": len(urap_proj),
+                "new": added,
+                "updated": updated,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(f"URAP projects: {len(urap_proj)} fetched, {added} new, {updated} updated")
+        except Exception as e:
+            logger.error(f"URAP projects collection failed: {e}")
+            summary["sources"]["ucb_urap_projects"] = {"status": "error", "error": str(e)}
 
     # 5c. SimplifyJobs internships (autonomous GitHub raw fetch — no auth)
     logger.info("=" * 50)
