@@ -54,7 +54,13 @@ describe('UniversitySwitcherModal — rendering', () => {
         `universitySwitcher.coverageCampus:${UCB_CAMPUS_OPPORTUNITIES.toLocaleString()}`,
       ),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('universitySwitcher.coveragePending').length).toBe(SCHOOLS.length - 2);
+    // Derive the expected pending count from the registry rather than a fixed
+    // "minus N live schools" — the live set grows as campus collectors ship
+    // (UIUC, UCB, Princeton, …).
+    const pendingCount = SCHOOLS.filter(
+      (s) => s.coverage.campusOpportunities === 'pending',
+    ).length;
+    expect(screen.getAllByText('universitySwitcher.coveragePending').length).toBe(pendingCount);
   });
 
   it('shows a real catalog counts line on every card, no pending-catalog note left', () => {

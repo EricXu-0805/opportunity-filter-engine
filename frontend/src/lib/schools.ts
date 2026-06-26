@@ -172,6 +172,20 @@ export const SCHOOLS: School[] = [
     coverage: PENDING_COVERAGE,
     catalog: { colleges: 3, majors: 71 },
   },
+  {
+    slug: 'princeton',
+    domain: 'princeton.edu',
+    name: 'Princeton University',
+    shortName: 'Princeton',
+    nameZh: '普林斯顿大学',
+    color: '#E77500',
+    location: 'Princeton, NJ',
+    // First school on the campus-graph engine. Conservative seed-floor count
+    // (curated OUR programs, dept research, career, institutes); the deep crawl
+    // discovers more in CI. Maintained estimate, like UCB above.
+    coverage: { campusOpportunities: 9, note: 'universitySwitcher.coverageCampus' },
+    catalog: { colleges: 5, majors: 37 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));

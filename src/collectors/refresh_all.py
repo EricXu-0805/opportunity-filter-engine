@@ -18,9 +18,12 @@ from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate
 from src.normalizers.school_audience import apply_school_audience
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
+from .campus_graph import fetch_and_normalize as fetch_campus_graph
+from .campus_graph import merge_into_processed as merge_campus_graph
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
+from .schools import SCHOOL_CONFIGS
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -305,6 +308,34 @@ def refresh_all(deep: bool = True) -> dict:
     except Exception as e:
         logger.error(f"UCB campus collection failed: {e}")
         summary["sources"]["ucb_campus"] = {"status": "error", "error": str(e)}
+
+    # 5a-ii. Generic campus-graph schools (US-News Top-50 rollout). Same model
+    # as ucb_campus — curated seed layer runs unconditionally (no network), the
+    # keyword-prioritized BFS only runs in deep mode — but driven by the
+    # ``schools/`` config registry so a new school is a config module, not new
+    # refresh wiring. Each school is isolated: one failing config can't sink the
+    # others or the rest of the run. Records carry their own school/audience from
+    # the config's emit map, kept in lockstep with school_audience.SOURCE_DEFAULTS.
+    logger.info("=" * 50)
+    logger.info(f"Collecting from campus-graph schools (n={len(SCHOOL_CONFIGS)}, deep={deep})...")
+    for school_cfg in SCHOOL_CONFIGS:
+        slug = school_cfg.get("school_slug", "unknown")
+        try:
+            school_opps = fetch_campus_graph(school_cfg, deep=deep)
+            added, updated = merge_campus_graph(school_opps)
+            summary["sources"][f"campus_graph:{slug}"] = {
+                "fetched": len(school_opps),
+                "new": added,
+                "updated": updated,
+                "deep": deep,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(f"campus-graph {slug}: {len(school_opps)} fetched, {added} new, {updated} updated")
+        except Exception as e:
+            logger.error(f"campus-graph collection failed for {slug}: {e}")
+            summary["sources"][f"campus_graph:{slug}"] = {"status": "error", "error": str(e)}
 
     # 5b. UC Berkeley faculty directories — deep-only, same class as the
     # uiuc_faculty enrichment hop: each collector visits every profile page for
