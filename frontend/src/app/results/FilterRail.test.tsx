@@ -206,7 +206,12 @@ describe('sourceLabel (derived source filter)', () => {
       'ucb_me_faculty', 'ucb_mse_faculty', 'ucb_ne_faculty', 'ucb_nst_faculty',
       'ucb_physics_faculty', 'ucb_pmb_faculty', 'ucb_polisci_faculty',
       'ucb_psych_faculty', 'ucb_soc_faculty',
+      // batch-2 departments (all 38 wired in refresh_all must be labeled)
+      'ucb_education_faculty', 'ucb_english_faculty', 'ucb_geog_faculty',
+      'ucb_haas_faculty', 'ucb_history_faculty', 'ucb_journalism_faculty',
+      'ucb_philos_faculty', 'ucb_socwel_faculty', 'ucb_sph_faculty',
     ];
+    expect(UCB_FACULTY_SOURCES).toHaveLength(38);
     for (const src of UCB_FACULTY_SOURCES) {
       // identity t returns the key when one is mapped; the humanizer would
       // return a "Ucb …" string with no 'results.filters.' prefix.
