@@ -1170,6 +1170,19 @@ _SERVICE_ROLE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Faculty-directory contact-block residue: a personal email, an office phone, or
+# an office room/building address scraped as a "research keyword" by a per-dept
+# template that grabbed the contact panel (the UIUC Physics directory leaked all
+# three). Never a research area. The room rule requires a leading 2-4-digit room
+# number AND a building-type word, so dimensional areas ("2d materials",
+# "3d printing") and lab-method areas ("laboratory automation") are never caught.
+_CONTACT_INFO_RE = re.compile(
+    r"[^\s@]+@[^\s@]+\.[a-z]{2,}"                       # email: adshead@illinois.edu
+    r"|\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}"           # phone: (217) 333-4363
+    r"|^\d{2,4}[a-z]?\s+.*\b(?:laborator(?:y|ies)|hall|building|annex)\b",  # 237b loomis laboratory
+    re.IGNORECASE,
+)
+
 
 def _is_junk_keyword(k: str) -> bool:
     """True for a keyword that is page furniture, a course listing, a
@@ -1179,6 +1192,8 @@ def _is_junk_keyword(k: str) -> bool:
     if _PAGE_FURNITURE_RE.search(kl):
         return True
     if _SERVICE_ROLE_RE.search(kl):
+        return True
+    if _CONTACT_INFO_RE.search(kl):  # email / office phone / room-address residue
         return True
     if _COURSE_CODE_RE.search(kl):  # scraped course listings ("cs 591 sn - ...")
         return True
