@@ -19,6 +19,7 @@ Usage:
 import hashlib
 import json
 import logging
+import re
 import shutil
 import sqlite3
 import sys
@@ -233,7 +234,11 @@ def _parse_posting(result: dict) -> Optional[dict]:
     sal_max = job.get("salary_max_raw", "")
     pay_schedule = (job.get("pay_schedule") or {}).get("friendly_name", "")
     if sal_min or sal_max:
-        salary_info = f"${sal_min}-${sal_max} {pay_schedule}".strip()
+        if sal_min and sal_max:
+            amount = f"${sal_min}" if sal_min == sal_max else f"${sal_min}-${sal_max}"
+        else:
+            amount = f"${sal_min or sal_max}"
+        salary_info = _normalize_compensation(f"{amount} {pay_schedule}".strip())
 
     paid = job.get("salary_type_behavior_identifier", "")
 
@@ -329,6 +334,24 @@ def normalize_posting(raw: dict) -> dict:
         },
     }
     return enrich_opportunity(opp)
+
+
+def _normalize_compensation(raw: str) -> str:
+    """Normalize a Handshake salary string for display. Handshake mislabels
+    monthly research/internship stipends as "Per hour" (e.g. "$2250-$2250 Per
+    hour" — $2250/hr is not a real undergrad wage) and emits redundant equal
+    ranges. Collapse "$X-$X" to "$X" and drop an implausible "Per hour" label
+    (amount >= $200/hr) so we never assert a wrong pay period. A plausible hourly
+    rate ("$25 Per hour") and any other period (Per year/month) are left intact;
+    returns "" for an empty value so the caller can fall back to the paid flag."""
+    s = (raw or "").strip()
+    if not s:
+        return ""
+    s = re.sub(r"\$(\d[\d,]*)-\$\1\b", r"$\1", s)  # "$2250-$2250" -> "$2250"
+    m = re.search(r"\$(\d[\d,]*)", s)
+    if m and int(m.group(1).replace(",", "")) >= 200 and re.search(r"\bper hour\b", s, re.I):
+        s = re.sub(r"\s*\bper hour\b", "", s, flags=re.I).strip()
+    return s
 
 
 def _extract_keywords(text: str) -> list[str]:

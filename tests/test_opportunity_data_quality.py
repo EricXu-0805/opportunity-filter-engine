@@ -146,6 +146,29 @@ class TestR70ADataQuality:
             f"blob (collector should emit a clean value). First 3: {offenders[:3]}"
         )
 
+    def test_compensation_no_absurd_hourly_or_redundant_range(self):
+        """Handshake mislabeled monthly research/internship stipends as "Per
+        hour" ("$2250-$2250 Per hour") and emitted redundant equal ranges. No
+        served record may carry a >= $200/hr rate (not a real undergrad wage —
+        the collector drops the implausible period) or a duplicated "$X-$X"
+        range (collapsed to "$X"). _normalize_compensation enforces both."""
+        dup_range = re.compile(r"\$(\d[\d,]*)-\$\1\b")
+        offenders = []
+        for o in _load_data():
+            s = (o.get("compensation_details") or "").replace(",", "")
+            if not s:
+                continue
+            m = re.search(r"\$(\d+)\b", s)
+            absurd_hourly = (
+                m and int(m.group(1)) >= 200 and re.search(r"\bper hour\b", s, re.I)
+            )
+            if dup_range.search(s) or absurd_hourly:
+                offenders.append((o.get("id"), (o.get("compensation_details") or "")[:60]))
+        assert not offenders, (
+            f"{len(offenders)} records have an absurd >=$200/hr rate or a "
+            f"redundant $X-$X range. First 3: {offenders[:3]}"
+        )
+
     def test_ids_unique(self):
         """Every record has a unique id."""
         data = _load_data()
@@ -534,3 +557,17 @@ class TestSchoolAudience:
             f"{len(offenders)} records whose (school, audience) drifted from "
             f"their source default. First 3: {offenders[:3]}"
         )
+
+
+def test_normalize_compensation_collapses_range_and_drops_absurd_hourly():
+    """Unit probes for the Handshake compensation normalizer: collapse an equal
+    "$X-$X" range, drop an implausible (>= $200) "Per hour" label, and preserve
+    a plausible hourly rate and any non-hourly pay period."""
+    from src.collectors.handshake import _normalize_compensation as nc
+    assert nc("$2250-$2250 Per hour") == "$2250"
+    assert nc("$2000-$3000 Per hour") == "$2000-$3000"
+    assert nc("$200000-$200000 Per year") == "$200000 Per year"
+    assert nc("$25 Per hour") == "$25 Per hour"          # plausible hourly kept
+    assert nc("$25-$30 Per hour") == "$25-$30 Per hour"  # plausible hourly kept
+    assert nc("") == ""
+    assert nc("Paid") == "Paid"
