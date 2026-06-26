@@ -23,6 +23,7 @@ from src.collectors.uiuc_faculty import (
     _keywords_from_research_areas,
     _llm_research_keywords,
     _null_shared_admin_emails,
+    _null_unit_inbox_emails,
     _rebuild_faculty_title_and_desc,
     _reenrich_broad_only_faculty,
     _research_areas_from_soup,
@@ -59,6 +60,13 @@ OBSERVED_SECTION_LABELS = [
     "Job Market Candidates",
     "Diversity and Inclusion",
     "Instructors and Lecturers",
+    # Institution-page / memorial labels scraped as a person (variable forms,
+    # matched by word boundary, not the whole-name set).
+    "Beckman Institute profile",
+    "Neuroscience Profile",
+    "Beckman Profile Page",
+    "Dean's Cabinet",
+    "In Memoriam",
 ]
 
 # Real names that must NEVER be mistaken for section labels, including the
@@ -85,6 +93,33 @@ def test_real_names_are_not_filtered():
 def test_normalize_drops_section_label():
     cfg = DEPARTMENTS["mcb"]
     assert normalize_faculty({"name": "Postdocs", "url": "x"}, cfg) is None
+
+
+def test_null_unit_inbox_emails_nulls_unit_mailboxes_keeps_personal():
+    """A department/unit/role mailbox scraped as a professor's contact (english@,
+    mainoffice@physics, poultry@) is nulled — a cold email to it misfires — while
+    a personal address, including the vowel-stripped and initials shapes UIUC
+    uses ("fhnstck@" for Fahnestock, "geg@" for Gary E. Gladding), is preserved."""
+    opps = [
+        {"source": "uiuc_faculty", "department": "Department of English",
+         "pi_name": "Susan Koshy", "contact_email": "english@illinois.edu"},
+        {"source": "uiuc_faculty", "department": "Department of Physics",
+         "pi_name": "Pengjie Wang", "contact_email": "mainoffice@physics.illinois.edu"},
+        {"source": "uiuc_faculty", "department": "Department of Animal Sciences",
+         "pi_name": "Carl M. Parsons", "contact_email": "poultry@illinois.edu"},
+        {"source": "uiuc_faculty", "department": "Department of Anthropology",
+         "pi_name": "Kathryn Clancy", "contact_email": "anthro@illinois.edu"},
+        # personal addresses that must SURVIVE
+        {"source": "uiuc_faculty", "department": "Department of Civil Engineering",
+         "pi_name": "Larry A. Fahnestock", "contact_email": "fhnstck@illinois.edu"},
+        {"source": "uiuc_faculty", "department": "Department of Physics",
+         "pi_name": "Gary E. Gladding", "contact_email": "geg@illinois.edu"},
+    ]
+    nulled = _null_unit_inbox_emails(opps)
+    assert nulled == 4
+    assert [o["contact_email"] for o in opps[:4]] == [None, None, None, None]
+    assert opps[4]["contact_email"] == "fhnstck@illinois.edu"
+    assert opps[5]["contact_email"] == "geg@illinois.edu"
 
 
 def test_normalize_keeps_real_person():
