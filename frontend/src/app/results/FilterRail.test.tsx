@@ -193,6 +193,17 @@ describe('sourceLabel (derived source filter)', () => {
     );
     expect(sourceLabel('ucb_labs', t)).toBe('results.filters.sourceUcbLabs');
   });
+  it('uses i18n keys for the campus-graph schools (Princeton)', () => {
+    // The Top-50 rollout reuses the same three emit buckets per school; each
+    // must resolve to a real label, not the humanized fallback.
+    expect(sourceLabel('princeton_research_programs', t)).toBe(
+      'results.filters.sourcePrincetonResearchPrograms',
+    );
+    expect(sourceLabel('princeton_external_research', t)).toBe(
+      'results.filters.sourcePrincetonExternalResearch',
+    );
+    expect(sourceLabel('princeton_labs', t)).toBe('results.filters.sourcePrincetonLabs');
+  });
   it('every UC Berkeley faculty source maps to a label (no humanized fallback)', () => {
     // Mirrors the ucb_*_faculty collectors wired in refresh_all
     // (deactivate_stale_faculty.FACULTY_SOURCES). Each MUST resolve to a real

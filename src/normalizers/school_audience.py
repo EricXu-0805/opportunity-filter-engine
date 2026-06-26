@@ -88,6 +88,11 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_research_programs": ("ucb", "campus"),
     "ucb_external_research": (None, "open"),
     "ucb_labs": ("ucb", "unknown"),
+    # Top-50 rollout via the generic campus_graph engine (src/collectors/schools/).
+    # Same three emit buckets per school. Princeton (US-News #1) is first.
+    "princeton_research_programs": ("princeton", "campus"),
+    "princeton_external_research": (None, "open"),
+    "princeton_labs": ("princeton", "unknown"),
 }
 
 

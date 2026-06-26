@@ -158,6 +158,11 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   ucb_research_programs: 'results.filters.sourceUcbResearchPrograms',
   ucb_external_research: 'results.filters.sourceUcbExternalResearch',
   ucb_labs: 'results.filters.sourceUcbLabs',
+  // Campus-graph schools (US-News Top-50 rollout). Same three emit buckets
+  // per school. Princeton (#1) is first.
+  princeton_research_programs: 'results.filters.sourcePrincetonResearchPrograms',
+  princeton_external_research: 'results.filters.sourcePrincetonExternalResearch',
+  princeton_labs: 'results.filters.sourcePrincetonLabs',
 };
 
 export function sourceLabel(source: string, t: TFunc): string {
