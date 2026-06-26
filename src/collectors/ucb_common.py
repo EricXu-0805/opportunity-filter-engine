@@ -85,6 +85,9 @@ NOISE_EMAILS = frozenset({
     # profile; without this, faculty whose personal address is non-Berkeley
     # (e.g. an @lbl.gov address) would resolve to it.
     "physics_admin@berkeley.edu",
+    # Psychology lists its department admin inbox on every profile; without this
+    # it attaches to many professors and trips the shared-admin-email DQ gate.
+    "psychadmin@berkeley.edu",
     # Philosophy lists its department mailbox as a second mailto on every
     # profile; the professor's personal address is the first mailto.
     "phildept@berkeley.edu",
@@ -544,6 +547,26 @@ def infer_skills_from_research(person: dict) -> list[str]:
     return sorted(skills)[:5]
 
 
+# Page-furniture / nav phrases that a bespoke profile parser occasionally pulls
+# into research text when a profile's accordion/section markup deviates from the
+# norm (observed on a BioE profile). They are never research areas; strip them so
+# they can't leak into description_clean (the DQ gate forbids them). Kept in sync
+# with tests/test_opportunity_data_quality.py::test_faculty_description_has_no_navmenu_leak.
+_NAV_FURNITURE = (
+    "Once Research Secured", "Administration & Staff", "Colloquia Calendar",
+    "Affiliated Faculty", "Labs & Facilities", "Research Institutes and Centers",
+)
+
+
+def _strip_nav_furniture(text: str) -> str:
+    """Remove known nav/section-furniture phrases from scraped research text."""
+    if not text:
+        return text
+    for phrase in _NAV_FURNITURE:
+        text = re.sub(re.escape(phrase), " ", text, flags=re.IGNORECASE)
+    return re.sub(r"\s{2,}", " ", text).strip(" ;,")
+
+
 def normalize_faculty(person: dict, config: dict) -> dict | None:
     """Convert a scraped faculty entry into the normalized opportunity schema."""
     name = person.get("name", "")
@@ -557,7 +580,7 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     title = person.get("title", "Professor")
     if _RETIRED_TITLE_RE.search(title):
         return None
-    research_areas = person.get("research_areas", "")
+    research_areas = _strip_nav_furniture(person.get("research_areas", ""))
 
     name_hash = hashlib.md5(f"{dept_short}-{name}".encode()).hexdigest()[:8]
     opp_id = f"faculty-ucb-{dept_short.lower()}-{name_hash}"

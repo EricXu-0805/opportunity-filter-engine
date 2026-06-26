@@ -18,6 +18,8 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
+from .ucb_common import _is_person_name
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -216,7 +218,11 @@ def enrich_opportunities(opps: list[dict], save: bool = False) -> dict:
                 if info.get("contact_email"):
                     opp["contact_email"] = info["contact_email"]
                     enriched = True
-                if info.get("pi_name") and not opp.get("pi_name"):
+                # Guard with _is_person_name: a scraped/derived "name" that is
+                # really an institution/place ("Berkeley", "UC Berkeley") must
+                # never become a pi_name — two such records collide on the
+                # ucb_* joint-appointment data-quality gate and block the refresh.
+                if info.get("pi_name") and not opp.get("pi_name") and _is_person_name(info["pi_name"]):
                     opp["pi_name"] = info["pi_name"]
             time.sleep(DELAY)
         elif url and ("illinois.edu" in url or "nsf.gov" in url):
@@ -227,14 +233,15 @@ def enrich_opportunities(opps: list[dict], save: bool = False) -> dict:
                 if info.get("contact_email"):
                     opp["contact_email"] = info["contact_email"]
                     enriched = True
-                if info.get("pi_name") and not opp.get("pi_name"):
+                if info.get("pi_name") and not opp.get("pi_name") and _is_person_name(info["pi_name"]):
                     opp["pi_name"] = info["pi_name"]
             time.sleep(DELAY)
 
         if not opp.get("pi_name"):
             lab = opp.get("lab_or_program", "")
             pi = _infer_pi_from_lab(lab)
-            if pi:
+            # e.g. "Berkeley Lab SULI" -> "Berkeley"; reject institution/place names.
+            if pi and _is_person_name(pi):
                 opp["pi_name"] = pi
                 stats["inferred_pi"] += 1
 
