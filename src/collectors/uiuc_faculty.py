@@ -1204,6 +1204,8 @@ def _is_junk_keyword(k: str) -> bool:
         return True
     if _CONTACT_INFO_RE.search(kl):  # email / office phone / room-address residue
         return True
+    if "?" in kl:  # scraped research-question heading ("how does a tissue sense damage?")
+        return True
     if _COURSE_CODE_RE.search(kl):  # scraped course listings ("cs 591 sn - ...")
         return True
     if re.search(r"&[a-z]{2,}", kl):  # HTML-entity residue ("agents &amp", "se&nbsp")
@@ -1225,7 +1227,10 @@ def _is_junk_keyword(k: str) -> bool:
 
 
 def _split_research_phrases(text: str) -> list[str]:
-    return [p.strip() for p in re.split(r"[,\n;]", text) if p.strip()]
+    # comma / newline / semicolon, plus a spaced slash ("programming languages /
+    # formal methods / software engineering") — an in-word slash ("airport/highway")
+    # is left intact so it is never fragmented.
+    return [p.strip() for p in re.split(r"[,\n;]|\s+/\s+", text) if p.strip()]
 
 
 def _clean_research_phrase(phrase: str) -> str | None:
@@ -1344,7 +1349,7 @@ def _split_compound_keywords(opps: list[dict]) -> int:
         kws = o.get("keywords") or []
         new: list[str] = []
         for k in kws:
-            if "," in k or ";" in k:
+            if "," in k or ";" in k or " / " in k:
                 for part in _split_research_phrases(k):
                     cleaned = _clean_research_phrase(part)
                     if cleaned and cleaned not in new:

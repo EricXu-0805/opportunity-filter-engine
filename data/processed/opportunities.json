@@ -59689,7 +59689,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Bill Gropp in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming models for scientific computing, scientific computing, parallel computing, parallel / high-performance computing. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Bill Gropp in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming models for scientific computing, scientific computing, parallel computing, parallel, high-performance computing. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -59700,15 +59700,16 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/wgropp"
     },
-    "description_raw": "Research opportunity with Professor Bill Gropp in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming models for scientific computing, scientific computing, parallel computing, parallel / high-performance computing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Bill Gropp in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming models for scientific computing, scientific computing, parallel computing, parallel / high-performance computing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Bill Gropp in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming models for scientific computing, scientific computing, parallel computing, parallel, high-performance computing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Bill Gropp in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming models for scientific computing, scientific computing, parallel computing, parallel, high-performance computing. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "compilers",
       "architecture",
       "programming models for scientific computing",
       "scientific computing",
       "parallel computing",
-      "parallel / high-performance computing"
+      "parallel",
+      "high-performance computing"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -59875,7 +59876,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cs.illinois.edu/about/people/department-faculty/egunter",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Elsa Gunter — CS (computers and education, mathematics, programming languages / formal methods / software engineering)",
+    "title": "Research with Prof. Elsa Gunter — CS (computers and education, mathematics, programming languages)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
     "lab_or_program": "Prof. Elsa Gunter's Research Group",
@@ -59911,7 +59912,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Elsa Gunter in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, mathematics, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Elsa Gunter in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, mathematics, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -59922,12 +59923,14 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/egunter"
     },
-    "description_raw": "Research opportunity with Professor Elsa Gunter in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, mathematics, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Elsa Gunter in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, mathematics, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Elsa Gunter in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, mathematics, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Elsa Gunter in the Siebel School of Computing and Data Science at UIUC. Research areas: computers and education, mathematics, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "computers and education",
       "mathematics",
-      "programming languages / formal methods / software engineering"
+      "programming languages",
+      "formal methods",
+      "software engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -60755,7 +60758,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cs.illinois.edu/about/people/department-faculty/reyhaneh",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Reyhaneh Jabbarvand — CS (programming languages / formal methods / software engineering)",
+    "title": "Research with Prof. Reyhaneh Jabbarvand — CS (programming languages, formal methods, software engineering)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
     "lab_or_program": "Prof. Reyhaneh Jabbarvand's Research Group",
@@ -60791,7 +60794,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Reyhaneh Jabbarvand in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Reyhaneh Jabbarvand in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -60802,10 +60805,12 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/reyhaneh"
     },
-    "description_raw": "Research opportunity with Professor Reyhaneh Jabbarvand in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Reyhaneh Jabbarvand in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Reyhaneh Jabbarvand in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Reyhaneh Jabbarvand in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "programming languages / formal methods / software engineering"
+      "programming languages",
+      "formal methods",
+      "software engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -62891,7 +62896,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cs.illinois.edu/about/people/department-faculty/meseguer",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Jose Meseguer — CS (programming languages / formal methods / software engineering)",
+    "title": "Research with Prof. Jose Meseguer — CS (programming languages, formal methods, software engineering)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
     "lab_or_program": "Prof. Jose Meseguer's Research Group",
@@ -62927,7 +62932,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Jose Meseguer in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Jose Meseguer in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -62938,10 +62943,12 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/meseguer"
     },
-    "description_raw": "Research opportunity with Professor Jose Meseguer in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Jose Meseguer in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Jose Meseguer in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Jose Meseguer in the Siebel School of Computing and Data Science at UIUC. Research areas: programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "programming languages / formal methods / software engineering"
+      "programming languages",
+      "formal methods",
+      "software engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -63404,7 +63411,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cs.illinois.edu/about/people/department-faculty/padua",
     "source_type": "faculty_research",
-    "title": "Research with Prof. David Padua — CS (compilers, architecture, programming languages / formal methods / software engineering)",
+    "title": "Research with Prof. David Padua — CS (compilers, architecture, programming languages)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
     "lab_or_program": "Prof. David Padua's Research Group",
@@ -63440,7 +63447,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor David Padua in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor David Padua in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -63451,12 +63458,14 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/padua"
     },
-    "description_raw": "Research opportunity with Professor David Padua in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor David Padua in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor David Padua in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor David Padua in the Siebel School of Computing and Data Science at UIUC. Research areas: compilers, architecture, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "compilers",
       "architecture",
-      "programming languages / formal methods / software engineering"
+      "programming languages",
+      "formal methods",
+      "software engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -64141,7 +64150,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://cs.illinois.edu/about/people/department-faculty/grosu",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Grigore Rosu — CS (romania, programming languages / formal methods / software engineering)",
+    "title": "Research with Prof. Grigore Rosu — CS (romania, programming languages, formal methods)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Siebel School of Computing and Data Science",
     "lab_or_program": "Prof. Grigore Rosu's Research Group",
@@ -64177,7 +64186,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Grigore Rosu in the Siebel School of Computing and Data Science at UIUC. Research areas: romania, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Grigore Rosu in the Siebel School of Computing and Data Science at UIUC. Research areas: romania, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -64188,11 +64197,13 @@
       "application_effort": "low",
       "application_url": "https://cs.illinois.edu/about/people/department-faculty/grosu"
     },
-    "description_raw": "Research opportunity with Professor Grigore Rosu in the Siebel School of Computing and Data Science at UIUC. Research areas: romania, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Grigore Rosu in the Siebel School of Computing and Data Science at UIUC. Research areas: romania, programming languages / formal methods / software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Grigore Rosu in the Siebel School of Computing and Data Science at UIUC. Research areas: romania, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Grigore Rosu in the Siebel School of Computing and Data Science at UIUC. Research areas: romania, programming languages, formal methods, software engineering. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "romania",
-      "programming languages / formal methods / software engineering"
+      "programming languages",
+      "formal methods",
+      "software engineering"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -82308,7 +82319,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/fkl",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Frederick K. Lamb — Physics (marshall scholar, astrophysics / relativity / cosmology)",
+    "title": "Research with Prof. Frederick K. Lamb — Physics (marshall scholar, astrophysics, relativity)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Frederick K. Lamb's Research Group",
@@ -82342,7 +82353,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Frederick K. Lamb in the Department of Physics at UIUC. Research areas: marshall scholar, astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Frederick K. Lamb in the Department of Physics at UIUC. Research areas: marshall scholar, astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -82353,11 +82364,13 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/fkl"
     },
-    "description_raw": "Research opportunity with Professor Frederick K. Lamb in the Department of Physics at UIUC. Research areas: marshall scholar, astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Frederick K. Lamb in the Department of Physics at UIUC. Research areas: marshall scholar, astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Frederick K. Lamb in the Department of Physics at UIUC. Research areas: marshall scholar, astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Frederick K. Lamb in the Department of Physics at UIUC. Research areas: marshall scholar, astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "marshall scholar",
-      "astrophysics / relativity / cosmology"
+      "astrophysics",
+      "relativity",
+      "cosmology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -83370,7 +83383,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/jnorhos",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Jaki Noronha-Hostler — Physics (what are the smallest building blocks of matter and how do they interact?)",
+    "title": "Research with Prof. Jaki Noronha-Hostler — Physics",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Jaki Noronha-Hostler's Research Group",
@@ -83404,7 +83417,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Jaki Noronha-Hostler in the Department of Physics at UIUC. Research areas: what are the smallest building blocks of matter and how do they interact?. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Jaki Noronha-Hostler in the Department of Physics at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -83415,10 +83428,10 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/jnorhos"
     },
-    "description_raw": "Research opportunity with Professor Jaki Noronha-Hostler in the Department of Physics at UIUC. Research areas: what are the smallest building blocks of matter and how do they interact?. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Jaki Noronha-Hostler in the Department of Physics at UIUC. Research areas: what are the smallest building blocks of matter and how do they interact?. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Jaki Noronha-Hostler in the Department of Physics at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Jaki Noronha-Hostler in the Department of Physics at UIUC. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "what are the smallest building blocks of matter and how do they interact?"
+      "physics"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -83933,7 +83946,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/hosilva",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Hector Silva — Physics (astrophysics / relativity / cosmology)",
+    "title": "Research with Prof. Hector Silva — Physics (astrophysics, relativity, cosmology)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Hector Silva's Research Group",
@@ -83967,7 +83980,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Hector Silva in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Hector Silva in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -83978,10 +83991,12 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/hosilva"
     },
-    "description_raw": "Research opportunity with Professor Hector Silva in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Hector Silva in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Hector Silva in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Hector Silva in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "astrophysics / relativity / cosmology"
+      "astrophysics",
+      "relativity",
+      "cosmology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -85127,7 +85142,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/ruizm",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Milton Ruiz Meneses — Physics (astrophysics / relativity / cosmology)",
+    "title": "Research with Prof. Milton Ruiz Meneses — Physics (astrophysics, relativity, cosmology)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Milton Ruiz Meneses's Research Group",
@@ -85161,7 +85176,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Milton Ruiz Meneses in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Milton Ruiz Meneses in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -85172,10 +85187,12 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/ruizm"
     },
-    "description_raw": "Research opportunity with Professor Milton Ruiz Meneses in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Milton Ruiz Meneses in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Milton Ruiz Meneses in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Milton Ruiz Meneses in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "astrophysics / relativity / cosmology"
+      "astrophysics",
+      "relativity",
+      "cosmology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -85829,7 +85846,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/pmricker",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Paul Milton Ricker — Physics (astrophysics / relativity / cosmology)",
+    "title": "Research with Prof. Paul Milton Ricker — Physics (astrophysics, relativity, cosmology)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Paul Milton Ricker's Research Group",
@@ -85863,7 +85880,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Paul Milton Ricker in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Paul Milton Ricker in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -85874,10 +85891,12 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/pmricker"
     },
-    "description_raw": "Research opportunity with Professor Paul Milton Ricker in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Paul Milton Ricker in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Paul Milton Ricker in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Paul Milton Ricker in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "astrophysics / relativity / cosmology"
+      "astrophysics",
+      "relativity",
+      "cosmology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -86816,7 +86835,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/slamb",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Susan A. Lamb — Physics (astrophysics / relativity / cosmology)",
+    "title": "Research with Prof. Susan A. Lamb — Physics (astrophysics, relativity, cosmology)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Susan A. Lamb's Research Group",
@@ -86850,7 +86869,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Susan A. Lamb in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Susan A. Lamb in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -86861,10 +86880,12 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/slamb"
     },
-    "description_raw": "Research opportunity with Professor Susan A. Lamb in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Susan A. Lamb in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Susan A. Lamb in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Susan A. Lamb in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "astrophysics / relativity / cosmology"
+      "astrophysics",
+      "relativity",
+      "cosmology"
     ],
     "metadata": {
       "confidence_score": 0.7,
@@ -87734,7 +87755,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://physics.illinois.edu/people/directory/profile/jjt",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Jon J. Thaler — Physics (astrophysics / relativity / cosmology)",
+    "title": "Research with Prof. Jon J. Thaler — Physics (astrophysics, relativity, cosmology)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "Department of Physics",
     "lab_or_program": "Prof. Jon J. Thaler's Research Group",
@@ -87768,7 +87789,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Jon J. Thaler in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Jon J. Thaler in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -87779,10 +87800,12 @@
       "application_effort": "low",
       "application_url": "https://physics.illinois.edu/people/directory/profile/jjt"
     },
-    "description_raw": "Research opportunity with Professor Jon J. Thaler in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Jon J. Thaler in the Department of Physics at UIUC. Research areas: astrophysics / relativity / cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Jon J. Thaler in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Jon J. Thaler in the Department of Physics at UIUC. Research areas: astrophysics, relativity, cosmology. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "astrophysics / relativity / cosmology",
+      "astrophysics",
+      "relativity",
+      "cosmology",
       "physics"
     ],
     "metadata": {
@@ -152274,7 +152297,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://mcb.illinois.edu/directory/profile/rsbolton",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Rachel Smith-Bolton — MCB (how does a damaged tissue initiate new growth?, how does a tissue sense damage?, how are cell fates properly specified within the new tissue?)",
+    "title": "Research with Prof. Rachel Smith-Bolton — MCB (trauma, tissue regeneration)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "School of Molecular & Cellular Biology",
     "lab_or_program": "Prof. Rachel Smith-Bolton's Research Group",
@@ -152308,7 +152331,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Rachel Smith-Bolton in the School of Molecular & Cellular Biology at UIUC. Research areas: how does a damaged tissue initiate new growth?, how does a tissue sense damage?, how are cell fates properly specified within the new tissue?, trauma, tissue regeneration. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Rachel Smith-Bolton in the School of Molecular & Cellular Biology at UIUC. Research areas: trauma, tissue regeneration. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -152319,12 +152342,9 @@
       "application_effort": "low",
       "application_url": "https://mcb.illinois.edu/directory/profile/rsbolton"
     },
-    "description_raw": "Research opportunity with Professor Rachel Smith-Bolton in the School of Molecular & Cellular Biology at UIUC. Research areas: how does a damaged tissue initiate new growth?, how does a tissue sense damage?, how are cell fates properly specified within the new tissue?, trauma, tissue regeneration. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Rachel Smith-Bolton in the School of Molecular & Cellular Biology at UIUC. Research areas: how does a damaged tissue initiate new growth?, how does a tissue sense damage?, how are cell fates properly specified within the new tissue?, trauma, tissue regeneration. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Rachel Smith-Bolton in the School of Molecular & Cellular Biology at UIUC. Research areas: trauma, tissue regeneration. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Rachel Smith-Bolton in the School of Molecular & Cellular Biology at UIUC. Research areas: trauma, tissue regeneration. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "how does a damaged tissue initiate new growth?",
-      "how does a tissue sense damage?",
-      "how are cell fates properly specified within the new tissue?",
       "trauma",
       "tissue regeneration"
     ],
@@ -154062,7 +154082,7 @@
     "source": "uiuc_faculty",
     "source_url": "https://mcb.illinois.edu/directory/profile/jshisler",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Joanna L Shisler — MCB (infectious diseases, how do viruses evade the immune system to cause disease?, how does the physical environment affect virus evolution and spread?)",
+    "title": "Research with Prof. Joanna L Shisler — MCB (infectious diseases)",
     "organization": "University of Illinois Urbana-Champaign",
     "department": "School of Molecular & Cellular Biology",
     "lab_or_program": "Prof. Joanna L Shisler's Research Group",
@@ -154096,7 +154116,7 @@
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus research — no work authorization required",
-      "eligibility_text_raw": "Research opportunity with Professor Joanna L Shisler in the School of Molecular & Cellular Biology at UIUC. Research areas: infectious diseases, how do viruses evade the immune system to cause disease?, how does the physical environment affect virus evolution and spread?. Contact the professor directly to inquire about undergraduate research positions in their lab."
+      "eligibility_text_raw": "Research opportunity with Professor Joanna L Shisler in the School of Molecular & Cellular Biology at UIUC. Research areas: infectious diseases. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
     "application": {
       "contact_method": "email",
@@ -154107,12 +154127,10 @@
       "application_effort": "low",
       "application_url": "https://mcb.illinois.edu/directory/profile/jshisler"
     },
-    "description_raw": "Research opportunity with Professor Joanna L Shisler in the School of Molecular & Cellular Biology at UIUC. Research areas: infectious diseases, how do viruses evade the immune system to cause disease?, how does the physical environment affect virus evolution and spread?. Contact the professor directly to inquire about undergraduate research positions in their lab.",
-    "description_clean": "Research opportunity with Professor Joanna L Shisler in the School of Molecular & Cellular Biology at UIUC. Research areas: infectious diseases, how do viruses evade the immune system to cause disease?, how does the physical environment affect virus evolution and spread?. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_raw": "Research opportunity with Professor Joanna L Shisler in the School of Molecular & Cellular Biology at UIUC. Research areas: infectious diseases. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+    "description_clean": "Research opportunity with Professor Joanna L Shisler in the School of Molecular & Cellular Biology at UIUC. Research areas: infectious diseases. Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
-      "infectious diseases",
-      "how do viruses evade the immune system to cause disease?",
-      "how does the physical environment affect virus evolution and spread?"
+      "infectious diseases"
     ],
     "metadata": {
       "confidence_score": 0.7,
