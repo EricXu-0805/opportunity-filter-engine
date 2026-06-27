@@ -1518,6 +1518,38 @@ def _null_unit_inbox_emails(opps: list[dict]) -> int:
     return nulled
 
 
+# Faculty whose directory listing scraped a DIFFERENT person's email — the
+# local-part is recognizably another individual's surname/given name, not a
+# vowel-stripped/initials/vanity form of THIS professor's (verified 2026-06-27
+# by a two-pass LLM name↔local-part check; only the unambiguous "clearly someone
+# else" cases are listed, never an initials/vanity/goes-by address). A
+# "Dear Prof. X" cold email to it reaches the wrong person, so null it on every
+# merge — a re-scrape would otherwise re-introduce the wrong address. Keyed by
+# the stable faculty id (md5 of dept+short-name), so it survives re-scrapes.
+_WRONG_PERSON_EMAIL_IDS: frozenset[str] = frozenset({
+    "faculty-linguistics-fe67198e",   # Jill Anne Huang ← tschopp2@
+    "faculty-linguistics-9676e2bd",   # Brenna Nierenhausen ← willia67@
+    "faculty-fshn-0d0e4ecc",          # Toni Gist ← burkhalt@
+    "faculty-ib-d6462bdc",            # Marianne Alleyne ← vanlaarh@
+    "faculty-ansc-e70a3671",          # Sarah D. Richardson ← salbert2@
+    "faculty-communication-06a2e092", # Lauren Weiner ← lgrill@
+    "faculty-fshn-7ea288d3",          # Marcia Helena Siegel ← monaco@
+})
+
+
+def _null_wrong_person_emails(opps: list[dict]) -> int:
+    """Null contact_email for faculty whose listing scraped a different person's
+    address (curated _WRONG_PERSON_EMAIL_IDS). Mutates in place; returns count."""
+    nulled = 0
+    for opp in opps:
+        if (opp.get("source") == "uiuc_faculty"
+                and opp.get("id") in _WRONG_PERSON_EMAIL_IDS
+                and opp.get("contact_email")):
+            opp["contact_email"] = None
+            nulled += 1
+    return nulled
+
+
 def _title_dept_short(opp: dict) -> str:
     """The short department label embedded in a faculty title
     ("Research with Prof. X — CS (areas)") → "CS". Empty when absent."""
@@ -1785,6 +1817,9 @@ def _run_faculty_dq(opps: list[dict]) -> None:
     unit_nulled = _null_unit_inbox_emails(opps)
     if unit_nulled:
         logger.info(f"Nulled {unit_nulled} faculty contact email(s) that were department/unit mailboxes")
+    wrong_person = _null_wrong_person_emails(opps)
+    if wrong_person:
+        logger.info(f"Nulled {wrong_person} faculty contact email(s) that belonged to a different person")
     demoted = _demote_shared_keyword_pollution(opps)
     if demoted:
         logger.info(f"Demoted {demoted} faculty record(s) with shared department-block keywords to the broad field")

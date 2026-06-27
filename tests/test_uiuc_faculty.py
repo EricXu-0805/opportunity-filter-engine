@@ -24,6 +24,7 @@ from src.collectors.uiuc_faculty import (
     _llm_research_keywords,
     _null_shared_admin_emails,
     _null_unit_inbox_emails,
+    _null_wrong_person_emails,
     _rebuild_faculty_title_and_desc,
     _reenrich_broad_only_faculty,
     _research_areas_from_soup,
@@ -120,6 +121,21 @@ def test_null_unit_inbox_emails_nulls_unit_mailboxes_keeps_personal():
     assert [o["contact_email"] for o in opps[:4]] == [None, None, None, None]
     assert opps[4]["contact_email"] == "fhnstck@illinois.edu"
     assert opps[5]["contact_email"] == "geg@illinois.edu"
+
+
+def test_null_wrong_person_emails_nulls_only_curated_ids():
+    """A faculty listing that scraped a different person's email (curated by id
+    after a two-pass LLM name↔local-part check) is nulled; everyone else — and
+    any non-faculty row sharing the id space — is left untouched."""
+    from src.collectors.uiuc_faculty import _WRONG_PERSON_EMAIL_IDS
+    known = next(iter(_WRONG_PERSON_EMAIL_IDS))
+    opps = [
+        {"source": "uiuc_faculty", "id": known, "contact_email": "willia67@illinois.edu"},
+        {"source": "uiuc_faculty", "id": "faculty-cs-not-listed", "contact_email": "daf@illinois.edu"},
+    ]
+    assert _null_wrong_person_emails(opps) == 1
+    assert opps[0]["contact_email"] is None
+    assert opps[1]["contact_email"] == "daf@illinois.edu"
 
 
 def test_normalize_keeps_real_person():
