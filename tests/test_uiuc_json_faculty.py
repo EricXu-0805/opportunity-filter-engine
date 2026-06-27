@@ -145,3 +145,15 @@ def test_normalized_record_uses_api_keywords_not_scrape(monkeypatch):
     assert "Vocal Fatigue" in rec["keywords"]
     assert rec["department"] == "Department of Speech and Hearing Science"
     assert rec["eligibility"]["majors"]  # routed majors present
+
+
+def test_education_routes_office_to_department():
+    assert j._education_dept_and_majors("Educational Psychology")[0] == \
+        "Department of Educational Psychology"
+    assert j._education_dept_and_majors("Curriculum & Instruction")[0] == \
+        "Department of Curriculum and Instruction"
+    assert j._education_dept_and_majors("Special Education")[0] == \
+        "Department of Special Education"
+    assert j._education_dept_and_majors("Education Policy, Organization & Leadership")[0] == \
+        "Department of Education Policy, Organization & Leadership"
+    assert j._education_dept_and_majors("Bureau of Educational Research")[0] == "College of Education"

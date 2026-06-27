@@ -177,6 +177,29 @@ def fetch_socialwork() -> list[dict]:
     )
 
 
+def _education_dept_and_majors(office: str) -> tuple[str, list[str]]:
+    """Route a College of Education faculty member to their academic department
+    by primary office."""
+    o = (office or "").lower()
+    if "psycholog" in o:
+        return ("Department of Educational Psychology",
+                ["Educational Psychology", "Psychology", "Learning Sciences"])
+    if "curriculum" in o or "instruction" in o:
+        return ("Department of Curriculum and Instruction",
+                ["Curriculum & Instruction", "Education", "Teaching & Learning"])
+    if "special ed" in o:
+        return ("Department of Special Education",
+                ["Special Education", "Education"])
+    if "policy" in o or "organization" in o or "leadership" in o:
+        return ("Department of Education Policy, Organization & Leadership",
+                ["Education Policy", "Educational Administration", "Higher Education"])
+    return ("College of Education", ["Education", "Learning Sciences"])
+
+
+def fetch_education() -> list[dict]:
+    return _fetch_wigg("education", "Education", _education_dept_and_majors)
+
+
 def fetch_gies() -> list[dict]:
     """Gies College of Business faculty (title-filtered out of an all-staff feed)."""
     data = _fetch_json(GIES_URL)
@@ -207,11 +230,12 @@ def fetch_gies() -> list[dict]:
 
 
 def fetch_and_normalize() -> list[dict]:
-    """All JSON-API faculty (AHS + Social Work + Gies), normalized. A fetch
-    failure for one unit is logged and skipped so a single dead endpoint can't
-    sink the rest."""
+    """All JSON-API faculty (AHS + Social Work + Gies + Education), normalized. A
+    fetch failure for one unit is logged and skipped so a single dead endpoint
+    can't sink the rest."""
     out: list[dict] = []
-    for label, fn in (("AHS", fetch_ahs), ("Social Work", fetch_socialwork), ("Gies", fetch_gies)):
+    for label, fn in (("AHS", fetch_ahs), ("Social Work", fetch_socialwork),
+                      ("Gies", fetch_gies), ("Education", fetch_education)):
         try:
             out.extend(fn())
         except Exception as e:
