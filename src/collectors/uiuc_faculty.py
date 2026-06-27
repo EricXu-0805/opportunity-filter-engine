@@ -1059,9 +1059,15 @@ def _faculty_name_key(opp: dict) -> tuple[str, str] | None:
 
 
 def _faculty_is_richer(a: dict, b: dict) -> bool:
-    """True if faculty record ``a`` is more complete than ``b``: the fuller
-    name wins (captures more of the person's full name), then the longer
-    description. Used to choose which duplicate spelling to keep."""
+    """True if faculty record ``a`` is more complete than ``b``. A record with
+    more *specific* research keywords wins first: a cross-appointed professor's
+    home-department record (real areas) must beat a cross-listing that carries
+    only the broad field — a Carle/Law cross-listing must never overwrite an
+    MCB/Philosophy record's genomics/constitutional-law keywords. Ties fall to
+    the fuller name (more of the person's full name), then longer description."""
+    ak, bk = len(_faculty_specific_keywords(a)), len(_faculty_specific_keywords(b))
+    if ak != bk:
+        return ak > bk
     an, bn = len(a.get("pi_name") or ""), len(b.get("pi_name") or "")
     if an != bn:
         return an > bn
