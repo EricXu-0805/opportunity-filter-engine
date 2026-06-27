@@ -122,14 +122,6 @@ export default async function RootLayout({
                     <a href="/about" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
                       {contactLabel}
                     </a>
-                    <a
-                      href="https://github.com/EricXu-0805/opportunity-filter-engine"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors"
-                    >
-                      GitHub
-                    </a>
                   </nav>
                   <p className="text-[11px] text-gray-400 text-center">
                     {footerDisclaimer}

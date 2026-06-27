@@ -1,4 +1,4 @@
-import { FileText, Sparkles, Send, Shield, Github, ArrowUpRight, Mail, User } from 'lucide-react';
+import { FileText, Sparkles, Send, Shield, Mail, User } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
 
 const STEPS = [
@@ -117,16 +117,6 @@ export default async function AboutPage() {
                 >
                   <Mail className="w-4 h-4" />
                   {t('about.emailLabel')}
-                </a>
-                <a
-                  href="https://github.com/EricXu-0805/opportunity-filter-engine"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white ring-1 ring-black/[0.06] text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors duration-300"
-                >
-                  <Github className="w-4 h-4" />
-                  {t('about.viewOnGithub')}
-                  <ArrowUpRight className="w-3 h-3" />
                 </a>
               </div>
             </div>
