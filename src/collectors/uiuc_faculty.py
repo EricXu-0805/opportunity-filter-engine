@@ -1095,7 +1095,16 @@ _RESEARCH_AREA_NAV_NOISE = re.compile(
     r"master of|bachelor|\bphd\b|post-?doc|doctoral|usmle|step 1|review method|curriculum|teaching|"
     r"biography|publication|award|honor|wiki|original edition|focuses on|"
     r"in particular|crowd-?sourc|\bcontri|\bestab|^education|education$|"
-    r"our research|spec lab|click here|\bcv\b|\bsee\b|emphasis",
+    r"our research|spec lab|click here|\bcv\b|\bsee\b|emphasis|"
+    # directory "Programs / Resources / Facilities / Centers" nav blocks that a
+    # profile without a labelled research section leaks into the scraped areas
+    # (e.g. "Student Resources", "Career Services", "Blackwell Summer Scholars
+    # Program", "Research Facilities"). Targeted so real areas survive — no bare
+    # "program" (keeps "program analysis/synthesis") or "resources" (keeps
+    # "water resources").
+    r"\bfacilities\b|\bscholars?\b|student resources|career services|"
+    r"student research experience|interdisciplinary research|research cent|"
+    r"research programs?|related research|field research|colloqui",
     re.IGNORECASE,
 )
 _COURSE_CODE_RE = re.compile(r"\b[A-Za-z]{2,4}\s?\d{3}\b")
