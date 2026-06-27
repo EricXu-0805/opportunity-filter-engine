@@ -634,6 +634,12 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "research positions in their lab."
     )
     description = " ".join(desc_parts)
+    # Defensive second pass: strip nav-furniture from the FULLY ASSEMBLED
+    # description, not just research_areas. The DQ gate checks these phrases in
+    # description_clean, so stripping the final string guarantees no leak no
+    # matter how a phrase enters (a profile excerpt path that bypassed the
+    # research_areas strip, a phrase straddling the "Research areas:" join, etc.).
+    description = _strip_nav_furniture(description)
 
     research_summary = f" ({', '.join(keywords[:3])})" if keywords else ""
     opp_title = f"Research with Prof. {name} — {dept_short}{research_summary}"
