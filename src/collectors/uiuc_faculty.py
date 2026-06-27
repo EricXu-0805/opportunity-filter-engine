@@ -768,8 +768,15 @@ def _infer_skills_from_research(person: dict) -> list[str]:
     return sorted(skills)[:5]
 
 
-def normalize_faculty(person: dict, dept_config: dict) -> dict | None:
-    """Convert a scraped faculty entry into the normalized opportunity schema."""
+def normalize_faculty(
+    person: dict, dept_config: dict, keywords: list[str] | None = None
+) -> dict | None:
+    """Convert a scraped faculty entry into the normalized opportunity schema.
+
+    ``keywords`` lets a caller supply already-extracted research areas (e.g. the
+    JSON-directory collector, which gets structured keywords straight from the
+    campus API). When None, fall back to the HTML scraping path's bank match +
+    per-profile fetch."""
     name = person.get("name", "")
     if not name or len(name) < 3:
         return None
@@ -791,7 +798,8 @@ def normalize_faculty(person: dict, dept_config: dict) -> dict | None:
     opp_id = f"faculty-{dept_short.lower()}-{name_hash}"
 
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
-    keywords = _extract_research_keywords(person, dept_config)
+    if keywords is None:
+        keywords = _extract_research_keywords(person, dept_config)
     skills = _infer_skills_from_research(person)
 
     desc_parts = [

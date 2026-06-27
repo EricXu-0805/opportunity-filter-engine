@@ -85,6 +85,7 @@ from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
 from .uiuc_faculty import missing_departments as faculty_missing_departments
 from .uiuc_js_faculty import fetch_and_normalize as fetch_js_faculty
+from .uiuc_json_faculty import fetch_and_normalize as fetch_json_faculty
 from .uiuc_other import fetch_and_normalize as fetch_other
 from .uiuc_other import merge_into_processed as merge_other
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss
@@ -267,7 +268,25 @@ def refresh_all(deep: bool = True) -> dict:
                     )
             except Exception as e:
                 logger.error(f"UIUC JS faculty collection failed: {e}")
-        all_faculty = faculty_opps + js_opps
+        # AHS, School of Social Work, and Gies publish their directories as
+        # paginated JSON APIs (no per-profile HTML fetch). uiuc_json_faculty
+        # returns ~430 faculty; like js_opps these share source='uiuc_faculty',
+        # so they fold into the same merge + fetched count that gates
+        # deactivate_stale_faculty — otherwise they'd be retired as "absent from
+        # re-scrape". Cheap + reliable but grouped with the deep faculty work.
+        json_opps: list[dict] = []
+        if deep:
+            try:
+                json_opps = fetch_json_faculty()
+                if not json_opps:
+                    logger.error(
+                        "UIUC JSON faculty scrape yielded 0 records — campus directory "
+                        "APIs unreachable or schema changed; AHS/Social Work/Gies faculty "
+                        "will be deactivated once their last_seen_at passes the grace window"
+                    )
+            except Exception as e:
+                logger.error(f"UIUC JSON faculty collection failed: {e}")
+        all_faculty = faculty_opps + js_opps + json_opps
         added, updated = merge_faculty(all_faculty)
         # Surface the silent-scrape-failure class (a declared department whose
         # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
@@ -283,6 +302,7 @@ def refresh_all(deep: bool = True) -> dict:
         summary["sources"]["uiuc_faculty"] = {
             "fetched": len(all_faculty),
             "js_fetched": len(js_opps),
+            "json_fetched": len(json_opps),
             "new": added,
             "updated": updated,
             "enriched": deep,
@@ -293,7 +313,8 @@ def refresh_all(deep: bool = True) -> dict:
         summary["total_updated"] += updated
         logger.info(
             f"Faculty: {len(all_faculty)} fetched "
-            f"({len(faculty_opps)} static + {len(js_opps)} JS-rendered), "
+            f"({len(faculty_opps)} static + {len(js_opps)} JS-rendered "
+            f"+ {len(json_opps)} JSON-API), "
             f"{added} new, {updated} updated"
         )
     except Exception as e:
