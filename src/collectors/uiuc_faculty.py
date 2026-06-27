@@ -391,8 +391,17 @@ _NON_PERSON_LABELS: frozenset[str] = frozenset({
 })
 
 
+# Institution-page / memorial labels scraped as a "person" in variable forms a
+# whole-name set can't enumerate ("Beckman Institute profile", "Neuroscience
+# Profile", "Beckman Profile Page", "Dean's Cabinet", "In Memoriam"). None of
+# these words appears in a real personal name, so a word-boundary match is safe.
+_NON_PERSON_NAME_RE = re.compile(r"\b(?:profile|in\s+memoriam|cabinet)\b", re.IGNORECASE)
+
+
 def _is_section_label(name: str) -> bool:
-    return re.sub(r"[^a-z]+", " ", name.lower()).strip() in _NON_PERSON_LABELS
+    if re.sub(r"[^a-z]+", " ", name.lower()).strip() in _NON_PERSON_LABELS:
+        return True
+    return bool(_NON_PERSON_NAME_RE.search(name or ""))
 
 
 def _get_main_content(soup: BeautifulSoup) -> BeautifulSoup:
@@ -1451,6 +1460,50 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     return nulled
 
 
+# Generic department/unit/role mailbox local-parts that scrape in place of a
+# professor's personal address (english@, mainoffice@physics, poultry@). A
+# "Dear Prof. X" cold email to a unit inbox misfires, so we null it (the send
+# modal then disables). Distinct from _null_shared_admin_emails, which is
+# frequency-based — these are single-record unit inboxes it never sees.
+_UNIT_MAILBOX_LOCALPARTS = frozenset({
+    "office", "mainoffice", "frontoffice", "dean", "meddean", "info", "contact",
+    "admin", "administration", "advising", "gradoffice", "undergrad",
+    "undergraduate", "hr", "reception", "frontdesk", "ischool", "poultry",
+    "anthro", "dept", "department", "generalinquiries", "mailbox", "webmaster",
+    "help", "support",
+})
+
+
+def _dept_name_stems(department: str) -> set[str]:
+    """Significant lowercased words of a department name (drops structural words),
+    so an email local-part equal to one ("english", "linguistics") is a unit inbox."""
+    return {
+        w for w in re.split(r"[^a-z]+", (department or "").lower())
+        if len(w) >= 4 and w not in {"department", "school", "college", "and", "the", "of"}
+    }
+
+
+def _null_unit_inbox_emails(opps: list[dict]) -> int:
+    """Null contact_email when its local-part is a department/unit/role mailbox
+    rather than a personal address. The match is exact (local-part in the generic
+    set or equal to a department-name word), never a substring, so a personal
+    username is never clipped. Mutates ``opps`` in place; returns the count nulled."""
+    nulled = 0
+    for opp in opps:
+        if opp.get("source") != "uiuc_faculty":
+            continue
+        email = opp.get("contact_email") or ""
+        if "@" not in email:
+            continue
+        local = re.sub(r"[^a-z]", "", email.split("@")[0].lower())
+        if not local:
+            continue
+        if local in _UNIT_MAILBOX_LOCALPARTS or local in _dept_name_stems(opp.get("department", "")):
+            opp["contact_email"] = None
+            nulled += 1
+    return nulled
+
+
 def _title_dept_short(opp: dict) -> str:
     """The short department label embedded in a faculty title
     ("Research with Prof. X — CS (areas)") → "CS". Empty when absent."""
@@ -1715,6 +1768,9 @@ def _run_faculty_dq(opps: list[dict]) -> None:
     nulled = _null_shared_admin_emails(opps)
     if nulled:
         logger.info(f"Nulled {nulled} faculty contact email(s) that were shared department/admin inboxes")
+    unit_nulled = _null_unit_inbox_emails(opps)
+    if unit_nulled:
+        logger.info(f"Nulled {unit_nulled} faculty contact email(s) that were department/unit mailboxes")
     demoted = _demote_shared_keyword_pollution(opps)
     if demoted:
         logger.info(f"Demoted {demoted} faculty record(s) with shared department-block keywords to the broad field")
