@@ -36,6 +36,22 @@ HEADERS = {"User-Agent": "OpportunityFilterEngine/1.0 (UIUC educational project)
 DELAY = 1.5
 
 DEPARTMENTS = {
+    "neuroscience": {
+        "name": "Neuroscience Program",
+        "short": "Neuroscience",
+        "url": "https://neuroscience.illinois.edu/people/faculty",
+        "base": "https://neuroscience.illinois.edu",
+        "majors": ["Neuroscience", "Neural Engineering", "Molecular & Cellular Biology",
+                    "Psychology", "Bioengineering"],
+        "keywords": ["neuroscience", "neural circuits", "brain", "cognition",
+                      "neurobiology", "behavior", "systems neuroscience"],
+        # Interdisciplinary program: most faculty are home-deptted elsewhere (ECE,
+        # MCB, Psych...). _dedup_program_affiliations keeps only the genuinely-new
+        # faculty as program records and tags the rest's home record with
+        # ``affiliation_keyword`` instead of creating a duplicate person.
+        "program": True,
+        "affiliation_keyword": "neuroscience",
+    },
     "cs": {
         "name": "Siebel School of Computing and Data Science",
         "short": "CS",
@@ -436,6 +452,7 @@ def _scrape_grainger_faculty_list(dept_config: dict) -> list[dict]:
         "div.faculty-item, "
         "div.views-row, "
         "article.node--type-person, "
+        "article.profile-card, "
         "div.person-card, "
         "li.person, "
         "div.card"
@@ -524,6 +541,7 @@ def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
         "div.directory-item__title, "
         "span.person-title, "
         "div.field-name-field-title, "
+        "div.field-dircore-appt-title .field__item, "
         "p.card-text, "
         "div.views-field-field-title span"
     )
@@ -880,6 +898,52 @@ def fetch_department(dept_key: str, enrich: bool = True) -> list[dict]:
     return normalized
 
 
+_PROGRAM_DEPT_NAMES: dict[str, dict] = {
+    cfg["name"]: cfg for cfg in DEPARTMENTS.values() if cfg.get("program")
+}
+
+
+def _dedup_program_affiliations(opps: list[dict]) -> list[dict]:
+    """Collapse interdisciplinary-program faculty who already exist under a home
+    department. A program (e.g. Neuroscience) cross-lists faculty whose home dept
+    is ECE/MCB/Psych/...; rather than emit a duplicate person record, tag the home
+    record's keywords with the program's ``affiliation_keyword`` and drop the
+    program copy. Faculty with no home-dept match in this batch are genuinely new
+    and kept as program records. Matched by contact_email."""
+    if not _PROGRAM_DEPT_NAMES:
+        return opps
+
+    home_by_email: dict[str, dict] = {}
+    for opp in opps:
+        if opp.get("department") in _PROGRAM_DEPT_NAMES:
+            continue
+        email = (opp.get("contact_email") or "").lower()
+        if email:
+            home_by_email.setdefault(email, opp)
+
+    kept: list[dict] = []
+    tagged = dropped = 0
+    for opp in opps:
+        if opp.get("department") in _PROGRAM_DEPT_NAMES:
+            email = (opp.get("contact_email") or "").lower()
+            home = home_by_email.get(email) if email else None
+            if home is not None:
+                kw = _PROGRAM_DEPT_NAMES[opp["department"]]["affiliation_keyword"]
+                kws = home.setdefault("keywords", [])
+                if kw not in kws:
+                    kws.append(kw)
+                tagged += 1
+                dropped += 1
+                continue
+        kept.append(opp)
+    if tagged or dropped:
+        logger.info(
+            f"Program dedup: tagged {tagged} home record(s) with a program "
+            f"affiliation, dropped {dropped} duplicate program record(s)"
+        )
+    return kept
+
+
 def fetch_and_normalize(departments: list[str] = None,
                         enrich: bool = True) -> list[dict]:
     """Fetch faculty from multiple departments and return normalized records."""
@@ -895,6 +959,7 @@ def fetch_and_normalize(departments: list[str] = None,
         except Exception as e:
             logger.error(f"Failed to collect {dept_key}: {e}")
 
+    all_opps = _dedup_program_affiliations(all_opps)
     logger.info(f"Total faculty opportunities: {len(all_opps)}")
     return all_opps
 
