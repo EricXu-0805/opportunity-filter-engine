@@ -59,3 +59,30 @@ def test_normalize_faculty_keeps_real_person():
     opp = normalize_faculty({"name": "David Ackerly", "url": "https://x/a"}, _CONFIG)
     assert opp is not None
     assert opp["pi_name"] == "David Ackerly"
+
+
+def test_normalize_faculty_strips_navmenu_from_description():
+    """Regression: nav-furniture reaching research_areas (e.g. a BioE profile
+    excerpt) must not survive into description_clean — the DQ gate forbids it.
+    The defensive strip on the fully assembled description guarantees this no
+    matter how the phrase entered."""
+    nav = [
+        "Once Research Secured", "Administration & Staff", "Colloquia Calendar",
+        "Affiliated Faculty", "Labs & Facilities", "Research Institutes and Centers",
+    ]
+    person = {
+        "name": "Jane Doe",
+        "url": "https://x/jane",
+        "title": "Professor",
+        "research_areas": (
+            "tissue engineering; Labs & Facilities Research Institutes and "
+            "Centers Affiliated Faculty Administration & Staff"
+        ),
+    }
+    opp = normalize_faculty(person, _CONFIG)
+    assert opp is not None
+    for phrase in nav:
+        assert phrase not in opp["description_clean"], f"leaked: {phrase!r}"
+        assert phrase not in opp["eligibility"]["eligibility_text_raw"]
+    # the real research area survives
+    assert "tissue engineering" in opp["description_clean"]
