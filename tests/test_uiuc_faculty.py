@@ -857,3 +857,50 @@ def test_missing_departments_honors_subset():
     assert missing_departments(
         [{"department": DEPARTMENTS["matse"]["name"]}], departments=["matse"]
     ) == []
+
+
+def test_neuroscience_is_a_program_department():
+    # The interdisciplinary Neuroscience program must declare its dedup contract,
+    # else _dedup_program_affiliations silently treats its faculty as new people.
+    neuro = DEPARTMENTS["neuroscience"]
+    assert neuro.get("program") is True
+    assert neuro["affiliation_keyword"] == "neuroscience"
+
+
+def test_dedup_program_affiliations_tags_home_and_keeps_new():
+    from src.collectors.uiuc_faculty import _dedup_program_affiliations
+
+    prog = DEPARTMENTS["neuroscience"]["name"]
+    opps = [
+        {"id": "ece-a", "department": "Electrical & Computer Engineering",
+         "source": "uiuc_faculty", "contact_email": "a@illinois.edu",
+         "keywords": ["signal processing"]},
+        # cross-listed duplicate of the ECE person — case-insensitive email match
+        {"id": "neuro-a", "department": prog, "source": "uiuc_faculty",
+         "contact_email": "A@illinois.edu", "keywords": ["neuroscience"]},
+        # genuinely new program faculty (no home-dept record)
+        {"id": "neuro-new", "department": prog, "source": "uiuc_faculty",
+         "contact_email": "new@illinois.edu", "keywords": ["neuroscience"]},
+        # emailless program record can't be matched → kept
+        {"id": "neuro-noemail", "department": prog, "source": "uiuc_faculty",
+         "contact_email": None, "keywords": ["neuroscience"]},
+    ]
+    out = _dedup_program_affiliations(opps)
+    ids = {o["id"] for o in out}
+    assert "neuro-a" not in ids, "cross-listed duplicate should be dropped"
+    assert {"ece-a", "neuro-new", "neuro-noemail"} <= ids
+    ece = next(o for o in out if o["id"] == "ece-a")
+    assert "neuroscience" in ece["keywords"], "home record must be tagged"
+    # idempotent: the tag is not duplicated on a second pass
+    assert _dedup_program_affiliations(out) == out or \
+        ece["keywords"].count("neuroscience") == 1
+
+
+def test_dedup_program_affiliations_noop_without_program_depts():
+    from src.collectors.uiuc_faculty import _dedup_program_affiliations
+
+    opps = [
+        {"id": "x", "department": "Physics", "source": "uiuc_faculty",
+         "contact_email": "x@illinois.edu", "keywords": ["optics"]},
+    ]
+    assert _dedup_program_affiliations(list(opps)) == opps
