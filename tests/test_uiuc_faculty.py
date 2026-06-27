@@ -465,6 +465,30 @@ def test_split_compound_keywords_atomizes_comma_joined():
     assert rows[2]["keywords"] == ["machine learning"]
 
 
+def test_split_compound_keywords_atomizes_spaced_slash():
+    # A spaced-slash list ("programming languages / formal methods / software
+    # engineering") is three areas; an in-word slash ("airport/highway") is one.
+    rows = [
+        _fac_kw("Computer Science",
+                ["programming languages / formal methods / software engineering"]),
+        _fac_kw("Civil Engineering", ["airport/highway pavement design"]),
+    ]
+    _split_compound_keywords(rows)
+    assert rows[0]["keywords"] == [
+        "programming languages", "formal methods", "software engineering"]
+    assert rows[1]["keywords"] == ["airport/highway pavement design"]
+
+
+def test_is_junk_keyword_catches_research_question_headings():
+    # Scraped "Research Questions" section headings are questions, not areas.
+    for k in ["how does a tissue sense damage?",
+              "what are the smallest building blocks of matter and how do they interact?",
+              "how do viruses evade the immune system to cause disease?"]:
+        assert _is_junk_keyword(k), k
+    # a clean area with no question mark is untouched
+    assert not _is_junk_keyword("tissue regeneration")
+
+
 def test_run_faculty_dq_makes_a_dirty_scrape_quality_clean():
     # Mirrors the exact branch failures: course-code + comma-joined keywords, a
     # title with nav-menu pollution, and a shared department inbox on >=3 profs.
