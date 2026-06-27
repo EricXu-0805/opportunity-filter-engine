@@ -1104,26 +1104,30 @@ def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
 # one department is treated as a scrape artifact and demoted to the broad field.
 _SHARED_KEYWORD_POLLUTION_THRESHOLD = 5
 
-# Broad field for departments collected by the JS-rendered ACES collector, which
-# are absent from DEPARTMENTS. Keyed on the record's `department` value.
-_ACES_BROAD_FIELDS = {
+# Broad field for departments absent from DEPARTMENTS (the JS-rendered ACES
+# collector and the JSON/HTML-directory colleges). Keyed on the record's
+# `department`. "Carle Illinois College of Medicine" MUST be mapped: its derived
+# fallback ("carle illinois college of medicine") contains "college" and so is
+# rejected as junk page-furniture, which would corrupt any demoted Carle record.
+_DEPT_BROAD_FIELDS = {
     "Department of Animal Sciences": "animal sciences",
     "Department of Crop Sciences": "crop sciences",
     "Food Science & Human Nutrition": "food science",
     "Natural Resources & Environmental Sciences": "environmental sciences",
+    "Carle Illinois College of Medicine": "biomedical sciences",
 }
 
 
 def _dept_broad_field(department: str) -> str:
     """The honest broad field for a department: its DEPARTMENTS keyword[0] when
-    known, an explicit ACES mapping otherwise, falling back to the department
-    name with a leading 'Department/School/College of' stripped."""
+    known, an explicit mapping otherwise, falling back to the department name
+    with a leading 'Department/School/College of' stripped."""
     for cfg in DEPARTMENTS.values():
         if cfg.get("name") == department:
             kws = cfg.get("keywords", [])
             return kws[0] if kws else ""
-    if department in _ACES_BROAD_FIELDS:
-        return _ACES_BROAD_FIELDS[department]
+    if department in _DEPT_BROAD_FIELDS:
+        return _DEPT_BROAD_FIELDS[department]
     name = re.sub(
         r"^(?:the\s+)?(?:department|school|college)\s+of\s+",
         "", department.strip(), flags=re.IGNORECASE,
