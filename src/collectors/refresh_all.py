@@ -77,6 +77,7 @@ from .uiuc_faculty import _null_shared_admin_emails
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
 from .uiuc_faculty import missing_departments as faculty_missing_departments
+from .uiuc_js_faculty import fetch_and_normalize as fetch_js_faculty
 from .uiuc_other import fetch_and_normalize as fetch_other
 from .uiuc_other import merge_into_processed as merge_other
 from .uiuc_our_rss import fetch_and_normalize as fetch_rss
@@ -238,11 +239,34 @@ def refresh_all(deep: bool = True) -> dict:
     logger.info("Collecting from UIUC Faculty directories...")
     try:
         faculty_opps = fetch_faculty(enrich=deep)
-        added, updated = merge_faculty(faculty_opps)
+        # The 4 ACES departments (Animal Sci, Crop Sci, NRES, FSHN) render their
+        # directory via Drupal Views AJAX, so the static scraper misses them;
+        # uiuc_js_faculty drives headless Chromium to recover them. Its records
+        # share source='uiuc_faculty', so they merge into the same source and its
+        # count is folded into the fetched total that gates deactivate_stale_faculty
+        # — otherwise those ~152 professors are retired as "absent from re-scrape".
+        # Browser-backed, so deep mode only; Playwright is imported lazily and
+        # yields [] when Chromium is unavailable — logged as an error so a silent
+        # failure is caught before the grace window retires them.
+        js_opps: list[dict] = []
+        if deep:
+            try:
+                js_opps = fetch_js_faculty()
+                if not js_opps:
+                    logger.error(
+                        "UIUC JS faculty scrape yielded 0 records — Playwright/Chromium "
+                        "missing or directory layout changed; the 4 ACES departments will "
+                        "be deactivated once their last_seen_at passes the grace window"
+                    )
+            except Exception as e:
+                logger.error(f"UIUC JS faculty collection failed: {e}")
+        all_faculty = faculty_opps + js_opps
+        added, updated = merge_faculty(all_faculty)
         # Surface the silent-scrape-failure class (a declared department whose
         # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
         # bare warning is invisible in the run log, so list empties in the
         # summary and ERROR-log each so the refresh's audit file flags it.
+        # (Checked against the static DEPARTMENTS only; the JS depts aren't in it.)
         empty_depts = faculty_missing_departments(faculty_opps)
         for dept in empty_depts:
             logger.error(
@@ -250,7 +274,8 @@ def refresh_all(deep: bool = True) -> dict:
                 f"directory layout change (silent failure): {dept}"
             )
         summary["sources"]["uiuc_faculty"] = {
-            "fetched": len(faculty_opps),
+            "fetched": len(all_faculty),
+            "js_fetched": len(js_opps),
             "new": added,
             "updated": updated,
             "enriched": deep,
@@ -259,7 +284,11 @@ def refresh_all(deep: bool = True) -> dict:
         }
         summary["total_new"] += added
         summary["total_updated"] += updated
-        logger.info(f"Faculty: {len(faculty_opps)} fetched, {added} new, {updated} updated")
+        logger.info(
+            f"Faculty: {len(all_faculty)} fetched "
+            f"({len(faculty_opps)} static + {len(js_opps)} JS-rendered), "
+            f"{added} new, {updated} updated"
+        )
     except Exception as e:
         logger.error(f"Faculty collection failed: {e}")
         summary["sources"]["uiuc_faculty"] = {"status": "error", "error": str(e)}
