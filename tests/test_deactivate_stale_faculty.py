@@ -138,10 +138,13 @@ def test_faculty_sources_match_refresh_all_registrations():
 
     src = pathlib.Path(refresh_all.__file__).read_text(encoding="utf-8")
     # Every faculty source name appears as a quoted source-name literal in
-    # refresh_all (the ucb deep-loop tuples + the uiuc_faculty summary key).
-    # Anchored to the source-naming convention so unrelated "*_faculty" strings
-    # (e.g. the "deactivate_stale_faculty" summary key) aren't miscounted.
-    wired = set(re.findall(r'"(ucb_\w+_faculty|uiuc_faculty)"', src))
+    # refresh_all (the ucb deep-loop tuples + the uiuc_faculty / umich_faculty
+    # summary keys). Match any quoted "<school>[_<dept>]_faculty" source — the
+    # convention every school's faculty collector follows, so the Top-50 rollout
+    # never has to touch this regex — excluding the lone non-source "*_faculty"
+    # literal (the "deactivate_stale_faculty" summary key).
+    _NON_SOURCE_FACULTY = {"deactivate_stale_faculty"}
+    wired = set(re.findall(r'"(\w+_faculty)"', src)) - _NON_SOURCE_FACULTY
     assert wired == set(FACULTY_SOURCES), (
         "FACULTY_SOURCES is out of sync with refresh_all's faculty wiring.\n"
         f"  wired but unregistered: {sorted(wired - set(FACULTY_SOURCES))}\n"
