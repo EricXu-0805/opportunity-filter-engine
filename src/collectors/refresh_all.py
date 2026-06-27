@@ -24,6 +24,8 @@ from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
+from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
+from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -395,6 +397,11 @@ def refresh_all(deep: bool = True) -> dict:
             ("ucb_philos_faculty", fetch_ucb_philos, merge_ucb_faculty),
             ("ucb_socwel_faculty", fetch_ucb_socwel, merge_ucb_faculty),
             ("ucb_sph_faculty", fetch_ucb_sph, merge_ucb_faculty),
+            # University of Michigan curated faculty (via faculty_graph engine).
+            # Single source across departments; its own school-scoped merge (not
+            # ucb_common's) so a Michigan prof sharing a name with a Berkeley one
+            # is never false-dropped.
+            ("umich_faculty", fetch_umich_faculty, merge_umich_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

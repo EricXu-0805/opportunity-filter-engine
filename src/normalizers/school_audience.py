@@ -93,6 +93,14 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "princeton_research_programs": ("princeton", "campus"),
     "princeton_external_research": (None, "open"),
     "princeton_labs": ("princeton", "unknown"),
+    # University of Michigan, Ann Arbor (#2 on the campus_graph engine).
+    "umich_research_programs": ("umich", "campus"),
+    "umich_external_research": (None, "open"),
+    "umich_labs": ("umich", "unknown"),
+    # Michigan faculty directory (curated, via the faculty_graph engine). Single
+    # source across departments (UIUC model); cold-email targets whose
+    # cross-school openness is per-professor, so audience is unknown.
+    "umich_faculty": ("umich", "unknown"),
 }
 
 

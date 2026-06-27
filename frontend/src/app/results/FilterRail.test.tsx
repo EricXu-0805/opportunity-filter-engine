@@ -203,6 +203,14 @@ describe('sourceLabel (derived source filter)', () => {
       'results.filters.sourcePrincetonExternalResearch',
     );
     expect(sourceLabel('princeton_labs', t)).toBe('results.filters.sourcePrincetonLabs');
+    expect(sourceLabel('umich_research_programs', t)).toBe(
+      'results.filters.sourceUmichResearchPrograms',
+    );
+    expect(sourceLabel('umich_external_research', t)).toBe(
+      'results.filters.sourceUmichExternalResearch',
+    );
+    expect(sourceLabel('umich_labs', t)).toBe('results.filters.sourceUmichLabs');
+    expect(sourceLabel('umich_faculty', t)).toBe('results.filters.sourceUmichFaculty');
   });
   it('every UC Berkeley faculty source maps to a label (no humanized fallback)', () => {
     // Mirrors the ucb_*_faculty collectors wired in refresh_all
