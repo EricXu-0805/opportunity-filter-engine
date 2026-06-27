@@ -69,6 +69,8 @@ FACULTY_SOURCES = frozenset({
     "ucb_philos_faculty",
     "ucb_socwel_faculty",
     "ucb_sph_faculty",
+    # University of Michigan — curated faculty (single source across depts).
+    "umich_faculty",
 })
 
 GRACE_DAYS = 14

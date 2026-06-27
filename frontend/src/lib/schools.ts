@@ -103,10 +103,10 @@ export const SCHOOLS: School[] = [
     nameZh: '密歇根大学',
     color: '#00274C',
     location: 'Ann Arbor, MI',
-    // Second school on the campus-graph engine. Conservative seed-floor count
-    // (UROP hub + grants, summer fellowships, dept research, career, institutes);
-    // the deep crawl discovers more in CI. Maintained estimate, like UCB.
-    coverage: { campusOpportunities: 9, note: 'universitySwitcher.coverageCampus' },
+    // Campus-graph engine (UROP hub/programs/dept research/career/institutes,
+    // ~9 records) plus the curated faculty directory (~47 professors across 6
+    // departments). Conservative maintained estimate, rounded down, like UCB.
+    coverage: { campusOpportunities: 50, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 127 },
   },
   {
