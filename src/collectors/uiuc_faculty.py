@@ -94,7 +94,9 @@ DEPARTMENTS = {
     "matse": {
         "name": "Materials Science & Engineering",
         "short": "MatSE",
-        "url": "https://matse.illinois.edu/directory/faculty",
+        # /directory/faculty 301-redirects to a content-less /people hub (→ 0 scraped,
+        # a silent failure caught 2026-06-26). The live faculty list moved to /people/faculty.
+        "url": "https://matse.illinois.edu/people/faculty",
         "base": "https://matse.illinois.edu",
         "majors": ["Materials Science", "Materials Science & Engineering"],
         "keywords": ["materials science", "nanotechnology", "polymers",
@@ -886,6 +888,21 @@ def fetch_and_normalize(departments: list[str] = None,
 
     logger.info(f"Total faculty opportunities: {len(all_opps)}")
     return all_opps
+
+
+def missing_departments(opps: list[dict], departments: list[str] = None) -> list[str]:
+    """Declared departments that produced ZERO records — a silent-scrape failure.
+
+    A directory whose URL rots yields no records while the run still "succeeds":
+    MatSE's ``/directory/faculty`` began 301-redirecting to a content-less hub in
+    2026-06 and scraped 0 unnoticed. Comparing the declared DEPARTMENTS set against
+    the departments actually present in ``opps`` surfaces that class of failure so
+    the refresh can flag it instead of silently shrinking coverage. Returns the
+    human-readable ``DEPARTMENTS[key]['name']`` of each empty department.
+    """
+    keys = departments if departments is not None else list(DEPARTMENTS.keys())
+    present = {o.get("department") for o in opps}
+    return [DEPARTMENTS[k]["name"] for k in keys if DEPARTMENTS[k]["name"] not in present]
 
 
 # Faculty profiles are sometimes scraped under two spellings of one person at
