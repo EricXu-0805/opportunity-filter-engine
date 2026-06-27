@@ -209,11 +209,175 @@ def fetch_ler() -> list[dict]:
     return out
 
 
-def fetch_and_normalize() -> list[dict]:
-    """All three HTML-directory colleges, normalized. A failure for one is
-    logged and skipped so one dead site can't sink the rest."""
+# ── Fine & Applied Arts (Music, Architecture, Art & Design) ──────────────────
+# Uniform Drupal `article.person-card` listing, paginated `…/page/N/`, with name
+# + title + email (mailto) on the card — no per-profile fetch.
+FAA_UNITS = [
+    {"short": "Music", "name": "School of Music", "base": "https://music.illinois.edu",
+     "path": "/people/faculty/",
+     "majors": ["Music", "Music Composition", "Musicology", "Music Education",
+                "Music Performance"], "keywords": ["music"]},
+    {"short": "Architecture", "name": "School of Architecture",
+     "base": "https://arch.illinois.edu", "path": "/about/faculty-directory/",
+     "majors": ["Architecture", "Sustainable Design", "Urban Design"],
+     "keywords": ["architecture"]},
+    {"short": "Art & Design", "name": "School of Art and Design",
+     "base": "https://art.illinois.edu", "path": "/about/faculty-directory/",
+     "majors": ["Art", "Graphic Design", "Industrial Design", "Studio Art",
+                "Art History", "Art Education"], "keywords": ["art and design"]},
+]
+
+
+def _faa_card(card, unit: dict) -> dict | None:
+    h2 = card.select_one("h2.linked-title") or card.select_one("h2")
+    if not h2:
+        return None
+    name = _clean_name(h2.get_text(strip=True))
+    if not name:
+        return None
+    link = card.select_one("a.linked-title__link") or h2.find("a")
+    url = link["href"] if link and link.get("href") else unit["base"] + unit["path"]
+    mail = card.select_one('a[href^="mailto:"]')
+    email = mail["href"][7:].split("?")[0].strip() if mail else ""
+    info = card.select_one(".person-card__info")
+    title = "Professor"
+    if info:
+        t = info.get_text(" ", strip=True).replace(name, "", 1)
+        t = re.split(r"\S+@\S+", t)[0].strip(" |·–-")
+        title = t[:80] or "Professor"
+    return normalize_faculty(
+        {"name": name, "email": email, "url": url, "title": title,
+         "research_areas": unit["keywords"][0]},
+        {"short": unit["short"], "name": unit["name"],
+         "majors": unit["majors"], "keywords": unit["keywords"]},
+        keywords=list(unit["keywords"]),
+    )
+
+
+def fetch_faa() -> list[dict]:
     out: list[dict] = []
-    for label, fn in (("Carle", fetch_carle), ("Law", fetch_law), ("LER", fetch_ler)):
+    for unit in FAA_UNITS:
+        n0 = len(out)
+        for page in range(1, 16):
+            url = unit["base"] + unit["path"] + ("" if page == 1 else f"page/{page}/")
+            soup = _fetch_soup(url)
+            cards = soup.select("article.person-card") if soup else []
+            if not cards:
+                break
+            for card in cards:
+                rec = _faa_card(card, unit)
+                if rec:
+                    out.append(rec)
+            time.sleep(DELAY)
+        logger.info(f"{unit['short']}: {len(out) - n0} faculty")
+    return out
+
+
+# ── College of Media (Advertising, Journalism, Media & Cinema Studies) ───────
+# WordPress Content-Views grid `div.pt-cv-content-item`; name + profile link on
+# the listing, email per profile page. (ICR has no standalone faculty page — its
+# faculty are cross-listed from other departments.)
+MEDIA_UNITS = [
+    {"slug": "advertising", "name": "Department of Advertising",
+     "majors": ["Advertising", "Communication"], "keywords": ["advertising"]},
+    {"slug": "journalism", "name": "Department of Journalism",
+     "majors": ["Journalism", "Communication"], "keywords": ["journalism"]},
+    {"slug": "media-and-cinema-studies", "name": "Department of Media and Cinema Studies",
+     "majors": ["Media and Cinema Studies", "Communication"],
+     "keywords": ["media and cinema studies"]},
+]
+
+
+def fetch_media() -> list[dict]:
+    out: list[dict] = []
+    for unit in MEDIA_UNITS:
+        soup = _fetch_soup(f"https://media.illinois.edu/{unit['slug']}-faculty/")
+        items = soup.select("div.pt-cv-content-item") if soup else []
+        n0 = len(out)
+        for i, item in enumerate(items):
+            a = item.select_one("h4.pt-cv-title a")
+            if not a:
+                continue
+            name = _clean_name(a.get_text(strip=True))
+            if not name:
+                continue
+            url = a.get("href", "")
+            prof = _fetch_soup(url) if url else None
+            email = _first_illinois_email(prof) if prof else ""
+            rec = normalize_faculty(
+                {"name": name, "email": email, "url": url, "title": "Professor",
+                 "research_areas": unit["keywords"][0]},
+                {"short": "Media", "name": unit["name"],
+                 "majors": unit["majors"], "keywords": unit["keywords"]},
+                keywords=list(unit["keywords"]),
+            )
+            if rec:
+                out.append(rec)
+            if i < len(items) - 1:
+                time.sleep(DELAY)
+        logger.info(f"Media/{unit['slug']}: {len(out) - n0} faculty")
+    return out
+
+
+# ── College of Veterinary Medicine ───────────────────────────────────────────
+# `div.person-teaser` with the email obfuscated in an `img[data-src]` attribute
+# (no mailto); name + title in the heading text, joined by an en dash.
+VETMED_UNITS = [
+    {"path": "veterinary-clinical-medicine/faculty",
+     "name": "Department of Veterinary Clinical Medicine",
+     "majors": ["Veterinary Medicine", "Animal Sciences", "Biology"],
+     "keywords": ["veterinary clinical medicine"]},
+    {"path": "pathobiology/faculty7",
+     "name": "Department of Pathobiology",
+     "majors": ["Veterinary Medicine", "Pathobiology", "Microbiology", "Biology"],
+     "keywords": ["pathobiology"]},
+    {"path": "comparative-biosciences/faculty",
+     "name": "Department of Comparative Biosciences",
+     "majors": ["Veterinary Medicine", "Comparative Biosciences", "Neuroscience",
+                "Biology"], "keywords": ["comparative biosciences"]},
+]
+
+
+def fetch_vetmed() -> list[dict]:
+    out: list[dict] = []
+    for unit in VETMED_UNITS:
+        soup = _fetch_soup(f"https://vetmed.illinois.edu/about-the-college/{unit['path']}/")
+        teasers = soup.select("div.person-teaser") if soup else []
+        n0 = len(out)
+        for t in teasers:
+            heading = t.get_text(" ", strip=True)
+            parts = re.split(r"[–—]|\s-\s", heading, maxsplit=1)
+            name = _clean_name(parts[0])
+            if not name:
+                continue
+            title = parts[1].strip()[:80] if len(parts) > 1 else "Professor"
+            email = next((i.get("data-src") for i in t.select("img")
+                          if i.get("data-src", "").endswith("@illinois.edu")), "")
+            link = t.find("a", href=True)
+            url = link["href"] if link else ""
+            if url.startswith("/"):
+                url = "https://vetmed.illinois.edu" + url
+            rec = normalize_faculty(
+                {"name": name, "email": email, "url": url,
+                 "title": title or "Professor", "research_areas": unit["keywords"][0]},
+                {"short": "VetMed", "name": unit["name"],
+                 "majors": unit["majors"], "keywords": unit["keywords"]},
+                keywords=list(unit["keywords"]),
+            )
+            if rec:
+                out.append(rec)
+        logger.info(f"VetMed/{unit['path'].split('/')[0]}: {len(out) - n0} faculty")
+    return out
+
+
+def fetch_and_normalize() -> list[dict]:
+    """All HTML-directory colleges, normalized. A failure for one is logged and
+    skipped so one dead site can't sink the rest."""
+    out: list[dict] = []
+    for label, fn in (
+        ("Carle", fetch_carle), ("Law", fetch_law), ("LER", fetch_ler),
+        ("FAA", fetch_faa), ("Media", fetch_media), ("VetMed", fetch_vetmed),
+    ):
         try:
             out.extend(fn())
         except Exception as e:
