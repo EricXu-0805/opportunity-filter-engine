@@ -51,6 +51,12 @@ jobs:
         run: |
           if [[ "${{ steps.mode.outputs.deep }}" == "true" ]]; then
             echo "Running DEEP refresh (Monday or manual)"
+            # The 4 ACES faculty directories render via Drupal Views AJAX, so the
+            # deep run drives headless Chromium (uiuc_js_faculty). Playwright is
+            # not in requirements.txt (the collector lazy-imports it and tests
+            # mock it), so install it + the browser only here, on deep runs.
+            pip install playwright
+            python -m playwright install --with-deps chromium
             python -m src.collectors.refresh_all
           else
             echo "Running QUICK refresh (Thursday)"

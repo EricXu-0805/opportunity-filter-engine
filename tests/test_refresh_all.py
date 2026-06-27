@@ -207,6 +207,35 @@ def test_quick_mode_leaves_non_run_faculty_sources_untouched(monkeypatch, tmp_pa
     assert saved["metadata"]["is_active"] is True
 
 
+def test_js_faculty_runs_in_deep_and_folds_into_uiuc_faculty_count(monkeypatch, tmp_path):
+    """uiuc_js_faculty (the ACES Drupal-AJAX directories) is browser-backed, so it
+    runs only in deep mode; its records share source='uiuc_faculty', so its count
+    must fold into the uiuc_faculty 'fetched' total that gates
+    deactivate_stale_faculty — otherwise the ~160 ACES professors would be retired
+    as absent from the re-scrape."""
+    js_calls = {"n": 0}
+
+    def fake_js(*a, **k):
+        js_calls["n"] += 1
+        return [{"id": f"j{i}"} for i in range(3)]
+
+    _stub_all_collectors(monkeypatch, tmp_path)
+    monkeypatch.setattr(refresh_all, "fetch_faculty",
+                        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+    monkeypatch.setattr(refresh_all, "fetch_js_faculty", fake_js)
+
+    deep = refresh_all.refresh_all(deep=True)["sources"]["uiuc_faculty"]
+    assert js_calls["n"] == 1
+    assert deep["js_fetched"] == 3
+    assert deep["fetched"] == 5  # 2 static + 3 JS folded into the one source count
+
+    js_calls["n"] = 0
+    quick = refresh_all.refresh_all(deep=False)["sources"]["uiuc_faculty"]
+    assert js_calls["n"] == 0  # browser scrape skipped in quick mode
+    assert quick["js_fetched"] == 0
+    assert quick["fetched"] == 2
+
+
 def test_errored_faculty_collector_never_deactivates(monkeypatch, tmp_path):
     seeded = [_seed_faculty("uiuc_faculty", "fac-stale", days_ago=60)]
     processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
