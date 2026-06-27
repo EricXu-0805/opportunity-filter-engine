@@ -175,6 +175,11 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "research positions in their lab."
     )
     description = " ".join(desc_parts)
+    # Defensive second pass on the fully assembled description (mirrors
+    # ucb_common.normalize_faculty): the DQ gate checks nav-furniture phrases in
+    # description_clean, so stripping the final string makes a leak impossible
+    # regardless of entry path — matters once a school enables the scrape layer.
+    description = _strip_nav_furniture(description)
 
     research_summary = f" ({', '.join(keywords[:3])})" if keywords else ""
     opp_title = f"Research with Prof. {name} — {short}{research_summary}"

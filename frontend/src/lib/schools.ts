@@ -104,9 +104,9 @@ export const SCHOOLS: School[] = [
     color: '#00274C',
     location: 'Ann Arbor, MI',
     // Campus-graph engine (UROP hub/programs/dept research/career/institutes,
-    // ~9 records) plus the curated faculty directory (~47 professors across 6
+    // ~9 records) plus the curated faculty directory (~103 professors across 14
     // departments). Conservative maintained estimate, rounded down, like UCB.
-    coverage: { campusOpportunities: 50, note: 'universitySwitcher.coverageCampus' },
+    coverage: { campusOpportunities: 110, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 127 },
   },
   {
