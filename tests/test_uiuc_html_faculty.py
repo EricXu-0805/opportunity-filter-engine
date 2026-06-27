@@ -105,3 +105,63 @@ def test_ler_relative_links_made_absolute(monkeypatch):
     monkeypatch.setattr(h.time, "sleep", lambda *a: None)
     h.fetch_ler()
     assert any(u.startswith("https://ler.illinois.edu/directory/") for u in captured)
+
+
+FAA_PAGE = """
+<article class="person-card"><div class="person-card__info">
+  <h2 class="linked-title"><a class="linked-title__link"
+    href="https://music.illinois.edu/people/profiles/andrew-anderson/">Andrew Anderson</a></h2>
+  Andrew Anderson Assistant Professor of Double Bass</div>
+  <a href="mailto:bassist@illinois.edu">email</a></article>
+"""
+
+
+def test_faa_card_parses_name_title_email_and_paginates(monkeypatch):
+    calls = []
+
+    def fake(url):
+        calls.append(url)
+        # page 1 has a card; page 2 is empty -> pagination stops
+        return _soup(FAA_PAGE) if url.rstrip("/").endswith("faculty") else _soup("<html></html>")
+    monkeypatch.setattr(h, "_fetch_soup", fake)
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    recs = h.fetch_faa()
+    music = [r for r in recs if r["department"] == "School of Music"]
+    assert len(music) == 1
+    assert music[0]["pi_name"] == "Andrew Anderson"
+    assert music[0]["contact_email"] == "bassist@illinois.edu"
+    assert "Double Bass" in music[0]["metadata"]["faculty_title"]
+    assert any(u.endswith("page/2/") for u in calls)  # paginated past page 1
+
+
+VETMED_LISTING = """
+<div class="person-teaser">
+  <a href="/profile?id=baratta3">Alyssa Baratta-Martin – DVM Instructor</a>
+  <img data-src="baratta3@illinois.edu">
+</div>"""
+
+
+def test_vetmed_extracts_img_email_and_splits_name_title(monkeypatch):
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(VETMED_LISTING))
+    recs = h.fetch_vetmed()
+    assert recs[0]["pi_name"] == "Alyssa Baratta-Martin"
+    assert recs[0]["contact_email"] == "baratta3@illinois.edu"
+    assert recs[0]["metadata"]["faculty_title"] == "DVM Instructor"
+    assert recs[0]["url"].startswith("https://vetmed.illinois.edu/profile?id=")
+
+
+MEDIA_LISTING = """
+<div class="pt-cv-content-item"><h4 class="pt-cv-title">
+  <a href="https://media.illinois.edu/chambers-jason-p/">Jason P. Chambers</a></h4></div>"""
+MEDIA_PROFILE = '<a href="mailto:jpchambe@illinois.edu">Email</a>'
+
+
+def test_media_enriches_email_from_profile(monkeypatch):
+    def fake(url):
+        return _soup(MEDIA_LISTING) if "-faculty/" in url else _soup(MEDIA_PROFILE)
+    monkeypatch.setattr(h, "_fetch_soup", fake)
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    recs = h.fetch_media()
+    chambers = [r for r in recs if r["pi_name"] == "Jason P. Chambers"]
+    assert chambers and chambers[0]["contact_email"] == "jpchambe@illinois.edu"
+    assert chambers[0]["department"] == "Department of Advertising"
