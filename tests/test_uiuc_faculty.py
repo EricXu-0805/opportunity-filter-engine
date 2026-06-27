@@ -243,6 +243,15 @@ def test_dept_broad_field_resolves_aces_and_fallback():
     assert _dept_broad_field("Department of Underwater Basket Weaving") == "underwater basket weaving"
 
 
+def test_dept_broad_field_carle_avoids_junk_college_fallback():
+    """Carle's derived fallback ("carle illinois college of medicine") is junk
+    (contains "college"); the explicit mapping must give a clean broad field so a
+    demoted Carle record never carries a junk keyword."""
+    bf = _dept_broad_field("Carle Illinois College of Medicine")
+    assert bf == "biomedical sciences"
+    assert not _is_junk_keyword(bf)
+
+
 def test_demote_collapses_shared_block_to_broad_field():
     shared = ["artificial intelligence", "bioinformatics", "compilers"]
     rows = [_fac_kw("Siebel School of Computing and Data Science", shared) for _ in range(6)]
