@@ -1,63 +1,163 @@
 {
-  "duration_seconds": 4360.7,
+  "duration_seconds": 10084.0,
   "sources": {
+    "auto_tagger": {
+      "rule_based_tagged": 3894,
+      "status": "ok"
+    },
+    "campus_graph:princeton": {
+      "deep": true,
+      "fetched": 9,
+      "new": 0,
+      "status": "ok",
+      "updated": 9
+    },
+    "campus_graph:umich": {
+      "deep": true,
+      "fetched": 12,
+      "new": 0,
+      "status": "ok",
+      "updated": 11
+    },
     "deactivate_past": {
-      "already_inactive": 253,
+      "already_inactive": 268,
       "kept_active": 5,
-      "newly_deactivated": 407,
-      "skipped_rolling": 3743,
+      "newly_deactivated": 411,
+      "skipped_rolling": 3143,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 316,
-      "newly_deactivated": 0,
-      "skipped_partial_scrape": [
-        "uiuc_faculty"
-      ],
+      "kept_fresh": 3693,
+      "newly_deactivated": 3,
+      "skipped_partial_scrape": [],
+      "status": "ok"
+    },
+    "intl_reconciliation": {
+      "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
     "nsf_reu": {
-      "fetched": 407,
-      "new": 4,
+      "fetched": 411,
+      "new": 19,
       "status": "ok",
-      "updated": 403
+      "updated": 392
     },
     "pi_enricher": {
-      "already_had": 2927,
-      "enriched": 275,
-      "renulled_shared_emails": 0,
-      "scraped": 309,
+      "already_had": 4014,
+      "enriched": 557,
+      "renulled_shared_emails": 284,
+      "scraped": 578,
       "status": "ok"
     },
     "school_audience": {
       "by_source": {
         "handshake": 71,
         "manual": 33,
-        "nsf_reu": 585,
-        "simplify_internships": 2079,
+        "nsf_reu": 604,
+        "princeton_labs": 2,
+        "princeton_research_programs": 7,
+        "simplify_internships": 2144,
+        "ucb_anthro_faculty": 26,
+        "ucb_arch_faculty": 50,
+        "ucb_astro_faculty": 18,
+        "ucb_bioe_faculty": 32,
+        "ucb_cbe_faculty": 18,
         "ucb_cee_faculty": 63,
         "ucb_chem_faculty": 52,
+        "ucb_dcrp_faculty": 22,
+        "ucb_econ_faculty": 55,
+        "ucb_education_faculty": 46,
         "ucb_eecs_faculty": 154,
+        "ucb_english_faculty": 52,
+        "ucb_eps_faculty": 29,
+        "ucb_espm_faculty": 65,
+        "ucb_external_research": 7,
+        "ucb_geog_faculty": 20,
+        "ucb_haas_faculty": 107,
+        "ucb_history_faculty": 60,
+        "ucb_ib_faculty": 42,
+        "ucb_ieor_faculty": 19,
+        "ucb_journalism_faculty": 26,
+        "ucb_labs": 16,
+        "ucb_larch_faculty": 20,
+        "ucb_law_faculty": 80,
+        "ucb_ling_faculty": 17,
+        "ucb_math_faculty": 92,
+        "ucb_mcb_faculty": 81,
+        "ucb_me_faculty": 64,
+        "ucb_mse_faculty": 20,
+        "ucb_ne_faculty": 16,
+        "ucb_nst_faculty": 17,
+        "ucb_philos_faculty": 38,
+        "ucb_physics_faculty": 41,
+        "ucb_pmb_faculty": 25,
+        "ucb_polisci_faculty": 45,
+        "ucb_psych_faculty": 33,
+        "ucb_research_programs": 69,
+        "ucb_soc_faculty": 34,
+        "ucb_socwel_faculty": 26,
+        "ucb_sph_faculty": 125,
         "ucb_stat_faculty": 47,
         "ucb_urap": 1,
         "uiuc_drp": 2,
-        "uiuc_faculty": 1995,
+        "uiuc_faculty": 2037,
         "uiuc_other": 7,
         "uiuc_our_rss": 26,
         "uiuc_siebel": 14,
         "uiuc_sro": 279,
         "uiuc_urap": 1,
-        "uiuc_ursa": 1
+        "uiuc_ursa": 1,
+        "umich_external_research": 2,
+        "umich_faculty": 47,
+        "umich_labs": 3,
+        "umich_research_programs": 6
       },
       "status": "ok",
-      "tagged": 5410
+      "tagged": 7156
     },
     "simplify_internships": {
-      "deactivated_stale": 98,
-      "fetched": 1283,
-      "new": 40,
+      "deactivated_stale": 71,
+      "fetched": 1281,
+      "new": 65,
       "status": "ok",
-      "updated": 1243
+      "updated": 1216
+    },
+    "ucb_anthro_faculty": {
+      "fetched": 26,
+      "new": 26,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_arch_faculty": {
+      "fetched": 51,
+      "new": 50,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_astro_faculty": {
+      "fetched": 19,
+      "new": 18,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_bioe_faculty": {
+      "fetched": 35,
+      "new": 32,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_campus": {
+      "deep": true,
+      "fetched": 93,
+      "new": 33,
+      "status": "ok",
+      "updated": 59
+    },
+    "ucb_cbe_faculty": {
+      "fetched": 26,
+      "new": 18,
+      "status": "ok",
+      "updated": 0
     },
     "ucb_cee_faculty": {
       "fetched": 64,
@@ -71,11 +171,185 @@
       "status": "ok",
       "updated": 52
     },
+    "ucb_dcrp_faculty": {
+      "fetched": 23,
+      "new": 22,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_econ_faculty": {
+      "fetched": 55,
+      "new": 55,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_education_faculty": {
+      "fetched": 46,
+      "new": 46,
+      "status": "ok",
+      "updated": 0
+    },
     "ucb_eecs_faculty": {
       "fetched": 153,
-      "new": 1,
+      "new": 0,
       "status": "ok",
-      "updated": 152
+      "updated": 153
+    },
+    "ucb_english_faculty": {
+      "fetched": 52,
+      "new": 52,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_eps_faculty": {
+      "fetched": 35,
+      "new": 29,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_espm_faculty": {
+      "fetched": 68,
+      "new": 65,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_geog_faculty": {
+      "fetched": 24,
+      "new": 20,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_haas_faculty": {
+      "fetched": 121,
+      "new": 107,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_history_faculty": {
+      "fetched": 62,
+      "new": 60,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_ib_faculty": {
+      "fetched": 45,
+      "new": 42,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_ieor_faculty": {
+      "fetched": 20,
+      "new": 19,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_journalism_faculty": {
+      "fetched": 28,
+      "new": 26,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_larch_faculty": {
+      "fetched": 21,
+      "new": 20,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_law_faculty": {
+      "fetched": 81,
+      "new": 80,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_ling_faculty": {
+      "fetched": 17,
+      "new": 17,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_math_faculty": {
+      "fetched": 100,
+      "new": 92,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_mcb_faculty": {
+      "fetched": 94,
+      "new": 81,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_me_faculty": {
+      "fetched": 71,
+      "new": 64,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_mse_faculty": {
+      "fetched": 30,
+      "new": 20,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_ne_faculty": {
+      "fetched": 18,
+      "new": 16,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_nst_faculty": {
+      "fetched": 20,
+      "new": 17,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_philos_faculty": {
+      "fetched": 47,
+      "new": 38,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_physics_faculty": {
+      "fetched": 59,
+      "new": 41,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_pmb_faculty": {
+      "fetched": 31,
+      "new": 25,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_polisci_faculty": {
+      "fetched": 49,
+      "new": 45,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_psych_faculty": {
+      "fetched": 34,
+      "new": 33,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_soc_faculty": {
+      "fetched": 34,
+      "new": 34,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_socwel_faculty": {
+      "fetched": 28,
+      "new": 26,
+      "status": "ok",
+      "updated": 0
+    },
+    "ucb_sph_faculty": {
+      "fetched": 137,
+      "new": 125,
+      "status": "ok",
+      "updated": 0
     },
     "ucb_stat_faculty": {
       "fetched": 55,
@@ -89,6 +363,12 @@
       "status": "ok",
       "updated": 0
     },
+    "ucb_urap_projects": {
+      "fetched": 0,
+      "new": 0,
+      "status": "ok",
+      "updated": 0
+    },
     "uiuc_drp": {
       "fetched": 2,
       "new": 0,
@@ -97,10 +377,10 @@
     },
     "uiuc_faculty": {
       "enriched": true,
-      "fetched": 1070,
-      "new": 77,
+      "fetched": 2173,
+      "new": 201,
       "status": "ok",
-      "updated": 993
+      "updated": 1972
     },
     "uiuc_other": {
       "fetched": 7,
@@ -115,7 +395,7 @@
       "updated": 25
     },
     "uiuc_siebel": {
-      "fetched": 10,
+      "fetched": 14,
       "new": 0,
       "status": "ok",
       "updated": 0
@@ -138,10 +418,16 @@
       "new": 0,
       "status": "ok",
       "updated": 0
+    },
+    "umich_faculty": {
+      "fetched": 47,
+      "new": 0,
+      "status": "ok",
+      "updated": 47
     }
   },
-  "timestamp": "2026-06-22T12:21:02.674206",
-  "total_in_file": 5410,
-  "total_new": 122,
-  "total_updated": 3256
+  "timestamp": "2026-06-27T06:07:48.600564",
+  "total_in_file": 7156,
+  "total_new": 1779,
+  "total_updated": 4324
 }
