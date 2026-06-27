@@ -29,6 +29,7 @@ from src.collectors.uiuc_faculty import (
     _run_faculty_dq,
     _split_compound_keywords,
     _strip_fragment_keywords,
+    _strip_furniture_keywords,
     _strip_pi_name_credentials,
     missing_departments,
     normalize_faculty,
@@ -365,6 +366,49 @@ def test_is_junk_keyword_keeps_editing_research_and_plain_editorial():
     for k in ["gene editing", "genome editing", "video editing",
               "image editing", "editorial"]:
         assert not _is_junk_keyword(k), k
+
+
+def test_is_junk_keyword_catches_contact_block_residue():
+    # The UIUC Physics directory template scraped each professor's contact panel
+    # (email, office phone, office room/building) as "research keywords" — 92
+    # records, 67% of the dept (found 2026-06-26 audit). None are research areas.
+    for k in [
+        "adshead@illinois.edu", "bdemarco@illinois.edu", "geg@illinois.edu",
+        "(217) 333-4363", "(217) 244-0646", "(217) 318-1881",
+        "237b loomis laboratory", "229 loomis laboratory", "290e loomis laboratory",
+        "237 d loomis laboratory", "237 medical sciences building",
+        "3111 engineering sciences building",
+    ]:
+        assert _is_junk_keyword(k), k
+
+
+def test_is_junk_keyword_keeps_areas_that_brush_the_contact_rules():
+    # The email/phone/room rules must not clip genuine areas: dimensional topics
+    # ("2d materials") share the leading-digit shape of a room number, and
+    # lab-method areas ("laboratory automation") contain a building-type word —
+    # both must survive (the room rule needs a 2-4-digit number AND a building word).
+    for k in ["2d materials", "3d printing", "1d nanostructures",
+              "3d printing laboratory", "802.11 networking", "h.264 video coding",
+              "lab on a chip", "laboratory automation", "wet laboratory techniques",
+              "high energy physics", "5g networks"]:
+        assert not _is_junk_keyword(k), k
+
+
+def test_strip_furniture_keywords_drops_contact_residue_and_backfills_broad():
+    # Mixed record keeps its real area; contact-only record falls back to the
+    # department broad field rather than being left with an empty keyword list.
+    opps = [
+        {"source": "uiuc_faculty", "department": "Department of Physics",
+         "keywords": ["condensed matter physics", "ceperley@illinois.edu",
+                      "(217) 244-0646", "229 loomis laboratory"]},
+        {"source": "uiuc_faculty", "department": "Department of Physics",
+         "keywords": ["327 loomis laboratory", "covey@illinois.edu"]},
+    ]
+    changed = _strip_furniture_keywords(opps)
+    assert changed == 2
+    assert opps[0]["keywords"] == ["condensed matter physics"]
+    assert opps[1]["keywords"] == [_dept_broad_field("Department of Physics")]
+    assert opps[1]["keywords"] == ["physics"]
 
 
 def test_split_compound_keywords_atomizes_comma_joined():
