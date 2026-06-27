@@ -891,9 +891,36 @@ def test_dedup_program_affiliations_tags_home_and_keeps_new():
     assert {"ece-a", "neuro-new", "neuro-noemail"} <= ids
     ece = next(o for o in out if o["id"] == "ece-a")
     assert "neuroscience" in ece["keywords"], "home record must be tagged"
+    # durable marker stored in metadata so DQ keyword-wipes can be undone
+    assert "neuroscience" in ece["metadata"]["program_affiliations"]
     # idempotent: the tag is not duplicated on a second pass
-    assert _dedup_program_affiliations(out) == out or \
-        ece["keywords"].count("neuroscience") == 1
+    _dedup_program_affiliations(out)
+    assert ece["keywords"].count("neuroscience") == 1
+    assert ece["metadata"]["program_affiliations"].count("neuroscience") == 1
+
+
+def test_program_affiliation_survives_keyword_wipe():
+    # _demote_shared_keyword_pollution wipes a shared keyword set; the reassert
+    # step must restore the program tag from metadata afterwards.
+    from src.collectors.uiuc_faculty import (
+        _SHARED_KEYWORD_POLLUTION_THRESHOLD,
+        _demote_shared_keyword_pollution,
+        _reassert_program_affiliations,
+    )
+
+    n = _SHARED_KEYWORD_POLLUTION_THRESHOLD + 2
+    opps = [
+        {"id": f"mcb-{i}", "department": "Molecular & Cellular Biology",
+         "source": "uiuc_faculty", "keywords": ["cell biology", "neuroscience"],
+         "metadata": {"program_affiliations": ["neuroscience"]}}
+        for i in range(n)
+    ]
+    assert _demote_shared_keyword_pollution(opps) == n  # shared set → all wiped
+    # after the wipe the tag is gone from keywords...
+    assert all("neuroscience" not in o["keywords"] for o in opps)
+    # ...but reassert restores it from the durable metadata marker
+    assert _reassert_program_affiliations(opps) == n
+    assert all("neuroscience" in o["keywords"] for o in opps)
 
 
 def test_dedup_program_affiliations_noop_without_program_depts():

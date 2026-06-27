@@ -903,6 +903,36 @@ _PROGRAM_DEPT_NAMES: dict[str, dict] = {
 }
 
 
+def _tag_program_affiliation(rec: dict, kw: str) -> None:
+    """Record a program affiliation on a home faculty record: in ``keywords`` (so
+    the matcher sees it) AND durably in ``metadata.program_affiliations`` so
+    _reassert_program_affiliations can restore it if a later DQ step
+    (e.g. _demote_shared_keyword_pollution wiping a shared keyword set) drops it."""
+    kws = rec.setdefault("keywords", [])
+    if kw not in kws:
+        kws.append(kw)
+    affs = rec.setdefault("metadata", {}).setdefault("program_affiliations", [])
+    if kw not in affs:
+        affs.append(kw)
+
+
+def _reassert_program_affiliations(opps: list[dict]) -> int:
+    """Final DQ step: re-add each record's metadata.program_affiliations to its
+    keywords. Idempotent; restores affiliation tags that an earlier keyword wipe
+    (_demote_shared_keyword_pollution) removed, so the tag survives every refresh."""
+    n = 0
+    for opp in opps:
+        affs = (opp.get("metadata") or {}).get("program_affiliations") or []
+        if not affs:
+            continue
+        kws = opp.setdefault("keywords", [])
+        for aff in affs:
+            if aff not in kws:
+                kws.append(aff)
+                n += 1
+    return n
+
+
 def _dedup_program_affiliations(opps: list[dict]) -> list[dict]:
     """Collapse interdisciplinary-program faculty who already exist under a home
     department. A program (e.g. Neuroscience) cross-lists faculty whose home dept
@@ -929,9 +959,7 @@ def _dedup_program_affiliations(opps: list[dict]) -> list[dict]:
             home = home_by_email.get(email) if email else None
             if home is not None:
                 kw = _PROGRAM_DEPT_NAMES[opp["department"]]["affiliation_keyword"]
-                kws = home.setdefault("keywords", [])
-                if kw not in kws:
-                    kws.append(kw)
+                _tag_program_affiliation(home, kw)
                 tagged += 1
                 dropped += 1
                 continue
@@ -1903,6 +1931,9 @@ def _run_faculty_dq(opps: list[dict]) -> None:
     decredentialed = _strip_pi_name_credentials(opps)
     if decredentialed:
         logger.info(f"Stripped academic-credential suffix from {decredentialed} faculty pi_name(s)")
+    reasserted = _reassert_program_affiliations(opps)
+    if reasserted:
+        logger.info(f"Re-asserted {reasserted} program-affiliation keyword(s) a DQ keyword-wipe had dropped")
     retitled = _rebuild_faculty_title_and_desc(opps)
     if retitled:
         logger.info(f"Rebuilt {retitled} faculty title/description(s) from cleaned keywords (dropped nav-menu pollution)")
