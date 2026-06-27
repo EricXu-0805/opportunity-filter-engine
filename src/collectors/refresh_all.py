@@ -84,6 +84,7 @@ from .uiuc_faculty import _null_shared_admin_emails
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
 from .uiuc_faculty import missing_departments as faculty_missing_departments
+from .uiuc_html_faculty import fetch_and_normalize as fetch_html_faculty
 from .uiuc_js_faculty import fetch_and_normalize as fetch_js_faculty
 from .uiuc_json_faculty import fetch_and_normalize as fetch_json_faculty
 from .uiuc_other import fetch_and_normalize as fetch_other
@@ -286,7 +287,23 @@ def refresh_all(deep: bool = True) -> dict:
                     )
             except Exception as e:
                 logger.error(f"UIUC JSON faculty collection failed: {e}")
-        all_faculty = faculty_opps + js_opps + json_opps
+        # Carle Medicine, College of Law, and LER have HTML directories the JSON
+        # APIs don't cover (Law + LER enrich email per profile). Same
+        # source='uiuc_faculty' contract as js/json, so folded into the same
+        # merge + fetched count gating deactivate_stale_faculty.
+        html_opps: list[dict] = []
+        if deep:
+            try:
+                html_opps = fetch_html_faculty()
+                if not html_opps:
+                    logger.error(
+                        "UIUC HTML faculty scrape yielded 0 records — Carle/Law/LER "
+                        "directory layout changed; those faculty will be deactivated "
+                        "once their last_seen_at passes the grace window"
+                    )
+            except Exception as e:
+                logger.error(f"UIUC HTML faculty collection failed: {e}")
+        all_faculty = faculty_opps + js_opps + json_opps + html_opps
         added, updated = merge_faculty(all_faculty)
         # Surface the silent-scrape-failure class (a declared department whose
         # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
@@ -303,6 +320,7 @@ def refresh_all(deep: bool = True) -> dict:
             "fetched": len(all_faculty),
             "js_fetched": len(js_opps),
             "json_fetched": len(json_opps),
+            "html_fetched": len(html_opps),
             "new": added,
             "updated": updated,
             "enriched": deep,
@@ -314,7 +332,7 @@ def refresh_all(deep: bool = True) -> dict:
         logger.info(
             f"Faculty: {len(all_faculty)} fetched "
             f"({len(faculty_opps)} static + {len(js_opps)} JS-rendered "
-            f"+ {len(json_opps)} JSON-API), "
+            f"+ {len(json_opps)} JSON-API + {len(html_opps)} HTML-dir), "
             f"{added} new, {updated} updated"
         )
     except Exception as e:

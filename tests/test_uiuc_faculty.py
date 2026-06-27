@@ -559,6 +559,22 @@ def test_email_dedup_collapses_joint_appointment():
     assert len(out) == 1
 
 
+def test_email_dedup_keeps_keyword_richer_over_broad_crosslisting():
+    """A cross-appointed professor's home record (real keywords) must survive a
+    cross-listing that carries only the broad field, even when the broad record
+    has the longer name — keyword richness beats name length."""
+    broad = _fac_email("Brent W Roberts", "Carle Illinois College of Medicine",
+                       "bwrobrts@illinois.edu", "https://medicine.illinois.edu/p")
+    broad["keywords"] = ["biomedical sciences"]
+    rich = _fac_email("Brent Roberts", "Department of Psychology",
+                      "bwrobrts@illinois.edu", "https://psychology.illinois.edu/p")
+    rich["keywords"] = ["personality development", "narcissism", "conscientiousness"]
+    out = _dedup_faculty_by_email([broad, rich])
+    assert len(out) == 1
+    assert out[0]["department"] == "Department of Psychology"
+    assert "narcissism" in out[0]["keywords"]
+
+
 def test_email_dedup_merges_name_variants_of_same_person():
     rows = [
         _fac_email("Pamela Martinez", "Statistics", "pamelapm@illinois.edu", "https://stat.illinois.edu/p"),
