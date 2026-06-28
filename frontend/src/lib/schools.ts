@@ -113,11 +113,11 @@ export const SCHOOLS: School[] = [
     color: '#B3A369',
     location: 'Atlanta, GA',
     // Campus-graph engine (8 program/office/lab records) plus the live-scraped
-    // College of Computing faculty directory (~223 professors across the CS,
-    // Interactive Computing, and Computational Science & Engineering schools,
-    // paginated). The SURE + College of Sciences REU programs are national/open,
-    // not counted. Conservative maintained estimate, rounded down like UCB.
-    coverage: { campusOpportunities: 231, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~369 professors): College of Computing (CS, Interactive
+    // Computing, Computational Science & Engineering, paginated) + the Chemistry,
+    // Mathematics, and Materials Science schools (faculty-only filter URLs). SURE
+    // + College of Sciences REU programs are national/open, not counted.
+    coverage: { campusOpportunities: 377, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 6, majors: 43 },
   },
   {
