@@ -375,6 +375,36 @@ class TestScrapeLadderFilter:
         }}
         assert fg._scrape_directory(dept)[0]["name"] == "Wei Zhang"
 
+    def test_scrape_research_items_collects_clean_keywords(self, monkeypatch):
+        """A Stanford-style hb-card lists each research area as its own taxonomy
+        link; ``research_items`` collects them as separate keywords and drops the
+        "Research Area(s)" label cell + any institute-affiliation junk."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="hb-card">
+          <span class="views-field-title"><a href="/people/ada">Ada Lovelace</a></span>
+          <div class="views-field-field-hs-person-research">
+            <div class="field__label">Research Area(s)</div>
+            <a href="/t/1">Probability Theory</a>
+            <a href="/t/2">Information Theory</a>
+            <a href="/inst">Stanford Institute for Theoretical Physics</a>
+          </div>
+        </div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "STATS", "scrape": {
+            "url": "https://statistics.stanford.edu/people/faculty",
+            "selectors": {"card": "div.hb-card", "name": ".views-field-title a",
+                          "link": ".views-field-title a",
+                          "research_items": ".views-field-field-hs-person-research a"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        kws = people[0]["keywords"]
+        assert "Probability Theory" in kws and "Information Theory" in kws
+        assert not any("Institute" in k for k in kws)  # affiliation junk dropped
+
 
 # --- Algolia directory source (no network in tests) -------------------------
 

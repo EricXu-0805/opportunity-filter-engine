@@ -305,6 +305,22 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if not _passes_ladder(title, ladder_filter):
             continue
         research = ""
+        keywords: list[str] = []
+        if sel.get("research_items"):
+            # Each research area is its own element (e.g. Stanford's taxonomy
+            # links) — collect them as clean keywords rather than one flattened
+            # blob, skipping a label cell and any institute/center affiliation
+            # link the DQ junk filter would reject.
+            try:
+                from .uiuc_faculty import _is_junk_keyword
+            except Exception:  # noqa: BLE001
+                def _is_junk_keyword(_k):  # pragma: no cover
+                    return False
+            keywords = [
+                t for el in card.select(sel["research_items"])
+                if (t := el.get_text(" ", strip=True))
+                and t.lower() != "research area(s)" and not _is_junk_keyword(t)
+            ]
         if sel.get("research"):
             r_el = card.select_one(sel["research"])
             research = r_el.get_text(" ", strip=True) if r_el else ""
@@ -315,7 +331,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                 raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
                 email = raw.replace("mailto:", "").split("?")[0].strip() or None
         if _is_person_name(name):
-            people.append(faculty(name, title=title, url=href, email=email, research_areas=research))
+            people.append(faculty(name, title=title, url=href, email=email,
+                                  research_areas=research, keywords=keywords))
     return people
 
 
