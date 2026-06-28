@@ -262,3 +262,19 @@ class TestGatechConfig:
         from src.collectors.schools.gatech_faculty import SCHOOL as GT
         cs = next(d for d in GT["departments"] if d["short"] == "CS")
         assert cs["scrape"].get("paginate", {}).get("param") == "page"
+
+
+class TestStanfordConfig:
+    def test_stanford_config_valid(self):
+        from src.collectors.schools.stanford_faculty import SCHOOL as SF
+        assert fg.validate(SF) == []
+
+    def test_stanford_registered(self):
+        from src.collectors.schools.stanford_faculty import SCHOOL as SF
+        assert SOURCE_DEFAULTS[SF["source"]] == ("stanford", "unknown")
+        assert SF["source"] in FACULTY_SOURCES
+
+    def test_stanford_every_department_has_a_scrape_block(self):
+        from src.collectors.schools.stanford_faculty import SCHOOL as SF
+        for dept in SF["departments"]:
+            assert dept.get("scrape", {}).get("selectors", {}).get("card"), dept["short"]
