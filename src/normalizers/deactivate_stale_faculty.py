@@ -81,6 +81,7 @@ FACULTY_SOURCES = frozenset({
     "ucb_scandinavian_faculty",
     "ucb_filmmedia_faculty",
     "ucb_classics_faculty",
+    "ucb_publicpolicy_faculty",
     # University of Michigan — curated faculty (single source across depts).
     "umich_faculty",
 })

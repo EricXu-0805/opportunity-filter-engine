@@ -165,6 +165,7 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   ucb_scandinavian_faculty: 'results.filters.sourceUcbScandinavianFaculty',
   ucb_filmmedia_faculty: 'results.filters.sourceUcbFilmmediaFaculty',
   ucb_classics_faculty: 'results.filters.sourceUcbClassicsFaculty',
+  ucb_publicpolicy_faculty: 'results.filters.sourceUcbPublicpolicyFaculty',
   // UC Berkeley campus-wide opportunity graph (campus collector emit buckets).
   ucb_research_programs: 'results.filters.sourceUcbResearchPrograms',
   ucb_external_research: 'results.filters.sourceUcbExternalResearch',
