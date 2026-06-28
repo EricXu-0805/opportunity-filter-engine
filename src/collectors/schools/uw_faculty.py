@@ -50,6 +50,24 @@ def _cas(short: str, name: str, majors: list[str], url: str) -> dict:
     }
 
 
+# College of Engineering "facultyfinder" — a server-rendered table (the JS path
+# is just a wrapper). ``?page_size=300`` returns all rows in one request; the
+# name is inverted ("Last, First"), research areas are per-area list items, and
+# courtesy appointments in other departments mean a whole-cell rank drop would
+# over-prune, so we keep any "Professor" row and only drop emeriti.
+def _ff(short: str, name: str, majors: list[str], host: str) -> dict:
+    url = f"https://{host}/facultyfinder?page_size=300"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "name_flip": True,
+                       "selectors": {"card": "table#results tbody tr",
+                                     "name": "td:nth-child(2) b a",
+                                     "link": "td:nth-child(2) b a",
+                                     "title": "td:nth-child(3)",
+                                     "email": "td:nth-child(2) a[href^='mailto:']",
+                                     "research_items": "td:nth-child(4) li"},
+                       "ladder_filter": {"require": r"professor", "drop": r"emerit"}}}
+
+
 SCHOOL: dict = {
     "school_slug": "uw",
     "source": "uw_faculty",
@@ -118,6 +136,47 @@ SCHOOL: dict = {
         _cas("ANTH", "Department of Anthropology",
              ["Anthropology"],
              "https://anthropology.washington.edu/people/faculty"),
+        # College of Engineering (facultyfinder, keyworded + emailed).
+        _ff("ME", "Department of Mechanical Engineering",
+            ["Mechanical Engineering"], "www.me.washington.edu"),
+        _ff("AA", "Department of Aeronautics & Astronautics",
+            ["Aeronautics & Astronautics", "Aerospace Engineering"], "www.aa.washington.edu"),
+        _ff("CHEME", "Department of Chemical Engineering",
+            ["Chemical Engineering"], "www.cheme.washington.edu"),
+        _ff("CEE", "Department of Civil & Environmental Engineering",
+            ["Civil Engineering", "Environmental Engineering"], "www.ce.washington.edu"),
+        _ff("MSE", "Department of Materials Science & Engineering",
+            ["Materials Science & Engineering"], "www.mse.washington.edu"),
+        # Bioengineering — WordPress (Avada) "Core Faculty" portfolio, keyworded.
+        {
+            "short": "BIOE",
+            "name": "Department of Bioengineering",
+            "majors": ["Bioengineering", "Biomedical Engineering"],
+            "directory_url": "https://bioe.uw.edu/people/faculty/",
+            "api": {"type": "wp", "base": "https://bioe.uw.edu",
+                    "post_type": "avada_portfolio",
+                    "category_include": {"portfolio_category": [170]},
+                    "keyword_tax": ["portfolio_category"],
+                    "keyword_drop": ["core faculty", "faculty", "adjunct",
+                                     "affiliate", "emeritus", "joint"]},
+        },
+        # Biology — Drupal directory, title-filtered to ladder ranks.
+        {
+            "short": "BIOL",
+            "name": "Department of Biology",
+            "majors": ["Biology", "Molecular Biology", "Ecology"],
+            "directory_url": "https://biology.washington.edu/people/faculty",
+            "scrape": {
+                "url": "https://biology.washington.edu/people/faculty",
+                "selectors": {"card": "div.directory-item",
+                              "name": "h2.directory-item__name a",
+                              "link": "h2.directory-item__name a",
+                              "title": "strong.directory-item__title",
+                              "email": "a[href^='mailto:']"},
+                "ladder_filter": {"require": r"professor",
+                                  "drop": r"emerit|adjunct|affiliat|teaching|acting|visiting"},
+            },
+        },
     ],
 }
 

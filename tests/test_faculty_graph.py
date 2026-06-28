@@ -450,10 +450,12 @@ class TestUWConfig:
         assert SOURCE_DEFAULTS[UW["source"]] == ("uw", "unknown")
         assert UW["source"] in FACULTY_SOURCES
 
-    def test_uw_every_department_has_a_scrape_block(self):
+    def test_uw_every_department_has_a_live_source(self):
         from src.collectors.schools.uw_faculty import SCHOOL as UW
         for dept in UW["departments"]:
-            assert dept.get("scrape", {}).get("selectors", {}).get("card"), dept["short"]
+            has_scrape = dept.get("scrape", {}).get("selectors", {}).get("card")
+            has_api = dept.get("api", {}).get("type") == "wp"
+            assert has_scrape or has_api, dept["short"]
 
 
 class TestGatechConfig:

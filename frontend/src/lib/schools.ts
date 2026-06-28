@@ -163,12 +163,11 @@ export const SCHOOLS: School[] = [
     color: '#4B2E83',
     location: 'Seattle, WA',
     // Campus-graph engine (10 program/office/lab records) plus the live-scraped
-    // faculty directory (~525 professors across 14 departments — ECE fully
-    // keyworded, the College of Arts & Sciences departments as emailed
-    // cold-email targets). The Institute for Protein Design program is
-    // national/open, so it isn't counted. Conservative maintained estimate,
-    // rounded down like UCB.
-    coverage: { campusOpportunities: 535, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~750 professors): ECE + the 13 Arts & Sciences depts
+    // (Drupal grids) + the five College of Engineering depts via facultyfinder
+    // (keyworded + emailed) + Bioengineering (WordPress, keyworded) + Biology.
+    // The Institute for Protein Design program is national/open, not counted.
+    coverage: { campusOpportunities: 760, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 12, majors: 116 },
   },
   {
