@@ -11,10 +11,13 @@ Two directory shapes on campus:
     research interests + a mailto inline — so its faculty land fully keyworded
     in one pass (UIUC-level richness).
   * **The College of Arts & Sciences departments** (Physics, Chemistry,
-    Mathematics) use a shared Drupal "Views" directory that lists
-    name + job title + email but not research areas, so those faculty land as
-    keyword-light cold-email targets (department majors drive matching;
-    per-profile research enrichment is a follow-up, the same path UIUC took).
+    Mathematics, Astronomy, Economics, Linguistics, Geography, History,
+    Political Science, Sociology, Philosophy, English, Anthropology)
+    share a Drupal "Views" directory that lists name + job title + email but not
+    research areas, so those faculty land as keyword-light cold-email targets
+    (department majors drive matching; per-profile research enrichment is a
+    deferred follow-up — the page interest sections are inconsistent across
+    departments and risk nav-menu pollution, so accuracy comes first).
 
 Departments behind a JS facultyfinder app (most of the College of Engineering)
 or a client-rendered list (the Allen School) are intentionally omitted — a
@@ -85,6 +88,36 @@ SCHOOL: dict = {
         _cas("MATH", "Department of Mathematics",
              ["Mathematics", "Applied Mathematics"],
              "https://math.washington.edu/people/faculty"),
+        _cas("ASTR", "Department of Astronomy",
+             ["Astronomy", "Astrophysics"],
+             "https://astro.washington.edu/people/faculty"),
+        _cas("ECON", "Department of Economics",
+             ["Economics"],
+             "https://econ.washington.edu/people/faculty"),
+        _cas("LING", "Department of Linguistics",
+             ["Linguistics"],
+             "https://linguistics.washington.edu/people/faculty"),
+        _cas("GEOG", "Department of Geography",
+             ["Geography"],
+             "https://geography.washington.edu/people/faculty"),
+        _cas("HIST", "Department of History",
+             ["History"],
+             "https://history.washington.edu/people/faculty"),
+        _cas("POLS", "Department of Political Science",
+             ["Political Science"],
+             "https://www.polisci.washington.edu/people/faculty"),
+        _cas("SOC", "Department of Sociology",
+             ["Sociology"],
+             "https://soc.washington.edu/people/faculty"),
+        _cas("PHIL", "Department of Philosophy",
+             ["Philosophy"],
+             "https://phil.washington.edu/people/faculty"),
+        _cas("ENGL", "Department of English",
+             ["English", "Literature", "Creative Writing"],
+             "https://english.washington.edu/people/faculty"),
+        _cas("ANTH", "Department of Anthropology",
+             ["Anthropology"],
+             "https://anthropology.washington.edu/people/faculty"),
     ],
 }
 
