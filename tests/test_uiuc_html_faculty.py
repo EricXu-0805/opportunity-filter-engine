@@ -1,7 +1,9 @@
 """Tests for the HTML-directory faculty collector (Carle + Law + LER).
 
 Network is monkeypatched; the value is in the card parsing, profile-URL dedup,
-'Last, First' reversal, and email/research-interest extraction."""
+'Last, First' reversal, and email/research-interest extraction — including the
+per-profile research-area enrichment that lifts Carle + Law off their bare
+department broad field."""
 from __future__ import annotations
 
 from bs4 import BeautifulSoup
@@ -35,7 +37,23 @@ LAW_LISTING = """
 LAW_PROFILE = """<html><body>
 <a href="mailto:jdoe@illinois.edu">Email</a>
 <a href="mailto:assistant@illinois.edu">Assistant</a>
+<details><summary>Areas of Expertise</summary>
+<div class="il-formatted"><p>Civil Procedure<br>Constitutional Law<br>Federal Courts</p></div>
+</details>
 </body></html>"""
+
+# A Law profile with no expertise disclosure -> the collector keeps the broad field.
+LAW_PROFILE_NO_AREAS = """<html><body>
+<a href="mailto:jroe@illinois.edu">Email</a>
+<h3>Education</h3><p>J.D., somewhere</p>
+</body></html>"""
+
+CARLE_PROFILE_RI = """<html><body>
+<h2>Research Interests</h2>
+<ul><li>Soft Matter Tribology</li><li>Wear of Materials</li></ul>
+</body></html>"""
+
+CARLE_PROFILE_NO_RI = """<html><body><h2>Education</h2><p>PhD</p></body></html>"""
 
 LER_LISTING = """
 <ul class="wp-block-list">
@@ -64,24 +82,52 @@ def test_research_interests_atomizes_semicolon_block():
     assert out == ["Employee recruitment and selection", "Adverse impact", "Psychometrics"]
 
 
-def test_carle_parses_listing_cards_with_email(monkeypatch):
-    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(CARLE_LISTING))
+def test_labeled_phrases_reads_law_areas_of_expertise_summary():
+    # Real Law DOM: matching the <summary>, find_next returns a wrapping <div>
+    # whose text REPEATS the 'Areas of Expertise' label before the <br>-separated
+    # areas — the label itself must not leak in as a keyword.
+    html = ("<details><summary>Areas of Expertise</summary>"
+            "<div>Areas of Expertise<p>Civil Procedure<br>Constitutional Law<br>Federal Courts</p></div>"
+            "</details>")
+    assert h._labeled_phrases(_soup(html)) == [
+        "Civil Procedure", "Constitutional Law", "Federal Courts"]
+
+
+def test_labeled_phrases_drops_prose_so_caller_falls_back():
+    # A profile that describes its research in a sentence yields no phrases.
+    html = "<h2>Research Interests</h2><div>My research objective is to understand how genes and hormones interact across the lifespan.</div>"
+    assert h._labeled_phrases(_soup(html)) == []
+
+
+def test_carle_parses_listing_and_enriches_from_profile(monkeypatch):
+    def fake(url):
+        if url == h.CARLE_URL:
+            return _soup(CARLE_LISTING)
+        return _soup(CARLE_PROFILE_RI) if "kahmad" in url else _soup(CARLE_PROFILE_NO_RI)
+    monkeypatch.setattr(h, "_fetch_soup", fake)
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
     recs = h.fetch_carle()
     assert len(recs) == 2
     assert recs[0]["pi_name"] == "Kashif Ahmad"
     assert recs[0]["contact_email"] == "kahmad@illinois.edu"
     assert recs[0]["source"] == "uiuc_faculty"
     assert recs[0]["department"] == "Carle Illinois College of Medicine"
+    assert "Soft Matter Tribology" in recs[0]["keywords"]   # enriched from profile
+    assert recs[1]["keywords"] == ["biomedical sciences"]   # no RI section -> broad
 
 
-def test_law_dedups_by_profile_url_and_enriches_email(monkeypatch):
+def test_law_dedups_by_profile_url_and_enriches_email_and_areas(monkeypatch):
     def fake(url):
-        return _soup(LAW_LISTING) if url == h.LAW_URL else _soup(LAW_PROFILE)
+        if url == h.LAW_URL:
+            return _soup(LAW_LISTING)
+        return _soup(LAW_PROFILE) if "jane-doe" in url else _soup(LAW_PROFILE_NO_AREAS)
     monkeypatch.setattr(h, "_fetch_soup", fake)
     monkeypatch.setattr(h.time, "sleep", lambda *a: None)
     recs = h.fetch_law()
     assert [r["pi_name"] for r in recs] == ["Jane Doe", "John Roe"]  # 3 articles -> 2 unique
     assert recs[0]["contact_email"] == "jdoe@illinois.edu"
+    assert "Constitutional Law" in recs[0]["keywords"]      # enriched from Areas of Expertise
+    assert recs[1]["keywords"] == ["law"]                   # no expertise section -> broad
 
 
 def test_ler_reverses_name_and_extracts_keywords(monkeypatch):
