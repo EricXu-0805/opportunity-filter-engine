@@ -148,6 +148,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "utexas_faculty": ("utexas", "unknown"),
     # UW-Madison faculty directory (live-scraped, via the faculty_graph engine).
     "wisc_faculty": ("wisc", "unknown"),
+    # UCLA faculty directory (WordPress-REST, via the faculty_graph engine).
+    "ucla_faculty": ("ucla", "unknown"),
 }
 
 
