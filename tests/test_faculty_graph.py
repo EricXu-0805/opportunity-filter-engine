@@ -196,6 +196,28 @@ class TestScrapeLayer:
         assert p["email"] == "ada@uw.edu"  # mailto: + ?subject stripped
         assert "Machine learning" in p["research_areas"]
 
+    def test_scrape_follows_pagination_until_no_new(self, monkeypatch):
+        """A paginated directory (e.g. GT College of Computing) must be followed
+        via ``?page=N`` and stop the moment a page surfaces no new (name, url) —
+        so a 200-professor school isn't truncated to its first page or looped."""
+        from bs4 import BeautifulSoup
+        pages = {
+            "https://x.edu/f": '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>',
+            "https://x.edu/f?page=1": '<div class="c"><a class="n" href="/p/b">Ben Beta</a></div>',
+            "https://x.edu/f?page=2": '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>',
+        }
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(pages[url], "html.parser") if url in pages else None,
+        )
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "paginate": {"param": "page", "start": 1, "max": 5},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ann Alpha", "Ben Beta"]  # page 2 repeats -> pagination stops
+
     def test_clean_keywords_strips_oxford_comma_connective(self):
         """An Oxford-comma tail ("..., and Robotics") splits into a clause led by
         'and' — the connective must be stripped so the keyword clears the DQ junk
@@ -224,3 +246,19 @@ class TestUWConfig:
         from src.collectors.schools.uw_faculty import SCHOOL as UW
         for dept in UW["departments"]:
             assert dept.get("scrape", {}).get("selectors", {}).get("card"), dept["short"]
+
+
+class TestGatechConfig:
+    def test_gatech_config_valid(self):
+        from src.collectors.schools.gatech_faculty import SCHOOL as GT
+        assert fg.validate(GT) == []
+
+    def test_gatech_registered(self):
+        from src.collectors.schools.gatech_faculty import SCHOOL as GT
+        assert SOURCE_DEFAULTS[GT["source"]] == ("gatech", "unknown")
+        assert GT["source"] in FACULTY_SOURCES
+
+    def test_gatech_coc_paginates(self):
+        from src.collectors.schools.gatech_faculty import SCHOOL as GT
+        cs = next(d for d in GT["departments"] if d["short"] == "CS")
+        assert cs["scrape"].get("paginate", {}).get("param") == "page"

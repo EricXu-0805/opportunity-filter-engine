@@ -260,12 +260,49 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
 # Best-effort scrape layer (deep mode, lazy HTTP deps)
 # ---------------------------------------------------------------------------
 
+def _parse_cards(soup, sel: dict, base_url: str) -> list[dict]:
+    """Parse one rendered directory page into faculty specs via CSS selectors.
+
+    Optional selectors beyond card/name/link/title: ``research`` (interests text)
+    and ``email`` (a mailto) let rich cards (e.g. UW ECE) land keyworded, emailed
+    faculty in one pass rather than name-only stubs.
+    """
+    people: list[dict] = []
+    for card in soup.select(sel.get("card", "")):
+        name_el = card.select_one(sel["name"]) if sel.get("name") else None
+        if not name_el:
+            continue
+        name = name_el.get_text(" ", strip=True)
+        link_el = card.select_one(sel.get("link", "")) if sel.get("link") else name_el
+        href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
+        href = urljoin(base_url, href) if href else base_url
+        title_el = card.select_one(sel["title"]) if sel.get("title") else None
+        title = title_el.get_text(" ", strip=True) if title_el else "Professor"
+        research = ""
+        if sel.get("research"):
+            r_el = card.select_one(sel["research"])
+            research = r_el.get_text(" ", strip=True) if r_el else ""
+        email = None
+        if sel.get("email"):
+            e_el = card.select_one(sel["email"])
+            if e_el is not None:
+                raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
+                email = raw.replace("mailto:", "").split("?")[0].strip() or None
+        if _is_person_name(name):
+            people.append(faculty(name, title=title, url=href, email=email, research_areas=research))
+    return people
+
+
 def _scrape_directory(dept: dict) -> list[dict]:
     """Best-effort parse of a department directory into faculty specs.
 
     Opt-in: only runs when the department config has a ``scrape`` block. Lazy-
     imports requests/bs4 and degrades to ``[]`` on any failure (a 403 bot wall,
     timeout, or markup drift) so deep mode never breaks the curated layer.
+
+    When the directory paginates (``scrape["paginate"]``), follow ``?<param>=N``
+    until a page surfaces no new (name, url) pair or the page cap is hit — so a
+    100-professor school isn't truncated to its first page.
     """
     cfg = dept.get("scrape")
     if not cfg:
@@ -274,40 +311,29 @@ def _scrape_directory(dept: dict) -> list[dict]:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001
         return []
-    soup = fetch_soup(cfg["url"])
+    base = cfg["url"]
+    sel = cfg.get("selectors", {})
+    soup = fetch_soup(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
-    sel = cfg.get("selectors", {})
-    people: list[dict] = []
     try:
-        for card in soup.select(sel.get("card", "")):
-            name_el = card.select_one(sel["name"]) if sel.get("name") else None
-            if not name_el:
-                continue
-            name = name_el.get_text(" ", strip=True)
-            link_el = card.select_one(sel.get("link", "")) if sel.get("link") else name_el
-            href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
-            href = urljoin(cfg["url"], href) if href else cfg["url"]
-            title_el = card.select_one(sel["title"]) if sel.get("title") else None
-            title = title_el.get_text(" ", strip=True) if title_el else "Professor"
-            # Optional richer selectors: some directory cards expose research
-            # interests and a mailto inline (e.g. UW ECE's stafftemplate cards),
-            # so deep mode can land keyworded, emailed faculty in one pass rather
-            # than name-only stubs that need per-profile enrichment.
-            research = ""
-            if sel.get("research"):
-                r_el = card.select_one(sel["research"])
-                research = r_el.get_text(" ", strip=True) if r_el else ""
-            email = None
-            if sel.get("email"):
-                e_el = card.select_one(sel["email"])
-                if e_el is not None:
-                    raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
-                    email = raw.replace("mailto:", "").split("?")[0].strip() or None
-            if _is_person_name(name):
-                people.append(faculty(name, title=title, url=href,
-                                      email=email, research_areas=research))
+        people = _parse_cards(soup, sel, base)
+        pag = cfg.get("paginate")
+        if pag:
+            param = pag.get("param", "page")
+            seen = {(p["name"], p["url"]) for p in people}
+            for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
+                sep = "&" if "?" in base else "?"
+                s2 = fetch_soup(f"{base}{sep}{param}={pg}")
+                if s2 is None:
+                    break
+                fresh = [p for p in _parse_cards(s2, sel, base)
+                         if (p["name"], p["url"]) not in seen]
+                if not fresh:
+                    break
+                seen.update((p["name"], p["url"]) for p in fresh)
+                people.extend(fresh)
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
         return []

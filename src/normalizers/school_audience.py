@@ -140,6 +140,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     # UW faculty directory (live-scraped, via the faculty_graph engine). Same
     # single-source model; per-professor openness, so audience is unknown.
     "uw_faculty": ("uw", "unknown"),
+    # Georgia Tech faculty directory (live-scraped, via the faculty_graph engine).
+    "gatech_faculty": ("gatech", "unknown"),
 }
 
 

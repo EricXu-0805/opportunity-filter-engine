@@ -24,6 +24,8 @@ from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
+from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
+from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
@@ -512,6 +514,9 @@ def refresh_all(deep: bool = True) -> dict:
             # keyworded; the Arts & Sciences Drupal departments ship as
             # emailed cold-email targets pending per-profile enrichment.
             ("uw_faculty", fetch_uw_faculty, merge_uw_faculty),
+            # Georgia Tech faculty (live-scraped via faculty_graph): College of
+            # Computing, paginated.
+            ("gatech_faculty", fetch_gatech_faculty, merge_gatech_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")
