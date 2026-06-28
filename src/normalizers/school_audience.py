@@ -114,6 +114,25 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "uw_research_programs": ("uw", "campus"),
     "uw_external_research": (None, "open"),
     "uw_labs": ("uw", "unknown"),
+    # Georgia Institute of Technology (#4 on the campus_graph engine).
+    "gatech_research_programs": ("gatech", "campus"),
+    "gatech_external_research": (None, "open"),
+    "gatech_labs": ("gatech", "unknown"),
+    # Stanford University (#5 on the campus_graph engine).
+    "stanford_research_programs": ("stanford", "campus"),
+    "stanford_external_research": (None, "open"),
+    "stanford_labs": ("stanford", "unknown"),
+    # The University of Texas at Austin (#6 on the campus_graph engine; no lab bucket).
+    "utexas_research_programs": ("utexas", "campus"),
+    "utexas_external_research": (None, "open"),
+    # University of Wisconsin-Madison (#7 on the campus_graph engine).
+    "wisc_research_programs": ("wisc", "campus"),
+    "wisc_external_research": (None, "open"),
+    "wisc_labs": ("wisc", "unknown"),
+    # University of California, Los Angeles (#8 on the campus_graph engine).
+    "ucla_research_programs": ("ucla", "campus"),
+    "ucla_external_research": (None, "open"),
+    "ucla_labs": ("ucla", "unknown"),
     # Michigan faculty directory (curated, via the faculty_graph engine). Single
     # source across departments (UIUC model); cold-email targets whose
     # cross-school openness is per-professor, so audience is unknown.
