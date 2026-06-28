@@ -163,6 +163,8 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   ucb_rhetoric_faculty: 'results.filters.sourceUcbRhetoricFaculty',
   ucb_spanish_portuguese_faculty: 'results.filters.sourceUcbSpanishPortugueseFaculty',
   ucb_scandinavian_faculty: 'results.filters.sourceUcbScandinavianFaculty',
+  ucb_filmmedia_faculty: 'results.filters.sourceUcbFilmmediaFaculty',
+  ucb_classics_faculty: 'results.filters.sourceUcbClassicsFaculty',
   // UC Berkeley campus-wide opportunity graph (campus collector emit buckets).
   ucb_research_programs: 'results.filters.sourceUcbResearchPrograms',
   ucb_external_research: 'results.filters.sourceUcbExternalResearch',
