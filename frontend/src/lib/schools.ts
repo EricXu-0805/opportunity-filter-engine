@@ -53,18 +53,18 @@ const PENDING_COVERAGE: SchoolCoverage = {
  * tracked follow-up — the frontend bundle doesn't load the opportunities
  * corpus — so this stays a maintained estimate.
  *
- * Calibrated against the shipped dataset (~369 `school='ucb'` records:
- * faculty directories ~316, campus programs/dept pages 44, labs 8); rounded
- * down to conservative figures so the chip never overstates coverage, and
- * with headroom for the additional faculty directories being wired in.
+ * Calibrated against the shipped dataset after the full deep scrape landed
+ * (~1,866 active `school='ucb'` records across all 38 faculty departments:
+ * faculty ~1,774, campus programs/dept pages 68, labs 16); rounded down to
+ * conservative figures so the chip never overstates coverage.
  */
 const UCB_CAMPUS_COVERAGE = {
-  /** ucb_*_faculty directories (EECS/Stat/Chem/CEE live; more wiring in). */
-  facultyDirectories: 300,
+  /** ucb_*_faculty directories — all 38 departments now scraped. */
+  facultyDirectories: 1770,
   /** ucb_research_programs: OURS programs, dept research pages, career/RA boards, announcements. */
-  campusPrograms: 50,
+  campusPrograms: 65,
   /** ucb_labs: lab / research-center recruiting pages. */
-  labs: 10,
+  labs: 15,
 } as const;
 
 export const UCB_CAMPUS_OPPORTUNITIES: number =
