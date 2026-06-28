@@ -3,15 +3,22 @@ Carle Illinois College of Medicine, the College of Law, and the School of Labor
 & Employment Relations.
 
 - **Carle** (`/about/directory/faculty/bio-translational-sciences`): `div.item.person`
-  cards carry name + title + netid + email (mailto) **on the listing**, so no
-  per-profile fetch. Only the bio-translational-sciences research faculty are
-  taken — clinical-sciences (`cicom-clsci`, practicing physicians) are excluded
-  on purpose, this being a research-opportunity index.
-- **Law** (`/faculty/faculty-profiles/`): `article.faculty-member` (rendered
-  twice for the responsive grid/list, deduped by profile URL); the email lives on
-  each profile page, so faculty are enriched one profile at a time.
+  cards carry name + title + netid + email (mailto) **on the listing**, but each
+  profile page lists the person's own Research Interests, so a per-profile fetch
+  enriches the otherwise broad-field-only record. Only the bio-translational-
+  sciences research faculty are taken — clinical-sciences (`cicom-clsci`,
+  practicing physicians) are excluded on purpose, this being a research index.
+- **Law** (`/faculty-research/faculty-profiles/`): `article.faculty-member`
+  (rendered twice for the responsive grid/list, deduped by profile URL); the
+  email **and** an "Areas of Expertise" disclosure live on each profile page, so
+  faculty are enriched one profile at a time.
 - **LER** (`/people/faculty/`): "Last, First" directory links; email **and**
   Research Interests live on each profile page.
+
+Listings expose only a name + a department broad field, so a faculty member's own
+research areas come from the profile page (see :func:`_labeled_phrases`); a
+profile that has no such section (or describes its work in prose) honestly falls
+back to the department broad field rather than inventing keywords.
 
 All reuse :func:`uiuc_faculty.normalize_faculty` (identical schema,
 ``source="uiuc_faculty"``) and merge through
@@ -37,7 +44,8 @@ logger = logging.getLogger(__name__)
 CARLE_URL = (
     "https://medicine.illinois.edu/about/directory/faculty/bio-translational-sciences"
 )
-LAW_URL = "https://law.illinois.edu/faculty/faculty-profiles/"
+CARLE_PROFILE = "https://medicine.illinois.edu/about/directory/faculty/profile/{netid}"
+LAW_URL = "https://law.illinois.edu/faculty-research/faculty-profiles/"
 LER_URL = "https://ler.illinois.edu/people/faculty/"
 
 CARLE_CFG = {
@@ -72,11 +80,26 @@ def _first_illinois_email(soup) -> str:
     return ""
 
 
-def _research_interests(soup) -> list[str]:
-    """Phrases under a 'Research Interests' heading (LER profiles), atomized and
-    capped. The faculty DQ does the final junk/fragment cleaning."""
-    for tag in soup.find_all(["h2", "h3", "h4"]):
-        if "research interest" in tag.get_text(strip=True).lower():
+# Headings (or `<summary>` disclosures) under which a UIUC profile lists the
+# person's own research areas. Colleges label the same thing differently —
+# "Research Interests" (LER, Carle), "Areas of Expertise" (Law) — so one label
+# set covers them and every profile collector reuses _labeled_phrases.
+_RESEARCH_LABEL_RE = re.compile(
+    r"research interest|research area|research focus"
+    r"|areas? of expertise|areas? of research|area of (study|interest)",
+    re.I,
+)
+
+
+def _labeled_phrases(soup, label_re=_RESEARCH_LABEL_RE) -> list[str]:
+    """Atomized phrases from the block after the first heading/`<summary>` whose
+    text matches ``label_re`` — list items if present, else the block text split
+    on separators (';', line breaks from `<br>`, bullets). Prose sentences fall
+    outside the length guard, so a profile that describes its research in
+    paragraphs yields nothing and the caller falls back to the broad field rather
+    than inventing keywords. Capped; the faculty DQ does the final cleaning."""
+    for tag in soup.find_all(["h2", "h3", "h4", "summary"]):
+        if label_re.search(tag.get_text(strip=True)):
             block = tag.find_next(["ul", "p", "div"])
             if not block:
                 return []
@@ -86,24 +109,35 @@ def _research_interests(soup) -> list[str]:
             out, seen = [], set()
             for it in items:
                 it = it.strip(" .,;").strip()
-                if 3 <= len(it) <= 60 and it.lower() not in seen:
-                    seen.add(it.lower())
-                    out.append(it)
+                if not (3 <= len(it) <= 60) or it.lower() in seen:
+                    continue
+                if label_re.search(it):  # the section label leaked into the block text
+                    continue
+                seen.add(it.lower())
+                out.append(it)
                 if len(out) >= 8:
                     break
             return out
     return []
 
 
+def _research_interests(soup) -> list[str]:
+    """LER profiles label their block 'Research Interests'; alias kept for clarity
+    at the call site."""
+    return _labeled_phrases(soup)
+
+
 def fetch_carle() -> list[dict]:
-    """Carle bio-translational research faculty — listing carries email + netid,
-    so no per-profile fetch."""
+    """Carle bio-translational research faculty — name + email + netid on the
+    listing; each profile page's Research Interests enrich the broad-field record
+    (no section -> fall back to the broad field)."""
     soup = _fetch_soup(CARLE_URL)
     if soup is None:
         logger.error("Carle directory unreachable")
         return []
+    cards = soup.select("div.item.person")
     out: list[dict] = []
-    for card in soup.select("div.item.person"):
+    for i, card in enumerate(cards):
         name_el = card.select_one(".name")
         if not name_el:
             continue
@@ -116,20 +150,24 @@ def fetch_carle() -> list[dict]:
         email = (mail["href"][7:].split("?")[0].strip() if mail else "") or (
             f"{netid}@illinois.edu" if netid else ""
         )
+        url = CARLE_PROFILE.format(netid=netid) if netid else CARLE_URL
+        prof = _fetch_soup(url) if netid else None
+        kws = (_labeled_phrases(prof) if prof else []) or list(CARLE_CFG["keywords"])
         rec = normalize_faculty(
             {
                 "name": name,
                 "email": email,
-                "url": f"https://medicine.illinois.edu/about/directory/faculty/profile/{netid}"
-                if netid else CARLE_URL,
+                "url": url,
                 "title": title_el.get_text(strip=True) if title_el else "Professor",
-                "research_areas": "biomedical sciences",
+                "research_areas": "; ".join(kws),
             },
             CARLE_CFG,
-            keywords=list(CARLE_CFG["keywords"]),
+            keywords=kws,
         )
         if rec:
             out.append(rec)
+        if netid and i < len(cards) - 1:
+            time.sleep(DELAY)
     logger.info(f"Carle Medicine: {len(out)} bio-translational faculty")
     return out
 
@@ -153,11 +191,12 @@ def fetch_law() -> list[dict]:
             continue
         prof = _fetch_soup(url)
         email = _first_illinois_email(prof) if prof else ""
+        kws = (_labeled_phrases(prof) if prof else []) or list(LAW_CFG["keywords"])
         rec = normalize_faculty(
             {"name": name, "email": email, "url": url,
-             "title": "Professor", "research_areas": "law"},
+             "title": "Professor", "research_areas": "; ".join(kws)},
             LAW_CFG,
-            keywords=list(LAW_CFG["keywords"]),
+            keywords=kws,
         )
         if rec:
             out.append(rec)
