@@ -428,6 +428,24 @@ def test_is_junk_keyword_keeps_editing_research_and_plain_editorial():
         assert not _is_junk_keyword(k), k
 
 
+def test_is_junk_keyword_catches_publication_venues_and_split_fragments():
+    # Profile/Pure "research interest" sections sometimes list publication venues
+    # or comma-shatter prose into clauses (caught 2026-06-28 enriching Gies/ACES,
+    # which the DQ suite alone did not flag). Neither is a research area.
+    for k in ["Journal of Applied Psychology", 'reviewer for "journal of wind engineering"',
+              "conference proceedings", "and communities", "to examine emergent behavior",
+              "or related fields"]:
+        assert _is_junk_keyword(k), k
+
+
+def test_is_junk_keyword_keeps_areas_brushing_venue_and_connective_rules():
+    # A real area may carry "and"/"to" mid-phrase or merely resemble a venue word;
+    # only a *leading* connective or the whole word journal/proceedings is junk.
+    for k in ["science and technology studies", "atmosphere-to-ocean coupling",
+              "journalism", "topology"]:   # 'to'/'journal' only at a word boundary
+        assert not _is_junk_keyword(k), k
+
+
 def test_is_junk_keyword_catches_contact_block_residue():
     # The UIUC Physics directory template scraped each professor's contact panel
     # (email, office phone, office room/building) as "research keywords" — 92

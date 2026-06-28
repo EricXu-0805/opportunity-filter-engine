@@ -57,6 +57,25 @@ def test_experts_concepts_404_returns_empty():
     assert e.experts_concepts("Robert Knox", fetch=lambda slug: None) == []
 
 
+def test_refresh_targets_configured_departments(monkeypatch, tmp_path):
+    import json
+    p = tmp_path / "opps.json"
+    p.write_text(json.dumps([{"pi_name": "X", "department": "Department of Physics",
+                              "source": "uiuc_faculty", "source_type": "faculty_research",
+                              "keywords": ["physics"]}]))
+    seen = {}
+
+    def fake_enrich(records, departments, fetch=None):
+        seen["departments"] = departments
+        return []  # nothing enriched -> no merge/write path
+
+    monkeypatch.setattr(e, "enrich", fake_enrich)
+    assert e.refresh(str(p)) == 0
+    # the expanded target set folds in both the ACES cohort and the STEM departments
+    assert {"Department of Animal Sciences", "Department of Physics",
+            "Department of Economics"} <= seen["departments"]
+
+
 def test_enrich_only_touches_broad_only_in_target_depts():
     records = [
         {"pi_name": "Robert Knox", "department": "Department of Animal Sciences",

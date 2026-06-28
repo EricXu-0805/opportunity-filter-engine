@@ -63,6 +63,20 @@ jobs:
             python -m src.collectors.refresh_all --no-deep
           fi
 
+      - name: Monthly Illinois Experts enrichment (first week, deep runs only)
+        # Pure fingerprints change slowly, so the per-person Experts scrape runs
+        # ~monthly, not weekly — the keyword-richer dedup keeps its concepts when
+        # the weekly broad re-scrape re-fetches the same faculty. Folds into the
+        # data-refresh PR below. Polite: ~1s/person, only the broad-only faculty.
+        if: steps.mode.outputs.deep == 'true'
+        run: |
+          if [ "$(date -u +%d)" -le 07 ]; then
+            echo "First week of the month — running Illinois Experts enrichment"
+            python -m src.collectors.uiuc_experts --refresh
+          else
+            echo "Not the first week of the month — skipping Experts pass"
+          fi
+
       - name: Retroactive enricher pass
         run: python -m src.normalizers.enrich_processed --save
 

@@ -37,6 +37,26 @@ EXPERTS_URL = "https://experts.illinois.edu/en/persons/{slug}"
 TIMEOUT = 15
 DELAY = 1.0
 
+# Research-active departments whose own campus directory exposes no per-faculty
+# research areas, so their faculty otherwise carry only the department broad
+# field. Performance/professional units (Music, Art, Architecture) are left out —
+# their faculty don't publish into Pure, so they'd only 404. The set is a knob:
+# add a department here to fold it into the monthly Experts pass.
+TARGET_DEPARTMENTS = frozenset({
+    # ACES + geosciences + veterinary research (the first cohort)
+    "Department of Animal Sciences", "Department of Crop Sciences",
+    "Food Science & Human Nutrition", "Natural Resources & Environmental Sciences",
+    "Department of Atmospheric Sciences", "Department of Earth Science & Environmental Change",
+    "Department of Veterinary Clinical Medicine", "Department of Pathobiology",
+    "Department of Comparative Biosciences",
+    # research-active STEM / social-science departments with broad-only faculty
+    "Department of Economics", "Department of Physics", "Department of Statistics",
+    "Department of Mathematics", "Department of Political Science",
+    "School of Information Sciences", "Siebel School of Computing and Data Science",
+    "School of Integrative Biology", "School of Molecular & Cellular Biology",
+    "Department of Chemistry", "Department of Astronomy",
+})
+
 # Strip from the first title word onward — "Andrea Aguiar Research Associate
 # Professor" carries two title modifiers, so a single optional prefix isn't
 # enough. These words never appear as given/family names.
@@ -124,8 +144,38 @@ def enrich(records: list[dict], departments: set[str], fetch=None) -> list[dict]
     return out
 
 
+def refresh(path: str = "data/processed/opportunities.json") -> int:
+    """Monthly/on-demand pass: enrich every broad-field-only faculty record in
+    :data:`TARGET_DEPARTMENTS` from Illinois Experts and write the corpus back.
+    Idempotent — already-specific records are skipped, and the keyword-richer
+    dedup keeps prior concepts, so re-running only fills gaps (newly hired faculty,
+    profiles that gained publications). Returns the number enriched this pass."""
+    import json
+
+    from ..normalizers.school_audience import apply_school_audience
+    from .uiuc_faculty import merge_into_processed
+
+    corpus = json.load(open(path))
+    enriched = enrich(corpus, set(TARGET_DEPARTMENTS))
+    if enriched:
+        merge_into_processed(enriched, path)
+        corpus = json.load(open(path))
+        for o in corpus:
+            if o.get("source_type") == "faculty_research" and o.get("is_rolling") is not True:
+                o["is_rolling"] = True
+        apply_school_audience(corpus)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(corpus, f, indent=2, ensure_ascii=False, default=str)
+    logger.info(f"Illinois Experts refresh: {len(enriched)} faculty enriched")
+    return len(enriched)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     import sys
-    for name in sys.argv[1:] or ["Klara Nahrstedt"]:
-        print(f"{name}: {experts_concepts(name)}")
+
+    if "--refresh" in sys.argv:
+        refresh()
+    else:
+        for name in [a for a in sys.argv[1:] if not a.startswith("-")] or ["Klara Nahrstedt"]:
+            print(f"{name}: {experts_concepts(name)}")
