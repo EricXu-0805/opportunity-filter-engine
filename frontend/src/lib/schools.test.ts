@@ -107,7 +107,7 @@ describe('registry — switcher metadata', () => {
     // programs are not counted), not 'pending'.
     expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(9);
     expect(bySlug('umich')?.coverage.campusOpportunities).toBe(110);
-    expect(bySlug('uw')?.coverage.campusOpportunities).toBe(10);
+    expect(bySlug('uw')?.coverage.campusOpportunities).toBe(254);
     expect(bySlug('gatech')?.coverage.campusOpportunities).toBe(8);
     expect(bySlug('stanford')?.coverage.campusOpportunities).toBe(10);
     expect(bySlug('utexas')?.coverage.campusOpportunities).toBe(10);

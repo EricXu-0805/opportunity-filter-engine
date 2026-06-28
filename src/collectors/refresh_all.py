@@ -26,6 +26,8 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
+from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
+from .schools.uw_faculty import merge_into_processed as merge_uw_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -506,6 +508,10 @@ def refresh_all(deep: bool = True) -> dict:
             # ucb_common's) so a Michigan prof sharing a name with a Berkeley one
             # is never false-dropped.
             ("umich_faculty", fetch_umich_faculty, merge_umich_faculty),
+            # UW faculty (live-scraped via faculty_graph): ECE ships fully
+            # keyworded; the Arts & Sciences Drupal departments ship as
+            # emailed cold-email targets pending per-profile enrichment.
+            ("uw_faculty", fetch_uw_faculty, merge_uw_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

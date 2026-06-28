@@ -137,6 +137,9 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     # source across departments (UIUC model); cold-email targets whose
     # cross-school openness is per-professor, so audience is unknown.
     "umich_faculty": ("umich", "unknown"),
+    # UW faculty directory (live-scraped, via the faculty_graph engine). Same
+    # single-source model; per-professor openness, so audience is unknown.
+    "uw_faculty": ("uw", "unknown"),
 }
 
 

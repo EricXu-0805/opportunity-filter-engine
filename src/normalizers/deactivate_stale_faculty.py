@@ -84,6 +84,8 @@ FACULTY_SOURCES = frozenset({
     "ucb_publicpolicy_faculty",
     # University of Michigan — curated faculty (single source across depts).
     "umich_faculty",
+    # University of Washington — live-scraped faculty (single source across depts).
+    "uw_faculty",
 })
 
 GRACE_DAYS = 14

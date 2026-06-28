@@ -57,8 +57,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from collections import Counter
 from datetime import UTC, datetime
+from urllib.parse import urljoin
 
 from .ucb_common import (
     _RETIRED_TITLE_RE,
@@ -140,6 +142,10 @@ def _clean_keywords(person: dict) -> list[str]:
         return list(dict.fromkeys(kws))[:8]
     raw = _strip_nav_furniture(person.get("research_areas", ""))
     parts = [p.strip() for chunk in raw.split(";") for p in chunk.split(",")]
+    # Oxford-comma tails ("X, Y, and Wireless power transfer") split into a
+    # clause led by a connective — strip it so the real topic stands alone and
+    # the keyword clears the DQ junk filter.
+    parts = [re.sub(r"^(?:and|or|&)\s+", "", p, flags=re.I).strip() for p in parts]
     return list(dict.fromkeys(p for p in parts if len(p) >= 3))[:8]
 
 
@@ -282,10 +288,26 @@ def _scrape_directory(dept: dict) -> list[dict]:
             name = name_el.get_text(" ", strip=True)
             link_el = card.select_one(sel.get("link", "")) if sel.get("link") else name_el
             href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
+            href = urljoin(cfg["url"], href) if href else cfg["url"]
             title_el = card.select_one(sel["title"]) if sel.get("title") else None
             title = title_el.get_text(" ", strip=True) if title_el else "Professor"
+            # Optional richer selectors: some directory cards expose research
+            # interests and a mailto inline (e.g. UW ECE's stafftemplate cards),
+            # so deep mode can land keyworded, emailed faculty in one pass rather
+            # than name-only stubs that need per-profile enrichment.
+            research = ""
+            if sel.get("research"):
+                r_el = card.select_one(sel["research"])
+                research = r_el.get_text(" ", strip=True) if r_el else ""
+            email = None
+            if sel.get("email"):
+                e_el = card.select_one(sel["email"])
+                if e_el is not None:
+                    raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
+                    email = raw.replace("mailto:", "").split("?")[0].strip() or None
             if _is_person_name(name):
-                people.append(faculty(name, title=title, url=href or cfg["url"]))
+                people.append(faculty(name, title=title, url=href,
+                                      email=email, research_areas=research))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
         return []
