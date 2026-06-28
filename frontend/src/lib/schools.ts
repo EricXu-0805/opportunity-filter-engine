@@ -129,10 +129,12 @@ export const SCHOOLS: School[] = [
     color: '#BF5700',
     location: 'Austin, TX',
     // Campus-graph engine (10 program/office records) plus the live-scraped
-    // faculty directory (~239 professors — Computer Science, keyworded via
-    // research groups, + ECE). The CDCM/MRSEC REU is national/open, not counted.
-    // Conservative maintained estimate, rounded down like UCB.
-    coverage: { campusOpportunities: 249, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~612 professors): CS (keyworded via research groups) +
+    // ECE; the four Cockrell School engineering depts (ChemE, Aerospace, Civil,
+    // BME — WordPress, tenure-track filtered, keyworded); the three College of
+    // Natural Sciences depts (Physics, Chemistry, Math — Algolia, keyworded);
+    // and Mechanical Engineering. CDCM/MRSEC REU is national/open, not counted.
+    coverage: { campusOpportunities: 622, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 113 },
   },
   {
