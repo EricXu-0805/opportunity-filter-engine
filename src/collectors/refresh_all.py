@@ -34,6 +34,8 @@ from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
 from .schools.utexas_faculty import merge_into_processed as merge_utexas_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
 from .schools.uw_faculty import merge_into_processed as merge_uw_faculty
+from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
+from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -527,6 +529,9 @@ def refresh_all(deep: bool = True) -> dict:
             # UT Austin faculty (live-scraped via faculty_graph): CS (keyworded
             # via research groups) + ECE.
             ("utexas_faculty", fetch_utexas_faculty, merge_utexas_faculty),
+            # UW-Madison faculty (live-scraped via faculty_graph): Computer
+            # Sciences.
+            ("wisc_faculty", fetch_wisc_faculty, merge_wisc_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

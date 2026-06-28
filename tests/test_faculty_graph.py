@@ -294,3 +294,14 @@ class TestUTexasConfig:
         from src.collectors.schools.utexas_faculty import SCHOOL as UT
         cs = next(d for d in UT["departments"] if d["short"] == "CS")
         assert cs["scrape"]["selectors"].get("research")
+
+
+class TestWiscConfig:
+    def test_wisc_config_valid(self):
+        from src.collectors.schools.wisc_faculty import SCHOOL as W
+        assert fg.validate(W) == []
+
+    def test_wisc_registered(self):
+        from src.collectors.schools.wisc_faculty import SCHOOL as W
+        assert SOURCE_DEFAULTS[W["source"]] == ("wisc", "unknown")
+        assert W["source"] in FACULTY_SOURCES
