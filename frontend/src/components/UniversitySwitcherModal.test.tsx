@@ -60,7 +60,10 @@ describe('UniversitySwitcherModal — rendering', () => {
     const pendingCount = SCHOOLS.filter(
       (s) => s.coverage.campusOpportunities === 'pending',
     ).length;
-    expect(screen.getAllByText('universitySwitcher.coveragePending').length).toBe(pendingCount);
+    // queryAllByText (not getAllByText) so the assertion holds at zero — every
+    // school now ships a live campus count, but the registry-derived check keeps
+    // working if a future pending-coverage school is added.
+    expect(screen.queryAllByText('universitySwitcher.coveragePending').length).toBe(pendingCount);
   });
 
   it('shows a real catalog counts line on every card, no pending-catalog note left', () => {

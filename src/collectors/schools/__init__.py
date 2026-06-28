@@ -12,9 +12,14 @@ touches the refresh wiring again — only this list grows.
 
 from __future__ import annotations
 
+from .gatech import SCHOOL as GATECH
 from .princeton import SCHOOL as PRINCETON
+from .stanford import SCHOOL as STANFORD
+from .ucla import SCHOOL as UCLA
 from .umich import SCHOOL as UMICH
+from .utexas import SCHOOL as UTEXAS
 from .uw import SCHOOL as UW
+from .wisc import SCHOOL as WISC
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
 # order; new schools (Top-50 rollout) append here.
@@ -22,4 +27,9 @@ SCHOOL_CONFIGS: list[dict] = [
     PRINCETON,
     UMICH,
     UW,
+    GATECH,
+    STANFORD,
+    UTEXAS,
+    WISC,
+    UCLA,
 ]

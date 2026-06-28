@@ -39,11 +39,6 @@ export interface School {
   catalog: { colleges: number; majors: number } | null;
 }
 
-const PENDING_COVERAGE: SchoolCoverage = {
-  campusOpportunities: 'pending',
-  note: 'universitySwitcher.coveragePending',
-};
-
 /**
  * UC Berkeley campus coverage, broken out by source family so the headline
  * count is a transparent, config-driven estimate rather than a magic literal.
@@ -117,7 +112,11 @@ export const SCHOOLS: School[] = [
     nameZh: '佐治亚理工学院',
     color: '#B3A369',
     location: 'Atlanta, GA',
-    coverage: PENDING_COVERAGE,
+    // Campus-graph engine: UROP hub, PURA awards, Petit Scholars, the Math /
+    // Computing / Engineering research pages, the career center, and the IBB
+    // institute lab target — 8 school='gatech' records (the SURE + College of
+    // Sciences REU programs are national/open, not counted). Grows with faculty.
+    coverage: { campusOpportunities: 8, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 6, majors: 43 },
   },
   {
@@ -128,7 +127,11 @@ export const SCHOOLS: School[] = [
     nameZh: '得克萨斯大学奥斯汀分校',
     color: '#BF5700',
     location: 'Austin, TX',
-    coverage: PENDING_COVERAGE,
+    // Campus-graph engine: Office of Undergraduate Research hub, URF, summer
+    // research scholars, the Freshman Research Initiative + streams, McNair, the
+    // Cockrell engineering research page, and the career center — 10
+    // school='utexas' records (the CDCM/MRSEC REU is national/open). Grows with faculty.
+    coverage: { campusOpportunities: 10, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 113 },
   },
   {
@@ -139,7 +142,11 @@ export const SCHOOLS: School[] = [
     nameZh: '加州大学洛杉矶分校',
     color: '#2774AE',
     location: 'Los Angeles, CA',
-    coverage: PENDING_COVERAGE,
+    // Campus-graph engine: the two Undergraduate Research Centers (Sciences +
+    // HASS), URSP, the URC summer program, Dean's Research Fellowship, SRP-99,
+    // the Samueli engineering research page, the career center, and the CNSI
+    // institute — 10 school='ucla' records (Amgen Scholars is national/open). Grows with faculty.
+    coverage: { campusOpportunities: 10, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 9, majors: 135 },
   },
   {
@@ -167,7 +174,11 @@ export const SCHOOLS: School[] = [
     nameZh: '威斯康星大学麦迪逊分校',
     color: '#C5050C',
     location: 'Madison, WI',
-    coverage: PENDING_COVERAGE,
+    // Campus-graph engine: the OVCR undergrad hub + WISCIENCE guide, URS,
+    // Hilldale and Sophomore Research fellowships, the Chemistry + Engineering
+    // research pages, SuccessWorks career center, and the WID institute — 9
+    // school='wisc' records (the IBS-SRP REU is national/open). Grows with faculty.
+    coverage: { campusOpportunities: 9, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 8, majors: 146 },
   },
   {
@@ -178,7 +189,11 @@ export const SCHOOLS: School[] = [
     nameZh: '斯坦福大学',
     color: '#8C1515',
     location: 'Stanford, CA',
-    coverage: PENDING_COVERAGE,
+    // Campus-graph engine: the UAR/VPUE hub + Explore grants, Major/Small
+    // grants, Chappell Lougee, the VPUE STEM Fellows program, CS + Symbolic
+    // Systems research, the career center, and the Bio-X institute — 10
+    // school='stanford' records (SSRP/Amgen is national/open). Grows with faculty.
+    coverage: { campusOpportunities: 10, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 3, majors: 71 },
   },
   {
