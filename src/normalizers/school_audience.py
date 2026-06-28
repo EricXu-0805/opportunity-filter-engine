@@ -83,6 +83,9 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_rhetoric_faculty": ("ucb", "unknown"),
     "ucb_spanish_portuguese_faculty": ("ucb", "unknown"),
     "ucb_scandinavian_faculty": ("ucb", "unknown"),
+    "ucb_filmmedia_faculty": ("ucb", "unknown"),
+    "ucb_classics_faculty": ("ucb", "unknown"),
+    "ucb_publicpolicy_faculty": ("ucb", "unknown"),
     "ucb_urap": ("ucb", "campus"),
     # URAP live project DB (urapprojects.berkeley.edu) — Berkeley-matriculated
     # students only, like the URAP overview.

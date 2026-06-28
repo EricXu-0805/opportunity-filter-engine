@@ -38,6 +38,7 @@ from .ucb_campus import merge_into_processed as merge_ucb_campus
 from .ucb_cbe_faculty import fetch_and_normalize as fetch_ucb_cbe
 from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
 from .ucb_chem_faculty import fetch_and_normalize as fetch_ucb_chem
+from .ucb_classics_faculty import fetch_and_normalize as fetch_ucb_classics
 from .ucb_common import merge_into_processed as merge_ucb_cee
 from .ucb_common import merge_into_processed as merge_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_eecs
@@ -51,6 +52,7 @@ from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
 from .ucb_english_faculty import fetch_and_normalize as fetch_ucb_english
 from .ucb_eps_faculty import fetch_and_normalize as fetch_ucb_eps
 from .ucb_espm_faculty import fetch_and_normalize as fetch_ucb_espm
+from .ucb_filmmedia_faculty import fetch_and_normalize as fetch_ucb_filmmedia
 from .ucb_french_faculty import fetch_and_normalize as fetch_ucb_french
 from .ucb_geog_faculty import fetch_and_normalize as fetch_ucb_geog
 from .ucb_german_faculty import fetch_and_normalize as fetch_ucb_german
@@ -74,6 +76,7 @@ from .ucb_physics_faculty import fetch_and_normalize as fetch_ucb_physics
 from .ucb_pmb_faculty import fetch_and_normalize as fetch_ucb_pmb
 from .ucb_polisci_faculty import fetch_and_normalize as fetch_ucb_polisci
 from .ucb_psych_faculty import fetch_and_normalize as fetch_ucb_psych
+from .ucb_publicpolicy_faculty import fetch_and_normalize as fetch_ucb_publicpolicy
 from .ucb_rhetoric_faculty import fetch_and_normalize as fetch_ucb_rhetoric
 from .ucb_scandinavian_faculty import fetch_and_normalize as fetch_ucb_scandinavian
 from .ucb_slavic_faculty import fetch_and_normalize as fetch_ucb_slavic
@@ -495,6 +498,9 @@ def refresh_all(deep: bool = True) -> dict:
             ("ucb_rhetoric_faculty", fetch_ucb_rhetoric, merge_ucb_faculty),
             ("ucb_spanish_portuguese_faculty", fetch_ucb_spanish_portuguese, merge_ucb_faculty),
             ("ucb_scandinavian_faculty", fetch_ucb_scandinavian, merge_ucb_faculty),
+            ("ucb_filmmedia_faculty", fetch_ucb_filmmedia, merge_ucb_faculty),
+            ("ucb_classics_faculty", fetch_ucb_classics, merge_ucb_faculty),
+            ("ucb_publicpolicy_faculty", fetch_ucb_publicpolicy, merge_ucb_faculty),
             # University of Michigan curated faculty (via faculty_graph engine).
             # Single source across departments; its own school-scoped merge (not
             # ucb_common's) so a Michigan prof sharing a name with a Berkeley one
