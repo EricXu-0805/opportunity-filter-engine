@@ -105,6 +105,26 @@ _RETIRED_TITLE_RE = re.compile(r"\b(emeritus|emerita|retired)\b", re.IGNORECASE)
 
 EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 
+# Standard "Open Berkeley" person-grid selectors. Most L&S humanities/language
+# directories render their roster as `div.node-openberkeley-person` cards with
+# the name in an <h2>/<h3> (sometimes wrapping the profile <a>) and the email /
+# research-interest fields in the openberkeley field divs. The combined name
+# selector tolerates both the "<h2>name</h2> + sibling /people/ link" and the
+# "<h3><a>name</a></h3>" variants. Verified Jun 2026 against music, complit,
+# german, french, slavic, tdps, rhetoric, spanish-portuguese, scandinavian.
+# A department whose markup deviates keeps its own bespoke parser instead.
+OPENBERKELEY_PERSON_SELECTORS = {
+    "card": "div.node-openberkeley-person",
+    "name": "h2 a, h3 a, h2, h3",
+    "link": "a[href*='/people/']",
+    "title": "div.field-name-field-openberkeley-person-title",
+    "email_field": "div.field-name-field-openberkeley-person-email",
+    "research_interests": [
+        "div.field-name-body .field-item",
+        "div.field-name-field-research-interests .field-item",
+    ],
+}
+
 # Generic, source-agnostic keyword/skill inference. Listing-only ("lite")
 # records have no research signal and fall back to the broad department field;
 # a future profile-enrichment pass that fills research_areas gets these for free.

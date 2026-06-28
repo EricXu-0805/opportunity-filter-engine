@@ -69,6 +69,16 @@ FACULTY_SOURCES = frozenset({
     "ucb_philos_faculty",
     "ucb_socwel_faculty",
     "ucb_sph_faculty",
+    # L&S humanities/language directories (Open-Berkeley person grids).
+    "ucb_music_faculty",
+    "ucb_complit_faculty",
+    "ucb_german_faculty",
+    "ucb_french_faculty",
+    "ucb_slavic_faculty",
+    "ucb_tdps_faculty",
+    "ucb_rhetoric_faculty",
+    "ucb_spanish_portuguese_faculty",
+    "ucb_scandinavian_faculty",
     # University of Michigan — curated faculty (single source across depts).
     "umich_faculty",
 })

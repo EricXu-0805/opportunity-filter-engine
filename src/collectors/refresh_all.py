@@ -43,6 +43,7 @@ from .ucb_common import merge_into_processed as merge_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_eecs
 from .ucb_common import merge_into_processed as merge_ucb_faculty
 from .ucb_common import merge_into_processed as merge_ucb_stat
+from .ucb_complit_faculty import fetch_and_normalize as fetch_ucb_complit
 from .ucb_dcrp_faculty import fetch_and_normalize as fetch_ucb_dcrp
 from .ucb_econ_faculty import fetch_and_normalize as fetch_ucb_econ
 from .ucb_education_faculty import fetch_and_normalize as fetch_ucb_education
@@ -50,7 +51,9 @@ from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
 from .ucb_english_faculty import fetch_and_normalize as fetch_ucb_english
 from .ucb_eps_faculty import fetch_and_normalize as fetch_ucb_eps
 from .ucb_espm_faculty import fetch_and_normalize as fetch_ucb_espm
+from .ucb_french_faculty import fetch_and_normalize as fetch_ucb_french
 from .ucb_geog_faculty import fetch_and_normalize as fetch_ucb_geog
+from .ucb_german_faculty import fetch_and_normalize as fetch_ucb_german
 from .ucb_haas_faculty import fetch_and_normalize as fetch_ucb_haas
 from .ucb_history_faculty import fetch_and_normalize as fetch_ucb_history
 from .ucb_ib_faculty import fetch_and_normalize as fetch_ucb_ib
@@ -63,6 +66,7 @@ from .ucb_math_faculty import fetch_and_normalize as fetch_ucb_math
 from .ucb_mcb_faculty import fetch_and_normalize as fetch_ucb_mcb
 from .ucb_me_faculty import fetch_and_normalize as fetch_ucb_me
 from .ucb_mse_faculty import fetch_and_normalize as fetch_ucb_mse
+from .ucb_music_faculty import fetch_and_normalize as fetch_ucb_music
 from .ucb_ne_faculty import fetch_and_normalize as fetch_ucb_ne
 from .ucb_nst_faculty import fetch_and_normalize as fetch_ucb_nst
 from .ucb_philos_faculty import fetch_and_normalize as fetch_ucb_philos
@@ -70,10 +74,15 @@ from .ucb_physics_faculty import fetch_and_normalize as fetch_ucb_physics
 from .ucb_pmb_faculty import fetch_and_normalize as fetch_ucb_pmb
 from .ucb_polisci_faculty import fetch_and_normalize as fetch_ucb_polisci
 from .ucb_psych_faculty import fetch_and_normalize as fetch_ucb_psych
+from .ucb_rhetoric_faculty import fetch_and_normalize as fetch_ucb_rhetoric
+from .ucb_scandinavian_faculty import fetch_and_normalize as fetch_ucb_scandinavian
+from .ucb_slavic_faculty import fetch_and_normalize as fetch_ucb_slavic
 from .ucb_soc_faculty import fetch_and_normalize as fetch_ucb_soc
 from .ucb_socwel_faculty import fetch_and_normalize as fetch_ucb_socwel
+from .ucb_spanish_portuguese_faculty import fetch_and_normalize as fetch_ucb_spanish_portuguese
 from .ucb_sph_faculty import fetch_and_normalize as fetch_ucb_sph
 from .ucb_stat_faculty import fetch_and_normalize as fetch_ucb_stat
+from .ucb_tdps_faculty import fetch_and_normalize as fetch_ucb_tdps
 from .ucb_urap import fetch_and_normalize as fetch_ucb_urap
 from .ucb_urap import merge_into_processed as merge_ucb_urap
 from .ucb_urap_projects import fetch_and_normalize as fetch_ucb_urap_projects
@@ -477,6 +486,15 @@ def refresh_all(deep: bool = True) -> dict:
             ("ucb_philos_faculty", fetch_ucb_philos, merge_ucb_faculty),
             ("ucb_socwel_faculty", fetch_ucb_socwel, merge_ucb_faculty),
             ("ucb_sph_faculty", fetch_ucb_sph, merge_ucb_faculty),
+            ("ucb_music_faculty", fetch_ucb_music, merge_ucb_faculty),
+            ("ucb_complit_faculty", fetch_ucb_complit, merge_ucb_faculty),
+            ("ucb_german_faculty", fetch_ucb_german, merge_ucb_faculty),
+            ("ucb_french_faculty", fetch_ucb_french, merge_ucb_faculty),
+            ("ucb_slavic_faculty", fetch_ucb_slavic, merge_ucb_faculty),
+            ("ucb_tdps_faculty", fetch_ucb_tdps, merge_ucb_faculty),
+            ("ucb_rhetoric_faculty", fetch_ucb_rhetoric, merge_ucb_faculty),
+            ("ucb_spanish_portuguese_faculty", fetch_ucb_spanish_portuguese, merge_ucb_faculty),
+            ("ucb_scandinavian_faculty", fetch_ucb_scandinavian, merge_ucb_faculty),
             # University of Michigan curated faculty (via faculty_graph engine).
             # Single source across departments; its own school-scoped merge (not
             # ucb_common's) so a Michigan prof sharing a name with a Berkeley one
