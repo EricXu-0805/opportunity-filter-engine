@@ -30,6 +30,8 @@ from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_facu
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
+from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
+from .schools.utexas_faculty import merge_into_processed as merge_utexas_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
 from .schools.uw_faculty import merge_into_processed as merge_uw_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
@@ -522,6 +524,9 @@ def refresh_all(deep: bool = True) -> dict:
             # Stanford faculty (live-scraped via faculty_graph): School of
             # Engineering departments (shared stanford-person template).
             ("stanford_faculty", fetch_stanford_faculty, merge_stanford_faculty),
+            # UT Austin faculty (live-scraped via faculty_graph): CS (keyworded
+            # via research groups) + ECE.
+            ("utexas_faculty", fetch_utexas_faculty, merge_utexas_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

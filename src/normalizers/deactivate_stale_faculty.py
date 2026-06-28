@@ -90,6 +90,8 @@ FACULTY_SOURCES = frozenset({
     "gatech_faculty",
     # Stanford — live-scraped faculty (single source across depts).
     "stanford_faculty",
+    # UT Austin — live-scraped faculty (single source across depts).
+    "utexas_faculty",
 })
 
 GRACE_DAYS = 14
