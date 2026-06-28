@@ -73,6 +73,16 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_philos_faculty": ("ucb", "unknown"),
     "ucb_socwel_faculty": ("ucb", "unknown"),
     "ucb_sph_faculty": ("ucb", "unknown"),
+    # L&S humanities/language faculty directories (Open-Berkeley person grids).
+    "ucb_music_faculty": ("ucb", "unknown"),
+    "ucb_complit_faculty": ("ucb", "unknown"),
+    "ucb_german_faculty": ("ucb", "unknown"),
+    "ucb_french_faculty": ("ucb", "unknown"),
+    "ucb_slavic_faculty": ("ucb", "unknown"),
+    "ucb_tdps_faculty": ("ucb", "unknown"),
+    "ucb_rhetoric_faculty": ("ucb", "unknown"),
+    "ucb_spanish_portuguese_faculty": ("ucb", "unknown"),
+    "ucb_scandinavian_faculty": ("ucb", "unknown"),
     "ucb_urap": ("ucb", "campus"),
     # URAP live project DB (urapprojects.berkeley.edu) — Berkeley-matriculated
     # students only, like the URAP overview.
