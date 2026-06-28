@@ -112,11 +112,12 @@ export const SCHOOLS: School[] = [
     nameZh: '佐治亚理工学院',
     color: '#B3A369',
     location: 'Atlanta, GA',
-    // Campus-graph engine: UROP hub, PURA awards, Petit Scholars, the Math /
-    // Computing / Engineering research pages, the career center, and the IBB
-    // institute lab target — 8 school='gatech' records (the SURE + College of
-    // Sciences REU programs are national/open, not counted). Grows with faculty.
-    coverage: { campusOpportunities: 8, note: 'universitySwitcher.coverageCampus' },
+    // Campus-graph engine (8 program/office/lab records) plus the live-scraped
+    // College of Computing faculty directory (~223 professors across the CS,
+    // Interactive Computing, and Computational Science & Engineering schools,
+    // paginated). The SURE + College of Sciences REU programs are national/open,
+    // not counted. Conservative maintained estimate, rounded down like UCB.
+    coverage: { campusOpportunities: 231, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 6, majors: 43 },
   },
   {
