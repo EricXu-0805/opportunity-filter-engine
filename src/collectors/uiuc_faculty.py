@@ -1302,6 +1302,10 @@ def _is_junk_keyword(k: str) -> bool:
         return True
     if re.search(r"&[a-z]{2,}", kl):  # HTML-entity residue ("agents &amp", "se&nbsp")
         return True
+    if re.search(r"\b(?:journal|proceedings)\b", kl):  # publication venue, not a topic
+        return True
+    if re.match(r"^(?:and|or|but|to)\b", kl):  # tail of a comma/sentence-split clause
+        return True
     if "\t" in kl:  # scraped CV-table residue (degree<TAB>field<TAB>school<TAB>year)
         return True
     if _CV_DEGREE_RE.search(kl) or re.match(r"^(?:ba|bs|ma)\b", kl):  # degree/CV line
