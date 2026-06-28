@@ -168,3 +168,59 @@ class TestScrapeLayer:
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", lambda url: None)
         dept = {"short": "WID", "scrape": {"url": "https://example.edu/x", "selectors": {"card": "div"}}}
         assert fg._scrape_directory(dept) == []
+
+    def test_scrape_captures_research_email_and_absolutizes_href(self, monkeypatch):
+        """Rich cards (e.g. UW ECE) expose interests + a mailto inline, and link
+        with a relative href — deep mode must land keyworded, emailed faculty
+        with an absolute profile URL in one pass."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="entry">
+          <span class="nm"><a href="/people/ada/">Ada Q. Lovelace</a></span>
+          <span class="ti">Associate Professor</span>
+          <span class="ri">Machine learning, computer vision, and Robotics</span>
+          <span class="em"><a href="mailto:ada@uw.edu?subject=hi">ada@uw.edu</a></span>
+        </div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "ECE", "scrape": {
+            "url": "https://www.ece.uw.edu/faculty/",
+            "selectors": {"card": "div.entry", "name": ".nm a", "link": ".nm a",
+                          "title": ".ti", "research": ".ri", "email": ".em a"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        p = people[0]
+        assert p["url"] == "https://www.ece.uw.edu/people/ada/"  # relative -> absolute
+        assert p["email"] == "ada@uw.edu"  # mailto: + ?subject stripped
+        assert "Machine learning" in p["research_areas"]
+
+    def test_clean_keywords_strips_oxford_comma_connective(self):
+        """An Oxford-comma tail ("..., and Robotics") splits into a clause led by
+        'and' — the connective must be stripped so the keyword clears the DQ junk
+        filter (regression: UW ECE 'and Wireless power transfer')."""
+        person = {"research_areas": "Machine learning, computer vision, and Robotics"}
+        kws = fg._clean_keywords(person)
+        assert "Robotics" in kws
+        assert not any(k.lower().startswith("and ") for k in kws)
+        for k in kws:
+            assert not _is_junk_keyword(k), k
+
+
+# --- University of Washington config (live-scraped, no network in tests) ----
+
+class TestUWConfig:
+    def test_uw_config_valid(self):
+        from src.collectors.schools.uw_faculty import SCHOOL as UW
+        assert fg.validate(UW) == []
+
+    def test_uw_registered_in_source_defaults_and_faculty_sources(self):
+        from src.collectors.schools.uw_faculty import SCHOOL as UW
+        assert SOURCE_DEFAULTS[UW["source"]] == ("uw", "unknown")
+        assert UW["source"] in FACULTY_SOURCES
+
+    def test_uw_every_department_has_a_scrape_block(self):
+        from src.collectors.schools.uw_faculty import SCHOOL as UW
+        for dept in UW["departments"]:
+            assert dept.get("scrape", {}).get("selectors", {}).get("card"), dept["short"]
