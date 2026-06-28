@@ -94,7 +94,7 @@ describe('registry — switcher metadata', () => {
     }
   });
 
-  it('UIUC, UCB, Princeton, and Michigan are the schools with live campus coverage', () => {
+  it('UIUC, UCB, Princeton, Michigan, and UW are the schools with live campus coverage', () => {
     expect(bySlug('uiuc')?.coverage.campusOpportunities).toBe(4700);
     // UCB coverage is the config-driven estimate, not a magic literal — assert
     // it tracks the computed constant and clears a conservative floor that the
@@ -106,9 +106,10 @@ describe('registry — switcher metadata', () => {
     // counts, not 'pending'.
     expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(9);
     expect(bySlug('umich')?.coverage.campusOpportunities).toBe(110);
+    expect(bySlug('uw')?.coverage.campusOpportunities).toBe(10);
     const live = SCHOOLS.filter((s) => s.coverage.campusOpportunities !== 'pending');
     expect(new Set(live.map((s) => s.slug))).toEqual(
-      new Set(['uiuc', 'ucb', 'princeton', 'umich']),
+      new Set(['uiuc', 'ucb', 'princeton', 'umich', 'uw']),
     );
   });
 
