@@ -1,17 +1,22 @@
 """UW-Madison faculty config (via the faculty_graph engine).
 
 Scrape-first, like the other peer schools. UW-Madison's departments run
-different CMSes on inconsistent URL paths; this covers the one whose directory is
-a cleanly server-rendered WordPress grid:
+different CMSes; this covers each via the cleanest source it exposes:
 
   * **Computer Science** (``www.cs.wisc.edu/people/faculty-2/``) — a
-    ``faculty-member-content`` grid with name + a public mailto inline, so CS
-    faculty land as accurate, emailed cold-email targets.
+    ``faculty-member-content`` grid with name + public mailto inline.
+  * **ECE / Mechanical / Biomedical Engineering** — the College of Engineering's
+    shared ``directory.engr.wisc.edu/<dept>/`` lists faculty and staff together
+    in ``div.profileDisplay`` cards; a ``link_filter`` keeps only the ``/Faculty/``
+    profile links (the staff carry ``/Staff/``), with public emails inline.
+  * **Mathematics** — a WordPress ``uw_staff`` post type filtered to the
+    Professor / Associate / Assistant ``uw_staff_type`` terms (name un-inverted
+    from "Last, First").
 
-Deferred until their real directory URL / render path is confirmed: ECE, ME,
-BME, Physics, Chemistry, Math, Statistics (404 on the obvious paths, rate-limit,
-or a different structure) — a guessed scrape would risk a wrong count, so they
-wait.
+Deferred: Statistics (its directory mixes staff under one selector with no clean
+faculty isolation), Physics (TLS handshake rejects non-browser clients), and
+Chemistry (an AWS load-balancer bot-challenge returns an empty body) — all need
+the headless path.
 
 Single source ("wisc_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -20,6 +25,21 @@ ids namespaced by department short-code. Audience "unknown".
 from __future__ import annotations
 
 from .. import faculty_graph
+
+
+# College of Engineering shared directory: faculty and staff share the page, so
+# keep only the /Faculty/ profile links; the profileSubText cell is contact info
+# (not research), so these land as emailed name+title cold-email targets.
+def _engr(short: str, name: str, majors: list[str], code: str) -> dict:
+    url = f"https://directory.engr.wisc.edu/{code}/"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "link_filter": r"/Faculty/",
+                       "selectors": {"card": "div.profileDisplay",
+                                     "name": "h3.display a.display",
+                                     "link": "h3.display a.display",
+                                     "title": "p.title",
+                                     "email": "a[href^='mailto:']"}}}
+
 
 SCHOOL: dict = {
     "school_slug": "wisc",
@@ -47,6 +67,22 @@ SCHOOL: dict = {
                     "email": "a[href^='mailto:']",
                 },
             },
+        },
+        _engr("ECE", "Department of Electrical & Computer Engineering",
+              ["Electrical Engineering", "Computer Engineering"], "ece"),
+        _engr("ME", "Department of Mechanical Engineering",
+              ["Mechanical Engineering"], "me"),
+        _engr("BME", "Department of Biomedical Engineering",
+              ["Biomedical Engineering"], "bme"),
+        {
+            "short": "MATH",
+            "name": "Department of Mathematics",
+            "majors": ["Mathematics", "Applied Mathematics"],
+            "directory_url": "https://www.math.wisc.edu/people/",
+            "api": {"type": "wp", "base": "https://www.math.wisc.edu",
+                    "post_type": "uw_staff",
+                    "category_include": {"uw_staff_type": [20, 21, 22]},
+                    "name_flip": True},
         },
     ],
 }

@@ -281,13 +281,15 @@ def _passes_ladder(title: str, lf: dict | None) -> bool:
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
-                 name_flip: bool = False) -> list[dict]:
+                 name_flip: bool = False, link_filter: str | None = None) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
     and ``email`` (a mailto) let rich cards (e.g. UW ECE) land keyworded, emailed
     faculty in one pass rather than name-only stubs. ``ladder_filter`` drops
-    non-ladder ranks by title; ``name_flip`` un-inverts "Last, First" listings.
+    non-ladder ranks by title; ``name_flip`` un-inverts "Last, First" listings;
+    ``link_filter`` keeps only cards whose profile href matches (e.g. "/Faculty/"
+    on directories that list faculty and staff together).
     """
     people: list[dict] = []
     for card in soup.select(sel.get("card", "")):
@@ -299,6 +301,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             name = _flip_name(name)
         link_el = card.select_one(sel.get("link", "")) if sel.get("link") else name_el
         href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
+        if link_filter and not re.search(link_filter, href):
+            continue
         href = urljoin(base_url, href) if href else base_url
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
@@ -358,12 +362,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
     sel = cfg.get("selectors", {})
     lf = cfg.get("ladder_filter")
     flip = cfg.get("name_flip", False)
+    link_f = cfg.get("link_filter")
     soup = fetch_soup(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
-        people = _parse_cards(soup, sel, base, lf, flip)
+        people = _parse_cards(soup, sel, base, lf, flip, link_f)
         pag = cfg.get("paginate")
         if pag:
             param = pag.get("param", "page")
@@ -373,7 +378,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 s2 = fetch_soup(f"{base}{sep}{param}={pg}")
                 if s2 is None:
                     break
-                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip)
+                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f)
                          if (p["name"], p["url"]) not in seen]
                 if not fresh:
                     break
