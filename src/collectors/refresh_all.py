@@ -26,6 +26,8 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
+from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
+from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
@@ -517,6 +519,9 @@ def refresh_all(deep: bool = True) -> dict:
             # Georgia Tech faculty (live-scraped via faculty_graph): College of
             # Computing, paginated.
             ("gatech_faculty", fetch_gatech_faculty, merge_gatech_faculty),
+            # Stanford faculty (live-scraped via faculty_graph): School of
+            # Engineering departments (shared stanford-person template).
+            ("stanford_faculty", fetch_stanford_faculty, merge_stanford_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

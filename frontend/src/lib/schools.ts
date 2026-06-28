@@ -190,11 +190,12 @@ export const SCHOOLS: School[] = [
     nameZh: '斯坦福大学',
     color: '#8C1515',
     location: 'Stanford, CA',
-    // Campus-graph engine: the UAR/VPUE hub + Explore grants, Major/Small
-    // grants, Chappell Lougee, the VPUE STEM Fellows program, CS + Symbolic
-    // Systems research, the career center, and the Bio-X institute — 10
-    // school='stanford' records (SSRP/Amgen is national/open). Grows with faculty.
-    coverage: { campusOpportunities: 10, note: 'universitySwitcher.coverageCampus' },
+    // Campus-graph engine (10 program/office/lab records) plus the live-scraped
+    // School of Engineering faculty directory (~173 professors across ME, BioE,
+    // Aero/Astro, MSE, and Chemical Engineering — shared stanford-person
+    // template). SSRP/Amgen is national/open, not counted. Conservative
+    // maintained estimate, rounded down like UCB.
+    coverage: { campusOpportunities: 183, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 3, majors: 71 },
   },
   {
