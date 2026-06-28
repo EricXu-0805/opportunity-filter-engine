@@ -128,11 +128,11 @@ export const SCHOOLS: School[] = [
     nameZh: '得克萨斯大学奥斯汀分校',
     color: '#BF5700',
     location: 'Austin, TX',
-    // Campus-graph engine: Office of Undergraduate Research hub, URF, summer
-    // research scholars, the Freshman Research Initiative + streams, McNair, the
-    // Cockrell engineering research page, and the career center — 10
-    // school='utexas' records (the CDCM/MRSEC REU is national/open). Grows with faculty.
-    coverage: { campusOpportunities: 10, note: 'universitySwitcher.coverageCampus' },
+    // Campus-graph engine (10 program/office records) plus the live-scraped
+    // faculty directory (~239 professors — Computer Science, keyworded via
+    // research groups, + ECE). The CDCM/MRSEC REU is national/open, not counted.
+    // Conservative maintained estimate, rounded down like UCB.
+    coverage: { campusOpportunities: 249, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 113 },
   },
   {

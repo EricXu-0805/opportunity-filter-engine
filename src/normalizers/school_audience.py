@@ -144,6 +144,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "gatech_faculty": ("gatech", "unknown"),
     # Stanford faculty directory (live-scraped, via the faculty_graph engine).
     "stanford_faculty": ("stanford", "unknown"),
+    # UT Austin faculty directory (live-scraped, via the faculty_graph engine).
+    "utexas_faculty": ("utexas", "unknown"),
 }
 
 

@@ -278,3 +278,19 @@ class TestStanfordConfig:
         from src.collectors.schools.stanford_faculty import SCHOOL as SF
         for dept in SF["departments"]:
             assert dept.get("scrape", {}).get("selectors", {}).get("card"), dept["short"]
+
+
+class TestUTexasConfig:
+    def test_utexas_config_valid(self):
+        from src.collectors.schools.utexas_faculty import SCHOOL as UT
+        assert fg.validate(UT) == []
+
+    def test_utexas_registered(self):
+        from src.collectors.schools.utexas_faculty import SCHOOL as UT
+        assert SOURCE_DEFAULTS[UT["source"]] == ("utexas", "unknown")
+        assert UT["source"] in FACULTY_SOURCES
+
+    def test_utexas_cs_extracts_research_groups(self):
+        from src.collectors.schools.utexas_faculty import SCHOOL as UT
+        cs = next(d for d in UT["departments"] if d["short"] == "CS")
+        assert cs["scrape"]["selectors"].get("research")
