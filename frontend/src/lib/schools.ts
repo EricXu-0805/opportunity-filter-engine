@@ -175,11 +175,11 @@ export const SCHOOLS: School[] = [
     nameZh: '威斯康星大学麦迪逊分校',
     color: '#C5050C',
     location: 'Madison, WI',
-    // Campus-graph engine: the OVCR undergrad hub + WISCIENCE guide, URS,
-    // Hilldale and Sophomore Research fellowships, the Chemistry + Engineering
-    // research pages, SuccessWorks career center, and the WID institute — 9
-    // school='wisc' records (the IBS-SRP REU is national/open). Grows with faculty.
-    coverage: { campusOpportunities: 9, note: 'universitySwitcher.coverageCampus' },
+    // Campus-graph engine (9 program/office records) plus the live-scraped
+    // Computer Sciences faculty directory (~126 professors, emailed). The
+    // IBS-SRP REU is national/open, not counted. Conservative maintained
+    // estimate, rounded down like UCB.
+    coverage: { campusOpportunities: 135, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 8, majors: 146 },
   },
   {
