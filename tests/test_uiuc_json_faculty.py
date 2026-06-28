@@ -97,6 +97,8 @@ def test_gies_title_filter_keeps_faculty_drops_students_and_staff(monkeypatch):
          "department": "Finance", "externalurlwithpath": "https://x/et"},
     ]}
     monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    monkeypatch.setattr(j, "_fetch_soup", lambda url: None)
+    monkeypatch.setattr(j.time, "sleep", lambda *a: None)
     recs = j.fetch_gies()
     assert [r["pi_name"] for r in recs] == ["Real Professor"]
     assert recs[0]["department"] == "Department of Finance"
@@ -114,6 +116,8 @@ def test_gies_broad_keywords_are_not_junk(monkeypatch):
          "externalurlwithpath": "https://x/fin"},
     ]}
     monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    monkeypatch.setattr(j, "_fetch_soup", lambda url: None)
+    monkeypatch.setattr(j.time, "sleep", lambda *a: None)
     recs = j.fetch_gies()
     for r in recs:
         for kw in r["keywords"]:
@@ -127,9 +131,40 @@ def test_gies_straggler_department_falls_back(monkeypatch):
          "externalurlwithpath": "https://x/lp"},
     ]}
     monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    monkeypatch.setattr(j, "_fetch_soup", lambda url: None)
+    monkeypatch.setattr(j.time, "sleep", lambda *a: None)
     recs = j.fetch_gies()
     assert len(recs) == 1
     assert recs[0]["department"] == "Department of Business Administration"
+
+
+def test_gies_enriches_from_profile_research_interests(monkeypatch):
+    """Each Gies profile's Research Interests (comma-joined, under sub-labels)
+    enrich the record; a profile with none keeps the dept broad field."""
+    from bs4 import BeautifulSoup
+    payload = {"items": [
+        {"fullnamefirst": "Ops Prof", "fullname": "Prof, Ops", "email": "op@illinois.edu",
+         "title": "Professor of Business Administration", "department": "Business Administration",
+         "externalurlwithpath": "https://giesbusiness.illinois.edu/profile/ops-prof"},
+        {"fullnamefirst": "Bare Prof", "fullname": "Prof, Bare", "email": "bp@illinois.edu",
+         "title": "Professor of Finance", "department": "Finance",
+         "externalurlwithpath": "https://giesbusiness.illinois.edu/profile/bare-prof"},
+    ]}
+    profiles = {
+        "https://giesbusiness.illinois.edu/profile/ops-prof": BeautifulSoup(
+            "<h3>Research Interests</h3><p>Methods:\nMachine learning, optimization\n"
+            "Applications:\nSupply chain management</p>", "html.parser"),
+        "https://giesbusiness.illinois.edu/profile/bare-prof": BeautifulSoup(
+            "<h3>Biography</h3><p>Teaches finance.</p>", "html.parser"),
+    }
+    monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    monkeypatch.setattr(j, "_fetch_soup", lambda url: profiles.get(url))
+    monkeypatch.setattr(j.time, "sleep", lambda *a: None)
+    recs = j.fetch_gies()
+    ops = next(r for r in recs if r["pi_name"] == "Ops Prof")
+    assert ops["keywords"] == ["Machine learning", "optimization", "Supply chain management"]
+    bare = next(r for r in recs if r["pi_name"] == "Bare Prof")
+    assert bare["keywords"] == ["finance"]  # no Research Interests -> dept broad field
 
 
 def test_normalized_record_uses_api_keywords_not_scrape(monkeypatch):

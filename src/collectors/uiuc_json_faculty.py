@@ -14,11 +14,12 @@ is unnecessary here:
 
   Gies facultysearchapi — Gies College of Business:
      ``facultysearchapi.itpartners.illinois.edu/api/Search?collegeType=business&take=N``
-     -> ``{"items": [{title, department, email, ...}]}``
+     -> ``{"items": [{title, department, email, externalurlwithpath, ...}]}``
      No ``jobType`` field, so faculty are selected by an academic-title pattern
-     (professor / lecturer / instructor, excluding PhD students + postdocs). No
-     structured keywords are exposed, so each gets only its honest department
-     broad field.
+     (professor / lecturer / instructor, excluding PhD students + postdocs). The
+     feed carries no research areas, but each profile page lists Research
+     Interests, so a per-profile fetch enriches them (comma-joined there); a
+     profile with no such section keeps its honest department broad field.
 
 Both reuse :func:`uiuc_faculty.normalize_faculty` (identical record schema,
 ``source="uiuc_faculty"``) and merge through
@@ -31,14 +32,18 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 
 import requests
 
 from .uiuc_faculty import (
+    DELAY,
     HEADERS,
     _dept_broad_field,
+    _fetch_soup,
     normalize_faculty,
 )
+from .uiuc_html_faculty import _labeled_phrases
 
 logger = logging.getLogger(__name__)
 
@@ -201,30 +206,38 @@ def fetch_education() -> list[dict]:
 
 
 def fetch_gies() -> list[dict]:
-    """Gies College of Business faculty (title-filtered out of an all-staff feed)."""
+    """Gies College of Business faculty (title-filtered out of an all-staff feed),
+    each enriched with the Research Interests on its profile page. Gies lists
+    several areas comma-joined on one line, so the per-profile extraction splits
+    on commas; profiles with no such section keep the dept broad field."""
     data = _fetch_json(GIES_URL)
+    faculty = [
+        item for item in data.get("items", [])
+        if (t := (item.get("title") or "").strip())
+        and _GIES_FACULTY_TITLE.search(t) and not _GIES_NON_FACULTY.search(t)
+        and (item.get("fullnamefirst") or "").strip()
+    ]
     out: list[dict] = []
-    for item in data.get("items", []):
-        title = (item.get("title") or "").strip()
-        if not title or not _GIES_FACULTY_TITLE.search(title) or _GIES_NON_FACULTY.search(title):
-            continue
-        name = (item.get("fullnamefirst") or "").strip()
-        if not name:
-            continue
+    for i, item in enumerate(faculty):
         dept, broad, majors = _GIES_DEPTS.get(item.get("department"), _GIES_FALLBACK)
+        url = item.get("externalurlwithpath") or ""
+        prof = _fetch_soup(url) if url else None
+        kws = (_labeled_phrases(prof, split_commas=True) if prof else []) or [broad]
         rec = normalize_faculty(
             {
-                "name": name,
+                "name": item["fullnamefirst"].strip(),
                 "email": (item.get("email") or "").strip(),
-                "url": item.get("externalurlwithpath") or "",
-                "title": title,
-                "research_areas": broad,
+                "url": url,
+                "title": (item.get("title") or "").strip(),
+                "research_areas": "; ".join(kws),
             },
             {"short": "Gies", "name": dept, "majors": majors, "keywords": [broad]},
-            keywords=[broad],
+            keywords=kws,
         )
         if rec:
             out.append(rec)
+        if url and i < len(faculty) - 1:
+            time.sleep(DELAY)
     logger.info(f"Gies: {len(out)} faculty")
     return out
 

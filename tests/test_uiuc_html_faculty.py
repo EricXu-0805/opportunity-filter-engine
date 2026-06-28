@@ -99,6 +99,32 @@ def test_labeled_phrases_drops_prose_so_caller_falls_back():
     assert h._labeled_phrases(_soup(html)) == []
 
 
+def test_labeled_phrases_split_commas_and_drops_sublabels():
+    # Gies lists areas comma-joined under "Methods:" / "Applications:" sub-labels;
+    # split_commas atomizes them and the colon sub-labels are dropped.
+    html = ("<h3>Research Interests</h3><p>Methods:\nMachine learning, optimization\n"
+            "Applications:\nSupply chain management, operations management</p>")
+    assert h._labeled_phrases(_soup(html), split_commas=True) == [
+        "Machine learning", "optimization",
+        "Supply chain management", "operations management"]
+
+
+def test_labeled_phrases_split_commas_drops_prose_fragments():
+    # A prose description comma-shatters into clauses; connective-prefixed and
+    # over-long fragments are dropped, real noun-phrase areas survive.
+    html = ("<h3>Research Interests</h3><p>This research spans organizations, and communities, "
+            "Collective Intelligence, to examine emergent behavior in teams, Archival Analysis, "
+            "Journal of Finance</p>")  # journal = publication venue, not a topic
+    out = h._labeled_phrases(_soup(html), split_commas=True)
+    assert out == ["Collective Intelligence", "Archival Analysis"]
+
+
+def test_labeled_phrases_default_keeps_commas_intact():
+    # Without split_commas, a single comma-bearing area stays whole (Law/Carle/LER).
+    html = "<h3>Research Interests</h3><p>Probability, Statistics and Stochastic Processes</p>"
+    assert h._labeled_phrases(_soup(html)) == ["Probability, Statistics and Stochastic Processes"]
+
+
 def test_carle_parses_listing_and_enriches_from_profile(monkeypatch):
     def fake(url):
         if url == h.CARLE_URL:

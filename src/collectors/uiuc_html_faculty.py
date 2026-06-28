@@ -90,14 +90,33 @@ _RESEARCH_LABEL_RE = re.compile(
     re.I,
 )
 
+# When comma-splitting a block (Gies), a profile that wrote prose rather than a
+# list shatters into sentence fragments. A real research area is a short noun
+# phrase; the tell-tale junk is a clause that opens with a connective/preposition
+# or runs long. (Only applied with split_commas — Law's <br>-separated areas can
+# legitimately be a 7-word phrase that opens with a content word.)
+_FRAGMENT_PREFIX = re.compile(
+    r"^(and|or|but|to|the|an?|of|in|on|for|with|by|as|at|is|are|was|were|this|that|these|those"
+    r"|currently|including|such|etc|particularly|also|which|where|when|while|his|her|their|its)\b",
+    re.I,
+)
+# Some profiles list publication venues under "Research Interests"; a journal
+# title is not a topic. No business research area contains these whole words.
+_VENUE_RE = re.compile(r"\b(journal|proceedings)\b", re.I)
 
-def _labeled_phrases(soup, label_re=_RESEARCH_LABEL_RE) -> list[str]:
+
+def _labeled_phrases(soup, label_re=_RESEARCH_LABEL_RE, split_commas=False) -> list[str]:
     """Atomized phrases from the block after the first heading/`<summary>` whose
     text matches ``label_re`` — list items if present, else the block text split
     on separators (';', line breaks from `<br>`, bullets). Prose sentences fall
     outside the length guard, so a profile that describes its research in
     paragraphs yields nothing and the caller falls back to the broad field rather
-    than inventing keywords. Capped; the faculty DQ does the final cleaning."""
+    than inventing keywords. ``split_commas`` also breaks on commas — opt-in for
+    sources (Gies) that list several areas comma-joined on one line, where Law's
+    multi-word single areas ("Civil Procedure, …" as one phrase) aren't a concern.
+    Sub-labels like "Methods:" / "Applications:" are dropped. Capped; the faculty
+    DQ does the final cleaning."""
+    sep = r"[;,\n·•]|\s{2,}" if split_commas else r"[;\n·•]|\s{2,}"
     for tag in soup.find_all(["h2", "h3", "h4", "summary"]):
         if label_re.search(tag.get_text(strip=True)):
             block = tag.find_next(["ul", "p", "div"])
@@ -105,13 +124,20 @@ def _labeled_phrases(soup, label_re=_RESEARCH_LABEL_RE) -> list[str]:
                 return []
             items = [li.get_text(" ", strip=True) for li in block.select("li")]
             if not items:
-                items = re.split(r"[;\n·•]|\s{2,}", block.get_text("\n", strip=True))
+                items = re.split(sep, block.get_text("\n", strip=True))
             out, seen = [], set()
             for it in items:
                 it = it.strip(" .,;").strip()
                 if not (3 <= len(it) <= 60) or it.lower() in seen:
                     continue
-                if label_re.search(it):  # the section label leaked into the block text
+                if label_re.search(it) or it.endswith(":"):  # leaked section / sub-label
+                    continue
+                if split_commas and (
+                    not it[:1].isalnum()             # leading », - etc.
+                    or len(it.split()) > 6            # a prose clause, not an area
+                    or _FRAGMENT_PREFIX.match(it)     # tail of a split sentence
+                    or _VENUE_RE.search(it)           # a journal name, not a topic
+                ):
                     continue
                 seen.add(it.lower())
                 out.append(it)
