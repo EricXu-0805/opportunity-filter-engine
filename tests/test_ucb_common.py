@@ -117,6 +117,7 @@ def test_derive_keywords_from_raw_enriches_broad_only():
     with stored research_areas_raw gets specific keywords mined from that text,
     and its title parenthetical is rebuilt to stay a subset of the keywords."""
     import re
+
     from src.collectors.ucb_common import _derive_keywords_from_raw
     opp = {
         "source": "ucb_stat_faculty", "source_type": "faculty_research",
