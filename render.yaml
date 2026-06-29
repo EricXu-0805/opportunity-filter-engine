@@ -2,7 +2,11 @@ services:
   - type: web
     name: opportunity-filter-engine-api
     runtime: python
-    plan: free
+    # Standard (2GB) — startup warmup parses the full opportunity corpus into RAM
+    # and fits TF-IDF; at ~19.6k records that peaks well above the 512MB free tier
+    # and OOM-kills boot. 2GB holds it with headroom. Do NOT drop back to free
+    # until the corpus is DB-backed (then a small instance suffices again).
+    plan: standard
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     envVars:
