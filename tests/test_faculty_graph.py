@@ -589,6 +589,45 @@ class TestColaSource:
         assert fg.validate(school) == []
 
 
+class TestJsonDirSource:
+    """An authoritative JSON directory feed (Scheller-style static export)."""
+
+    def _payload(self):
+        return [
+            {"firstName": "Ada", "lastName": "Byron", "title": "Professor",
+             "status": ["Faculty"], "academic": ["Finance"],
+             "email": "ada@gt.edu", "link": "https://x.edu/ada/"},
+            {"firstName": "Old", "lastName": "Timer", "title": "Professor Emeritus",
+             "status": ["Faculty"], "academic": ["Finance"], "email": "o@gt.edu"},
+            {"firstName": "Gradus", "lastName": "Student", "title": "Ph.D. Student",
+             "status": ["Ph.D."], "academic": ["Finance"]},
+            {"firstName": "Mark", "lastName": "Etter", "title": "Associate Professor",
+             "status": ["Faculty"], "academic": ["Marketing"]},
+        ]
+
+    def test_json_dir_filters_area_status_and_ladder(self, monkeypatch):
+        payload = self._payload()
+
+        class _Resp:
+            def raise_for_status(self): pass
+            def json(self): return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        dept = {"short": "FIN", "json_dir": {
+            "url": "https://x.edu/index.json",
+            "filter_field": "academic", "filter_value": "Finance",
+            "status_field": "status", "status_value": "Faculty",
+            "ladder_filter": {"drop": r"emerit"}}}
+        people = fg._fetch_json_dir(dept)
+        # Marketing (other area) + emeritus + PhD-status all dropped
+        assert [p["name"] for p in people] == ["Ada Byron"]
+        assert people[0]["email"] == "ada@gt.edu"
+        assert people[0]["url"] == "https://x.edu/ada/"
+
+    def test_json_dir_degrades_without_block(self):
+        assert fg._fetch_json_dir({"short": "X"}) == []
+
+
 class TestLinklessDirectoryDedup:
     def test_linkless_directory_is_not_collapsed_to_one(self, monkeypatch):
         """A directory with no per-person profile link (each card's only "link"

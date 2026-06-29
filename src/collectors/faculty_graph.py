@@ -117,8 +117,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, or cola config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, or json_dir config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -1018,6 +1018,77 @@ def _fetch_cola(dept: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Generic JSON directory source (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# Some directories ship the whole roster as one authoritative JSON file (a
+# static-site export or a headless CMS feed). A department opts in with a
+# ``json_dir`` block: fetch the array, keep records whose ``filter_field`` (a
+# string or list) contains ``filter_value`` (the department's area) and whose
+# optional ``status_field`` carries ``status_value`` (drops PhD students/staff),
+# ladder-filter on the title, and map name/title/email/link by field name.
+#
+#     "json_dir": {
+#         "url": "https://www.scheller.gatech.edu/directory/index.json",
+#         "name_fields": ["firstName", "lastName"],   # joined with a space
+#         "filter_field": "academic", "filter_value": "Finance",
+#         "status_field": "status", "status_value": "Faculty",  # optional
+#         "ladder_filter": {"drop": "emerit|lecturer|of the practice"},
+#     }
+def _fetch_json_dir(dept: dict) -> list[dict]:
+    """Best-effort faculty fetch from an authoritative JSON directory (opt-in)."""
+    cfg = dept.get("json_dir")
+    if not cfg:
+        return []
+    try:
+        import requests
+    except Exception:  # noqa: BLE001
+        return []
+    from .ucb_common import HEADERS
+    try:
+        resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+        resp.raise_for_status()
+        recs = resp.json()
+    except Exception:  # noqa: BLE001
+        return []
+    if isinstance(recs, dict):
+        recs = (recs.get(cfg.get("records_key", "")) if cfg.get("records_key")
+                else next((v for v in recs.values() if isinstance(v, list)), []))
+    lf = cfg.get("ladder_filter") or {}
+    require_re, drop_re = lf.get("require"), lf.get("drop")
+    name_fields = cfg.get("name_fields", ["firstName", "lastName"])
+    filt_field, filt_value = cfg.get("filter_field"), cfg.get("filter_value")
+    status_field, status_value = cfg.get("status_field"), cfg.get("status_value")
+    specs: list[dict] = []
+    for x in recs:
+        if not isinstance(x, dict):
+            continue
+        if filt_field is not None:
+            fv = x.get(filt_field)
+            if filt_value not in (fv if isinstance(fv, list) else [fv]):
+                continue
+        if status_field is not None:
+            sv = x.get(status_field)
+            if status_value not in (sv if isinstance(sv, list) else [sv]):
+                continue
+        name = " ".join(str(x.get(f) or "").strip() for f in name_fields).strip()
+        if not _is_person_name(name):
+            continue
+        title = x.get(cfg.get("title_field", "title")) or "Professor"
+        if isinstance(title, list):
+            title = ", ".join(str(t) for t in title)
+        title = title.strip() or "Professor"
+        if require_re and not re.search(require_re, title, re.I):
+            continue
+        if drop_re and re.search(drop_re, title, re.I):
+            continue
+        email = (x.get(cfg.get("email_field", "email")) or "").strip() or None
+        url_v = (x.get(cfg.get("link_field", "link")) or "").strip()
+        specs.append(faculty(name, title=title, url=url_v, email=email))
+    return specs
+
+
+# ---------------------------------------------------------------------------
 # Interfolio Faculty180 admin-ajax source (deep mode, lazy HTTP deps)
 # ---------------------------------------------------------------------------
 #
@@ -1132,7 +1203,7 @@ def _listing_urls(school: dict) -> set[str]:
     """
     urls: set[str] = set()
     for dept in school.get("departments", []):
-        for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola"):
+        for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):
                 for k in ("url", "base"):
@@ -1168,7 +1239,8 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                and u not in listing_urls}
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
-                               + _fetch_faculty180(dept) + _fetch_cola(dept)):
+                               + _fetch_faculty180(dept) + _fetch_cola(dept)
+                               + _fetch_json_dir(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue

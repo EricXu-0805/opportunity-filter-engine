@@ -113,11 +113,14 @@ export const SCHOOLS: School[] = [
     color: '#B3A369',
     location: 'Atlanta, GA',
     // Campus-graph engine (8 program/office/lab records) plus the live-scraped
-    // faculty directory (~369 professors): College of Computing (CS, Interactive
-    // Computing, Computational Science & Engineering, paginated) + the Chemistry,
-    // Mathematics, Materials Science, ECE, and Civil schools (faculty-only filter URLs). SURE
-    // + College of Sciences REU programs are national/open, not counted.
-    coverage: { campusOpportunities: 460, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~1,300 professors across 36 departments — UIUC-parity
+    // coverage): the full College of Computing, College of Engineering (Aero,
+    // Biomedical, ISyE, Mechanical + ECE/Civil/Materials/Chemical), College of
+    // Sciences (Chemistry, Math, Biological Sciences, Earth & Atmospheric,
+    // Physics, Psychology), the Scheller College of Business (its JSON directory
+    // feed split into eight academic areas), the College of Design, and the Ivan
+    // Allen College of Liberal Arts. SURE/REU programs are national, not counted.
+    coverage: { campusOpportunities: 1301, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 6, majors: 43 },
   },
   {
