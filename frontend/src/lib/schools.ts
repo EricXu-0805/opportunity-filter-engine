@@ -203,11 +203,14 @@ export const SCHOOLS: School[] = [
     color: '#8C1515',
     location: 'Stanford, CA',
     // Campus-graph engine (10 program/office/lab records) plus the live-scraped
-    // faculty directory (~400 professors): School of Engineering (ME, BioE,
-    // Aero/Astro, MSE, ChemE, CEE — stanford-person template) + Computer Science
-    // (su-card) + Humanities & Sciences (Physics, Statistics, Chemistry, Math —
-    // hb-card, keyworded per research-area taxonomy). SSRP/Amgen is national.
-    coverage: { campusOpportunities: 410, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~1,440 professors across 52 departments — UIUC-parity
+    // coverage): the full School of Engineering (incl. EE, MS&E, ICME), all of
+    // Humanities & Sciences (the sciences keyworded per research-area taxonomy,
+    // the social sciences, and the humanities incl. the DLCL languages), the
+    // Doerr School of Sustainability, the Graduate School of Education, the Law
+    // School (WordPress REST), and the School of Medicine's basic-science
+    // departments. SSRP/Amgen is national; GSB WAFs the scraper (left out).
+    coverage: { campusOpportunities: 1422, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 3, majors: 71 },
   },
   {
