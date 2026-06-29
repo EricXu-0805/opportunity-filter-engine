@@ -348,6 +348,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         href = urljoin(base_url, href) if href else base_url
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
+        if sel.get("title_strip_after"):
+            # Some directories cram rank + office + phone into one cell; keep only
+            # the text before the first contact marker (e.g. "Office"/"Phone").
+            title = re.split(sel["title_strip_after"], title)[0].strip() or "Professor"
         if not _passes_ladder(title, ladder_filter):
             continue
         research = ""
@@ -809,6 +813,25 @@ def _key_url(rec: dict) -> str:
     return (rec.get("url") or "").strip().lower()
 
 
+def _listing_urls(school: dict) -> set[str]:
+    """Directory/listing URLs — shared by everyone in a department, so never a
+    person de-dup key. A linkless card stores its department's listing URL (so
+    the record still has a usable ``url``); the joint-appointment de-dup, which
+    is meant to catch one person's *profile* URL appearing under two departments,
+    must ignore these or it would collapse a whole linkless directory to one row.
+    """
+    urls: set[str] = set()
+    for dept in school.get("departments", []):
+        for block in ("scrape", "api", "ajax", "algolia"):
+            cfg = dept.get(block)
+            if isinstance(cfg, dict):
+                for k in ("url", "base"):
+                    v = (cfg.get(k) or "").strip().lower()
+                    if v:
+                        urls.add(v)
+    return urls
+
+
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
@@ -826,16 +849,19 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     seen_emails: set[str] = set()
     seen_urls: set[str] = set()
     seen_ids: set[str] = set()
+    listing_urls = _listing_urls(school)
     for dept in school.get("departments", []):
         specs = list(dept.get("faculty", []))
         if deep:
-            seen_urls_local = {(p.get("url") or "").strip().lower() for p in specs}
+            seen_urls_local = {u for p in specs
+                               if (u := (p.get("url") or "").strip().lower())
+                               and u not in listing_urls}
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_algolia(dept)):
                 key = (discovered.get("url") or "").strip().lower()
-                if key and key in seen_urls_local:
+                if key and key not in listing_urls and key in seen_urls_local:
                     continue
-                if key:
+                if key and key not in listing_urls:
                     seen_urls_local.add(key)
                 specs.append(discovered)
         for person in specs:
@@ -843,6 +869,8 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
             if rec is None:
                 continue
             ek, uk = _key_email(rec), _key_url(rec)
+            if uk in listing_urls:
+                uk = ""
             if rec["id"] in seen_ids:
                 continue
             if ek and ek in seen_emails:

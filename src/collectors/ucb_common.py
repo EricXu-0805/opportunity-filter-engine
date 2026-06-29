@@ -67,6 +67,41 @@ _TIMEOUT = 30
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = 2.0  # seconds; doubles each attempt
 
+# Some university hosts (several InCommon-issued .edu certs — UCLA's Physics and
+# Statistics sites, UW Statistics) ship an *incomplete* certificate chain: they
+# present only their leaf, omitting the InCommon intermediate that links it to a
+# public Sectigo/USERTrust root. A browser fixes this by AIA-fetching the missing
+# intermediate; stdlib requests does not, so the handshake fails verification.
+# We supply the two legitimate InCommon intermediates ourselves, appended to the
+# normal certifi trust store, so the chain completes and verification stays FULLY
+# ON (a bad/expired cert is still rejected). This is NOT verify=False.
+_CA_BUNDLE: str | None = None
+
+
+def _ca_bundle() -> str:
+    """Path to a CA bundle = certifi roots + the bundled InCommon intermediates.
+
+    Built once and cached. Falls back to certifi's default if anything goes
+    wrong, so a missing intermediate file can never break the normal trust path.
+    """
+    global _CA_BUNDLE
+    if _CA_BUNDLE is not None:
+        return _CA_BUNDLE
+    import certifi
+    base = certifi.where()
+    try:
+        import tempfile
+        intermediates = (Path(__file__).parent / "incommon_intermediates.pem").read_text()
+        combined = Path(base).read_text() + "\n" + intermediates
+        fd, path = tempfile.mkstemp(suffix="-ca.pem", prefix="ofe-")
+        with open(fd, "w", encoding="utf-8") as f:
+            f.write(combined)
+        _CA_BUNDLE = path
+    except Exception as e:  # noqa: BLE001 — never let trust setup crash a run
+        logger.warning(f"InCommon CA bundle unavailable ({e}); using certifi default")
+        _CA_BUNDLE = base
+    return _CA_BUNDLE
+
 # Politeness delay between individual profile-page requests.
 PROFILE_DELAY = 0.75
 
@@ -320,6 +355,7 @@ def fetch_soup(url: str) -> BeautifulSoup | None:
     """
     session = requests.Session()
     session.headers.update(HEADERS)
+    session.verify = _ca_bundle()
     last_err: Exception | None = None
     for attempt in range(1, _MAX_RETRIES + 1):
         try:

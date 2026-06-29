@@ -22,9 +22,13 @@ role — the engine keeps only the ladder-faculty containers (core / chair /
 vice-chair / ieo / in-residence) and reads each profile's "RESEARCH AND
 INTERESTS" toggle for clean keywords, so CS/ECE/MAE land at UIUC parity.
 
-Deferred (own data source confirmed, pending a build pass): Physics, Math,
-Statistics, Economics, EEB (static-HTML directories needing title-based ladder
-filtering).
+Math, Economics, and EEB are static-HTML ladder directories scraped directly.
+**Physics & Astronomy** and **Statistics** sit behind an InCommon cert with an
+incomplete chain (the server omits its intermediate); the shared fetcher now
+supplies that intermediate (``ucb_common._ca_bundle`` — verification stays on),
+so both scrape over the normal path: Physics from its ``/faculty.html`` table
+(``h5`` name + a rank/research ``<p>`` trimmed of office/phone, emeriti dropped),
+Statistics from its dedicated ladder page (lecturers dropped by title).
 
 Single source ("ucla_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -180,6 +184,28 @@ SCHOOL: dict = {
                                      "link": "a[href*='/people/ladder/']",
                                      "title": "td:nth-child(2)"},
                        "ladder_filter": {"drop": r"emerit"}},
+        },
+        {
+            "short": "PHYS",
+            "name": "Department of Physics and Astronomy",
+            "majors": ["Physics", "Astrophysics", "Astronomy"],
+            "directory_url": "https://pa.ucla.edu/faculty.html",
+            "scrape": {"url": "https://pa.ucla.edu/faculty.html",
+                       "selectors": {"card": "tbody tr", "name": "h5",
+                                     "link": "a", "title": "p",
+                                     "title_strip_after": r"\s*(Office|Phone|Email|Fax|Tel)\b"},
+                       "ladder_filter": {"require": r"professor", "drop": r"emerit"}},
+        },
+        {
+            "short": "STAT",
+            "name": "Department of Statistics and Data Science",
+            "majors": ["Statistics", "Data Science"],
+            "directory_url": "https://statistics.ucla.edu/index.php/people1/all-faculty/faculty/",
+            "scrape": {"url": "https://statistics.ucla.edu/index.php/people1/all-faculty/faculty/",
+                       "selectors": {"card": "div.abcfslTxtCntrGridA",
+                                     "name": ".MP-F1", "title": ".MP-F3"},
+                       "ladder_filter": {"require": r"professor",
+                                         "drop": r"lecturer|emerit|adjunct|visiting"}},
         },
     ],
 }
