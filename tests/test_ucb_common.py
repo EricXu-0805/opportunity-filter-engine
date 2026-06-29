@@ -145,3 +145,27 @@ def test_derive_keywords_skips_already_specific():
            "title": "Research with Prof. X Y — EECS (machine learning, computer vision)",
            "metadata": {"research_areas_raw": "robotics; control"}}
     assert _derive_keywords_from_raw([opp]) == 0  # already has specific keywords
+
+
+def test_incommon_ca_bundle_appends_intermediates_to_certifi():
+    """The CA bundle fetch_soup uses must include certifi's roots AND the bundled
+    InCommon intermediates, so an incomplete-chain .edu host verifies without
+    ever falling back to verify=False. Offline: just inspect the bundle file.
+    """
+    from pathlib import Path
+
+    import certifi
+
+    from src.collectors import ucb_common
+
+    pem = Path(ucb_common.__file__).parent / "incommon_intermediates.pem"
+    text = pem.read_text()
+    assert text.count("BEGIN CERTIFICATE") == 2
+    assert "InCommon RSA Server CA 2" in text  # UCLA Physics / UW Stat
+    assert "InCommon RSA OV SSL CA 3" in text  # UCLA Statistics
+
+    ucb_common._CA_BUNDLE = None  # force a fresh build
+    bundle = ucb_common._ca_bundle()
+    combined = Path(bundle).read_text()
+    assert "InCommon RSA Server CA 2" in combined
+    assert len(combined) > len(Path(certifi.where()).read_text())

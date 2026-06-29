@@ -148,11 +148,12 @@ export const SCHOOLS: School[] = [
     // Campus-graph engine (10 records: the two Undergraduate Research Centers,
     // URSP, the URC summer program, Dean's Research Fellowship, SRP-99, the
     // Samueli engineering research page, the career center, the CNSI institute)
-    // plus the faculty directory (~476 professors): WordPress-REST for Chemistry
+    // plus the faculty directory (~556 professors): WordPress-REST for Chemistry
     // & Biochemistry, MCDB, Psychology; the Samueli AJAX directory for the seven
     // engineering departments (CS, ECE, MAE, …), keyworded per profile; plus the
-    // Economics, Ecology & Evolutionary Biology, and Mathematics ladder pages.
-    coverage: { campusOpportunities: 615, note: 'universitySwitcher.coverageCampus' },
+    // Economics, Ecology & Evolutionary Biology, Mathematics, Physics & Astronomy,
+    // and Statistics ladder pages.
+    coverage: { campusOpportunities: 695, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 9, majors: 135 },
   },
   {
@@ -164,11 +165,12 @@ export const SCHOOLS: School[] = [
     color: '#4B2E83',
     location: 'Seattle, WA',
     // Campus-graph engine (10 program/office/lab records) plus the live-scraped
-    // faculty directory (~750 professors): ECE + the 13 Arts & Sciences depts
-    // (Drupal grids) + the Allen School of CSE + the five College of Engineering depts via facultyfinder
-    // (keyworded + emailed) + Bioengineering (WordPress, keyworded) + Biology.
-    // The Institute for Protein Design program is national/open, not counted.
-    coverage: { campusOpportunities: 853, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~860 professors): ECE + the 13 Arts & Sciences depts
+    // (Drupal grids) + the Allen School of CSE + Statistics + the five College of
+    // Engineering depts via facultyfinder (keyworded + emailed) + Bioengineering
+    // (WordPress, keyworded) + Biology. The Institute for Protein Design program
+    // is national/open, not counted.
+    coverage: { campusOpportunities: 871, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 12, majors: 116 },
   },
   {

@@ -19,9 +19,10 @@ Two directory shapes on campus:
     deferred follow-up — the page interest sections are inconsistent across
     departments and risk nav-menu pollution, so accuracy comes first).
 
-Departments behind a JS facultyfinder app (most of the College of Engineering)
-or a client-rendered list (the Allen School) are intentionally omitted — a
-stdlib scraper lands zero there; they need the headless-browser path.
+The College of Engineering's facultyfinder app and the Allen School's
+client-rendered grid still expose their faculty in the raw HTML (a server-
+rendered table / profile-link list), so both are covered via the ``_ff`` helper
+and the CSE link-list scrape below rather than a headless browser.
 
 Single source ("uw_faculty") across departments (the UIUC model); the
 department rides each record's ``department`` field, ids namespaced by
@@ -173,6 +174,25 @@ SCHOOL: dict = {
                     "keyword_tax": ["portfolio_category"],
                     "keyword_drop": ["core faculty", "faculty", "adjunct",
                                      "affiliate", "emeritus", "joint"]},
+        },
+        # Statistics — Drupal "Views" grid (one .faculty-column per person, 3 per
+        # row). Behind an InCommon cert with an incomplete chain; the shared
+        # fetcher supplies the missing intermediate (verification stays on).
+        # Title-filtered to ladder ranks (lecturers/emeriti/affiliates dropped).
+        {
+            "short": "STAT",
+            "name": "Department of Statistics",
+            "majors": ["Statistics", "Data Science"],
+            "directory_url": "https://stat.uw.edu/people/faculty",
+            "scrape": {
+                "url": "https://stat.uw.edu/people/faculty",
+                "selectors": {"card": "div.faculty-column",
+                              "name": ".views-field-title",
+                              "link": "a[href*='/people/']",
+                              "title": ".views-field-field-position"},
+                "ladder_filter": {"require": r"professor",
+                                  "drop": r"emerit|lecturer|adjunct|visiting|affiliate|part-time"},
+            },
         },
         # Biology — Drupal directory, title-filtered to ladder ranks.
         {

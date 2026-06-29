@@ -390,6 +390,27 @@ class TestScrapeLadderFilter:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ada Core", "Bea Core"]
 
+    def test_title_strip_after_trims_contact_blob(self, monkeypatch):
+        """A directory that crams rank + office + phone into one cell keeps only
+        the text before the first contact marker, and the trimmed title still
+        drives ladder filtering (the emeritus row is dropped)."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="c"><h5>Ada Real</h5><p>Professor Plasma Physics Office: PAB 1 Phone: 310-000</p></div>
+        <div class="c"><h5>Bob Old</h5><p>Professor Emeritus Astro Office: PAB 2 Phone: 310-111</p></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": "h5", "link": "h5", "title": "p",
+                          "title_strip_after": r"\s*(Office|Phone)\b"},
+            "ladder_filter": {"require": r"professor", "drop": r"emerit"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert [p["name"] for p in people] == ["Ada Real"]
+        assert people[0]["title"] == "Professor Plasma Physics"
+
     def test_scrape_name_flip(self, monkeypatch):
         from bs4 import BeautifulSoup
         html = '<div class="c"><a class="n" href="/p/a">Zhang, Wei</a></div>'
@@ -485,6 +506,35 @@ class TestAlgoliaSource:
 
     def test_algolia_degrades_without_block(self):
         assert fg._fetch_algolia({"short": "X"}) == []
+
+
+class TestLinklessDirectoryDedup:
+    def test_linkless_directory_is_not_collapsed_to_one(self, monkeypatch):
+        """A directory with no per-person profile link (each card's only "link"
+        is a shared listing route) must NOT collapse to a single record: every
+        card stores the department's listing URL, and the joint-appointment
+        URL de-dup ignores that shared listing URL."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="card"><div class="nm">Ada Lovelace</div><div class="rk">Professor</div></div>
+        <div class="card"><div class="nm">Alan Turing</div><div class="rk">Professor</div></div>
+        <div class="card"><div class="nm">Grace Hopper</div><div class="rk">Professor</div></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        listing = "https://stat.example.edu/faculty/"
+        school = {
+            "school_slug": "ex", "source": "ex_faculty", "id_prefix": "ex",
+            "organization": "Example U", "location": "Anytown", "audience": "unknown",
+            "departments": [{
+                "short": "STAT", "name": "Statistics", "majors": ["Statistics"],
+                "scrape": {"url": listing,
+                           "selectors": {"card": "div.card", "name": ".nm", "title": ".rk"}},
+            }],
+        }
+        recs = fg.fetch_and_normalize(school, deep=True)
+        assert sorted(r["pi_name"] for r in recs) == ["Ada Lovelace", "Alan Turing", "Grace Hopper"]
+        assert all(r["url"] == listing for r in recs)  # listing URL kept, not blanked
 
 
 # --- University of Washington config (live-scraped, no network in tests) ----
