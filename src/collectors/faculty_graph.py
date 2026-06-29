@@ -229,11 +229,20 @@ def _strip_credentials(name: str) -> str:
     return _CREDENTIAL_RE.sub("", name).strip()
 
 
+# A name carrying a (birth–death) year range is an in-memoriam directory entry,
+# not active faculty — drop it ("Alberto Apostolico (1948-2015)"). Matched on the
+# name only: a year range in a research title/area is legitimate (a historian of
+# a 1500-1600 figure), so this never keys off the description.
+_IN_MEMORIAM_RE = re.compile(r"\(\s*\d{4}\s*[-–—]\s*\d{4}\s*\)")
+
+
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
     name = _strip_credentials(_strip_pronouns((person.get("name") or "").strip()))
     if not _is_person_name(name):
         return None
+    if _IN_MEMORIAM_RE.search(name):
+        return None  # "Name (1948-2015)" — an in-memoriam entry, not active faculty
     title = person.get("title") or "Professor"
     if _RETIRED_TITLE_RE.search(title):
         return None

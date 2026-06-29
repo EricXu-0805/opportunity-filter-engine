@@ -267,6 +267,19 @@ class TestScrapeLayer:
         assert people[0]["research_areas"] == ""  # not enriched
         assert calls == ["https://www.cc.gatech.edu/people/faculty"]  # only the listing
 
+    def test_in_memoriam_name_is_dropped(self):
+        """A name carrying a (birth-death) year range is an in-memoriam directory
+        entry, not active faculty — drop it (GT CoC lists the late
+        'Alberto Apostolico (1948-2015)' among its people)."""
+        school = {**SCHOOL, "departments": [{
+            "short": "CS", "name": "Computer Science", "majors": ["Computer Science"],
+            "faculty": [fg.faculty("Ada Lovelace", keywords=["computing"]),
+                        fg.faculty("Alberto Apostolico (1948-2015)", keywords=["algorithms"])],
+        }]}
+        names = {r["pi_name"] for r in fg.fetch_and_normalize(school, deep=False)}
+        assert "Ada Lovelace" in names
+        assert not any("Apostolico" in n for n in names)
+
     def test_clean_keywords_strips_oxford_comma_connective(self):
         """An Oxford-comma tail ("..., and Robotics") splits into a clause led by
         'and' — the connective must be stripped so the keyword clears the DQ junk
