@@ -554,7 +554,8 @@ class TestUWConfig:
         for dept in UW["departments"]:
             has_scrape = dept.get("scrape", {}).get("selectors", {}).get("card")
             has_api = dept.get("api", {}).get("type") == "wp"
-            assert has_scrape or has_api, dept["short"]
+            has_f180 = bool(dept.get("faculty180", {}).get("base"))
+            assert has_scrape or has_api or has_f180, dept["short"]
 
 
 class TestGatechConfig:
@@ -637,3 +638,90 @@ class TestUCLAConfig:
                 assert dept["ajax"]["department"], dept["short"]
             else:
                 assert dept["scrape"]["selectors"].get("card"), dept["short"]
+
+
+class TestFullCoverageEngineAdditions:
+    """Engine capabilities added for the UW full-coverage expansion."""
+
+    def test_strip_pronouns_drops_trailing_clause_only(self):
+        assert fg._strip_pronouns("Laura E Frantz she,her") == "Laura E Frantz"
+        assert fg._strip_pronouns("Jonika Hash - she, her") == "Jonika Hash"
+        assert fg._strip_pronouns("X Y (they/them)") == "X Y"
+        # a real name is never touched
+        assert fg._strip_pronouns("Christopher Hees") == "Christopher Hees"
+        assert fg._strip_pronouns("Sarah Theimer") == "Sarah Theimer"
+
+    def test_field_filter_keeps_home_department_cards(self, monkeypatch):
+        """A flat grid mixes home-department faculty with cross-listed affiliates
+        that carry a clean 'Professor' title; field_filter gates on the per-card
+        department field, and an empty field counts as home (kept)."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="c"><a class="n" href="/p/a">Home One</a><span class="dept">Microbiology</span></div>
+        <div class="c"><a class="n" href="/p/b">Away Two</a><span class="dept">Department of Pediatrics</span></div>
+        <div class="c"><a class="n" href="/p/c">Home Three</a><span class="dept"></span></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "MICRO", "scrape": {
+            "url": "https://micro.x.edu/faculty",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "field_filter": {"selector": ".dept", "exclude": r"pediatric|harvard|surgery"},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Home One", "Home Three"]  # away affiliate dropped, blank kept
+
+    def test_wp_api_category_exclude_and_meta_fields(self, monkeypatch):
+        """category_exclude prunes a person double-tagged Faculty+Emeritus; rank +
+        email are read off the WP meta box."""
+        records = [
+            {"title": {"rendered": "Pat Active"}, "link": "https://x.edu/p/pat/",
+             "people-group": [84], "meta_box": {"job_title": "Teaching Professor",
+                                                 "email_address": "pat@x.edu"}},
+            {"title": {"rendered": "Em Retired"}, "link": "https://x.edu/p/em/",
+             "people-group": [84, 99], "meta_box": {"job_title": "Professor"}},
+        ]
+        monkeypatch.setattr(fg, "_wp_get_json",
+                            lambda url: records if "page=1" in url else [])
+        dept = {"short": "COM", "api": {
+            "type": "wp", "base": "https://x.edu", "post_type": "person",
+            "category_include": {"people-group": [84]},
+            "category_exclude": {"people-group": [99]},
+            "meta_title_field": "job_title", "meta_email_field": "email_address",
+        }}
+        people = fg._fetch_wp_api(dept)
+        assert [p["name"] for p in people] == ["Pat Active"]  # emeritus excluded
+        assert people[0]["title"] == "Teaching Professor"
+        assert people[0]["email"] == "pat@x.edu"
+
+    def test_faculty180_paginates_filters_and_keeps_ladder(self, monkeypatch):
+        """faculty180 reads the admin-ajax users feed, drops non-ladder by rank,
+        and builds first+last names."""
+        pages = {
+            "1": {"users": [
+                {"pid": 1, "firstname": "Ada", "lastname": "Real", "rank": "Professor",
+                 "email": "ada@x.edu", "slug": "ada-real"},
+                {"pid": 2, "firstname": "Em", "lastname": "Past", "rank": "Professor Emeritus",
+                 "email": "em@x.edu", "slug": "em-past"},
+            ]},
+            "2": {"users": []},
+        }
+
+        class _Resp:
+            def __init__(self, page): self._page = page
+            def raise_for_status(self): pass
+            def json(self): return pages.get(self._page, {"users": []})
+
+        monkeypatch.setattr("requests.post",
+                            lambda *a, **k: _Resp(k.get("data", {}).get("searchpage", "1")))
+        dept = {"short": "NURS", "faculty180": {
+            "base": "https://nursing.x.edu", "per_page": 2,
+            "ladder_filter": {"require": r"profess", "drop": r"emerit"},
+        }}
+        people = fg._fetch_faculty180(dept)
+        assert [p["name"] for p in people] == ["Ada Real"]  # emeritus dropped
+        assert people[0]["url"] == "https://nursing.x.edu/person/1-ada-real/"
+        assert people[0]["email"] == "ada@x.edu"
+
+    def test_faculty180_degrades_without_block(self):
+        assert fg._fetch_faculty180({"short": "X"}) == []
