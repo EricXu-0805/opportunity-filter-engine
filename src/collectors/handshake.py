@@ -1,19 +1,28 @@
 """
-Handshake opportunity collector.
+Handshake opportunity collector (school-parameterized).
 
-Scrapes research opportunities and internships from Handshake
-using cookie-based authentication. Requires a valid Handshake session.
+Scrapes research/internship postings from a school's Handshake instance using
+cookie-based authentication. Handshake is login-gated PER SCHOOL: each school
+has its own `<subdomain>.joinhandshake.com` and only shows postings to a
+logged-in account at that school. So this collector targets one school at a
+time, driven by a `--school` slug, and reads that school's session cookies from
+`data/handshake_cookies_<slug>.json`. It is a MANUAL collector (cookies expire
+in days and there is no headless login) — it is deliberately NOT wired into
+refresh_all.
 
-Auth flow:
-  1. Log into app.joinhandshake.com in Chrome
-  2. Run: python -m src.collectors.handshake --export-cookies
-     (copies cookies from Chrome → data/handshake_cookies.json)
-  3. Run: python -m src.collectors.handshake --save
+Add a school by adding an entry to HANDSHAKE_SCHOOLS (subdomain + source +
+campus-city tokens) and a matching SOURCE_DEFAULTS entry. The school must have a
+real logged-in session for any data to come back.
+
+Auth flow (per school):
+  1. Log into <subdomain>.joinhandshake.com in Chrome
+  2. python -m src.collectors.handshake --school <slug> --export-cookies
+  3. python -m src.collectors.handshake --school <slug> --save
 
 Usage:
-    python -m src.collectors.handshake --export-cookies   # extract cookies from Chrome
-    python -m src.collectors.handshake                    # preview results
-    python -m src.collectors.handshake --save             # merge into opportunities.json
+    python -m src.collectors.handshake --school uiuc --export-cookies
+    python -m src.collectors.handshake --school ucb                 # preview
+    python -m src.collectors.handshake --school ucb --save           # merge
 """
 
 import hashlib
@@ -26,7 +35,6 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import requests
 
@@ -34,22 +42,16 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-COOKIE_FILE = PROJECT_ROOT / "data" / "handshake_cookies.json"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-BASE_URL = "https://illinois.joinhandshake.com"
-SEARCH_URL = f"{BASE_URL}/stu/postings"
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/125.0.0.0 Safari/537.36"
-    ),
-    "Accept": "application/json, text/javascript, */*; q=0.01",
-    "X-Requested-With": "XMLHttpRequest",
-    "Referer": f"{BASE_URL}/stu/postings",
-    "Origin": BASE_URL,
+# Per-school Handshake config. `source` MUST have a matching SOURCE_DEFAULTS
+# entry (UIUC keeps the legacy "handshake" source for backward compatibility;
+# new schools use "handshake_<slug>"). `campus_cities` lowercase tokens decide
+# the on_campus flag from a posting's location.
+HANDSHAKE_SCHOOLS: dict[str, dict] = {
+    "uiuc":  {"subdomain": "illinois", "source": "handshake",       "campus_cities": ("champaign", "urbana")},
+    "ucb":   {"subdomain": "berkeley", "source": "handshake_ucb",   "campus_cities": ("berkeley",)},
+    "umich": {"subdomain": "umich",    "source": "handshake_umich", "campus_cities": ("ann arbor",)},
 }
 
 SEARCH_PARAMS = {
@@ -79,8 +81,43 @@ CHROME_COOKIE_PATHS = {
 }
 
 
-def export_cookies_from_chrome() -> bool:
-    """Extract Handshake session cookies from Chrome's cookie database."""
+def _resolve_school(slug: str) -> dict:
+    """Resolve a school slug into a runtime config (base URL, cookie path, headers)."""
+    if slug not in HANDSHAKE_SCHOOLS:
+        raise ValueError(
+            f"Unknown Handshake school {slug!r}. Known: {sorted(HANDSHAKE_SCHOOLS)}. "
+            "Add it to HANDSHAKE_SCHOOLS (+ a SOURCE_DEFAULTS entry)."
+        )
+    cfg = HANDSHAKE_SCHOOLS[slug]
+    base = f"https://{cfg['subdomain']}.joinhandshake.com"
+    cookie = PROJECT_ROOT / "data" / f"handshake_cookies_{slug}.json"
+    # Backward-compat: UIUC's pre-existing cookie file had no slug suffix.
+    legacy = PROJECT_ROOT / "data" / "handshake_cookies.json"
+    if slug == "uiuc" and not cookie.exists() and legacy.exists():
+        cookie = legacy
+    return {
+        "slug": slug,
+        "source": cfg["source"],
+        "base_url": base,
+        "search_url": f"{base}/stu/postings",
+        "cookie_file": cookie,
+        "campus_cities": tuple(c.lower() for c in cfg["campus_cities"]),
+        "headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": f"{base}/stu/postings",
+            "Origin": base,
+        },
+    }
+
+
+def export_cookies_from_chrome(sch: dict) -> bool:
+    """Extract this school's Handshake session cookies from Chrome's cookie DB."""
     cookie_db = CHROME_COOKIE_PATHS.get(sys.platform)
     if not cookie_db or not cookie_db.exists():
         logger.error(
@@ -89,9 +126,9 @@ def export_cookies_from_chrome() -> bool:
         )
         print("\nAlternative: manually export cookies using a browser extension:")
         print("  1. Install 'Cookie-Editor' extension in Chrome")
-        print("  2. Go to app.joinhandshake.com (make sure you're logged in)")
+        print(f"  2. Go to {sch['base_url']} (make sure you're logged in)")
         print("  3. Click Cookie-Editor → Export → JSON")
-        print(f"  4. Save to: {COOKIE_FILE}")
+        print(f"  4. Save to: {sch['cookie_file']}")
         return False
 
     tmp_db = PROJECT_ROOT / "data" / "_chrome_cookies_tmp.db"
@@ -99,7 +136,6 @@ def export_cookies_from_chrome() -> bool:
         shutil.copy2(cookie_db, tmp_db)
         conn = sqlite3.connect(str(tmp_db))
         cursor = conn.cursor()
-
         cursor.execute(
             "SELECT name, value, host_key, path, is_secure, expires_utc "
             "FROM cookies WHERE host_key LIKE '%joinhandshake.com%'"
@@ -111,22 +147,14 @@ def export_cookies_from_chrome() -> bool:
             logger.warning("No Handshake cookies found in Chrome. Log in first.")
             return False
 
-        cookies = []
-        for name, value, domain, path, secure, expires in rows:
-            cookies.append({
-                "name": name,
-                "value": value,
-                "domain": domain,
-                "path": path,
-                "secure": bool(secure),
-            })
-
-        with open(COOKIE_FILE, "w") as f:
+        cookies = [
+            {"name": name, "value": value, "domain": domain, "path": path, "secure": bool(secure)}
+            for name, value, domain, path, secure, expires in rows
+        ]
+        with open(sch["cookie_file"], "w") as f:
             json.dump(cookies, f, indent=2)
-
-        logger.info(f"Exported {len(cookies)} Handshake cookies to {COOKIE_FILE}")
+        logger.info(f"Exported {len(cookies)} Handshake cookies to {sch['cookie_file']}")
         return True
-
     except Exception as e:
         logger.error(f"Failed to export cookies: {e}")
         print("\nChrome may have the cookie DB locked. Try closing Chrome first.")
@@ -136,45 +164,42 @@ def export_cookies_from_chrome() -> bool:
         tmp_db.unlink(missing_ok=True)
 
 
-def _load_session() -> Optional[requests.Session]:
-    """Create a requests session with Handshake cookies."""
-    if not COOKIE_FILE.exists():
+def _load_session(sch: dict) -> requests.Session | None:
+    """Create a requests session with this school's Handshake cookies."""
+    if not sch["cookie_file"].exists():
         logger.error(
-            f"No cookie file at {COOKIE_FILE}. "
-            "Run with --export-cookies first, or manually export cookies."
+            f"No cookie file at {sch['cookie_file']}. Run with "
+            f"--school {sch['slug']} --export-cookies first, or export manually."
         )
         return None
 
-    with open(COOKIE_FILE) as f:
+    with open(sch["cookie_file"]) as f:
         cookies = json.load(f)
 
     session = requests.Session()
-    session.headers.update(HEADERS)
-
+    session.headers.update(sch["headers"])
     for c in cookies:
         session.cookies.set(
             c["name"], c.get("value", ""),
             domain=c.get("domain", ".joinhandshake.com"),
             path=c.get("path", "/"),
         )
-
     return session
 
 
-def _verify_session(session: requests.Session) -> bool:
-    """Check if the Handshake session is still valid."""
+def _verify_session(session: requests.Session, sch: dict) -> bool:
+    """Check if the Handshake session is still valid for this school."""
     try:
-        resp = session.get(f"{BASE_URL}/stu/postings", params={
-            "ajax": "true", "per_page": 1, "page": 1,
-            "category": "Posting",
+        resp = session.get(f"{sch['base_url']}/stu/postings", params={
+            "ajax": "true", "per_page": 1, "page": 1, "category": "Posting",
         }, timeout=10)
         if resp.status_code == 200:
             data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else None
             if data and "results" in data:
-                logger.info("Handshake session is valid")
+                logger.info(f"Handshake session valid for {sch['slug']}")
                 return True
         if resp.status_code in (401, 403, 302):
-            logger.error("Handshake session expired. Re-login and re-export cookies.")
+            logger.error(f"Handshake session expired for {sch['slug']}. Re-login and re-export cookies.")
             return False
         logger.warning(f"Unexpected response: {resp.status_code}")
         return False
@@ -183,24 +208,17 @@ def _verify_session(session: requests.Session) -> bool:
         return False
 
 
-def search_postings(session: requests.Session,
-                    query: str = "",
-                    job_type: str = "",
-                    page: int = 1,
-                    per_page: int = 25) -> dict:
-    """Search Handshake postings with given filters."""
-    params = {
-        **SEARCH_PARAMS,
-        "page": page,
-        "per_page": per_page,
-    }
+def search_postings(session: requests.Session, sch: dict,
+                    query: str = "", job_type: str = "",
+                    page: int = 1, per_page: int = 25) -> dict:
+    """Search this school's Handshake postings with given filters."""
+    params = {**SEARCH_PARAMS, "page": page, "per_page": per_page}
     if query:
         params["search"] = query
     if job_type:
         params["job_type_names[]"] = job_type
-
     try:
-        resp = session.get(SEARCH_URL, params=params, timeout=15)
+        resp = session.get(sch["search_url"], params=params, timeout=15)
         resp.raise_for_status()
         return resp.json()
     except Exception as e:
@@ -208,7 +226,7 @@ def search_postings(session: requests.Session,
         return {}
 
 
-def _parse_posting(result: dict) -> Optional[dict]:
+def _parse_posting(result: dict, sch: dict) -> dict | None:
     """Parse a Handshake search result (result.job nested structure)."""
     job = result.get("job", {}) or {}
     title = job.get("title", "").strip()
@@ -221,10 +239,6 @@ def _parse_posting(result: dict) -> Optional[dict]:
     cities = job.get("location_cities", [])
     states = job.get("location_states", [])
     location = f"{cities[0]}, {states[0]}" if cities and states else "Unknown"
-
-    deadline = result.get("expiration_date")
-    start_date = job.get("start_date")
-    posted = result.get("created_at")
 
     job_type = job.get("job_type_name", "")
     is_internship = "intern" in job_type.lower() if job_type else False
@@ -248,15 +262,15 @@ def _parse_posting(result: dict) -> Optional[dict]:
         "employer": employer_name,
         "location": location,
         "job_type": job_type,
-        "deadline": deadline,
-        "start_date": start_date,
-        "posted_date": posted,
+        "deadline": result.get("expiration_date"),
+        "start_date": job.get("start_date"),
+        "posted_date": result.get("created_at"),
         "description": "",
         "salary": salary_info,
         "is_internship": is_internship,
         "paid": "yes" if paid == "Paid" else "unknown",
         "international_friendly": "unknown",
-        "url": f"{BASE_URL}/stu/postings/{posting_id}",
+        "url": f"{sch['base_url']}/stu/postings/{posting_id}",
         "apply_url": "",
         "remote": job.get("remote", False),
         "on_site": job.get("on_site", False),
@@ -264,22 +278,22 @@ def _parse_posting(result: dict) -> Optional[dict]:
     }
 
 
-def normalize_posting(raw: dict) -> dict:
+def normalize_posting(raw: dict, sch: dict) -> dict:
     """Normalize a parsed Handshake posting to the opportunity schema."""
     from src.normalizers.enricher import enrich_opportunity
 
     pid = raw["handshake_id"]
-    opp_id = f"handshake-{hashlib.md5(pid.encode()).hexdigest()[:8]}"
+    opp_id = f"{sch['source']}-{hashlib.md5(pid.encode()).hexdigest()[:8]}"
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
     desc = raw.get("description", "")
     keywords = _extract_keywords(desc)
-
-    paid = raw.get("paid", "unknown")
+    loc = (raw.get("location") or "").lower()
+    on_campus = any(city in loc for city in sch["campus_cities"])
 
     opp = {
         "id": opp_id,
-        "source": "handshake",
+        "source": sch["source"],
         "source_url": raw["url"],
         "source_type": "internship" if raw.get("is_internship") else "job",
         "title": raw["title"],
@@ -290,10 +304,10 @@ def normalize_posting(raw: dict) -> dict:
         "contact_email": None,
         "url": raw["url"],
         "location": raw["location"],
-        "on_campus": "champaign" in raw["location"].lower() or "urbana" in raw["location"].lower(),
+        "on_campus": on_campus,
         "remote_option": "unknown",
         "opportunity_type": "internship" if raw.get("is_internship") else "research",
-        "paid": paid,
+        "paid": raw.get("paid", "unknown"),
         "compensation_details": raw.get("salary", ""),
         "deadline": raw.get("deadline"),
         "posted_date": raw.get("posted_date"),
@@ -329,7 +343,7 @@ def normalize_posting(raw: dict) -> dict:
             "last_seen_at": now,
             "is_active": True,
             "manually_reviewed": False,
-            "notes": f"Imported from Handshake (posting {pid})",
+            "notes": f"Imported from {sch['slug']} Handshake (posting {pid})",
             "handshake_id": pid,
         },
     }
@@ -367,10 +381,10 @@ def _extract_keywords(text: str) -> list[str]:
     return [kw for kw in KEYWORD_BANK if kw in text_lower][:6]
 
 
-def fetch_and_normalize(session: requests.Session,
+def fetch_and_normalize(session: requests.Session, sch: dict,
                         queries: list[str] = None,
                         max_pages: int = 3) -> list[dict]:
-    """Fetch research-related postings from Handshake and normalize them."""
+    """Fetch research-related postings from a school's Handshake and normalize."""
     if queries is None:
         queries = RESEARCH_KEYWORDS
 
@@ -379,24 +393,20 @@ def fetch_and_normalize(session: requests.Session,
 
     for query in queries:
         for page in range(1, max_pages + 1):
-            data = search_postings(session, query=query, page=page, per_page=25)
+            data = search_postings(session, sch, query=query, page=page, per_page=25)
             results = data.get("results", [])
             if not results:
                 break
-
             for posting in results:
-                raw = _parse_posting(posting)
+                raw = _parse_posting(posting, sch)
                 if not raw or raw["handshake_id"] in seen_ids:
                     continue
                 seen_ids.add(raw["handshake_id"])
-                opp = normalize_posting(raw)
-                all_opps.append(opp)
-
+                all_opps.append(normalize_posting(raw, sch))
             time.sleep(1.5)
-
         logger.info(f"  Query '{query}': {len(seen_ids)} unique so far")
 
-    logger.info(f"Total Handshake opportunities: {len(all_opps)}")
+    logger.info(f"Total {sch['slug']} Handshake opportunities: {len(all_opps)}")
     return all_opps
 
 
@@ -435,8 +445,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     parser = argparse.ArgumentParser(description="Handshake Opportunity Collector")
+    parser.add_argument("--school", default="uiuc",
+                        help=f"School slug (default: uiuc). Known: {sorted(HANDSHAKE_SCHOOLS)}")
     parser.add_argument("--export-cookies", action="store_true",
-                        help="Export Handshake cookies from Chrome")
+                        help="Export this school's Handshake cookies from Chrome")
     parser.add_argument("--save", action="store_true",
                         help="Merge into processed/opportunities.json")
     parser.add_argument("--max-pages", type=int, default=3,
@@ -445,31 +457,37 @@ if __name__ == "__main__":
                         help="Custom search query (overrides defaults)")
     args = parser.parse_args()
 
+    try:
+        sch = _resolve_school(args.school)
+    except ValueError as e:
+        print(e)
+        exit(1)
+
     if args.export_cookies:
-        ok = export_cookies_from_chrome()
+        ok = export_cookies_from_chrome(sch)
         if ok:
-            print(f"\nCookies exported to {COOKIE_FILE}")
-            print("Now run: python -m src.collectors.handshake")
+            print(f"\nCookies exported to {sch['cookie_file']}")
+            print(f"Now run: python -m src.collectors.handshake --school {sch['slug']}")
         else:
             print("\nCookie export failed. See instructions above.")
         exit(0 if ok else 1)
 
-    session = _load_session()
+    session = _load_session(sch)
     if not session:
         print("\nNo cookies found. Run one of:")
-        print("  python -m src.collectors.handshake --export-cookies")
-        print(f"  Or manually save cookies to {COOKIE_FILE}")
+        print(f"  python -m src.collectors.handshake --school {sch['slug']} --export-cookies")
+        print(f"  Or manually save cookies to {sch['cookie_file']}")
         exit(1)
 
-    if not _verify_session(session):
-        print("\nSession expired. Log into Handshake in Chrome and re-export cookies:")
-        print("  python -m src.collectors.handshake --export-cookies")
+    if not _verify_session(session, sch):
+        print(f"\nSession expired. Log into {sch['base_url']} in Chrome and re-export:")
+        print(f"  python -m src.collectors.handshake --school {sch['slug']} --export-cookies")
         exit(1)
 
     queries = [args.query] if args.query else None
-    opps = fetch_and_normalize(session, queries=queries, max_pages=args.max_pages)
+    opps = fetch_and_normalize(session, sch, queries=queries, max_pages=args.max_pages)
 
-    print(f"\nFetched {len(opps)} opportunities from Handshake")
+    print(f"\nFetched {len(opps)} opportunities from {sch['slug']} Handshake")
     for o in opps[:5]:
         print(f"\n  {o['title'][:65]}")
         print(f"    Employer: {o['organization']}")

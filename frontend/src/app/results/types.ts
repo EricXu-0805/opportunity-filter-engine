@@ -109,6 +109,8 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   nsf_reu: 'results.filters.sourceNsfReu',
   uiuc_faculty: 'results.filters.sourceUiucFaculty',
   handshake: 'results.filters.sourceHandshake',
+  handshake_ucb: 'results.filters.sourceHandshakeUcb',
+  handshake_umich: 'results.filters.sourceHandshakeUmich',
   manual: 'results.filters.sourceManual',
   uiuc_our_rss: 'results.filters.sourceOurRss',
   ucb_urap: 'results.filters.sourceUcbUrap',

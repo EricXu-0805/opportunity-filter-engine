@@ -23,6 +23,9 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "uiuc_drp": ("uiuc", "campus"),
     "uiuc_other": ("uiuc", "campus"),
     "handshake": ("uiuc", "campus"),
+    # Other schools' Handshake (manual, login-gated; same per-school campus scope).
+    "handshake_ucb": ("ucb", "campus"),
+    "handshake_umich": ("umich", "campus"),
     # SRO is UIUC's database OF external summer research programs
     # (researchops.web.illinois.edu) — it catalogs programs hosted elsewhere
     # that welcome outside applicants, so its records are national + open
