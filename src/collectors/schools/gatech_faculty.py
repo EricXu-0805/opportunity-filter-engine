@@ -23,10 +23,12 @@ yield real ladder faculty, not staff/affiliates):
   * **Materials Science & Engineering** — the ``1FTE`` (FTE Faculty) Views grid,
     with public emails inline.
 
-Deferred (need slug-derived names / pagination / accurate scoping before
-shipping): ME and BME (faculty pages over-list incl. research staff with no
-clean rank selector), ECE / CEE / ChBE (their card's name link reads "Learn
-more about …" — a slug-name pass is needed), and Physics (JS-rendered).
+Plus **ECE** and **CEE**, each via its Faculty filter URL — their card name link
+reads "Learn more about <Name>", recovered with a ``name_strip`` regex.
+
+Deferred: ME and BME (faculty pages over-list incl. research staff with no clean
+rank selector), ChBE (its name link is an empty image link with the named link
+second — needs an nth-link selector), and Physics (JS-rendered).
 
 Single source ("gatech_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown" (per-prof openness).
@@ -94,6 +96,36 @@ SCHOOL: dict = {
                 "url": "https://www.mse.gatech.edu/people?field_personnel_group_value_1=1FTE",
                 "selectors": {"card": ".views-row", "name": "a[href*='/people/']",
                               "link": "a[href*='/people/']", "email": "a[href^='mailto:']"},
+            },
+        },
+        {
+            "short": "ECE",
+            "name": "School of Electrical & Computer Engineering",
+            "majors": ["Electrical Engineering", "Computer Engineering"],
+            "directory_url": "https://ece.gatech.edu/directory?field_person_groups_target_id=2323",
+            "scrape": {
+                "url": "https://ece.gatech.edu/directory?field_person_groups_target_id=2323",
+                "selectors": {"card": ".views-row", "name": "a[href^='/directory/']",
+                              "link": "a[href^='/directory/']",
+                              "name_strip": r"^Learn more about\s+"},
+                "ladder_filter": {"drop": r"emerit|adjunct|affiliat|of the practice"
+                                          r"|academic professional|research (scientist|engineer)"},
+                "paginate": {"param": "page", "start": 1, "max": 8},
+            },
+        },
+        {
+            "short": "CEE",
+            "name": "School of Civil & Environmental Engineering",
+            "majors": ["Civil Engineering", "Environmental Engineering"],
+            "directory_url": "https://ce.gatech.edu/people?field_person_faculty_type_target_id=58",
+            "scrape": {
+                "url": "https://ce.gatech.edu/people?field_person_faculty_type_target_id=58",
+                "selectors": {"card": ".views-row", "name": "a[href*='/directory/person/']",
+                              "link": "a[href*='/directory/person/']",
+                              "name_strip": r"^Learn more about\s+"},
+                "ladder_filter": {"drop": r"emerit|adjunct|affiliat|of the practice"
+                                          r"|academic professional|research (scientist|engineer)"},
+                "paginate": {"param": "page", "start": 1, "max": 8},
             },
         },
     ],

@@ -115,9 +115,9 @@ export const SCHOOLS: School[] = [
     // Campus-graph engine (8 program/office/lab records) plus the live-scraped
     // faculty directory (~369 professors): College of Computing (CS, Interactive
     // Computing, Computational Science & Engineering, paginated) + the Chemistry,
-    // Mathematics, and Materials Science schools (faculty-only filter URLs). SURE
+    // Mathematics, Materials Science, ECE, and Civil schools (faculty-only filter URLs). SURE
     // + College of Sciences REU programs are national/open, not counted.
-    coverage: { campusOpportunities: 377, note: 'universitySwitcher.coverageCampus' },
+    coverage: { campusOpportunities: 448, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 6, majors: 43 },
   },
   {
@@ -150,8 +150,9 @@ export const SCHOOLS: School[] = [
     // Samueli engineering research page, the career center, the CNSI institute)
     // plus the faculty directory (~476 professors): WordPress-REST for Chemistry
     // & Biochemistry, MCDB, Psychology; the Samueli AJAX directory for the seven
-    // engineering departments (CS, ECE, MAE, …), keyworded per profile.
-    coverage: { campusOpportunities: 486, note: 'universitySwitcher.coverageCampus' },
+    // engineering departments (CS, ECE, MAE, …), keyworded per profile; plus the
+    // Economics, Ecology & Evolutionary Biology, and Mathematics ladder pages.
+    coverage: { campusOpportunities: 615, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 9, majors: 135 },
   },
   {

@@ -293,13 +293,27 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     """
     people: list[dict] = []
     for card in soup.select(sel.get("card", "")):
-        name_el = card.select_one(sel["name"]) if sel.get("name") else None
+        # ":self" = the card element itself is the name link (link-list
+        # directories where each faculty is a bare <a>, no inner name node).
+        if sel.get("name") == ":self":
+            name_el = card
+        else:
+            name_el = card.select_one(sel["name"]) if sel.get("name") else None
         if not name_el:
             continue
         name = name_el.get_text(" ", strip=True)
+        if sel.get("name_strip"):
+            # Some directories prefix the name link with boilerplate ("Learn more
+            # about <Name>"); strip it to recover the clean, properly-cased name.
+            name = re.sub(sel["name_strip"], "", name).strip()
         if name_flip:
             name = _flip_name(name)
-        link_el = card.select_one(sel.get("link", "")) if sel.get("link") else name_el
+        if sel.get("link") == ":self":
+            link_el = card
+        elif sel.get("link"):
+            link_el = card.select_one(sel["link"])
+        else:
+            link_el = name_el
         href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
         if link_filter and not re.search(link_filter, href):
             continue
