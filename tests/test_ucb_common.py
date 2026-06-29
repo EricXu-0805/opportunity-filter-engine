@@ -86,3 +86,27 @@ def test_normalize_faculty_strips_navmenu_from_description():
         assert phrase not in opp["eligibility"]["eligibility_text_raw"]
     # the real research area survives
     assert "tissue engineering" in opp["description_clean"]
+
+
+def test_null_shared_and_unit_mailbox_emails():
+    """UIUC-aligned DQ: a dept/coordinator inbox shared by 2+ different ucb_*
+    professors, or a generic unit mailbox local-part, is nulled — so a re-scrape
+    can't reintroduce a shared-email DQ failure or a misfiring cold-email target,
+    without hand-maintaining NOISE_EMAILS. Personal emails are kept."""
+    from src.collectors.ucb_common import (
+        _null_shared_contact_emails,
+        _null_unit_mailbox_emails,
+    )
+    opps = [
+        {"source": "ucb_tdps_faculty", "source_type": "faculty_research",
+         "pi_name": "Alice A", "contact_email": "tdps@berkeley.edu"},
+        {"source": "ucb_tdps_faculty", "source_type": "faculty_research",
+         "pi_name": "Bob B", "contact_email": "tdps@berkeley.edu"},
+        {"source": "ucb_music_faculty", "source_type": "faculty_research",
+         "pi_name": "Carol C", "contact_email": "office@music.berkeley.edu"},
+        {"source": "ucb_music_faculty", "source_type": "faculty_research",
+         "pi_name": "Dan D", "contact_email": "dan@berkeley.edu"},
+    ]
+    assert _null_shared_contact_emails(opps) == 2   # both tdps@ records
+    assert _null_unit_mailbox_emails(opps) == 1     # office@
+    assert [o["contact_email"] for o in opps] == [None, None, None, "dan@berkeley.edu"]
