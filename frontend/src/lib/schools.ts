@@ -117,7 +117,7 @@ export const SCHOOLS: School[] = [
     // Computing, Computational Science & Engineering, paginated) + the Chemistry,
     // Mathematics, Materials Science, ECE, and Civil schools (faculty-only filter URLs). SURE
     // + College of Sciences REU programs are national/open, not counted.
-    coverage: { campusOpportunities: 448, note: 'universitySwitcher.coverageCampus' },
+    coverage: { campusOpportunities: 460, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 6, majors: 43 },
   },
   {
@@ -165,10 +165,10 @@ export const SCHOOLS: School[] = [
     location: 'Seattle, WA',
     // Campus-graph engine (10 program/office/lab records) plus the live-scraped
     // faculty directory (~750 professors): ECE + the 13 Arts & Sciences depts
-    // (Drupal grids) + the five College of Engineering depts via facultyfinder
+    // (Drupal grids) + the Allen School of CSE + the five College of Engineering depts via facultyfinder
     // (keyworded + emailed) + Bioengineering (WordPress, keyworded) + Biology.
     // The Institute for Protein Design program is national/open, not counted.
-    coverage: { campusOpportunities: 760, note: 'universitySwitcher.coverageCampus' },
+    coverage: { campusOpportunities: 853, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 12, majors: 116 },
   },
   {

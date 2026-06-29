@@ -128,6 +128,20 @@ SCHOOL: dict = {
                 "paginate": {"param": "page", "start": 1, "max": 8},
             },
         },
+        {
+            "short": "CHBE",
+            "name": "School of Chemical & Biomolecular Engineering",
+            "majors": ["Chemical Engineering", "Biomolecular Engineering"],
+            "directory_url": "https://chbe.gatech.edu/directory1?field_person_category_target_id=1",
+            "scrape": {
+                "url": "https://chbe.gatech.edu/directory1?field_person_category_target_id=1",
+                "selectors": {"card": ".views-row", "name": "a.dir_link",
+                              "link": "a.dir_link",
+                              "title": ".field--name-field-person-job-title-s-"},
+                "ladder_filter": {"drop": r"emerit|adjunct|affiliat|of the practice"
+                                          r"|academic professional"},
+            },
+        },
     ],
 }
 
