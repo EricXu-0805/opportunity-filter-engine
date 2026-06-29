@@ -165,12 +165,13 @@ export const SCHOOLS: School[] = [
     color: '#4B2E83',
     location: 'Seattle, WA',
     // Campus-graph engine (10 program/office/lab records) plus the live-scraped
-    // faculty directory (~860 professors): ECE + the 13 Arts & Sciences depts
-    // (Drupal grids) + the Allen School of CSE + Statistics + the five College of
-    // Engineering depts via facultyfinder (keyworded + emailed) + Bioengineering
-    // (WordPress, keyworded) + Biology. The Institute for Protein Design program
-    // is national/open, not counted.
-    coverage: { campusOpportunities: 871, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~2,250 professors across 61 departments — UIUC-parity
+    // coverage): Engineering (Allen CSE + facultyfinder depts, keyworded), the
+    // full College of Arts & Sciences (Drupal grids), the College of the
+    // Environment, Education, Foster Business, Nursing, Pharmacy, Public Health,
+    // Social Work, Evans, the iSchool, Built Environments, and School of Medicine
+    // basic sciences. The Institute for Protein Design program is national/open.
+    coverage: { campusOpportunities: 2259, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 12, majors: 116 },
   },
   {

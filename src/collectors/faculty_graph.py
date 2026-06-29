@@ -117,8 +117,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, or algolia config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, or faculty180 config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -153,9 +153,22 @@ def _clean_keywords(person: dict) -> list[str]:
     return list(dict.fromkeys(p for p in parts if len(p) >= 3))[:8]
 
 
+_PRONOUN_RE = re.compile(
+    r"\s*[-–—(]*\s*\b(?:she|he|they|ze|sie|xe|fae|per|ey)\b\s*[,/]\s*"
+    r"\b(?:her|hers|him|his|them|theirs|hir|zir|xem|faer|per|em)\b\s*\)?\s*$",
+    re.I,
+)
+
+
+def _strip_pronouns(name: str) -> str:
+    """Drop a trailing pronoun clause some directories append to the name
+    (e.g. "Laura E Frantz she,her" / "Jonika Hash - she, her" / "X (they/them)")."""
+    return _PRONOUN_RE.sub("", name).strip()
+
+
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
-    name = (person.get("name") or "").strip()
+    name = _strip_pronouns((person.get("name") or "").strip())
     if not _is_person_name(name):
         return None
     title = person.get("title") or "Professor"
@@ -304,9 +317,35 @@ def _passes_section(card, sf: dict | None) -> bool:
     return not (sf.get("exclude") and re.search(sf["exclude"], sec, re.I))
 
 
+def _passes_field(card, ff: dict | None) -> bool:
+    """Per-card gate on the text of an arbitrary field selector.
+
+    Some flat directories list home-department ladder faculty and cross-listed
+    affiliates (whose primary appointment is at another department or institution)
+    in one undifferentiated card grid, with no role heading and a clean
+    "Professor" title on everyone — so neither ``section_filter`` nor
+    ``ladder_filter`` can separate them. But the card often carries a primary-
+    department / affiliation field (e.g. UW Microbiology's per-card
+    "Department" cell, "Microbiology" for home faculty vs "Harvard University" /
+    "Department of Pediatrics" for affiliates). ``field_filter`` reads that field
+    via ``selector`` and keeps only cards whose text matches ``include`` (and not
+    ``exclude``). An absent/empty field counts as a match for ``include`` (the
+    home-department default leaves the field blank), and never matches
+    ``exclude``.
+    """
+    if not ff:
+        return True
+    el = card.select_one(ff["selector"]) if ff.get("selector") else None
+    text = el.get_text(" ", strip=True) if el else ""
+    if ff.get("include") and text and not re.search(ff["include"], text, re.I):
+        return False
+    return not (ff.get("exclude") and text and re.search(ff["exclude"], text, re.I))
+
+
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
-                 section_filter: dict | None = None) -> list[dict]:
+                 section_filter: dict | None = None,
+                 field_filter: dict | None = None) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
@@ -320,6 +359,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     people: list[dict] = []
     for card in soup.select(sel.get("card", "")):
         if not _passes_section(card, section_filter):
+            continue
+        if not _passes_field(card, field_filter):
             continue
         # ":self" = the card element itself is the name link (link-list
         # directories where each faculty is a bare <a>, no inner name node).
@@ -386,6 +427,21 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     return people
 
 
+def _paginated_url(base: str, page: int, param: str) -> str:
+    """Insert WordPress/Elementor ``/<param>/N/`` path pagination into a URL.
+
+    Some list widgets (e.g. UW School of Social Work's Elementor directory)
+    paginate via the *path* — ``/directory/page/2/?team_roles=professor`` — and
+    ignore a ``?page=2`` query param (it just re-serves page 1). Splitting on the
+    query string and rebuilding ``<path>/<param>/N/?<query>`` reaches later pages
+    that the query-param paginator can't.
+    """
+    head, sep, query = base.partition("?")
+    head = head.rstrip("/")
+    paged = f"{head}/{param}/{page}/"
+    return f"{paged}{sep}{query}" if query else paged
+
+
 def _scrape_directory(dept: dict) -> list[dict]:
     """Best-effort parse of a department directory into faculty specs.
 
@@ -410,22 +466,25 @@ def _scrape_directory(dept: dict) -> list[dict]:
     flip = cfg.get("name_flip", False)
     link_f = cfg.get("link_filter")
     sf = cfg.get("section_filter")
+    ff = cfg.get("field_filter")
     soup = fetch_soup(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
-        people = _parse_cards(soup, sel, base, lf, flip, link_f, sf)
+        people = _parse_cards(soup, sel, base, lf, flip, link_f, sf, ff)
         pag = cfg.get("paginate")
         if pag:
             param = pag.get("param", "page")
+            path_mode = pag.get("mode") == "path"
             seen = {(p["name"], p["url"]) for p in people}
             for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
-                sep = "&" if "?" in base else "?"
-                s2 = fetch_soup(f"{base}{sep}{param}={pg}")
+                next_url = _paginated_url(base, pg, param) if path_mode else (
+                    f"{base}{'&' if '?' in base else '?'}{param}={pg}")
+                s2 = fetch_soup(next_url)
                 if s2 is None:
                     break
-                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf)
+                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
                          if (p["name"], p["url"]) not in seen]
                 if not fresh:
                     break
@@ -553,9 +612,15 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
     term_maps = {t: _wp_term_map(base, t) for t in kw_taxes}
     kw_drop = {k.lower() for k in cfg.get("keyword_drop", [])}
     cat_inc = cfg.get("category_include") or {}
+    cat_exc = cfg.get("category_exclude") or {}
     name_flip = cfg.get("name_flip", False)
     default_title = cfg.get("title", "Professor")
     enrich = cfg.get("profile_enrich")
+    # Some person post types keep the rank + public email on the WP "meta box"
+    # (e.g. UW COM's `person` type: meta_box.job_title / meta_box.email_address)
+    # rather than in taxonomies — read them so faculty land titled + emailed.
+    meta_title_field = cfg.get("meta_title_field")
+    meta_email_field = cfg.get("meta_email_field")
 
     records: list[dict] = []
     for pg in range(1, 13):
@@ -577,6 +642,14 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
             for tax, ids in cat_inc.items()
         ):
             continue
+        # Exclude wins over include (a person double-tagged Faculty + Emeritus, or
+        # Faculty + Affiliate-elsewhere, is dropped) — so the include set can be a
+        # broad role union while exclude prunes the non-home-department ranks.
+        if any(
+            isinstance(rec.get(tax), list) and any(v in ids for v in rec[tax])
+            for tax, ids in cat_exc.items()
+        ):
+            continue
         title_field = rec.get("title")
         name = _wp_text(
             title_field.get("rendered", "") if isinstance(title_field, dict) else title_field
@@ -594,6 +667,14 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
                 if nm and nm.lower() not in kw_drop:
                     keywords.append(nm)
         title = default_title
+        email = None
+        meta = rec.get("meta_box") if isinstance(rec.get("meta_box"), dict) else {}
+        if meta_title_field:
+            mt = _wp_text(str(meta.get(meta_title_field, "") or ""))
+            if mt:
+                title = mt
+        if meta_email_field:
+            email = (str(meta.get(meta_email_field, "") or "").strip() or None)
         if enrich:
             pos, extra_kw = _enrich_profile(url, enrich)
             if pos:
@@ -603,7 +684,8 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
             if extra_kw:
                 keywords.insert(0, extra_kw)
         specs.append(
-            faculty(name, title=title, url=url, keywords=list(dict.fromkeys(keywords)))
+            faculty(name, title=title, url=url, email=email,
+                    keywords=list(dict.fromkeys(keywords)))
         )
     return specs
 
@@ -802,6 +884,100 @@ def _fetch_algolia(dept: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Interfolio Faculty180 admin-ajax source (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# Interfolio's Faculty180 product ships a WordPress plugin that renders a
+# department's faculty directory client-side, fetching the people list as JSON
+# from ``wp-admin/admin-ajax.php`` (action ``faculty_search_ajax``). The raw page
+# is just a filter shell ("Search Please wait …"), so a static scrape lands zero
+# people — but the AJAX call returns clean structured records (firstname,
+# lastname, position/rank, email, slug). A department opts in with a
+# ``faculty180`` block:
+#
+#     "faculty180": {
+#       "base": "https://nursing.uw.edu",      # site root (admin-ajax under it)
+#       "profile_base": "https://nursing.uw.edu/person/",  # {pid}-{slug} appended
+#       "per_page": 100,
+#       "ladder_filter": {"require": r"profess|lecturer",
+#                         "drop": r"emerit|affiliate|postdoc|visiting|..."},
+#     }
+#
+# The ranks the directory mixes (Affiliate / Clinical-Non-Salaried / Emeritus /
+# Postdoctoral / Teaching Associate / Visiting) are filtered out by the
+# title-based ``ladder_filter`` (same require/drop semantics as the scrape
+# layer) so only current ladder + teaching + lecturer faculty land.
+
+def _fetch_faculty180(dept: dict) -> list[dict]:
+    """Best-effort faculty fetch from an Interfolio Faculty180 admin-ajax feed.
+
+    Lazy-imports requests; degrades to ``[]`` on any failure. Paginates the
+    ``faculty_search_ajax`` action until the page is short, de-dupes by ``pid``,
+    and applies the title ``ladder_filter`` so non-ladder ranks are dropped.
+    """
+    cfg = dept.get("faculty180")
+    if not cfg:
+        return []
+    try:
+        import requests
+    except Exception:  # noqa: BLE001
+        return []
+    from .ucb_common import HEADERS
+
+    base = cfg["base"].rstrip("/")
+    endpoint = f"{base}/wp-admin/admin-ajax.php"
+    profile_base = cfg.get("profile_base", f"{base}/person/").rstrip("/") + "/"
+    per_page = cfg.get("per_page", 100)
+    lf = cfg.get("ladder_filter")
+    headers = {**HEADERS, "X-Requested-With": "XMLHttpRequest",
+               "Content-Type": "application/x-www-form-urlencoded"}
+
+    specs: list[dict] = []
+    seen_pids: set = set()
+    for page in range(1, cfg.get("max_pages", 20) + 1):
+        try:
+            resp = requests.post(
+                endpoint,
+                headers=headers,
+                data={"action": "faculty_search_ajax", "searchpage": str(page),
+                      "args[per_page]": str(per_page)},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            users = resp.json().get("users", [])
+        except Exception:  # noqa: BLE001
+            break
+        if not users:
+            break
+        fresh = 0
+        for u in users:
+            if not isinstance(u, dict):
+                continue
+            pid = u.get("pid")
+            if pid in seen_pids:
+                continue
+            seen_pids.add(pid)
+            fresh += 1
+            # ``rank`` is the clean academic rank ("Associate Professor");
+            # ``position`` carries payroll/admin cruft ("Physician Asst-Adv Rn
+            # Pract<br />Teaching Professor", "Health Services Manager (E S 10)")
+            # so the ladder filter — and the stored title — key on rank.
+            title = (u.get("rank") or u.get("position") or "Professor").strip()
+            if not _passes_ladder(title, lf):
+                continue
+            name = " ".join(p for p in (u.get("firstname"), u.get("lastname")) if p).strip()
+            if not _is_person_name(name):
+                continue
+            email = (u.get("email") or "").strip() or None
+            slug = (u.get("slug") or "").strip()
+            url = f"{profile_base}{pid}-{slug}/" if pid and slug else base
+            specs.append(faculty(name, title=title, url=url, email=email))
+        if len(users) < per_page or fresh == 0:
+            break
+    return specs
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -822,7 +998,7 @@ def _listing_urls(school: dict) -> set[str]:
     """
     urls: set[str] = set()
     for dept in school.get("departments", []):
-        for block in ("scrape", "api", "ajax", "algolia"):
+        for block in ("scrape", "api", "ajax", "algolia", "faculty180"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):
                 for k in ("url", "base"):
@@ -857,7 +1033,8 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                if (u := (p.get("url") or "").strip().lower())
                                and u not in listing_urls}
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
-                               + _fetch_seas_ajax(dept) + _fetch_algolia(dept)):
+                               + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
+                               + _fetch_faculty180(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue
