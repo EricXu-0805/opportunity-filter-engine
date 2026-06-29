@@ -665,10 +665,12 @@ class TestStanfordConfig:
         assert SOURCE_DEFAULTS[SF["source"]] == ("stanford", "unknown")
         assert SF["source"] in FACULTY_SOURCES
 
-    def test_stanford_every_department_has_a_scrape_block(self):
+    def test_stanford_every_department_has_a_live_source(self):
         from src.collectors.schools.stanford_faculty import SCHOOL as SF
         for dept in SF["departments"]:
-            assert dept.get("scrape", {}).get("selectors", {}).get("card"), dept["short"]
+            has_scrape = bool(dept.get("scrape", {}).get("selectors", {}).get("card"))
+            has_api = bool(dept.get("api", {}).get("base"))  # Law = WordPress REST
+            assert has_scrape or has_api, dept["short"]
 
 
 class TestUTexasConfig:
