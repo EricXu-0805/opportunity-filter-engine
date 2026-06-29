@@ -363,6 +363,33 @@ class TestScrapeLadderFilter:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ada Real"]
 
+    def test_section_filter_keeps_only_matching_heading(self, monkeypatch):
+        """A single-page role-grouped directory: keep only cards under the
+        ``Faculty`` heading, excluding Teaching Faculty / Affiliate / Emeritus —
+        even when an Affiliate carries a real "Professor" title that a
+        ladder_filter would wrongly keep."""
+        from bs4 import BeautifulSoup
+        html = """
+        <h2>Faculty</h2>
+        <div class="c"><a class="n" href="/p/a">Ada Core</a></div>
+        <div class="c"><a class="n" href="/p/b">Bea Core</a></div>
+        <h2>Teaching Faculty</h2>
+        <div class="c"><a class="n" href="/p/c">Cy Teach</a></div>
+        <h2>Affiliate</h2>
+        <div class="c"><a class="n" href="/p/d">Di Other</a></div>
+        <h2>Emeritus Professor</h2>
+        <div class="c"><a class="n" href="/p/e">Ed Old</a></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "section_filter": {"include": r"^faculty$"},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ada Core", "Bea Core"]
+
     def test_scrape_name_flip(self, monkeypatch):
         from bs4 import BeautifulSoup
         html = '<div class="c"><a class="n" href="/p/a">Zhang, Wei</a></div>'

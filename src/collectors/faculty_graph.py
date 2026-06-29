@@ -280,8 +280,33 @@ def _passes_ladder(title: str, lf: dict | None) -> bool:
     return not (lf.get("drop") and re.search(lf["drop"], t, re.I))
 
 
+def _card_section(card, heading: str) -> str:
+    """Nearest preceding heading text for a card (its role group)."""
+    h = card.find_previous(heading)
+    return h.get_text(" ", strip=True) if h else ""
+
+
+def _passes_section(card, sf: dict | None) -> bool:
+    """Section gate for single-page directories that group people by role heading.
+
+    Some departments list Faculty, Teaching Faculty, Affiliate, and Emeritus on
+    one page under sibling headings, with no per-card class or title that cleanly
+    separates them (an Affiliate may carry a real "Professor, <other dept>"
+    title). ``section_filter`` keeps only cards whose nearest preceding heading
+    matches ``include`` (and not ``exclude``) — so a flat card selector can still
+    land just the home-department ladder faculty.
+    """
+    if not sf:
+        return True
+    sec = _card_section(card, sf.get("heading", "h2"))
+    if sf.get("include") and not re.search(sf["include"], sec, re.I):
+        return False
+    return not (sf.get("exclude") and re.search(sf["exclude"], sec, re.I))
+
+
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
-                 name_flip: bool = False, link_filter: str | None = None) -> list[dict]:
+                 name_flip: bool = False, link_filter: str | None = None,
+                 section_filter: dict | None = None) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
@@ -289,10 +314,13 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     faculty in one pass rather than name-only stubs. ``ladder_filter`` drops
     non-ladder ranks by title; ``name_flip`` un-inverts "Last, First" listings;
     ``link_filter`` keeps only cards whose profile href matches (e.g. "/Faculty/"
-    on directories that list faculty and staff together).
+    on directories that list faculty and staff together); ``section_filter`` keeps
+    only cards under a matching role heading (single-page role-grouped directories).
     """
     people: list[dict] = []
     for card in soup.select(sel.get("card", "")):
+        if not _passes_section(card, section_filter):
+            continue
         # ":self" = the card element itself is the name link (link-list
         # directories where each faculty is a bare <a>, no inner name node).
         if sel.get("name") == ":self":
@@ -377,12 +405,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
     lf = cfg.get("ladder_filter")
     flip = cfg.get("name_flip", False)
     link_f = cfg.get("link_filter")
+    sf = cfg.get("section_filter")
     soup = fetch_soup(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
-        people = _parse_cards(soup, sel, base, lf, flip, link_f)
+        people = _parse_cards(soup, sel, base, lf, flip, link_f, sf)
         pag = cfg.get("paginate")
         if pag:
             param = pag.get("param", "page")
@@ -392,7 +421,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 s2 = fetch_soup(f"{base}{sep}{param}={pg}")
                 if s2 is None:
                     break
-                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f)
+                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf)
                          if (p["name"], p["url"]) not in seen]
                 if not fresh:
                     break

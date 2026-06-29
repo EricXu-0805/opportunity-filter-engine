@@ -12,11 +12,16 @@ different CMSes; this covers each via the cleanest source it exposes:
   * **Mathematics** — a WordPress ``uw_staff`` post type filtered to the
     Professor / Associate / Assistant ``uw_staff_type`` terms (name un-inverted
     from "Last, First").
+  * **Physics / Statistics** — the same ``faculty-member-content`` theme on a
+    single page. Physics' ``/people/faculty/`` is faculty-only (Chair + the
+    Department & Affiliated Faculty), so a flat card scrape lands all of it.
+    Statistics lists Faculty, Teaching Faculty, Affiliate, and Emeritus on one
+    page with no per-card class or rank that separates them (an Affiliate carries
+    a real "Professor, <other dept>" title), so a ``section_filter`` keeps only
+    the cards under the ``Faculty`` heading; names un-inverted from "Last, First".
 
-Deferred: Statistics (its directory mixes staff under one selector with no clean
-faculty isolation), Physics (TLS handshake rejects non-browser clients), and
-Chemistry (an AWS load-balancer bot-challenge returns an empty body) — all need
-the headless path.
+Deferred: Chemistry (an AWS load-balancer bot-challenge returns an empty body) —
+needs the headless path.
 
 Single source ("wisc_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -83,6 +88,30 @@ SCHOOL: dict = {
                     "post_type": "uw_staff",
                     "category_include": {"uw_staff_type": [20, 21, 22]},
                     "name_flip": True},
+        },
+        {
+            "short": "PHYS",
+            "name": "Department of Physics",
+            "majors": ["Physics", "Applied Physics", "Astrophysics"],
+            "directory_url": "https://www.physics.wisc.edu/people/faculty/",
+            "scrape": {
+                "url": "https://www.physics.wisc.edu/people/faculty/",
+                "selectors": {"card": ".faculty-member-content",
+                              "name": "h3 a", "link": "h3 a"},
+            },
+        },
+        {
+            "short": "STAT",
+            "name": "Department of Statistics",
+            "majors": ["Statistics", "Data Science"],
+            "directory_url": "https://stat.wisc.edu/people/",
+            "scrape": {
+                "url": "https://stat.wisc.edu/people/",
+                "name_flip": True,
+                "section_filter": {"include": r"^faculty$"},
+                "selectors": {"card": ".faculty-member-content",
+                              "name": "h3 a", "link": "h3 a"},
+            },
         },
     ],
 }

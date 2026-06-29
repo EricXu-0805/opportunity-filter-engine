@@ -180,10 +180,11 @@ export const SCHOOLS: School[] = [
     color: '#C5050C',
     location: 'Madison, WI',
     // Campus-graph engine (9 program/office records) plus the live-scraped
-    // faculty directory (~267 professors): Computer Sciences (emailed) + the
+    // faculty directory (~371 professors): Computer Sciences (emailed) + the
     // College of Engineering shared directory (ECE, ME, BME — /Faculty/-filtered,
-    // emailed) + Mathematics (WordPress uw_staff). IBS-SRP REU is national/open.
-    coverage: { campusOpportunities: 276, note: 'universitySwitcher.coverageCampus' },
+    // emailed) + Mathematics (WordPress uw_staff) + Physics (faculty-only page) +
+    // Statistics (section-filtered to the Faculty heading). IBS-SRP REU is national/open.
+    coverage: { campusOpportunities: 380, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 8, majors: 146 },
   },
   {
