@@ -793,6 +793,127 @@ def drop_joint_appointment_duplicates(
     return kept, dropped
 
 
+# Generic department/unit/role mailbox local-parts that scrape in place of a
+# professor's personal address (office@, advising@, boxoffice@). A "Dear Prof. X"
+# cold email to a unit inbox misfires, so null it (the send modal then disables).
+# Distinct from the frequency pass below — these are single-record inboxes it
+# never sees. Mirrors uiuc_faculty._UNIT_MAILBOX_LOCALPARTS.
+_UNIT_MAILBOX_LOCALPARTS = frozenset({
+    "office", "mainoffice", "frontoffice", "dean", "info", "contact", "admin",
+    "administration", "advising", "gradoffice", "undergrad", "undergraduate",
+    "hr", "reception", "frontdesk", "dept", "department", "inquiries",
+    "generalinquiries", "mailbox", "webmaster", "help", "support", "boxoffice",
+    "chair", "staff",
+})
+
+
+def _is_ucb_faculty(opp: dict) -> bool:
+    return (opp.get("source") or "").startswith("ucb_") and \
+        opp.get("source_type") == "faculty_research"
+
+
+def _null_shared_contact_emails(opps: list[dict]) -> int:
+    """Null a contact_email shared by 2+ distinct ucb_* faculty — a scraped
+    department/coordinator inbox, never a personal address (two different people
+    don't share one). Adapts uiuc_faculty._null_shared_admin_emails, but at a
+    threshold of 2 (not 3) because the ucb_* data-quality gate forbids *any* two
+    records sharing an email; this ends the manual NOISE_EMAILS whack-a-mole
+    (tdps@, tdpsboxoffice@, psychadmin@, ...) by catching unknown mailboxes
+    automatically. Same-person joint appointments are already collapsed by
+    drop_joint_appointment_duplicates, so a remaining shared email is a mailbox.
+    Mutates in place; returns the count nulled."""
+    names_by_email: dict[str, set[str]] = {}
+    for opp in opps:
+        if not _is_ucb_faculty(opp):
+            continue
+        if email := _dedup_email(opp):
+            names_by_email.setdefault(email, set()).add(_dedup_name(opp))
+    shared = {e for e, names in names_by_email.items() if len(names) >= 2}
+    nulled = 0
+    for opp in opps:
+        if _is_ucb_faculty(opp) and _dedup_email(opp) in shared:
+            opp["contact_email"] = None
+            nulled += 1
+    return nulled
+
+
+def _null_unit_mailbox_emails(opps: list[dict]) -> int:
+    """Null a ucb_* faculty contact_email whose local-part is a generic unit/role
+    mailbox (office@, advising@, boxoffice@) — a single-record inbox the frequency
+    pass never sees. Mutates in place; returns the count nulled."""
+    nulled = 0
+    for opp in opps:
+        if not _is_ucb_faculty(opp):
+            continue
+        email = _dedup_email(opp)
+        if email and email.split("@", 1)[0] in _UNIT_MAILBOX_LOCALPARTS:
+            opp["contact_email"] = None
+            nulled += 1
+    return nulled
+
+
+_SHARED_PHRASE_NAV_THRESHOLD = 3
+
+
+def _derive_keywords_from_raw(opps: list[dict]) -> int:
+    """Enrich broad-field-only ucb_* faculty with real keywords parsed from the
+    research-interest text the profile-enrichment already stored in
+    ``research_areas_raw`` — Berkeley's substitute for UIUC's Illinois Experts
+    enrichment (Berkeley runs no Elsevier-Pure portal, so there is no per-faculty
+    publication-concept feed; the dept-profile research text is the next-best
+    signal, and it is already scraped). Reuses UIUC's shared phrase splitter +
+    cleaner so the junk/furniture/fragment filtering matches across schools.
+
+    For each record stuck on the broad dept field (<=1 keyword), parse its raw
+    text into clean topical phrases, skipping phrases shared by >3 dept peers (a
+    nav-block, not personal) and self-name tokens, keep up to 4, and rebuild the
+    title parenthetical so it stays a subset of the keywords (the DQ gate checks
+    that). Mutates in place; returns the count enriched."""
+    from collections import Counter
+
+    from .uiuc_faculty import _clean_research_phrase, _split_research_phrases
+
+    fac = [o for o in opps if _is_ucb_faculty(o)]
+    dept_counts: dict[str, Counter] = {}
+    for o in fac:
+        raw = (o.get("metadata") or {}).get("research_areas_raw") or ""
+        c = dept_counts.setdefault(o.get("department", ""), Counter())
+        for p in _split_research_phrases(raw):
+            c[p.lower()] += 1
+
+    enriched = 0
+    for o in fac:
+        if len(o.get("keywords") or []) > 1:
+            continue  # already carries specific keywords
+        broad = (o.get("keywords") or [""])[0].lower()
+        raw = (o.get("metadata") or {}).get("research_areas_raw") or ""
+        if not raw.strip():
+            continue
+        parts = _split_research_phrases(raw)
+        if len(raw) >= 295 and parts:
+            parts = parts[:-1]  # the 300-char cap usually truncates the last phrase
+        name_tokens = {t.lower() for t in re.split(r"\W+", o.get("pi_name") or "") if t}
+        counts = dept_counts[o.get("department", "")]
+        derived: list[str] = []
+        for p in parts:
+            if counts[p.lower()] > _SHARED_PHRASE_NAV_THRESHOLD:
+                continue
+            cleaned = _clean_research_phrase(p)
+            if not cleaned or cleaned == broad or cleaned in derived or cleaned in name_tokens:
+                continue
+            derived.append(cleaned)
+            if len(derived) >= 4:
+                break
+        if derived:
+            o["keywords"] = derived
+            # Rebuild the title parenthetical from the new keywords so the DQ
+            # "title areas subset of keywords" invariant holds.
+            base = re.sub(r"\s*\([^()]*\)\s*$", "", o.get("title", ""))
+            o["title"] = f"{base} ({', '.join(derived[:3])})"
+            enriched += 1
+    return enriched
+
+
 def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     """Upsert faculty records into processed/opportunities.json by id."""
     if not PROCESSED_FILE.exists():
@@ -814,6 +935,20 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
             existing.append(opp)
             index[opp["id"]] = opp
             added += 1
+    # Faculty DQ pass over the full corpus (UIUC-aligned): a dept/coordinator
+    # mailbox scraped onto 2+ professors, or a generic unit inbox, is nulled so
+    # a re-scrape can't reintroduce a shared-email DQ failure or a misfiring
+    # cold-email target — without hand-maintaining NOISE_EMAILS for each one.
+    shared_nulled = _null_shared_contact_emails(existing)
+    unit_nulled = _null_unit_mailbox_emails(existing)
+    if shared_nulled or unit_nulled:
+        logger.info(
+            f"Nulled {shared_nulled} shared-mailbox + {unit_nulled} unit-mailbox "
+            f"faculty contact email(s)"
+        )
+    derived = _derive_keywords_from_raw(existing)
+    if derived:
+        logger.info(f"Derived specific keywords for {derived} broad-only faculty from research_areas_raw")
     with PROCESSED_FILE.open("w", encoding="utf-8") as f:
         json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
     return (added, updated)
