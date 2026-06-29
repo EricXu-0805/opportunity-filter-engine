@@ -809,6 +809,51 @@ SCHOOL: dict = {
 }
 
 
+# --- Research-area enrichment -----------------------------------------------
+# UW-Madison mostly publishes prose bios with no structured research field, so
+# the big shared WordPress directory theme (.faculty-member-content — used by
+# ~20 depts incl. CS, Physics, Psych, Poli-Sci, Sociology, History, …) and the
+# Education / VetMed / Pharmacy / Business / Plant-Path / Geoscience directories
+# all stay broad — better broad than fragments. Each extractor below was found
+# by per-template recon and re-verified live through the engine. The shared
+# engineering directories yield clean groups: directory.engr.wisc.edu cards keep
+# a "Research interests:" line (BME/ECE/ME), and engineering.wisc.edu profiles
+# carry a research-interests accordion (CEE/ChemE/MSE/IE/EngrPhysics).
+_THROTTLE = 1.2
+_BME_RE = (r'Research interests:</b>(.*?)(?:<a [^>]*>\s*Research at UW'
+           r'|<b>\s*Courses|<b>\s*Other affiliations|<b>\s*Also|</p>)')
+_CEE_SEL = "#collapse-research_interests ul li"
+_CARD_RESEARCH_RE = {
+    "ECON": r'<p>\s*Fields?:\s*(.*?)\s*</p>',
+    "BME": _BME_RE, "ECE": _BME_RE, "ME": _BME_RE,
+    "FWE": r'Expertise:\s*(.*?)\s*(?:<br|</p>)',
+    "GEN": r'<br\s*/?>\s*([^<>]+?)\s*</br>\s*</p>',
+    "NUTRSCI": r'<div class="expertise">(.*?)</div>',
+}
+_PROFILE_ENRICH = {
+    "ENGL": {"research_html_re": r'<dt[^>]*>\s*Interests?\s*</dt>\s*<dd[^>]*class="faculty-extra-value"[^>]*>\s*(.*?)\s*</dd>'},
+    "CEE": {"research_items_selector": _CEE_SEL},
+    "CBE": {"research_items_selector": _CEE_SEL},
+    "MSE": {"research_items_selector": _CEE_SEL},
+    "IE": {"research_items_selector": _CEE_SEL},
+    "EP": {"research_items_selector": _CEE_SEL},
+    "LAW": {"research_items_selector": "#scholarship-tab ul:not(.associated_articles) li"},
+    "AOS": {"research_items_selector": "span.uw-button-inverse"},
+    "SOILS": {"research_html_re": r'researchTabContent["\']>\s*<p>\s*<(?:strong|b)\b[^>]*>(.*?)\s*:?\s*</(?:strong|b)>'},
+}
+for _dept in SCHOOL["departments"]:
+    _short = _dept["short"]
+    if not _dept.get("scrape"):
+        continue
+    _cre = _CARD_RESEARCH_RE.get(_short)
+    if _cre:
+        _dept["scrape"]["selectors"] = {
+            **_dept["scrape"].get("selectors", {}), "research_re": _cre}
+    _enr = _PROFILE_ENRICH.get(_short)
+    if _enr:
+        _dept["scrape"].setdefault("profile_enrich", {**_enr, "throttle": _THROTTLE})
+
+
 def fetch_and_normalize(deep: bool = True) -> list[dict]:
     return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
 
