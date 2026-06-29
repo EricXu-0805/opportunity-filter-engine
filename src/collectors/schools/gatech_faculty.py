@@ -1,34 +1,25 @@
 """Georgia Tech faculty config (via the faculty_graph engine).
 
-Scrape-first, like UW. Georgia Tech's schools each run their own CMS on different
-URL conventions, so coverage grows department by department as each directory's
-real URL + render path is confirmed. Accuracy over breadth: a department is only
-included once its scrape is verified to terminate cleanly and yield real faculty
-(not staff/affiliates).
+Scrape-first, like UW — UIUC-parity coverage across all six colleges, each via a
+department's faculty-only filter URL (verified to yield real ladder faculty, not
+staff/affiliates). Most schools are a gatech.edu Drupal directory with a faculty
+filter exposed as a query param; the exceptions are noted inline.
 
-Currently: the **College of Computing** — a paginated Drupal card grid
-(``card-block``) covering the CS, Interactive Computing, and Computational
-Science & Engineering schools, ~228 faculty across 19 pages followed via
-``?page=N`` (verified to terminate, not wrap). Cards carry name + title (no
-inline research/email), so faculty land as accurate major-scoped cold-email
-targets.
-
-Also shipped, each via its department's faculty-only filter URL (verified to
-yield real ladder faculty, not staff/affiliates):
-
-  * **Chemistry & Biochemistry** — the "Academic Faculty / Tenure-Track" page
-    (``div.person`` cards, name in ``h3``); Emeriti/Instructional/Research/
-    Adjunct live on sibling pages, so this is ladder-clean.
-  * **Mathematics** — the ``field_job_type_tid=11`` (Faculty) table.
-  * **Materials Science & Engineering** — the ``1FTE`` (FTE Faculty) Views grid,
-    with public emails inline.
-
-Plus **ECE** and **CEE**, each via its Faculty filter URL — their card name link
-reads "Learn more about <Name>", recovered with a ``name_strip`` regex.
-
-Deferred: ME and BME (faculty pages over-list incl. research staff with no clean
-rank selector), ChBE (its name link is an empty image link with the named link
-second — needs an nth-link selector), and Physics (JS-rendered).
+  * **College of Computing** — a Drupal ``card-block`` grid: CS (paginated), plus
+    Interactive Computing and Computational Science & Engineering.
+  * **College of Engineering** — Aerospace, Biomedical (the Coulter GT/Emory
+    dept, ``BME Primary Faculty`` filter), Industrial & Systems, Mechanical, plus
+    the already-shipped ECE / Civil / Materials / Chemical & Biomolecular.
+  * **College of Sciences** — Chemistry, Mathematics, Biological Sciences, Earth
+    & Atmospheric Sciences, Physics, Psychology.
+  * **Scheller College of Business** — one authoritative ``directory/index.json``
+    feed (a ``json_dir`` source), split into its eight academic areas and
+    ladder-filtered (drops PhD students / lecturers / emeritus).
+  * **College of Design** — Architecture, Building Construction, City & Regional
+    Planning, Industrial Design, Music.
+  * **Ivan Allen College of Liberal Arts** — Economics, History & Sociology,
+    International Affairs, Literature Media & Communication, Public Policy, and
+    Modern Languages.
 
 Single source ("gatech_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown" (per-prof openness).
@@ -37,6 +28,20 @@ ids namespaced by department short-code. Audience "unknown" (per-prof openness).
 from __future__ import annotations
 
 from .. import faculty_graph
+
+
+# Scheller College of Business ships its whole roster as one authoritative JSON
+# feed; each academic area filters that feed and ladder-filters the titles.
+def _scheller(short: str, name: str, majors: list[str], area: str) -> dict:
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": "https://www.scheller.gatech.edu/directory/",
+            "json_dir": {
+                "url": "https://www.scheller.gatech.edu/directory/index.json",
+                "filter_field": "academic", "filter_value": area,
+                "status_field": "status", "status_value": "Faculty",
+                "ladder_filter": {"drop": r"emerit|lecturer|of the practice"
+                                          r"|academic professional|visiting|instructor|adjunct"}}}
+
 
 SCHOOL: dict = {
     "school_slug": "gatech",
@@ -142,6 +147,289 @@ SCHOOL: dict = {
                                           r"|academic professional"},
             },
         },
+        # --- Full-school coverage (CoC/Engineering/Sciences extras, Design, Liberal Arts) ---
+        {'short': 'IC',
+         'name': 'School of Interactive Computing',
+         'majors': ['Computer Science', 'Computational Media', 'Human-Computer Interaction'],
+         'directory_url': 'https://ic.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://ic.gatech.edu/people/faculty',
+                    'selectors': {'card': '.card-block',
+                                  'name': '.card-block__title a',
+                                  'link': '.card-block__title a',
+                                  'title': '.card-block__subtitle'},
+                    'ladder_filter': {'drop': 'emerit|in memoriam|of the practice|principal '
+                                              'research|research '
+                                              '(scientist|associate|engineer)|^lecturer|, '
+                                              'lecturer|^research associate'}}},
+        {'short': 'CSE',
+         'name': 'School of Computational Science and Engineering',
+         'majors': ['Computational Science and Engineering', 'Computer Science'],
+         'directory_url': 'https://cse.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://cse.gatech.edu/people/faculty',
+                    'selectors': {'card': '.card-block',
+                                  'name': '.card-block__title a',
+                                  'link': '.card-block__title a',
+                                  'title': '.card-block__subtitle'},
+                    'ladder_filter': {'drop': 'emerit|in memoriam|of the practice|principal '
+                                              'research|research '
+                                              '(scientist|associate|engineer)|^lecturer|, '
+                                              'lecturer|^research associate'}}},
+        {'short': 'AE',
+         'name': 'Daniel Guggenheim School of Aerospace Engineering',
+         'majors': ['Aerospace Engineering'],
+         'directory_url': 'https://ae.gatech.edu/people?tid=1',
+         'scrape': {'url': 'https://ae.gatech.edu/people?tid=1',
+                    'selectors': {'card': '.node--type-dir-person',
+                                  'name': 'a.dir_link',
+                                  'link': 'a.dir_link',
+                                  'title': '.field--name-field-person-job-title-s-'},
+                    'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|of the practice|academic '
+                                              'professional|research '
+                                              '(scientist|engineer)|post.?doc|lecturer|instructor'},
+                    'paginate': {'param': 'page', 'start': 1, 'max': 8}}},
+        {'short': 'BME',
+         'name': 'Wallace H. Coulter Department of Biomedical Engineering',
+         'majors': ['Biomedical Engineering'],
+         'directory_url': 'https://bme.gatech.edu/our-people/our-faculty?field_faculty_type=BME%20Primary%20Faculty',
+         'scrape': {'url': 'https://bme.gatech.edu/our-people/our-faculty?field_faculty_type=BME%20Primary%20Faculty',
+                    'selectors': {'card': '.node-teaser-bios',
+                                  'name': '.node-field-title',
+                                  'link': "a[href^='/bio/']",
+                                  'title': '.field-position'},
+                    'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|lecturer|of the '
+                                              'practice|academic professional|research '
+                                              '(scientist|engineer)|post.?doc|instructor'},
+                    'paginate': {'param': 'page', 'start': 1, 'max': 8}}},
+        {'short': 'ISYE',
+         'name': 'H. Milton Stewart School of Industrial & Systems Engineering',
+         'majors': ['Industrial Engineering', 'Industrial and Systems Engineering'],
+         'directory_url': 'https://www.isye.gatech.edu/people/faculty?classification=27',
+         'scrape': {'url': 'https://www.isye.gatech.edu/people/faculty?classification=27',
+                    'selectors': {'card': '.card',
+                                  'name': '.person-name a',
+                                  'link': '.person-name a',
+                                  'title': '.person-type'},
+                    'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|of practice|of the '
+                                              'practice|academic professional|research '
+                                              '(scientist|engineer)|post.?doc|lecturer'}}},
+        {'short': 'ME',
+         'name': 'George W. Woodruff School of Mechanical Engineering',
+         'majors': ['Mechanical Engineering', 'Nuclear and Radiological Engineering'],
+         'directory_url': 'https://me.gatech.edu/faculty',
+         'scrape': {'url': 'https://me.gatech.edu/faculty',
+                    'selectors': {'card': '.faculty__user-wrapper',
+                                  'name': '.faculty-name a',
+                                  'link': '.faculty-name a',
+                                  'title': '.faculty-title'},
+                    'link_filter': '/faculty/',
+                    'ladder_filter': {'drop': 'emerit|adjunct|affiliat|courtesy|lecturer|of the '
+                                              'practice|of practice|academic professional|research '
+                                              '(scientist|engineer|faculty|professor)|helluva|coordinator|^staff$'},
+                    'paginate': {'param': 'page', 'start': 1, 'max': 13}}},
+        {'short': 'BIOSCI',
+         'name': 'School of Biological Sciences',
+         'majors': ['Biology', 'Biochemistry', 'Neuroscience'],
+         'directory_url': 'https://biosciences.gatech.edu/people?field_job_category_tid=19',
+         'scrape': {'url': 'https://biosciences.gatech.edu/people?field_job_category_tid=19',
+                    'selectors': {'card': '.people ul.grid li',
+                                  'name': 'span.name a',
+                                  'link': 'span.name a',
+                                  'title': 'span.title'},
+                    'ladder_filter': {'drop': '\\bemerit|\\badjunct|\\baffiliat|of the practice|academic '
+                                              'professional|\\blecturer\\b|academic adviser'}}},
+        {'short': 'EAS',
+         'name': 'School of Earth and Atmospheric Sciences',
+         'majors': ['Earth and Atmospheric Sciences',
+                    'Atmospheric and Oceanic Sciences',
+                    'Solid Earth and Planetary Sciences'],
+         'directory_url': 'https://eas.gatech.edu/people?field_gtppl_roles_value=academic_faculty',
+         'scrape': {'url': 'https://eas.gatech.edu/people?field_gtppl_roles_value=academic_faculty',
+                    'selectors': {'card': 'div.gtppl-directory-person',
+                                  'name': 'h3',
+                                  'link': "a[href^='/people/']",
+                                  'title': 'p.person-title'},
+                    'ladder_filter': {'drop': '\\bemerit|\\badjunct|\\baffiliat|of the practice|academic '
+                                              'professional|\\blecturer\\b'}}},
+        {'short': 'PHYS',
+         'name': 'School of Physics',
+         'majors': ['Physics', 'Applied Physics'],
+         'directory_url': 'https://physics.gatech.edu/people?rid=4',
+         'scrape': {'url': 'https://physics.gatech.edu/people?rid=4',
+                    'selectors': {'card': '.people ul.grid li',
+                                  'name': 'h3.p-name a',
+                                  'link': 'h3.p-name a'}}},
+        {'short': 'PSYCH',
+         'name': 'School of Psychology',
+         'majors': ['Psychology'],
+         'directory_url': 'https://psychology.gatech.edu/people/all-faculty',
+         'scrape': {'url': 'https://psychology.gatech.edu/people/all-faculty',
+                    'selectors': {'card': 'table.views-table tbody tr',
+                                  'name': 'td a',
+                                  'link': 'td a',
+                                  'research': 'td.views-field-field-research-interests',
+                                  'email': 'td.views-field-field-email'}}},
+        {'short': 'ARCH',
+         'name': 'School of Architecture',
+         'majors': ['Architecture'],
+         'directory_url': 'https://arch.gatech.edu/people',
+         'scrape': {'url': 'https://arch.gatech.edu/people',
+                    'selectors': {'card': '.profile-card',
+                                  'name': 'h3',
+                                  'link': '.card-link a',
+                                  'title': '.card-text p'},
+                    'ladder_filter': {'require': '\\bprofessor\\b',
+                                      'drop': 'emerit|adjunct|lecturer|instructor|of (the '
+                                              ')?practice|visiting|critic|fellow|ph\\.?d '
+                                              '(candidate|student)|\\bcandidate\\b|postdoc|research '
+                                              '(scientist|engineer|associate)'}}},
+        {'short': 'BC',
+         'name': 'School of Building Construction',
+         'majors': ['Building Construction'],
+         'directory_url': 'https://bc.gatech.edu/people',
+         'scrape': {'url': 'https://bc.gatech.edu/people',
+                    'selectors': {'card': '.profile-card',
+                                  'name': 'h3',
+                                  'link': '.card-link a',
+                                  'title': '.card-text p'},
+                    'ladder_filter': {'require': '\\bprofessor\\b',
+                                      'drop': 'emerit|adjunct|lecturer|instructor|of (the '
+                                              ')?practice|visiting|critic|fellow|ph\\.?d '
+                                              '(candidate|student)|\\bcandidate\\b|postdoc|research '
+                                              '(scientist|engineer|associate)'}}},
+        {'short': 'CRP',
+         'name': 'School of City & Regional Planning',
+         'majors': ['City and Regional Planning'],
+         'directory_url': 'https://planning.gatech.edu/people',
+         'scrape': {'url': 'https://planning.gatech.edu/people',
+                    'selectors': {'card': '.profile-card',
+                                  'name': 'h3',
+                                  'link': '.card-link a',
+                                  'title': '.card-text p'},
+                    'ladder_filter': {'require': '\\bprofessor\\b',
+                                      'drop': 'emerit|adjunct|lecturer|instructor|of (the '
+                                              ')?practice|visiting|critic|fellow|ph\\.?d '
+                                              '(candidate|student)|\\bcandidate\\b|postdoc|research '
+                                              '(scientist|engineer|associate)'}}},
+        {'short': 'ID',
+         'name': 'School of Industrial Design',
+         'majors': ['Industrial Design'],
+         'directory_url': 'https://id.gatech.edu/people',
+         'scrape': {'url': 'https://id.gatech.edu/people',
+                    'selectors': {'card': '.profile-card',
+                                  'name': 'h3',
+                                  'link': '.card-link a',
+                                  'title': '.card-text p'},
+                    'ladder_filter': {'require': '\\bprofessor\\b',
+                                      'drop': 'emerit|adjunct|lecturer|instructor|of (the '
+                                              ')?practice|visiting|critic|fellow|ph\\.?d '
+                                              '(candidate|student)|\\bcandidate\\b|postdoc|research '
+                                              '(scientist|engineer|associate)'}}},
+        {'short': 'MUSIC',
+         'name': 'School of Music',
+         'majors': ['Music Technology'],
+         'directory_url': 'https://music.gatech.edu/people',
+         'scrape': {'url': 'https://music.gatech.edu/people',
+                    'selectors': {'card': '.profile-card',
+                                  'name': 'h3',
+                                  'link': '.card-link a',
+                                  'title': '.card-text p'},
+                    'ladder_filter': {'require': '\\bprofessor\\b',
+                                      'drop': 'emerit|adjunct|lecturer|instructor|of (the '
+                                              ')?practice|visiting|critic|fellow|ph\\.?d '
+                                              '(candidate|student)|\\bcandidate\\b|postdoc|research '
+                                              '(scientist|engineer|associate)'}}},
+        {'short': 'ECON',
+         'name': 'School of Economics',
+         'majors': ['Economics', 'Global Economics and Modern Languages'],
+         'directory_url': 'https://econ.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://econ.gatech.edu/people/faculty',
+                    'selectors': {'card': 'li.iacPersonEntry',
+                                  'name': 'span.iacPersonName',
+                                  'link': "a[href*='/people/person/']",
+                                  'title': 'p.iacPersonTitle',
+                                  'research_items': 'ul.iacPersonMainInterests li'},
+                    'ladder_filter': {'require': 'prof(?:essor)?',
+                                      'drop': 'emerit|adjunct|lecturer|of the practice|academic '
+                                              'professional|postdoc|visiting|affiliat|retired|research '
+                                              '(scientist|associate|engineer)|\\bresearcher\\b|part-time'}}},
+        {'short': 'HSOC',
+         'name': 'School of History and Sociology',
+         'majors': ['History Technology and Society', 'History', 'Sociology'],
+         'directory_url': 'https://hsoc.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://hsoc.gatech.edu/people/faculty',
+                    'selectors': {'card': 'li.iacPersonEntry',
+                                  'name': 'span.iacPersonName',
+                                  'link': "a[href*='/people/person/']",
+                                  'title': 'p.iacPersonTitle'},
+                    'ladder_filter': {'require': 'prof(?:essor)?',
+                                      'drop': 'emerit|adjunct|lecturer|of the practice|academic '
+                                              'professional|postdoc|visiting|affiliat|retired|research '
+                                              '(scientist|associate|engineer)|\\bresearcher\\b|part-time'}}},
+        {'short': 'INTA',
+         'name': 'Sam Nunn School of International Affairs',
+         'majors': ['International Affairs',
+                    'Global Economics and Modern Languages',
+                    'International Affairs and Modern Languages'],
+         'directory_url': 'https://inta.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://inta.gatech.edu/people/faculty',
+                    'selectors': {'card': 'li.iacPersonEntry',
+                                  'name': 'span.iacPersonName',
+                                  'link': "a[href*='/people/person/']",
+                                  'title': 'p.iacPersonTitle'},
+                    'ladder_filter': {'require': 'prof(?:essor)?',
+                                      'drop': 'emerit|adjunct|lecturer|of the practice|academic '
+                                              'professional|postdoc|visiting|affiliat|retired|research '
+                                              '(scientist|associate|engineer)|\\bresearcher\\b|part-time'}}},
+        {'short': 'LMC',
+         'name': 'School of Literature, Media, and Communication',
+         'majors': ['Literature Media and Communication', 'Computational Media'],
+         'directory_url': 'https://lmc.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://lmc.gatech.edu/people/faculty',
+                    'selectors': {'card': 'li.iacPersonEntry',
+                                  'name': 'span.iacPersonName',
+                                  'link': "a[href*='/people/person/']",
+                                  'title': 'p.iacPersonTitle'},
+                    'ladder_filter': {'require': 'prof(?:essor)?',
+                                      'drop': 'emerit|adjunct|lecturer|of the practice|academic '
+                                              'professional|postdoc|visiting|affiliat|retired|research '
+                                              '(scientist|associate|engineer)|\\bresearcher\\b|part-time'}}},
+        {'short': 'SPP',
+         'name': 'School of Public Policy',
+         'majors': ['Public Policy'],
+         'directory_url': 'https://spp.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://spp.gatech.edu/people/faculty',
+                    'selectors': {'card': 'li.iacPersonEntry',
+                                  'name': 'span.iacPersonName',
+                                  'link': "a[href*='/people/person/']",
+                                  'title': 'p.iacPersonTitle'},
+                    'ladder_filter': {'require': 'prof(?:essor)?',
+                                      'drop': 'emerit|adjunct|lecturer|of the practice|academic '
+                                              'professional|postdoc|visiting|affiliat|retired|research '
+                                              '(scientist|associate|engineer)|\\bresearcher\\b|part-time'}}},
+        {'short': 'MODLANG',
+         'name': 'School of Modern Languages',
+         'majors': ['Applied Languages and Intercultural Studies',
+                    'Global Economics and Modern Languages',
+                    'International Affairs and Modern Languages'],
+         'directory_url': 'https://modlangs.gatech.edu/people/faculty',
+         'scrape': {'url': 'https://modlangs.gatech.edu/people/faculty',
+                    'selectors': {'card': 'li.iacPersonEntry',
+                                  'name': 'span.iacPersonName',
+                                  'link': "a[href*='/people/person/']",
+                                  'title': 'p.iacPersonTitle'},
+                    'ladder_filter': {'require': 'prof(?:essor)?',
+                                      'drop': 'emerit|adjunct|lecturer|of the practice|academic '
+                                              'professional|postdoc|visiting|affiliat|retired|research '
+                                              '(scientist|associate|engineer)|\\bresearcher\\b|part-time'}}},
+        # --- Scheller College of Business (json_dir feed, per academic area) ---
+        _scheller('ACCT', 'Accounting (Scheller College of Business)', ['Accounting', 'Business Administration'], 'Accounting'),
+        _scheller('FIN', 'Finance (Scheller College of Business)', ['Finance', 'Business Administration'], 'Finance'),
+        _scheller('ITM', 'Information Technology Management (Scheller College of Business)', ['Information Technology Management', 'Business Administration', 'Business Analytics'], 'IT Management'),
+        _scheller('LAWETH', 'Law & Ethics (Scheller College of Business)', ['Business Administration'], 'Law and Ethics'),
+        _scheller('MKTG', 'Marketing (Scheller College of Business)', ['Marketing', 'Business Administration'], 'Marketing'),
+        _scheller('OM', 'Operations Management (Scheller College of Business)', ['Operations Management', 'Business Administration', 'Supply Chain Engineering'], 'Operations Management'),
+        _scheller('OB', 'Organizational Behavior (Scheller College of Business)', ['Business Administration', 'Leadership and Organizational Change'], 'Organizational Behavior'),
+        _scheller('STRAT', 'Strategy & Innovation (Scheller College of Business)', ['Business Administration', 'Strategy and Innovation'], 'Strategy and Innovation'),
     ],
 }
 

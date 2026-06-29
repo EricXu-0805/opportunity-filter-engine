@@ -108,7 +108,7 @@ describe('registry — switcher metadata', () => {
     expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(9);
     expect(bySlug('umich')?.coverage.campusOpportunities).toBe(110);
     expect(bySlug('uw')?.coverage.campusOpportunities).toBe(2259);
-    expect(bySlug('gatech')?.coverage.campusOpportunities).toBe(460);
+    expect(bySlug('gatech')?.coverage.campusOpportunities).toBe(1301);
     expect(bySlug('stanford')?.coverage.campusOpportunities).toBe(1422);
     expect(bySlug('utexas')?.coverage.campusOpportunities).toBe(2351);
     expect(bySlug('wisc')?.coverage.campusOpportunities).toBe(380);
