@@ -28,6 +28,8 @@ from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
+from .schools.ucla_faculty import fetch_and_normalize as fetch_ucla_faculty
+from .schools.ucla_faculty import merge_into_processed as merge_ucla_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
 from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
@@ -532,6 +534,9 @@ def refresh_all(deep: bool = True) -> dict:
             # UW-Madison faculty (live-scraped via faculty_graph): Computer
             # Sciences.
             ("wisc_faculty", fetch_wisc_faculty, merge_wisc_faculty),
+            # UCLA faculty (WordPress-REST via faculty_graph): Chemistry,
+            # MCDB (taxonomy keywords) + Psychology (per-profile rank/area).
+            ("ucla_faculty", fetch_ucla_faculty, merge_ucla_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

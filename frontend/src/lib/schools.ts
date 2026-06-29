@@ -143,11 +143,13 @@ export const SCHOOLS: School[] = [
     nameZh: '加州大学洛杉矶分校',
     color: '#2774AE',
     location: 'Los Angeles, CA',
-    // Campus-graph engine: the two Undergraduate Research Centers (Sciences +
-    // HASS), URSP, the URC summer program, Dean's Research Fellowship, SRP-99,
-    // the Samueli engineering research page, the career center, and the CNSI
-    // institute — 10 school='ucla' records (Amgen Scholars is national/open). Grows with faculty.
-    coverage: { campusOpportunities: 10, note: 'universitySwitcher.coverageCampus' },
+    // Campus-graph engine (10 records: the two Undergraduate Research Centers,
+    // URSP, the URC summer program, Dean's Research Fellowship, SRP-99, the
+    // Samueli engineering research page, the career center, the CNSI institute)
+    // plus the faculty directory (~476 professors): WordPress-REST for Chemistry
+    // & Biochemistry, MCDB, Psychology; the Samueli AJAX directory for the seven
+    // engineering departments (CS, ECE, MAE, …), keyworded per profile.
+    coverage: { campusOpportunities: 486, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 9, majors: 135 },
   },
   {

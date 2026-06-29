@@ -117,8 +117,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not dept.get("faculty") and not dept.get("scrape"):
-            errors.append(f"{short}: no curated faculty and no scrape config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, or algolia config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -138,6 +138,10 @@ def _clean_keywords(person: dict) -> list[str]:
     """
     kws = [k.strip() for k in person.get("keywords", []) if k and k.strip()]
     if kws:
+        # A keyword is an atomic term; an internal comma (e.g. the taxonomy term
+        # "Plants, Soil and Algae") would break the title-parenthetical subset
+        # invariant (the DQ gate splits the parenthetical on commas), so fold it.
+        kws = [re.sub(r"\s*,\s*", " / ", k) for k in kws]
         # de-dupe preserving order
         return list(dict.fromkeys(kws))[:8]
     raw = _strip_nav_furniture(person.get("research_areas", ""))
@@ -260,12 +264,30 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
 # Best-effort scrape layer (deep mode, lazy HTTP deps)
 # ---------------------------------------------------------------------------
 
-def _parse_cards(soup, sel: dict, base_url: str) -> list[dict]:
+def _passes_ladder(title: str, lf: dict | None) -> bool:
+    """Title-based ladder gate for static directories that mix ranks.
+
+    Most non-UCB peer directories list emeriti / adjunct / teaching / research
+    professors alongside ladder faculty. ``ladder_filter`` keeps only titles
+    matching ``require`` (if given) and not matching ``drop`` — so a research-
+    opportunity matcher surfaces PIs who actually take undergraduates.
+    """
+    if not lf:
+        return True
+    t = title or ""
+    if lf.get("require") and not re.search(lf["require"], t, re.I):
+        return False
+    return not (lf.get("drop") and re.search(lf["drop"], t, re.I))
+
+
+def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
+                 name_flip: bool = False) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
     and ``email`` (a mailto) let rich cards (e.g. UW ECE) land keyworded, emailed
-    faculty in one pass rather than name-only stubs.
+    faculty in one pass rather than name-only stubs. ``ladder_filter`` drops
+    non-ladder ranks by title; ``name_flip`` un-inverts "Last, First" listings.
     """
     people: list[dict] = []
     for card in soup.select(sel.get("card", "")):
@@ -273,11 +295,15 @@ def _parse_cards(soup, sel: dict, base_url: str) -> list[dict]:
         if not name_el:
             continue
         name = name_el.get_text(" ", strip=True)
+        if name_flip:
+            name = _flip_name(name)
         link_el = card.select_one(sel.get("link", "")) if sel.get("link") else name_el
         href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
         href = urljoin(base_url, href) if href else base_url
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
+        if not _passes_ladder(title, ladder_filter):
+            continue
         research = ""
         if sel.get("research"):
             r_el = card.select_one(sel["research"])
@@ -313,12 +339,14 @@ def _scrape_directory(dept: dict) -> list[dict]:
         return []
     base = cfg["url"]
     sel = cfg.get("selectors", {})
+    lf = cfg.get("ladder_filter")
+    flip = cfg.get("name_flip", False)
     soup = fetch_soup(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
-        people = _parse_cards(soup, sel, base)
+        people = _parse_cards(soup, sel, base, lf, flip)
         pag = cfg.get("paginate")
         if pag:
             param = pag.get("param", "page")
@@ -328,7 +356,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 s2 = fetch_soup(f"{base}{sep}{param}={pg}")
                 if s2 is None:
                     break
-                fresh = [p for p in _parse_cards(s2, sel, base)
+                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip)
                          if (p["name"], p["url"]) not in seen]
                 if not fresh:
                     break
@@ -338,6 +366,370 @@ def _scrape_directory(dept: dict) -> list[dict]:
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
         return []
     return people
+
+
+# ---------------------------------------------------------------------------
+# WordPress REST API source (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# Many university department sites run WordPress and expose faculty as a custom
+# post type over ``/wp-json/wp/v2/<rest_base>`` — clean structured JSON, far more
+# reliable than CSS-scraping a JS-rendered card grid. A department config opts in
+# with an ``api`` block instead of (or alongside) ``scrape``:
+#
+#     "api": {
+#       "type": "wp",
+#       "base": "https://www.chemistry.ucla.edu",
+#       "post_type": "directory",                  # the rest_base
+#       "category_include": {"directory-category": [88]},  # only Faculty term
+#       "keyword_tax": ["specialties"],            # taxonomies → clean keywords
+#       "keyword_drop": ["instructional"],         # non-research terms to omit
+#       "name_flip": True,                         # "Last, First" → "First Last"
+#       "profile_enrich": {                        # optional per-profile pass
+#         "position_re": r"...Professor|Lecturer...",  # sets title (emeriti auto-drop)
+#         "research_re": r"Primary Area:?\s*([...]{4,40}?)\s*(?:Home|Email|$)",
+#         "require_professor": True,               # drop known non-professor ranks
+#       },
+#     }
+#
+# Taxonomy-derived keywords are controlled vocabulary (no nav-furniture junk),
+# so the api source lands keyworded faculty without the fragility of per-profile
+# free-text scraping. ``profile_enrich`` is the escape hatch for sites that keep
+# rank/research only on the individual profile page.
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _wp_text(raw: str) -> str:
+    """Strip tags, decode HTML entities (WP returns "Theory &amp; Computation"),
+    and collapse whitespace — so names/keywords clear the DQ junk filter."""
+    import html
+    return re.sub(r"\s+", " ", html.unescape(_HTML_TAG_RE.sub("", raw or ""))).strip()
+
+
+def _flip_name(name: str) -> str:
+    """"Last, First M." → "First M. Last" (WP directory titles often invert)."""
+    if name.count(",") == 1:
+        last, first = (p.strip() for p in name.split(",", 1))
+        if last and first:
+            return f"{first} {last}"
+    return name
+
+
+def _wp_get_json(url: str):
+    try:
+        import requests
+    except Exception:  # noqa: BLE001
+        return None
+    from .ucb_common import HEADERS
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception:  # noqa: BLE001 — degrade to None like fetch_soup
+        return None
+
+
+def _wp_term_map(base: str, tax: str) -> dict[int, str]:
+    """Resolve a WordPress taxonomy's term ids → display names."""
+    out: dict[int, str] = {}
+    for pg in range(1, 6):
+        data = _wp_get_json(f"{base}/wp-json/wp/v2/{tax}?per_page=100&page={pg}")
+        if not isinstance(data, list) or not data:
+            break
+        for term in data:
+            if isinstance(term, dict) and "id" in term:
+                out[term["id"]] = _wp_text(term.get("name", ""))
+        if len(data) < 100:
+            break
+    return out
+
+
+def _enrich_profile(url: str, enrich: dict) -> tuple[str, str]:
+    """Fetch one profile page; extract (position, research-keyword) via regex."""
+    if not url:
+        return ("", "")
+    try:
+        from .ucb_common import fetch_soup
+    except Exception:  # noqa: BLE001
+        return ("", "")
+    soup = fetch_soup(url)
+    if soup is None:
+        return ("", "")
+    body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
+    pos = ""
+    if enrich.get("position_re"):
+        m = re.search(enrich["position_re"], body, re.I)
+        pos = m.group(0).strip() if m else ""
+    kw = ""
+    if enrich.get("research_re"):
+        m = re.search(enrich["research_re"], body, re.I)
+        if m:
+            kw = m.group(1).strip()
+    return (pos, kw)
+
+
+def _fetch_wp_api(dept: dict) -> list[dict]:
+    """Best-effort WordPress-REST faculty fetch (opt-in via dept ``api`` block).
+
+    Lazy-imports requests; any failure degrades to ``[]`` so deep mode never
+    breaks the curated layer. Filters to faculty via ``category_include``,
+    derives keywords from taxonomies, and (optionally) enriches per profile.
+    """
+    cfg = dept.get("api")
+    if not cfg or cfg.get("type") != "wp":
+        return []
+    base = cfg["base"].rstrip("/")
+    kw_taxes = cfg.get("keyword_tax", [])
+    term_maps = {t: _wp_term_map(base, t) for t in kw_taxes}
+    kw_drop = {k.lower() for k in cfg.get("keyword_drop", [])}
+    cat_inc = cfg.get("category_include") or {}
+    name_flip = cfg.get("name_flip", False)
+    default_title = cfg.get("title", "Professor")
+    enrich = cfg.get("profile_enrich")
+
+    records: list[dict] = []
+    for pg in range(1, 13):
+        data = _wp_get_json(
+            f"{base}/wp-json/wp/v2/{cfg['post_type']}?per_page=100&page={pg}"
+        )
+        if not isinstance(data, list) or not data:
+            break
+        records.extend(data)
+        if len(data) < 100:
+            break
+
+    specs: list[dict] = []
+    for rec in records:
+        if not isinstance(rec, dict):
+            continue
+        if any(
+            not (isinstance(rec.get(tax), list) and any(v in ids for v in rec[tax]))
+            for tax, ids in cat_inc.items()
+        ):
+            continue
+        title_field = rec.get("title")
+        name = _wp_text(
+            title_field.get("rendered", "") if isinstance(title_field, dict) else title_field
+        )
+        if name_flip:
+            name = _flip_name(name)
+        if not name:
+            continue
+        url = rec.get("link", "")
+        keywords: list[str] = []
+        for tax in kw_taxes:
+            tmap = term_maps.get(tax, {})
+            for tid in rec.get(tax, []) or []:
+                nm = tmap.get(tid, "")
+                if nm and nm.lower() not in kw_drop:
+                    keywords.append(nm)
+        title = default_title
+        if enrich:
+            pos, extra_kw = _enrich_profile(url, enrich)
+            if pos:
+                title = pos
+            if enrich.get("require_professor") and pos and not re.search(r"profess", pos, re.I):
+                continue
+            if extra_kw:
+                keywords.insert(0, extra_kw)
+        specs.append(
+            faculty(name, title=title, url=url, keywords=list(dict.fromkeys(keywords)))
+        )
+    return specs
+
+
+# ---------------------------------------------------------------------------
+# UCLA Samueli (seas-people) AJAX source (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# UCLA's engineering school (Samueli) serves all seven departments' directories
+# from one ``admin-ajax.php`` endpoint (the ``seas-people`` plugin), returning
+# role-grouped HTML. The role grouping is the accuracy win: ladder faculty land
+# in ``core / chair / vice-chair / ieo / in-residence`` containers, cleanly
+# separated from ``emeriti / lecturer / adjunct / affiliate / joint``. A dept
+# opts in with an ``ajax`` block:
+#
+#     "ajax": {
+#       "type": "seas",
+#       "department": "cs",                  # be|cbe|cee|cs|ece|mae|mse
+#       "research_enrich": True,             # per-profile RESEARCH AND INTERESTS
+#     }
+#
+# Per-profile enrich reads the "RESEARCH AND INTERESTS" toggle (clean one-line
+# keyword phrases for most profs; prose lines are dropped) so CS/ECE/MAE faculty
+# land keyworded, at UIUC parity.
+
+_SEAS_ENDPOINT = "https://samueli.ucla.edu/wp-admin/admin-ajax.php"
+_SEAS_ALL_ROLES = (
+    "chair", "vice-chair", "ieo", "core", "in-residence",
+    "joint", "affiliate", "adjunct", "emeriti", "lecturer",
+)
+_SEAS_LADDER_ROLES = frozenset({"chair", "vice-chair", "ieo", "core", "in-residence"})
+
+
+def _seas_research_kw(soup) -> list[str]:
+    """Extract clean research keywords from a Samueli profile's toggle.
+
+    Each keyword is its own line; a prose paragraph (a sentence, not a topic) is
+    dropped so only matchable topical phrases survive.
+    """
+    for toggle in soup.select(".et_pb_toggle"):
+        head = toggle.select_one(".et_pb_toggle_title")
+        if not head or "RESEARCH AND INTEREST" not in head.get_text(strip=True).upper():
+            continue
+        content = toggle.select_one(".et_pb_toggle_content")
+        if not content:
+            return []
+        try:
+            from .uiuc_faculty import _is_junk_keyword
+        except Exception:  # noqa: BLE001
+            def _is_junk_keyword(_k):  # pragma: no cover
+                return False
+        items: list[str] = []
+        for el in content.find_all(["p", "li"]):
+            for chunk in el.get_text("\n", strip=True).split("\n"):
+                c = chunk.strip(" ,;")
+                # Keep tidy topical phrases; drop prose sentences and any item the
+                # DQ junk filter would reject (a leaked news/symposium title, a
+                # "Using …" sentence fragment) so seas keywords clear the gate.
+                if c and len(c.split()) <= 7 and c not in items and not _is_junk_keyword(c):
+                    items.append(c)
+        return items[:8]
+    return []
+
+
+def _fetch_seas_ajax(dept: dict) -> list[dict]:
+    """Best-effort UCLA Samueli faculty fetch (opt-in via dept ``ajax`` block).
+
+    Lazy-imports requests; degrades to ``[]`` on any failure. Keeps only ladder
+    role containers; enriches research keywords per profile when requested.
+    """
+    cfg = dept.get("ajax")
+    if not cfg or cfg.get("type") != "seas":
+        return []
+    try:
+        import requests
+
+        from .ucb_common import HEADERS, fetch_soup
+    except Exception:  # noqa: BLE001
+        return []
+    from bs4 import BeautifulSoup
+
+    code = cfg["department"]
+    category = ",".join(f"{role}-{code}" for role in _SEAS_ALL_ROLES)
+    headers = {**HEADERS, "X-Requested-With": "XMLHttpRequest",
+               "Referer": "https://samueli.ucla.edu/search-faculty/"}
+    try:
+        resp = requests.post(
+            _SEAS_ENDPOINT,
+            headers=headers,
+            data={"action": "load_seas_search_results", "category": category,
+                  "search_key": "", "department": code},
+            timeout=30,
+        )
+        resp.raise_for_status()
+    except Exception:  # noqa: BLE001
+        return []
+    soup = BeautifulSoup(resp.text, "html.parser")
+    enrich = cfg.get("research_enrich")
+
+    specs: list[dict] = []
+    seen_urls: set[str] = set()
+    for container in soup.select(".seas-people-container"):
+        classes = [c for c in container.get("class", []) if c != "seas-people-container"]
+        role = classes[0].rsplit("-", 1)[0] if classes else ""
+        if role not in _SEAS_LADDER_ROLES:
+            continue
+        for card in container.select(".card"):
+            a = card.select_one(".people-title a")
+            if not a:
+                continue
+            name = a.get_text(strip=True)
+            url = a.get("href", "")
+            if not _is_person_name(name) or (url and url in seen_urls):
+                continue
+            if url:
+                seen_urls.add(url)
+            ti = card.select_one(".card_description p i")
+            title = ti.get_text(strip=True) if ti else "Professor"
+            mail = card.select_one("a.mailto-link, a[href^='mailto:']")
+            email = None
+            if mail and mail.has_attr("href"):
+                email = mail["href"].replace("mailto:", "").split("?")[0].strip() or None
+            keywords: list[str] = []
+            if enrich and url:
+                psoup = fetch_soup(url)
+                if psoup is not None:
+                    keywords = _seas_research_kw(psoup)
+            specs.append(
+                faculty(name, title=title, url=url, email=email, keywords=keywords)
+            )
+    return specs
+
+
+# ---------------------------------------------------------------------------
+# Algolia directory source (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# Some directories are JS clients over a public Algolia search index (e.g. UT
+# Austin's College of Natural Sciences ``directory_LIVE``). Hitting the index
+# directly is exact and complete. A department opts in with an ``algolia`` block:
+#
+#     "algolia": {
+#       "app_id": "R1M3WN6NBD",
+#       "api_key": "<public search key>",
+#       "index": "directory_LIVE",
+#       "filters": 'department:"Physics" AND position_type:"1-Tenure-Track/Tenured Faculty"',
+#       "drop_title_re": r"emerit",            # position_type keeps emeriti tagged TT
+#     }
+
+def _fetch_algolia(dept: dict) -> list[dict]:
+    """Best-effort faculty fetch from a public Algolia index (opt-in via block)."""
+    cfg = dept.get("algolia")
+    if not cfg:
+        return []
+    try:
+        import requests
+    except Exception:  # noqa: BLE001
+        return []
+    url = f"https://{cfg['app_id'].lower()}-dsn.algolia.net/1/indexes/{cfg['index']}/query"
+    headers = {
+        "X-Algolia-Application-Id": cfg["app_id"],
+        "X-Algolia-API-Key": cfg["api_key"],
+        "Content-Type": "application/json",
+    }
+    try:
+        resp = requests.post(
+            url, headers=headers,
+            json={"query": "", "hitsPerPage": cfg.get("hits", 1000),
+                  "filters": cfg.get("filters", "")},
+            timeout=25,
+        )
+        resp.raise_for_status()
+        hits = resp.json().get("hits", [])
+    except Exception:  # noqa: BLE001
+        return []
+    drop_re = cfg.get("drop_title_re")
+    specs: list[dict] = []
+    for hit in hits:
+        if not isinstance(hit, dict):
+            continue
+        name = " ".join(
+            str(hit.get(f, "")).strip()
+            for f in cfg.get("name_fields", ["name_first", "name_last"])
+        ).strip()
+        if not _is_person_name(name):
+            continue
+        title = str(hit.get(cfg.get("title_field", "titles_general"), "") or "Professor")
+        if drop_re and re.search(drop_re, title, re.I):
+            continue
+        research_raw = hit.get(cfg.get("research_field", "areas_of_research"), "")
+        research = ", ".join(research_raw) if isinstance(research_raw, list) else str(research_raw or "")
+        email = (hit.get(cfg.get("email_field", "email")) or "").strip() or None
+        url_v = (hit.get(cfg.get("url_field", "profile_link")) or "").strip()
+        specs.append(faculty(name, title=title, url=url_v, email=email, research_areas=research))
+    return specs
 
 
 # ---------------------------------------------------------------------------
@@ -372,9 +764,15 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     for dept in school.get("departments", []):
         specs = list(dept.get("faculty", []))
         if deep:
-            curated_urls = {(p.get("url") or "").strip().lower() for p in specs}
-            specs += [p for p in _scrape_directory(dept)
-                      if (p.get("url") or "").strip().lower() not in curated_urls]
+            seen_urls_local = {(p.get("url") or "").strip().lower() for p in specs}
+            for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
+                               + _fetch_seas_ajax(dept) + _fetch_algolia(dept)):
+                key = (discovered.get("url") or "").strip().lower()
+                if key and key in seen_urls_local:
+                    continue
+                if key:
+                    seen_urls_local.add(key)
+                specs.append(discovered)
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:

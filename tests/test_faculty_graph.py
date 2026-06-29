@@ -230,6 +230,184 @@ class TestScrapeLayer:
             assert not _is_junk_keyword(k), k
 
 
+# --- WordPress-REST api source (UCLA-style, no network in tests) -------------
+
+class TestWordPressApiSource:
+    def test_flip_name_inverts_last_first(self):
+        assert fg._flip_name("Zhou, Hong") == "Hong Zhou"
+        assert fg._flip_name("Wang, Sining (Cindy)") == "Sining (Cindy) Wang"
+        assert fg._flip_name("Giulia Palermo") == "Giulia Palermo"  # no comma untouched
+
+    def test_wp_api_filters_category_and_drops_junk_keywords(self, monkeypatch):
+        """A WP directory mixes faculty + staff; the category filter keeps only
+        the Faculty term, taxonomy terms become keywords, and a non-research term
+        (Instructional) is dropped — all without per-profile fetches."""
+        records = [
+            {"title": {"rendered": "Zhao, Lei"}, "link": "https://x.edu/d/zhao/",
+             "directory-category": [88], "specialties": [10, 11]},
+            {"title": {"rendered": "Helpdesk, Staff"}, "link": "https://x.edu/d/help/",
+             "directory-category": [136], "specialties": []},
+        ]
+
+        def fake_json(url):
+            if "/specialties" in url:
+                return [{"id": 10, "name": "Robotics"}, {"id": 11, "name": "Instructional"}]
+            if "page=1" in url:
+                return records
+            return []
+
+        monkeypatch.setattr(fg, "_wp_get_json", fake_json)
+        dept = {"short": "CHEM", "api": {
+            "type": "wp", "base": "https://x.edu", "post_type": "directory",
+            "category_include": {"directory-category": [88]},
+            "keyword_tax": ["specialties"], "keyword_drop": ["instructional"],
+            "name_flip": True,
+        }}
+        people = fg._fetch_wp_api(dept)
+        assert len(people) == 1  # staff excluded by category
+        assert people[0]["name"] == "Lei Zhao"  # flipped
+        assert people[0]["keywords"] == ["Robotics"]  # Instructional dropped
+
+    def test_wp_api_profile_enrich_requires_professor(self, monkeypatch):
+        """profile_enrich sets rank from the profile and, with require_professor,
+        drops a Lecturer while keeping a professor + their Primary-Area keyword."""
+        records = [
+            {"title": {"rendered": "Ada Prof"}, "link": "https://x.edu/f/ada/"},
+            {"title": {"rendered": "Lee Lecturer"}, "link": "https://x.edu/f/lee/"},
+        ]
+        monkeypatch.setattr(fg, "_wp_get_json",
+                            lambda url: records if "page=1" in url else [])
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
+                            ("Associate Professor", "Cognitive Psychology")
+                            if "ada" in url else ("Lecturer", ""))
+        dept = {"short": "PSYCH", "api": {
+            "type": "wp", "base": "https://x.edu", "post_type": "faculty-page",
+            "profile_enrich": {"require_professor": True},
+        }}
+        people = fg._fetch_wp_api(dept)
+        assert [p["name"] for p in people] == ["Ada Prof"]  # lecturer dropped
+        assert people[0]["title"] == "Associate Professor"
+        assert "Cognitive Psychology" in people[0]["keywords"]
+
+    def test_wp_api_degrades_to_empty_without_block(self):
+        assert fg._fetch_wp_api({"short": "X"}) == []
+        assert fg._fetch_wp_api({"short": "X", "api": {"type": "drupal"}}) == []
+
+
+# --- UCLA Samueli seas-people AJAX source (no network in tests) --------------
+
+class TestSeasAjaxSource:
+    _AJAX_HTML = """
+      <div class="seas-people-container core-cs">
+        <div class="card">
+          <div class="people-title"><a href="https://samueli.ucla.edu/people/ada/">Ada Byron</a></div>
+          <div class="card_description"><p><i>Professor</i></p></div>
+          <a class="mailto-link" href="mailto:ada@ucla.edu?subject=x">email</a>
+        </div>
+      </div>
+      <div class="seas-people-container emeriti-cs">
+        <div class="card">
+          <div class="people-title"><a href="https://samueli.ucla.edu/people/old/">Olde Prof</a></div>
+          <div class="card_description"><p><i>Professor Emeritus</i></p></div>
+        </div>
+      </div>
+    """
+    _PROFILE_HTML = """
+      <div class="et_pb_toggle"><div class="et_pb_toggle_title">Research and Interests</div>
+      <div class="et_pb_toggle_content"><p>Machine learning</p><p>Cryptography</p>
+      <p>This is a long prose sentence describing the research program in great detail and depth.</p>
+      </div></div>
+    """
+
+    def test_seas_keeps_ladder_drops_emeriti_and_enriches(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        class _Resp:
+            text = self._AJAX_HTML
+            def raise_for_status(self): pass
+
+        monkeypatch.setattr("requests.post", lambda *a, **k: _Resp())
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(self._PROFILE_HTML, "html.parser"))
+        dept = {"short": "CS", "ajax": {"type": "seas", "department": "cs",
+                                        "research_enrich": True}}
+        people = fg._fetch_seas_ajax(dept)
+        assert [p["name"] for p in people] == ["Ada Byron"]  # emeriti container dropped
+        p = people[0]
+        assert p["email"] == "ada@ucla.edu"  # ?subject stripped
+        assert p["keywords"] == ["Machine learning", "Cryptography"]  # prose line dropped
+
+    def test_seas_degrades_to_empty_without_block(self):
+        assert fg._fetch_seas_ajax({"short": "X"}) == []
+        assert fg._fetch_seas_ajax({"short": "X", "ajax": {"type": "other"}}) == []
+
+
+# --- scrape title-based ladder filter + name-flip (no network) ---------------
+
+class TestScrapeLadderFilter:
+    def test_ladder_filter_drops_nonladder_titles(self, monkeypatch):
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="c"><a class="n" href="/p/a">Ada Real</a><span class="t">Professor</span></div>
+        <div class="c"><a class="n" href="/p/b">Bob Old</a><span class="t">Professor Emeritus</span></div>
+        <div class="c"><a class="n" href="/p/c">Cy Adj</a><span class="t">Adjunct Professor</span></div>
+        <div class="c"><a class="n" href="/p/d">Di Teach</a><span class="t">Teaching Professor</span></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": ".t"},
+            "ladder_filter": {"require": r"professor", "drop": r"emerit|adjunct|teaching"},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ada Real"]
+
+    def test_scrape_name_flip(self, monkeypatch):
+        from bs4 import BeautifulSoup
+        html = '<div class="c"><a class="n" href="/p/a">Zhang, Wei</a></div>'
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "name_flip": True,
+        }}
+        assert fg._scrape_directory(dept)[0]["name"] == "Wei Zhang"
+
+
+# --- Algolia directory source (no network in tests) -------------------------
+
+class TestAlgoliaSource:
+    def test_algolia_joins_name_research_and_drops_emeriti(self, monkeypatch):
+        hits = [
+            {"name_first": "Ada", "name_last": "Byron",
+             "areas_of_research": ["Particle Physics", "Cosmology"],
+             "titles_general": "Professor", "email": "ada@utexas.edu",
+             "profile_link": "https://physics.utexas.edu/directory/ada/"},
+            {"name_first": "Old", "name_last": "Timer",
+             "areas_of_research": "Optics", "titles_general": "Professor Emeritus",
+             "profile_link": "https://physics.utexas.edu/directory/old/"},
+        ]
+
+        class _Resp:
+            def raise_for_status(self): pass
+            def json(self): return {"hits": hits}
+
+        monkeypatch.setattr("requests.post", lambda *a, **k: _Resp())
+        dept = {"short": "PHYS", "algolia": {
+            "app_id": "R1M3WN6NBD", "api_key": "k", "index": "directory_LIVE",
+            "filters": 'department:"Physics"', "drop_title_re": r"emerit",
+        }}
+        people = fg._fetch_algolia(dept)
+        assert [p["name"] for p in people] == ["Ada Byron"]  # emeritus dropped
+        assert people[0]["email"] == "ada@utexas.edu"
+        assert "Particle Physics" in people[0]["research_areas"]
+
+    def test_algolia_degrades_without_block(self):
+        assert fg._fetch_algolia({"short": "X"}) == []
+
+
 # --- University of Washington config (live-scraped, no network in tests) ----
 
 class TestUWConfig:
@@ -305,3 +483,24 @@ class TestWiscConfig:
         from src.collectors.schools.wisc_faculty import SCHOOL as W
         assert SOURCE_DEFAULTS[W["source"]] == ("wisc", "unknown")
         assert W["source"] in FACULTY_SOURCES
+
+
+class TestUCLAConfig:
+    def test_ucla_config_valid(self):
+        from src.collectors.schools.ucla_faculty import SCHOOL as U
+        assert fg.validate(U) == []
+
+    def test_ucla_registered(self):
+        from src.collectors.schools.ucla_faculty import SCHOOL as U
+        assert SOURCE_DEFAULTS[U["source"]] == ("ucla", "unknown")
+        assert U["source"] in FACULTY_SOURCES
+
+    def test_ucla_every_department_has_a_wp_or_seas_source(self):
+        from src.collectors.schools.ucla_faculty import SCHOOL as U
+        for dept in U["departments"]:
+            if "api" in dept:
+                assert dept["api"]["type"] == "wp", dept["short"]
+                assert dept["api"]["base"].startswith("https://"), dept["short"]
+            else:
+                assert dept["ajax"]["type"] == "seas", dept["short"]
+                assert dept["ajax"]["department"], dept["short"]
