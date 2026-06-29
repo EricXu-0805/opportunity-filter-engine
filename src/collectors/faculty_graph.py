@@ -212,7 +212,7 @@ _CREDENTIAL = (r"Ph\.?\s?D|M\.?\s?D|M\.?\s?S|M\.?\s?A|M\.?\s?P\.?H|D\.?\s?M\.?A"
 # (FAACP, FAPhA, FAASLD, BCPS, LMSW, FAAN, …). The acronym branch is
 # case-SENSITIVE (≥2 leading capitals) so it never eats an ordinary name word.
 _CREDENTIAL_RE = re.compile(
-    r"(?:\s*,\s*(?:(?i:" + _CREDENTIAL + r")|[A-Z]{2,}[A-Za-z.]*)\.?)+\s*$")
+    r"(?:\s*,\s*(?:(?i:" + _CREDENTIAL + r")|[A-Z]{2,}[A-Za-z.()-]*)\.?)+\s*$")
 
 
 def _strip_credentials(name: str) -> str:
