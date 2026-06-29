@@ -369,9 +369,11 @@ def fetch_soup(url: str) -> BeautifulSoup | None:
                 requests.exceptions.Timeout) as e:
             last_err = e
         except requests.exceptions.HTTPError as e:
-            # Retry only on transient server errors; client errors are terminal.
+            # Retry transient server errors and 429 rate-limits (a shared Varnish
+            # cache returns 429 under burst load, then recovers); other 4xx client
+            # errors are terminal.
             status = e.response.status_code if e.response is not None else None
-            if status is None or status < 500:
+            if status is None or (status < 500 and status != 429):
                 logger.warning(f"Failed to fetch {url}: {e}")
                 return None
             last_err = e

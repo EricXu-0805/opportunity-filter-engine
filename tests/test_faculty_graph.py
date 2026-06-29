@@ -267,6 +267,60 @@ class TestScrapeLayer:
         assert people[0]["research_areas"] == ""  # not enriched
         assert calls == ["https://www.cc.gatech.edu/people/faculty"]  # only the listing
 
+    def test_profile_enrich_selector_harvests_taxonomy_links_as_atomic_keywords(self, monkeypatch):
+        """Taxonomy-links markup (UW Drupal "Fields of Interest": each area is a
+        separate <a>, no delimiter) must be harvested per-element, NOT comma-split:
+        a comma-bearing area ("Astrophysics, Cosmology & Gravitation") stays one
+        keyword. The selector path sets ``keywords`` directly (the atomic, curated
+        path), so it never re-shatters. In-scope junk + dup are dropped."""
+        from bs4 import BeautifulSoup
+        listing = ('<div class="c"><a class="n" href="/people/ada">Ada Q. Lovelace</a>'
+                   '<span class="t">Professor</span></div>')
+        profile = ('<div class="views-field views-field-term-node-tid"><span class="field-content">'
+                   '<a href="/fields/cm">Condensed Matter</a>'
+                   '<a href="/fields/ac">Astrophysics, Cosmology &amp; Gravitation</a>'
+                   '<a href="/fields/cm">Condensed Matter</a>'      # dup → folded
+                   '<a href="/fields/faculty">Faculty</a>'          # in-scope but junk-gated
+                   '</span></div>'
+                   '<nav class="menu"><a href="/people/faculty">All Faculty</a></nav>')  # out of scope
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+                                      "html.parser"),
+        )
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        dept = {"short": "PHYS", "scrape": {
+            "url": "https://phys.washington.edu/people/faculty",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": ".t"},
+            "profile_enrich": {"research_items_selector": ".views-field-term-node-tid a"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        assert people[0]["keywords"] == ["Condensed Matter", "Astrophysics, Cosmology & Gravitation"]
+        kws = fg._clean_keywords(people[0])
+        assert "Condensed Matter" in kws
+        # comma folded to " / " so the title-parenthetical subset invariant holds
+        assert "Astrophysics / Cosmology & Gravitation" in kws
+        assert "Faculty" not in kws and "All Faculty" not in kws
+
+    def test_clean_selector_items_dedupes_filters_junk_and_caps(self):
+        """The selector harvest is defended even when a selector slightly
+        over-captures: dedupe (case-insensitive), drop DQ-junk terms and prose
+        fragments (>8 words), and cap the count so a runaway selector can't dump
+        a whole nav/publication list into one faculty's keywords."""
+        from bs4 import BeautifulSoup
+        parts = ['<a>Faculty</a>',                       # junk → dropped
+                 '<a>Machine Learning</a>',
+                 '<a>machine learning</a>',              # case-dup → dropped
+                 '<a>' + 'word ' * 10 + '</a>']          # prose fragment → dropped
+        parts += [f'<a>Area {i}</a>' for i in range(1, 14)]  # 13 distinct areas
+        soup = BeautifulSoup('<div class="r">' + ''.join(parts) + '</div>', "html.parser")
+        items = fg._clean_selector_items(soup, ".r a")
+        assert len(items) == fg._RESEARCH_ITEMS_CAP            # capped at 12
+        assert "Faculty" not in items
+        assert items.count("Machine Learning") == 1           # deduped
+        assert all(len(i.split()) <= 8 for i in items)        # no prose fragment
+
     def test_in_memoriam_name_is_dropped(self):
         """A name carrying a (birth-death) year range is an in-memoriam directory
         entry, not active faculty — drop it (GT CoC lists the late
@@ -383,8 +437,8 @@ class TestWordPressApiSource:
         monkeypatch.setattr(fg, "_wp_get_json",
                             lambda url: records if "page=1" in url else [])
         monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
-                            ("Associate Professor", "Cognitive Psychology")
-                            if "ada" in url else ("Lecturer", ""))
+                            ("Associate Professor", "Cognitive Psychology", [])
+                            if "ada" in url else ("Lecturer", "", []))
         dept = {"short": "PSYCH", "api": {
             "type": "wp", "base": "https://x.edu", "post_type": "faculty-page",
             "profile_enrich": {"require_professor": True},
