@@ -129,12 +129,15 @@ export const SCHOOLS: School[] = [
     color: '#BF5700',
     location: 'Austin, TX',
     // Campus-graph engine (10 program/office records) plus the live-scraped
-    // faculty directory (~612 professors): CS (keyworded via research groups) +
-    // ECE; the four Cockrell School engineering depts (ChemE, Aerospace, Civil,
-    // BME — WordPress, tenure-track filtered, keyworded); the three College of
-    // Natural Sciences depts (Physics, Chemistry, Math — Algolia, keyworded);
-    // and Mechanical Engineering. CDCM/MRSEC REU is national/open, not counted.
-    coverage: { campusOpportunities: 622, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~2,300 professors across 70 departments — UIUC-parity
+    // coverage): Cockrell Engineering (CS/ECE/ME + the WordPress Cockrell depts +
+    // Petroleum), the full College of Natural Sciences (Algolia: Physics through
+    // Astronomy, Neuroscience, Molecular Biosciences, Statistics & Data Sciences,
+    // and the iSchool), the entire College of Liberal Arts (the shared
+    // webeditor.la JSON:API, one division each, ladder-filtered), and the
+    // professional schools — McCombs, Moody Communication, Fine Arts, Education,
+    // Architecture, LBJ, Pharmacy, Nursing, Social Work, and Law.
+    coverage: { campusOpportunities: 2351, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 113 },
   },
   {
