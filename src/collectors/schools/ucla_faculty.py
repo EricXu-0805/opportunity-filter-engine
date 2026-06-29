@@ -149,6 +149,38 @@ SCHOOL: dict = {
             "directory_url": "https://samueli.ucla.edu/search-faculty/#mse",
             "ajax": {"type": "seas", "department": "mse", "research_enrich": True},
         },
+        # College static directories (ladder-only pages; emeriti live separately).
+        {
+            "short": "ECON",
+            "name": "Department of Economics",
+            "majors": ["Economics", "Business Economics"],
+            "directory_url": "https://economics.ucla.edu/faculty/ladder/",
+            "scrape": {"url": "https://economics.ucla.edu/faculty/ladder/",
+                       "selectors": {"card": "a[href*='/person/']",
+                                     "name": ":self", "link": ":self"}},
+        },
+        {
+            "short": "EEB",
+            "name": "Department of Ecology and Evolutionary Biology",
+            "majors": ["Ecology and Evolutionary Biology", "Biology"],
+            "directory_url": "https://www.eeb.ucla.edu/faculty/",
+            "scrape": {"url": "https://www.eeb.ucla.edu/faculty/",
+                       "selectors": {"card": "a[href*='/indivfaculty/?faculty=']",
+                                     "name": ":self", "link": ":self"}},
+        },
+        {
+            "short": "MATH",
+            "name": "Department of Mathematics",
+            "majors": ["Mathematics", "Applied Mathematics"],
+            "directory_url": "https://www.math.ucla.edu/people/faculty/",
+            "scrape": {"url": "https://www.math.ucla.edu/people/faculty/",
+                       "name_flip": True,
+                       "selectors": {"card": "tr",
+                                     "name": "a[href*='/people/ladder/']",
+                                     "link": "a[href*='/people/ladder/']",
+                                     "title": "td:nth-child(2)"},
+                       "ladder_filter": {"drop": r"emerit"}},
+        },
     ],
 }
 

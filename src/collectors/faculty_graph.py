@@ -281,30 +281,64 @@ def _passes_ladder(title: str, lf: dict | None) -> bool:
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
-                 name_flip: bool = False) -> list[dict]:
+                 name_flip: bool = False, link_filter: str | None = None) -> list[dict]:
     """Parse one rendered directory page into faculty specs via CSS selectors.
 
     Optional selectors beyond card/name/link/title: ``research`` (interests text)
     and ``email`` (a mailto) let rich cards (e.g. UW ECE) land keyworded, emailed
     faculty in one pass rather than name-only stubs. ``ladder_filter`` drops
-    non-ladder ranks by title; ``name_flip`` un-inverts "Last, First" listings.
+    non-ladder ranks by title; ``name_flip`` un-inverts "Last, First" listings;
+    ``link_filter`` keeps only cards whose profile href matches (e.g. "/Faculty/"
+    on directories that list faculty and staff together).
     """
     people: list[dict] = []
     for card in soup.select(sel.get("card", "")):
-        name_el = card.select_one(sel["name"]) if sel.get("name") else None
+        # ":self" = the card element itself is the name link (link-list
+        # directories where each faculty is a bare <a>, no inner name node).
+        if sel.get("name") == ":self":
+            name_el = card
+        else:
+            name_el = card.select_one(sel["name"]) if sel.get("name") else None
         if not name_el:
             continue
         name = name_el.get_text(" ", strip=True)
+        if sel.get("name_strip"):
+            # Some directories prefix the name link with boilerplate ("Learn more
+            # about <Name>"); strip it to recover the clean, properly-cased name.
+            name = re.sub(sel["name_strip"], "", name).strip()
         if name_flip:
             name = _flip_name(name)
-        link_el = card.select_one(sel.get("link", "")) if sel.get("link") else name_el
+        if sel.get("link") == ":self":
+            link_el = card
+        elif sel.get("link"):
+            link_el = card.select_one(sel["link"])
+        else:
+            link_el = name_el
         href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
+        if link_filter and not re.search(link_filter, href):
+            continue
         href = urljoin(base_url, href) if href else base_url
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
         if not _passes_ladder(title, ladder_filter):
             continue
         research = ""
+        keywords: list[str] = []
+        if sel.get("research_items"):
+            # Each research area is its own element (e.g. Stanford's taxonomy
+            # links) — collect them as clean keywords rather than one flattened
+            # blob, skipping a label cell and any institute/center affiliation
+            # link the DQ junk filter would reject.
+            try:
+                from .uiuc_faculty import _is_junk_keyword
+            except Exception:  # noqa: BLE001
+                def _is_junk_keyword(_k):  # pragma: no cover
+                    return False
+            keywords = [
+                t for el in card.select(sel["research_items"])
+                if (t := el.get_text(" ", strip=True))
+                and t.lower() != "research area(s)" and not _is_junk_keyword(t)
+            ]
         if sel.get("research"):
             r_el = card.select_one(sel["research"])
             research = r_el.get_text(" ", strip=True) if r_el else ""
@@ -315,7 +349,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                 raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
                 email = raw.replace("mailto:", "").split("?")[0].strip() or None
         if _is_person_name(name):
-            people.append(faculty(name, title=title, url=href, email=email, research_areas=research))
+            people.append(faculty(name, title=title, url=href, email=email,
+                                  research_areas=research, keywords=keywords))
     return people
 
 
@@ -341,12 +376,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
     sel = cfg.get("selectors", {})
     lf = cfg.get("ladder_filter")
     flip = cfg.get("name_flip", False)
+    link_f = cfg.get("link_filter")
     soup = fetch_soup(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
-        people = _parse_cards(soup, sel, base, lf, flip)
+        people = _parse_cards(soup, sel, base, lf, flip, link_f)
         pag = cfg.get("paginate")
         if pag:
             param = pag.get("param", "page")
@@ -356,7 +392,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 s2 = fetch_soup(f"{base}{sep}{param}={pg}")
                 if s2 is None:
                     break
-                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip)
+                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f)
                          if (p["name"], p["url"]) not in seen]
                 if not fresh:
                     break

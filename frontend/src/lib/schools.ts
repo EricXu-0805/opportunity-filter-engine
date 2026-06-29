@@ -113,11 +113,11 @@ export const SCHOOLS: School[] = [
     color: '#B3A369',
     location: 'Atlanta, GA',
     // Campus-graph engine (8 program/office/lab records) plus the live-scraped
-    // College of Computing faculty directory (~223 professors across the CS,
-    // Interactive Computing, and Computational Science & Engineering schools,
-    // paginated). The SURE + College of Sciences REU programs are national/open,
-    // not counted. Conservative maintained estimate, rounded down like UCB.
-    coverage: { campusOpportunities: 231, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~369 professors): College of Computing (CS, Interactive
+    // Computing, Computational Science & Engineering, paginated) + the Chemistry,
+    // Mathematics, Materials Science, ECE, and Civil schools (faculty-only filter URLs). SURE
+    // + College of Sciences REU programs are national/open, not counted.
+    coverage: { campusOpportunities: 448, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 6, majors: 43 },
   },
   {
@@ -129,10 +129,12 @@ export const SCHOOLS: School[] = [
     color: '#BF5700',
     location: 'Austin, TX',
     // Campus-graph engine (10 program/office records) plus the live-scraped
-    // faculty directory (~239 professors — Computer Science, keyworded via
-    // research groups, + ECE). The CDCM/MRSEC REU is national/open, not counted.
-    // Conservative maintained estimate, rounded down like UCB.
-    coverage: { campusOpportunities: 249, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~612 professors): CS (keyworded via research groups) +
+    // ECE; the four Cockrell School engineering depts (ChemE, Aerospace, Civil,
+    // BME — WordPress, tenure-track filtered, keyworded); the three College of
+    // Natural Sciences depts (Physics, Chemistry, Math — Algolia, keyworded);
+    // and Mechanical Engineering. CDCM/MRSEC REU is national/open, not counted.
+    coverage: { campusOpportunities: 622, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 14, majors: 113 },
   },
   {
@@ -148,8 +150,9 @@ export const SCHOOLS: School[] = [
     // Samueli engineering research page, the career center, the CNSI institute)
     // plus the faculty directory (~476 professors): WordPress-REST for Chemistry
     // & Biochemistry, MCDB, Psychology; the Samueli AJAX directory for the seven
-    // engineering departments (CS, ECE, MAE, …), keyworded per profile.
-    coverage: { campusOpportunities: 486, note: 'universitySwitcher.coverageCampus' },
+    // engineering departments (CS, ECE, MAE, …), keyworded per profile; plus the
+    // Economics, Ecology & Evolutionary Biology, and Mathematics ladder pages.
+    coverage: { campusOpportunities: 615, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 9, majors: 135 },
   },
   {
@@ -161,12 +164,11 @@ export const SCHOOLS: School[] = [
     color: '#4B2E83',
     location: 'Seattle, WA',
     // Campus-graph engine (10 program/office/lab records) plus the live-scraped
-    // faculty directory (~525 professors across 14 departments — ECE fully
-    // keyworded, the College of Arts & Sciences departments as emailed
-    // cold-email targets). The Institute for Protein Design program is
-    // national/open, so it isn't counted. Conservative maintained estimate,
-    // rounded down like UCB.
-    coverage: { campusOpportunities: 535, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~750 professors): ECE + the 13 Arts & Sciences depts
+    // (Drupal grids) + the five College of Engineering depts via facultyfinder
+    // (keyworded + emailed) + Bioengineering (WordPress, keyworded) + Biology.
+    // The Institute for Protein Design program is national/open, not counted.
+    coverage: { campusOpportunities: 760, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 12, majors: 116 },
   },
   {
@@ -178,10 +180,10 @@ export const SCHOOLS: School[] = [
     color: '#C5050C',
     location: 'Madison, WI',
     // Campus-graph engine (9 program/office records) plus the live-scraped
-    // Computer Sciences faculty directory (~126 professors, emailed). The
-    // IBS-SRP REU is national/open, not counted. Conservative maintained
-    // estimate, rounded down like UCB.
-    coverage: { campusOpportunities: 135, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~267 professors): Computer Sciences (emailed) + the
+    // College of Engineering shared directory (ECE, ME, BME — /Faculty/-filtered,
+    // emailed) + Mathematics (WordPress uw_staff). IBS-SRP REU is national/open.
+    coverage: { campusOpportunities: 276, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 8, majors: 146 },
   },
   {
@@ -193,11 +195,11 @@ export const SCHOOLS: School[] = [
     color: '#8C1515',
     location: 'Stanford, CA',
     // Campus-graph engine (10 program/office/lab records) plus the live-scraped
-    // School of Engineering faculty directory (~173 professors across ME, BioE,
-    // Aero/Astro, MSE, and Chemical Engineering — shared stanford-person
-    // template). SSRP/Amgen is national/open, not counted. Conservative
-    // maintained estimate, rounded down like UCB.
-    coverage: { campusOpportunities: 183, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~400 professors): School of Engineering (ME, BioE,
+    // Aero/Astro, MSE, ChemE, CEE — stanford-person template) + Computer Science
+    // (su-card) + Humanities & Sciences (Physics, Statistics, Chemistry, Math —
+    // hb-card, keyworded per research-area taxonomy). SSRP/Amgen is national.
+    coverage: { campusOpportunities: 410, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 3, majors: 71 },
   },
   {

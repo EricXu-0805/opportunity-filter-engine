@@ -375,6 +375,58 @@ class TestScrapeLadderFilter:
         }}
         assert fg._scrape_directory(dept)[0]["name"] == "Wei Zhang"
 
+    def test_scrape_name_strip_and_self_link_list(self, monkeypatch):
+        """A link-list directory (each faculty is a bare <a> whose text is
+        prefixed boilerplate) is parsed with card=the anchor, name=":self", and a
+        ``name_strip`` regex to recover the clean name."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="grid">
+          <a href="/directory/ada-byron">Learn more about Ada Byron</a>
+          <a href="/directory/grace-hopper">Learn more about Grace Hopper</a>
+        </div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/dir",
+            "selectors": {"card": "a[href*='/directory/']", "name": ":self",
+                          "link": ":self", "name_strip": r"^Learn more about\s+"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert [p["name"] for p in people] == ["Ada Byron", "Grace Hopper"]
+        assert people[0]["url"] == "https://x.edu/directory/ada-byron"
+
+    def test_scrape_research_items_collects_clean_keywords(self, monkeypatch):
+        """A Stanford-style hb-card lists each research area as its own taxonomy
+        link; ``research_items`` collects them as separate keywords and drops the
+        "Research Area(s)" label cell + any institute-affiliation junk."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="hb-card">
+          <span class="views-field-title"><a href="/people/ada">Ada Lovelace</a></span>
+          <div class="views-field-field-hs-person-research">
+            <div class="field__label">Research Area(s)</div>
+            <a href="/t/1">Probability Theory</a>
+            <a href="/t/2">Information Theory</a>
+            <a href="/inst">Stanford Institute for Theoretical Physics</a>
+          </div>
+        </div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "STATS", "scrape": {
+            "url": "https://statistics.stanford.edu/people/faculty",
+            "selectors": {"card": "div.hb-card", "name": ".views-field-title a",
+                          "link": ".views-field-title a",
+                          "research_items": ".views-field-field-hs-person-research a"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        kws = people[0]["keywords"]
+        assert "Probability Theory" in kws and "Information Theory" in kws
+        assert not any("Institute" in k for k in kws)  # affiliation junk dropped
+
 
 # --- Algolia directory source (no network in tests) -------------------------
 
@@ -420,10 +472,12 @@ class TestUWConfig:
         assert SOURCE_DEFAULTS[UW["source"]] == ("uw", "unknown")
         assert UW["source"] in FACULTY_SOURCES
 
-    def test_uw_every_department_has_a_scrape_block(self):
+    def test_uw_every_department_has_a_live_source(self):
         from src.collectors.schools.uw_faculty import SCHOOL as UW
         for dept in UW["departments"]:
-            assert dept.get("scrape", {}).get("selectors", {}).get("card"), dept["short"]
+            has_scrape = dept.get("scrape", {}).get("selectors", {}).get("card")
+            has_api = dept.get("api", {}).get("type") == "wp"
+            assert has_scrape or has_api, dept["short"]
 
 
 class TestGatechConfig:
@@ -495,12 +549,14 @@ class TestUCLAConfig:
         assert SOURCE_DEFAULTS[U["source"]] == ("ucla", "unknown")
         assert U["source"] in FACULTY_SOURCES
 
-    def test_ucla_every_department_has_a_wp_or_seas_source(self):
+    def test_ucla_every_department_has_a_live_source(self):
         from src.collectors.schools.ucla_faculty import SCHOOL as U
         for dept in U["departments"]:
             if "api" in dept:
                 assert dept["api"]["type"] == "wp", dept["short"]
                 assert dept["api"]["base"].startswith("https://"), dept["short"]
-            else:
+            elif "ajax" in dept:
                 assert dept["ajax"]["type"] == "seas", dept["short"]
                 assert dept["ajax"]["department"], dept["short"]
+            else:
+                assert dept["scrape"]["selectors"].get("card"), dept["short"]
