@@ -117,8 +117,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, or faculty180 config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, or cola config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -154,7 +154,24 @@ def _clean_keywords(person: dict) -> list[str]:
     # ("Research Interests: semantics, syntax") that splitting leaves stuck to
     # the first term — drop the label so the term stands alone.
     parts = [_RESEARCH_LABEL_RE.sub("", p).strip() for p in parts]
-    return list(dict.fromkeys(p for p in parts if len(p) >= 3))[:8]
+    # A comma-split of prose interests leaves continuation clauses ("history,
+    # especially in India" -> "especially in India") — drop any part led by a
+    # qualifier connective (it is a sub-clause, not a standalone research area).
+    parts = [p for p in parts if not _FRAGMENT_LEADIN_RE.match(p)]
+    # A research-area keyword is a short noun phrase; a part that runs long or to
+    # many words is a prose bio fragment (some directories put free text in the
+    # interests field) — drop it rather than ship a sentence as a keyword. Also
+    # honour the same junk definition the DQ gate enforces, so a derived keyword
+    # never ships something the gate would reject.
+    try:
+        from .uiuc_faculty import _is_junk_keyword
+    except Exception:  # noqa: BLE001
+        def _is_junk_keyword(_k):  # pragma: no cover
+            return False
+    return list(dict.fromkeys(
+        p for p in parts
+        if 3 <= len(p) <= 60 and len(p.split()) <= 6 and not _is_junk_keyword(p)
+    ))[:8]
 
 
 _RESEARCH_LABEL_RE = re.compile(
@@ -164,6 +181,12 @@ _RESEARCH_LABEL_RE = re.compile(
     r"|specializations?|expertise|interests?|keywords?)\s*[:：\-–—]\s*",
     re.I,
 )
+
+# A research-area keyword led by a qualifier connective is a prose continuation
+# clause, not a standalone topic — the DQ gate rejects these, so we drop them at
+# the source. (Mirrors test_faculty_keywords_have_no_fragment_leadins.)
+_FRAGMENT_LEADIN_RE = re.compile(
+    r"^(?:such as|particularly|especially|including|namely|e\.g\.?)\b", re.I)
 
 
 _PRONOUN_RE = re.compile(
@@ -184,11 +207,17 @@ def _strip_pronouns(name: str) -> str:
 _CREDENTIAL = (r"Ph\.?\s?D|M\.?\s?D|M\.?\s?S|M\.?\s?A|M\.?\s?P\.?H|D\.?\s?M\.?A"
                r"|Pharm\.?\s?D|Dr\.?\s?P\.?H|Sc\.?\s?D|D\.?\s?V\.?M|J\.?\s?D"
                r"|Ed\.?\s?D|D\.?\s?O|R\.?\s?N|D\.?\s?D\.?S|D\.?Phil|Psy\.?\s?D|FAIA")
-_CREDENTIAL_RE = re.compile(r"(?:\s*,\s*(?:" + _CREDENTIAL + r")\.?)+\s*$", re.I)
+# A trailing comma-run of post-nominals: each item is a known degree
+# (case-insensitively) OR an all-caps professional fellowship/licensure acronym
+# (FAACP, FAPhA, FAASLD, BCPS, LMSW, FAAN, …). The acronym branch is
+# case-SENSITIVE (≥2 leading capitals) so it never eats an ordinary name word.
+_CREDENTIAL_RE = re.compile(
+    r"(?:\s*,\s*(?:(?i:" + _CREDENTIAL + r")|[A-Z]{2,}[A-Za-z.]*)\.?)+\s*$")
 
 
 def _strip_credentials(name: str) -> str:
-    """Drop trailing post-nominal degree suffixes ("Jane Doe, PhD, MPH")."""
+    """Drop trailing post-nominal degree/credential suffixes
+    ("Jane Doe, PhD, MPH" / "Jamie Barner, Ph.D., FAACP, FAPhA")."""
     return _CREDENTIAL_RE.sub("", name).strip()
 
 
@@ -923,6 +952,72 @@ def _fetch_algolia(dept: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# UT Austin College of Liberal Arts JSON:API source (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# Every Liberal Arts department's public faculty page is a Vue single-page app
+# (a static scrape lands zero people) backed by one shared JSON:API at
+# ``webeditor.la.utexas.edu/api/v2/persons``. A department opts in with a
+# ``cola`` block; we query the persons endpoint filtered to the division (and an
+# optional core-faculty ``categoryitem_id`` for interdisciplinary programs whose
+# bare roster is mostly cross-listed affiliates), ladder-filter on the display
+# title, and build a profile URL from the person's EID.
+#
+#     "cola": {
+#         "base": "https://webeditor.la.utexas.edu/api/v2",
+#         "division": "philosophy",
+#         "role_name": "faculty",                     # optional, default "faculty"
+#         "profile_base": "https://liberalarts.utexas.edu/philosophy/faculty",
+#         "ladder_filter": {"require": "profess", "drop": "emerit|lecturer|..."},
+#         "categoryitem_id": 2015,                    # optional core-faculty filter
+#     }
+def _fetch_cola(dept: dict) -> list[dict]:
+    """Best-effort faculty fetch from the UT Liberal Arts JSON:API (opt-in)."""
+    cfg = dept.get("cola")
+    if not cfg:
+        return []
+    try:
+        import requests
+    except Exception:  # noqa: BLE001
+        return []
+    from .ucb_common import HEADERS
+    base = cfg["base"].rstrip("/")
+    params = {"filter[division]": cfg["division"],
+              "filter[role_name]": cfg.get("role_name", "faculty")}
+    if cfg.get("categoryitem_id"):
+        params["filter[categoryitem]"] = cfg["categoryitem_id"]
+    try:
+        resp = requests.get(f"{base}/persons", params=params,
+                            headers=HEADERS, timeout=25)
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+    except Exception:  # noqa: BLE001
+        return []
+    lf = cfg.get("ladder_filter") or {}
+    require_re, drop_re = lf.get("require"), lf.get("drop")
+    profile_base = (cfg.get("profile_base") or "").rstrip("/")
+    specs: list[dict] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        attrs = item.get("attributes") or {}
+        name = f"{(attrs.get('first') or '').strip()} {(attrs.get('last') or '').strip()}".strip()
+        if not _is_person_name(name):
+            continue
+        title = (attrs.get("display_title") or "").strip() or "Professor"
+        if require_re and not re.search(require_re, title, re.I):
+            continue
+        if drop_re and re.search(drop_re, title, re.I):
+            continue
+        eid = (attrs.get("eid") or "").strip()
+        url_v = f"{profile_base}/{eid}" if (profile_base and eid) else ""
+        email = (attrs.get("email") or "").strip() or None
+        research = (attrs.get("interests") or "").strip()
+        specs.append(faculty(name, title=title, url=url_v, email=email, research_areas=research))
+    return specs
+
+
+# ---------------------------------------------------------------------------
 # Interfolio Faculty180 admin-ajax source (deep mode, lazy HTTP deps)
 # ---------------------------------------------------------------------------
 #
@@ -1037,7 +1132,7 @@ def _listing_urls(school: dict) -> set[str]:
     """
     urls: set[str] = set()
     for dept in school.get("departments", []):
-        for block in ("scrape", "api", "ajax", "algolia", "faculty180"):
+        for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):
                 for k in ("url", "base"):
@@ -1073,7 +1168,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                and u not in listing_urls}
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
-                               + _fetch_faculty180(dept)):
+                               + _fetch_faculty180(dept) + _fetch_cola(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue

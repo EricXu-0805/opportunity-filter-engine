@@ -245,6 +245,22 @@ class TestScrapeLayer:
             {"research_areas": "Areas of Expertise: machine learning, robotics"}
         )
 
+    def test_clean_keywords_drops_prose_and_gate_junk(self):
+        """A free-text interests field (some directories store a bio there) must
+        not ship sentence fragments or anything the DQ junk gate would reject —
+        the derived keywords honour the same junk definition the gate enforces."""
+        person = {"research_areas": (
+            "Phonology, My research interests include the politics of memory, "
+            "African American literature (1945-present), working memory")}
+        kws = fg._clean_keywords(person)
+        assert "Phonology" in kws            # a real short topic survives
+        from src.collectors.uiuc_faculty import _is_junk_keyword
+        for k in kws:
+            assert not _is_junk_keyword(k), k
+        # the prose clause / date-tagged / gerund-flagged fragments are gone
+        assert not any("research interests include" in k.lower() for k in kws)
+        assert not any("1945" in k for k in kws)
+
 
 # --- WordPress-REST api source (UCLA-style, no network in tests) -------------
 
@@ -524,6 +540,55 @@ class TestAlgoliaSource:
         assert fg._fetch_algolia({"short": "X"}) == []
 
 
+class TestColaSource:
+    """UT Liberal Arts shared JSON:API (a Vue SPA backed by webeditor.la JSON:API)."""
+
+    def _payload(self):
+        return {"data": [
+            {"attributes": {"first": "Ada", "last": "Byron",
+                            "display_title": "Associate Professor",
+                            "email": "ada@utexas.edu", "eid": "ab42",
+                            "interests": "Logic, Computation"}},
+            {"attributes": {"first": "Old", "last": "Timer",
+                            "display_title": "Professor Emeritus",
+                            "email": "old@utexas.edu", "eid": "ot1",
+                            "interests": "Optics"}},
+            {"attributes": {"first": "Vee", "last": "Sitor",
+                            "display_title": "Visiting Lecturer",
+                            "eid": "vs9", "interests": ""}},
+        ]}
+
+    def test_cola_maps_fields_ladder_filters_and_builds_profile_url(self, monkeypatch):
+        payload = self._payload()
+
+        class _Resp:
+            def raise_for_status(self): pass
+            def json(self): return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        dept = {"short": "GOV", "cola": {
+            "base": "https://webeditor.la.utexas.edu/api/v2", "division": "government",
+            "profile_base": "https://liberalarts.utexas.edu/government/faculty",
+            "ladder_filter": {"require": "profess", "drop": r"emerit|lecturer|visiting"},
+        }}
+        people = fg._fetch_cola(dept)
+        assert [p["name"] for p in people] == ["Ada Byron"]  # emeritus + lecturer dropped
+        assert people[0]["email"] == "ada@utexas.edu"
+        assert people[0]["url"] == "https://liberalarts.utexas.edu/government/faculty/ab42"
+        assert "Logic" in people[0]["research_areas"]
+
+    def test_cola_degrades_without_block(self):
+        assert fg._fetch_cola({"short": "X"}) == []
+
+    def test_validate_accepts_cola_block(self):
+        school = {"school_slug": "utexas", "source": "utexas_faculty",
+                  "organization": "UT Austin", "location": "Austin, TX",
+                  "id_prefix": "utexas", "departments": [
+                      {"short": "GOV", "name": "Government", "cola": {
+                          "base": "b", "division": "government"}}]}
+        assert fg.validate(school) == []
+
+
 class TestLinklessDirectoryDedup:
     def test_linkless_directory_is_not_collapsed_to_one(self, monkeypatch):
         """A directory with no per-person profile link (each card's only "link"
@@ -748,9 +813,17 @@ class TestNameCleaners:
         assert fg._strip_credentials("Frank Alber, PhD") == "Frank Alber"
         assert fg._strip_credentials("Jane Doe, MD, MPH") == "Jane Doe"
         assert fg._strip_credentials("Anne Marie, RN") == "Anne Marie"
+        # professional fellowship/licensure acronyms after the degree (pharmacy/
+        # nursing/medical directories) — an unknown trailing acronym must not
+        # block the whole strip.
+        assert fg._strip_credentials("Jamie C. Barner, Ph.D., FAACP, FAPhA") == "Jamie C. Barner"
+        assert fg._strip_credentials("Travis J. Carlson, Pharm.D., BCPS") == "Travis J. Carlson"
+        assert fg._strip_credentials("Noël Busch-Armendariz, Ph.D., LMSW, MSSW") == "Noël Busch-Armendariz"
         # a real two-part name with an internal comma is not a credential
         assert fg._strip_credentials("Garcia, Maria") == "Garcia, Maria"
         assert fg._strip_credentials("Christopher Hees") == "Christopher Hees"
+        # generational suffix is not a credential (handled by _flip_name)
+        assert fg._strip_credentials("Martin Luther King, Jr.") == "Martin Luther King, Jr."
 
     def test_flip_name_handles_generational_suffix(self):
         assert fg._flip_name("Little, Jr., Arthur L.") == "Arthur L. Little Jr."
