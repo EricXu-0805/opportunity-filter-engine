@@ -483,6 +483,14 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if sel.get("research"):
             r_el = card.select_one(sel["research"])
             research = r_el.get_text(" ", strip=True) if r_el else ""
+        if not research and not keywords and sel.get("research_re"):
+            # Some listing cards keep the research line as plain delimited text in
+            # the card markup (no per-area element to select) — e.g. UCLA Physics'
+            # "<h5>Name</h5><p>Title<br>High Energy, Astroparticle<br>Office:...".
+            # A regex bounds just the research line; _clean_keywords splits it.
+            m = re.search(sel["research_re"], str(card), re.I | re.S)
+            if m:
+                research = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", m.group(1))).strip()
         email = None
         if sel.get("email"):
             e_el = card.select_one(sel["email"])
@@ -640,7 +648,7 @@ def _clean_selector_items(soup, selector: str) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for el in soup.select(selector):
-        t = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip(" .,:;")
+        t = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip(" .,:;•·*–—-\t")
         if not (t and 2 <= len(t) <= 70 and len(t.split()) <= 8):
             continue
         if _is_junk_keyword(t):

@@ -321,6 +321,27 @@ class TestScrapeLayer:
         assert items.count("Machine Learning") == 1           # deduped
         assert all(len(i.split()) <= 8 for i in items)        # no prose fragment
 
+    def test_scrape_card_research_re_extracts_delimited_line(self, monkeypatch):
+        """A listing card with the research as a plain <br>-delimited text line (no
+        per-area element) — e.g. UCLA Physics — is harvested via a card-level
+        research_re; _clean_keywords then splits the captured line into keywords."""
+        from bs4 import BeautifulSoup
+        html = ('<table><tbody>'
+                '<tr><td><h5>Ada Lovelace</h5><p>Professor<br>'
+                'High Energy, Astroparticle, Neurophysics<br>Office: 1-234<br>'
+                'Phone: 5</p></td></tr></tbody></table>')
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "PHYS", "scrape": {
+            "url": "https://pa.ucla.edu/faculty.html",
+            "selectors": {"card": "tbody tr", "name": "h5", "link": "a",
+                          "research_re": r"<br\s*/?>\s*([^<]+?)\s*<br\s*/?>\s*(?:Office|Phone)"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        kws = fg._clean_keywords(people[0])
+        assert {"High Energy", "Astroparticle", "Neurophysics"} <= set(kws)
+
     def test_in_memoriam_name_is_dropped(self):
         """A name carrying a (birth-death) year range is an in-memoriam directory
         entry, not active faculty — drop it (GT CoC lists the late
