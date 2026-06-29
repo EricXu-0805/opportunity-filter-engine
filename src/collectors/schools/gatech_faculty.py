@@ -69,6 +69,13 @@ SCHOOL: dict = {
                     "title": ".card-block__subtitle",
                 },
                 "paginate": {"param": "page", "start": 1, "max": 22},
+                # The CoC listing carries name/title only; each profile keeps a
+                # "<strong>Research Areas:</strong> A; B; C</p>" block (gated
+                # per-profile enrich, OFE_ENRICH_PROFILES=1). Profiles without the
+                # block stay broad — no prose-scraping, no junk.
+                "profile_enrich": {
+                    "research_html_re": r"Research Areas?:?\s*</strong>(.*?)</p>",
+                },
             },
         },
         {

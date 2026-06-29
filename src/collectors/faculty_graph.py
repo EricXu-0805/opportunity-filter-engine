@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 from collections import Counter
 from datetime import UTC, datetime
@@ -73,6 +74,13 @@ from .ucb_common import (
 logger = logging.getLogger(__name__)
 
 _DESC_CAP = 1500
+
+# Per-profile research enrichment fetches every faculty member's own profile page
+# (one HTTP request each), so it is gated behind an env flag: OFF in CI / the
+# weekly refresh (richer-dedup keeps the already-enriched records, so the cost is
+# paid once), ON for the deliberate one-shot enrichment run that generates the
+# data. Set OFE_ENRICH_PROFILES=1 to enable the per-profile pass.
+_PROFILE_ENRICH = os.environ.get("OFE_ENRICH_PROFILES") == "1"
 
 
 def faculty(
@@ -221,11 +229,20 @@ def _strip_credentials(name: str) -> str:
     return _CREDENTIAL_RE.sub("", name).strip()
 
 
+# A name carrying a (birth–death) year range is an in-memoriam directory entry,
+# not active faculty — drop it ("Alberto Apostolico (1948-2015)"). Matched on the
+# name only: a year range in a research title/area is legitimate (a historian of
+# a 1500-1600 figure), so this never keys off the description.
+_IN_MEMORIAM_RE = re.compile(r"\(\s*\d{4}\s*[-–—]\s*\d{4}\s*\)")
+
+
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
     name = _strip_credentials(_strip_pronouns((person.get("name") or "").strip()))
     if not _is_person_name(name):
         return None
+    if _IN_MEMORIAM_RE.search(name):
+        return None  # "Name (1948-2015)" — an in-memoriam entry, not active faculty
     title = person.get("title") or "Professor"
     if _RETIRED_TITLE_RE.search(title):
         return None
@@ -545,6 +562,20 @@ def _scrape_directory(dept: dict) -> list[dict]:
                     break
                 seen.update((p["name"], p["url"]) for p in fresh)
                 people.extend(fresh)
+        # Per-profile research enrichment (gated): follow each broad faculty's own
+        # profile page to recover a "Research Areas" block the directory listing
+        # omits. Only the records still missing research_areas are fetched, so a
+        # re-run (or a listing that already carries research) costs nothing extra.
+        enr = cfg.get("profile_enrich")
+        if enr and _PROFILE_ENRICH:
+            for p in people:
+                if not p.get("url") or p.get("research_areas"):
+                    continue
+                pos, research = _enrich_profile(p["url"], enr)
+                if research:
+                    p["research_areas"] = research
+                if pos and enr.get("use_position_title"):
+                    p["title"] = pos
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
         return []
@@ -658,7 +689,16 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str]:
         m = re.search(enrich["position_re"], body, re.I)
         pos = m.group(0).strip() if m else ""
     kw = ""
-    if enrich.get("research_re"):
+    if enrich.get("research_html_re"):
+        # Sites that keep research areas in a labelled HTML block (e.g. GT's
+        # "<strong>Research Areas:</strong> A; B; C</p>") need the markup, not the
+        # flattened text, to bound the capture — match on the serialized soup,
+        # then strip tags so the raw labelled text lands in research_areas (the
+        # derived-keyword path cleans + splits it through the same DQ gate).
+        m = re.search(enrich["research_html_re"], str(soup), re.I | re.S)
+        if m:
+            kw = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", m.group(1))).strip().rstrip(".").strip()
+    if not kw and enrich.get("research_re"):
         m = re.search(enrich["research_re"], body, re.I)
         if m:
             kw = m.group(1).strip()

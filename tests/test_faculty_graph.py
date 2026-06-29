@@ -218,6 +218,68 @@ class TestScrapeLayer:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ann Alpha", "Ben Beta"]  # page 2 repeats -> pagination stops
 
+    def test_profile_enrich_fills_research_from_profile_when_enabled(self, monkeypatch):
+        """A listing that carries name/title only can be enriched per-profile: the
+        gated pass follows each profile link and lifts a "<strong>Research Areas:
+        </strong> A; B</p>" block into research_areas (GT College of Computing)."""
+        from bs4 import BeautifulSoup
+        listing = ('<div class="c"><a class="n" href="/people/ada">Ada Q. Lovelace</a>'
+                   '<span class="t">Professor</span></div>')
+        profile = ('<p class="card-block__text"><strong>Research Areas:</strong><br>'
+                   'Machine Learning; Computer Vision; Robotics</p>')
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+                                      "html.parser"),
+        )
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        dept = {"short": "CS", "scrape": {
+            "url": "https://www.cc.gatech.edu/people/faculty",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": ".t"},
+            "profile_enrich": {"research_html_re": r"Research Areas?:?\s*</strong>(.*?)</p>"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        kws = fg._clean_keywords(people[0])
+        assert {"Machine Learning", "Computer Vision", "Robotics"} <= set(kws)
+
+    def test_profile_enrich_skipped_when_flag_disabled(self, monkeypatch):
+        """The per-profile pass is cost-gated: with OFE_ENRICH_PROFILES unset the
+        listing scrape never fetches profile pages (CI / weekly refresh pay
+        nothing; richer-dedup keeps any prior enrichment), so broad stays broad."""
+        from bs4 import BeautifulSoup
+        calls = []
+
+        def fake_soup(url):
+            calls.append(url)
+            return BeautifulSoup('<div class="c"><a class="n" href="/people/ada">'
+                                 'Ada Q. Lovelace</a></div>', "html.parser")
+
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", fake_soup)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", False)
+        dept = {"short": "CS", "scrape": {
+            "url": "https://www.cc.gatech.edu/people/faculty",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "profile_enrich": {"research_html_re": r"Research Areas?:?\s*</strong>(.*?)</p>"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        assert people[0]["research_areas"] == ""  # not enriched
+        assert calls == ["https://www.cc.gatech.edu/people/faculty"]  # only the listing
+
+    def test_in_memoriam_name_is_dropped(self):
+        """A name carrying a (birth-death) year range is an in-memoriam directory
+        entry, not active faculty — drop it (GT CoC lists the late
+        'Alberto Apostolico (1948-2015)' among its people)."""
+        school = {**SCHOOL, "departments": [{
+            "short": "CS", "name": "Computer Science", "majors": ["Computer Science"],
+            "faculty": [fg.faculty("Ada Lovelace", keywords=["computing"]),
+                        fg.faculty("Alberto Apostolico (1948-2015)", keywords=["algorithms"])],
+        }]}
+        names = {r["pi_name"] for r in fg.fetch_and_normalize(school, deep=False)}
+        assert "Ada Lovelace" in names
+        assert not any("Apostolico" in n for n in names)
+
     def test_clean_keywords_strips_oxford_comma_connective(self):
         """An Oxford-comma tail ("..., and Robotics") splits into a clause led by
         'and' — the connective must be stripped so the keyword clears the DQ junk
