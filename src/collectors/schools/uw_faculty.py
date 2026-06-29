@@ -147,6 +147,20 @@ SCHOOL: dict = {
             ["Civil Engineering", "Environmental Engineering"], "www.ce.washington.edu"),
         _ff("MSE", "Department of Materials Science & Engineering",
             ["Materials Science & Engineering"], "www.mse.washington.edu"),
+        # Paul G. Allen School of CSE — the card grid is JS-rendered, but each
+        # faculty's profile link + name is in the raw HTML, so a link-list scrape
+        # recovers them (name+profile cold-email targets).
+        {
+            "short": "CSE",
+            "name": "Paul G. Allen School of Computer Science & Engineering",
+            "majors": ["Computer Science", "Computer Engineering", "Data Science"],
+            "directory_url": "https://www.cs.washington.edu/people/faculty",
+            "scrape": {
+                "url": "https://www.cs.washington.edu/people/faculty",
+                "selectors": {"card": "a[href*='/people/faculty/']",
+                              "name": ":self", "link": ":self"},
+            },
+        },
         # Bioengineering — WordPress (Avada) "Core Faculty" portfolio, keyworded.
         {
             "short": "BIOE",
