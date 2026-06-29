@@ -860,6 +860,11 @@ class TestNameCleaners:
         assert fg._strip_credentials("Jamie C. Barner, Ph.D., FAACP, FAPhA") == "Jamie C. Barner"
         assert fg._strip_credentials("Travis J. Carlson, Pharm.D., BCPS") == "Travis J. Carlson"
         assert fg._strip_credentials("Noël Busch-Armendariz, Ph.D., LMSW, MSSW") == "Noël Busch-Armendariz"
+        # hyphenated board-certification suffixes (nursing/medical): "ACNS-BC", "FNP-BC"
+        assert fg._strip_credentials("Élise Knudsen, PhD, RN, ACNS-BC") == "Élise Knudsen"
+        assert fg._strip_credentials("Jane Doe, DNP, FNP-BC") == "Jane Doe"
+        # a hyphenated surname is not a credential
+        assert fg._strip_credentials("Anne Lopez-Garcia") == "Anne Lopez-Garcia"
         # a real two-part name with an internal comma is not a credential
         assert fg._strip_credentials("Garcia, Maria") == "Garcia, Maria"
         assert fg._strip_credentials("Christopher Hees") == "Christopher Hees"

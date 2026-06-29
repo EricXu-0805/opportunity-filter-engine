@@ -190,11 +190,15 @@ export const SCHOOLS: School[] = [
     color: '#C5050C',
     location: 'Madison, WI',
     // Campus-graph engine (9 program/office records) plus the live-scraped
-    // faculty directory (~371 professors): Computer Sciences (emailed) + the
-    // College of Engineering shared directory (ECE, ME, BME — /Faculty/-filtered,
-    // emailed) + Mathematics (WordPress uw_staff) + Physics (faculty-only page) +
-    // Statistics (section-filtered to the Faculty heading). IBS-SRP REU is national/open.
-    coverage: { campusOpportunities: 380, note: 'universitySwitcher.coverageCampus' },
+    // faculty directory (~1,780 professors across 69 departments — UIUC-parity
+    // coverage): the full College of Engineering (home rosters on
+    // engineering.wisc.edu), all of Letters & Science (social sciences,
+    // humanities, natural sciences), the College of Agricultural & Life Sciences,
+    // the Wisconsin School of Business, the School of Education, the professional
+    // schools (Law, Nursing, Pharmacy, Social Work, Public Affairs), Human
+    // Ecology, the Nelson Institute, and Veterinary Medicine. Chemistry stays
+    // deferred (an AWS bot-challenge blocks the scraper). IBS-SRP REU is national.
+    coverage: { campusOpportunities: 1781, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 8, majors: 146 },
   },
   {
