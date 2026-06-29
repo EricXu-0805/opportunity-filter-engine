@@ -48,18 +48,18 @@ export interface School {
  * tracked follow-up — the frontend bundle doesn't load the opportunities
  * corpus — so this stays a maintained estimate.
  *
- * Calibrated against the shipped dataset after the full deep scrape landed
- * (~1,866 active `school='ucb'` records across all 38 faculty departments:
- * faculty ~1,774, campus programs/dept pages 68, labs 16); rounded down to
- * conservative figures so the chip never overstates coverage.
+ * Calibrated against the shipped dataset (~2,049 active `school='ucb'` records
+ * across 50 faculty departments — the original 38 plus the L&S humanities/
+ * language block + Goldman: faculty ~1,965, campus programs/dept pages 68,
+ * labs 16); rounded down to conservative figures so the chip never overstates.
  */
 const UCB_CAMPUS_COVERAGE = {
-  /** ucb_*_faculty directories — all 38 departments now scraped. */
-  facultyDirectories: 1770,
+  /** ucb_*_faculty directories — 50 departments scraped. */
+  facultyDirectories: 1960,
   /** ucb_research_programs: OURS programs, dept research pages, career/RA boards, announcements. */
-  campusPrograms: 65,
+  campusPrograms: 68,
   /** ucb_labs: lab / research-center recruiting pages. */
-  labs: 15,
+  labs: 16,
 } as const;
 
 export const UCB_CAMPUS_OPPORTUNITIES: number =
