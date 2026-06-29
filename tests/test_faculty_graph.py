@@ -321,6 +321,30 @@ class TestScrapeLayer:
         assert items.count("Machine Learning") == 1           # deduped
         assert all(len(i.split()) <= 8 for i in items)        # no prose fragment
 
+    def test_profile_enrich_research_html_re_splits_on_br(self, monkeypatch):
+        """A profile research block that separates areas with <br> (no comma/semi)
+        — e.g. UTexas ME's "<p class=dept-resarea-p>A<br>B<br>C</p>" — must split
+        into separate keywords; the engine converts <br> to a delimiter before
+        flattening tags so _clean_keywords can split it (else one >6-word blob is
+        dropped and the faculty wrongly stays broad)."""
+        from bs4 import BeautifulSoup
+        listing = ('<div class="c"><a class="n" href="/people/ada">Ada Lovelace</a></div>')
+        profile = ('<p class="dept-resarea-p">Advanced Manufacturing<br>'
+                   'Robotics and Intelligent Systems<br>Thermal Fluids</p>')
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+                                      "html.parser"))
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        dept = {"short": "ME", "scrape": {
+            "url": "https://www.me.utexas.edu/people/faculty-directory",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "profile_enrich": {"research_html_re": r'<p class="dept-resarea-p">(.*?)</p>'}}}
+        people = fg._scrape_directory(dept)
+        kws = fg._clean_keywords(people[0])
+        assert {"Advanced Manufacturing", "Robotics and Intelligent Systems",
+                "Thermal Fluids"} <= set(kws)
+
     def test_scrape_card_research_re_extracts_delimited_line(self, monkeypatch):
         """A listing card with the research as a plain <br>-delimited text line (no
         per-area element) — e.g. UCLA Physics — is harvested via a card-level

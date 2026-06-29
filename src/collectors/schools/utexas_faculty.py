@@ -674,6 +674,44 @@ SCHOOL: dict = {
 }
 
 
+# --- Research-area enrichment -----------------------------------------------
+# Each directory's research markup was found by per-directory recon and
+# re-verified live through the engine (nav links sit outside these scoped
+# selectors). Computer Science renders its research-group taxonomy on the listing
+# card (card-level ``research_items``); everyone else keeps it only on the profile
+# page, reached by a gated (OFE_ENRICH_PROFILES=1), throttled per-profile pass —
+# taxonomy-link fields use ``research_items_selector``, labelled blocks use
+# ``research_html_re`` (the engine splits <br>-separated areas, e.g. ME).
+# Deferred (stay broad): mccombs business (research is JS/JSON-loaded), education
+# / advertising / comm-studies / pharmacy / art (prose-only or no field).
+_THROTTLE = 1.5
+_CARD_RESEARCH_ITEMS = {
+    "CS": "div.views-field-field-research-groups .field-content a",
+}
+_PROFILE_ENRICH = {
+    "ECE": {"research_items_selector": ".field--name-field-research-areas .field__item a"},
+    "ME": {"research_html_re": r'<p class="dept-resarea-p">(.*?)</p>'},
+    "SOA": {"research_items_selector": "div.utsoa-gray li"},
+    "LBJ": {"research_items_selector": "div.field--name-field-research-areas div.field__item"},
+    "TD": {"research_html_re": r'<summary[^>]*>\s*Areas of Expertise\s*</summary>\s*<p[^>]*>(.*?)</p>'},
+    "SW": {"research_html_re": r'<h3[^>]*>\s*Professional Interests\s*</h3>\s*<p[^>]*>(.*?)</p>'},
+    "SLHS": {"research_items_selector": "div.field--name-field-expertise-faculty-bio .field__item"},
+    "RTF": {"research_items_selector": "div.field--name-field-expertise-faculty-bio div.field__item"},
+    "JOUR": {"research_items_selector": ".field--name-field-expertise-faculty-bio .field__item"},
+}
+for _dept in SCHOOL["departments"]:
+    _short = _dept["short"]
+    if not _dept.get("scrape"):
+        continue
+    _ci = _CARD_RESEARCH_ITEMS.get(_short)
+    if _ci:
+        _dept["scrape"]["selectors"] = {
+            **_dept["scrape"].get("selectors", {}), "research_items": _ci}
+    _enr = _PROFILE_ENRICH.get(_short)
+    if _enr:
+        _dept["scrape"].setdefault("profile_enrich", {**_enr, "throttle": _THROTTLE})
+
+
 def fetch_and_normalize(deep: bool = True) -> list[dict]:
     return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
 

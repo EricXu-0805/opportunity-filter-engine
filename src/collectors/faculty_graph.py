@@ -490,7 +490,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # A regex bounds just the research line; _clean_keywords splits it.
             m = re.search(sel["research_re"], str(card), re.I | re.S)
             if m:
-                research = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", m.group(1))).strip()
+                seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
+                research = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip()
         email = None
         if sel.get("email"):
             e_el = card.select_one(sel["email"])
@@ -622,6 +623,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
 # rank/research only on the individual profile page.
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_BR_RE = re.compile(r"(?i)<br\s*/?>")
 
 # A research-area taxonomy is usually short (a handful of controlled terms); cap
 # the per-profile selector harvest so an over-broad selector that accidentally
@@ -755,7 +757,8 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
         # derived-keyword path cleans + splits it through the same DQ gate).
         m = re.search(enrich["research_html_re"], str(soup), re.I | re.S)
         if m:
-            kw = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", m.group(1))).strip().rstrip(".").strip()
+            seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
+            kw = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip().rstrip(".").strip()
     if not kw and enrich.get("research_re"):
         m = re.search(enrich["research_re"], body, re.I)
         if m:
