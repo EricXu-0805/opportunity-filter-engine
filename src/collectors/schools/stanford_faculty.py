@@ -498,6 +498,51 @@ SCHOOL: dict = {
 }
 
 
+# --- Research-area enrichment -----------------------------------------------
+# Each extractor was found by per-template recon and re-verified live through the
+# engine. Stanford is harder than peers: its big engineering/science block (ME,
+# BioE, MSE, Biochem, CEE, AeroAstro, MS&E, ChemE, MCP) plus CS / ICME / DevBio /
+# ESE / Comm / StructBio publish only PROSE bios on-site and no CAP keywords, so
+# they stay broad — better broad than fragments. What IS clean:
+#   * Physics renders its Hb-theme research taxonomy on the listing CARD.
+#   * Education keeps a labelled "Research interests" block on the profile.
+#   * Economics + the DLCL languages (Comp Lit, French&Italian) + Applied Physics
+#     expose a per-person research-taxonomy field on the profile.
+#   * The Earth-sciences departments (ESS, E-SOS, Geological, Oceans, Geophysics)
+#     are prose on-site but link to a central Stanford CAP profile whose JSON API
+#     carries a clean curated ``keywords`` field — harvested via the gated two-hop
+#     ``cap_keywords`` pass.
+# (MicroImmuno/Neuro were dropped: their only per-person field is MeSH-style
+# publication tags — too noisy to ship as research areas.)
+_THROTTLE = 1.5
+_CARD_RESEARCH_ITEMS = {
+    "PHYSICS": ".views-field-field-hs-person-research ul li a",
+}
+_PROFILE_ENRICH = {
+    "EDUC": {"research_html_re": r'<h2[^>]*>\s*Research interests\s*</h2>\s*<div[^>]*>(.*?)</div>'},
+    "ECON": {"research_items_selector": ".field-hs-person-research a"},
+    "COMPLIT": {"research_items_selector": "div.views-field-custm-research-interest-s- li > a"},
+    "FRENCHITAL": {"research_items_selector": "div.views-field-custm-research-interest-s- li > a"},
+    "APPHYS": {"research_items_selector": ".field-research-areas div div"},
+    "ESYS": {"cap_keywords": True},
+    "ESOS": {"cap_keywords": True},
+    "EPS": {"cap_keywords": True},
+    "OCEANS": {"cap_keywords": True},
+    "GEOPHYSICS": {"cap_keywords": True},
+}
+for _dept in SCHOOL["departments"]:
+    _short = _dept["short"]
+    if not _dept.get("scrape"):
+        continue
+    _ci = _CARD_RESEARCH_ITEMS.get(_short)
+    if _ci:
+        _dept["scrape"]["selectors"] = {
+            **_dept["scrape"].get("selectors", {}), "research_items": _ci}
+    _enr = _PROFILE_ENRICH.get(_short)
+    if _enr:
+        _dept["scrape"].setdefault("profile_enrich", {**_enr, "throttle": _THROTTLE})
+
+
 def fetch_and_normalize(deep: bool = True) -> list[dict]:
     return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
 

@@ -153,7 +153,9 @@ def _clean_keywords(person: dict) -> list[str]:
         # de-dupe preserving order
         return list(dict.fromkeys(kws))[:8]
     raw = _strip_nav_furniture(person.get("research_areas", ""))
-    parts = [p.strip() for chunk in raw.split(";") for p in chunk.split(",")]
+    # Split on ; | and , — directories delimit a research list with any of them
+    # (Stanford Education uses " | " between areas; most use commas/semicolons).
+    parts = [p.strip() for chunk in re.split(r"[;|]", raw) for p in chunk.split(",")]
     # Oxford-comma tails ("X, Y, and Wireless power transfer") split into a
     # clause led by a connective — strip it so the real topic stands alone and
     # the keyword clears the DQ junk filter.
@@ -763,6 +765,22 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
         m = re.search(enrich["research_re"], body, re.I)
         if m:
             kw = m.group(1).strip()
+    if not items and not kw and enrich.get("cap_keywords"):
+        # Stanford's on-site dept profiles are prose, but each links to a central
+        # CAP profile (profiles.stanford.edu/<id>) whose open JSON API exposes a
+        # clean curated ``keywords`` field. Two-hop: page → CAP id → CAP JSON. Use
+        # ``keywords`` only (researchInterestTopics/publicationTags are empty or
+        # MeSH-noisy). Values are comma/newline-delimited → fold to the ;/,
+        # separators _clean_keywords splits on.
+        idm = re.search(r"profiles\.stanford\.edu/(\d+)", str(soup))
+        if idm:
+            cap = _wp_get_json(
+                f"https://profiles.stanford.edu/proxy/api/cap/profiles/{idm.group(1)}")
+            data = cap.get("data") if isinstance(cap, dict) else None
+            vals = data.get("keywords") if isinstance(data, dict) else None
+            if isinstance(vals, list):
+                raw = "; ".join(v for v in vals if isinstance(v, str) and v.strip())
+                kw = re.sub(r"[\r\n]+", "; ", raw).strip()
     return (pos, kw, items)
 
 

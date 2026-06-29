@@ -366,6 +366,30 @@ class TestScrapeLayer:
         kws = fg._clean_keywords(people[0])
         assert {"High Energy", "Astroparticle", "Neurophysics"} <= set(kws)
 
+    def test_profile_enrich_cap_keywords_two_hop(self, monkeypatch):
+        """Stanford's on-site profiles are prose but link to a central CAP profile
+        whose JSON API exposes a clean ``data.keywords`` field. The two-hop pass
+        (page -> CAP id -> CAP JSON) folds the comma/newline-delimited keywords
+        into separate research keywords."""
+        from bs4 import BeautifulSoup
+        listing = '<ul><li><a class="t" href="/people/ada">Ada Lovelace</a></li></ul>'
+        profile = ('<a href="https://profiles.stanford.edu/41654">View Full '
+                   'Stanford Profile</a><p>prose bio only here</p>')
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+                                      "html.parser"))
+        monkeypatch.setattr(fg, "_wp_get_json", lambda url: {"data": {"keywords": [
+            "Oceanography, Biogeochemistry, Climate Change"]}} if "41654" in url else None)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        dept = {"short": "ESYS", "scrape": {
+            "url": "https://earthsystemscience.stanford.edu/faculty/faculty",
+            "selectors": {"card": "li", "name": ".t", "link": ".t"},
+            "profile_enrich": {"cap_keywords": True}}}
+        people = fg._scrape_directory(dept)
+        kws = fg._clean_keywords(people[0])
+        assert {"Oceanography", "Biogeochemistry", "Climate Change"} <= set(kws)
+
     def test_in_memoriam_name_is_dropped(self):
         """A name carrying a (birth-death) year range is an in-memoriam directory
         entry, not active faculty — drop it (GT CoC lists the late
