@@ -166,6 +166,11 @@ def _clean_keywords(person: dict) -> list[str]:
     # especially in India" -> "especially in India") — drop any part led by a
     # qualifier connective (it is a sub-clause, not a standalone research area).
     parts = [p for p in parts if not _FRAGMENT_LEADIN_RE.match(p)]
+    # Trim stray edge punctuation a comma/semicolon split leaves ("...in STEM." ->
+    # "STEM"), then drop a part with unbalanced parentheses — a "(species
+    # interactions" tail left dangling when a parenthetical itself got comma-split.
+    parts = [p.strip(" .,:;") for p in parts]
+    parts = [p for p in parts if p.count("(") == p.count(")")]
     # A research-area keyword is a short noun phrase; a part that runs long or to
     # many words is a prose bio fragment (some directories put free text in the
     # interests field) — drop it rather than ship a sentence as a keyword. Also
