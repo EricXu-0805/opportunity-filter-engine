@@ -441,6 +441,30 @@ SCHOOL: dict = {
 }
 
 
+# Per-profile research enrichment (gated by OFE_ENRICH_PROFILES): each professor's
+# own profile page keeps a labelled research block the directory listing omits, on
+# a department-specific subdomain with department-specific markup. Each regex was
+# verified live through the engine (clean keywords, 0 DQ junk). Departments absent
+# here have no clean per-profile source (prose-only bios, a tag-separated taxonomy
+# the [;,] split can't atomise, or no research field) and stay broad rather than
+# ship fragments. College of Computing carries its own profile_enrich inline.
+_PROFILE_ENRICH_RES = {
+    "CHEM": r"Research Keywords\s*</h5>(.*?)</div>",
+    "CEE": r'field_person_research_area">(.*?)</div>\s*<div class="block',
+    "IC": r"Research Areas:?\s*</strong>\s*(?:</?br\s*/?>)?\s*(.*?)\s*</p>",
+    "CSE": r"<strong>Research Areas?:?</strong>(.*?)</p>",
+    "ME": r"Research Area:\s*(?:</strong>)?(.*?)</h5>",
+    "BIOSCI": r'views-label-field-research-interests">.*?<div class="field-content">(.*?)</div>',
+    "PSYCH": r"Research Interests\s*</h3>\s*<p>(.*?)</p>",
+    "ARCH": r"<h4[^>]*>(?:<[^>]+>|&nbsp;|\s)*Keywords(?:<[^>]+>|&nbsp;|\s)*</h4>\s*<p>(.*?)</p>",
+    "CRP": r"<(?:strong|h4)>Specialization Area:.*?</(?:strong|h4)>(?:\s*<[^>]+>)*\s*(.*?)\s*</(?:p|h4)>",
+}
+for _dept in SCHOOL["departments"]:
+    _enrich_re = _PROFILE_ENRICH_RES.get(_dept["short"])
+    if _enrich_re and _dept.get("scrape"):
+        _dept["scrape"].setdefault("profile_enrich", {"research_html_re": _enrich_re})
+
+
 def fetch_and_normalize(deep: bool = True) -> list[dict]:
     return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
 

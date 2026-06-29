@@ -291,6 +291,17 @@ class TestScrapeLayer:
         for k in kws:
             assert not _is_junk_keyword(k), k
 
+    def test_clean_keywords_trims_edge_punct_and_drops_unbalanced_parens(self):
+        """Comma-splitting a parenthetical research blob leaves a dangling
+        "(species interactions" and a trailing period ("Genomics.") — trim the
+        edge punctuation and drop the unbalanced-paren fragment (GT Biology)."""
+        person = {"research_areas": "Speciation, secondary contact (species interactions, Genomics."}
+        kws = fg._clean_keywords(person)
+        assert "Speciation" in kws
+        assert "Genomics" in kws  # trailing period trimmed
+        assert "secondary contact (species interactions" not in kws
+        assert not any("(" in k and ")" not in k for k in kws)  # no dangling open paren
+
     def test_clean_keywords_strips_research_label_prefix(self):
         """A directory that prefixes its research block with a section label
         ("Research Interests: semantics, syntax") leaves the label stuck to the
