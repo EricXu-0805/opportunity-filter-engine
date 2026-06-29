@@ -148,12 +148,13 @@ export const SCHOOLS: School[] = [
     // Campus-graph engine (10 records: the two Undergraduate Research Centers,
     // URSP, the URC summer program, Dean's Research Fellowship, SRP-99, the
     // Samueli engineering research page, the career center, the CNSI institute)
-    // plus the faculty directory (~556 professors): WordPress-REST for Chemistry
-    // & Biochemistry, MCDB, Psychology; the Samueli AJAX directory for the seven
-    // engineering departments (CS, ECE, MAE, …), keyworded per profile; plus the
-    // Economics, Ecology & Evolutionary Biology, Mathematics, Physics & Astronomy,
-    // and Statistics ladder pages.
-    coverage: { campusOpportunities: 695, note: 'universitySwitcher.coverageCampus' },
+    // plus the live-scraped faculty directory (~2,000 professors across 46
+    // departments — UIUC-parity coverage): WordPress-REST + Samueli AJAX for the
+    // sciences and engineering, plus the full College of Letters & Science
+    // (Humanities ladder pages, the social sciences, and the life sciences) and
+    // the professional schools (Anderson, Law, Public Affairs, Nursing, the Herb
+    // Alpert School of Music, Architecture & Urban Design, and the Arts).
+    coverage: { campusOpportunities: 2033, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 9, majors: 135 },
   },
   {

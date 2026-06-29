@@ -150,7 +150,20 @@ def _clean_keywords(person: dict) -> list[str]:
     # clause led by a connective — strip it so the real topic stands alone and
     # the keyword clears the DQ junk filter.
     parts = [re.sub(r"^(?:and|or|&)\s+", "", p, flags=re.I).strip() for p in parts]
+    # Directories often prefix the research block with a section label
+    # ("Research Interests: semantics, syntax") that splitting leaves stuck to
+    # the first term — drop the label so the term stands alone.
+    parts = [_RESEARCH_LABEL_RE.sub("", p).strip() for p in parts]
     return list(dict.fromkeys(p for p in parts if len(p) >= 3))[:8]
+
+
+_RESEARCH_LABEL_RE = re.compile(
+    r"^\s*(?:research\s+(?:interests?|areas?|focus|topics?)"
+    r"|areas?\s+of\s+(?:interest|expertise|research|specialization|study)"
+    r"|fields?\s+of\s+(?:interest|study|research)"
+    r"|specializations?|expertise|interests?|keywords?)\s*[:：\-–—]\s*",
+    re.I,
+)
 
 
 _PRONOUN_RE = re.compile(
@@ -166,9 +179,22 @@ def _strip_pronouns(name: str) -> str:
     return _PRONOUN_RE.sub("", name).strip()
 
 
+# Post-nominal degree/credential suffixes some directories append (medical and
+# professional schools especially): "Frank Alber, PhD" / "Jane Doe, MD, MPH".
+_CREDENTIAL = (r"Ph\.?\s?D|M\.?\s?D|M\.?\s?S|M\.?\s?A|M\.?\s?P\.?H|D\.?\s?M\.?A"
+               r"|Pharm\.?\s?D|Dr\.?\s?P\.?H|Sc\.?\s?D|D\.?\s?V\.?M|J\.?\s?D"
+               r"|Ed\.?\s?D|D\.?\s?O|R\.?\s?N|D\.?\s?D\.?S|D\.?Phil|Psy\.?\s?D|FAIA")
+_CREDENTIAL_RE = re.compile(r"(?:\s*,\s*(?:" + _CREDENTIAL + r")\.?)+\s*$", re.I)
+
+
+def _strip_credentials(name: str) -> str:
+    """Drop trailing post-nominal degree suffixes ("Jane Doe, PhD, MPH")."""
+    return _CREDENTIAL_RE.sub("", name).strip()
+
+
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
-    name = _strip_pronouns((person.get("name") or "").strip())
+    name = _strip_credentials(_strip_pronouns((person.get("name") or "").strip()))
     if not _is_person_name(name):
         return None
     title = person.get("title") or "Professor"
@@ -535,12 +561,25 @@ def _wp_text(raw: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(_HTML_TAG_RE.sub("", raw or ""))).strip()
 
 
+_NAME_SUFFIX_RE = re.compile(r"^(jr|sr|ii|iii|iv|v)\.?$", re.I)
+
+
 def _flip_name(name: str) -> str:
-    """"Last, First M." → "First M. Last" (WP directory titles often invert)."""
+    """"Last, First M." → "First M. Last" (WP directory titles often invert).
+
+    Handles a generational suffix listed as its own comma field
+    ("Little, Jr., Arthur L." → "Arthur L. Little Jr.").
+    """
     if name.count(",") == 1:
         last, first = (p.strip() for p in name.split(",", 1))
         if last and first:
             return f"{first} {last}"
+    elif name.count(",") == 2:
+        a, b, c = (p.strip() for p in name.split(","))
+        if _NAME_SUFFIX_RE.match(b):  # "Last, Jr., First" → "First Last Jr."
+            return f"{c} {a} {b}"
+        if _NAME_SUFFIX_RE.match(c):  # "Last, First, Jr." → "First Last Jr."
+            return f"{b} {a} {c}"
     return name
 
 

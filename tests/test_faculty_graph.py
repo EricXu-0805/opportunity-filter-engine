@@ -229,6 +229,22 @@ class TestScrapeLayer:
         for k in kws:
             assert not _is_junk_keyword(k), k
 
+    def test_clean_keywords_strips_research_label_prefix(self):
+        """A directory that prefixes its research block with a section label
+        ("Research Interests: semantics, syntax") leaves the label stuck to the
+        first term after the comma split — it must be dropped so the term clears
+        the DQ junk filter (regression: UCLA Linguistics 'dd.interest')."""
+        person = {"research_areas": "Research Interests: semantics, syntax, phonology"}
+        kws = fg._clean_keywords(person)
+        assert "semantics" in kws
+        assert not any(k.lower().startswith("research interest") for k in kws)
+        for k in kws:
+            assert not _is_junk_keyword(k), k
+        # other common labels
+        assert "machine learning" in fg._clean_keywords(
+            {"research_areas": "Areas of Expertise: machine learning, robotics"}
+        )
+
 
 # --- WordPress-REST api source (UCLA-style, no network in tests) -------------
 
@@ -725,3 +741,18 @@ class TestFullCoverageEngineAdditions:
 
     def test_faculty180_degrades_without_block(self):
         assert fg._fetch_faculty180({"short": "X"}) == []
+
+
+class TestNameCleaners:
+    def test_strip_credentials(self):
+        assert fg._strip_credentials("Frank Alber, PhD") == "Frank Alber"
+        assert fg._strip_credentials("Jane Doe, MD, MPH") == "Jane Doe"
+        assert fg._strip_credentials("Anne Marie, RN") == "Anne Marie"
+        # a real two-part name with an internal comma is not a credential
+        assert fg._strip_credentials("Garcia, Maria") == "Garcia, Maria"
+        assert fg._strip_credentials("Christopher Hees") == "Christopher Hees"
+
+    def test_flip_name_handles_generational_suffix(self):
+        assert fg._flip_name("Little, Jr., Arthur L.") == "Arthur L. Little Jr."
+        assert fg._flip_name("Smith, Arthur, III") == "Arthur Smith III"
+        assert fg._flip_name("Zhou, Hong") == "Hong Zhou"  # plain still works
