@@ -464,6 +464,23 @@ for _dept in SCHOOL["departments"]:
     if _enrich_re and _dept.get("scrape"):
         _dept["scrape"].setdefault("profile_enrich", {"research_html_re": _enrich_re})
 
+# Same idea, but for profiles whose research field is a clean list of taxonomy
+# links / chips rather than free text: one keyword per matched element (commas
+# inside a chip stay folded, never atomised into fragments). Each selector was
+# verified live through the engine. ISyE keeps a labelled "Expertise" list; MSE a
+# coarse materials-class taxonomy (field-research-area chips); SPP an "Areas of
+# Expertise" list on the iac person template (its listing card omits it).
+_PROFILE_ENRICH_ITEMS = {
+    "ISYE": "div.ieuser-expertise ul li",
+    "MSE": "div.field--name-field-research-area a[href^='/research-area/']",
+    "SPP": "ul.iacPersonExpertiseView li",
+}
+for _dept in SCHOOL["departments"]:
+    _enrich_sel = _PROFILE_ENRICH_ITEMS.get(_dept["short"])
+    if _enrich_sel and _dept.get("scrape"):
+        _dept["scrape"].setdefault(
+            "profile_enrich", {"research_items_selector": _enrich_sel})
+
 
 def fetch_and_normalize(deep: bool = True) -> list[dict]:
     return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
