@@ -664,7 +664,7 @@ SCHOOL: dict = {
          'scrape': {'url': 'https://www.pge.utexas.edu/faculty-staff/faculty-directory/',
                     'selectors': {'card': 'li.wp-block-post.faculty-and-staff',
                                   'name': 'h3',
-                                  'link': 'h3 a, .wp-block-post-title a',
+                                  'link': 'a.kb-advanced-image-link',
                                   'title': 'p.title',
                                   'email': "a[href^='mailto:']"},
                     'ladder_filter': {'drop': 'emerit|adjunct|lecturer|of practice|of '
@@ -698,6 +698,8 @@ _PROFILE_ENRICH = {
     "SLHS": {"research_items_selector": "div.field--name-field-expertise-faculty-bio .field__item"},
     "RTF": {"research_items_selector": "div.field--name-field-expertise-faculty-bio div.field__item"},
     "JOUR": {"research_items_selector": ".field--name-field-expertise-faculty-bio .field__item"},
+    "COMMSTUD": {"research_items_selector": ".field--name-field-expertise-faculty-bio .field__item"},
+    "PGE": {"research_html_re": r"<strong>\s*Research Areas\s*(?:<br\s*/?>)?\s*</strong>(.*?)</p>"},
 }
 for _dept in SCHOOL["departments"]:
     _short = _dept["short"]
