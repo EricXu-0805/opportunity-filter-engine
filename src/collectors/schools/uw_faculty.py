@@ -579,7 +579,15 @@ SCHOOL: dict = {
                  'base': 'https://www.gs.washington.edu',
                  'post_type': 'profile',
                  'category_include': {'profile-type': [13, 17, 15]},
-                 'category_exclude': {'profile-type': [16, 14]}}},
+                 'category_exclude': {'profile-type': [16, 14]}},
+         # Research focus is rendered only on the directory listing card (the WP
+         # API and profile pages omit it), keyed by each card's profile slug.
+         'research_join': {
+             'url': 'https://www.gs.washington.edu/about/directory/faculty/',
+             'item_re': r'href="(?P<key>[^"]+)"[^>]*>\s*'
+                        r'<strong class="profile-card__name">[^<]+</strong>'
+                        r'[\s\S]{0,400}?profile-card__focus">(?P<areas>[^<]+)<',
+             'key': 'slug'}},
         {'short': 'MICRO',
          'name': 'Department of Microbiology',
          'majors': ['Microbiology',
@@ -645,6 +653,9 @@ _CARD_RESEARCH = {
     )
 }
 _CARD_RESEARCH["CHEM"] = ".views-field-field-related-fields a, .views-field-field-specific-fields a"
+# Sociology's CAS template exposes interests in a different field than the shared
+# term-node-tid taxonomy the other CAS depts use.
+_CARD_RESEARCH["SOC"] = ".views-field-field-interests span.field-content a"
 _PROFILE_ENRICH = {
     "AMATH": {"research_items_selector": ".view-display-id-profile_fields_of_interest a[href^='/fields/']"},
     "CLAS": {"research_items_selector": ".view-display-id-profile_fields_of_interest .views-field-term-node-tid a"},
@@ -667,6 +678,7 @@ _PROFILE_ENRICH = {
     "SOCWORK": {"research_items_selector": ".professional-interests li, .professional-interests p"},
     "BIOSTAT": {"research_items_selector": ".field--name-field-user-research .field--items .field--item a"},
     "EPI": {"research_items_selector": 'a[rel~="tag"][href*="/research_area/"]'},
+    "ARCH": {"research_html_re": r'<b>\s*Research Keywords\s*</b>\s*<br\s*/?>(.*?)</p>'},
 }
 for _dept in SCHOOL["departments"]:
     _short = _dept["short"]
