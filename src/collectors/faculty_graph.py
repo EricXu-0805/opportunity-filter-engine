@@ -978,6 +978,9 @@ def _seas_research_kw(soup) -> list[str]:
                 # Keep tidy topical phrases; drop prose sentences and any item the
                 # DQ junk filter would reject (a leaked news/symposium title, a
                 # "Using …" sentence fragment) so seas keywords clear the gate.
+                # (Deliberately newline-only: many ECE/MAE/MSE toggles are prose,
+                # and comma-splitting them shatters sentences into fragments —
+                # better broad than fragments; those go to the LLM-prose pass.)
                 if c and len(c.split()) <= 7 and c not in items and not _is_junk_keyword(c):
                     items.append(c)
         return items[:8]

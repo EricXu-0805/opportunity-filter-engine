@@ -767,6 +767,23 @@ def test_llm_keywords_empty_without_provider(monkeypatch):
     assert _llm_research_keywords("computer vision", "computer vision research") == []
 
 
+def test_llm_keywords_deny_generic_noise(monkeypatch):
+    # A thin/administrative page makes the model echo dictionary-of-"research"
+    # fragments + an admin duty — all grounded (the words ARE on the page) but
+    # carrying zero matching signal. The denylist must drop every one -> [].
+    monkeypatch.setattr(
+        "backend.lib.llm.chat_completion",
+        lambda *a, **k: "systematic investigation, materials and sources, "
+        "student success initiatives, research enterprise, mathematics",
+    )
+    page = (
+        "Research the systematic investigation into and study of materials and "
+        "sources. Dean for student success initiatives and the research "
+        "enterprise. Department of Mathematics."
+    )
+    assert _llm_research_keywords("administrative bio text", page) == []
+
+
 def test_reenrich_targets_only_broad_only(monkeypatch):
     from bs4 import BeautifulSoup
 
