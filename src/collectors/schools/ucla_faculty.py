@@ -203,7 +203,8 @@ SCHOOL: dict = {
             "directory_url": "https://statistics.ucla.edu/index.php/people1/all-faculty/faculty/",
             "scrape": {"url": "https://statistics.ucla.edu/index.php/people1/all-faculty/faculty/",
                        "selectors": {"card": "div.abcfslTxtCntrGridA",
-                                     "name": ".MP-F1", "title": ".MP-F3"},
+                                     "name": ".MP-F1", "title": ".MP-F3",
+                                     "link": "a[href*='smid=']"},
                        "ladder_filter": {"require": r"professor",
                                          "drop": r"lecturer|emerit|adjunct|visiting"}},
         },
@@ -386,7 +387,14 @@ SCHOOL: dict = {
                                   'link': 'h2.av-special-heading-tag a',
                                   'title': '.av-subheading'},
                     'link_filter': '/person/',
-                    'ladder_filter': {'drop': 'emerit'}}},
+                    'ladder_filter': {'drop': 'emerit'}},
+         # "Subfield:" lives in a sibling <p> on the listing (not the profile),
+         # keyed by each card's /person/<slug> link.
+         'research_join': {
+             'url': 'https://soc.ucla.edu/people/faculty/core-faculty/',
+             'item_re': r'/person/(?P<key>[^"/]+)/?"[\s\S]{0,1200}?'
+                        r'Subfield:\s*(?P<areas>[^<]+)</p>',
+             'key': 'slug'}},
         {'short': 'COMM',
          'name': 'Department of Communication',
          'majors': ['Communication'],
@@ -639,6 +647,7 @@ _PROFILE_ENRICH = {
     "URP": {"research_items_selector": '.blog-categories a[href*="/area-of-interest/"]'},
     "ARCH": {"research_items_selector": 'table.keyword a[href*="/topics/"]'},
     "BIOSTAT": {"research_items_selector": '.related-tags__item a[href*="expertise"]'},
+    "STAT": {"research_html_re": r'class="[^"]*PT-F2[^"]*"[^>]*>\s*(?:Specialization:\s*)?(.*?)</div>'},
     "EEB": {"research_html_re": r'<h3>\s*Research Areas\s*</h3>\s*<p>(.*?)</p>'},
     "SOCWEL": {"research_items_selector": 'section.profile-box a[href*="area-of-interest/"]'},
     "AOS": {"research_items_selector": "div.span_7_of_12 p a[href^='/research/']"},
