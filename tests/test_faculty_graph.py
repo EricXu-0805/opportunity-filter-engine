@@ -196,6 +196,27 @@ class TestScrapeLayer:
         assert p["email"] == "ada@uw.edu"  # mailto: + ?subject stripped
         assert "Machine learning" in p["research_areas"]
 
+    def test_link_filter_drops_nonperson_cards(self, monkeypatch):
+        """Some directory pages (e.g. Stanford English /people/faculty) mix
+        person cards with featured-publication cards in the same markup; the
+        publication cards link to /publications/<book> and were leaking in as
+        faculty named after book titles. ``link_filter`` keeps only cards whose
+        href matches the person path."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="hb-card"><span class="hb-card__title"><a href="/people/jane-roe">Jane Roe</a></span></div>
+        <div class="hb-card"><span class="hb-card__title"><a href="/publications/the-wayfinder">The Wayfinder</a></span></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "ENGLISH", "scrape": {
+            "url": "https://english.stanford.edu/people/faculty",
+            "link_filter": "/people/",
+            "selectors": {"card": "div.hb-card", "name": ".hb-card__title a", "link": ".hb-card__title a"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert [p["name"] for p in people] == ["Jane Roe"]
+
     def test_scrape_follows_pagination_until_no_new(self, monkeypatch):
         """A paginated directory (e.g. GT College of Computing) must be followed
         via ``?page=N`` and stop the moment a page surfaces no new (name, url) —
@@ -266,6 +287,203 @@ class TestScrapeLayer:
         assert len(people) == 1
         assert people[0]["research_areas"] == ""  # not enriched
         assert calls == ["https://www.cc.gatech.edu/people/faculty"]  # only the listing
+
+    def test_research_join_fills_areas_from_aggregator_page(self, monkeypatch):
+        """When research areas live only on one shared page (a "research
+        interests" index, or the directory card when the roster is fetched via
+        API) keyed by each person's profile slug, research_join joins them: one
+        fetch maps slug -> areas, accumulating across repeats (a person listed
+        under several headings), and fills any spec with no areas of its own.
+        GT Mathematics' aggregator + UCLA Sociology / UW Genome Sciences listings
+        are the live cases."""
+        page = ('<li><a href="https://x.edu/people/ada-l">Ada L</a> &mdash; '
+                'Topology, Geometry</li>'
+                '<li><a href="/people/ada-l">Ada L</a> &mdash; Number Theory</li>')
+
+        class Resp:
+            text = page
+
+            def raise_for_status(self):
+                return None
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: Resp())
+        dept = {"research_join": {
+            "url": "https://x.edu/agg",
+            "item_re": (r'<li><a href="[^"]*/people/(?P<key>[^"]+)">'
+                        r"(?P<name>[^<]+)</a>\s*&mdash;\s*(?P<areas>[^<]+)</li>"),
+            "key": "slug"}}
+        specs = [fg.faculty("Ada L", title="Professor",
+                            url="https://x.edu/people/ada-l")]
+        fg._apply_research_join(dept, specs)
+        # areas accumulate across both <li> entries for the same slug
+        assert {"Topology", "Geometry", "Number Theory"} <= set(
+            fg._clean_keywords(specs[0]))
+
+    def test_digitalmeasures_enrich_pulls_research_expertise(self, monkeypatch):
+        """McCombs-style profiles render client-side from a public Digital
+        Measures report keyed by ?username=; the enrich pulls the "Research
+        Expertise" records block (tags stripped) as comma-split-ready text."""
+        payload = {"items": [
+            {"heading": {"value": "Biography"},
+             "data": {"records": [{"value": "bio text"}]}},
+            {"heading": {"value": "Research Expertise"}},
+            {"data": {"records": [
+                {"value": "Machine Learning, <b>Optimization</b>, Supply Chains"}]}},
+        ]}
+
+        class Resp:
+            def json(self):
+                return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: Resp())
+        txt = fg._fetch_digitalmeasures(
+            "https://x.edu/profile/?username=abc123",
+            {"client": "c", "report": "r", "heading": "Research Expertise"})
+        assert txt == "Machine Learning, Optimization, Supply Chains"
+        # no username in the URL -> no call, empty
+        assert fg._fetch_digitalmeasures("https://x.edu/profile/", {"client": "c"}) == ""
+
+    def test_research_join_does_not_override_existing_areas(self, monkeypatch):
+        """The join only fills genuine blanks — a spec that already carries its
+        own research_areas is left untouched."""
+        class Resp:
+            text = '<li><a href="/people/x">X</a> &mdash; Wrong Area</li>'
+
+            def raise_for_status(self):
+                return None
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: Resp())
+        dept = {"research_join": {
+            "url": "https://x.edu/agg",
+            "item_re": r'/people/(?P<key>[^"]+)">[^<]+</a>\s*&mdash;\s*(?P<areas>[^<]+)</li>',
+            "key": "slug"}}
+        specs = [fg.faculty("X", url="https://x.edu/people/x",
+                            research_areas="Real Area")]
+        fg._apply_research_join(dept, specs)
+        assert specs[0]["research_areas"] == "Real Area"
+
+    def test_profile_enrich_selector_harvests_taxonomy_links_as_atomic_keywords(self, monkeypatch):
+        """Taxonomy-links markup (UW Drupal "Fields of Interest": each area is a
+        separate <a>, no delimiter) must be harvested per-element, NOT comma-split:
+        a comma-bearing area ("Astrophysics, Cosmology & Gravitation") stays one
+        keyword. The selector path sets ``keywords`` directly (the atomic, curated
+        path), so it never re-shatters. In-scope junk + dup are dropped."""
+        from bs4 import BeautifulSoup
+        listing = ('<div class="c"><a class="n" href="/people/ada">Ada Q. Lovelace</a>'
+                   '<span class="t">Professor</span></div>')
+        profile = ('<div class="views-field views-field-term-node-tid"><span class="field-content">'
+                   '<a href="/fields/cm">Condensed Matter</a>'
+                   '<a href="/fields/ac">Astrophysics, Cosmology &amp; Gravitation</a>'
+                   '<a href="/fields/cm">Condensed Matter</a>'      # dup → folded
+                   '<a href="/fields/faculty">Faculty</a>'          # in-scope but junk-gated
+                   '</span></div>'
+                   '<nav class="menu"><a href="/people/faculty">All Faculty</a></nav>')  # out of scope
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+                                      "html.parser"),
+        )
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        dept = {"short": "PHYS", "scrape": {
+            "url": "https://phys.washington.edu/people/faculty",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": ".t"},
+            "profile_enrich": {"research_items_selector": ".views-field-term-node-tid a"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        assert people[0]["keywords"] == ["Condensed Matter", "Astrophysics, Cosmology & Gravitation"]
+        kws = fg._clean_keywords(people[0])
+        assert "Condensed Matter" in kws
+        # comma folded to " / " so the title-parenthetical subset invariant holds
+        assert "Astrophysics / Cosmology & Gravitation" in kws
+        assert "Faculty" not in kws and "All Faculty" not in kws
+
+    def test_clean_selector_items_dedupes_filters_junk_and_caps(self):
+        """The selector harvest is defended even when a selector slightly
+        over-captures: dedupe (case-insensitive), drop DQ-junk terms and prose
+        fragments (>8 words), and cap the count so a runaway selector can't dump
+        a whole nav/publication list into one faculty's keywords."""
+        from bs4 import BeautifulSoup
+        parts = ['<a>Faculty</a>',                       # junk → dropped
+                 '<a>Machine Learning</a>',
+                 '<a>machine learning</a>',              # case-dup → dropped
+                 '<a>' + 'word ' * 10 + '</a>']          # prose fragment → dropped
+        parts += [f'<a>Area {i}</a>' for i in range(1, 14)]  # 13 distinct areas
+        soup = BeautifulSoup('<div class="r">' + ''.join(parts) + '</div>', "html.parser")
+        items = fg._clean_selector_items(soup, ".r a")
+        assert len(items) == fg._RESEARCH_ITEMS_CAP            # capped at 12
+        assert "Faculty" not in items
+        assert items.count("Machine Learning") == 1           # deduped
+        assert all(len(i.split()) <= 8 for i in items)        # no prose fragment
+
+    def test_profile_enrich_research_html_re_splits_on_br(self, monkeypatch):
+        """A profile research block that separates areas with <br> (no comma/semi)
+        — e.g. UTexas ME's "<p class=dept-resarea-p>A<br>B<br>C</p>" — must split
+        into separate keywords; the engine converts <br> to a delimiter before
+        flattening tags so _clean_keywords can split it (else one >6-word blob is
+        dropped and the faculty wrongly stays broad)."""
+        from bs4 import BeautifulSoup
+        listing = ('<div class="c"><a class="n" href="/people/ada">Ada Lovelace</a></div>')
+        profile = ('<p class="dept-resarea-p">Advanced Manufacturing<br>'
+                   'Robotics and Intelligent Systems<br>Thermal Fluids</p>')
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+                                      "html.parser"))
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        dept = {"short": "ME", "scrape": {
+            "url": "https://www.me.utexas.edu/people/faculty-directory",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "profile_enrich": {"research_html_re": r'<p class="dept-resarea-p">(.*?)</p>'}}}
+        people = fg._scrape_directory(dept)
+        kws = fg._clean_keywords(people[0])
+        assert {"Advanced Manufacturing", "Robotics and Intelligent Systems",
+                "Thermal Fluids"} <= set(kws)
+
+    def test_scrape_card_research_re_extracts_delimited_line(self, monkeypatch):
+        """A listing card with the research as a plain <br>-delimited text line (no
+        per-area element) — e.g. UCLA Physics — is harvested via a card-level
+        research_re; _clean_keywords then splits the captured line into keywords."""
+        from bs4 import BeautifulSoup
+        html = ('<table><tbody>'
+                '<tr><td><h5>Ada Lovelace</h5><p>Professor<br>'
+                'High Energy, Astroparticle, Neurophysics<br>Office: 1-234<br>'
+                'Phone: 5</p></td></tr></tbody></table>')
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "PHYS", "scrape": {
+            "url": "https://pa.ucla.edu/faculty.html",
+            "selectors": {"card": "tbody tr", "name": "h5", "link": "a",
+                          "research_re": r"<br\s*/?>\s*([^<]+?)\s*<br\s*/?>\s*(?:Office|Phone)"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert len(people) == 1
+        kws = fg._clean_keywords(people[0])
+        assert {"High Energy", "Astroparticle", "Neurophysics"} <= set(kws)
+
+    def test_profile_enrich_cap_keywords_two_hop(self, monkeypatch):
+        """Stanford's on-site profiles are prose but link to a central CAP profile
+        whose JSON API exposes a clean ``data.keywords`` field. The two-hop pass
+        (page -> CAP id -> CAP JSON) folds the comma/newline-delimited keywords
+        into separate research keywords."""
+        from bs4 import BeautifulSoup
+        listing = '<ul><li><a class="t" href="/people/ada">Ada Lovelace</a></li></ul>'
+        profile = ('<a href="https://profiles.stanford.edu/41654">View Full '
+                   'Stanford Profile</a><p>prose bio only here</p>')
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+                                      "html.parser"))
+        monkeypatch.setattr(fg, "_wp_get_json", lambda url: {"data": {"keywords": [
+            "Oceanography, Biogeochemistry, Climate Change"]}} if "41654" in url else None)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        dept = {"short": "ESYS", "scrape": {
+            "url": "https://earthsystemscience.stanford.edu/faculty/faculty",
+            "selectors": {"card": "li", "name": ".t", "link": ".t"},
+            "profile_enrich": {"cap_keywords": True}}}
+        people = fg._scrape_directory(dept)
+        kws = fg._clean_keywords(people[0])
+        assert {"Oceanography", "Biogeochemistry", "Climate Change"} <= set(kws)
 
     def test_in_memoriam_name_is_dropped(self):
         """A name carrying a (birth-death) year range is an in-memoriam directory
@@ -383,8 +601,8 @@ class TestWordPressApiSource:
         monkeypatch.setattr(fg, "_wp_get_json",
                             lambda url: records if "page=1" in url else [])
         monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
-                            ("Associate Professor", "Cognitive Psychology")
-                            if "ada" in url else ("Lecturer", ""))
+                            ("Associate Professor", "Cognitive Psychology", [])
+                            if "ada" in url else ("Lecturer", "", []))
         dept = {"short": "PSYCH", "api": {
             "type": "wp", "base": "https://x.edu", "post_type": "faculty-page",
             "profile_enrich": {"require_professor": True},

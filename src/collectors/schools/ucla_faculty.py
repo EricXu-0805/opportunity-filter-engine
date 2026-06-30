@@ -203,7 +203,8 @@ SCHOOL: dict = {
             "directory_url": "https://statistics.ucla.edu/index.php/people1/all-faculty/faculty/",
             "scrape": {"url": "https://statistics.ucla.edu/index.php/people1/all-faculty/faculty/",
                        "selectors": {"card": "div.abcfslTxtCntrGridA",
-                                     "name": ".MP-F1", "title": ".MP-F3"},
+                                     "name": ".MP-F1", "title": ".MP-F3",
+                                     "link": "a[href*='smid=']"},
                        "ladder_filter": {"require": r"professor",
                                          "drop": r"lecturer|emerit|adjunct|visiting"}},
         },
@@ -386,7 +387,14 @@ SCHOOL: dict = {
                                   'link': 'h2.av-special-heading-tag a',
                                   'title': '.av-subheading'},
                     'link_filter': '/person/',
-                    'ladder_filter': {'drop': 'emerit'}}},
+                    'ladder_filter': {'drop': 'emerit'}},
+         # "Subfield:" lives in a sibling <p> on the listing (not the profile),
+         # keyed by each card's /person/<slug> link.
+         'research_join': {
+             'url': 'https://soc.ucla.edu/people/faculty/core-faculty/',
+             'item_re': r'/person/(?P<key>[^"/]+)/?"[\s\S]{0,1200}?'
+                        r'Subfield:\s*(?P<areas>[^<]+)</p>',
+             'key': 'slug'}},
         {'short': 'COMM',
          'name': 'Department of Communication',
          'majors': ['Communication'],
@@ -614,6 +622,51 @@ SCHOOL: dict = {
                  'keyword_tax': ['department']}},
     ],
 }
+
+
+# --- Research-area enrichment -----------------------------------------------
+# UCLA has no single CMS — each department's directory differs — so each
+# extractor below was found by per-department recon and re-verified live through
+# the engine on sample cards/profiles (the nav's Research links sit outside these
+# scoped selectors). Physics keeps the research as a plain delimited line in the
+# listing card (card-level ``research_re``); everyone else keeps it only on the
+# profile page, reached by a gated (OFE_ENRICH_PROFILES=1), throttled per-profile
+# pass — taxonomy-link fields use ``research_items_selector`` (one keyword per
+# element), labelled text-blocks use ``research_html_re``.
+_THROTTLE = 1.5
+_CARD_RESEARCH_RE = {
+    "PHYS": r'<br\s*/?>\s*([^<]+?)\s*<br\s*/?>\s*(?:Office|Phone|Email)',
+}
+_PROFILE_ENRICH = {
+    "ANDERSON": {"research_items_selector": ".person__field-areas-of-expertise .faculty-expertise-list .field__item"},
+    "ENGL": {"research_items_selector": 'a[href*="/interest-areas/"]'},
+    "MATH": {"research_html_re": r'views-field-FacultyInterest.*?<div class="field-content">(.*?)</div>'},
+    "POLISCI": {"research_items_selector": 'a[href*="/subfield/"]'},
+    "ECON": {"research_html_re": r'<h3[^>]*class="[^"]*h3-research[^"]*"[^>]*>\s*Research Areas\s*</h3>\s*<p[^>]*>(.*?)</p>'},
+    "PUBPOL": {"research_items_selector": 'header.entry-content-header a[href*="/area-of-interest/"]'},
+    "URP": {"research_items_selector": '.blog-categories a[href*="/area-of-interest/"]'},
+    "ARCH": {"research_items_selector": 'table.keyword a[href*="/topics/"]'},
+    "BIOSTAT": {"research_items_selector": '.related-tags__item a[href*="expertise"]'},
+    "STAT": {"research_html_re": r'class="[^"]*PT-F2[^"]*"[^>]*>\s*(?:Specialization:\s*)?(.*?)</div>'},
+    "EEB": {"research_html_re": r'<h3>\s*Research Areas\s*</h3>\s*<p>(.*?)</p>'},
+    "SOCWEL": {"research_items_selector": 'section.profile-box a[href*="area-of-interest/"]'},
+    "AOS": {"research_items_selector": "div.span_7_of_12 p a[href^='/research/']"},
+    "SLAVIC": {"research_items_selector": "section#research li"},
+    "NURS": {"research_html_re": r'Areas of (?:Scholarly )?Expertise[^<]*</h2>\s*<p>(.*?)</p>'},
+    "GENDER": {"research_html_re": r'<a id="research"></a>\s*Research Interests\s*</h1>\s*<p>(.*?)</p>'},
+    "COMPLIT": {"research_html_re": r'<section[^>]*\bid="interest"[^>]*>.*?</h2>(.*?)</section>'},
+}
+for _dept in SCHOOL["departments"]:
+    _short = _dept["short"]
+    if not _dept.get("scrape"):
+        continue
+    _cre = _CARD_RESEARCH_RE.get(_short)
+    if _cre:
+        _dept["scrape"]["selectors"] = {
+            **_dept["scrape"].get("selectors", {}), "research_re": _cre}
+    _enr = _PROFILE_ENRICH.get(_short)
+    if _enr:
+        _dept["scrape"].setdefault("profile_enrich", {**_enr, "throttle": _THROTTLE})
 
 
 def fetch_and_normalize(deep: bool = True) -> list[dict]:

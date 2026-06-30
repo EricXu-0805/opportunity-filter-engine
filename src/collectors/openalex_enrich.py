@@ -1,0 +1,281 @@
+"""Run-once scholarly-record enrichment of fieldless faculty via OpenAlex.
+
+For faculty whose university directory exposes no research field (and whose
+profile prose the LLM pass could not mine), recover research areas from their
+*publication record* using the free OpenAlex API (author -> topics). This is the
+scalable, no-block equivalent of "check their Google Scholar" — Google Scholar
+itself bot-blocks at scale; OpenAlex is an open API with the same publication
+signal.
+
+Accuracy is institution-gated to avoid wrong-person matches: a candidate author
+is accepted ONLY if the target school's OpenAlex institution id appears in the
+author's affiliation history AND the author's name shares the faculty member's
+surname. Among accepted candidates the most-published one wins; if the search
+returns no institution-affiliated match, the faculty member stays broad
+("better broad than a different person's research").
+
+Run ONCE like the other enrichment passes; updates-only apply, richer-dedup
+protects it on refresh -> zero weekly cost.
+
+    python -m src.collectors.openalex_enrich harvest uw,ucla,... --out oa.json
+    python -m src.collectors.openalex_enrich apply oa.json
+"""
+from __future__ import annotations
+
+import json
+import re
+import sys
+import time
+
+import requests
+
+from .ucb_common import PROCESSED_FILE
+
+_HEADERS = {"User-Agent": "ofe-research/1.0 (mailto:eric.guoyi.xu@gmail.com)"}
+_API = "https://api.openalex.org/authors"
+
+# school slug -> OpenAlex institution id (resolved once via /institutions). The
+# id is matched against each candidate author's full affiliation history, so a
+# professor who has since moved is still matched while a same-name person at a
+# different school is rejected.
+SCHOOL_INST = {
+    "uw": "I201448701",
+    "ucla": "I161318765",
+    "utexas": "I86519309",
+    "stanford": "I97018004",
+    "gatech": "I130701444",
+    "wisc": "I135310074",
+}
+_MIN_WORKS = 5
+_TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)
+
+# Wrong-person guard: a same-name author at the SAME institution but in a
+# different field (e.g. "Michael West" the EE prof vs the seismologist) passes
+# the institution+surname check. So also require at least one of the matched
+# author's topic FIELDS (OpenAlex level-1 field) to be compatible with the
+# faculty member's department. Each entry: a department-name substring -> the set
+# of acceptable OpenAlex field display_names. Generous (adjacent fields included)
+# to avoid rejecting interdisciplinary faculty; a department that matches nothing
+# here is left ungated (accepted) since we cannot judge compatibility.
+_ENG = {"Engineering", "Computer Science", "Materials Science", "Physics and Astronomy",
+        "Mathematics", "Chemistry", "Chemical Engineering", "Energy", "Environmental Science"}
+_LIFE = {"Biochemistry, Genetics and Molecular Biology", "Agricultural and Biological Sciences",
+         "Immunology and Microbiology", "Neuroscience", "Medicine", "Environmental Science",
+         "Pharmacology, Toxicology and Pharmaceutics", "Health Professions", "Chemistry"}
+_HEALTH = {"Medicine", "Nursing", "Pharmacology, Toxicology and Pharmaceutics", "Health Professions",
+           "Biochemistry, Genetics and Molecular Biology", "Immunology and Microbiology", "Neuroscience",
+           "Psychology"}
+_SOC = {"Social Sciences", "Arts and Humanities", "Psychology", "Economics, Econometrics and Finance",
+        "Business, Management and Accounting", "Decision Sciences"}
+_DEPT_FIELDS: tuple[tuple[str, set[str]], ...] = (
+    ("electric", _ENG), ("computer", _ENG), ("computing", _ENG), ("software", _ENG),
+    ("mechanic", _ENG), ("aero", _ENG), ("civil", _ENG | {"Earth and Planetary Sciences"}),
+    ("industrial", _ENG | {"Business, Management and Accounting", "Decision Sciences"}),
+    ("material", _ENG), ("nuclear", _ENG), ("bioeng", _ENG | _LIFE), ("biomedical", _ENG | _LIFE),
+    ("chemical eng", _ENG), ("math", {"Mathematics", "Computer Science", "Decision Sciences",
+                                      "Economics, Econometrics and Finance", "Physics and Astronomy"}),
+    ("statistic", {"Mathematics", "Computer Science", "Decision Sciences",
+                   "Economics, Econometrics and Finance"}),
+    ("physic", {"Physics and Astronomy", "Materials Science", "Mathematics", "Engineering"}),
+    ("astro", {"Physics and Astronomy", "Earth and Planetary Sciences", "Mathematics"}),
+    ("chemistr", {"Chemistry", "Materials Science", "Chemical Engineering",
+                  "Biochemistry, Genetics and Molecular Biology"}),
+    ("biochem", _LIFE), ("molecular", _LIFE), ("microbio", _LIFE), ("immuno", _LIFE),
+    ("neuro", _LIFE | {"Psychology"}), ("ecolog", _LIFE), ("genetic", _LIFE), ("plant", _LIFE),
+    ("biolog", _LIFE), ("zoolog", _LIFE), ("wildlife", _LIFE), ("forest", _LIFE),
+    ("earth", {"Earth and Planetary Sciences", "Environmental Science", "Physics and Astronomy"}),
+    ("planet", {"Earth and Planetary Sciences", "Physics and Astronomy"}),
+    ("atmospher", {"Earth and Planetary Sciences", "Environmental Science", "Physics and Astronomy"}),
+    ("ocean", {"Earth and Planetary Sciences", "Environmental Science"}),
+    ("geo", {"Earth and Planetary Sciences", "Environmental Science", "Social Sciences"}),
+    ("econ", {"Economics, Econometrics and Finance", "Social Sciences",
+              "Business, Management and Accounting", "Mathematics", "Decision Sciences"}),
+    ("business", _SOC), ("management", _SOC), ("marketing", _SOC), ("finance", _SOC),
+    ("account", _SOC), ("nursing", _HEALTH), ("medic", _HEALTH), ("pharm", _HEALTH),
+    ("health", _HEALTH), ("clinical", _HEALTH), ("psycholog", {"Psychology", "Neuroscience",
+                                                               "Social Sciences", "Medicine"}),
+    ("socio", _SOC), ("politic", _SOC), ("anthropo", _SOC), ("communicat", _SOC),
+    ("education", _SOC), ("law", _SOC), ("public", _SOC | {"Medicine"}), ("urban", _SOC | {"Engineering"}),
+    ("english", {"Arts and Humanities", "Social Sciences"}),
+    ("history", {"Arts and Humanities", "Social Sciences"}),
+    ("philosoph", {"Arts and Humanities", "Social Sciences"}),
+    ("art", {"Arts and Humanities", "Social Sciences"}),
+    ("music", {"Arts and Humanities", "Social Sciences"}),
+    ("language", {"Arts and Humanities", "Social Sciences"}),
+    ("literatur", {"Arts and Humanities", "Social Sciences"}),
+    ("classic", {"Arts and Humanities"}), ("religio", {"Arts and Humanities", "Social Sciences"}),
+    ("theatre", {"Arts and Humanities"}), ("drama", {"Arts and Humanities"}),
+    ("dance", {"Arts and Humanities"}), ("media", {"Arts and Humanities", "Social Sciences"}),
+    ("journalism", {"Arts and Humanities", "Social Sciences"}),
+    ("architect", {"Arts and Humanities", "Engineering", "Social Sciences"}),
+)
+
+
+def _dept_fields(dept: str) -> set[str] | None:
+    d = (dept or "").lower()
+    for key, fields in _DEPT_FIELDS:
+        if key in d:
+            return fields
+    return None
+
+
+def _record_url(o: dict) -> str | None:
+    return o.get("url") or o.get("source_url")
+
+
+def _is_faculty(o: dict) -> bool:
+    return bool(o.get("source_type") == "faculty_research" or o.get("pi_name"))
+
+
+def _surname(name: str) -> str:
+    toks = [t for t in re.split(r"\W+", (name or "").lower()) if len(t) > 1]
+    return toks[-1] if toks else ""
+
+
+def _clean_topic(t: str) -> str:
+    t = re.sub(r"\s+", " ", (t or "").strip())
+    t = _TRAIL.sub("", t)  # drop a trailing generic noun ("... Research")
+    return t.lower()
+
+
+def _get(params: dict) -> dict:
+    for attempt in range(4):
+        try:
+            return requests.get(_API, params=params, headers=_HEADERS, timeout=20).json()
+        except Exception:
+            time.sleep(1.2 * (attempt + 1))
+    return {}
+
+
+def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) -> list[str]:
+    """Top research topics for the institution-affiliated author named ``name``,
+    or [] when no confident match exists. Requires: surname match, the school's
+    institution id in the author's affiliation history, works_count >= _MIN_WORKS,
+    and — when the department maps to a field family — at least one topic field
+    compatible with it (rejects same-name same-institution wrong-field people)."""
+    surname = _surname(name)
+    if not surname:
+        return []
+    j = _get({"search": name, "per_page": 10, "select": "display_name,works_count,affiliations,topics"})
+    best, best_works = None, -1
+    for a in j.get("results", []):
+        if surname not in (a.get("display_name") or "").lower():
+            continue
+        aff_ids = {
+            (aff.get("institution") or {}).get("id", "").rsplit("/", 1)[-1]
+            for aff in (a.get("affiliations") or [])
+        }
+        if inst_id not in aff_ids:
+            continue
+        if (a.get("works_count") or 0) > best_works:
+            best, best_works = a, a.get("works_count") or 0
+    if best is None or best_works < _MIN_WORKS:
+        return []
+    topics = best.get("topics") or []
+    allowed = _dept_fields(dept)
+    if allowed is not None:
+        # OpenAlex topic->field labels are noisy (one topic can be mis-fielded),
+        # so require a MAJORITY of the top topics to be field-compatible rather
+        # than just one — a same-name wrong-field person (e.g. a seismologist
+        # vs. the EE professor) is a minority match and gets rejected.
+        consider = topics[:6]
+        comp = sum(1 for t in consider if (t.get("field") or {}).get("display_name", "") in allowed)
+        n = len(consider)
+        ok = (comp * 2 >= n) if n >= 3 else (n > 0 and comp == n)
+        if not ok:
+            return []
+    out: list[str] = []
+    for t in topics:
+        c = _clean_topic(t.get("display_name", ""))
+        if c and c not in out and len(c.split()) <= 7:
+            out.append(c)
+        if len(out) >= max_topics:
+            break
+    return out
+
+
+def _targets(opps: list[dict], schools: list[str] | None) -> list[dict]:
+    out = []
+    for o in opps:
+        if not _is_faculty(o) or o.get("keywords"):
+            continue
+        s = o.get("school")
+        if s not in SCHOOL_INST or (schools and s not in schools):
+            continue
+        if not (o.get("pi_name") and _record_url(o)):
+            continue
+        out.append(o)
+    return out
+
+
+def harvest_openalex(
+    opps: list[dict],
+    *,
+    schools: list[str] | None = None,
+    sample: int | None = None,
+    throttle: float = 0.15,
+    progress: bool = False,
+) -> dict[str, list[str]]:
+    """Pure harvest: ``{url: topics}`` for fieldless faculty with a confident
+    OpenAlex institution match. ``_is_junk_keyword`` gates each topic."""
+    from .uiuc_faculty import _is_junk_keyword
+
+    targets = _targets(opps, schools)
+    if sample is not None:
+        targets = targets[:sample]
+    mapping: dict[str, list[str]] = {}
+    for i, o in enumerate(targets):
+        tops = author_topics(o["pi_name"], SCHOOL_INST[o["school"]], o.get("department", ""))
+        time.sleep(throttle)
+        tops = [t for t in tops if not _is_junk_keyword(t)]
+        if tops:
+            mapping[_record_url(o)] = tops
+        if progress and (i + 1) % 100 == 0:
+            print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} matched", flush=True)
+    return mapping
+
+
+def apply_openalex(opps: list[dict], mapping: dict[str, list[str]]) -> int:
+    """Updates-only: set keywords on fieldless faculty whose URL is in mapping."""
+    n = 0
+    for o in opps:
+        if not _is_faculty(o) or o.get("keywords"):
+            continue
+        kws = mapping.get(_record_url(o))
+        if kws:
+            o["keywords"] = kws
+            n += 1
+    return n
+
+
+def _cli(argv: list[str]) -> int:
+    if not argv or argv[0] not in ("harvest", "apply"):
+        print(__doc__)
+        return 2
+    mode, rest = argv[0], argv[1:]
+    if mode == "harvest":
+        schools = rest[0].split(",") if rest and not rest[0].startswith("-") else None
+        out = "openalex.json"
+        sample = None
+        for i, a in enumerate(rest):
+            if a == "--out":
+                out = rest[i + 1]
+            elif a == "--sample":
+                sample = int(rest[i + 1])
+        opps = json.load(open(PROCESSED_FILE))
+        mapping = harvest_openalex(opps, schools=schools, sample=sample, progress=True)
+        json.dump(mapping, open(out, "w"), indent=2)
+        print(f"matched {len(mapping)} faculty -> {out}")
+        return 0
+    opps = json.load(open(PROCESSED_FILE))
+    merged: dict[str, list[str]] = {}
+    for f in rest:
+        merged.update(json.load(open(f)))
+    n = apply_openalex(opps, merged)
+    json.dump(opps, open(PROCESSED_FILE, "w"), ensure_ascii=False, indent=2)
+    print(f"applied {n} enrichments from {len(rest)} map(s) -> {PROCESSED_FILE}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(_cli(sys.argv[1:]))

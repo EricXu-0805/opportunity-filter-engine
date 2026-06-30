@@ -98,6 +98,15 @@ SCHOOL: dict = {
                 "url": "https://math.gatech.edu/people?field_job_type_tid=11",
                 "selectors": {"card": "tr", "name": "td a", "link": "td a"},
             },
+            # The per-profile pages carry no research field, but a dedicated
+            # aggregator page lists each professor's areas keyed by /people/<slug>.
+            "research_join": {
+                "url": "https://math.gatech.edu/faculty-research-interests",
+                "item_re": r'<li><a href="[^"]*/people/(?P<key>[^"]+)"[^>]*>'
+                           r"(?P<name>[^<]+)</a>\s*(?:&nbsp;)*\s*&mdash;\s*"
+                           r"(?:&nbsp;)*\s*(?P<areas>[^<]+)</li>",
+                "key": "slug",
+            },
         },
         {
             "short": "MSE",
@@ -463,6 +472,23 @@ for _dept in SCHOOL["departments"]:
     _enrich_re = _PROFILE_ENRICH_RES.get(_dept["short"])
     if _enrich_re and _dept.get("scrape"):
         _dept["scrape"].setdefault("profile_enrich", {"research_html_re": _enrich_re})
+
+# Same idea, but for profiles whose research field is a clean list of taxonomy
+# links / chips rather than free text: one keyword per matched element (commas
+# inside a chip stay folded, never atomised into fragments). Each selector was
+# verified live through the engine. ISyE keeps a labelled "Expertise" list; MSE a
+# coarse materials-class taxonomy (field-research-area chips); SPP an "Areas of
+# Expertise" list on the iac person template (its listing card omits it).
+_PROFILE_ENRICH_ITEMS = {
+    "ISYE": "div.ieuser-expertise ul li",
+    "MSE": "div.field--name-field-research-area a[href^='/research-area/']",
+    "SPP": "ul.iacPersonExpertiseView li",
+}
+for _dept in SCHOOL["departments"]:
+    _enrich_sel = _PROFILE_ENRICH_ITEMS.get(_dept["short"])
+    if _enrich_sel and _dept.get("scrape"):
+        _dept["scrape"].setdefault(
+            "profile_enrich", {"research_items_selector": _enrich_sel})
 
 
 def fetch_and_normalize(deep: bool = True) -> list[dict]:

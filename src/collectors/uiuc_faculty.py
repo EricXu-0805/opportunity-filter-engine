@@ -1770,11 +1770,28 @@ def _keywords_from_research_areas(areas: str, broad: str, pi_name: str) -> list[
     return out
 
 
+# Phrases the model emits when a profile has NO genuine personal research text —
+# fragments of the dictionary definition of "research", administrative duties, or
+# a bare department/field umbrella. They pass the token-grounding gate (the words
+# ARE on the page) but carry zero matching signal, so deny them outright.
+_LLM_GENERIC_NOISE = frozenset({
+    "research", "research interests", "research areas", "research focus",
+    "research enterprise", "systematic investigation", "materials and sources",
+    "new conclusions", "establish facts", "new knowledge", "body of knowledge",
+    "scholarship", "teaching", "student success", "student success initiatives",
+    "human potential", "mathematics", "accounting",
+})
+
+
 def _llm_research_keywords(research_text: str, page_text: str) -> list[str]:
     """Ask the configured LLM (Gemini via backend.lib.llm) for research-area
     keywords, then keep ONLY those whose content tokens all appear in the page
-    text — an anti-fabrication gate so the model can never invent areas. Returns
-    [] when no provider is configured, the call fails, or nothing is grounded."""
+    text — an anti-fabrication gate so the model can never invent areas. A
+    generic-noise denylist drops grounded-but-empty phrases (course titles,
+    admin duties, dictionary-of-"research" fragments). Returns [] when no
+    provider is configured, the call fails, or nothing genuine survives — the
+    model is told to abstain (output nothing) when the text has no real personal
+    research, so "" → broad is the correct outcome for thin/admin/course pages."""
     if not research_text.strip():
         return []
     try:
@@ -1782,11 +1799,19 @@ def _llm_research_keywords(research_text: str, page_text: str) -> list[str]:
     except ImportError:
         return []
     system = (
-        "You extract a professor's research areas from their faculty profile text. "
-        "Output ONLY a comma-separated list of 3-6 short noun phrases (2-5 words "
-        "each) naming research topics, drawn solely from the text. Never include "
-        "degrees, job titles, course names or numbers, awards, committees, or "
-        "people's names."
+        "You extract a single professor's OWN research areas from their faculty "
+        "profile text, for a tool that matches students to professors by research "
+        "topic. Output ONLY a comma-separated list of 2-6 short noun phrases (2-5 "
+        "words each) naming that professor's genuine research or scholarly topics, "
+        "drawn solely from the text.\n"
+        "STRICT EXCLUSIONS — never output any of these:\n"
+        "- course titles or subjects the person teaches\n"
+        "- titles of theses or dissertations by students they advise\n"
+        "- administrative or leadership duties (e.g. 'student success', 'research enterprise')\n"
+        "- generic descriptions of what research/scholarship is (e.g. 'systematic investigation')\n"
+        "- the department's name, or a list of the whole department's subfields rather than this person's own work\n"
+        "- degrees, job titles, awards, committees, or people's names\n"
+        "If the text does not actually describe THIS person's own research, output nothing at all."
     )
     out = chat_completion(
         [{"role": "system", "content": system},
@@ -1799,12 +1824,12 @@ def _llm_research_keywords(research_text: str, page_text: str) -> list[str]:
     kws: list[str] = []
     for raw in re.split(r"[,\n;]", out):
         c = _clean_research_phrase(raw)
-        if not c or c in kws:
+        if not c or c in kws or c in _LLM_GENERIC_NOISE or "student success" in c:
             continue
         tokens = [t for t in re.split(r"\W+", c) if len(t) > 2 and t not in _RESEARCH_FUNCTION_WORDS]
         if tokens and all(t in ground for t in tokens):
             kws.append(c)
-        if len(kws) >= 5:
+        if len(kws) >= 6:
             break
     return kws
 

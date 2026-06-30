@@ -664,7 +664,7 @@ SCHOOL: dict = {
          'scrape': {'url': 'https://www.pge.utexas.edu/faculty-staff/faculty-directory/',
                     'selectors': {'card': 'li.wp-block-post.faculty-and-staff',
                                   'name': 'h3',
-                                  'link': 'h3 a, .wp-block-post-title a',
+                                  'link': 'a.kb-advanced-image-link',
                                   'title': 'p.title',
                                   'email': "a[href^='mailto:']"},
                     'ladder_filter': {'drop': 'emerit|adjunct|lecturer|of practice|of '
@@ -672,6 +672,58 @@ SCHOOL: dict = {
                                               '(professor|scientist|associate)|visiting'}}},
     ],
 }
+
+
+# --- Research-area enrichment -----------------------------------------------
+# Each directory's research markup was found by per-directory recon and
+# re-verified live through the engine (nav links sit outside these scoped
+# selectors). Computer Science renders its research-group taxonomy on the listing
+# card (card-level ``research_items``); everyone else keeps it only on the profile
+# page, reached by a gated (OFE_ENRICH_PROFILES=1), throttled per-profile pass —
+# taxonomy-link fields use ``research_items_selector``, labelled blocks use
+# ``research_html_re`` (the engine splits <br>-separated areas, e.g. ME).
+# Deferred (stay broad): mccombs business (research is JS/JSON-loaded), education
+# / advertising / comm-studies / pharmacy / art (prose-only or no field).
+_THROTTLE = 1.5
+_CARD_RESEARCH_ITEMS = {
+    "CS": "div.views-field-field-research-groups .field-content a",
+}
+_PROFILE_ENRICH = {
+    "ECE": {"research_items_selector": ".field--name-field-research-areas .field__item a"},
+    "ME": {"research_html_re": r'<p class="dept-resarea-p">(.*?)</p>'},
+    "SOA": {"research_items_selector": "div.utsoa-gray li"},
+    "LBJ": {"research_items_selector": "div.field--name-field-research-areas div.field__item"},
+    "TD": {"research_html_re": r'<summary[^>]*>\s*Areas of Expertise\s*</summary>\s*<p[^>]*>(.*?)</p>'},
+    "SW": {"research_html_re": r'<h3[^>]*>\s*Professional Interests\s*</h3>\s*<p[^>]*>(.*?)</p>'},
+    "SLHS": {"research_items_selector": "div.field--name-field-expertise-faculty-bio .field__item"},
+    "RTF": {"research_items_selector": "div.field--name-field-expertise-faculty-bio div.field__item"},
+    "JOUR": {"research_items_selector": ".field--name-field-expertise-faculty-bio .field__item"},
+    "COMMSTUD": {"research_items_selector": ".field--name-field-expertise-faculty-bio .field__item"},
+    "PGE": {"research_html_re": r"<strong>\s*Research Areas\s*(?:<br\s*/?>)?\s*</strong>(.*?)</p>"},
+}
+# McCombs profiles render client-side from a public Digital Measures report keyed
+# by the campus username in each listing link (?username=); its "Research
+# Expertise" block is the only structured research field (the directory card and
+# profile HTML carry none). One report serves the whole college.
+_MCCOMBS_DM = {"throttle": 0.4, "digitalmeasures": {
+    "client": "33273f60-e36d-5e3d-aef8-1d2311a16a9c",
+    "report": "f1ba5042-450f-11ef-9a63-33d5f7cc5693",
+    "heading": "Research Expertise"}}
+for _mc in ("ACC", "FIN", "IROM", "MGMT", "MKT", "BGS"):
+    _PROFILE_ENRICH[_mc] = _MCCOMBS_DM
+for _dept in SCHOOL["departments"]:
+    _short = _dept["short"]
+    if not _dept.get("scrape"):
+        continue
+    _ci = _CARD_RESEARCH_ITEMS.get(_short)
+    if _ci:
+        _dept["scrape"]["selectors"] = {
+            **_dept["scrape"].get("selectors", {}), "research_items": _ci}
+    _enr = _PROFILE_ENRICH.get(_short)
+    if _enr:
+        # Default to the polite per-host throttle, but let an entry override it
+        # (the Digital Measures API is a separate, un-throttled host).
+        _dept["scrape"].setdefault("profile_enrich", {"throttle": _THROTTLE, **_enr})
 
 
 def fetch_and_normalize(deep: bool = True) -> list[dict]:

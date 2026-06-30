@@ -579,7 +579,15 @@ SCHOOL: dict = {
                  'base': 'https://www.gs.washington.edu',
                  'post_type': 'profile',
                  'category_include': {'profile-type': [13, 17, 15]},
-                 'category_exclude': {'profile-type': [16, 14]}}},
+                 'category_exclude': {'profile-type': [16, 14]}},
+         # Research focus is rendered only on the directory listing card (the WP
+         # API and profile pages omit it), keyed by each card's profile slug.
+         'research_join': {
+             'url': 'https://www.gs.washington.edu/about/directory/faculty/',
+             'item_re': r'href="(?P<key>[^"]+)"[^>]*>\s*'
+                        r'<strong class="profile-card__name">[^<]+</strong>'
+                        r'[\s\S]{0,400}?profile-card__focus">(?P<areas>[^<]+)<',
+             'key': 'slug'}},
         {'short': 'MICRO',
          'name': 'Department of Microbiology',
          'majors': ['Microbiology',
@@ -608,6 +616,84 @@ SCHOOL: dict = {
                                   'name_strip': ',\\s*(?:Chair|Director|Dean|Head|Coordinator|Interim).*$'}}},
     ],
 }
+
+
+# --- Research-area enrichment ------------------------------------------------
+# UW serves most departments on a shared Drupal platform whose per-person
+# "Fields of Interest" view lists each research area as a SEPARATE taxonomy link
+# (no delimiter). Two ways the data surfaces, handled differently:
+#
+# (1) CARD-LEVEL (_CARD_RESEARCH): the listing card itself carries the taxonomy
+#     links — so a ``research_items`` selector harvests them in the SAME single
+#     listing fetch, no per-profile requests. This is refresh-safe (zero extra
+#     cost) and sidesteps the shared Varnish cache's aggressive 429 rate-limit.
+#     Used wherever the card carries research (verified ≥77% card coverage).
+#
+# (2) PER-PROFILE (_PROFILE_ENRICH): the listing card is a thin stub, so the
+#     research lives only on each professor's profile page → a gated
+#     ``profile_enrich`` pass (OFE_ENRICH_PROFILES=1) follows the profile link.
+#     ``throttle`` paces those fetches (the Varnish cache 429s under burst load);
+#     richer-dedup keeps the committed keywords so weekly refresh pays nothing.
+#
+# Every selector was verified live through the engine on sample cards/profiles
+# (the site nav's "Research"/"Fields of Interest" links sit outside these scoped
+# containers, so no nav-furniture leaks).
+_THROTTLE = 1.5
+# These 21 departments render the per-person research taxonomy on the listing
+# card itself, so a card-scoped ``research_items`` selector harvests it in the
+# single listing fetch (verified live: 62–100% card coverage). All but Chemistry
+# use the standard Drupal "Fields of Interest" field class; Chemistry's card uses
+# a differently-named taxonomy field.
+_CARD_TAXONOMY = ".views-field-term-node-tid a"
+_CARD_RESEARCH = {
+    s: _CARD_TAXONOMY for s in (
+        "PHYS", "MATH", "ASTR", "ECON", "LING", "GEOG", "HIST", "POLS", "PHIL",
+        "ENGL", "ANTH", "MUSIC", "ASIANLL", "SPANPORT", "SCAND", "SLAV", "GERM",
+        "FRENCHIT", "GWSS", "AIS",
+    )
+}
+_CARD_RESEARCH["CHEM"] = ".views-field-field-related-fields a, .views-field-field-specific-fields a"
+# Sociology's CAS template exposes interests in a different field than the shared
+# term-node-tid taxonomy the other CAS depts use.
+_CARD_RESEARCH["SOC"] = ".views-field-field-interests span.field-content a"
+_PROFILE_ENRICH = {
+    "AMATH": {"research_items_selector": ".view-display-id-profile_fields_of_interest a[href^='/fields/']"},
+    "CLAS": {"research_items_selector": ".view-display-id-profile_fields_of_interest .views-field-term-node-tid a"},
+    "DANCE": {"research_items_selector": ".view-display-id-profile_fields_of_interest .views-field-term-node-tid a"},
+    "CHID": {"research_items_selector": 'a[href^="/fields/"]'},
+    "CSE": {"research_items_selector": 'main a[href^="/research/"]'},
+    "BIOL": {"research_items_selector": ".view-display-id-profile_fields_of_interest a.tags__link"},
+    "PSYCH": {"research_items_selector": "a.research-area"},
+    "ESS": {"research_items_selector": "div.article__categories ul.fac-terms li a"},
+    "ATMOS": {"research_items_selector": "section.faculty-expertise li"},
+    "ART": {"research_items_selector": 'a.tags__link[href^="/fields/"]'},
+    "DRAMA": {"research_items_selector": ".view-display-id-profile_fields_of_interest ul.tags__list a.tags__link"},
+    "SPHSC": {"research_items_selector": ".field-name-field-faculty-research-areas .field-item a"},
+    "SEFS": {"research_items_selector": "div.article__categories ul.fac-terms li a"},
+    "OCEAN": {"research_html_re": r'faculty-member-academic-title">Specialty</h2>\s*<h3 class="faculty-member-unit">(.*?)</h3>'},
+    "FISH": {"research_items_selector": "ul.fac-cats li a"},
+    "ISCHOOL": {"research_items_selector": "div.research_areas li"},
+    "EDUC": {"research_items_selector": "div.profile-research-interests > div"},
+    "Foster": {"research_html_re": r'faculty-profile-expertise[^>]*>\s*<h3>\s*Expertise\s*</h3>\s*<div class="faculty-profile__content">(.*?)</div>'},
+    "SOCWORK": {"research_items_selector": ".professional-interests li, .professional-interests p"},
+    "BIOSTAT": {"research_items_selector": ".field--name-field-user-research .field--items .field--item a"},
+    "EPI": {"research_items_selector": 'a[rel~="tag"][href*="/research_area/"]'},
+    "ARCH": {"research_html_re": r'<b>\s*Research Keywords\s*</b>\s*<br\s*/?>(.*?)</p>'},
+}
+for _dept in SCHOOL["departments"]:
+    _short = _dept["short"]
+    if not _dept.get("scrape"):
+        continue
+    _card = _CARD_RESEARCH.get(_short)
+    if _card:
+        # Copy the selectors dict (several CAS departments share one
+        # ``_CAS_SELECTORS`` object) so a per-department research_items can't leak
+        # across departments via the shared reference.
+        _dept["scrape"]["selectors"] = {
+            **_dept["scrape"].get("selectors", {}), "research_items": _card}
+    _enr = _PROFILE_ENRICH.get(_short)
+    if _enr:
+        _dept["scrape"].setdefault("profile_enrich", {**_enr, "throttle": _THROTTLE})
 
 
 def fetch_and_normalize(deep: bool = True) -> list[dict]:

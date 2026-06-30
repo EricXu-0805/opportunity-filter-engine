@@ -153,7 +153,9 @@ def _clean_keywords(person: dict) -> list[str]:
         # de-dupe preserving order
         return list(dict.fromkeys(kws))[:8]
     raw = _strip_nav_furniture(person.get("research_areas", ""))
-    parts = [p.strip() for chunk in raw.split(";") for p in chunk.split(",")]
+    # Split on ; | and , — directories delimit a research list with any of them
+    # (Stanford Education uses " | " between areas; most use commas/semicolons).
+    parts = [p.strip() for chunk in re.split(r"[;|]", raw) for p in chunk.split(",")]
     # Oxford-comma tails ("X, Y, and Wireless power transfer") split into a
     # clause led by a connective — strip it so the real topic stands alone and
     # the keyword clears the DQ junk filter.
@@ -476,22 +478,22 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         keywords: list[str] = []
         if sel.get("research_items"):
             # Each research area is its own element (e.g. Stanford's taxonomy
-            # links) — collect them as clean keywords rather than one flattened
-            # blob, skipping a label cell and any institute/center affiliation
-            # link the DQ junk filter would reject.
-            try:
-                from .uiuc_faculty import _is_junk_keyword
-            except Exception:  # noqa: BLE001
-                def _is_junk_keyword(_k):  # pragma: no cover
-                    return False
-            keywords = [
-                t for el in card.select(sel["research_items"])
-                if (t := el.get_text(" ", strip=True))
-                and t.lower() != "research area(s)" and not _is_junk_keyword(t)
-            ]
+            # links, UW's Drupal "Fields of Interest" rendered on the listing
+            # card) — collect them as clean atomic keywords (deduped, junk-gated,
+            # capped) rather than one flattened blob.
+            keywords = _clean_selector_items(card, sel["research_items"])
         if sel.get("research"):
             r_el = card.select_one(sel["research"])
             research = r_el.get_text(" ", strip=True) if r_el else ""
+        if not research and not keywords and sel.get("research_re"):
+            # Some listing cards keep the research line as plain delimited text in
+            # the card markup (no per-area element to select) — e.g. UCLA Physics'
+            # "<h5>Name</h5><p>Title<br>High Energy, Astroparticle<br>Office:...".
+            # A regex bounds just the research line; _clean_keywords splits it.
+            m = re.search(sel["research_re"], str(card), re.I | re.S)
+            if m:
+                seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
+                research = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip()
         email = None
         if sel.get("email"):
             e_el = card.select_one(sel["email"])
@@ -573,14 +575,20 @@ def _scrape_directory(dept: dict) -> list[dict]:
         # re-run (or a listing that already carries research) costs nothing extra.
         enr = cfg.get("profile_enrich")
         if enr and _PROFILE_ENRICH:
+            import time
+            throttle = enr.get("throttle", 0.0)
             for p in people:
-                if not p.get("url") or p.get("research_areas"):
+                if not p.get("url") or p.get("research_areas") or p.get("keywords"):
                     continue
-                pos, research = _enrich_profile(p["url"], enr)
-                if research:
+                pos, research, items = _enrich_profile(p["url"], enr)
+                if items:
+                    p["keywords"] = items
+                elif research:
                     p["research_areas"] = research
                 if pos and enr.get("use_position_title"):
                     p["title"] = pos
+                if throttle:
+                    time.sleep(throttle)
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
         return []
@@ -617,6 +625,46 @@ def _scrape_directory(dept: dict) -> list[dict]:
 # rank/research only on the individual profile page.
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_BR_RE = re.compile(r"(?i)<br\s*/?>")
+
+# A research-area taxonomy is usually short (a handful of controlled terms); cap
+# the per-profile selector harvest so an over-broad selector that accidentally
+# grabs a nav list or publication feed can't dump dozens of items per faculty.
+_RESEARCH_ITEMS_CAP = 12
+
+
+def _clean_selector_items(soup, selector: str) -> list[str]:
+    """Harvest a profile's research areas from a CSS selector that yields one
+    element per area (Drupal "Fields of Interest" taxonomy links and friends).
+
+    Each element's text is an atomic keyword — unlike the labelled-text-block
+    path, these must NOT be re-split on commas (a term like "Astrophysics,
+    Cosmology & Gravitation" is one area). Returns a deduped, junk-filtered,
+    capped list so the caller can set ``keywords`` directly (the curated path,
+    which keeps each term whole). Defends against a slightly-imperfect selector
+    by running every item through the same DQ junk gate the tests enforce.
+    """
+    try:
+        from .uiuc_faculty import _is_junk_keyword
+    except Exception:  # noqa: BLE001
+        def _is_junk_keyword(_k):  # pragma: no cover
+            return False
+    out: list[str] = []
+    seen: set[str] = set()
+    for el in soup.select(selector):
+        t = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip(" .,:;•·*–—-\t")
+        if not (t and 2 <= len(t) <= 70 and len(t.split()) <= 8):
+            continue
+        if _is_junk_keyword(t):
+            continue
+        low = t.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append(t)
+        if len(out) >= _RESEARCH_ITEMS_CAP:
+            break
+    return out
 
 
 def _wp_text(raw: str) -> str:
@@ -677,22 +725,76 @@ def _wp_term_map(base: str, tax: str) -> dict[int, str]:
     return out
 
 
-def _enrich_profile(url: str, enrich: dict) -> tuple[str, str]:
-    """Fetch one profile page; extract (position, research-keyword) via regex."""
+def _fetch_digitalmeasures(url: str, dm: dict) -> str:
+    """Research-expertise text from a Digital Measures (Activity Insight) report.
+
+    Many business schools (UT McCombs) render faculty profiles client-side from a
+    public Digital Measures JSON report keyed by a campus username carried in the
+    listing link (``?username=<u>``). We pull the report, find the configured
+    heading ("Research Expertise"), and join the values of the records block that
+    follows it into a comma/semicolon-split-ready string.
+    """
+    m = re.search(r"[?&]username=([A-Za-z0-9._-]+)", url)
+    if not m:
+        return ""
+    api = (f"https://profiles.digitalmeasures.com/clients/{dm['client']}"
+           f"?reportId={dm['report']}&identifierKey=username"
+           f"&identifierValue={m.group(1)}")
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+        data = requests.get(api, headers=HEADERS, timeout=20).json()
+    except Exception:  # noqa: BLE001
+        return ""
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return ""
+    heading = dm.get("heading", "Research Expertise")
+    for i, it in enumerate(items):
+        head = it.get("heading") if isinstance(it, dict) else None
+        hv = head.get("value") if isinstance(head, dict) else head
+        if not (hv and heading in str(hv)):
+            continue
+        for j in range(i, min(i + 3, len(items))):
+            blk = items[j].get("data") if isinstance(items[j], dict) else None
+            recs = blk.get("records") if isinstance(blk, dict) else None
+            if recs:
+                vals = [_HTML_TAG_RE.sub("", r.get("value", ""))
+                        for r in recs if isinstance(r, dict)]
+                return "; ".join(v.strip() for v in vals if v and v.strip())
+        break
+    return ""
+
+
+def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
+    """Fetch one profile page; extract (position, research-text, research-items).
+
+    ``research-items`` is a clean atomic keyword list from a CSS
+    ``research_items_selector`` (taxonomy-links markup); ``research-text`` is a
+    labelled HTML block to be comma/semicolon-split downstream. A config uses one
+    or the other depending on how the site stores research areas.
+    """
     if not url:
-        return ("", "")
+        return ("", "", [])
+    dm = enrich.get("digitalmeasures")
+    if dm:
+        return ("", _fetch_digitalmeasures(url, dm), [])
     try:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001
-        return ("", "")
+        return ("", "", [])
     soup = fetch_soup(url)
     if soup is None:
-        return ("", "")
+        return ("", "", [])
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
     pos = ""
     if enrich.get("position_re"):
         m = re.search(enrich["position_re"], body, re.I)
         pos = m.group(0).strip() if m else ""
+    items: list[str] = []
+    if enrich.get("research_items_selector"):
+        items = _clean_selector_items(soup, enrich["research_items_selector"])
     kw = ""
     if enrich.get("research_html_re"):
         # Sites that keep research areas in a labelled HTML block (e.g. GT's
@@ -702,12 +804,29 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str]:
         # derived-keyword path cleans + splits it through the same DQ gate).
         m = re.search(enrich["research_html_re"], str(soup), re.I | re.S)
         if m:
-            kw = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", m.group(1))).strip().rstrip(".").strip()
+            seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
+            kw = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip().rstrip(".").strip()
     if not kw and enrich.get("research_re"):
         m = re.search(enrich["research_re"], body, re.I)
         if m:
             kw = m.group(1).strip()
-    return (pos, kw)
+    if not items and not kw and enrich.get("cap_keywords"):
+        # Stanford's on-site dept profiles are prose, but each links to a central
+        # CAP profile (profiles.stanford.edu/<id>) whose open JSON API exposes a
+        # clean curated ``keywords`` field. Two-hop: page → CAP id → CAP JSON. Use
+        # ``keywords`` only (researchInterestTopics/publicationTags are empty or
+        # MeSH-noisy). Values are comma/newline-delimited → fold to the ;/,
+        # separators _clean_keywords splits on.
+        idm = re.search(r"profiles\.stanford\.edu/(\d+)", str(soup))
+        if idm:
+            cap = _wp_get_json(
+                f"https://profiles.stanford.edu/proxy/api/cap/profiles/{idm.group(1)}")
+            data = cap.get("data") if isinstance(cap, dict) else None
+            vals = data.get("keywords") if isinstance(data, dict) else None
+            if isinstance(vals, list):
+                raw = "; ".join(v for v in vals if isinstance(v, str) and v.strip())
+                kw = re.sub(r"[\r\n]+", "; ", raw).strip()
+    return (pos, kw, items)
 
 
 def _fetch_wp_api(dept: dict) -> list[dict]:
@@ -789,12 +908,14 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
         if meta_email_field:
             email = (str(meta.get(meta_email_field, "") or "").strip() or None)
         if enrich:
-            pos, extra_kw = _enrich_profile(url, enrich)
+            pos, extra_kw, extra_items = _enrich_profile(url, enrich)
             if pos:
                 title = pos
             if enrich.get("require_professor") and pos and not re.search(r"profess", pos, re.I):
                 continue
-            if extra_kw:
+            if extra_items:
+                keywords = extra_items + keywords
+            elif extra_kw:
                 keywords.insert(0, extra_kw)
         specs.append(
             faculty(name, title=title, url=url, email=email,
@@ -857,6 +978,9 @@ def _seas_research_kw(soup) -> list[str]:
                 # Keep tidy topical phrases; drop prose sentences and any item the
                 # DQ junk filter would reject (a leaked news/symposium title, a
                 # "Using …" sentence fragment) so seas keywords clear the gate.
+                # (Deliberately newline-only: many ECE/MAE/MSE toggles are prose,
+                # and comma-splitting them shatters sentences into fragments —
+                # better broad than fragments; those go to the LLM-prose pass.)
                 if c and len(c.split()) <= 7 and c not in items and not _is_junk_keyword(c):
                     items.append(c)
         return items[:8]
@@ -1258,6 +1382,61 @@ def _listing_urls(school: dict) -> set[str]:
     return urls
 
 
+def _join_slug(url: str) -> str:
+    """Last non-empty path segment of a profile URL, lowercased — the join key."""
+    path = re.sub(r"[?#].*$", "", (url or "").strip().lower()).rstrip("/")
+    return path.rsplit("/", 1)[-1] if "/" in path else path
+
+
+def _apply_research_join(dept: dict, specs: list[dict]) -> None:
+    """Fill research areas from one shared page keyed by each person's slug/name.
+
+    Some departments keep research areas only on a single aggregator page (a
+    "research interests" index, or the directory listing itself when the roster
+    is fetched via API) rather than on each profile. A ``research_join`` block
+    fetches that page once and maps key -> areas (accumulated across repeats — a
+    person may appear under several headings), then fills ``research_areas`` for
+    any matching spec that has none. One fetch per department: refresh-safe, no
+    per-profile crawl. ``key`` is "slug" (matched against each spec's profile
+    URL) or "name"; ``item_re`` needs named groups ``key`` and ``areas``.
+    """
+    import html as _html
+
+    cfg = dept.get("research_join")
+    if not cfg:
+        return
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+        resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+        resp.raise_for_status()
+        page = resp.text
+    except Exception:  # noqa: BLE001
+        return
+    by_name = cfg.get("key", "slug") == "name"
+
+    def _norm(raw: str) -> str:
+        return re.sub(r"[^a-z]", "", (raw or "").lower()) if by_name else _join_slug(raw)
+
+    mapping: dict[str, list[str]] = {}
+    for m in re.finditer(cfg["item_re"], page, re.I | re.S):
+        gd = m.groupdict()
+        key = _norm(gd.get("key", ""))
+        areas = _html.unescape(re.sub(
+            r"\s+", " ", _HTML_TAG_RE.sub(" ", _BR_RE.sub("; ", gd.get("areas", "") or "")))).strip()
+        if key and areas:
+            mapping.setdefault(key, []).append(areas)
+    if not mapping:
+        return
+    for sp in specs:
+        if sp.get("research_areas") or sp.get("keywords"):
+            continue
+        key = _norm(sp.get("name", "")) if by_name else _join_slug(sp.get("url", ""))
+        if key and key in mapping:
+            sp["research_areas"] = "; ".join(mapping[key])
+
+
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
@@ -1292,6 +1471,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                 if key and key not in listing_urls:
                     seen_urls_local.add(key)
                 specs.append(discovered)
+            _apply_research_join(dept, specs)
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:
