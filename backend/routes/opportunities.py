@@ -27,6 +27,16 @@ def _redact(opp: dict) -> dict:
     return {k: v for k, v in opp.items() if k not in REDACTED_FIELDS}
 
 
+# Heavy fields the browse-list cards never render — the raw HTML scrape and the
+# internal metadata blob. Dropped only from the paginated LIST response (cuts
+# ~35% of each item); the detail endpoint re-fetches the full object by id.
+_LIST_DROP = REDACTED_FIELDS | {"description_raw", "metadata"}
+
+
+def _list_card(opp: dict) -> dict:
+    return {k: v for k, v in opp.items() if k not in _LIST_DROP}
+
+
 @router.get("/opportunities")
 async def list_opportunities(
     opportunity_type: str | None = None,
@@ -52,7 +62,7 @@ async def list_opportunities(
 
     return {
         "total": total,
-        "opportunities": [_redact(o) for o in page],
+        "opportunities": [_list_card(o) for o in page],
         "limit": limit,
         "offset": offset,
     }
