@@ -23,6 +23,7 @@ protects it on refresh -> zero weekly cost.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import time
@@ -139,6 +140,12 @@ def _clean_topic(t: str) -> str:
 
 
 def _get(params: dict) -> dict:
+    # OpenAlex metered its API in 2026 (every call costs credits, $0 free/day);
+    # the prepaid key authorizes the request via the api_key query param. Absent
+    # a key the call returns a 429 budget error (no "results") -> stays broad.
+    key = os.environ.get("OPENALEX_API_KEY")
+    if key:
+        params = {**params, "api_key": key}
     for attempt in range(4):
         try:
             return requests.get(_API, params=params, headers=_HEADERS, timeout=20).json()
@@ -248,7 +255,23 @@ def apply_openalex(opps: list[dict], mapping: dict[str, list[str]]) -> int:
     return n
 
 
+def _load_dotenv() -> None:
+    """Load backend/.env so ``python -m`` runs pick up OPENALEX_API_KEY; the
+    importable functions never touch the environment beyond os.environ.get."""
+    from pathlib import Path
+
+    p = Path("backend/.env")
+    if not p.exists():
+        return
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
 def _cli(argv: list[str]) -> int:
+    _load_dotenv()
     if not argv or argv[0] not in ("harvest", "apply"):
         print(__doc__)
         return 2
