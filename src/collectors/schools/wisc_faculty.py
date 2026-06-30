@@ -840,6 +840,17 @@ _PROFILE_ENRICH = {
     "LAW": {"research_items_selector": "#scholarship-tab ul:not(.associated_articles) li"},
     "AOS": {"research_items_selector": "span.uw-button-inverse"},
     "SOILS": {"research_html_re": r'researchTabContent["\']>\s*<p>\s*<(?:strong|b)\b[^>]*>(.*?)\s*:?\s*</(?:strong|b)>'},
+    # Audit recoveries: a few shared-WP-theme depts DO keep a per-profile field
+    # the rest of the theme lacks (CS/Psych/PoliSci/Soc/Stat stay broad — verified
+    # fieldless). Physics: a "Research Interests:" line; Geography: an "Interests"
+    # h2; Integrative Biology: a faculty-extra "Research Areas" dt/dd; Nursing: the
+    # "Research focus areas" taxonomy buttons.
+    "PHYS": {"research_html_re": r'research_interests-label[^>]*>\s*Research Interests:\s*</span>\s*(.*?)</p>'},
+    "GEOG": {"research_html_re": r'(?is)<h2[^>]*>\s*Interests\s*</h2>\s*<p>(.*?)</p>'},
+    "IBIO": {"research_html_re": r'<dt[^>]*faculty-extra-label[^>]*>\s*Research Areas\s*</dt>\s*<dd[^>]*faculty-extra-value[^>]*>\s*(.*?)\s*</dd>'},
+    # Nursing stays broad: only ~2/63 profiles carry the focus-area taxonomy
+    # button; the rest list focus areas as bare <h3> interleaved with project
+    # prose, which can't be atomised cleanly (better broad than fragments).
 }
 for _dept in SCHOOL["departments"]:
     _short = _dept["short"]
