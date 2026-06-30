@@ -29,6 +29,41 @@ from src.recommender.resume_advisor import analyze_gaps
 router = APIRouter()
 
 _REDACTED_FIELDS = frozenset({"contact_email", "pi_email"})
+
+# The results list / filters / sort read only these opportunity fields — this
+# mirrors the client's own projection in frontend/src/lib/match-cache.ts. The raw
+# /matches body is ~7 MB for a broad profile (~2.3k results x full opportunity
+# bodies incl. description_raw, metadata and the bulky eligibility/application
+# sub-objects); the client discards everything outside this set on every
+# cache-hit, so projecting here is byte-for-byte what the UI consumes while
+# cutting response size (and Render egress) several-fold. The detail page
+# re-fetches the full object by id (/opportunities/{id}), so nothing is lost.
+_CARD_OPP_FIELDS = frozenset({
+    "id", "title", "organization", "department", "opportunity_type", "paid",
+    "deadline", "source", "on_campus", "posted_date", "location", "url",
+    "duration", "compensation_details", "keywords", "lab_or_program", "pi_name",
+    "school", "audience", "description_clean",
+})
+_CARD_ELIG_FIELDS = frozenset({"international_friendly", "skills_required", "skills_preferred"})
+_CARD_APP_FIELDS = frozenset({
+    "application_url", "requires_resume", "requires_recommendation",
+    "requires_cover_letter", "contact_method",
+})
+
+
+def _match_card(opp: dict) -> dict:
+    """Project an opportunity to the minimal card shape the results UI renders
+    (email-redacted by construction — no email field is in the kept sets)."""
+    out = {k: opp[k] for k in _CARD_OPP_FIELDS if k in opp}
+    elig = opp.get("eligibility")
+    if isinstance(elig, dict):
+        out["eligibility"] = {k: elig[k] for k in _CARD_ELIG_FIELDS if k in elig}
+    app = opp.get("application")
+    if isinstance(app, dict):
+        out["application"] = {k: app[k] for k in _CARD_APP_FIELDS if k in app}
+    return out
+
+
 # Upper bound for an *explicit* limit param. The default (limit unset) returns
 # every visible result so all advertised buckets are browsable — see below.
 MAX_RESULTS_PER_REQUEST = 2000
@@ -253,8 +288,7 @@ async def get_matches(
             reasons_fit=r.reasons_fit,
             reasons_gap=r.reasons_gap,
             next_steps=r.next_steps,
-            opportunity={k: v for k, v in opp_lookup.get(r.opportunity_id, {}).items()
-                         if k not in _REDACTED_FIELDS},
+            opportunity=_match_card(opp_lookup.get(r.opportunity_id, {})),
         )
         for r in page
     ]

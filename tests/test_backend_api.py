@@ -2500,3 +2500,43 @@ class TestColdEmailVariantsNullRecipient:
             # empty recipient (user fills the To field) — never None, never a 500
             assert v["recipient_email"] == ""
             assert v["mailto_link"].startswith("mailto:")
+
+
+class TestResponsePayloadTrim:
+    """The /matches and /opportunities LIST responses ship a trimmed opportunity
+    (no raw HTML scrape or internal metadata blob — the heaviest fields) to keep
+    Render egress down; the detail endpoint still returns the full object. See
+    backend/routes/matches.py::_match_card + opportunities.py::_list_card."""
+
+    def test_match_response_is_card_projected(self, sample_profile_req):
+        body = client.post("/api/matches?limit=5", json=sample_profile_req).json()
+        assert body["results"], "expected some matches"
+        for r in body["results"]:
+            opp = r["opportunity"]
+            # heavy fields dropped
+            assert "description_raw" not in opp
+            assert "metadata" not in opp
+            # PII never leaks
+            assert "contact_email" not in opp and "pi_email" not in opp
+            # card fields the results UI needs are present (when set on the record)
+            assert "title" in opp
+
+    def test_list_response_drops_heavy_fields(self):
+        body = client.get("/api/opportunities?limit=20").json()
+        assert body["opportunities"]
+        for opp in body["opportunities"]:
+            assert "description_raw" not in opp
+            assert "metadata" not in opp
+            assert "contact_email" not in opp and "pi_email" not in opp
+
+    def test_detail_still_returns_full_object(self):
+        opps = data_loader.load_opportunities()
+        target = next((o for o in opps if o.get("description_raw") or o.get("metadata")), None)
+        if target is None:
+            pytest.skip("No opportunity carries description_raw/metadata")
+        opp = client.get(f"/api/opportunities/{target['id']}").json()
+        # the detail endpoint is the lazy-load path — full body, emails aside
+        if target.get("description_raw"):
+            assert "description_raw" in opp
+        if target.get("metadata"):
+            assert "metadata" in opp
