@@ -701,6 +701,16 @@ _PROFILE_ENRICH = {
     "COMMSTUD": {"research_items_selector": ".field--name-field-expertise-faculty-bio .field__item"},
     "PGE": {"research_html_re": r"<strong>\s*Research Areas\s*(?:<br\s*/?>)?\s*</strong>(.*?)</p>"},
 }
+# McCombs profiles render client-side from a public Digital Measures report keyed
+# by the campus username in each listing link (?username=); its "Research
+# Expertise" block is the only structured research field (the directory card and
+# profile HTML carry none). One report serves the whole college.
+_MCCOMBS_DM = {"throttle": 0.4, "digitalmeasures": {
+    "client": "33273f60-e36d-5e3d-aef8-1d2311a16a9c",
+    "report": "f1ba5042-450f-11ef-9a63-33d5f7cc5693",
+    "heading": "Research Expertise"}}
+for _mc in ("ACC", "FIN", "IROM", "MGMT", "MKT", "BGS"):
+    _PROFILE_ENRICH[_mc] = _MCCOMBS_DM
 for _dept in SCHOOL["departments"]:
     _short = _dept["short"]
     if not _dept.get("scrape"):
@@ -711,7 +721,9 @@ for _dept in SCHOOL["departments"]:
             **_dept["scrape"].get("selectors", {}), "research_items": _ci}
     _enr = _PROFILE_ENRICH.get(_short)
     if _enr:
-        _dept["scrape"].setdefault("profile_enrich", {**_enr, "throttle": _THROTTLE})
+        # Default to the polite per-host throttle, but let an entry override it
+        # (the Digital Measures API is a separate, un-throttled host).
+        _dept["scrape"].setdefault("profile_enrich", {"throttle": _THROTTLE, **_enr})
 
 
 def fetch_and_normalize(deep: bool = True) -> list[dict]:

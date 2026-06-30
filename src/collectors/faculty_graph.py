@@ -725,6 +725,48 @@ def _wp_term_map(base: str, tax: str) -> dict[int, str]:
     return out
 
 
+def _fetch_digitalmeasures(url: str, dm: dict) -> str:
+    """Research-expertise text from a Digital Measures (Activity Insight) report.
+
+    Many business schools (UT McCombs) render faculty profiles client-side from a
+    public Digital Measures JSON report keyed by a campus username carried in the
+    listing link (``?username=<u>``). We pull the report, find the configured
+    heading ("Research Expertise"), and join the values of the records block that
+    follows it into a comma/semicolon-split-ready string.
+    """
+    m = re.search(r"[?&]username=([A-Za-z0-9._-]+)", url)
+    if not m:
+        return ""
+    api = (f"https://profiles.digitalmeasures.com/clients/{dm['client']}"
+           f"?reportId={dm['report']}&identifierKey=username"
+           f"&identifierValue={m.group(1)}")
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+        data = requests.get(api, headers=HEADERS, timeout=20).json()
+    except Exception:  # noqa: BLE001
+        return ""
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return ""
+    heading = dm.get("heading", "Research Expertise")
+    for i, it in enumerate(items):
+        head = it.get("heading") if isinstance(it, dict) else None
+        hv = head.get("value") if isinstance(head, dict) else head
+        if not (hv and heading in str(hv)):
+            continue
+        for j in range(i, min(i + 3, len(items))):
+            blk = items[j].get("data") if isinstance(items[j], dict) else None
+            recs = blk.get("records") if isinstance(blk, dict) else None
+            if recs:
+                vals = [_HTML_TAG_RE.sub("", r.get("value", ""))
+                        for r in recs if isinstance(r, dict)]
+                return "; ".join(v.strip() for v in vals if v and v.strip())
+        break
+    return ""
+
+
 def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
     """Fetch one profile page; extract (position, research-text, research-items).
 
@@ -735,6 +777,9 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
     """
     if not url:
         return ("", "", [])
+    dm = enrich.get("digitalmeasures")
+    if dm:
+        return ("", _fetch_digitalmeasures(url, dm), [])
     try:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001

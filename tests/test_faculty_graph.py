@@ -298,6 +298,30 @@ class TestScrapeLayer:
         assert {"Topology", "Geometry", "Number Theory"} <= set(
             fg._clean_keywords(specs[0]))
 
+    def test_digitalmeasures_enrich_pulls_research_expertise(self, monkeypatch):
+        """McCombs-style profiles render client-side from a public Digital
+        Measures report keyed by ?username=; the enrich pulls the "Research
+        Expertise" records block (tags stripped) as comma-split-ready text."""
+        payload = {"items": [
+            {"heading": {"value": "Biography"},
+             "data": {"records": [{"value": "bio text"}]}},
+            {"heading": {"value": "Research Expertise"}},
+            {"data": {"records": [
+                {"value": "Machine Learning, <b>Optimization</b>, Supply Chains"}]}},
+        ]}
+
+        class Resp:
+            def json(self):
+                return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: Resp())
+        txt = fg._fetch_digitalmeasures(
+            "https://x.edu/profile/?username=abc123",
+            {"client": "c", "report": "r", "heading": "Research Expertise"})
+        assert txt == "Machine Learning, Optimization, Supply Chains"
+        # no username in the URL -> no call, empty
+        assert fg._fetch_digitalmeasures("https://x.edu/profile/", {"client": "c"}) == ""
+
     def test_research_join_does_not_override_existing_areas(self, monkeypatch):
         """The join only fills genuine blanks — a spec that already carries its
         own research_areas is left untouched."""
