@@ -267,6 +267,56 @@ class TestScrapeLayer:
         assert people[0]["research_areas"] == ""  # not enriched
         assert calls == ["https://www.cc.gatech.edu/people/faculty"]  # only the listing
 
+    def test_research_join_fills_areas_from_aggregator_page(self, monkeypatch):
+        """When research areas live only on one shared page (a "research
+        interests" index, or the directory card when the roster is fetched via
+        API) keyed by each person's profile slug, research_join joins them: one
+        fetch maps slug -> areas, accumulating across repeats (a person listed
+        under several headings), and fills any spec with no areas of its own.
+        GT Mathematics' aggregator + UCLA Sociology / UW Genome Sciences listings
+        are the live cases."""
+        page = ('<li><a href="https://x.edu/people/ada-l">Ada L</a> &mdash; '
+                'Topology, Geometry</li>'
+                '<li><a href="/people/ada-l">Ada L</a> &mdash; Number Theory</li>')
+
+        class Resp:
+            text = page
+
+            def raise_for_status(self):
+                return None
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: Resp())
+        dept = {"research_join": {
+            "url": "https://x.edu/agg",
+            "item_re": (r'<li><a href="[^"]*/people/(?P<key>[^"]+)">'
+                        r"(?P<name>[^<]+)</a>\s*&mdash;\s*(?P<areas>[^<]+)</li>"),
+            "key": "slug"}}
+        specs = [fg.faculty("Ada L", title="Professor",
+                            url="https://x.edu/people/ada-l")]
+        fg._apply_research_join(dept, specs)
+        # areas accumulate across both <li> entries for the same slug
+        assert {"Topology", "Geometry", "Number Theory"} <= set(
+            fg._clean_keywords(specs[0]))
+
+    def test_research_join_does_not_override_existing_areas(self, monkeypatch):
+        """The join only fills genuine blanks — a spec that already carries its
+        own research_areas is left untouched."""
+        class Resp:
+            text = '<li><a href="/people/x">X</a> &mdash; Wrong Area</li>'
+
+            def raise_for_status(self):
+                return None
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: Resp())
+        dept = {"research_join": {
+            "url": "https://x.edu/agg",
+            "item_re": r'/people/(?P<key>[^"]+)">[^<]+</a>\s*&mdash;\s*(?P<areas>[^<]+)</li>',
+            "key": "slug"}}
+        specs = [fg.faculty("X", url="https://x.edu/people/x",
+                            research_areas="Real Area")]
+        fg._apply_research_join(dept, specs)
+        assert specs[0]["research_areas"] == "Real Area"
+
     def test_profile_enrich_selector_harvests_taxonomy_links_as_atomic_keywords(self, monkeypatch):
         """Taxonomy-links markup (UW Drupal "Fields of Interest": each area is a
         separate <a>, no delimiter) must be harvested per-element, NOT comma-split:

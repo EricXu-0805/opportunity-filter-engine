@@ -1334,6 +1334,61 @@ def _listing_urls(school: dict) -> set[str]:
     return urls
 
 
+def _join_slug(url: str) -> str:
+    """Last non-empty path segment of a profile URL, lowercased — the join key."""
+    path = re.sub(r"[?#].*$", "", (url or "").strip().lower()).rstrip("/")
+    return path.rsplit("/", 1)[-1] if "/" in path else path
+
+
+def _apply_research_join(dept: dict, specs: list[dict]) -> None:
+    """Fill research areas from one shared page keyed by each person's slug/name.
+
+    Some departments keep research areas only on a single aggregator page (a
+    "research interests" index, or the directory listing itself when the roster
+    is fetched via API) rather than on each profile. A ``research_join`` block
+    fetches that page once and maps key -> areas (accumulated across repeats — a
+    person may appear under several headings), then fills ``research_areas`` for
+    any matching spec that has none. One fetch per department: refresh-safe, no
+    per-profile crawl. ``key`` is "slug" (matched against each spec's profile
+    URL) or "name"; ``item_re`` needs named groups ``key`` and ``areas``.
+    """
+    import html as _html
+
+    cfg = dept.get("research_join")
+    if not cfg:
+        return
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+        resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+        resp.raise_for_status()
+        page = resp.text
+    except Exception:  # noqa: BLE001
+        return
+    by_name = cfg.get("key", "slug") == "name"
+
+    def _norm(raw: str) -> str:
+        return re.sub(r"[^a-z]", "", (raw or "").lower()) if by_name else _join_slug(raw)
+
+    mapping: dict[str, list[str]] = {}
+    for m in re.finditer(cfg["item_re"], page, re.I | re.S):
+        gd = m.groupdict()
+        key = _norm(gd.get("key", ""))
+        areas = _html.unescape(re.sub(
+            r"\s+", " ", _HTML_TAG_RE.sub(" ", _BR_RE.sub("; ", gd.get("areas", "") or "")))).strip()
+        if key and areas:
+            mapping.setdefault(key, []).append(areas)
+    if not mapping:
+        return
+    for sp in specs:
+        if sp.get("research_areas") or sp.get("keywords"):
+            continue
+        key = _norm(sp.get("name", "")) if by_name else _join_slug(sp.get("url", ""))
+        if key and key in mapping:
+            sp["research_areas"] = "; ".join(mapping[key])
+
+
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
@@ -1368,6 +1423,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                 if key and key not in listing_urls:
                     seen_urls_local.add(key)
                 specs.append(discovered)
+            _apply_research_join(dept, specs)
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:

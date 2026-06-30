@@ -98,6 +98,15 @@ SCHOOL: dict = {
                 "url": "https://math.gatech.edu/people?field_job_type_tid=11",
                 "selectors": {"card": "tr", "name": "td a", "link": "td a"},
             },
+            # The per-profile pages carry no research field, but a dedicated
+            # aggregator page lists each professor's areas keyed by /people/<slug>.
+            "research_join": {
+                "url": "https://math.gatech.edu/faculty-research-interests",
+                "item_re": r'<li><a href="[^"]*/people/(?P<key>[^"]+)"[^>]*>'
+                           r"(?P<name>[^<]+)</a>\s*(?:&nbsp;)*\s*&mdash;\s*"
+                           r"(?:&nbsp;)*\s*(?P<areas>[^<]+)</li>",
+                "key": "slug",
+            },
         },
         {
             "short": "MSE",
