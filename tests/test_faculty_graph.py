@@ -196,6 +196,27 @@ class TestScrapeLayer:
         assert p["email"] == "ada@uw.edu"  # mailto: + ?subject stripped
         assert "Machine learning" in p["research_areas"]
 
+    def test_link_filter_drops_nonperson_cards(self, monkeypatch):
+        """Some directory pages (e.g. Stanford English /people/faculty) mix
+        person cards with featured-publication cards in the same markup; the
+        publication cards link to /publications/<book> and were leaking in as
+        faculty named after book titles. ``link_filter`` keeps only cards whose
+        href matches the person path."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="hb-card"><span class="hb-card__title"><a href="/people/jane-roe">Jane Roe</a></span></div>
+        <div class="hb-card"><span class="hb-card__title"><a href="/publications/the-wayfinder">The Wayfinder</a></span></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "ENGLISH", "scrape": {
+            "url": "https://english.stanford.edu/people/faculty",
+            "link_filter": "/people/",
+            "selectors": {"card": "div.hb-card", "name": ".hb-card__title a", "link": ".hb-card__title a"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert [p["name"] for p in people] == ["Jane Roe"]
+
     def test_scrape_follows_pagination_until_no_new(self, monkeypatch):
         """A paginated directory (e.g. GT College of Computing) must be followed
         via ``?page=N`` and stop the moment a page surfaces no new (name, url) —

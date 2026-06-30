@@ -213,6 +213,7 @@ SCHOOL: dict = {
          'majors': ['English'],
          'directory_url': 'https://english.stanford.edu/people/faculty',
          'scrape': {'url': 'https://english.stanford.edu/people/faculty',
+                    'link_filter': '/people/',
                     'selectors': {'card': 'div.hb-card',
                                   'name': '.hb-card__title a',
                                   'link': '.hb-card__title a',
