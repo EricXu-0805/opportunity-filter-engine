@@ -22,6 +22,14 @@ def test_clean_topic_strips_trailing_generic_noun():
     assert oa._clean_topic("Semiconductor materials and devices") == "semiconductor materials and devices"
 
 
+def test_clean_topic_flattens_internal_delimiters():
+    # OpenAlex compound labels must become a single delimiter-free phrase, else
+    # an internal comma shatters one area into several in the faculty title.
+    assert oa._clean_topic("Galaxies: formation, evolution, phenomena") == "galaxies formation evolution phenomena"
+    assert oa._clean_topic("quantum, superfluid, helium dynamics") == "quantum superfluid helium dynamics"
+    assert "," not in oa._clean_topic("stellar, planetary, and galactic")
+
+
 def test_surname():
     assert oa._surname("Linda Bushnell") == "bushnell"
     assert oa._surname("Joseph A. Marino, III") == "iii" or oa._surname("Joseph A. Marino") == "marino"
