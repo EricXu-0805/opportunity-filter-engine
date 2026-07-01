@@ -40,6 +40,7 @@ _API = "https://api.openalex.org/authors"
 # professor who has since moved is still matched while a same-name person at a
 # different school is rejected.
 SCHOOL_INST = {
+    "uiuc": "I157725225",
     "uw": "I201448701",
     "ucla": "I161318765",
     "utexas": "I86519309",
@@ -136,6 +137,13 @@ def _surname(name: str) -> str:
 def _clean_topic(t: str) -> str:
     t = re.sub(r"\s+", " ", (t or "").strip())
     t = _TRAIL.sub("", t)  # drop a trailing generic noun ("... Research")
+    # OpenAlex topic labels are sometimes comma/colon-joined compounds
+    # ("galaxies: formation, evolution, phenomena"). A keyword must be a single
+    # delimiter-free phrase — the faculty title renders keywords as a
+    # comma-joined parenthetical, so an internal comma would shatter one area
+    # into several false ones. Flatten separators to a single phrase.
+    t = re.sub(r"\s*[,:;]\s*", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
     return t.lower()
 
 
