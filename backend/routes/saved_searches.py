@@ -98,6 +98,39 @@ def _parse_iso_ts(value: str | None) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
+# CAN-SPAM: a recurring opt-in digest must carry the sender's physical postal
+# address. Kept in an env var (set on Render once there's a mailing address /
+# PO box) so we never ship a placeholder or a hard-coded home address; the line
+# is simply omitted until it's set.
+_POSTAL_ADDRESS = os.environ.get("EMAIL_POSTAL_ADDRESS", "").strip()
+
+
+def _digest_footer_html(search_name: str, unsubscribe_url: str) -> str:
+    addr = (f'<div style="margin-top:6px">{_html_escape(_POSTAL_ADDRESS)}</div>'
+            if _POSTAL_ADDRESS else "")
+    return (
+        '<hr style="border:none;border-top:1px solid #eee;margin:28px 0 14px">'
+        '<p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0">'
+        'JoinALab · research opportunity matching<br>'
+        f'You opted in to this weekly digest when you saved "{_html_escape(search_name)}". '
+        f'<a href="{_html_escape(unsubscribe_url)}" style="color:#4f46e5">Unsubscribe</a> · '
+        f'<a href="{FRONTEND_BASE}/favorites" style="color:#4f46e5">Manage saved searches</a>'
+        f'{addr}'
+        '</p>'
+    )
+
+
+def _digest_footer_text(search_name: str, unsubscribe_url: str) -> str:
+    addr = f"{_POSTAL_ADDRESS}\n" if _POSTAL_ADDRESS else ""
+    return (
+        "\n---\nJoinALab · research opportunity matching\n"
+        f'You opted in to this weekly digest when you saved "{search_name}".\n'
+        f"Unsubscribe: {unsubscribe_url}\n"
+        f"Manage saved searches: {FRONTEND_BASE}/favorites\n"
+        f"{addr}"
+    )
+
+
 def _render_digest_email(
     search_name: str, items: list[dict], unsubscribe_url: str,
 ) -> tuple[str, str, str]:
@@ -125,21 +158,20 @@ def _render_digest_email(
         rows_text.append(f"#{i} {title}\n  {org}{dl_str}\n  {detail_url}\n")
 
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white;padding:32px 24px">
-  <tr><td>
-    <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.5px">JoinALab</div>
-    <h1 style="font-size:24px;margin:20px 0 8px;color:#111827">{_html_escape(subject)}</h1>
-    <p style="color:#6b7280;font-size:14px;margin:0 0 20px">
-      Your weekly digest: new opportunities that started matching this saved search.
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
+  <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td style="padding:32px 28px">
+    <div style="font-size:22px;font-weight:700;color:#4f46e5;letter-spacing:-0.5px">JoinALab</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
+    <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{_html_escape(subject)}</h1>
+    <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
+      New opportunities that started matching your saved search since we last checked.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}
     </table>
-    <p style="margin-top:28px;color:#9ca3af;font-size:11px">
-      You opted in to this weekly digest when saving "{_html_escape(search_name)}" ·
-      <a href="{_html_escape(unsubscribe_url)}" style="color:#9ca3af">Unsubscribe</a> ·
-      <a href="{FRONTEND_BASE}/favorites" style="color:#9ca3af">Manage saved searches</a>
-    </p>
+    <a href="{FRONTEND_BASE}/favorites" style="display:inline-block;margin-top:24px;padding:11px 22px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">View all in JoinALab</a>
+    {_digest_footer_html(search_name, unsubscribe_url)}
   </td></tr>
 </table>
 </body></html>"""
@@ -147,9 +179,8 @@ def _render_digest_email(
     text = (
         f"{subject}\n\n"
         + "".join(rows_text)
-        + f"\n---\nYou opted in to this weekly digest when saving \"{search_name}\".\n"
-        f"Unsubscribe: {unsubscribe_url}\n"
-        f"Manage saved searches: {FRONTEND_BASE}/favorites\n"
+        + f"\nView all: {FRONTEND_BASE}/favorites\n"
+        + _digest_footer_text(search_name, unsubscribe_url)
     )
     return subject, html, text
 
