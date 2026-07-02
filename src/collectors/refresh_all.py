@@ -82,6 +82,7 @@ from .ucb_me_faculty import fetch_and_normalize as fetch_ucb_me
 from .ucb_mse_faculty import fetch_and_normalize as fetch_ucb_mse
 from .ucb_music_faculty import fetch_and_normalize as fetch_ucb_music
 from .ucb_ne_faculty import fetch_and_normalize as fetch_ucb_ne
+from .ucb_neuro_faculty import fetch_and_normalize as fetch_ucb_neuro
 from .ucb_nst_faculty import fetch_and_normalize as fetch_ucb_nst
 from .ucb_philos_faculty import fetch_and_normalize as fetch_ucb_philos
 from .ucb_physics_faculty import fetch_and_normalize as fetch_ucb_physics
@@ -513,6 +514,11 @@ def refresh_all(deep: bool = True) -> dict:
             ("ucb_filmmedia_faculty", fetch_ucb_filmmedia, merge_ucb_faculty),
             ("ucb_classics_faculty", fetch_ucb_classics, merge_ucb_faculty),
             ("ucb_publicpolicy_faculty", fetch_ucb_publicpolicy, merge_ucb_faculty),
+            # Helen Wills Neuroscience LAST: it is an institute of mostly jointly
+            # appointed faculty, so merging it after every home department lets
+            # drop_joint_appointment_duplicates keep the home-dept record and add
+            # only the neuroscience-primary faculty net-new.
+            ("ucb_neuro_faculty", fetch_ucb_neuro, merge_ucb_faculty),
             # University of Michigan curated faculty (via faculty_graph engine).
             # Single source across departments; its own school-scoped merge (not
             # ucb_common's) so a Michigan prof sharing a name with a Berkeley one
