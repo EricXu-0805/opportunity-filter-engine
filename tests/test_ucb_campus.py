@@ -129,3 +129,28 @@ class TestCrawlDiscoverySpecificity:
 
     def test_too_short_rejected(self):
         assert ucb_campus._is_specific_opportunity("REU") is False
+
+    def test_noise_headlines_emails_gradnav_rejected(self):
+        # News headlines, an email-as-title, application-instruction / grad-program
+        # nav, and employer-facing CTAs carry a priority keyword + clear the length
+        # bar, but are not student opportunities — they must be rejected.
+        for a in [
+            "Sophia Young (’25) Receives Lafayette Fellowship to Study AI in France",
+            "2025-2026 Scholarships Wrap-Up",
+            "ourscholarships@berkeley.edu",
+            "Read more about Undergraduate Research",
+            "read through the programs available and apply",
+            "How to Apply",
+            "Apply or Transfer",
+            "MEng How to apply",
+            "Interested in recruiting our students and alumni?",
+        ]:
+            assert ucb_campus._is_noise_discovered(a) is True, a
+            assert ucb_campus._is_specific_opportunity(a) is False, a
+
+    def test_real_program_pages_not_flagged_as_noise(self):
+        # Generic-but-legitimate program/resource pages must survive the filter.
+        for a in ["SURF Summer Research Fellowship",
+                  "Amgen Scholars Program at UC Berkeley",
+                  "Biology Scholars Program research"]:
+            assert ucb_campus._is_noise_discovered(a) is False, a
