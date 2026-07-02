@@ -456,11 +456,22 @@ def enrich_opportunity(opp: dict) -> dict:
             if inferred_skills:
                 elig["skills_required"] = inferred_skills
 
-    kws = opp.get("keywords") or []
-    if _is_unsorted(kws):
-        inferred_kws = infer_keywords(opp)
-        if inferred_kws:
-            opp["keywords"] = inferred_kws
+    # Keyword backfill is for program/listing records only. Faculty records get
+    # their keywords from the collectors' own junk-gated pipeline; inferring
+    # here from a faculty record's templated description ("...inquire about
+    # undergraduate research positions in their lab.") would inject the
+    # page-furniture keyword 'undergraduate research' into every empty-keyword
+    # professor, which the faculty DQ gate (test_faculty_keywords_have_no_junk)
+    # correctly rejects — deterministically failing every refresh. An
+    # honest-broad faculty record must stay broad, not get a fabricated keyword.
+    # (Blanket-junk-gating the inferred set instead is wrong: 'undergraduate
+    # research' is a *legitimate* keyword on a real REU program record.)
+    if opp.get("source_type") != "faculty_research":
+        kws = opp.get("keywords") or []
+        if _is_unsorted(kws):
+            inferred_kws = infer_keywords(opp)
+            if inferred_kws:
+                opp["keywords"] = inferred_kws
 
     if is_likely_non_opportunity(opp):
         meta = opp.setdefault("metadata", {})
