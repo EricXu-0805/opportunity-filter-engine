@@ -48,10 +48,11 @@ export interface School {
  * tracked follow-up — the frontend bundle doesn't load the opportunities
  * corpus — so this stays a maintained estimate.
  *
- * Calibrated against the shipped dataset (~2,049 active `school='ucb'` records
- * across 50 faculty departments — the original 38 plus the L&S humanities/
- * language block + Goldman: faculty ~1,965, campus programs/dept pages 68,
- * labs 16); rounded down to conservative figures so the chip never overstates.
+ * Calibrated against the shipped dataset (~2,900 active `school='ucb'` records:
+ * faculty ~1,965 across 50 departments — the original 38 plus the L&S
+ * humanities/language block + Goldman; campus programs/dept pages 68; labs 16;
+ * plus ~860 URAP project-database entries — individual faculty-posted research
+ * projects). Rounded down to conservative figures so the chip never overstates.
  */
 const UCB_CAMPUS_COVERAGE = {
   /** ucb_*_faculty directories — 50 departments scraped. */
@@ -60,12 +61,19 @@ const UCB_CAMPUS_COVERAGE = {
   campusPrograms: 68,
   /** ucb_labs: lab / research-center recruiting pages. */
   labs: 16,
+  /**
+   * ucb_urap_projects: individual faculty-posted projects from the URAP project
+   * database. Live openings appear during the application window; off-season the
+   * count is the seeded past-project archive (non-actionable references).
+   */
+  urapProjects: 860,
 } as const;
 
 export const UCB_CAMPUS_OPPORTUNITIES: number =
   UCB_CAMPUS_COVERAGE.facultyDirectories +
   UCB_CAMPUS_COVERAGE.campusPrograms +
-  UCB_CAMPUS_COVERAGE.labs;
+  UCB_CAMPUS_COVERAGE.labs +
+  UCB_CAMPUS_COVERAGE.urapProjects;
 
 export const SCHOOLS: School[] = [
   {

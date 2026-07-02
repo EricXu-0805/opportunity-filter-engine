@@ -558,12 +558,15 @@ def refresh_all(deep: bool = True) -> dict:
 
         # 5b-ii. URAP live project database (deep + seasonal). Scrapes the
         # status=Open listings at urapprojects.berkeley.edu — hundreds of
-        # faculty-posted projects during the application window, 0 off-season
-        # (the merge leaves the corpus untouched on an empty scrape).
+        # faculty-posted projects during the application window, 0 off-season —
+        # plus the status=Closed archive (~860 past projects, seeded as
+        # non-actionable references). The merge leaves the corpus untouched on
+        # an empty scrape.
         logger.info("=" * 50)
         logger.info("Collecting from UC Berkeley URAP project database...")
         try:
-            urap_proj = fetch_ucb_urap_projects()
+            urap_proj = fetch_ucb_urap_projects(status="Open")
+            urap_proj += fetch_ucb_urap_projects(status="Closed")
             added, updated = merge_ucb_urap_projects(urap_proj)
             summary["sources"]["ucb_urap_projects"] = {
                 "fetched": len(urap_proj),

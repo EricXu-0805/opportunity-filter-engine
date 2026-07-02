@@ -8,10 +8,17 @@ collector fills that gap.
 
 Seasonal, by design: URAP projects are only posted during the application window
 (Fall projects post in late summer). Off-window, ``status=Open`` returns zero
-projects — so this collector legitimately yields 0 records most of the year and
-auto-populates (hundreds of projects) once the window opens. We scrape
-``status=Open`` ONLY: the DB also holds ~860 closed/full projects that aren't
-actionable for applicants.
+projects — so this collector legitimately yields 0 *open* records most of the
+year and auto-populates (hundreds of projects) once the window opens.
+
+Two statuses are collected:
+  * ``status=Open``  — live, actionable projects currently recruiting apprentices.
+  * ``status=Closed`` — the ~860 past/full projects. These are seeded (``past=True``)
+    with honest, non-actionable messaging as a *reference* for the kind of
+    undergraduate research each lab offers — valuable off-season when Open is
+    empty, and a durable map of which faculty take URAP undergraduates. They are
+    flagged ``is_rolling=False`` + ``metadata.urap_status="closed"`` so the UI and
+    ranking can deprioritize them relative to live openings.
 
 Page structure (validated against the live closed listing):
   * ``list.php?status=Open&skip=N`` — paginated 50/page via a ``skip`` offset.
@@ -75,6 +82,7 @@ SOURCE = "ucb_urap_projects"
 _FACULTY_RE = re.compile(r"^\s*(.+?)\s+-\s+(.+?),\s+(.+?)\s*$")
 _HOURS_RE = re.compile(r"Weekly Hours:\s*([^\n]+?)(?:\s{2,}|\n|Location:|$)", re.IGNORECASE)
 _LOCATION_RE = re.compile(r"Location:\s*([^\n]+?)(?:\s{2,}|\n|$)", re.IGNORECASE)
+_STATUS_RE = re.compile(r"Status:\s*([^\n]+?)(?:\s{2,}|\n|Weekly Hours:|$)", re.IGNORECASE)
 _ID_RE = re.compile(r"id=([\w-]+)")
 
 KEYWORD_BANK = [
@@ -134,7 +142,7 @@ def parse_list_page(soup) -> list[dict]:
 def _extract_row_fields(block_text: str, title: str) -> dict:
     """Best-effort pull faculty / department / description / hours from a row's
     text. Every field degrades to '' when the heuristic doesn't match."""
-    faculty = department = faculty_title = description = hours = location = ""
+    faculty = department = faculty_title = description = hours = location = status = ""
     lines = [ln.strip() for ln in block_text.split("\n") if ln.strip() and ln.strip() != title]
     for ln in lines:
         if not faculty:
@@ -151,6 +159,10 @@ def _extract_row_fields(block_text: str, title: str) -> dict:
             lm = _LOCATION_RE.search(ln)
             if lm:
                 location = lm.group(1).strip()
+        if not status:
+            sm = _STATUS_RE.search(ln)
+            if sm:
+                status = sm.group(1).strip()
     # Description = the longest line that isn't the faculty/status line.
     candidates = [
         ln for ln in lines
@@ -166,6 +178,7 @@ def _extract_row_fields(block_text: str, title: str) -> dict:
         "description": description,
         "weekly_hours": hours,
         "location": location,
+        "status": status,
     }
 
 
@@ -221,24 +234,46 @@ def _keywords(text: str) -> list[str]:
     return found[:6] or ["undergraduate research"]
 
 
-def normalize_project(raw: dict) -> dict:
+def normalize_project(raw: dict, past: bool = False) -> dict:
+    """Normalize one URAP project row.
+
+    ``past=True`` marks a record scraped from the *Closed* listing: a project
+    that is no longer recruiting, seeded as a reference for the kind of
+    undergraduate research a lab offers (URAP posts fresh projects each
+    application cycle, and the live ``status=Open`` collector picks those up).
+    Past records carry honest, non-actionable messaging, are flagged
+    ``is_rolling=False``, and get a lower confidence + a ``urap_status`` marker.
+    """
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     opp_id = "ucb-urap-proj-" + hashlib.md5(raw["id"].encode()).hexdigest()[:12]
     faculty = raw.get("faculty", "")
     dept = raw.get("department", "")
     desc_parts = []
+    if past:
+        desc_parts.append(
+            "[Past URAP project — this listing is closed and no longer recruiting "
+            "apprentices. Shown as a reference for the kind of undergraduate "
+            "research this lab offers; check the live URAP portal for current openings.]"
+        )
     if faculty:
         ftitle = raw.get("faculty_title", "") or "Faculty"
-        desc_parts.append(f"URAP research project with {ftitle} {faculty}"
+        verb = "Past URAP research project with" if past else "URAP research project with"
+        desc_parts.append(f"{verb} {ftitle} {faculty}"
                           + (f" ({dept})" if dept else "") + ".")
     if raw.get("description"):
         desc_parts.append(raw["description"])
     if raw.get("weekly_hours"):
         desc_parts.append(f"Weekly hours: {raw['weekly_hours']}.")
-    desc_parts.append(
-        "Open to matriculated UC Berkeley undergraduates for academic credit "
-        "(URAP). Apply through the URAP application portal."
-    )
+    if past:
+        desc_parts.append(
+            "URAP is open to matriculated UC Berkeley undergraduates for academic "
+            "credit; this particular project is not currently accepting applications."
+        )
+    else:
+        desc_parts.append(
+            "Open to matriculated UC Berkeley undergraduates for academic credit "
+            "(URAP). Apply through the URAP application portal."
+        )
     description = " ".join(desc_parts)[:1500]
 
     lab = f"Prof. {faculty}'s URAP project" if faculty else "URAP project"
@@ -267,10 +302,10 @@ def normalize_project(raw: dict) -> dict:
         "paid": "no",
         "compensation_details": "Academic credit (URAP)",
         # No per-project structured deadline is exposed; projects post per
-        # application cycle. Mark rolling so deactivate_past never wrongly
-        # retires them and the UI shows a sensible timing block.
+        # application cycle. Open projects are rolling (no fixed deadline); past
+        # projects are not currently recruiting, so they are not marked rolling.
         "deadline": None,
-        "is_rolling": True,
+        "is_rolling": not past,
         "posted_date": None,
         "start_date": None,
         "duration": "Semester or academic year",
@@ -303,20 +338,27 @@ def normalize_project(raw: dict) -> dict:
         "school": "ucb",
         "audience": "campus",
         "metadata": {
-            "confidence_score": 0.6,
+            "confidence_score": 0.5 if past else 0.6,
             "last_verified": now,
             "first_seen_at": now,
             "last_seen_at": now,
             "is_active": True,
             "manually_reviewed": False,
-            "notes": "Auto-imported from URAP project database (urapprojects.berkeley.edu)",
+            "notes": (
+                "Auto-imported from URAP project database "
+                "(urapprojects.berkeley.edu); closed/past project, seeded for reference"
+                if past else
+                "Auto-imported from URAP project database (urapprojects.berkeley.edu)"
+            ),
             "urap_project_id": raw["id"],
+            "urap_status": "closed" if past else "open",
         },
     }
 
 
 def fetch_and_normalize(status: str = "Open") -> list[dict]:
-    return [normalize_project(r) for r in scrape_projects(status=status)]
+    past = status.strip().lower() == "closed"
+    return [normalize_project(r, past=past) for r in scrape_projects(status=status)]
 
 
 def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
