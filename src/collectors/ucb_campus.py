@@ -323,12 +323,39 @@ _GENERIC_ANCHOR = frozenset({
 })
 
 
+# Discovered anchors that carry a priority keyword and clear the length bar but
+# still aren't a student opportunity: news/announcement headlines, an email
+# address mistaken for a title, pure application-instruction or graduate-program
+# nav, and employer-facing CTAs. These leaked into ucb_research_programs from
+# deep crawls of scholarship/news/career hubs; reject them at the source.
+_NOISE_DISCOVERED_RE = re.compile(
+    r"@"                                              # email-as-title
+    r"|\breceives?\b|\bwrap-?up\b|\bnamed\b|\bawarded\b"   # news/announcement headlines
+    r"|['’]\d{2}\)"                                    # ('25) — student-profile news
+    r"|^how to apply\b|^apply or transfer\b"          # bare application instructions
+    r"|^read (more|through)\b"                         # "Read more about …" nav fragments
+    r"|\bmeng\b"                                       # graduate (M.Eng.) program nav
+    r"|recruiting our students",                       # employer-facing CTA
+    re.IGNORECASE,
+)
+
+
+def _is_noise_discovered(anchor: str) -> bool:
+    """True for crawl-discovered anchors that read like a posting but are
+    actually news headlines, emails, application-instruction/grad nav, or
+    employer-facing CTAs — never a student research opportunity."""
+    return bool(_NOISE_DISCOVERED_RE.search(anchor.strip()))
+
+
 def _is_specific_opportunity(anchor: str) -> bool:
     """A discovered anchor must read like a concrete posting — not a bare
-    section/CTA link. Requires a priority keyword, reasonable length, and that
-    it isn't just one of the generic phrases above."""
+    section/CTA link, and not a news/email/grad-nav false positive. Requires a
+    priority keyword, reasonable length, that it isn't just one of the generic
+    phrases above, and that it doesn't match the noise patterns."""
     a = anchor.strip().lower().rstrip(" »›>").strip()
     if a in _GENERIC_ANCHOR or len(anchor.strip()) < 12:
+        return False
+    if _is_noise_discovered(anchor):
         return False
     return _looks_like_opportunity(anchor)
 

@@ -50,15 +50,15 @@ export interface School {
  *
  * Calibrated against the shipped dataset (~2,900 active `school='ucb'` records:
  * faculty ~1,965 across 50 departments — the original 38 plus the L&S
- * humanities/language block + Goldman; campus programs/dept pages 68; labs 16;
+ * humanities/language block + Goldman; campus programs/dept pages 58; labs 16;
  * plus ~860 URAP project-database entries — individual faculty-posted research
  * projects). Rounded down to conservative figures so the chip never overstates.
  */
 const UCB_CAMPUS_COVERAGE = {
   /** ucb_*_faculty directories — 50 departments scraped. */
   facultyDirectories: 1960,
-  /** ucb_research_programs: OURS programs, dept research pages, career/RA boards, announcements. */
-  campusPrograms: 68,
+  /** ucb_research_programs: OURS programs, dept research pages, career/RA boards (news/email/grad-nav noise filtered out). */
+  campusPrograms: 58,
   /** ucb_labs: lab / research-center recruiting pages. */
   labs: 16,
   /**
