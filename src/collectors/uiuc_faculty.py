@@ -1076,6 +1076,29 @@ def _faculty_is_richer(a: dict, b: dict) -> bool:
     return ad > bd
 
 
+# Fields that carry run-once enrichment (OpenAlex/LLM research topics + the
+# title and descriptions rebuilt from them). A directory re-scrape emits these
+# too — broad or empty for exactly the faculty the enrichment targeted — so a
+# same-id merge must not let a poorer scrape overwrite them.
+_ENRICHMENT_CARRY_FIELDS = ("keywords", "title", "description_raw", "description_clean")
+
+
+def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
+    """When a re-scrape upserts over a committed record by stable id, keep the
+    committed record's enrichment if it is keyword-richer than the fresh scrape:
+    copy the carry fields onto ``incoming`` so BOTH merge styles preserve them —
+    ``existing.update(incoming)`` (faculty_graph) leaves them unchanged, and
+    ``index[id] = incoming`` (uiuc_faculty full-replace) keeps them. Every other
+    (volatile/factual) field still comes from the fresh scrape. No-op when the
+    fresh scrape is at least as rich, so a professor who added research areas to
+    their page still wins. This is the same-id guard the row-dedup
+    ``_faculty_is_richer`` never covered (it only collapses duplicate rows)."""
+    if _faculty_is_richer(existing, incoming):
+        for f in _ENRICHMENT_CARRY_FIELDS:
+            if f in existing:
+                incoming[f] = existing[f]
+
+
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
     """Collapse same-professor duplicate faculty rows (same profile URL + last
     name), keeping the richer record at its original position. Non-faculty rows
@@ -1969,9 +1992,13 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
 
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            cur = index[opp["id"]]
+            opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}
             ).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
+            # enrichment on the same stable id.
+            _carry_forward_enrichment(cur, opp)
             index[opp["id"]] = opp
             updated += 1
         else:

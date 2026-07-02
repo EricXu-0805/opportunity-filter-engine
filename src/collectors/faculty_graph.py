@@ -1566,11 +1566,17 @@ def merge_into_processed(new_opps: list[dict]):
         existing = json.load(f)
     index = {o.get("id"): o for o in existing if o.get("id")}
     added = updated = 0
+    from .uiuc_faculty import _carry_forward_enrichment
+
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            cur = index[opp["id"]]
+            opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
-            index[opp["id"]].update(opp)
+            # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
+            # enrichment on the same stable id.
+            _carry_forward_enrichment(cur, opp)
+            cur.update(opp)
             updated += 1
         else:
             existing.append(opp)

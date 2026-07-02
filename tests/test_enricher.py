@@ -118,6 +118,29 @@ class TestNonOpportunityDetection:
         assert opp["metadata"]["is_active"] is False
         assert "auto-flagged" in opp["metadata"]["notes"]
 
+    def test_faculty_keyword_backfill_skipped(self):
+        """A keyword-empty faculty record must NOT get keywords inferred from its
+        boilerplate description ("...inquire about undergraduate research
+        positions in their lab.") — that injects the page-furniture keyword
+        'undergraduate research' the faculty DQ gate rejects, deterministically
+        failing every refresh. Honest-broad faculty stay broad."""
+        opp = _opp(
+            "Research with Prof. X — ECE",
+            "Research opportunity with Professor X at UW. Contact the professor "
+            "directly to inquire about undergraduate research positions in their lab.",
+        )
+        opp["source_type"] = "faculty_research"
+        enrich_opportunity(opp)
+        assert opp["keywords"] == []
+
+    def test_program_keyword_backfill_keeps_undergraduate_research(self):
+        """The same term is a LEGITIMATE keyword on a real REU program record —
+        the skip must be faculty-only, not a blanket junk-gate."""
+        opp = _opp("Summer REU Program", "A paid undergraduate research experience.")
+        opp["source_type"] = "program"
+        enrich_opportunity(opp)
+        assert "undergraduate research" in opp["keywords"]
+
 
 class TestInferKeywords:
     def test_language_keywords(self):

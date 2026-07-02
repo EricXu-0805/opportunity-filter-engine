@@ -21,8 +21,12 @@ env:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # Deep Monday scrape legitimately runs ~2.5h; quick mode finishes in <1h.
-    timeout-minutes: 240
+    # Deep Monday scrape now runs ~3.7h and grows with the corpus (160→224 min
+    # over June as schools were added); the first Monday of the month also fires
+    # the Illinois Experts pass on the same job. 300 gives real headroom until
+    # the deep scrape moves to the VPS (the agreed "when a run nears the cap"
+    # trigger — see memory ofe-github-actions-budget). Quick mode finishes <1h.
+    timeout-minutes: 300
     permissions:
       contents: write
 
