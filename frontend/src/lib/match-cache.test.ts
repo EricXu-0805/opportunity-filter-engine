@@ -60,6 +60,19 @@ describe('match-cache', () => {
     expect((opp.eligibility as Record<string, unknown>).eligibility_text_raw).toBeUndefined();
   });
 
+  it('preserves source_type so the faculty CTA survives a cache-hit return', () => {
+    // Regression guard for the honest faculty CTA (#218, regressed in #368):
+    // without source_type, MatchCard renders a green "Apply Now" that
+    // dead-ends on the professor's bio page instead of "Email Professor".
+    const resp = makeResponse(1);
+    (resp.results[0].opportunity as unknown as Record<string, unknown>).source_type =
+      'faculty_research';
+    writeMatchCache('h1', false, resp);
+    const out = readMatchCache('h1', false)!;
+    const opp = out.results[0].opportunity as unknown as Record<string, unknown>;
+    expect(opp.source_type).toBe('faculty_research');
+  });
+
   it('preserves school + audience so the scope facet survives a cache-hit return', () => {
     // Regression guard for the discovery-scope facet (PR #191): if these
     // fields are dropped on projection, every cache-hit return strips scope
