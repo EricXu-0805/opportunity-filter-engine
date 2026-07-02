@@ -238,11 +238,12 @@ export const SCHOOLS: School[] = [
     color: '#E77500',
     location: 'Princeton, NJ',
     // Campus-graph engine (9 curated OUR programs, dept research, career,
-    // institutes) plus the live-scraped faculty directory (~286 professors across
-    // 7 departments: Mathematics (central Drupal) + CS, Physics, MAE, CBE, CEE,
-    // and EEB via the engine's headless-render mode that clears Cloudflare/JS —
-    // CS keyworded, MAE/CBE emailed). More Princeton depts get added over time.
-    coverage: { campusOpportunities: 295, note: 'universitySwitcher.coverageCampus' },
+    // institutes) plus the live-scraped faculty directory (~453 professors across
+    // 13 departments: Mathematics (central Drupal) + CS, ECE, Physics, MAE, CBE,
+    // CEE, EEB, Neuroscience (PNI), Psychology, ORFE, Lewis-Sigler (QCB), and
+    // Astrophysics via the engine's headless-render mode that clears Cloudflare/JS
+    // — CS keyworded; MAE/CBE/Psych/QCB/Astro emailed). Grows as more depts land.
+    coverage: { campusOpportunities: 462, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 5, majors: 37 },
   },
 ];
