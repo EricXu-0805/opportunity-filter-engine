@@ -60,6 +60,7 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_mcb_faculty": ("ucb", "unknown"),
     "ucb_me_faculty": ("ucb", "unknown"),
     "ucb_mse_faculty": ("ucb", "unknown"),
+    "ucb_datascience_faculty": ("ucb", "unknown"),
     "ucb_ne_faculty": ("ucb", "unknown"),
     "ucb_neuro_faculty": ("ucb", "unknown"),
     "ucb_nst_faculty": ("ucb", "unknown"),

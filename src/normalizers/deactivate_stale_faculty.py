@@ -53,6 +53,7 @@ FACULTY_SOURCES = frozenset({
     "ucb_mcb_faculty",
     "ucb_me_faculty",
     "ucb_mse_faculty",
+    "ucb_datascience_faculty",
     "ucb_ne_faculty",
     "ucb_neuro_faculty",
     "ucb_nst_faculty",
