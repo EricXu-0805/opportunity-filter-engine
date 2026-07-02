@@ -57,6 +57,7 @@ from .ucb_common import merge_into_processed as merge_ucb_eecs
 from .ucb_common import merge_into_processed as merge_ucb_faculty
 from .ucb_common import merge_into_processed as merge_ucb_stat
 from .ucb_complit_faculty import fetch_and_normalize as fetch_ucb_complit
+from .ucb_datascience_faculty import fetch_and_normalize as fetch_ucb_datascience
 from .ucb_dcrp_faculty import fetch_and_normalize as fetch_ucb_dcrp
 from .ucb_econ_faculty import fetch_and_normalize as fetch_ucb_econ
 from .ucb_education_faculty import fetch_and_normalize as fetch_ucb_education
@@ -519,6 +520,10 @@ def refresh_all(deep: bool = True) -> dict:
             # drop_joint_appointment_duplicates keep the home-dept record and add
             # only the neuroscience-primary faculty net-new.
             ("ucb_neuro_faculty", fetch_ucb_neuro, merge_ucb_faculty),
+            # CDSS / Data Science ALSO an overlay of home departments (EECS, Stats,
+            # MCB, IB, …); merged after them so drop_joint_appointment_duplicates
+            # keeps the home-dept record and adds only the CDSS-primary faculty.
+            ("ucb_datascience_faculty", fetch_ucb_datascience, merge_ucb_faculty),
             # University of Michigan curated faculty (via faculty_graph engine).
             # Single source across departments; its own school-scoped merge (not
             # ucb_common's) so a Michigan prof sharing a name with a Berkeley one
