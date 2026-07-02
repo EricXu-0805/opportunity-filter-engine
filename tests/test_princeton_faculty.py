@@ -81,3 +81,53 @@ class TestScrape:
         self._patch(monkeypatch)
         people = {p["name"]: p for p in fg._scrape_directory(self._dept())}
         assert people["Michael Aizenman"]["url"].startswith("https://www.math.princeton.edu/people/")
+
+
+# The CS directory is client-side rendered — reached via the engine's render mode
+# (headless Chromium). Cards carry the rank + per-area research links.
+CS_CARD_HTML = """
+<ul>
+  <li class="custom_card">
+    <div class="custom_card__content">
+      <h3 class="custom_card__heading"><a class="custom_card__heading-link" href="/people/profile/abtahi">Parastoo Abtahi</a></h3>
+      <div class="custom_card__snippet">
+        <div class="position">Assistant Professor</div>
+        <div class="research_areas"><a href="/research/areas/robotics">Robotics</a><a href="/research/areas/hci">Human-Computer Interaction</a></div>
+      </div>
+    </div>
+  </li>
+  <li class="custom_card">
+    <div class="custom_card__content">
+      <h3 class="custom_card__heading"><a class="custom_card__heading-link" href="/people/profile/emeritus">Old Timer</a></h3>
+      <div class="custom_card__snippet"><div class="position">Professor Emeritus</div></div>
+    </div>
+  </li>
+</ul>
+"""
+
+
+class TestRenderMode:
+    """CS uses scrape.render=True → the engine fetches via _render_soup (Playwright)
+    instead of a plain request. Patch _render_soup with a fixture so no browser is
+    needed; also confirm a dead plain-fetch does NOT starve the render path."""
+
+    def _cs_dept(self):
+        return next(d for d in SCHOOL["departments"] if d["short"] == "CS")
+
+    def test_render_dept_uses_render_soup(self, monkeypatch):
+        from bs4 import BeautifulSoup
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda url, **kw: BeautifulSoup(CS_CARD_HTML, "html.parser"))
+        # plain fetch returns None — if the engine used it, we'd get nothing.
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", lambda url: None)
+        people = {p["name"]: p for p in fg._scrape_directory(self._cs_dept())}
+        assert "Parastoo Abtahi" in people
+
+    def test_render_captures_research_and_filters_emeritus(self, monkeypatch):
+        from bs4 import BeautifulSoup
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda url, **kw: BeautifulSoup(CS_CARD_HTML, "html.parser"))
+        people = {p["name"]: p for p in fg._scrape_directory(self._cs_dept())}
+        assert "Old Timer" not in people  # emeritus dropped by ladder_filter
+        kws = people["Parastoo Abtahi"].get("keywords") or []
+        assert "Robotics" in kws and "Human-Computer Interaction" in kws
