@@ -1249,12 +1249,24 @@ class TestCORS:
         resp = client.options(
             "/api/health",
             headers={
-                "Origin": "https://opportunity-filter-engine-git-feat-x-team.vercel.app",
+                "Origin": "https://opportunity-filter-engine-git-feat-x-ericxu-0805s-projects.vercel.app",
                 "Access-Control-Request-Method": "GET",
             },
         )
         headers = {h.lower() for h in resp.headers.keys()}
         assert "access-control-allow-origin" in headers
+
+    def test_joinalab_domains_allowed(self):
+        for origin in ("https://joinalab.com", "https://www.joinalab.com"):
+            resp = client.options(
+                "/api/health",
+                headers={
+                    "Origin": origin,
+                    "Access-Control-Request-Method": "GET",
+                },
+            )
+            headers = {h.lower() for h in resp.headers.keys()}
+            assert "access-control-allow-origin" in headers, origin
 
     def test_foreign_vercel_subdomain_rejected(self):
         # Any stranger can deploy https://<anything>.vercel.app; only this
@@ -1268,6 +1280,36 @@ class TestCORS:
         )
         headers = {h.lower() for h in resp.headers.keys()}
         assert "access-control-allow-origin" not in headers
+
+    def test_prefix_squatted_vercel_project_rejected(self):
+        # Vercel project names are first-come-first-served: anyone could
+        # register opportunity-filter-engine-evil and match the old
+        # `opportunity-filter-engine(-anything)?` regex. Previews must end
+        # with our team slug.
+        resp = client.options(
+            "/api/health",
+            headers={
+                "Origin": "https://opportunity-filter-engine-evil.vercel.app",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        headers = {h.lower() for h in resp.headers.keys()}
+        assert "access-control-allow-origin" not in headers
+
+    def test_admin_header_allowed_in_preflight(self):
+        # adminFetch sends X-Admin-Token; a cross-origin admin dashboard
+        # (NEXT_PUBLIC_API_URL pointing straight at Render) needs it
+        # whitelisted in Access-Control-Allow-Headers.
+        resp = client.options(
+            "/api/admin/data-quality",
+            headers={
+                "Origin": "https://joinalab.com",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "X-Admin-Token",
+            },
+        )
+        allow_headers = resp.headers.get("access-control-allow-headers", "")
+        assert "x-admin-token" in allow_headers.lower()
 
 
 class TestHTMLSanitization:

@@ -276,11 +276,19 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://joinalab.com",
+        "https://www.joinalab.com",
     ],
-    allow_origin_regex=r"^https://opportunity-filter-engine(-[a-z0-9-]+)?\.vercel\.app$",
+    # Previews must end with our Vercel team slug: the old
+    # `opportunity-filter-engine(-anything)?` pattern let anyone register a
+    # project named opportunity-filter-engine-<x> and pass the origin check.
+    allow_origin_regex=(
+        r"^https://opportunity-filter-engine"
+        r"(-[a-z0-9-]+-ericxu-0805s-projects)?\.vercel\.app$"
+    ),
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])
