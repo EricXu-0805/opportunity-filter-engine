@@ -389,6 +389,49 @@ class TestR70ADataQuality:
             f"fragment). First: {offenders[:5]}"
         )
 
+    def test_no_scraped_title_label_leak_in_descriptions(self):
+        """A directory card's rank field is sometimes prefixed with its scraped
+        label ("Position title: …" / "Title: …"); it must not leak into the
+        user-facing description ("Research opportunity with Position title: …").
+        The faculty_graph title cleaner strips it at the source."""
+        import re
+        leak = re.compile(r"\b(?:position\s+title|title)\s*:", re.IGNORECASE)
+        offenders = [
+            o.get("id") for o in _load_data()
+            if _is_faculty(o) and leak.search(o.get("description_clean") or "")
+        ]
+        assert not offenders, f"{len(offenders)} descriptions leak a scraped title label: {offenders[:5]}"
+
+    def test_single_date_fields_are_iso(self):
+        """posted_date and a timestamped deadline must be ISO YYYY-MM-DD so the
+        'newest' sort and the deadline-urgency badge work across sources (nsf_reu
+        shipped MM/DD/YYYY, handshake shipped a full ISO timestamp)."""
+        import re
+        bad_posted = [
+            o.get("id") for o in _load_data()
+            if isinstance(o.get("posted_date"), str)
+            and re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", o["posted_date"])
+        ]
+        bad_deadline = [
+            o.get("id") for o in _load_data()
+            if isinstance(o.get("deadline"), str) and "T" in o["deadline"]
+        ]
+        assert not bad_posted, f"{len(bad_posted)} posted_date still MM/DD/YYYY: {bad_posted[:5]}"
+        assert not bad_deadline, f"{len(bad_deadline)} deadline still a timestamp: {bad_deadline[:5]}"
+
+    def test_no_duplicate_faculty_at_same_url(self):
+        """A cross-appointed professor scraped from two department pages shares
+        one profile URL — those must be collapsed to a single record so the
+        person isn't shown twice in results."""
+        from collections import Counter
+        counts = Counter(
+            (o.get("school"), o.get("url") or o.get("source_url"), o.get("pi_name"))
+            for o in _load_data()
+            if _is_faculty(o) and o.get("pi_name") and (o.get("url") or o.get("source_url"))
+        )
+        dups = [k for k, n in counts.items() if n > 1]
+        assert not dups, f"{len(dups)} faculty appear >1× at the same URL: {dups[:3]}"
+
     def test_no_ucb_joint_appointment_duplicates(self):
         """Joint-appointment professors (EECS+Statistics) used to appear in both
         ucb_eecs_faculty and ucb_stat_faculty, surfacing twice in results.

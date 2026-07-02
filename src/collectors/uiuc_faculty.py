@@ -1307,6 +1307,25 @@ _CONTACT_INFO_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Journal / publication-venue names and editorial-service lines that an
+# enrichment pass sometimes scraped as a "research area" ("ieee transactions on
+# image processing", "acta astronautica", "science advances", "reviewer for
+# 'physical review letters'"). A venue is where the work appears, not the topic —
+# and it surfaces verbatim in the card title. Deliberately specific (real
+# journal grammar) so it never touches topical keywords: word-tested against the
+# full corpus, it flags 10 venue keywords and 0 research areas.
+_JOURNAL_VENUE_RE = re.compile(
+    r"\bieee\b"
+    r"|\btransactions on\b"
+    r"|\bacta\s+\w+"
+    r"|\barxiv\b"
+    r"|\bscience advances\b"
+    r"|\breviewer for\b"
+    r"|\b(?:physical review|physics|chemistry|automation|applied physics)\s+letters\b"
+    r"|\bnature[\s\-](?:communications|human|methods|physics|materials|genetics|medicine|reviews|biotechnology)",
+    re.IGNORECASE,
+)
+
 
 def _is_junk_keyword(k: str) -> bool:
     """True for a keyword that is page furniture, a course listing, a
@@ -1326,6 +1345,8 @@ def _is_junk_keyword(k: str) -> bool:
     if re.search(r"&[a-z]{2,}", kl):  # HTML-entity residue ("agents &amp", "se&nbsp")
         return True
     if re.search(r"\b(?:journal|proceedings)\b", kl):  # publication venue, not a topic
+        return True
+    if _JOURNAL_VENUE_RE.search(kl):  # a journal name / editorial-service line, not a topic
         return True
     if re.match(r"^(?:and|or|but|to)\b", kl):  # tail of a comma/sentence-split clause
         return True

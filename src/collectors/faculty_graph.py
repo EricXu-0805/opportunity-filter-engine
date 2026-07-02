@@ -250,7 +250,12 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         return None
     if _IN_MEMORIAM_RE.search(name):
         return None  # "Name (1948-2015)" — an in-memoriam entry, not active faculty
-    title = person.get("title") or "Professor"
+    # Some directory cards prefix the rank with a scraped field label
+    # ("Position title: Glynn LL Isaac Professor…", "Title: …"); strip it so the
+    # label doesn't leak into the description ("Research opportunity with
+    # Position title: … in the Department of Anthropology…").
+    title = re.sub(r"^\s*(?:position\s+title|title)\s*:\s*", "",
+                   person.get("title") or "Professor", flags=re.IGNORECASE).strip() or "Professor"
     if _RETIRED_TITLE_RE.search(title):
         return None
 

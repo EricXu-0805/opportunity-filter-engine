@@ -191,6 +191,24 @@ class TestEnrichOpportunity:
         assert opp["eligibility"]["majors"] == first_majors
         assert opp["keywords"] == first_kws
 
+    def test_normalizes_mmddyyyy_posted_date(self):
+        opp = _opp("Program", "")
+        opp["posted_date"] = "09/01/2026"
+        enrich_opportunity(opp)
+        assert opp["posted_date"] == "2026-09-01"
+
+    def test_strips_timestamp_from_deadline(self):
+        opp = _opp("Program", "")
+        opp["deadline"] = "2026-05-01T23:59:59.999-05:00"
+        enrich_opportunity(opp)
+        assert opp["deadline"] == "2026-05-01"
+
+    def test_leaves_deadline_sentinel_untouched(self):
+        opp = _opp("Program", "")
+        opp["deadline"] = "Rolling"
+        enrich_opportunity(opp)
+        assert opp["deadline"] == "Rolling"
+
 
 class TestEnrichAll:
     def test_counts_additions(self):

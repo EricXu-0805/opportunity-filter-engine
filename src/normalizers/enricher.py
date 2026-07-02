@@ -484,7 +484,30 @@ def enrich_opportunity(opp: dict) -> dict:
     if "is_rolling" not in opp and is_rolling_deadline(opp):
         opp["is_rolling"] = True
 
+    _normalize_date_fields(opp)
+
     return opp
+
+
+def _normalize_date_fields(opp: dict) -> None:
+    """Coerce the single date fields to ISO ``YYYY-MM-DD`` so sort ('newest') and
+    the deadline-urgency badge work uniformly across sources. Two known drifts:
+    nsf_reu ships ``posted_date`` as ``MM/DD/YYYY`` (sorts lexically wrong) and
+    handshake ships ``deadline`` as a full ISO *timestamp* (the badge parser
+    wants a date). Sentinels ('Rolling', 'Open until filled') and unparseable
+    values are left untouched."""
+    from .deadlines import parse_to_date
+
+    dl = opp.get("deadline")
+    if isinstance(dl, str) and "T" in dl:  # strip time component off an ISO timestamp
+        d = parse_to_date(dl)
+        if d:
+            opp["deadline"] = d.isoformat()
+    pd = opp.get("posted_date")
+    if isinstance(pd, str) and pd.strip() and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", pd.strip()):
+        d = parse_to_date(pd)
+        if d:
+            opp["posted_date"] = d.isoformat()
 
 
 def enrich_all(opps: list[dict]) -> tuple[int, int]:
