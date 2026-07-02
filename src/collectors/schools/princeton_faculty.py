@@ -44,10 +44,31 @@ _PERSON_CARD = {
 # "… with Rank of Professor" / "Chair, Professor".
 _LADDER = {"require": r"\bprofessor\b", "drop": r"\bemerit"}
 
+# Princeton "Site Builder" Drupal theme, shared across the (Cloudflare-walled)
+# departmental subdomains: each faculty member is a ``.content-list-item`` whose
+# name (``.field--name-title``), rank (``field-ps-people-position``), and — where
+# published — email (``field-ps-people-email``) use theme-wide field classes.
+# Reached via render mode (headless browser clears the 403). Emails land where the
+# department exposes them (MAE, CBE); the rest ship emailless but ranked.
+_SB_SELECTORS = {
+    "card": ".content-list-item",
+    "name": ".field--name-title",
+    "link": "a[href*='/people/']",
+    "title": ".field--name-field-ps-people-position",
+    "email": ".field--name-field-ps-people-email a[href^='mailto:']",
+}
+
 
 def _drupal(short: str, name: str, majors: list[str], url: str) -> dict:
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _PERSON_CARD, "ladder_filter": _LADDER}}
+
+
+def _sb(short: str, name: str, majors: list[str], url: str) -> dict:
+    """A Cloudflare-walled Site Builder department, fetched via render mode."""
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "render": True, "selectors": _SB_SELECTORS,
+                       "ladder_filter": _LADDER}}
 
 
 SCHOOL: dict = {
@@ -87,6 +108,22 @@ SCHOOL: dict = {
                 "ladder_filter": {"require": r"\bprofessor\b", "drop": r"\bemerit"},
             },
         },
+        # Cloudflare-walled Site Builder subdomains (render mode). MAE + CBE
+        # publish emails; Physics/EEB/CEE ship ranked-but-emailless.
+        _sb("MAE", "Department of Mechanical & Aerospace Engineering",
+            ["Mechanical Engineering", "Aerospace Engineering"],
+            "https://mae.princeton.edu/people/faculty"),
+        _sb("PHY", "Department of Physics", ["Physics"],
+            "https://phy.princeton.edu/people/faculty"),
+        _sb("EEB", "Department of Ecology & Evolutionary Biology",
+            ["Ecology & Evolutionary Biology", "Biology"],
+            "https://eeb.princeton.edu/people/faculty"),
+        _sb("CBE", "Department of Chemical & Biological Engineering",
+            ["Chemical Engineering", "Chemical & Biological Engineering"],
+            "https://cbe.princeton.edu/people/faculty"),
+        _sb("CEE", "Department of Civil & Environmental Engineering",
+            ["Civil Engineering", "Environmental Engineering"],
+            "https://cee.princeton.edu/faculty"),
     ],
 }
 
