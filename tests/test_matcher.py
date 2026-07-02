@@ -995,6 +995,46 @@ class TestUpsideReasonHook:
         assert len(runs) == 1  # set-ordered keywords used to make this flaky
 
 
+class TestDesiredFieldOverlap:
+    """The desired-field credit path must see the OpenAlex enrichment: a chip
+    aligns with a longer enriched keyword by bounded containment, not just exact
+    set intersection — while a low-signal bare token can't blanket-match."""
+
+    def test_chip_matches_longer_enriched_keyword(self):
+        from src.matcher.ranker import _desired_field_overlap
+        assert _desired_field_overlap({"machine learning"}, ["multimodal machine learning"]) == {"machine learning"}
+        assert _desired_field_overlap({"network security"}, ["network security and intrusion detection"]) == {"network security"}
+
+    def test_keyword_shorter_than_chip_also_matches(self):
+        from src.matcher.ranker import _desired_field_overlap
+        assert _desired_field_overlap({"quantum physics"}, ["physics"]) == {"quantum physics"}
+
+    def test_low_signal_bare_token_needs_exact(self):
+        from src.matcher.ranker import _desired_field_overlap
+        assert _desired_field_overlap({"data"}, ["data visualization"]) == set()
+        assert _desired_field_overlap({"systems"}, ["distributed systems"]) == set()
+        assert _desired_field_overlap({"science"}, ["computer science"]) == set()
+
+    def test_exact_and_word_boundary(self):
+        from src.matcher.ranker import _desired_field_overlap
+        assert _desired_field_overlap({"robotics"}, ["robotics"]) == {"robotics"}
+        # word boundary: "art" must not match inside "smart grid"
+        assert _desired_field_overlap({"art"}, ["smart grid security"]) == set()
+
+    def test_enriched_faculty_earns_interest_reason(self):
+        """End-to-end: an enriched faculty (long OpenAlex phrases) now earns the
+        interest bonus + 'Matches your interests' reason it was denied before."""
+        opp = {
+            "id": "f", "opportunity_type": "research", "pi_name": "X",
+            "source_type": "faculty_research",
+            "keywords": ["multimodal machine learning", "advanced image and video retrieval"],
+            "eligibility": {},
+        }
+        prof = {"research_interests_text": "", "desired_fields": ["machine learning"]}
+        score, fit, _ = score_upside(prof, opp)
+        assert any(r == "Matches your interests: machine learning" for r in fit)
+
+
 class TestInterestReasonDedup:
     """When the similarity reason already names every overlapped keyword, the
     bare 'Matches your interests: X' reason is pure repetition and must be

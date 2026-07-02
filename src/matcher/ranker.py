@@ -962,10 +962,10 @@ def score_upside(
     interest_reason = ""
     interest_overlap: set[str] = set()
     if opp_keywords and desired:
-        interest_overlap = opp_keywords & desired
+        interest_overlap = _desired_field_overlap(desired, opp_kw_list)
         if interest_overlap:
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
-            interest_reason = f"Matches your interests: {', '.join(interest_overlap)}"
+            interest_reason = f"Matches your interests: {', '.join(sorted(interest_overlap))}"
             reasons_fit.append(interest_reason)
 
     # Implicit major→topic steer: lifts the 25.0 baseline tier for a student who
@@ -1147,6 +1147,45 @@ _ROLE_PROCESS_TOKENS = frozenset({
 def _topical_keywords(keywords: list[str]) -> list[str]:
     """Drop role/format tokens for display — keep only genuine research areas."""
     return [kw for kw in keywords if kw.lower() not in _ROLE_PROCESS_TOKENS]
+
+
+def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[str]:
+    """Which of the student's desired-field chips align with an opportunity's
+    keywords. Exact set intersection (the prior logic) is 100% blind to the
+    OpenAlex enrichment: a 'machine learning' chip never matched an enriched
+    keyword 'multimodal machine learning', so every enriched faculty was denied
+    the strong interest bonus and the 'Matches your interests' reason. This
+    mirrors _topic_alignment_penalty's containment matching so credit and
+    demotion are symmetric: exact/canonical equality always counts, and bounded
+    (len>=4, word-boundary) bidirectional containment adds the long-phrase
+    matches. A low-signal single-token chip ('data', 'systems') only counts on
+    exact equality, so it can't blanket-match via containment. Returns the CHIP
+    labels (what the student asked for) for the reason text."""
+    if not desired or not opp_keywords:
+        return set()
+    kws = [k.lower().strip() for k in opp_keywords if k and k.strip()]
+    kw_set = set(kws)
+    kw_canon = {_canonicalize_skill(k) for k in kws}
+    matched: set[str] = set()
+    for d in desired:
+        dl = d.lower().strip()
+        if not dl:
+            continue
+        dc = _canonicalize_skill(dl)
+        if dl in kw_set or dc in kw_canon or dc in kw_set:
+            matched.add(d)
+            continue
+        # A bare low-signal token ("data", "systems") matches only exactly
+        # (handled above) — never by containment, which would float it in on
+        # any "data visualization"/"distributed systems" keyword.
+        if " " not in dl and dl in _LOW_SIGNAL_ALIGN_TOKENS:
+            continue
+        if len(dl) >= 4 and any(re.search(rf"\b{re.escape(dl)}\b", k) for k in kws):
+            matched.add(d)
+            continue
+        if any(len(k) >= 4 and re.search(rf"\b{re.escape(k)}\b", dl) for k in kws):
+            matched.add(d)
+    return matched
 
 
 def _extract_specific_keywords(opportunity: dict) -> list[str]:
@@ -1497,7 +1536,8 @@ def rank_opportunity(
     # interests OR their major-derived field. Drives the "N strong matches in
     # your field" count so a thin field isn't padded with generic high-quality opps.
     opp_kw_set = {k.lower() for k in opportunity.get("keywords", [])}
-    field_relevant = bool(opp_kw_set & {f.lower() for f in profile.get("desired_fields", [])})
+    desired_lc = {f.lower() for f in profile.get("desired_fields", [])}
+    field_relevant = bool(_desired_field_overlap(desired_lc, opportunity.get("keywords", [])))
     if not field_relevant and implicit_keywords:
         field_relevant = bool(opp_kw_set & implicit_keywords)
     if not field_relevant and precomputed_sim is not None and precomputed_sim > 0.15:
