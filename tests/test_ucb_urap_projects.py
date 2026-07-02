@@ -97,6 +97,22 @@ class TestNormalize:
     def test_stable_id_across_reruns(self):
         assert up.normalize_project(self._raw())["id"] == up.normalize_project(self._raw())["id"]
 
+    def test_past_mode_marks_closed_and_not_rolling(self):
+        # Closed/past seed: non-actionable, flagged, lower confidence — but same
+        # stable id as the open record (so a reopened project upserts in place).
+        o = up.normalize_project(self._raw(), past=True)
+        assert o["is_rolling"] is False
+        assert o["metadata"]["urap_status"] == "closed"
+        assert o["metadata"]["confidence_score"] == 0.5
+        assert "Past URAP project" in o["description"]
+        assert "Apply through the URAP application portal" not in o["description"]
+        assert o["id"] == up.normalize_project(self._raw())["id"]
+
+    def test_open_mode_unchanged_default(self):
+        o = up.normalize_project(self._raw())
+        assert o["is_rolling"] is True
+        assert o["metadata"]["urap_status"] == "open"
+
 
 class TestMerge:
     def test_empty_scrape_does_not_touch_corpus(self, tmp_path, monkeypatch):
