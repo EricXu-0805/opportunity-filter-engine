@@ -521,12 +521,58 @@ def _paginated_url(base: str, page: int, param: str) -> str:
     return f"{paged}{sep}{query}" if query else paged
 
 
+def _render_soup(url: str, timeout_ms: int = 45000):
+    """Fetch a URL through a headless-Chromium browser and return a BeautifulSoup.
+
+    The escape hatch for directories a plain ``requests`` GET can't read: pages
+    rendered client-side (the cards exist only after JS runs) and sites behind
+    Cloudflare's bot wall (a real browser passes the JS challenge that 403s a
+    bare request). Opt-in per department via ``scrape["render"] = True``.
+
+    Playwright is imported lazily so the module still imports where Playwright/
+    Chromium isn't installed; there it returns ``None`` and the caller degrades
+    to the curated layer, exactly like an unreachable ``fetch_soup``.
+    """
+    try:
+        from bs4 import BeautifulSoup
+        from playwright.sync_api import sync_playwright
+
+        from .ucb_common import HEADERS
+    except ImportError:
+        logger.warning(
+            "faculty_graph: playwright not installed; render fetch skipped for %s "
+            "(pip install playwright && python -m playwright install chromium)", url,
+        )
+        return None
+    html = None
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
+                page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                # Let client-side card grids / Cloudflare interstitials settle.
+                page.wait_for_timeout(3500)
+                html = page.content()
+            finally:
+                browser.close()
+    except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
+        logger.warning("faculty_graph: render fetch failed for %s: %s", url, e)
+        return None
+    return BeautifulSoup(html, "html.parser") if html else None
+
+
 def _scrape_directory(dept: dict) -> list[dict]:
     """Best-effort parse of a department directory into faculty specs.
 
     Opt-in: only runs when the department config has a ``scrape`` block. Lazy-
     imports requests/bs4 and degrades to ``[]`` on any failure (a 403 bot wall,
     timeout, or markup drift) so deep mode never breaks the curated layer.
+
+    ``scrape["render"] = True`` routes fetches through a headless browser
+    (:func:`_render_soup`) instead of a plain request — for JS-rendered grids and
+    Cloudflare-walled directories. All the CSS selectors below work unchanged on
+    the rendered HTML.
 
     When the directory paginates (``scrape["paginate"]``), follow ``?<param>=N``
     until a page surfaces no new (name, url) pair or the page cap is hit — so a
@@ -539,6 +585,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001
         return []
+    fetch = _render_soup if cfg.get("render") else fetch_soup
     base = cfg["url"]
     sel = cfg.get("selectors", {})
     lf = cfg.get("ladder_filter")
@@ -546,7 +593,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
     link_f = cfg.get("link_filter")
     sf = cfg.get("section_filter")
     ff = cfg.get("field_filter")
-    soup = fetch_soup(base)
+    soup = fetch(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
@@ -560,7 +607,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
             for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
                 next_url = _paginated_url(base, pg, param) if path_mode else (
                     f"{base}{'&' if '?' in base else '?'}{param}={pg}")
-                s2 = fetch_soup(next_url)
+                s2 = fetch(next_url)
                 if s2 is None:
                     break
                 fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)

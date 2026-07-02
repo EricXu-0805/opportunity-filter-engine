@@ -13,9 +13,15 @@ name (``.person-card__name``), the rank (``.person-card__title``), and a
 ``/people/<slug>`` profile link. No email or research area is on the listing, so
 records ship "lite" (contact_email=None); per-profile enrichment is deferred.
 
-More Princeton departments will be added here as reachable directories are found
-(the Cloudflare-walled subdomains need a browser-context fetch this engine does
-not yet do). Single source ("princeton_faculty"); department rides each record's
+Computer Science is added via the engine's ``render: true`` (headless-Chromium)
+mode: its directory is a client-side ``.custom_card`` grid that a plain request
+can't read, but a real browser renders it — and each card carries the rank plus
+per-area research links, so CS lands fully keyworded (108 professors). The same
+render mode also clears the Cloudflare wall on the dept subdomains, so more
+Princeton departments can be added here as their (heterogeneous) card selectors
+are identified.
+
+Single source ("princeton_faculty"); department rides each record's
 ``department``, ids namespaced by department short-code. Audience "unknown".
 """
 
@@ -61,6 +67,26 @@ SCHOOL: dict = {
             ["Mathematics", "Applied Mathematics"],
             "https://www.math.princeton.edu/people?combine=&field_position_target_id=115",
         ),
+        # Computer Science: client-side .custom_card grid — needs render mode.
+        # Each card exposes the rank (.position) and per-area research links
+        # (.research_areas a), so records land keyworded (no email on the listing).
+        {
+            "short": "CS", "name": "Department of Computer Science",
+            "majors": ["Computer Science"],
+            "directory_url": "https://www.cs.princeton.edu/people/faculty",
+            "scrape": {
+                "url": "https://www.cs.princeton.edu/people/faculty",
+                "render": True,
+                "selectors": {
+                    "card": ".custom_card",
+                    "name": ".custom_card__heading-link",
+                    "link": ".custom_card__heading-link",
+                    "title": ".position",
+                    "research_items": ".research_areas a",
+                },
+                "ladder_filter": {"require": r"\bprofessor\b", "drop": r"\bemerit"},
+            },
+        },
     ],
 }
 
