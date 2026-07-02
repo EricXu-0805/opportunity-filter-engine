@@ -237,10 +237,12 @@ export const SCHOOLS: School[] = [
     nameZh: '普林斯顿大学',
     color: '#E77500',
     location: 'Princeton, NJ',
-    // First school on the campus-graph engine. Conservative seed-floor count
-    // (curated OUR programs, dept research, career, institutes); the deep crawl
-    // discovers more in CI. Maintained estimate, like UCB above.
-    coverage: { campusOpportunities: 9, note: 'universitySwitcher.coverageCampus' },
+    // Campus-graph engine (9 curated OUR programs, dept research, career,
+    // institutes) plus the live-scraped faculty directory (~45 Mathematics
+    // ladder professors — the one dept reachable on the central Drupal platform;
+    // the rest of Princeton's dept subdomains are Cloudflare-walled). Grows as
+    // more reachable directories are found. Conservative estimate, like UCB.
+    coverage: { campusOpportunities: 54, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 5, majors: 37 },
   },
 ];
