@@ -1303,7 +1303,16 @@ class TestAdminDataQuality:
         from backend.routes import admin as admin_mod
         admin_mod._cache["snapshot"] = None
         admin_mod._cache["built_at"] = 0.0
-        r = client.get("/api/admin/data-quality?token=wrong")
+        r = client.get("/api/admin/data-quality", headers={"X-Admin-Token": "wrong"})
+        assert r.status_code == 401
+
+    def test_query_param_token_no_longer_accepted(self, monkeypatch):
+        """?token= leaked into referrers + access logs; only X-Admin-Token works now."""
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        from backend.routes import admin as admin_mod
+        admin_mod._cache["snapshot"] = None
+        admin_mod._cache["built_at"] = 0.0
+        r = client.get("/api/admin/data-quality?token=secret-abc")
         assert r.status_code == 401
 
     def test_200_with_token_and_cache(self, monkeypatch):
@@ -1312,7 +1321,7 @@ class TestAdminDataQuality:
         admin_mod._cache["snapshot"] = None
         admin_mod._cache["built_at"] = 0.0
 
-        r1 = client.get("/api/admin/data-quality?token=secret-xyz")
+        r1 = client.get("/api/admin/data-quality", headers={"X-Admin-Token": "secret-xyz"})
         assert r1.status_code == 200
         d = r1.json()
         assert "total" in d
@@ -1320,7 +1329,7 @@ class TestAdminDataQuality:
         assert "rolling_deadline" in d["global"]
         assert d["cache_age_seconds"] == 0
 
-        r2 = client.get("/api/admin/data-quality?token=secret-xyz")
+        r2 = client.get("/api/admin/data-quality", headers={"X-Admin-Token": "secret-xyz"})
         assert r2.status_code == 200
         d2 = r2.json()
         assert d2["cache_age_seconds"] >= 0  # served from cache
@@ -1330,7 +1339,7 @@ class TestAdminDataQuality:
         from backend.routes import admin as admin_mod
         admin_mod._cache["snapshot"] = {"cached": True}
         admin_mod._cache["built_at"] = 9999999999.0
-        r = client.get("/api/admin/data-quality?token=t&force=true")
+        r = client.get("/api/admin/data-quality?force=true", headers={"X-Admin-Token": "t"})
         assert r.status_code == 200
         assert r.json().get("cached") is None  # force rebuilt
 
@@ -1351,7 +1360,7 @@ class TestCollectorStatusHistory:
 
     def test_401_when_wrong_token(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "secret-history")
-        r = client.get("/api/admin/collector-status/history?token=wrong")
+        r = client.get("/api/admin/collector-status/history", headers={"X-Admin-Token": "wrong"})
         assert r.status_code == 401
 
     def test_returns_empty_when_file_missing(self, monkeypatch, tmp_path):
@@ -1360,7 +1369,7 @@ class TestCollectorStatusHistory:
         monkeypatch.setattr(
             admin_mod, "_COLLECTOR_HISTORY_PATH", tmp_path / "nonexistent.jsonl"
         )
-        r = client.get("/api/admin/collector-status/history?token=ok")
+        r = client.get("/api/admin/collector-status/history", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         assert r.json() == {"entries": [], "count": 0}
 
@@ -1396,7 +1405,7 @@ class TestCollectorStatusHistory:
         )
         monkeypatch.setattr(admin_mod, "_COLLECTOR_HISTORY_PATH", history_file)
 
-        r = client.get("/api/admin/collector-status/history?token=ok")
+        r = client.get("/api/admin/collector-status/history", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         body = r.json()
         assert body["count"] == 2
@@ -1417,7 +1426,7 @@ class TestCollectorStatusHistory:
         )
         monkeypatch.setattr(admin_mod, "_COLLECTOR_HISTORY_PATH", history_file)
 
-        r = client.get("/api/admin/collector-status/history?token=ok&limit=3")
+        r = client.get("/api/admin/collector-status/history?limit=3", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         body = r.json()
         assert body["count"] == 10
@@ -1427,9 +1436,9 @@ class TestCollectorStatusHistory:
 
     def test_invalid_limit_rejected(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        r = client.get("/api/admin/collector-status/history?token=ok&limit=0")
+        r = client.get("/api/admin/collector-status/history?limit=0", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 422
-        r = client.get("/api/admin/collector-status/history?token=ok&limit=201")
+        r = client.get("/api/admin/collector-status/history?limit=201", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 422
 
     def test_malformed_lines_are_skipped(self, monkeypatch, tmp_path):
@@ -1445,7 +1454,7 @@ class TestCollectorStatusHistory:
         )
         monkeypatch.setattr(admin_mod, "_COLLECTOR_HISTORY_PATH", history_file)
 
-        r = client.get("/api/admin/collector-status/history?token=ok")
+        r = client.get("/api/admin/collector-status/history", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         body = r.json()
         assert body["count"] == 2
@@ -1724,7 +1733,7 @@ class TestAdminTriggerRefresh:
 
     def test_401_when_wrong_token(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "secret-refresh")
-        r = client.post("/api/admin/trigger-refresh?token=wrong")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "wrong"})
         assert r.status_code == 401
 
     def test_401_when_token_missing(self, monkeypatch):
@@ -1735,13 +1744,13 @@ class TestAdminTriggerRefresh:
     def test_503_when_pat_unset(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
         monkeypatch.delenv("GITHUB_REFRESH_PAT", raising=False)
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 503
         assert "GITHUB_REFRESH_PAT" in r.json()["detail"]
 
     def test_422_invalid_mode(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        r = client.post("/api/admin/trigger-refresh?token=ok&mode=sideways")
+        r = client.post("/api/admin/trigger-refresh?mode=sideways", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 422
 
     def test_200_quick_mode_dispatches_with_deep_false(self, monkeypatch):
@@ -1750,7 +1759,7 @@ class TestAdminTriggerRefresh:
         calls: list = []
         _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
 
-        r = client.post("/api/admin/trigger-refresh?token=ok&mode=quick")
+        r = client.post("/api/admin/trigger-refresh?mode=quick", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         body = r.json()
         assert body["ok"] is True
@@ -1767,7 +1776,7 @@ class TestAdminTriggerRefresh:
         calls: list = []
         _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
 
-        r = client.post("/api/admin/trigger-refresh?token=ok&mode=deep")
+        r = client.post("/api/admin/trigger-refresh?mode=deep", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         assert r.json()["mode"] == "deep"
         assert calls[0]["json"]["inputs"]["deep"] == "true"
@@ -1778,7 +1787,7 @@ class TestAdminTriggerRefresh:
         calls: list = []
         _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
 
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         assert r.json()["mode"] == "quick"
         assert calls[0]["json"]["inputs"]["deep"] == "false"
@@ -1789,7 +1798,7 @@ class TestAdminTriggerRefresh:
         calls: list = []
         _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
 
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         headers = calls[0]["headers"]
         assert headers["Authorization"] == "Bearer pat-xyz"
@@ -1803,7 +1812,7 @@ class TestAdminTriggerRefresh:
         calls: list = []
         _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
 
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         assert "EricXu-0805/opportunity-filter-engine" in calls[0]["url"]
         assert calls[0]["url"].endswith("refresh-data.yml/dispatches")
@@ -1815,7 +1824,7 @@ class TestAdminTriggerRefresh:
         calls: list = []
         _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
 
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         assert "acme/other-repo" in calls[0]["url"]
 
@@ -1837,7 +1846,7 @@ class TestAdminTriggerRefresh:
             monkeypatch, status_code=401, text='{"message":"Bad credentials"}'
         )
 
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 401
         assert "Bad credentials" in r.json()["detail"]
 
@@ -1846,7 +1855,7 @@ class TestAdminTriggerRefresh:
         monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
         _install_fake_dispatch(monkeypatch, status_code=500, text="")
 
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 500
         assert "GitHub returned 500" in r.json()["detail"]
 
@@ -1856,7 +1865,7 @@ class TestAdminTriggerRefresh:
         monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
         _install_fake_dispatch(monkeypatch, raise_error=httpx.ConnectError("boom"))
 
-        r = client.post("/api/admin/trigger-refresh?token=ok")
+        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 502
         assert "GitHub API unreachable" in r.json()["detail"]
 
@@ -1923,14 +1932,14 @@ class TestAdminSavedSearchHealth:
 
     def test_401_when_wrong_token(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        r = client.get("/api/admin/saved-search-health?token=wrong")
+        r = client.get("/api/admin/saved-search-health", headers={"X-Admin-Token": "wrong"})
         assert r.status_code == 401
 
     def test_unconfigured_when_supabase_env_missing(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
-        r = client.get("/api/admin/saved-search-health?token=ok")
+        r = client.get("/api/admin/saved-search-health", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         body = r.json()
         assert body["status"] == "unconfigured"
@@ -1961,7 +1970,7 @@ class TestAdminSavedSearchHealth:
         calls: list = []
         _install_saved_search_rows(monkeypatch, rows=rows, calls=calls)
 
-        r = client.get("/api/admin/saved-search-health?token=ok")
+        r = client.get("/api/admin/saved-search-health", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         body = r.json()
         assert body["status"] == "ok"
@@ -1981,7 +1990,7 @@ class TestAdminSavedSearchHealth:
     def test_empty_table_returns_zeroes_not_error(self, monkeypatch):
         _set_saved_search_health_env(monkeypatch)
         _install_saved_search_rows(monkeypatch, rows=[])
-        r = client.get("/api/admin/saved-search-health?token=ok")
+        r = client.get("/api/admin/saved-search-health", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 200
         body = r.json()
         assert body["status"] == "ok"
@@ -1993,11 +2002,11 @@ class TestAdminSavedSearchHealth:
         _set_saved_search_health_env(monkeypatch)
         _install_saved_search_rows(monkeypatch, rows=[])
         monkeypatch.setenv("RESEND_API_KEY", "re_secret_value_123")
-        r = client.get("/api/admin/saved-search-health?token=ok")
+        r = client.get("/api/admin/saved-search-health", headers={"X-Admin-Token": "ok"})
         assert r.json()["resend_configured"] is False
 
         monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
-        r = client.get("/api/admin/saved-search-health?token=ok")
+        r = client.get("/api/admin/saved-search-health", headers={"X-Admin-Token": "ok"})
         body = r.json()
         assert body["resend_configured"] is True
         # presence only — the key value itself must never appear anywhere
@@ -2008,7 +2017,7 @@ class TestAdminSavedSearchHealth:
 
         _set_saved_search_health_env(monkeypatch)
         _install_saved_search_rows(monkeypatch, raise_error=httpx.ConnectError("boom"))
-        r = client.get("/api/admin/saved-search-health?token=ok")
+        r = client.get("/api/admin/saved-search-health", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 502
         assert "Supabase unreachable" in r.json()["detail"]
 
