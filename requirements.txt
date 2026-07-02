@@ -9,7 +9,7 @@
 fastapi==0.135.1
 uvicorn==0.42.0
 pydantic==2.12.3
-python-multipart==0.0.27
+python-multipart==0.0.31
 httpx==0.28.1
 pyyaml==6.0.3
 python-dotenv==1.2.2
@@ -18,7 +18,7 @@ python-dotenv==1.2.2
 # because it isn't installed in dev/CI by default and we don't want
 # pip-resolve to fail when a future patch ships).
 pywebpush>=2.0.0,<3.0.0
-cryptography==46.0.7
+cryptography==48.0.1
 
 # Data collection (used by scrapers + GitHub Action refresh-data.yml)
 feedparser==6.0.12
