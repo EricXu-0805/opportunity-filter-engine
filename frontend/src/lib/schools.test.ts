@@ -105,7 +105,7 @@ describe('registry — switcher metadata', () => {
     // Campus-graph schools (US-News Top-50 rollout): conservative seed-floor
     // counts of school=<slug> records (campus + lab buckets; the open/national
     // programs are not counted), not 'pending'.
-    expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(295);
+    expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(462);
     expect(bySlug('umich')?.coverage.campusOpportunities).toBe(110);
     expect(bySlug('uw')?.coverage.campusOpportunities).toBe(2259);
     expect(bySlug('gatech')?.coverage.campusOpportunities).toBe(1301);
