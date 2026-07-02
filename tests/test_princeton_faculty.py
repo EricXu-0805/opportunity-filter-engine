@@ -131,3 +131,48 @@ class TestRenderMode:
         assert "Old Timer" not in people  # emeritus dropped by ladder_filter
         kws = people["Parastoo Abtahi"].get("keywords") or []
         assert "Robotics" in kws and "Human-Computer Interaction" in kws
+
+
+# The Cloudflare-walled dept subdomains share a "Site Builder" theme:
+# .content-list-item rows with theme-wide field classes for name/rank/email.
+SITEBUILDER_HTML = """
+<div class="view-content">
+  <div class="content-list-item">
+    <a href="/people/jane-roe"><img alt="Jane Roe"/></a>
+    <div class="content-list-item-details">
+      <span class="field field--name-title">Jane Roe</span>
+      <div class="field field--name-field-ps-people-position">Associate Professor</div>
+      <div class="field field--name-field-ps-people-email">
+        <a class="link-purpose-mailto" href="mailto:jroe@princeton.edu">jroe@princeton.edu</a>
+      </div>
+    </div>
+  </div>
+  <div class="content-list-item">
+    <a href="/people/postdoc-person"><img alt="Post Doc"/></a>
+    <div class="content-list-item-details">
+      <span class="field field--name-title">Post Doc</span>
+      <div class="field field--name-field-ps-people-position">Postdoctoral Research Associate</div>
+    </div>
+  </div>
+</div>
+"""
+
+
+class TestSiteBuilderDepts:
+    def _dept(self, short):
+        return next(d for d in SCHOOL["departments"] if d["short"] == short)
+
+    def test_sitebuilder_depts_are_render_and_shared_selectors(self):
+        for short in ("MAE", "PHY", "EEB", "CBE", "CEE"):
+            sc = self._dept(short)["scrape"]
+            assert sc.get("render") is True
+            assert sc["selectors"]["card"] == ".content-list-item"
+
+    def test_parses_name_rank_email_and_ladder_filters(self, monkeypatch):
+        from bs4 import BeautifulSoup
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda url, **kw: BeautifulSoup(SITEBUILDER_HTML, "html.parser"))
+        people = {p["name"]: p for p in fg._scrape_directory(self._dept("MAE"))}
+        assert "Jane Roe" in people and "Post Doc" not in people  # postdoc dropped
+        assert people["Jane Roe"]["email"] == "jroe@princeton.edu"
+        assert people["Jane Roe"]["url"].endswith("/people/jane-roe")

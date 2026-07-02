@@ -544,21 +544,27 @@ def _render_soup(url: str, timeout_ms: int = 45000):
             "(pip install playwright && python -m playwright install chromium)", url,
         )
         return None
+    # Headless navigation is flaky (transient goto timeouts / slow card grids),
+    # so retry once before giving up — a single retry turns most intermittent
+    # failures into successes without stalling the run.
     html = None
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            try:
-                page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
-                page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                # Let client-side card grids / Cloudflare interstitials settle.
-                page.wait_for_timeout(3500)
-                html = page.content()
-            finally:
-                browser.close()
-    except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
-        logger.warning("faculty_graph: render fetch failed for %s: %s", url, e)
-        return None
+    for attempt in (1, 2):
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
+                    page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                    # Let client-side card grids / Cloudflare interstitials settle.
+                    page.wait_for_timeout(3500)
+                    html = page.content()
+                finally:
+                    browser.close()
+            if html:
+                break
+        except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
+            logger.warning("faculty_graph: render fetch failed for %s (attempt %d): %s",
+                           url, attempt, e)
     return BeautifulSoup(html, "html.parser") if html else None
 
 
