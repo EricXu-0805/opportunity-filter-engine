@@ -38,11 +38,14 @@ _REDACTED_FIELDS = frozenset({"contact_email", "pi_email"})
 # cache-hit, so projecting here is byte-for-byte what the UI consumes while
 # cutting response size (and Render egress) several-fold. The detail page
 # re-fetches the full object by id (/opportunities/{id}), so nothing is lost.
+# source_type drives MatchCard's faculty CTA (#218): without it every faculty
+# card renders a green "Apply Now" that dead-ends on the professor's bio page
+# instead of "Email Professor" + "View Faculty Page".
 _CARD_OPP_FIELDS = frozenset({
     "id", "title", "organization", "department", "opportunity_type", "paid",
     "deadline", "source", "on_campus", "posted_date", "location", "url",
     "duration", "compensation_details", "keywords", "lab_or_program", "pi_name",
-    "school", "audience", "description_clean",
+    "school", "audience", "description_clean", "source_type",
 })
 _CARD_ELIG_FIELDS = frozenset({"international_friendly", "skills_required", "skills_preferred"})
 _CARD_APP_FIELDS = frozenset({

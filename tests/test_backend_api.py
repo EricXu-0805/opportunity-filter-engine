@@ -2540,3 +2540,15 @@ class TestResponsePayloadTrim:
             assert "description_raw" in opp
         if target.get("metadata"):
             assert "metadata" in opp
+
+    def test_faculty_card_keeps_source_type(self):
+        """MatchCard keys the faculty CTA off source_type (#218): a faculty card
+        without it renders a green "Apply Now" that dead-ends on the professor's
+        bio page. The trim projection must never drop it (regressed in #368)."""
+        from backend.routes.matches import _match_card
+
+        card = _match_card({
+            "id": "faculty-x-1", "title": "Research with Prof. X — ECE (ml)",
+            "source_type": "faculty_research", "url": "https://ece.example.edu/x",
+        })
+        assert card["source_type"] == "faculty_research"
