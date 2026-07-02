@@ -192,7 +192,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
         dl_str = f" · due {m.deadline}" if m.deadline else ""
         safe = _safe_url(m.url)
         title_html = (
-            f'<a href="{_html_escape(safe)}" style="color:#2563eb;text-decoration:none">{_html_escape(m.title)}</a>'
+            f'<a href="{_html_escape(safe)}" style="color:#4f46e5;text-decoration:none">{_html_escape(m.title)}</a>'
             if safe else
             f'<span style="color:#111827">{_html_escape(m.title)}</span>'
         )
@@ -266,7 +266,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
             )
         safe = _safe_url(f.url)
         title_html = (
-            f'<a href="{_html_escape(safe)}" style="color:#2563eb;text-decoration:none">{_html_escape(f.title)}</a>'
+            f'<a href="{_html_escape(safe)}" style="color:#4f46e5;text-decoration:none">{_html_escape(f.title)}</a>'
             if safe else
             f'<span style="color:#111827">{_html_escape(f.title)}</span>'
         )
@@ -394,7 +394,7 @@ async def restore_link(req: RestoreLinkRequest):
     favorites, and application notes. The link works for {RESTORE_TOKEN_TTL_HOURS // 24} days.
   </p>
   <p style="text-align:center;margin:28px 0">
-    <a href="{_html_escape(url)}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600">Open my session</a>
+    <a href="{_html_escape(url)}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600">Open my session</a>
   </p>
   <p style="color:#9ca3af;font-size:12px;margin-top:20px">
     Didn't ask for this? You can safely ignore this email — no account was created.

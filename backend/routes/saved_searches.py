@@ -117,7 +117,7 @@ def _render_digest_email(
         rows_html.append(
             f'<tr><td style="padding:14px 0;border-bottom:1px solid #eee">'
             f'<div style="font-size:15px;font-weight:600;margin:4px 0">'
-            f'<a href="{_html_escape(detail_url)}" style="color:#2563eb;text-decoration:none">{_html_escape(title)}</a>'
+            f'<a href="{_html_escape(detail_url)}" style="color:#4f46e5;text-decoration:none">{_html_escape(title)}</a>'
             f'</div>'
             f'<div style="font-size:12px;color:#9ca3af">{_html_escape(org)}{_html_escape(dl_str)}</div>'
             f'</td></tr>'
@@ -386,7 +386,7 @@ _UNSUB_CONFIRMATION_HTML = f"""<!doctype html><html><head><meta charset="utf-8">
   <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px">
     已退订 — 该保存搜索不会再发送每周摘要邮件，可随时在「我的收藏」中重新开启。
   </p>
-  <a href="{FRONTEND_BASE}/favorites" style="color:#2563eb;font-size:14px;text-decoration:none">JoinALab →</a>
+  <a href="{FRONTEND_BASE}/favorites" style="color:#4f46e5;font-size:14px;text-decoration:none">JoinALab →</a>
 </div>
 </body></html>"""
 
