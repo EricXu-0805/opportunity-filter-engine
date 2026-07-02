@@ -192,7 +192,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
         dl_str = f" · due {m.deadline}" if m.deadline else ""
         safe = _safe_url(m.url)
         title_html = (
-            f'<a href="{_html_escape(safe)}" style="color:#2563eb;text-decoration:none">{_html_escape(m.title)}</a>'
+            f'<a href="{_html_escape(safe)}" style="color:#4f46e5;text-decoration:none">{_html_escape(m.title)}</a>'
             if safe else
             f'<span style="color:#111827">{_html_escape(m.title)}</span>'
         )
@@ -213,11 +213,13 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
         )
 
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white;padding:32px 24px">
-  <tr><td>
-    <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.5px">JoinALab</div>
-    <h1 style="font-size:24px;margin:20px 0 8px;color:#111827">{_html_escape(title_line)}</h1>
-    <p style="color:#6b7280;font-size:14px;margin:0 0 20px">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
+  <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td style="padding:32px 28px">
+    <div style="font-size:22px;font-weight:700;color:#4f46e5;letter-spacing:-0.5px">JoinALab</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
+    <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{_html_escape(title_line)}</h1>
+    <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
       Here {'is' if len(items) == 1 else 'are'} {len(items)} opportunit{'y' if len(items) == 1 else 'ies'} we surfaced for you.
       Links take you directly to the application page.
     </p>
@@ -225,7 +227,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
       {''.join(rows_html)}
     </table>
     <p style="margin-top:28px;color:#9ca3af;font-size:11px">
-      Sent from JoinALab · <a href="{FRONTEND_BASE}" style="color:#9ca3af">{FRONTEND_BASE}</a>
+      You asked JoinALab to email you these matches · <a href="{FRONTEND_BASE}" style="color:#4f46e5">{FRONTEND_BASE}</a>
     </p>
   </td></tr>
 </table>
@@ -266,7 +268,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
             )
         safe = _safe_url(f.url)
         title_html = (
-            f'<a href="{_html_escape(safe)}" style="color:#2563eb;text-decoration:none">{_html_escape(f.title)}</a>'
+            f'<a href="{_html_escape(safe)}" style="color:#4f46e5;text-decoration:none">{_html_escape(f.title)}</a>'
             if safe else
             f'<span style="color:#111827">{_html_escape(f.title)}</span>'
         )
@@ -394,7 +396,7 @@ async def restore_link(req: RestoreLinkRequest):
     favorites, and application notes. The link works for {RESTORE_TOKEN_TTL_HOURS // 24} days.
   </p>
   <p style="text-align:center;margin:28px 0">
-    <a href="{_html_escape(url)}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600">Open my session</a>
+    <a href="{_html_escape(url)}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600">Open my session</a>
   </p>
   <p style="color:#9ca3af;font-size:12px;margin-top:20px">
     Didn't ask for this? You can safely ignore this email — no account was created.
