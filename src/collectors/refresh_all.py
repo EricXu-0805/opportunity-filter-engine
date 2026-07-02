@@ -26,6 +26,8 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
+from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
+from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.ucla_faculty import fetch_and_normalize as fetch_ucla_faculty
@@ -548,6 +550,10 @@ def refresh_all(deep: bool = True) -> dict:
             # UCLA faculty (WordPress-REST via faculty_graph): Chemistry,
             # MCDB (taxonomy keywords) + Psychology (per-profile rank/area).
             ("ucla_faculty", fetch_ucla_faculty, merge_ucla_faculty),
+            # Princeton faculty (via faculty_graph): Mathematics (central-Drupal
+            # person-card grid, ladder-filtered). Most Princeton dept subdomains
+            # are Cloudflare-walled, so coverage grows as reachable dirs are found.
+            ("princeton_faculty", fetch_princeton_faculty, merge_princeton_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

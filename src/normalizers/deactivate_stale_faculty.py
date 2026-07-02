@@ -98,6 +98,8 @@ FACULTY_SOURCES = frozenset({
     "wisc_faculty",
     # UCLA — WordPress-REST faculty (single source across depts).
     "ucla_faculty",
+    # Princeton — live-scraped faculty (central-Drupal person-card grid).
+    "princeton_faculty",
 })
 
 GRACE_DAYS = 14
