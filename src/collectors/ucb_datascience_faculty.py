@@ -36,7 +36,6 @@ from bs4 import BeautifulSoup
 from . import ucb_common
 from .ucb_common import (
     clean_name,
-    dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
 )
@@ -77,11 +76,12 @@ _NON_NAME_WORDS = re.compile(
 )
 
 
-def _scrape_headings(soup: BeautifulSoup, base: str) -> list[dict]:
+def _scrape_headings(soup: BeautifulSoup, base: str, page_url: str = "") -> list[dict]:
     """Parse a CDSS unit page whose faculty are name headings (h2/h3/h4), each
     followed by a role/department line and a profile link. Best-effort: the
-    role line becomes the title, the first profile-ish link becomes the URL,
-    and email is left empty (these directories expose no mailto)."""
+    role line becomes the title, the first profile-ish link becomes the URL
+    (falling back to the directory page when a person has no own link), and
+    email is left empty (these directories expose no mailto)."""
     out: list[dict] = []
     for h in soup.find_all(["h2", "h3", "h4"]):
         raw = h.get_text(" ", strip=True)
@@ -112,7 +112,12 @@ def _scrape_headings(soup: BeautifulSoup, base: str) -> list[dict]:
                     break
         out.append({
             "name": name,
+            # Real per-person profile link (may be ""); the directory-page
+            # fallback is applied later in fetch_and_normalize so it is never
+            # used as a dedup key (else every link-less person would collapse
+            # onto the one shared directory URL).
             "url": url,
+            "_page": page_url or base,
             "email": "",
             "title": title[:80],
             "research_areas": "",
@@ -167,12 +172,25 @@ def fetch_and_normalize(enrich: bool = True) -> list[dict]:
         if not soup:
             logger.warning("CDSS: directory fetch failed for %s", url)
             continue
-        rows = _scrape_headings(soup, base)
+        rows = _scrape_headings(soup, base, page_url=url)
         logger.info("  %d faculty headings from %s", len(rows), url)
         raw.extend(rows)
-    raw = _drop_already_covered(dedup_by_profile_url(raw))
+    # Dedup by name (not profile URL): many CDSS faculty have no individual
+    # link, so URL-dedup would be unreliable here.
+    seen: set[str] = set()
+    deduped: list[dict] = []
+    for r in raw:
+        key = r["name"].strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(r)
+    raw = _drop_already_covered(deduped)
     if not raw:
         return []
+    # Apply the directory-page URL fallback now (after dedup) so every record
+    # has a resolvable url without link-less people colliding during dedup.
+    for r in raw:
+        r["url"] = r.get("url") or r.get("_page") or CDSS_CONFIG["url"]
     normalized = [n for n in (normalize_faculty(p, CDSS_CONFIG) for p in raw) if n]
     logger.info("Normalized %d CDSS/Data Science faculty opportunities", len(normalized))
     return normalized
