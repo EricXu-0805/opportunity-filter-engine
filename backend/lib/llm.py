@@ -225,7 +225,10 @@ def chat_completion(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
-    if effective_model.startswith("gemini-"):
+    # Gemini needs reasoning_effort in extra_body whether it's reached directly
+    # ("gemini-2.5-flash") or via OpenRouter ("google/gemini-2.0-flash-lite-001",
+    # incl. the Ask-AI picker default and the chain's OpenRouter default).
+    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
         call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
 
     last_error: Optional[Exception] = None
