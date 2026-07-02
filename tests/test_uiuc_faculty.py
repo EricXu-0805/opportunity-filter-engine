@@ -321,6 +321,19 @@ def test_carry_forward_lets_richer_rescrape_win():
     assert incoming["keywords"] == ["quantum optics", "laser cooling", "bose-einstein condensates"]
 
 
+def test_is_junk_keyword_flags_journal_venues():
+    for k in ["ieee transactions on image processing", "acta astronautica",
+              "science advances", 'reviewer for "physical review letters"',
+              "ieee robotics and automation letters"]:
+        assert _is_junk_keyword(k), f"{k!r} is a venue, not a research area"
+
+
+def test_is_junk_keyword_keeps_topical_areas():
+    for k in ["machine learning", "computer vision", "quantum optics",
+              "materials science", "control theory"]:
+        assert not _is_junk_keyword(k), f"{k!r} is a real research area"
+
+
 # DQ-2: recover real keywords from research_areas_raw for broad-only faculty.
 
 def test_clean_research_phrase_keeps_topical():

@@ -196,6 +196,17 @@ class TestScrapeLayer:
         assert p["email"] == "ada@uw.edu"  # mailto: + ?subject stripped
         assert "Machine learning" in p["research_areas"]
 
+    def test_title_label_prefix_stripped_from_description(self):
+        """A card whose rank field carries its scraped label ("Position title:
+        Professor …") must not leak the label into the title or description."""
+        dept = SCHOOL["departments"][0]
+        person = {"name": "Henry Bunn", "url": "https://x.edu/p/bunn",
+                  "title": "Position title: Glynn LL Isaac Professor"}
+        opp = fg._normalize(SCHOOL, dept, person)
+        assert opp is not None
+        assert "Position title:" not in opp["description_clean"]
+        assert "Glynn LL Isaac Professor" in opp["description_clean"]
+
     def test_link_filter_drops_nonperson_cards(self, monkeypatch):
         """Some directory pages (e.g. Stanford English /people/faculty) mix
         person cards with featured-publication cards in the same markup; the
