@@ -119,7 +119,12 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.mint_merge_grant(text) FROM PUBLIC;
+-- Supabase's default privileges grant EXECUTE on new public functions to
+-- anon/authenticated/service_role, so REVOKE FROM PUBLIC alone leaves the anon
+-- role able to call this. Revoke anon explicitly: only a signed-in
+-- (authenticated) session should ever mint. (The body also null-guards
+-- auth.uid(), so an anon call would fail anyway — this is defense in depth.)
+REVOKE ALL ON FUNCTION public.mint_merge_grant(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.mint_merge_grant(text) TO authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -306,5 +311,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.redeem_merge_grant(uuid) FROM PUBLIC;
+-- Same as mint: revoke the default anon grant; only an authenticated (post
+-- sign-in) session redeems. Body also null-guards auth.uid().
+REVOKE ALL ON FUNCTION public.redeem_merge_grant(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.redeem_merge_grant(uuid) TO authenticated;
