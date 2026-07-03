@@ -373,6 +373,10 @@ export async function signInExistingEmail(
       message: 'Please enter a valid email address.',
     };
   }
+  // Flow B: capture this anon session's data (bound to the target email)
+  // before the redirect so it can be merged into the account on callback.
+  await mintMergeGrant(cleaned);
+
   const { error } = await supabase.auth.signInWithOtp({
     email: cleaned,
     options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
@@ -382,6 +386,92 @@ export async function signInExistingEmail(
     ok: true,
     mode: 'sign-in',
     message: `Check ${cleaned} for your sign-in link.`,
+  };
+}
+
+// =====================================================================
+// R65 P1 Flow B: cross-device anonymous-data merge (migration 017).
+// =====================================================================
+//
+// When a device built its OWN data while still anonymous and then signs
+// into an EXISTING account (the signInExisting* paths below), that data
+// lives under the throwaway anon uid and is invisible under RLS to the
+// permanent account. `mintMergeGrant` runs on the still-anon session just
+// before the sign-in redirect and stashes a single-use, 15-minute,
+// (optionally) email-bound grant token; `redeemPendingMerge` runs once on
+// /auth/callback after sign-in and merges the source rows into the now-
+// permanent account (SECURITY DEFINER functions do the actual cross-uid
+// move — see 017_cross_device_merge.sql for the takeover-proof model).
+
+export interface MergeSummary {
+  merged: boolean;
+  favorites: number;
+  interactions: number;
+  savedSearches: number;
+  attachmentsNotMoved: number;
+}
+
+function asCount(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * Mint a merge grant for the CURRENT (anonymous) session, to be redeemed
+ * after signing into an existing account. `targetEmail` binds the grant to
+ * the account being signed into (email path); pass null when it isn't known
+ * yet (OAuth, resolved only after provider consent).
+ *
+ * Best-effort and MUST NOT throw: minting is a nice-to-have on top of
+ * sign-in, so any failure (RPC error, offline, private-mode storage) is
+ * swallowed and the sign-in proceeds without a merge. We mint
+ * unconditionally rather than gating on a data inventory — one RPC is
+ * cheaper than the four count-queries an inventory read costs, and the
+ * redeem side no-ops cheaply when there's nothing (or nothing new) to move.
+ */
+async function mintMergeGrant(targetEmail: string | null): Promise<void> {
+  if (!SUPABASE_CONFIGURED || typeof window === 'undefined') return;
+  try {
+    const { data, error } = await supabase.rpc('mint_merge_grant', {
+      p_target_email: targetEmail,
+    });
+    if (error || typeof data !== 'string') {
+      if (error) console.warn('[ofe] merge mint skipped:', error.message);
+      return;
+    }
+    try { localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, data); } catch { /* private mode */ }
+  } catch (e) {
+    console.warn('[ofe] merge mint error:', e);
+  }
+}
+
+/**
+ * Redeem a pending merge grant (if any) after sign-in. Safe to call
+ * unconditionally: returns null when there's no token. One-shot — the token
+ * is cleared before the RPC so a re-land on /auth/callback can't double-run.
+ */
+export async function redeemPendingMerge(): Promise<MergeSummary | null> {
+  if (!SUPABASE_CONFIGURED || typeof window === 'undefined') return null;
+  let token: string | null = null;
+  try { token = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT); } catch { return null; }
+  if (!token) return null;
+  try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
+
+  const { data, error } = await supabase.rpc('redeem_merge_grant', { p_token: token });
+  if (error) {
+    // Expired / already-used / not-bound are expected, non-fatal outcomes:
+    // the sign-in still succeeded, we just don't show a merge line.
+    console.warn('[ofe] merge redeem skipped:', error.message);
+    return null;
+  }
+  const res = data as { merged?: boolean; summary?: Record<string, unknown> } | null;
+  if (!res?.merged) return { merged: false, favorites: 0, interactions: 0, savedSearches: 0, attachmentsNotMoved: 0 };
+  const s = res.summary ?? {};
+  return {
+    merged: true,
+    favorites: asCount(s.favorites),
+    interactions: asCount(s.interactions),
+    savedSearches: asCount(s.saved_searches),
+    attachmentsNotMoved: asCount(s.attachments_not_moved),
   };
 }
 
@@ -495,6 +585,10 @@ export async function signInExistingOAuth(
       message: 'Sign-in is unavailable: Supabase is not configured.',
     };
   }
+  // Flow B: mint before the redirect (email unknown until after provider
+  // consent, so the grant is unbound and relies on TTL + single-use).
+  await mintMergeGrant(null);
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options: oauthOptions(provider, redirectTo),

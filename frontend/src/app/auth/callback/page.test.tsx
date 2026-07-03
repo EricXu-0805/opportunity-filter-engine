@@ -15,6 +15,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 const mockGetAuthState = vi.fn();
 const mockGetDataInventory = vi.fn();
+const mockRedeemMerge = vi.fn();
 const mockExchangeCodeForSession = vi.fn();
 const mockVerifyOtp = vi.fn();
 const mockOAuthExisting = vi.fn();
@@ -24,6 +25,7 @@ const searchRef = { current: '?code=stub-code' };
 vi.mock('@/lib/supabase', () => ({
   getAuthState: () => mockGetAuthState(),
   getDataInventory: () => mockGetDataInventory(),
+  redeemPendingMerge: () => mockRedeemMerge(),
   signInExistingOAuth: (provider: string, redirect: string) => mockOAuthExisting(provider, redirect),
   supabase: {
     auth: {
@@ -79,6 +81,7 @@ beforeEach(() => {
   cachedParamsKey = null;
   sessionStorage.clear();
   mockGetDataInventory.mockResolvedValue(null);
+  mockRedeemMerge.mockResolvedValue(null);
 });
 
 describe('CallbackPage — R68 idempotency guard', () => {
@@ -155,6 +158,49 @@ describe('CallbackPage — R68 idempotency guard', () => {
     });
     // We did try the exchange — only the post-check rescued us.
     expect(mockExchangeCodeForSession).toHaveBeenCalled();
+  });
+
+  it('renders the Flow B merge line when a pending merge moved data', async () => {
+    mockGetAuthState.mockResolvedValue({
+      session: { user: { id: 'p' } },
+      user: { id: 'p' },
+      isAnonymous: false,
+      email: 'eric@illinois.edu',
+    });
+    mockRedeemMerge.mockResolvedValue({
+      merged: true,
+      favorites: 2,
+      interactions: 1,
+      savedSearches: 0,
+      attachmentsNotMoved: 1,
+    });
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('callback-merge-line')).toBeInTheDocument();
+    });
+    // prefix + the two non-zero counts + the attachments caveat
+    expect(screen.getByTestId('callback-merge-line').textContent).toContain('auth.callback.mergePrefix');
+    expect(screen.getByTestId('callback-merge-line').textContent).toContain('auth.callback.invFavorites:2');
+    expect(screen.getByTestId('callback-merge-line').textContent).toContain('auth.callback.mergeAttachmentsCaveat:1');
+  });
+
+  it('shows NO merge line when there was no pending merge', async () => {
+    mockGetAuthState.mockResolvedValue({
+      session: { user: { id: 'p' } },
+      user: { id: 'p' },
+      isAnonymous: false,
+      email: 'eric@illinois.edu',
+    });
+    mockRedeemMerge.mockResolvedValue(null);
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('callback-merge-line')).not.toBeInTheDocument();
   });
 
   it('shows the error page when exchange fails AND no session is established', async () => {
