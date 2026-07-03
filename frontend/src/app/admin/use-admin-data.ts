@@ -96,23 +96,22 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   }, []);
 
   useEffect(() => {
-    const queryToken = searchParams.get('token');
-    let resolved: string | null = null;
-    if (queryToken) {
-      resolved = queryToken;
-      try { sessionStorage.setItem(SESSION_KEY, queryToken); } catch { /* private mode */ }
+    // Never authenticate from the URL: a ?token= there lands in the server
+    // access log, the Referer header, and browser history. If one is present
+    // (e.g. an old bookmark) strip it from the address bar and ignore it —
+    // the operator re-enters the token via the form, persisted per tab in
+    // sessionStorage.
+    if (searchParams.get('token')) {
       const url = new URL(window.location.href);
       url.searchParams.delete('token');
       window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''));
-    } else {
-      try { resolved = sessionStorage.getItem(SESSION_KEY); } catch { resolved = null; }
     }
+    let resolved: string | null = null;
+    try { resolved = sessionStorage.getItem(SESSION_KEY); } catch { resolved = null; }
     if (resolved) {
       /* eslint-disable react-hooks/set-state-in-effect --
          Auth token resolution must finish in one effect tick so the
-         token-entry form is replaced atomically by the dashboard.
-         The history.replaceState above strips ?token= from the URL,
-         which is a side effect of the same one-shot mount handler. */
+         token-entry form is replaced atomically by the dashboard. */
       setToken(resolved);
       setTokenInput(resolved);
       /* eslint-enable react-hooks/set-state-in-effect */
