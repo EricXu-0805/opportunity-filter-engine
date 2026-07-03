@@ -181,6 +181,10 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   umich_external_research: 'results.filters.sourceUmichExternalResearch',
   umich_labs: 'results.filters.sourceUmichLabs',
   umich_faculty: 'results.filters.sourceUmichFaculty',
+  ucsd_research_programs: 'results.filters.sourceUcsdResearchPrograms',
+  ucsd_external_research: 'results.filters.sourceUcsdExternalResearch',
+  ucsd_labs: 'results.filters.sourceUcsdLabs',
+  ucsd_faculty: 'results.filters.sourceUcsdFaculty',
 };
 
 export function sourceLabel(source: string, t: TFunc): string {

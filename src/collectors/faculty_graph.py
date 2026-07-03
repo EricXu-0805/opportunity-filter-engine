@@ -261,7 +261,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
 
     short = dept["short"]
     dept_name = dept["name"]
-    profile_url = person.get("url", "")
+    # Some authoritative feeds (e.g. UCSD Physics' profile API) carry no
+    # per-person page; point at the directory the person is listed on rather
+    # than ship a record with no destination (the integrity gate requires url).
+    profile_url = person.get("url", "") or dept.get("directory_url", "")
     email = person.get("email") or None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
@@ -1430,6 +1433,9 @@ def _listing_urls(school: dict) -> set[str]:
     """
     urls: set[str] = set()
     for dept in school.get("departments", []):
+        v = (dept.get("directory_url") or "").strip().lower()
+        if v:
+            urls.add(v)
         for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):

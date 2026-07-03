@@ -113,10 +113,11 @@ describe('registry — switcher metadata', () => {
     expect(bySlug('utexas')?.coverage.campusOpportunities).toBe(2351);
     expect(bySlug('wisc')?.coverage.campusOpportunities).toBe(1781);
     expect(bySlug('ucla')?.coverage.campusOpportunities).toBe(2033);
-    // All ten registered schools now have a live campus collector.
+    expect(bySlug('ucsd')?.coverage.campusOpportunities).toBe(635);
+    // All eleven registered schools now have a live campus collector.
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending).toEqual([]);
-    expect(SCHOOLS.length).toBe(10);
+    expect(SCHOOLS.length).toBe(11);
   });
 
   it('slugs are unique', () => {
