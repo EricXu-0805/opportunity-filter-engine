@@ -147,6 +147,47 @@ def test_derive_keywords_skips_already_specific():
     assert _derive_keywords_from_raw([opp]) == 0  # already has specific keywords
 
 
+class TestMergeCarriesForwardEnrichment:
+    def test_broad_rescrape_does_not_clobber_prior_enrichment(self, tmp_path, monkeypatch):
+        """merge_into_processed must carry richer prior keywords forward, or a
+        fresh broad dept re-scrape silently wipes enrichment (the guard the
+        UIUC/faculty_graph paths already had; ucb_common lacked it)."""
+        import json as _json
+
+        from src.collectors import ucb_common as uc
+
+        pf = tmp_path / "opportunities.json"
+        enriched = {
+            "id": "ucb-enrich-1",
+            "source": "ucb_mcb_faculty",
+            "source_type": "faculty_research",
+            "pi_name": "Jane Roe",
+            "department": "Molecular & Cell Biology",
+            "keywords": ["genomics", "genetics", "evolution"],
+            "title": "Research with Prof. Jane Roe — MCB (genomics)",
+            "contact_email": None,
+            "metadata": {"first_seen_at": "2026-01-01T00:00:00Z", "research_areas_raw": ""},
+        }
+        pf.write_text(_json.dumps([enriched]))
+        monkeypatch.setattr(uc, "PROCESSED_FILE", pf)
+
+        broad_rescrape = {
+            "id": "ucb-enrich-1",
+            "source": "ucb_mcb_faculty",
+            "source_type": "faculty_research",
+            "pi_name": "Jane Roe",
+            "department": "Molecular & Cell Biology",
+            "keywords": ["biology"],  # dept-label-only re-scrape
+            "title": "Research with Prof. Jane Roe — MCB",
+            "contact_email": None,
+            "metadata": {"first_seen_at": "2026-06-01T00:00:00Z", "research_areas_raw": ""},
+        }
+        uc.merge_into_processed([broad_rescrape])
+
+        saved = {o["id"]: o for o in _json.loads(pf.read_text())}["ucb-enrich-1"]
+        assert saved["keywords"] == ["genomics", "genetics", "evolution"]
+
+
 def test_incommon_ca_bundle_appends_intermediates_to_certifi():
     """The CA bundle fetch_soup uses must include certifi's roots AND the bundled
     InCommon intermediates, so an incomplete-chain .edu host verifies without
