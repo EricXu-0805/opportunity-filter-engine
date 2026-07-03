@@ -478,23 +478,6 @@ export async function sendFavoritesEmail(
   });
 }
 
-export async function sendRestoreLink(
-  email: string,
-  deviceId: string,
-): Promise<{ ok: boolean; note?: string }> {
-  return request('/email/restore-link', {
-    method: 'POST',
-    body: JSON.stringify({ email, device_id: deviceId }),
-  });
-}
-
-export async function verifyRestoreLink(
-  params: { d: string; t: string; s: string },
-): Promise<{ ok: boolean; device_id: string }> {
-  const qs = new URLSearchParams(params).toString();
-  return request(`/email/verify-restore?${qs}`);
-}
-
 export interface ImportedOpportunity {
   source: string;
   source_url: string;

@@ -84,6 +84,29 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: /api
 
+  migrations:
+    name: Migrations (Flow B merge)
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Ensure PostgreSQL tools on PATH
+        run: |
+          PGBIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$PGBIN" ] || [ ! -x "$PGBIN/initdb" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql
+            PGBIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)"
+          fi
+          echo "$PGBIN" >> "$GITHUB_PATH"
+
+      # Spins an ephemeral cluster (non-root runner → initdb is happy), loads
+      # the effective prod schema + migration 017, runs the merge/security
+      # assertions. Guards the only data-loss surface against schema drift.
+      - name: Flow B merge test (ephemeral Postgres)
+        run: bash supabase/tests/run_flow_b_test.sh
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest

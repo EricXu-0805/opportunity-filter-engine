@@ -625,6 +625,40 @@ def _strip_nav_furniture(text: str) -> str:
     return re.sub(r"\s{2,}", " ", text).strip(" ;,")
 
 
+# Site chrome that leaks into a page-text excerpt when a scrape grabs the whole
+# <body>: skip-links, the nav toggle, the mobile menu open/close controls, the
+# search box. Not content — rendered raw after "From the program page:" it reads
+# as a broken scrape and pollutes any text signal built from the description.
+_PAGE_CHROME_RE = re.compile(
+    r"\bskip to (?:main )?content\b|\btoggle navigation\b|"
+    r"\b(?:expand|collapse) main menu\b|\bclose menu\b|\bmain menu\b|"
+    r"\bsubmit search\b|\bsearch terms\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_page_chrome(text: str) -> str:
+    """Remove skip-link / nav-toggle / menu chrome phrases from excerpt text."""
+    if not text:
+        return text
+    return re.sub(r"\s{2,}", " ", _PAGE_CHROME_RE.sub(" ", text)).strip(" ;,|")
+
+
+def _readable_excerpt(soup, limit: int = 400) -> str:
+    """A short page-text excerpt with nav/header/footer chrome excluded, for the
+    "From the program page:" supplement. Prefers a semantic main-content
+    landmark (so the whole menu block is structurally skipped); when a page has
+    none, its full text is chrome-heavy, so we return "" rather than ship a nav
+    dump. Non-mutating — the caller's soup keeps its nav links for crawling."""
+    main = soup.find("main") or soup.find(attrs={"role": "main"}) or soup.find("article")
+    if main is not None:
+        return _strip_page_chrome(main.get_text(" ", strip=True))[:limit]
+    text = soup.get_text(" ", strip=True)
+    if _PAGE_CHROME_RE.search(text):
+        return ""
+    return _strip_page_chrome(text)[:limit]
+
+
 # Funding-signal detection. Faculty directories almost never state compensation
 # (it's lab/grant-specific — the reason paid defaults to "unknown"). So we only
 # UPGRADE paid when the scraped text carries explicit funding language, and
@@ -961,13 +995,22 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     new_opps, dropped = drop_joint_appointment_duplicates(new_opps, existing)
     if dropped:
         logger.info(f"Dropped {dropped} joint-appointment duplicate(s) before merge")
+    from .uiuc_faculty import _carry_forward_enrichment
+
     index = {opp.get("id"): opp for opp in existing if opp.get("id")}
     added = updated = 0
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            cur = index[opp["id"]]
+            opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
-            index[opp["id"]].update(opp)
+            # Carry richer prior enrichment (keywords/title/description) forward
+            # before the wholesale .update(), or a fresh broad re-scrape silently
+            # clobbers it — the same guard the UIUC/faculty_graph merge paths use.
+            # UCB isn't OpenAlex-enriched today, so this is latent, but it closes
+            # the trap before Berkeley enrichment or a manual keyword edit lands.
+            _carry_forward_enrichment(cur, opp)
+            cur.update(opp)
             updated += 1
         else:
             existing.append(opp)

@@ -1213,7 +1213,10 @@ _RESEARCH_AREA_NAV_NOISE = re.compile(
     r"research programs?|related research|field research|colloqui",
     re.IGNORECASE,
 )
-_COURSE_CODE_RE = re.compile(r"\b[A-Za-z]{2,4}\s?\d{3}\b")
+# "CS 591", "ECE 220" — a dept code + number. Exempt "ieee" so an IEEE
+# standard/protocol research area ("IEEE 802.11", "IEEE 754") isn't mistaken
+# for a course listing (IEEE is a standards body, never a course department).
+_COURSE_CODE_RE = re.compile(r"\b(?!ieee\b)[A-Za-z]{2,4}\s?\d{3}\b", re.IGNORECASE)
 # Phrases opening with a conjunction/preposition/pronoun are sentence fragments,
 # not topics (e.g. "and freight applications", "including best practices").
 _LEADING_NONTOPICAL_RE = re.compile(
@@ -1315,7 +1318,10 @@ _CONTACT_INFO_RE = re.compile(
 # journal grammar) so it never touches topical keywords: word-tested against the
 # full corpus, it flags 10 venue keywords and 0 research areas.
 _JOURNAL_VENUE_RE = re.compile(
-    r"\bieee\b"
+    # IEEE only as a publication venue ("IEEE Transactions/Access/Spectrum/…"),
+    # NOT bare "ieee" — that ate protocol/standard research areas like
+    # "IEEE 802.11 wireless networks" and "IEEE standards".
+    r"\bieee\s+(?:transactions|access|journal|spectrum|proceedings|communications|magazine|letters)\b"
     r"|\btransactions on\b"
     r"|\bacta\s+\w+"
     r"|\barxiv\b"
