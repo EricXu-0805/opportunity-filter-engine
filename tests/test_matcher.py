@@ -1015,6 +1015,18 @@ class TestDesiredFieldOverlap:
         assert _desired_field_overlap({"systems"}, ["distributed systems"]) == set()
         assert _desired_field_overlap({"science"}, ["computer science"]) == set()
 
+    def test_low_signal_opp_keyword_cannot_blanket_credit_specific_chip(self):
+        # Reverse direction: a faculty whose ONLY keyword is a broad dept token
+        # must not credit a specific student chip that contains it as a word.
+        from src.matcher.ranker import _desired_field_overlap
+        assert _desired_field_overlap({"chemical engineering"}, ["engineering"]) == set()
+        assert _desired_field_overlap({"computer science"}, ["science"]) == set()
+        assert _desired_field_overlap({"distributed systems"}, ["systems"]) == set()
+        assert _desired_field_overlap({"data mining"}, ["data"]) == set()
+        # ...but a DISTINCTIVE shorter keyword (not low-signal) still credits.
+        assert _desired_field_overlap({"quantum physics"}, ["physics"]) == {"quantum physics"}
+        assert _desired_field_overlap({"molecular biology"}, ["biology"]) == {"molecular biology"}
+
     def test_exact_and_word_boundary(self):
         from src.matcher.ranker import _desired_field_overlap
         assert _desired_field_overlap({"robotics"}, ["robotics"]) == {"robotics"}
