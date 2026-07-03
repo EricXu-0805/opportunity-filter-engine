@@ -39,6 +39,8 @@ from urllib.parse import urljoin, urlsplit
 
 from src.normalizers.ucb_dedup import dedupe_against_existing
 
+from .ucb_common import _readable_excerpt
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -355,7 +357,9 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict]]:
         if soup is None:
             continue
         page_text = soup.get_text(" ", strip=True)
-        status_by_url[url] = {"status": _detect_status(page_text), "excerpt": page_text[:400]}
+        # Status reads the whole page; the excerpt uses chrome-excluded main
+        # content so nav/menu furniture never lands in the shown description.
+        status_by_url[url] = {"status": _detect_status(page_text), "excerpt": _readable_excerpt(soup)}
         if not recursive or depth >= depth_limit:
             continue
         scored: list[tuple[int, str, str]] = []
