@@ -1,6 +1,6 @@
 """
-Email endpoints — lets users save match results, favorites, and restore
-their profile to a new device without creating an account.
+Email endpoints — lets users email themselves their match results or
+favorites without creating an account.
 
 Resend is the delivery backend (100 emails/day free tier). Set
 RESEND_API_KEY + RESEND_FROM_EMAIL env vars to enable. When keys are
@@ -11,8 +11,6 @@ Rate-limit: 3 emails per IP per hour (enforced in backend/main.py).
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import logging
 import os
 import re
@@ -41,7 +39,6 @@ FRONTEND_BASE = os.environ.get(
 ).rstrip("/")
 
 MAX_ITEMS_PER_EMAIL = 50
-RESTORE_TOKEN_TTL_HOURS = 24 * 30
 
 # SEC-3: the IP rate limit (3/hr, keyed on client IP in main.py) does not stop an
 # attacker rotating or spoofing IPs from bombing ONE victim address with mail from
@@ -113,16 +110,6 @@ class FavoriteItem(BaseModel):
 class SendFavoritesRequest(BaseModel):
     email: str
     items: list[FavoriteItem] = Field(..., max_length=MAX_ITEMS_PER_EMAIL)
-
-    @field_validator("email")
-    @classmethod
-    def _email(cls, v: str) -> str:
-        return _validate_email(v)
-
-
-class RestoreLinkRequest(BaseModel):
-    email: str
-    device_id: str = Field(..., min_length=4, max_length=128)
 
     @field_validator("email")
     @classmethod
@@ -311,30 +298,10 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
 
 
 def _restore_signing_secret() -> str:
+    # Legacy env-var name; now the shared secret for signing saved-search
+    # digest unsubscribe links (see saved_searches.py). The profile-restore
+    # feature it was named for was removed as inert dead code.
     return os.environ.get("RESTORE_LINK_SECRET", "").strip()
-
-
-def _sign_restore_payload(device_id: str, ts: int) -> str:
-    """HMAC-SHA256 over device_id|ts. Email is intentionally excluded
-    from the signed payload so the restore URL doesn't leak the user's
-    email address in the query string.
-    """
-    secret = _restore_signing_secret().encode()
-    if not secret:
-        return ""
-    msg = f"{device_id}|{ts}".encode()
-    digest = hmac.new(secret, msg, hashlib.sha256).digest()
-    return digest[:16].hex()
-
-
-def _build_restore_url(device_id: str) -> str | None:
-    if not _restore_signing_secret():
-        return None
-    ts = int(time.time())
-    sig = _sign_restore_payload(device_id, ts)
-    if not sig:
-        return None
-    return f"{FRONTEND_BASE}/restore?d={device_id}&t={ts}&s={sig}"
 
 
 @router.post("/email/send-matches")
@@ -367,71 +334,3 @@ async def send_favorites(req: SendFavoritesRequest):
     return {"ok": True, "count": len(req.items)}
 
 
-@router.post("/email/restore-link")
-async def restore_link(req: RestoreLinkRequest):
-    """Emails a signed URL that lets a user recover their profile on a
-    new device. Returns {ok: true} even when Resend is unconfigured so
-    the frontend doesn't leak configuration state — just logs a warning.
-    """
-    url = _build_restore_url(req.device_id)
-    if not url:
-        logger.warning("restore-link requested but RESTORE_LINK_SECRET unset")
-        return {"ok": True, "note": "disabled"}
-
-    _enforce_recipient_quota(req.email)
-
-    try:
-        api_key, from_addr = _resend_configured()
-    except HTTPException as e:
-        if e.status_code == 503:
-            return {"ok": True, "note": "email-disabled"}
-        raise
-
-    subject = "Your JoinALab restore link"
-    html = f"""<!doctype html><html><body style="font-family:sans-serif;padding:24px;background:#fafafa">
-<div style="max-width:500px;margin:0 auto;background:white;padding:32px;border-radius:12px">
-  <h1 style="font-size:20px;margin:0 0 12px">Restore your JoinALab session</h1>
-  <p style="color:#4b5563;font-size:14px;line-height:1.5">
-    Click the button below on any device to load your saved profile,
-    favorites, and application notes. The link works for {RESTORE_TOKEN_TTL_HOURS // 24} days.
-  </p>
-  <p style="text-align:center;margin:28px 0">
-    <a href="{_html_escape(url)}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600">Open my session</a>
-  </p>
-  <p style="color:#9ca3af;font-size:12px;margin-top:20px">
-    Didn't ask for this? You can safely ignore this email — no account was created.
-  </p>
-</div>
-</body></html>"""
-    text = (
-        f"Restore your JoinALab session:\n\n{url}\n\n"
-        f"The link works for {RESTORE_TOKEN_TTL_HOURS // 24} days. "
-        f"If you didn't request this, ignore the email.\n"
-    )
-    await _send_via_resend(
-        api_key=api_key, from_addr=from_addr, to=req.email,
-        subject=subject, html=html, text=text,
-    )
-    return {"ok": True}
-
-
-@router.get("/email/verify-restore")
-async def verify_restore(d: str, t: int, s: str):
-    """Verify the signed restore link. The frontend calls this when
-    the user clicks the email link; we respond with the validated
-    device_id so the app can load their profile.
-    """
-    if not re.match(r"^[a-zA-Z0-9_\-]{4,128}$", d):
-        raise HTTPException(status_code=400, detail="Invalid device_id")
-    secret = _restore_signing_secret()
-    if not secret:
-        raise HTTPException(status_code=503, detail="Restore disabled")
-
-    age_seconds = int(time.time()) - t
-    if age_seconds < 0 or age_seconds > RESTORE_TOKEN_TTL_HOURS * 3600:
-        raise HTTPException(status_code=400, detail="Link expired")
-
-    expected = _sign_restore_payload(d, t)
-    if not expected or not hmac.compare_digest(expected, s):
-        raise HTTPException(status_code=400, detail="Invalid signature")
-    return {"ok": True, "device_id": d}

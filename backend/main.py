@@ -62,7 +62,6 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/resume/github": (10, 60),
     "/api/email/send-matches": (3, 3600),
     "/api/email/send-favorites": (3, 3600),
-    "/api/email/restore-link": (3, 3600),
     "/api/import-url": (5, 60),
     "/api/import-text": (5, 60),
     # SEC-2: the opportunity chat endpoint issues a paid LLM completion per call
@@ -132,7 +131,6 @@ _EMAIL_SEND_PATHS = frozenset(
     {
         "/api/email/send-matches",
         "/api/email/send-favorites",
-        "/api/email/restore-link",
     }
 )
 

@@ -17,8 +17,6 @@ import {
   getUpcomingDeadlines,
   sendMatchesEmail,
   sendFavoritesEmail,
-  sendRestoreLink,
-  verifyRestoreLink,
   importByUrl,
   importByText,
   deriveDesiredFields,
@@ -392,24 +390,6 @@ describe('email endpoints', () => {
     fetchMock.mockResolvedValue(okJson({ ok: true, count: 0 }));
     await sendFavoritesEmail('alex@illinois.edu', []);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/email/send-favorites');
-  });
-
-  it('sendRestoreLink POSTs /email/restore-link with device_id', async () => {
-    fetchMock.mockResolvedValue(okJson({ ok: true }));
-    await sendRestoreLink('alex@illinois.edu', 'device-1');
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
-    const body = JSON.parse(init.body as string);
-    expect(body.device_id).toBe('device-1');
-  });
-
-  it('verifyRestoreLink encodes (d, t, s) as a query string', async () => {
-    fetchMock.mockResolvedValue(okJson({ ok: true, device_id: 'device-1' }));
-    await verifyRestoreLink({ d: 'device-1', t: 'abc', s: 'sig+pad' });
-    const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toContain('/api/email/verify-restore?');
-    expect(url).toContain('d=device-1');
-    expect(url).toContain('t=abc');
-    expect(url).toContain('s=sig%2Bpad');
   });
 });
 
