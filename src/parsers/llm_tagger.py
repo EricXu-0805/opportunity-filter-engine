@@ -220,7 +220,11 @@ def rule_based_tag(opp: dict) -> dict:
                 if s not in skills_found:
                     skills_found.append(s)
 
-    if skills_found:
+    # Faculty are cold-email research contacts, not postings with required
+    # skills. Inferring skills from research-topic prose is false-precise (a
+    # topology professor whose page says "finite element" becomes FEA-required)
+    # and degrades their match score, so faculty never get inferred skills.
+    if skills_found and opp.get("source_type") != "faculty_research":
         existing_req = opp.get("eligibility", {}).get("skills_required", [])
         existing_pref = opp.get("eligibility", {}).get("skills_preferred", [])
         if not existing_req and not existing_pref:

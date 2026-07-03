@@ -169,3 +169,36 @@ def test_incommon_ca_bundle_appends_intermediates_to_certifi():
     combined = Path(bundle).read_text()
     assert "InCommon RSA Server CA 2" in combined
     assert len(combined) > len(Path(certifi.where()).read_text())
+
+
+class TestReadableExcerptChrome:
+    def test_strip_page_chrome_removes_skip_and_toggle(self):
+        from src.collectors.ucb_common import _strip_page_chrome
+        out = _strip_page_chrome("Real content here Skip to main content Toggle navigation Home About")
+        assert "skip to" not in out.lower()
+        assert "toggle navigation" not in out.lower()
+        assert "Real content here" in out
+
+    def test_readable_excerpt_prefers_main_landmark(self):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.ucb_common import _readable_excerpt
+        html = (
+            "<html><body><nav>Home About People Faculty</nav>"
+            "<a href='#main'>Skip to main content</a>"
+            "<main>Undergraduate research in observational astrophysics.</main>"
+            "<footer>Instagram Linkedin</footer></body></html>"
+        )
+        soup = BeautifulSoup(html, "html.parser")
+        out = _readable_excerpt(soup)
+        assert out == "Undergraduate research in observational astrophysics."
+
+    def test_readable_excerpt_drops_chrome_dump_without_main(self):
+        # No main landmark and the page text carries chrome -> return nothing
+        # rather than ship a nav dump into the description.
+        from bs4 import BeautifulSoup
+
+        from src.collectors.ucb_common import _readable_excerpt
+        html = "<html><body><div>Skip to content Home About People Faculty Staff</div></body></html>"
+        soup = BeautifulSoup(html, "html.parser")
+        assert _readable_excerpt(soup) == ""

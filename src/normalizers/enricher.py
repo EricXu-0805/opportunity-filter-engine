@@ -449,7 +449,14 @@ def enrich_opportunity(opp: dict) -> dict:
         if inferred:
             elig["majors"] = inferred
 
-    if not elig.get("skills_required"):
+    # Skill inference is for program/job/internship listings, NOT faculty. A
+    # faculty record is a cold-email research contact, not a posting with
+    # "required skills": inferring them from research-topic prose is false-
+    # precise (a topology professor whose page says "finite element" gets
+    # skills_required=['FEA']) and it defeats the ranker's neutral skill score
+    # for honest-empty rolling faculty — routing a research-curious student's
+    # match through a skills mismatch they never should have been graded on.
+    if opp.get("source_type") != "faculty_research" and not elig.get("skills_required"):
         desc = opp.get("description_raw") or opp.get("description_clean") or ""
         if desc and len(desc) >= 80:
             inferred_skills = _extract_skills_from_text(desc)
@@ -491,11 +498,13 @@ def enrich_opportunity(opp: dict) -> dict:
 
 def _normalize_date_fields(opp: dict) -> None:
     """Coerce the single date fields to ISO ``YYYY-MM-DD`` so sort ('newest') and
-    the deadline-urgency badge work uniformly across sources. Two known drifts:
-    nsf_reu ships ``posted_date`` as ``MM/DD/YYYY`` (sorts lexically wrong) and
-    handshake ships ``deadline`` as a full ISO *timestamp* (the badge parser
-    wants a date). Sentinels ('Rolling', 'Open until filled') and unparseable
-    values are left untouched."""
+    the deadline-urgency badge work uniformly across sources, and so every date
+    the frontend renders is consistent. Known drifts: nsf_reu ships
+    ``posted_date`` AND ``start_date`` as ``MM/DD/YYYY`` (both set from the award
+    startDate; sorts lexically wrong / renders inconsistently) and handshake
+    ships ``deadline`` as a full ISO *timestamp* (the badge parser wants a date).
+    Sentinels ('Rolling', 'Open until filled') and unparseable values are left
+    untouched."""
     from .deadlines import parse_to_date
 
     dl = opp.get("deadline")
@@ -503,11 +512,12 @@ def _normalize_date_fields(opp: dict) -> None:
         d = parse_to_date(dl)
         if d:
             opp["deadline"] = d.isoformat()
-    pd = opp.get("posted_date")
-    if isinstance(pd, str) and pd.strip() and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", pd.strip()):
-        d = parse_to_date(pd)
-        if d:
-            opp["posted_date"] = d.isoformat()
+    for field in ("posted_date", "start_date"):
+        v = opp.get(field)
+        if isinstance(v, str) and v.strip() and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v.strip()):
+            d = parse_to_date(v)
+            if d:
+                opp[field] = d.isoformat()
 
 
 def enrich_all(opps: list[dict]) -> tuple[int, int]:

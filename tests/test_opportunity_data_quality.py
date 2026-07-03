@@ -403,21 +403,67 @@ class TestR70ADataQuality:
         assert not offenders, f"{len(offenders)} descriptions leak a scraped title label: {offenders[:5]}"
 
     def test_single_date_fields_are_iso(self):
-        """posted_date and a timestamped deadline must be ISO YYYY-MM-DD so the
-        'newest' sort and the deadline-urgency badge work across sources (nsf_reu
-        shipped MM/DD/YYYY, handshake shipped a full ISO timestamp)."""
+        """posted_date, start_date and a timestamped deadline must be ISO
+        YYYY-MM-DD so the 'newest' sort, the deadline-urgency badge, and the
+        rendered Start date read uniformly across sources (nsf_reu shipped
+        posted_date AND start_date as MM/DD/YYYY, handshake shipped a full ISO
+        timestamp)."""
         import re
+        mmdd = re.compile(r"^\d{1,2}/\d{1,2}/\d{4}$")
         bad_posted = [
             o.get("id") for o in _load_data()
-            if isinstance(o.get("posted_date"), str)
-            and re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", o["posted_date"])
+            if isinstance(o.get("posted_date"), str) and mmdd.match(o["posted_date"])
+        ]
+        bad_start = [
+            o.get("id") for o in _load_data()
+            if isinstance(o.get("start_date"), str) and mmdd.match(o["start_date"])
         ]
         bad_deadline = [
             o.get("id") for o in _load_data()
             if isinstance(o.get("deadline"), str) and "T" in o["deadline"]
         ]
         assert not bad_posted, f"{len(bad_posted)} posted_date still MM/DD/YYYY: {bad_posted[:5]}"
+        assert not bad_start, f"{len(bad_start)} start_date still MM/DD/YYYY: {bad_start[:5]}"
         assert not bad_deadline, f"{len(bad_deadline)} deadline still a timestamp: {bad_deadline[:5]}"
+
+    def test_descriptions_have_no_nav_chrome(self):
+        """A whole-page scrape can append site chrome (skip-links, the nav
+        toggle, the mobile menu) into a description excerpt — it reads as a
+        broken scrape and pollutes text signal. No shown description may carry
+        an unambiguous chrome marker."""
+        import re
+        chrome = re.compile(r"skip to (?:main )?content|toggle navigation", re.IGNORECASE)
+        offenders = [
+            o.get("id") for o in _load_data()
+            if chrome.search((o.get("description_clean") or "") + " " + (o.get("description_raw") or ""))
+        ]
+        assert not offenders, f"{len(offenders)} descriptions leak nav chrome: {offenders[:5]}"
+
+    def test_faculty_have_no_inferred_skills(self):
+        """Faculty are cold-email research contacts, not postings with required
+        skills. Inferring skills from research-topic prose is false-precise (a
+        topology professor tagged FEA-required) and degrades their match score,
+        so no faculty_research record may carry skills_required/skills_preferred."""
+        offenders = [
+            o.get("id") for o in _load_data()
+            if _is_faculty(o) and (
+                (o.get("eligibility") or {}).get("skills_required")
+                or (o.get("eligibility") or {}).get("skills_preferred")
+            )
+        ]
+        assert not offenders, f"{len(offenders)} faculty carry inferred skills: {offenders[:5]}"
+
+    def test_faculty_have_no_bare_research_keyword(self):
+        """A bare 'research' (or other nav-junk) single-word keyword is
+        zero-signal noise as a tag chip — every faculty keyword must be a real
+        area."""
+        nav_junk = {"research", "people", "overview", "directory", "news", "events", "resources"}
+        offenders = [
+            o.get("id") for o in _load_data()
+            if _is_faculty(o)
+            and any(isinstance(k, str) and k.lower().strip() in nav_junk for k in (o.get("keywords") or []))
+        ]
+        assert not offenders, f"{len(offenders)} faculty carry a bare nav-junk keyword: {offenders[:5]}"
 
     def test_no_duplicate_faculty_at_same_url(self):
         """A cross-appointed professor scraped from two department pages shares
