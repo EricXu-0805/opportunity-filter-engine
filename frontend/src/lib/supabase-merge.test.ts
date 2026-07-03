@@ -102,14 +102,13 @@ describe('mint (via signInExistingEmail)', () => {
 });
 
 describe('mint (via signInExistingOAuth)', () => {
-  it('mints an UNBOUND grant (email unknown before provider consent)', async () => {
-    mockRpc.mockResolvedValueOnce({ data: GRANT, error: null });
-
+  it('does NOT mint on the OAuth path (email unknown pre-consent → an unbound grant would be theft-prone)', async () => {
     const result = await signInExistingOAuth('google', REDIRECT);
 
     expect(result.ok).toBe(true);
-    expect(mockRpc).toHaveBeenCalledWith('mint_merge_grant', { p_target_email: null });
-    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(GRANT);
+    // no mint RPC, no token stashed — OAuth-path merge is deferred
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
     expect(mockSignInWithOAuth).toHaveBeenCalled();
   });
 });
@@ -156,6 +155,17 @@ describe('redeemPendingMerge', () => {
 
     expect(res).toBeNull();
     // one-shot: a rejected token must not be retried on the next callback land
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
+  it('clears the token and returns null when the redeem RPC THROWS (transport failure)', async () => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
+    mockRpc.mockRejectedValueOnce(new Error('network down'));
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toBeNull();
+    // token already cleared before the RPC → a thrown RPC can't cause a retry
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 

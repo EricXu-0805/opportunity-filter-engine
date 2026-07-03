@@ -5,7 +5,9 @@
 --
 -- Identity is switched with set_config('test.uid'/'test.jwt', ...) which the
 -- auth.uid()/auth.jwt() stubs read — the same claims the SECURITY DEFINER
--- functions consult in production.
+-- functions consult in production. Minting now requires an ANONYMOUS session
+-- (is_anonymous claim) and a MANDATORY target email (email binding), so every
+-- mint sets a jwt with "is_anonymous": true.
 
 \set ON_ERROR_STOP on
 \timing off
@@ -18,9 +20,11 @@ SET client_min_messages = warning;
 --   K = attacker target                          cccc...
 --   X = expiry source / T = expiry target        eeee.../ffff...
 --   D = same-device no-op                        dddd...
+--   G = guard scenarios                          9999...
 
 -- =====================================================================
--- Scenario 1: happy path — dedup + both conflict directions + replay
+-- Scenario 1: happy path — dedup + both conflict directions + status-history
+-- coherence + replay + double-merge
 -- =====================================================================
 DO $$
 DECLARE
@@ -61,12 +65,11 @@ BEGIN
   INSERT INTO waitlist (device_id, email, intent)
     VALUES (b, 'x@ex.com', 'apply_for_me'), (b, 'y@ex.com', 'apply_for_me');  -- x dup, y new
   INSERT INTO feedback (device_id, message) VALUES (b, 'B note');
-  -- B attachment (should be counted, not moved)
   INSERT INTO storage.objects (bucket_id, name) VALUES ('tracker-attachments', b || '/opp2/resume.pdf');
 
-  -- ---- mint as B (bound to A's email), redeem as A ----
+  -- ---- mint as anon B (bound to A's email), redeem as A ----
   PERFORM set_config('test.uid', b, false);
-  PERFORM set_config('test.jwt', '{}', false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
   tok := mint_merge_grant('accountA@ex.com');
 
   PERFORM set_config('test.uid', a, false);
@@ -83,11 +86,19 @@ BEGIN
 
   SELECT count(*) INTO c FROM interactions WHERE device_id = a;
   IF c <> 3 THEN RAISE EXCEPTION 'TEST FAIL s1 interactions count: want 3 got %', c; END IF;
-  -- conflict directions
   PERFORM 1 FROM interactions WHERE device_id=a AND opportunity_id='opp1' AND interaction_type='replied';
   IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s1: opp1 should be replied (B newer won)'; END IF;
   PERFORM 1 FROM interactions WHERE device_id=a AND opportunity_id='opp3' AND interaction_type='interviewing';
   IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s1: opp3 should stay interviewing (A newer won)'; END IF;
+
+  -- status-history coherence: NO orphan status rows (an opportunity with
+  -- history but no surviving interaction row) under the target.
+  SELECT count(*) INTO c FROM interaction_status_changes isc
+    WHERE isc.device_id = a
+      AND NOT EXISTS (
+        SELECT 1 FROM interactions i
+        WHERE i.device_id = a AND i.opportunity_id = isc.opportunity_id);
+  IF c <> 0 THEN RAISE EXCEPTION 'TEST FAIL s1: % orphan status-history rows after merge', c; END IF;
 
   SELECT count(*) INTO c FROM saved_searches WHERE device_id = a;
   IF c <> 3 THEN RAISE EXCEPTION 'TEST FAIL s1 saved_searches: want 3 got %', c; END IF;
@@ -109,7 +120,6 @@ BEGIN
   SELECT count(*) INTO c FROM feedback WHERE device_id = a;
   IF c <> 2 THEN RAISE EXCEPTION 'TEST FAIL s1 feedback: want 2 got %', c; END IF;
 
-  -- profile: A kept, B stashed as a version
   SELECT count(*) INTO c FROM profiles WHERE id = a;
   IF c <> 1 THEN RAISE EXCEPTION 'TEST FAIL s1: A profile should remain'; END IF;
   PERFORM 1 FROM profiles WHERE id=a AND profile_data->>'who'='A';
@@ -133,12 +143,10 @@ BEGIN
     INTO c;
   IF c <> 0 THEN RAISE EXCEPTION 'TEST FAIL s1: source B not fully drained, % rows remain', c; END IF;
 
-  -- attachments counted, not moved
   IF (res#>>'{summary,attachments_not_moved}')::int <> 1 THEN
     RAISE EXCEPTION 'TEST FAIL s1: attachments_not_moved want 1 got %', res#>>'{summary,attachments_not_moved}';
   END IF;
 
-  -- tombstone + grant consumed
   PERFORM 1 FROM merged_devices WHERE source_device_id=b AND target_device_id=a;
   IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s1: no tombstone'; END IF;
   PERFORM 1 FROM merge_grants WHERE token=tok AND consumed_at IS NOT NULL;
@@ -156,6 +164,7 @@ BEGIN
 
   -- ---- double-merge: minting for an already-merged source must fail ----
   PERFORM set_config('test.uid', b, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
   BEGIN
     PERFORM mint_merge_grant('accountA@ex.com');
     RAISE EXCEPTION 'TEST FAIL s1 double: mint for merged device should fail';
@@ -165,7 +174,7 @@ BEGIN
     END IF;
   END;
 
-  RAISE WARNING 'PASS scenario 1 (happy path + dedup + conflicts + replay + double-merge)';
+  RAISE WARNING 'PASS scenario 1 (happy path + dedup + conflicts + coherence + replay + double-merge)';
 END $$;
 
 -- =====================================================================
@@ -180,8 +189,8 @@ DECLARE
 BEGIN
   INSERT INTO favorites (device_id, opportunity_id) VALUES (s, 'secret-opp');
 
-  -- victim mints, bound to victim's email
   PERFORM set_config('test.uid', s, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
   tok := mint_merge_grant('victim@ex.com');
 
   -- attacker steals the token, signs in as themselves, tries to redeem
@@ -196,7 +205,6 @@ BEGIN
     END IF;
   END;
 
-  -- attacker got nothing; victim's data is intact and un-merged
   SELECT count(*) INTO c FROM favorites WHERE device_id = k;
   IF c <> 0 THEN RAISE EXCEPTION 'TEST FAIL s2: attacker should have 0 rows, got %', c; END IF;
   SELECT count(*) INTO c FROM favorites WHERE device_id = s;
@@ -217,7 +225,8 @@ DECLARE
   tok uuid;
 BEGIN
   PERFORM set_config('test.uid', x, false);
-  tok := mint_merge_grant(NULL);                       -- unbound (OAuth-style)
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
+  tok := mint_merge_grant('t@ex.com');
   UPDATE merge_grants SET expires_at = now() - interval '1 minute' WHERE token = tok;
 
   PERFORM set_config('test.uid', t, false);
@@ -242,9 +251,10 @@ DECLARE
   tok uuid;
   res jsonb;
 BEGIN
-  -- same-device: mint and redeem as the same uid -> merged=false/same_device
+  -- same-device: mint (anon, bound) then redeem as the same uid whose email
+  -- matches the binding -> merged=false / same_device
   PERFORM set_config('test.uid', d, false);
-  PERFORM set_config('test.jwt', '{"email":"d@ex.com"}', false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true, "email": "d@ex.com"}', false);
   tok := mint_merge_grant('d@ex.com');
   res := redeem_merge_grant(tok);
   IF (res->>'merged')::boolean IS NOT FALSE OR (res->>'reason') <> 'same_device' THEN
@@ -263,6 +273,7 @@ BEGIN
 
   -- unauthenticated mint + redeem
   PERFORM set_config('test.uid', '', false);
+  PERFORM set_config('test.jwt', '{}', false);
   BEGIN
     PERFORM mint_merge_grant('z@ex.com');
     RAISE EXCEPTION 'TEST FAIL s4 unauth mint: should have failed';
@@ -281,6 +292,66 @@ BEGIN
   END;
 
   RAISE WARNING 'PASS scenario 4 (same-device no-op, invalid token, unauthenticated)';
+END $$;
+
+-- =====================================================================
+-- Scenario 5: mint/redeem guards — anon-only, mandatory email, no unbound
+-- redemption (the hardenings from the adversarial review)
+-- =====================================================================
+DO $$
+DECLARE
+  g text := '99999999-9999-4999-8999-999999999999';  -- anon source
+  t text := '88888888-8888-4888-8888-888888888888';  -- some target
+  tok uuid;
+BEGIN
+  -- (a) non-anonymous session may NOT mint
+  PERFORM set_config('test.uid', g, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": false, "email": "g@ex.com"}', false);
+  BEGIN
+    PERFORM mint_merge_grant('g@ex.com');
+    RAISE EXCEPTION 'TEST FAIL s5a: non-anon mint should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%only an anonymous session%' THEN
+      RAISE EXCEPTION 'TEST FAIL s5a: wrong error %', sqlerrm;
+    END IF;
+  END;
+
+  -- (b) anonymous mint WITHOUT a target email is rejected (binding mandatory)
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
+  BEGIN
+    PERFORM mint_merge_grant(NULL);
+    RAISE EXCEPTION 'TEST FAIL s5b: unbound mint should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%target email is required%' THEN
+      RAISE EXCEPTION 'TEST FAIL s5b: wrong error %', sqlerrm;
+    END IF;
+  END;
+  BEGIN
+    PERFORM mint_merge_grant('   ');   -- whitespace-only == empty
+    RAISE EXCEPTION 'TEST FAIL s5b2: blank-email mint should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%target email is required%' THEN
+      RAISE EXCEPTION 'TEST FAIL s5b2: wrong error %', sqlerrm;
+    END IF;
+  END;
+
+  -- (c) an unbound grant that exists ANYWAY (crafted directly, bypassing mint)
+  --     must not be redeemable — redeem rejects null binding outright.
+  INSERT INTO merge_grants (token, source_device_id, target_email, expires_at)
+    VALUES (gen_random_uuid(), g, NULL, now() + interval '15 minutes')
+    RETURNING token INTO tok;
+  PERFORM set_config('test.uid', t, false);
+  PERFORM set_config('test.jwt', '{"email":"t@ex.com"}', false);
+  BEGIN
+    PERFORM redeem_merge_grant(tok);
+    RAISE EXCEPTION 'TEST FAIL s5c: unbound-grant redeem should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%unbound grant is not redeemable%' THEN
+      RAISE EXCEPTION 'TEST FAIL s5c: wrong error %', sqlerrm;
+    END IF;
+  END;
+
+  RAISE WARNING 'PASS scenario 5 (anon-only mint, mandatory email, no unbound redemption)';
 END $$;
 
 SELECT 'ALL FLOW B TESTS PASSED' AS result;

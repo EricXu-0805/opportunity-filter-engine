@@ -16,16 +16,17 @@
 -- audited data-loss surface the code comment flagged for its own review).
 --
 -- Authorization model (prevents account takeover):
---   * mint_merge_grant() runs while still authenticated as uid-B, so
---     auth.uid() == uid-B proves session control. It records a random,
---     single-use, 15-minute grant token bound to source = uid-B (and,
---     optionally, to the email the user is about to sign into). The token
---     survives the auth redirect in localStorage.
+--   * mint_merge_grant(target_email) runs while still authenticated as the
+--     ANONYMOUS uid-B, so auth.uid() == uid-B proves session control (and a
+--     permanent account — never a legitimate merge source — is refused). It
+--     records a random, single-use, 15-minute grant bound to source = uid-B
+--     AND to the target email (MANDATORY — see below). Survives the auth
+--     redirect in localStorage.
 --   * redeem_merge_grant(token) runs after sign-in, authenticated as uid-A.
 --     target = auth.uid() == uid-A ALWAYS — the merge only ever pulls the
---     grant's source INTO the caller's own account, never into a third
---     party. Optional target_email binding means a leaked token is useless
---     unless the redeemer also controls that email account.
+--     grant's source INTO the caller's own account, never into a third party.
+--     It refuses an unbound grant outright and otherwise requires the signed-in
+--     account's email to equal the grant's bound email.
 --
 -- Why an attacker can't use this to steal data:
 --   * To pull a victim's data they'd need a grant whose source is the
@@ -34,8 +35,16 @@
 --     victim's grant needs the victim's session.
 --   * redeem always targets the caller (auth.uid()), so nobody can push
 --     rows INTO a victim's account either.
---   * Single-use (consumed_at + row lock) + 15-min TTL + unguessable v4
---     token + optional email binding.
+--   * A LEAKED token is useless: email binding is mandatory, so redeeming it
+--     requires also controlling the bound email account (i.e. already owning
+--     it). Plus single-use (consumed_at + row lock) + 15-min TTL + unguessable
+--     v4 token.
+--   * Because the target email can't be known before OAuth provider consent,
+--     the OAuth existing-account path does NOT mint (it would need an unbound,
+--     theft-prone grant). OAuth-path cross-device merge is deferred until it
+--     can bind the email post-consent; the email/magic-link path (bound) does
+--     merge. Anonymous data that isn't merged is not lost — it stays under the
+--     source uid, exactly as before this migration.
 
 -- ---------------------------------------------------------------------------
 -- Grant + tombstone tables. RLS enabled with NO policies: PostgREST clients
@@ -45,7 +54,7 @@
 CREATE TABLE IF NOT EXISTS public.merge_grants (
   token           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   source_device_id text NOT NULL,
-  target_email    text,                       -- lowercased; NULL for OAuth mint
+  target_email    text,                       -- lowercased; mandatory (mint rejects null)
   created_at      timestamptz NOT NULL DEFAULT now(),
   expires_at      timestamptz NOT NULL,
   consumed_at     timestamptz
@@ -75,10 +84,27 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_source text := auth.uid()::text;
+  v_email  text := nullif(lower(trim(p_target_email)), '');
   v_token  uuid;
 BEGIN
   IF v_source IS NULL THEN
     RAISE EXCEPTION 'mint_merge_grant: no authenticated session';
+  END IF;
+  -- Only an ANONYMOUS session is ever a legitimate merge source — a permanent
+  -- account is the destination, never the thing handed off. Gating here keeps
+  -- a permanent account's data out of the grant/theft surface entirely.
+  IF coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'mint_merge_grant: only an anonymous session may mint a merge grant';
+  END IF;
+  -- Email binding is MANDATORY. An unbound grant is redeemable by ANY account
+  -- that holds the token, so a leaked/stolen token would let a third party pull
+  -- the source's data into their own account. Requiring the target email means
+  -- a stolen token is useless unless the thief also controls that email account
+  -- (in which case they own the account anyway). The OAuth existing-account
+  -- path cannot know the email before provider consent, so it does NOT mint —
+  -- OAuth-path cross-device merge is deferred until it can bind post-consent.
+  IF v_email IS NULL THEN
+    RAISE EXCEPTION 'mint_merge_grant: target email is required (email binding is mandatory)';
   END IF;
   -- Never hand off a device that's already been merged away.
   IF EXISTS (SELECT 1 FROM merged_devices WHERE source_device_id = v_source) THEN
@@ -86,11 +112,7 @@ BEGIN
   END IF;
 
   INSERT INTO merge_grants (source_device_id, target_email, expires_at)
-    VALUES (
-      v_source,
-      nullif(lower(trim(p_target_email)), ''),
-      now() + interval '15 minutes'
-    )
+    VALUES (v_source, v_email, now() + interval '15 minutes')
     RETURNING token INTO v_token;
 
   RETURN v_token;
@@ -139,9 +161,15 @@ BEGIN
   IF v_expires < now() THEN
     RAISE EXCEPTION 'redeem_merge_grant: grant expired';
   END IF;
-  -- Email binding: if the grant was minted for a specific email, only that
-  -- account may redeem it. Defends against a stolen/leaked token.
-  IF v_bound_email IS NOT NULL AND v_bound_email IS DISTINCT FROM v_target_email THEN
+  -- Email binding is mandatory (mint enforces it). An unbound grant must never
+  -- be redeemable — reject outright rather than fall through to an unchecked
+  -- move (defense in depth against a grant row created any other way).
+  IF v_bound_email IS NULL THEN
+    RAISE EXCEPTION 'redeem_merge_grant: unbound grant is not redeemable';
+  END IF;
+  -- Only the account whose email the grant was bound to may redeem it —
+  -- defeats a stolen/leaked token.
+  IF v_bound_email IS DISTINCT FROM v_target_email THEN
     RAISE EXCEPTION 'redeem_merge_grant: grant not bound to this account';
   END IF;
 
@@ -171,18 +199,42 @@ BEGIN
   v_summary := v_summary || jsonb_build_object('favorites', n);
 
   -- interactions: last-writer-wins by updated_at on (device_id, opportunity_id).
+  -- NULL-safe: updated_at is nullable, so coalesce a floor in so a real
+  -- timestamp always beats NULL (and NULL vs NULL keeps the target). The
+  -- status-change history is kept COHERENT with the surviving row — on each
+  -- conflict we drop the LOSER's status history for that opportunity, so the
+  -- merged timeline never shows phantom transitions from a dropped row.
+
+  -- (1) source-wins conflicts: drop the target's LOSING status history first,
+  --     then the losing target interaction row itself.
+  DELETE FROM interaction_status_changes t
+    USING interactions a, interactions b
+    WHERE t.device_id = v_target AND t.opportunity_id = a.opportunity_id
+      AND a.device_id = v_target AND b.device_id = v_source
+      AND a.opportunity_id = b.opportunity_id
+      AND coalesce(b.updated_at, '-infinity'::timestamptz)
+        > coalesce(a.updated_at, '-infinity'::timestamptz);
   DELETE FROM interactions a USING interactions b
     WHERE a.device_id = v_target AND b.device_id = v_source
       AND a.opportunity_id = b.opportunity_id
-      AND b.updated_at > a.updated_at;              -- source newer -> drop target's stale row
+      AND coalesce(b.updated_at, '-infinity'::timestamptz)
+        > coalesce(a.updated_at, '-infinity'::timestamptz);
+
+  -- (2) remaining conflicts are target-wins: drop the source's LOSING status
+  --     history for those opportunities, then the losing source interaction row.
+  DELETE FROM interaction_status_changes s
+    USING interactions b, interactions a
+    WHERE s.device_id = v_source AND s.opportunity_id = b.opportunity_id
+      AND b.device_id = v_source AND a.device_id = v_target
+      AND b.opportunity_id = a.opportunity_id;
   DELETE FROM interactions b USING interactions a
     WHERE b.device_id = v_source AND a.device_id = v_target
-      AND b.opportunity_id = a.opportunity_id;      -- remaining collisions -> target wins
+      AND b.opportunity_id = a.opportunity_id;
+
+  -- move the survivors + their now-coherent status history.
   UPDATE interactions SET device_id = v_target WHERE device_id = v_source;
   GET DIAGNOSTICS n = ROW_COUNT;
   v_summary := v_summary || jsonb_build_object('interactions', n);
-
-  -- interaction_status_changes: append-only history; move all.
   UPDATE interaction_status_changes SET device_id = v_target WHERE device_id = v_source;
 
   -- profiles (id = uid): keep target's; if target has none, adopt source's;

@@ -456,7 +456,17 @@ export async function redeemPendingMerge(): Promise<MergeSummary | null> {
   if (!token) return null;
   try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
 
-  const { data, error } = await supabase.rpc('redeem_merge_grant', { p_token: token });
+  let rpcResult;
+  try {
+    rpcResult = await supabase.rpc('redeem_merge_grant', { p_token: token });
+  } catch (e) {
+    // Transport/network failure. The token is already cleared above (one-shot),
+    // so a rejected RPC can't be retried — sign-in still succeeded, we just
+    // don't show a merge line.
+    console.warn('[ofe] merge redeem error:', e);
+    return null;
+  }
+  const { data, error } = rpcResult;
   if (error) {
     // Expired / already-used / not-bound are expected, non-fatal outcomes:
     // the sign-in still succeeded, we just don't show a merge line.
@@ -585,9 +595,11 @@ export async function signInExistingOAuth(
       message: 'Sign-in is unavailable: Supabase is not configured.',
     };
   }
-  // Flow B: mint before the redirect (email unknown until after provider
-  // consent, so the grant is unbound and relies on TTL + single-use).
-  await mintMergeGrant(null);
+  // Flow B: intentionally NO merge grant is minted on the OAuth path. The
+  // target email isn't known until after provider consent, and an unbound
+  // grant would be redeemable by any account holding the token (a leaked-token
+  // cross-account theft surface). OAuth-path cross-device merge is deferred
+  // until it can bind the email post-consent; the email path (bound) DOES merge.
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
