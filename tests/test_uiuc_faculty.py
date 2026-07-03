@@ -324,8 +324,17 @@ def test_carry_forward_lets_richer_rescrape_win():
 def test_is_junk_keyword_flags_journal_venues():
     for k in ["ieee transactions on image processing", "acta astronautica",
               "science advances", 'reviewer for "physical review letters"',
-              "ieee robotics and automation letters"]:
+              "ieee robotics and automation letters", "ieee access", "ieee spectrum"]:
         assert _is_junk_keyword(k), f"{k!r} is a venue, not a research area"
+
+
+def test_is_junk_keyword_keeps_ieee_protocol_and_standard_areas():
+    # Bare "ieee" is only a venue when followed by a publication word; an IEEE
+    # standard/protocol is a real research area and must survive (the venue
+    # regex used to eat these, and the course-code rule matched "ieee 802").
+    for k in ["ieee 802.11 wireless networks", "ieee standards",
+              "ieee 754 floating-point arithmetic"]:
+        assert not _is_junk_keyword(k), f"{k!r} is a real area, not a venue/course"
 
 
 def test_is_junk_keyword_keeps_topical_areas():

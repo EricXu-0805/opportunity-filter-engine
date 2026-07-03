@@ -961,13 +961,22 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     new_opps, dropped = drop_joint_appointment_duplicates(new_opps, existing)
     if dropped:
         logger.info(f"Dropped {dropped} joint-appointment duplicate(s) before merge")
+    from .uiuc_faculty import _carry_forward_enrichment
+
     index = {opp.get("id"): opp for opp in existing if opp.get("id")}
     added = updated = 0
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            cur = index[opp["id"]]
+            opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
-            index[opp["id"]].update(opp)
+            # Carry richer prior enrichment (keywords/title/description) forward
+            # before the wholesale .update(), or a fresh broad re-scrape silently
+            # clobbers it — the same guard the UIUC/faculty_graph merge paths use.
+            # UCB isn't OpenAlex-enriched today, so this is latent, but it closes
+            # the trap before Berkeley enrichment or a manual keyword edit lands.
+            _carry_forward_enrichment(cur, opp)
+            cur.update(opp)
             updated += 1
         else:
             existing.append(opp)
