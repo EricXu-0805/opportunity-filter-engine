@@ -71,18 +71,20 @@ test.describe('Admin login + error paths (no ADMIN_TOKEN required)', () => {
     expect(stored).toBeNull();
   });
 
-  test('?token=<value> on mount is stripped from the URL (no leak via history / Referer)', async ({ page }) => {
+  test('?token= in the URL is stripped and never used (no auth from URL, no storage)', async ({ page }) => {
     await page.goto('/admin?token=e2e-token-from-url&keep=this');
 
     await expect(page.getByRole('heading', { name: ADMIN_HEADING })).toBeVisible();
 
+    // stripped from the address bar for hygiene, unrelated params kept
     await expect.poll(() => new URL(page.url()).searchParams.get('token')).toBeNull();
     expect(new URL(page.url()).searchParams.get('keep')).toBe('this');
 
+    // and NOT used for auth: nothing stored, the login form is still shown
     const stored = await page.evaluate(() => sessionStorage.getItem('ofe_admin_token'));
-    expect(stored).toBe('e2e-token-from-url');
-
-    await expect(page.getByText(ADMIN_DISABLED_MSG)).toBeVisible({ timeout: 10_000 });
+    expect(stored).toBeNull();
+    await expect(page.getByPlaceholder(/Admin token/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Load$/i })).toBeVisible();
   });
 
   test('login form is i18n-aware: Chinese locale renders the zh strings', async ({ context, page }) => {
@@ -104,11 +106,12 @@ test.describe('Admin authenticated dashboard (requires ADMIN_TOKEN env)', () => 
     );
   });
 
-  test('valid ?token=<ADMIN_TOKEN> loads the dashboard widgets', async ({ page }) => {
+  test('valid token via the login form loads the dashboard widgets', async ({ page }) => {
     const token = process.env.ADMIN_TOKEN!;
-    await page.goto(`/admin?token=${encodeURIComponent(token)}`);
+    await gotoAdmin(page);
+    await page.getByPlaceholder(/Admin token/i).fill(token);
+    await page.getByRole('button', { name: /^Load$/i }).click();
 
-    await expect(page.getByRole('heading', { name: ADMIN_HEADING })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Refresh$/i })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /^Lock$/i })).toBeVisible();
 
@@ -117,7 +120,9 @@ test.describe('Admin authenticated dashboard (requires ADMIN_TOKEN env)', () => 
 
   test('Lock after a valid login clears state and returns to the login form', async ({ page }) => {
     const token = process.env.ADMIN_TOKEN!;
-    await page.goto(`/admin?token=${encodeURIComponent(token)}`);
+    await gotoAdmin(page);
+    await page.getByPlaceholder(/Admin token/i).fill(token);
+    await page.getByRole('button', { name: /^Load$/i }).click();
     await expect(page.getByRole('button', { name: /^Refresh$/i })).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('button', { name: /^Lock$/i }).click();
