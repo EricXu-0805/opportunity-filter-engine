@@ -1635,37 +1635,6 @@ class TestEmailEndpoints:
                         headers={"x-forwarded-for": "203.0.113.250"})
         assert r.status_code == 429
 
-    def test_restore_link_ok_disabled_when_no_secret(self, monkeypatch):
-        monkeypatch.delenv("RESTORE_LINK_SECRET", raising=False)
-        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
-        r = client.post("/api/email/restore-link", json={
-            "email": "test@example.com",
-            "device_id": "abcd1234",
-        })
-        assert r.status_code == 200
-        assert r.json().get("note") == "disabled"
-
-    def test_verify_restore_rejects_invalid_device_id(self, monkeypatch):
-        monkeypatch.setenv("RESTORE_LINK_SECRET", "secret-xyz")
-        r = client.get("/api/email/verify-restore?d=%21&t=123&s=abc")
-        assert r.status_code == 400
-
-    def test_verify_restore_rejects_expired(self, monkeypatch):
-        monkeypatch.setenv("RESTORE_LINK_SECRET", "secret-xyz")
-        r = client.get("/api/email/verify-restore?d=abcd1234&t=1&s=abc")
-        assert r.status_code == 400
-
-    def test_verify_restore_roundtrip(self, monkeypatch):
-        monkeypatch.setenv("RESTORE_LINK_SECRET", "secret-roundtrip")
-        import time as _time
-
-        from backend.routes.email import _sign_restore_payload
-        ts = int(_time.time())
-        sig = _sign_restore_payload("abcd1234", ts)
-        r = client.get(f"/api/email/verify-restore?d=abcd1234&t={ts}&s={sig}")
-        assert r.status_code == 200
-        assert r.json()["device_id"] == "abcd1234"
-
 
 class TestEmailRenderers:
     def test_match_email_html_contains_title_and_link(self):

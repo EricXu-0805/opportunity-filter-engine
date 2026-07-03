@@ -45,19 +45,6 @@ export const en = {
     dueInDays: 'Due in {count}d',
     new: 'New',
   },
-  restore: {
-    verifying: 'Verifying your link...',
-    verifyingHint: 'This takes a second.',
-    verified: 'Link verified',
-    verifiedBody: 'Cross-device sync requires a Supabase-backed account (not yet shipped). For now, reopen the email on your original device to continue where you left off.',
-    cantRestore: "Couldn't restore",
-    goHome: 'Go to home',
-    errMissingParams: 'Missing link parameters',
-    errLinkInvalid: 'Link invalid',
-    errLinkExpired: 'Link expired or tampered with. Request a new one.',
-    errDisabled: 'Restore service is disabled.',
-    errVerifyFailed: 'Could not verify link.',
-  },
   auth: {
     menu: {
       guestLabel: 'Sign in',
@@ -1169,10 +1156,6 @@ export const en = {
     privacyNote: 'We only use your email for this one message. No marketing, no account.',
     subjectMatches: 'Your top {count} matches from JoinALab',
     subjectFavorites: 'Your {count} saved opportunities',
-    restoreTitle: 'Restore on a new device',
-    restoreSubtitle: 'Send yourself a link that reopens this profile elsewhere.',
-    restoreSend: 'Send restore link',
-    restoreSent: 'Restore link sent to {email}.',
   },
   coldEmail: {
     title: 'Email Editor',
@@ -1781,19 +1764,6 @@ export const zh = {
     deadlinePassed: '已过截止',
     dueInDays: '还剩 {count} 天',
     new: '新',
-  },
-  restore: {
-    verifying: '正在验证链接...',
-    verifyingHint: '稍等一下。',
-    verified: '链接已验证',
-    verifiedBody: '跨设备同步需要 Supabase 后端账号(尚未上线)。目前请在原设备上重新打开邮件以继续之前的进度。',
-    cantRestore: '无法恢复',
-    goHome: '返回首页',
-    errMissingParams: '缺少链接参数',
-    errLinkInvalid: '链接无效',
-    errLinkExpired: '链接已过期或被篡改,请重新申请。',
-    errDisabled: '恢复服务已禁用。',
-    errVerifyFailed: '无法验证链接。',
   },
   auth: {
     menu: {
@@ -2901,10 +2871,6 @@ export const zh = {
     privacyNote: '我们仅用你的邮箱发送这一封邮件。不做营销，不创建账号。',
     subjectMatches: 'JoinALab · 你的 {count} 条最佳匹配',
     subjectFavorites: '你的 {count} 个已保存机会',
-    restoreTitle: '在新设备上恢复',
-    restoreSubtitle: '发一个链接到邮箱，新设备点开即可恢复档案。',
-    restoreSend: '发送恢复链接',
-    restoreSent: '恢复链接已发送到 {email}。',
   },
   coldEmail: {
     title: '邮件编辑器',

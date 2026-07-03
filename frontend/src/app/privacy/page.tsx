@@ -51,7 +51,7 @@ Our hosting providers (Vercel, Render) record standard server logs — IP addres
 
 ### 2.5 Email addresses for optional features
 
-If you ask us to email your matches or favorites to yourself, or to email you a profile restore link, you provide an email address for that one-off delivery. We pass it to our email provider (Resend) to send the message and do not retain it afterward. **One exception:** if you turn on the **weekly email digest** for a saved search, we store that email address in our database (alongside the saved search) until you turn the digest off or delete the saved search, so we can send the recurring email — see §4 and §5.
+If you ask us to email your matches or favorites to yourself, you provide an email address for that one-off delivery. We pass it to our email provider (Resend) to send the message and do not retain it afterward. **One exception:** if you turn on the **weekly email digest** for a saved search, we store that email address in our database (alongside the saved search) until you turn the digest off or delete the saved search, so we can send the recurring email — see §4 and §5.
 
 ### 2.6 Product analytics and interest signals
 
@@ -68,7 +68,7 @@ If you use the in-app feedback widget to send a comment, bug report, or suggesti
 - To **match** your profile to opportunities and explain why each matched.
 - To **draft application materials** (résumé tailoring, cold-email drafts) using AI, *at your request, per generation* — see §5 for the AI subprocessors involved.
 - To **save** your profile, favorites, tracking, and saved searches so they persist.
-- To **send** transactional emails you request (your matches/favorites, restore links) and, if you opt in, a recurring weekly email digest for a saved search.
+- To **send** transactional emails you request (your matches/favorites) and, if you opt in, a recurring weekly email digest for a saved search.
 - To **understand and improve** the product — which steps you reach and where people drop off — via in-product analytics events, to follow up if you register interest in paid help, and to read and act on any feedback you send us.
 - To **secure and operate** the service (rate limiting, abuse prevention, debugging).
 
