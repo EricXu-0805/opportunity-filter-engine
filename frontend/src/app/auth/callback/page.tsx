@@ -32,9 +32,11 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import {
   getAuthState,
   getDataInventory,
+  redeemPendingMerge,
   signInExistingOAuth,
   supabase,
   type DataInventory,
+  type MergeSummary,
   type OAuthProvider,
 } from '@/lib/supabase';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -53,6 +55,7 @@ function CallbackInner() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [inventory, setInventory] = useState<DataInventory | null>(null);
+  const [mergeSummary, setMergeSummary] = useState<MergeSummary | null>(null);
   const [remainingMs, setRemainingMs] = useState<number>(DWELL_MS);
   const [linkProvider, setLinkProvider] = useState<OAuthProvider | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -60,6 +63,25 @@ function CallbackInner() {
   // ============ exchange + load inventory ============
   useEffect(() => {
     let cancelled = false;
+
+    // Shared success path for all three entry points (preflight short-circuit,
+    // post-exchange re-check, and the normal exchange). Redeems a pending
+    // Flow B merge grant BEFORE loading the inventory so the counts reflect
+    // the merged data, then flips to the success screen.
+    const finishSignedIn = async (email: string | null) => {
+      const merge = await redeemPendingMerge().catch(() => null);
+      const inv = await getDataInventory().catch(() => null);
+      if (cancelled) return;
+      setSignedInEmail(email);
+      setInventory(inv);
+      setMergeSummary(merge && merge.merged ? merge : null);
+      setStatus('success');
+      try {
+        sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
+        sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
+        sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
+      } catch { /* private mode */ }
+    };
 
     (async () => {
       // Surface OAuth-style errors before attempting the exchange.
@@ -121,16 +143,7 @@ function CallbackInner() {
       // completed THIS link's conversion in an earlier tick.)
       const preflight = await getAuthState();
       if (preflight.user && !preflight.isAnonymous) {
-        const inv = await getDataInventory().catch(() => null);
-        if (cancelled) return;
-        setSignedInEmail(preflight.email);
-        setInventory(inv);
-        setStatus('success');
-        try {
-          sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
-          sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
-          sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
-        } catch { /* private mode */ }
+        await finishSignedIn(preflight.email);
         return;
       }
 
@@ -171,15 +184,7 @@ function CallbackInner() {
         // error as a no-op and show success.
         const postCheck = await getAuthState();
         if (!cancelled && postCheck.user && !postCheck.isAnonymous) {
-          const inv = await getDataInventory().catch(() => null);
-          if (cancelled) return;
-          setSignedInEmail(postCheck.email);
-          setInventory(inv);
-          setStatus('success');
-          try {
-            sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
-            sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
-          } catch { /* private mode */ }
+          await finishSignedIn(postCheck.email);
           return;
         }
         setStatus('error');
@@ -187,23 +192,11 @@ function CallbackInner() {
         return;
       }
 
-      // Load inventory + email AFTER exchange so RLS lets us read the
-      // user's rows. If inventory fails, we still show success — the
-      // inventory is the cherry on top, not the load-bearing wall.
-      const [state, inv] = await Promise.all([
-        getAuthState(),
-        getDataInventory().catch(() => null),
-      ]);
+      // Load email AFTER exchange so RLS lets us read the user's rows; the
+      // shared helper redeems any pending merge, then loads the inventory.
+      const state = await getAuthState();
       if (cancelled) return;
-      setSignedInEmail(state.email);
-      setInventory(inv);
-      setStatus('success');
-      // Clear any "just signed out" flag — they came back, no banner
-      // needed.
-      try {
-        sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
-        sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
-      } catch { /* private mode */ }
+      await finishSignedIn(state.email);
     })();
 
     return () => { cancelled = true; };
@@ -248,6 +241,7 @@ function CallbackInner() {
 
   const secondsLeft = Math.ceil(remainingMs / 1000);
   const inventoryLine = buildInventoryLine(inventory, t);
+  const mergeLine = buildMergeLine(mergeSummary, t);
 
   return (
     <div className="max-w-md mx-auto px-4 py-16">
@@ -281,6 +275,11 @@ function CallbackInner() {
           {inventoryLine && (
             <p className="mt-4 text-sm text-gray-700 leading-relaxed">
               {inventoryLine}
+            </p>
+          )}
+          {mergeLine && (
+            <p className="mt-2 text-sm text-emerald-700 leading-relaxed" data-testid="callback-merge-line">
+              {mergeLine}
             </p>
           )}
           <p className="mt-5 text-xs text-gray-400" aria-live="polite">
@@ -382,6 +381,31 @@ function buildInventoryLine(
   if (inv.savedSearches > 0) parts.push(t('auth.callback.invSavedSearches', { count: inv.savedSearches }));
   if (parts.length === 0) return null;
   return t('auth.callback.inventoryPrefix') + ' ' + joinHuman(parts, t);
+}
+
+/**
+ * "We also brought over from your other device: N favorites and M tracked
+ * applications." Built only when a Flow B merge actually moved user-visible
+ * rows. Appends an honest caveat when attachments stayed behind (v1 doesn't
+ * re-home storage files). Returns null when nothing worth showing moved.
+ */
+function buildMergeLine(
+  merge: MergeSummary | null,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string | null {
+  if (!merge || !merge.merged) return null;
+  const parts: string[] = [];
+  if (merge.favorites > 0) parts.push(t('auth.callback.invFavorites', { count: merge.favorites }));
+  if (merge.interactions > 0) parts.push(t('auth.callback.invInteractions', { count: merge.interactions }));
+  if (merge.savedSearches > 0) parts.push(t('auth.callback.invSavedSearches', { count: merge.savedSearches }));
+  let line = parts.length > 0
+    ? t('auth.callback.mergePrefix') + ' ' + joinHuman(parts, t)
+    : null;
+  if (merge.attachmentsNotMoved > 0) {
+    const caveat = t('auth.callback.mergeAttachmentsCaveat', { count: merge.attachmentsNotMoved });
+    line = line ? `${line} ${caveat}` : caveat;
+  }
+  return line;
 }
 
 /** Provider stashed by signInWithOAuthProvider just before the
