@@ -1224,50 +1224,64 @@ class TestStartupWarmup:
 
 
 class TestCORS:
+    # First-party whitelist only, NO .vercel.app regex. Every real deploy
+    # reaches the API same-origin via the Next.js /api rewrite proxy, so no
+    # .vercel.app origin needs a CORS grant — and a .vercel.app regex would be
+    # squattable (free-form project names → attacker-controlled matching
+    # production domains). These tests pin that vercel.app is fully rejected.
+
+    def _allowed(self, origin: str, path: str = "/api/health") -> bool:
+        resp = client.options(
+            path,
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        return "access-control-allow-origin" in {h.lower() for h in resp.headers.keys()}
+
     def test_localhost_allowed(self):
-        resp = client.options(
-            "/api/health",
-            headers={
-                "Origin": "http://localhost:3000",
-                "Access-Control-Request-Method": "GET",
-            },
-        )
-        assert "access-control-allow-origin" in {h.lower() for h in resp.headers.keys()}
+        assert self._allowed("http://localhost:3000")
 
-    def test_vercel_production_domain_allowed(self):
-        resp = client.options(
-            "/api/health",
-            headers={
-                "Origin": "https://opportunity-filter-engine.vercel.app",
-                "Access-Control-Request-Method": "GET",
-            },
-        )
-        headers = {h.lower() for h in resp.headers.keys()}
-        assert "access-control-allow-origin" in headers
+    def test_joinalab_domains_allowed(self):
+        assert self._allowed("https://joinalab.com")
+        assert self._allowed("https://www.joinalab.com")
 
-    def test_vercel_project_preview_domain_allowed(self):
-        resp = client.options(
-            "/api/health",
-            headers={
-                "Origin": "https://opportunity-filter-engine-git-feat-x-team.vercel.app",
-                "Access-Control-Request-Method": "GET",
-            },
-        )
-        headers = {h.lower() for h in resp.headers.keys()}
-        assert "access-control-allow-origin" in headers
+    def test_all_vercel_origins_rejected_proxy_is_the_path(self):
+        # None of these need CORS — the browser calls the API same-origin via
+        # /api on every deploy. Rejecting them removes the whole project-name
+        # squat surface, including the bare prod alias and git/hash previews.
+        for origin in (
+            "https://opportunity-filter-engine.vercel.app",
+            "https://opportunity-filter-engine-ericxu-0805s-projects.vercel.app",
+            "https://opportunity-filter-engine-git-feat-x-ericxu-0805s-projects.vercel.app",
+        ):
+            assert not self._allowed(origin), origin
 
-    def test_foreign_vercel_subdomain_rejected(self):
-        # Any stranger can deploy https://<anything>.vercel.app; only this
-        # project's production + preview origins may pass the CORS gate.
+    def test_foreign_and_squatted_vercel_rejected(self):
+        # evil.vercel.app is any stranger's deploy; the -evil- variants are the
+        # exact project-name squats the old regex would have admitted.
+        for origin in (
+            "https://evil.vercel.app",
+            "https://opportunity-filter-engine-evil.vercel.app",
+            "https://opportunity-filter-engine-evil-ericxu-0805s-projects.vercel.app",
+        ):
+            assert not self._allowed(origin), origin
+
+    def test_admin_header_allowed_in_preflight(self):
+        # adminFetch sends X-Admin-Token; whitelist it so a hypothetical
+        # cross-origin admin call (NEXT_PUBLIC_API_URL → Render) survives
+        # preflight from a first-party origin.
         resp = client.options(
-            "/api/health",
+            "/api/admin/data-quality",
             headers={
-                "Origin": "https://evil.vercel.app",
+                "Origin": "https://joinalab.com",
                 "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "X-Admin-Token",
             },
         )
-        headers = {h.lower() for h in resp.headers.keys()}
-        assert "access-control-allow-origin" not in headers
+        allow_headers = resp.headers.get("access-control-allow-headers", "")
+        assert "x-admin-token" in allow_headers.lower()
 
 
 class TestHTMLSanitization:
