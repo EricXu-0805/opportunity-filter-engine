@@ -5,6 +5,7 @@ from src.normalizers.enricher import (
     enrich_opportunity,
     infer_keywords,
     infer_majors,
+    is_rolling_deadline,
 )
 
 
@@ -253,3 +254,43 @@ class TestEnrichAll:
         m_added, k_added = enrich_all(opps)
         assert m_added >= 2  # linguistics + tesol
         assert k_added >= 2  # linguistics starts empty, tesol had unsorted
+
+
+class TestRollingDeadline:
+    """is_rolling_deadline: faculty records are rolling by source_type, not a
+    per-source list — every school's faculty collector inherits the default
+    without touching the enricher (the pre-multi-school _ROLLING_BY_SOURCE
+    list silently excluded ucb_*/umich/stanford/... faculty)."""
+
+    def _faculty(self, source: str) -> dict:
+        opp = _opp("Research with Prof. X — CS", "computational biology lab")
+        opp["source"] = source
+        opp["source_type"] = "faculty_research"
+        opp["deadline"] = None
+        return opp
+
+    def test_any_school_faculty_source_is_rolling(self):
+        for source in ("uiuc_faculty", "ucb_eecs_faculty", "stanford_faculty",
+                       "umich_faculty", "ucsd_faculty"):
+            assert is_rolling_deadline(self._faculty(source)), source
+
+    def test_uiuc_sro_stays_rolling_by_source(self):
+        opp = _opp("Summer lab position", "wet lab")
+        opp["source"] = "uiuc_sro"
+        opp["source_type"] = "uiuc_research"
+        opp["deadline"] = None
+        assert is_rolling_deadline(opp)
+
+    def test_explicit_deadline_beats_faculty_default(self):
+        opp = self._faculty("ucb_math_faculty")
+        opp["deadline"] = "2026-10-01"
+        assert not is_rolling_deadline(opp)
+
+    def test_non_faculty_unknown_source_needs_text_signal(self):
+        opp = _opp("Research program", "apply by the posted date")
+        opp["source"] = "some_new_source"
+        opp["source_type"] = "campus_program"
+        opp["deadline"] = None
+        assert not is_rolling_deadline(opp)
+        opp["description_clean"] = "applications accepted on a rolling basis"
+        assert is_rolling_deadline(opp)
