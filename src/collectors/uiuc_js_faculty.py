@@ -11,9 +11,10 @@ per-profile render is needed (verified: dshike/callen/aantnsn2 mailto links
 match their listing slugs).
 
 Playwright is imported lazily so environments without it (e.g. the Render
-scheduled refresh) import this module cleanly and skip gracefully. This
-collector is run locally to land data and is intentionally NOT wired into the
-default ``refresh_all`` path.
+scheduled refresh) import this module cleanly and skip gracefully. It IS
+wired into ``refresh_all`` (deep mode only): its records share
+``source="uiuc_faculty"`` and fold into that source's merge + fetched count,
+so the ACES professors stay covered by ``deactivate_stale_faculty``.
 
 It reuses ``normalize_faculty``, ``_clean_name``, ``_is_section_label`` and
 ``merge_into_processed`` from ``uiuc_faculty`` for schema and filter

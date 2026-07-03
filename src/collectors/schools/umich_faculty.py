@@ -6,9 +6,10 @@ current professors with their research areas and (where reliably confirmable)
 public umich.edu emails. Emails left as None where the uniqname could not be
 confirmed — never guessed.
 
-Six departments, ~47 professors. One source ("umich_faculty") across all of
-them (the UIUC model); the department rides on each record's `department`
-field, and ids are namespaced by department short-code so they never collide.
+Fourteen departments, ~100 professors (count them, don't trust this line).
+One source ("umich_faculty") across all of them (the UIUC model); the
+department rides on each record's `department` field, and ids are namespaced
+by department short-code so they never collide.
 
 Data verified Jun 2026 from lab/personal sites, Google Scholar, dblp, and
 department news (the directory pages themselves block scrapers). Two distinct
