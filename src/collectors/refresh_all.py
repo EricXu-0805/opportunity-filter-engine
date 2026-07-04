@@ -30,6 +30,8 @@ from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_fa
 from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
+from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
+from .schools.uchicago_faculty import merge_into_processed as merge_uchicago_faculty
 from .schools.ucla_faculty import fetch_and_normalize as fetch_ucla_faculty
 from .schools.ucla_faculty import merge_into_processed as merge_ucla_faculty
 from .schools.ucsd_faculty import fetch_and_normalize as fetch_ucsd_faculty
@@ -560,6 +562,10 @@ def refresh_all(deep: bool = True) -> dict:
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).
             ("ucsd_faculty", fetch_ucsd_faculty, merge_ucsd_faculty),
+            # UChicago faculty (via faculty_graph): 8 live-scraped directories
+            # (CS/Stat/Math/Physics/Astro/Econ/Psych/PME) + 6 curated API-dump
+            # departments (Chemistry + the five BSD sites, JS-only shells).
+            ("uchicago_faculty", fetch_uchicago_faculty, merge_uchicago_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")
