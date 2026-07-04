@@ -91,15 +91,29 @@ def _estimate_reu_deadline(start_date: str) -> str | None:
     return f"{year:04d}-{deadline_month:02d}-{deadline_day:02d}"
 
 
+# A skill must appear as a standalone token — not flanked by a letter or the
+# tech punctuation +/# (rejects "Java" inside "JavaScript"). Single-letter
+# languages (C, R) are excluded entirely: prose abstracts can't reliably
+# signal them even boundary-matched, and substring matching once tagged 549
+# records with skills_required=["C", "R"].
+_SKILL_BOUNDARY = r"[A-Za-z+#]"
+
+
 def _extract_skills_from_abstract(abstract: str) -> list[str]:
     known = [
-        "Python", "Java", "C++", "C", "R", "MATLAB", "SQL",
+        "Python", "Java", "C++", "MATLAB", "SQL",
         "PyTorch", "TensorFlow", "machine learning", "deep learning",
         "data analysis", "Linux", "Git", "Docker",
         "JavaScript", "React", "GIS",
     ]
-    lower = abstract.lower()
-    return [s for s in known if s.lower() in lower]
+    return [
+        s for s in known
+        if re.search(
+            rf"(?<!{_SKILL_BOUNDARY}){re.escape(s)}(?!{_SKILL_BOUNDARY})",
+            abstract,
+            re.IGNORECASE,
+        )
+    ]
 
 
 def _infer_majors(title: str, abstract: str, program: str) -> list[str]:

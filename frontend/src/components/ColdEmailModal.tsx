@@ -426,11 +426,11 @@ export default function ColdEmailModal({
   }
 
   function getMailtoLink(provider: 'default' | 'gmail' | 'outlook' = 'default'): string {
-    const to = recipient || '';
+    const to = encodeURIComponent(recipient || '');
     const subj = encodeURIComponent(subject);
     const b = encodeURIComponent(body);
     if (provider === 'gmail') return `https://mail.google.com/mail/?view=cm&to=${to}&su=${subj}&body=${b}`;
-    if (provider === 'outlook') return `https://outlook.office365.com/mail/deeplink/compose?to=${encodeURIComponent(to)}&subject=${subj}&body=${b}`;
+    if (provider === 'outlook') return `https://outlook.office365.com/mail/deeplink/compose?to=${to}&subject=${subj}&body=${b}`;
     return `mailto:${to}?subject=${subj}&body=${b}`;
   }
 
