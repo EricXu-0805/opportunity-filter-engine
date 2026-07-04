@@ -875,7 +875,10 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     stored url (roster APIs whose per-person endpoint is keyed by username,
     e.g. UCSD Physics ``/api/profile/<user>/<dept>``). ``ladder_recheck``
     re-gates on rank AFTER titles exist (the listing-time gate saw only the
-    "Professor" default).
+    "Professor" default). ``render: True`` fetches each profile through the
+    headless browser instead of a plain GET — for schools whose profile pages
+    sit behind the same bot wall as the listing (Princeton dept subdomains,
+    umich), where the listing omits the email/research the profile carries.
     """
     if not enr or not (_PROFILE_ENRICH or enr.get("always")):
         return people
@@ -926,11 +929,18 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
     dm = enrich.get("digitalmeasures")
     if dm:
         return ("", _fetch_digitalmeasures(url, dm), [], None)
-    try:
-        from .ucb_common import fetch_soup
-    except Exception:  # noqa: BLE001
-        return ("", "", [], None)
-    soup = fetch_soup(url)
+    if enrich.get("render"):
+        # Profile pages sit behind the same bot wall as the listing (Princeton
+        # dept subdomains, umich) — a plain GET 403s, so route the per-profile
+        # fetch through the headless browser too. Returns None where Playwright/
+        # Chromium is absent, degrading exactly like an unreachable fetch_soup.
+        soup = _render_soup(url)
+    else:
+        try:
+            from .ucb_common import fetch_soup
+        except Exception:  # noqa: BLE001
+            return ("", "", [], None)
+        soup = fetch_soup(url)
     if soup is None:
         return ("", "", [], None)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
