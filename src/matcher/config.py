@@ -146,6 +146,13 @@ ELIG_MAJOR_WEIGHT = _env_float("OFE_ELIG_MAJOR_W", 0.24)
 # driver. Missing department → no bonus, never a penalty.
 COLLEGE_AFFINITY_MAX = _env_float("OFE_COLLEGE_AFFINITY_MAX", 4.0)
 
+# Home-school priority: when the cross-school toggle (include_cross_school) is
+# on, the student's own school gets a small additive nudge (pre-stretch, like
+# the college affinity) so 本校 wins ties against an equally-scored cross-school
+# record — but stays far too small to outrank a clearly better topical match
+# elsewhere (interests LEAD is the product law).
+HOME_SCHOOL_AFFINITY_MAX = _env_float("OFE_HOME_SCHOOL_AFFINITY_MAX", 4.0)
+
 # Thin-inventory honesty: when a profile has fewer than this many topically
 # relevant visible results, the client shows "few matches in your field" instead
 # of implying the padded generic total is all field-relevant.

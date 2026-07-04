@@ -18,10 +18,12 @@ function renderRail(overrides: {
   dismissedCount?: number;
   sourceOptions?: Array<[string, string]>;
   scopeOptions?: Array<[string, string]>;
+  includeCrossSchool?: boolean;
 } = {}) {
   const onFiltersChange = vi.fn();
   const onSortByChange = vi.fn();
   const onShowDismissedChange = vi.fn();
+  const onIncludeCrossSchoolChange = vi.fn();
   render(
     <FilterRail
       filters={overrides.filters ?? DEFAULT_FILTERS}
@@ -34,10 +36,12 @@ function renderRail(overrides: {
       activeFilterCount={overrides.activeFilterCount ?? 0}
       sourceOptions={overrides.sourceOptions ?? [['', 'All sources'], ['uiuc_faculty', 'UIUC Faculty']]}
       scopeOptions={overrides.scopeOptions ?? []}
+      includeCrossSchool={overrides.includeCrossSchool ?? false}
+      onIncludeCrossSchoolChange={onIncludeCrossSchoolChange}
       t={t}
     />,
   );
-  return { onFiltersChange, onSortByChange, onShowDismissedChange };
+  return { onFiltersChange, onSortByChange, onShowDismissedChange, onIncludeCrossSchoolChange };
 }
 
 describe('FilterRail (R69-B mobile collapse)', () => {
@@ -166,6 +170,27 @@ describe('FilterRail — discovery-scope facet', () => {
     expect(scopeSelect).toBeTruthy();
     fireEvent.change(scopeSelect!, { target: { value: 'campus' } });
     expect(onFiltersChange).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, scope: 'campus' });
+  });
+});
+
+describe('FilterRail — cross-school toggle', () => {
+  it('renders off by default (aria-pressed=false) with the hint as tooltip', () => {
+    renderRail();
+    const btn = screen.getByRole('button', { name: /crossSchool$/ });
+    expect(btn).toHaveAttribute('aria-pressed', 'false');
+    expect(btn).toHaveAttribute('title', 'results.filters.crossSchoolHint');
+  });
+
+  it('reflects the on state via aria-pressed', () => {
+    renderRail({ includeCrossSchool: true });
+    const btn = screen.getByRole('button', { name: /crossSchool$/ });
+    expect(btn).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('clicking fires onIncludeCrossSchoolChange with the flipped value', () => {
+    const { onIncludeCrossSchoolChange } = renderRail();
+    fireEvent.click(screen.getByRole('button', { name: /crossSchool$/ }));
+    expect(onIncludeCrossSchoolChange).toHaveBeenCalledWith(true);
   });
 });
 

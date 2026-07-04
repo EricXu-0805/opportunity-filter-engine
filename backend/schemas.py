@@ -47,6 +47,9 @@ class ProfileRequest(BaseModel):
     # suppresses the topic-alignment penalty, de-emphasizes readiness, and
     # diversity-samples the top buckets) for students without a settled direction.
     exploring: bool = False
+    # Cross-school opt-in: other schools' resources are hidden by default
+    # (home school first); national records and summer programs always show.
+    include_cross_school: bool = False
     preferences: ProfilePreferences | None = None
 
     @field_validator("research_interests_text")

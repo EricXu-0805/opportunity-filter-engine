@@ -23,6 +23,7 @@ from .config import (
     EXPLORE_READINESS_DROP,
     GRAD_LEVEL_PENALTY,
     HIGH_PRIORITY_TARGET_COUNT,
+    HOME_SCHOOL_AFFINITY_MAX,
     IMPLICIT_MAJOR_KEYWORD_CEILING,
     IMPLICIT_MAJOR_PER_HIT,
     INTEREST_BONUS_CAP,
@@ -320,6 +321,20 @@ def _college_affinity(profile: dict, opportunity: dict) -> float:
     if not dept:
         return 0.0
     return COLLEGE_AFFINITY_MAX if any(stem in dept for stem in stems) else 0.0
+
+
+def _home_school_affinity(profile: dict, opportunity: dict) -> float:
+    """Additive bonus (0..HOME_SCHOOL_AFFINITY_MAX) for the student's own
+    school when cross-school discovery is on — the home school wins ties
+    without outranking a clearly better topical match elsewhere. 0.0 when the
+    toggle is off (the visible pool is already home-heavy) or the profile has
+    no home school."""
+    if not profile.get("include_cross_school"):
+        return 0.0
+    home = str(profile.get("home_school") or "").strip().lower()
+    if not home:
+        return 0.0
+    return HOME_SCHOOL_AFFINITY_MAX if opportunity.get("school") == home else 0.0
 
 
 def _major_match_score(
@@ -1473,7 +1488,8 @@ def rank_opportunity(
 
     interest_bonus = _interest_bonus(profile, opportunity)
     college_bonus = _college_affinity(profile, opportunity)
-    raw = min(100.0, raw + interest_bonus + college_bonus)
+    home_bonus = _home_school_affinity(profile, opportunity)
+    raw = min(100.0, raw + interest_bonus + college_bonus + home_bonus)
 
     # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
     # eligibility layer). A separate raw multiplier here double-counted the same
@@ -1798,7 +1814,12 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     exploring = bool(profile.get("exploring"))
     weights = _compute_weights(search_weight, exploring=exploring)
 
-    home_school = str(profile.get("home_school") or "uiuc").strip().lower()
+    home_school_raw = str(profile.get("home_school") or "").strip().lower()
+    home_school = home_school_raw or "uiuc"
+    # Cross-school resources are opt-in (Eric, 2026-07: 正常肯定还是会优先本学校的科研).
+    # Without a home_school there is no "cross-school" to hide, so such
+    # profiles keep the pre-toggle behavior.
+    hide_cross_school = not profile.get("include_cross_school") and bool(home_school_raw)
     seeking = set(profile.get("seeking_type", []))
     student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
     related_majors_norm: set[str] = set()
@@ -1849,16 +1870,17 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             continue
 
         # Multi-university scope (PR #187 Phase 1): another school's
-        # campus-only posting is not actionable for this user. 'open' and
-        # 'unknown' always pass — hiding 'unknown' would regress e.g. the
-        # UCB faculty cold-email targets UIUC users see today.
+        # campus-only posting is not actionable for this user, so it always
+        # drops. The rest of another school's records ('open'/'unknown') are
+        # opt-in via include_cross_school — except summer programs, which
+        # recruit nationally regardless of host (Eric: 暑期科研肯定是无所谓的).
+        # National records (school=None) never enter this branch.
         opp_school = opp.get("school")
-        if (
-            opp_school is not None
-            and opp_school != home_school
-            and opp.get("audience") == "campus"
-        ):
-            continue
+        if opp_school is not None and opp_school != home_school:
+            if opp.get("audience") == "campus":
+                continue
+            if hide_cross_school and opp.get("opportunity_type") != "summer_program":
+                continue
 
         if profile.get("international_student"):
             elig = opp.get("eligibility", {})
