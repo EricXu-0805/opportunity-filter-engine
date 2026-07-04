@@ -346,6 +346,29 @@ describe('OpportunityChatbot — chat history propagation', () => {
       ),
     );
   });
+
+  it('caps the request history at the last 20 entries while the UI keeps the full transcript', async () => {
+    // 11 completed exchanges = 22 messages in state; the backend rejects
+    // history > 20, so the 12th send must trim to the most recent 20.
+    for (let i = 0; i < 12; i++) {
+      mockChat.mockResolvedValueOnce({ reply: `reply-${i}`, method: 'llm' });
+    }
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/);
+
+    for (let i = 0; i < 12; i++) {
+      fireEvent.change(textarea, { target: { value: `q-${i}` } });
+      fireEvent.submit(textarea.closest('form')!);
+      await waitFor(() => expect(screen.getByText(`reply-${i}`)).toBeInTheDocument());
+    }
+
+    const history = mockChat.mock.calls.at(-1)![2] as { role: string; content: string }[];
+    expect(history.length).toBeLessThanOrEqual(20);
+    expect(history[0]).toEqual({ role: 'user', content: 'q-1' });
+    expect(history.at(-1)).toEqual({ role: 'assistant', content: 'reply-10' });
+    expect(screen.getByText('q-0')).toBeInTheDocument();
+    expect(screen.getByText('reply-0')).toBeInTheDocument();
+  });
 });
 
 describe('OpportunityChatbot — model picker', () => {

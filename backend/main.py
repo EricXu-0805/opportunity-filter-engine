@@ -148,6 +148,11 @@ def _billable_class(request: Request, path: str) -> str | None:
         return "llm"
     if path.startswith("/api/opportunities/") and path.endswith("/chat"):
         return "llm"
+    # Per-card explain is a paid LLM completion (the compare page fires one per
+    # card); the exact "/api/matches" check below misses it. Gap analysis and
+    # the plain matches list stay non-billable.
+    if path.startswith("/api/matches/") and path.endswith("/explain"):
+        return "llm"
     if path == "/api/matches" and request.query_params.get("llm", "").lower() in ("1", "true"):
         return "llm"
     return None

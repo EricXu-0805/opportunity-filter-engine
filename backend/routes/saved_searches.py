@@ -58,6 +58,11 @@ BACKEND_BASE = (
 
 DIGEST_MAX_ITEMS = 10
 DIGEST_MIN_INTERVAL_DAYS = 7
+# new_match_ids accumulates across nightly refreshes until a digest goes out
+# (the digest is throttled to one per 7 days, so overwriting nightly would
+# silently drop ~6/7 of a week's matches). The cap keeps the row bounded;
+# oldest ids age out first.
+NEW_MATCH_IDS_CAP = 200
 # Unsubscribe must keep working long after the email lands (CAN-SPAM floor
 # is 30 days; a year covers any realistic inbox archaeology) — deliberately
 # much longer than the restore-link TTL.
@@ -192,7 +197,8 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
     For each saved_searches row:
       - compute current match IDs (filter + query text search)
       - diff against prior last_result_ids to find new matches
-      - PATCH the row with last_run_at / last_result_ids / new_match_ids
+      - PATCH the row with last_run_at / last_result_ids / new_match_ids,
+        where new_match_ids accumulates until the digest sends (and clears it)
     """
     _verify_cron_secret(authorization)
 
@@ -227,7 +233,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
-                "select": "id,filters_json,query,last_result_ids",
+                "select": "id,filters_json,query,last_result_ids,new_match_ids",
                 "limit": str(SUPABASE_BATCH_LIMIT),
                 "order": "last_run_at.asc.nullsfirst",
             },
@@ -245,15 +251,21 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                 filters = row.get("filters_json") or {}
                 query = row.get("query") or ""
                 prior_ids = set(row.get("last_result_ids") or [])
+                pending_ids = row.get("new_match_ids") or []
 
                 current_ids = matching_ids(opportunities, filters, query)
                 new_ids = [oid for oid in current_ids if oid not in prior_ids]
                 total_new_matches += len(new_ids)
 
+                pending_set = set(pending_ids)
+                accumulated = (
+                    pending_ids + [oid for oid in new_ids if oid not in pending_set]
+                )[-NEW_MATCH_IDS_CAP:]
+
                 patch_body = {
                     "last_run_at": now_iso,
                     "last_result_ids": current_ids,
-                    "new_match_ids": new_ids,
+                    "new_match_ids": accumulated,
                 }
                 patch_resp = await client.patch(
                     f"{supabase_url}/rest/v1/saved_searches",
@@ -389,7 +401,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     f"{supabase_url}/rest/v1/saved_searches",
                     params={"id": f"eq.{sid}"},
                     headers=headers,
-                    json={"last_digest_sent_at": now.isoformat()},
+                    json={"last_digest_sent_at": now.isoformat(), "new_match_ids": []},
                 )
                 patch_resp.raise_for_status()
                 sent += 1
