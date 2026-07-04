@@ -1469,7 +1469,7 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
                 lst = _dig(x, head.strip("."))
                 vals = [str(_dig(i, tail.strip(".")) if tail.strip(".") else i or "").strip()
                         for i in (lst if isinstance(lst, list) else [])
-                        if isinstance(i, (dict, str))]
+                        if isinstance(i, dict | str)]
                 keywords = [v for v in vals if v]
                 if keywords:
                     break
