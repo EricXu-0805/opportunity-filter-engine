@@ -929,6 +929,34 @@ class TestJsonDirSource:
     def test_json_dir_degrades_without_block(self):
         assert fg._fetch_json_dir({"short": "X"}) == []
 
+    def test_json_dir_research_field_list_and_array_segment(self, monkeypatch):
+        """UCSD-Biology shape: sections[].title area tags win, prose fallback."""
+        payload = [
+            {"fname": "Tag", "lname": "Ged",
+             "titleInfo": {"standardTitle": "Professor"},
+             "profileInfo": {"sections": [{"title": "Neurobiology"},
+                                          {"title": "Genetics"}],
+                             "researchSummary": "prose fallback"}},
+            {"fname": "Pro", "lname": "Se",
+             "titleInfo": {"standardTitle": "Professor"},
+             "profileInfo": {"sections": [],
+                             "researchSummary": "Studies kelp forests"}},
+        ]
+
+        class _Resp:
+            def raise_for_status(self): pass
+            def json(self): return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        dept = {"short": "BIO", "json_dir": {
+            "url": "https://x.edu/api", "name_fields": ["fname", "lname"],
+            "title_field": "titleInfo.standardTitle",
+            "research_field": ["profileInfo.sections[].title",
+                               "profileInfo.researchSummary"]}}
+        people = fg._fetch_json_dir(dept)
+        assert people[0]["keywords"] == ["Neurobiology", "Genetics"]
+        assert people[1]["research_areas"] == "Studies kelp forests"
+
     def test_json_dir_dotted_paths_reach_nested_fields(self, monkeypatch):
         """UCSD-Biology shape: rank nested at titleInfo.standardTitle."""
         payload = [
@@ -1099,6 +1127,28 @@ class TestJsonDirPostAndMaps:
         assert posts["data"] == {"department_code[]": "000212"}
         assert [p["name"] for p in people] == ["Ada Lovelace"]
         assert people[0]["title"] == "Associate Professor"
+
+
+class TestResearchJoinEmailKey:
+    def test_email_keyed_join_fills_research(self, monkeypatch):
+        """UCSD-Math shape: export feed keyed by work email."""
+        page = ('[{"field_work_email":"ada@x.edu","view_node_1":"/p/ada",'
+                '"field_primary_research_area":"Statistics"}]')
+
+        class _Resp:
+            text = page
+            def raise_for_status(self): pass
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        dept = {"short": "MATH", "research_join": {
+            "url": "https://x.edu/export", "key": "email",
+            "item_re": (r'"field_work_email":\s*"(?P<key>[^"]+)"[^{}]*?'
+                        r'"field_primary_research_area":\s*"(?P<areas>[^"]+)"')}}
+        specs = [fg.faculty("Ada Lovelace", email="ADA@x.edu"),
+                 fg.faculty("No Match", email="nm@x.edu")]
+        fg._apply_research_join(dept, specs)
+        assert specs[0]["research_areas"] == "Statistics"
+        assert not specs[1]["research_areas"]
 
 
 class TestLinklessDirectoryDedup:

@@ -185,12 +185,13 @@ export const SCHOOLS: School[] = [
     // Faculty Mentor Program, RSRI, STARTneuro), the paid SRP summer umbrella
     // (UC Scholars, URS, McNair, …), the School of Biological Sciences research
     // page, the career center, and SDSC) plus the live-scraped faculty
-    // directory (1,300 professors across 31 departments: Jacobs School
-    // engineering, Biology + Physics + Math via their JSON/HR feeds, the full
+    // directory (1,372 professors across 32 departments: Jacobs School
+    // engineering, Biology + Physics + Math via their JSON/HR feeds, Chemistry
+    // via a headless-render fetch past its misconfigured TLS chain, the full
     // Blink social-science and arts & humanities rosters, HDSI, Rady, and the
     // Wertheim School of Public Health; Scripps Oceanography collects from CI
     // egress and lands on top of this floor).
-    coverage: { campusOpportunities: 1313, note: 'universitySwitcher.coverageCampus' },
+    coverage: { campusOpportunities: 1385, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 8, majors: 165 },
   },
   {
