@@ -1481,7 +1481,7 @@ class TestUchicagoConfig:
         assert UC["source"] in FACULTY_SOURCES
 
     def test_uchicago_every_department_has_a_live_source_or_curated_seeds(self):
-        """21 scrape directories + 9 curated API-dump departments (Chemistry +
+        """32 scrape directories + 9 curated API-dump departments (Chemistry +
         the eight BSD sites are JS-only shells; the BSD endpoint needs a Referer
         header the engine doesn't send). Every department must resolve to one or
         the other — a dept with neither is a wiring bug."""
@@ -1491,12 +1491,22 @@ class TestUchicagoConfig:
         assert scraped == {"CS", "STAT", "MATH", "PHYS", "ASTRO", "ECON", "PSYCH", "PME",
                            "SOC", "POLISCI", "HIST", "ANTHRO", "HDEV",
                            "PHIL", "ENGL", "LING", "GEOS",
-                           "HARRIS", "LAW", "CROWN", "DIV"}
+                           "HARRIS", "LAW", "CROWN", "DIV",
+                           "CLAS", "CMLT", "EALC", "RLL", "SLAV", "SALC", "CMS",
+                           "MUSI", "TAPS", "ARTH", "DOVA"}
         assert curated == {"CHEM", "ECEV", "NEURO", "HG", "MGCB", "BMB",
                            "OBA", "PBHS", "MICRO"}
         assert not (scraped & curated)  # a dept is one mechanism or the other
         for d in UC["departments"]:
             assert d["short"] in scraped or len(d["faculty"]) >= 10, d["short"]
+
+    def test_uchicago_dova_section_filter_is_exact_faculty(self):
+        """DoVA groups Faculty / Associate Faculty / Teaching Fellows / Emeritus
+        under sibling <h3>s; the filter must anchor ^faculty$ so the adjacent
+        'Associate Faculty' and 'Visual Arts Teaching Fellows' groups don't leak."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        dova = next(d for d in UC["departments"] if d["short"] == "DOVA")
+        assert dova["scrape"]["section_filter"] == {"heading": "h3", "include": r"^faculty$"}
 
     def test_uchicago_paginated_views_carry_page_param(self):
         """The Drupal Views depts (Econ/Psych + the five SSD bio-* views + the

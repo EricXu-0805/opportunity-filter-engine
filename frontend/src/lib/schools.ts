@@ -207,17 +207,18 @@ export const SCHOOLS: School[] = [
     // Metcalf internship program + UChicago Handshake, BFI and BSCD research
     // pathways, and the James Franck Institute; the DSI Summer Lab, MRSEC REU,
     // and EDE+ are national/open, not counted) plus the faculty directory
-    // (871 professors across 30 departments spanning the College's four
-    // collegiate divisions and the professional schools: 21 live-scraped
-    // directories in five families — WordPress/FacetWP (CS), PSD MixItUp
+    // (1,034 professors across 41 departments spanning the College's four
+    // collegiate divisions and the professional schools: 32 live-scraped
+    // directories in six families — WordPress/FacetWP (CS), PSD MixItUp
     // (Stat/Math/Physics/Astro/Geophysical), Drupal Views bio-* (Econ, Psych +
-    // Sociology/PoliSci/History/Anthropology/Human Development), Drupal Views
-    // profile-tile (Philosophy/English/Linguistics), PME card-spotlight, and
-    // the professional-school directories (Harris/Law/Crown/Divinity) — plus
-    // Chemistry and eight BSD departments frozen from their JSON APIs. 66% carry
-    // a public email. Booth (JS-only Coveo) and the cross-appointed Data Science
-    // Institute are deliberately excluded.
-    coverage: { campusOpportunities: 881, note: 'universitySwitcher.coverageCampus' },
+    // the five Social Sciences depts), Drupal Views profile-tile (the whole
+    // Arts & Humanities Division bar Germanic), PME card-spotlight, the
+    // professional schools (Harris/Law/Crown/Divinity), plus Art History
+    // (photo-tile) and Visual Arts (section-grouped) — and Chemistry + eight BSD
+    // departments frozen from their JSON APIs. Booth (client-side Coveo, needs a
+    // wait-for-selector render) and the cross-appointed Data Science Institute
+    // are deferred/excluded.
+    coverage: { campusOpportunities: 1044, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 4, majors: 56 },
   },
   {
