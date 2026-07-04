@@ -2296,6 +2296,48 @@ class TestRateLimitResolution:
         assert RATE_LIMITS.get(key, DEFAULT_RATE) == DEFAULT_RATE
 
 
+class TestBillableClass:
+    """Every paid-LLM endpoint must draw on the global LLM ceiling. The exact
+    "/api/matches" check used to miss /api/matches/{id}/explain — the compare
+    page fires one paid explain call per card, all outside the spend cap."""
+
+    @staticmethod
+    def _req(method="POST", query=b""):
+        from starlette.requests import Request
+
+        return Request(
+            {"type": "http", "method": method, "headers": [], "query_string": query}
+        )
+
+    def test_explain_is_llm_billable(self):
+        from backend.main import _billable_class
+
+        assert _billable_class(self._req(), "/api/matches/abc123/explain") == "llm"
+
+    def test_explain_get_is_not_billable(self):
+        from backend.main import _billable_class
+
+        assert _billable_class(self._req("GET"), "/api/matches/abc123/explain") is None
+
+    def test_matches_list_stays_non_billable(self):
+        from backend.main import _billable_class
+
+        assert _billable_class(self._req(), "/api/matches") is None
+        # gap analysis is template-only (no LLM call) — must not draw the cap.
+        assert _billable_class(self._req(), "/api/matches/abc123/gaps") is None
+
+    def test_matches_llm_rerank_stays_billable(self):
+        from backend.main import _billable_class
+
+        assert _billable_class(self._req(query=b"llm=true"), "/api/matches") == "llm"
+
+    def test_email_and_chat_classes_unchanged(self):
+        from backend.main import _billable_class
+
+        assert _billable_class(self._req(), "/api/email/send-matches") == "email"
+        assert _billable_class(self._req(), "/api/opportunities/abc123/chat") == "llm"
+
+
 class TestClientIpTrustAndGlobalCeiling:
     """SEC: the per-IP limiter must key on the trusted-proxy-appended client IP
     (rightmost X-Forwarded-For hop), not the spoofable leftmost value, and a
