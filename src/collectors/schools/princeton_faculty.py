@@ -49,13 +49,19 @@ _LADDER = {"require": r"\bprofessor\b", "drop": r"\bemerit"}
 # name (``.field--name-title``), rank (``field-ps-people-position``), and — where
 # published — email (``field-ps-people-email``) use theme-wide field classes.
 # Reached via render mode (headless browser clears the 403). Emails land where the
-# department exposes them (MAE, CBE); the rest ship emailless but ranked.
+# department exposes them (MAE, CBE, PSY, ASTRO); the rest ship emailless but ranked.
+# ``research_items``: several departments file each person under a research
+# subfield via the sitewide-category taxonomy (Physics → "Condensed Matter
+# Theory"/"High Energy Theory", CEE → its research thrusts). Verified present on
+# PHY (47/49) and CEE via headless render; absent on the rest (MAE/PSY/…), where
+# the selector simply matches nothing and the record ships ranked-but-keywordless.
 _SB_SELECTORS = {
     "card": ".content-list-item",
     "name": ".field--name-title",
     "link": "a[href*='/people/']",
     "title": ".field--name-field-ps-people-position",
     "email": ".field--name-field-ps-people-email a[href^='mailto:']",
+    "research_items": ".field--name-field-ps-sitewide-category .field__item",
 }
 
 

@@ -1,26 +1,94 @@
-"""University of Michigan curated faculty config (via the faculty_graph engine).
+"""University of Michigan faculty config (via the faculty_graph engine).
 
 Michigan's department directories are Cloudflare-protected (403 to a stdlib
-scraper), so this is a hand-verified seed set rather than a live scrape: real
-current professors with their research areas and (where reliably confirmable)
-public umich.edu emails. Emails left as None where the uniqname could not be
-confirmed — never guessed.
+scraper), so this began as a hand-verified seed set. It now runs the engine's
+two-layer model: the curated seed is the always-on, offline-safe floor, and a
+best-effort **render-mode scrape** (headless Chromium clears the 403, the same
+trick Princeton uses) discovers the *full* department roster on top of it in
+deep mode. Seed and scrape de-dup by id (dept+name) / email / URL, so the
+hand-verified professors keep their curated keywords and the scrape only adds
+net-new faculty; a failed scrape degrades silently to the seed.
 
-Fourteen departments, ~100 professors (count them, don't trust this line).
+Fourteen departments (~100 curated seeds; the deep scrape lifts the reachable
+ones to their full rosters — e.g. Physics 7→51, Math 8→84, ME 8→106, ECE 8→111).
 One source ("umich_faculty") across all of them (the UIUC model); the
 department rides on each record's `department` field, and ids are namespaced
 by department short-code so they never collide.
 
-Data verified Jun 2026 from lab/personal sites, Google Scholar, dblp, and
-department news (the directory pages themselves block scrapers). Two distinct
-professors named "Wei Lu" (ECE/memristors vs ME/batteries) are intentionally
-kept separate — the engine de-dups on email/URL, not name.
+Scrape coverage (selectors verified live via headless render, Jul 2026):
+  * LSA departments (lsa.umich.edu, "Michigan LSA" AEM theme) — Physics, Math,
+    Chemistry, MCDB, Statistics, EEB, Economics, Psychology. Ship emailed +
+    research-tag-keyworded.
+  * Engineering (*.engin.umich.edu WordPress theme) — Mechanical Engineering
+    (.faculty-row) and ECE (the shared "eecs_person" template, names "Last,
+    First"). Ship emailed; keywords mined from the free-text interests block.
+  * No scrape yet (curated-seed-only): CSE (cse.umich.edu refuses connections),
+    Robotics (data-attribute cards, no listing email), BME & Aerospace (their
+    directory URLs 404 — the seed's directory_url is the human landing page).
+    Coverage grows here as reachable directories are identified.
+
+Seed data verified Jun 2026 from lab/personal sites, Google Scholar, dblp, and
+department news. Emails left as None where the uniqname could not be confirmed —
+never guessed. Two distinct professors named "Wei Lu" (ECE/memristors vs
+ME/batteries) are intentionally kept separate — the engine de-dups on
+email/URL, not name.
 """
 
 from __future__ import annotations
 
 from .. import faculty_graph
 from ..faculty_graph import faculty
+
+# ---- Live-scrape selectors (deep mode; verified via headless render Jul 2026) ---
+# All Michigan directories are Cloudflare-walled, so every scrape runs in render
+# mode. Keep ladder faculty (the PIs an undergraduate would research with); the
+# directories also list lecturers, research scientists, and emeriti.
+_LADDER = {"require": r"\bprofessor\b", "drop": r"\bemerit"}
+
+# lsa.umich.edu "Michigan LSA" AEM theme: a ``.person`` card grid. ``.name`` +
+# ``.title`` carry name/rank, ``.email a`` the public umich address, and
+# ``.fields a`` the research-area tags (clean atomic keywords, one <a> each).
+_LSA_SELECTORS = {
+    "card": ".person",
+    "name": ".name",
+    "link": ".name a",
+    "title": ".title",
+    "email": ".email a[href^='mailto:']",
+    "research_items": ".fields a",
+}
+
+# College of Engineering WordPress theme (*.engin.umich.edu): ``.faculty-row``
+# cards with ``.faculty-name`` / ``.faculty-titles`` / ``.faculty-email`` and a
+# free-text ``.faculty-interests`` ("Research Interests: …") the engine mines
+# for keywords at normalize time.
+_ENGIN_SELECTORS = {
+    "card": ".faculty-row",
+    "name": ".faculty-name",
+    "link": ".faculty-name a",
+    "title": ".faculty-titles",
+    "email": ".faculty-email",
+    "research": ".faculty-interests",
+}
+
+# EECS (ece.engin.umich.edu) shared "eecs_person" template: names are listed
+# "Last, First" (needs name_flip), rank rides ``.person_title_section``, the
+# mailto ``.person_email``, and the research interests the ``.pcs_tall`` block.
+_EECS_SELECTORS = {
+    "card": ".eecs_person_wrapper",
+    "name": ".eecs_person_name",
+    "title": ".person_title_section",
+    "email": ".person_email",
+    "research": ".pcs_tall",
+}
+
+
+def _scrape(url: str, selectors: dict, *, name_flip: bool = False) -> dict:
+    """A render-mode scrape block for a Cloudflare-walled Michigan directory."""
+    block = {"url": url, "render": True, "selectors": selectors,
+             "ladder_filter": _LADDER}
+    if name_flip:
+        block["name_flip"] = True
+    return block
 
 SCHOOL: dict = {
     "school_slug": "umich",
@@ -95,6 +163,7 @@ SCHOOL: dict = {
             "name": "Electrical & Computer Engineering",
             "majors": ["Electrical Engineering", "Computer Engineering", "Electrical & Computer Engineering"],
             "directory_url": "https://ece.engin.umich.edu/people/faculty/",
+            "scrape": _scrape("https://ece.engin.umich.edu/people/faculty/", _EECS_SELECTORS, name_flip=True),
             "faculty": [
                 faculty(
                     "Alfred O. Hero III", title="Professor",
@@ -151,6 +220,7 @@ SCHOOL: dict = {
             "name": "Mechanical Engineering",
             "majors": ["Mechanical Engineering"],
             "directory_url": "https://me.engin.umich.edu/people/faculty/",
+            "scrape": _scrape("https://me.engin.umich.edu/people/faculty/", _ENGIN_SELECTORS),
             "faculty": [
                 faculty(
                     "Jeff Sakamoto", title="Professor",
@@ -207,6 +277,7 @@ SCHOOL: dict = {
             "name": "Department of Physics",
             "majors": ["Physics", "Applied Physics", "Astrophysics"],
             "directory_url": "https://lsa.umich.edu/physics/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/physics/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Dragan Huterer", title="Professor",
@@ -257,6 +328,7 @@ SCHOOL: dict = {
             "name": "Molecular, Cellular & Developmental Biology",
             "majors": ["Molecular Biology", "Cellular Biology", "Biology", "Biochemistry"],
             "directory_url": "https://lsa.umich.edu/mcdb/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/mcdb/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Kenneth Cadigan", title="Professor",
@@ -313,6 +385,7 @@ SCHOOL: dict = {
             "name": "Department of Statistics",
             "majors": ["Statistics", "Data Science"],
             "directory_url": "https://lsa.umich.edu/stats/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/stats/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Ji Zhu", title="Professor",
@@ -463,6 +536,7 @@ SCHOOL: dict = {
             "name": "Department of Chemistry",
             "majors": ["Chemistry", "Biochemistry", "Chemical Biology"],
             "directory_url": "https://lsa.umich.edu/chem/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/chem/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Melanie Sanford", title="Professor",
@@ -513,6 +587,7 @@ SCHOOL: dict = {
             "name": "Department of Mathematics",
             "majors": ["Mathematics", "Applied Mathematics"],
             "directory_url": "https://lsa.umich.edu/math/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/math/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Mircea Mustata", title="Professor",
@@ -569,6 +644,7 @@ SCHOOL: dict = {
             "name": "Ecology & Evolutionary Biology",
             "majors": ["Ecology and Evolutionary Biology", "Biology", "Environmental Science"],
             "directory_url": "https://lsa.umich.edu/eeb/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/eeb/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Meghan Duffy", title="Professor",
@@ -619,6 +695,7 @@ SCHOOL: dict = {
             "name": "Department of Economics",
             "majors": ["Economics"],
             "directory_url": "https://lsa.umich.edu/econ/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/econ/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Justin Wolfers", title="Professor",
@@ -669,6 +746,7 @@ SCHOOL: dict = {
             "name": "Department of Psychology",
             "majors": ["Psychology", "Cognitive Science", "Neuroscience"],
             "directory_url": "https://lsa.umich.edu/psych/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/psych/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Ethan Kross", title="Professor",
