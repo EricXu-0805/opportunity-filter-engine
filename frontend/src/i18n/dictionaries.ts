@@ -622,6 +622,7 @@ export const en = {
     },
     rankedFor: '{count} opportunities ranked for you',
     fieldMatches: '{count} strong matches in your field',
+    fieldMatchesOne: '1 strong match in your field',
     thinInventory: 'few openings in your field right now — ranked by relevance',
     aiBadge: 'AI',
     tabs: {
@@ -1051,7 +1052,11 @@ export const en = {
     tooFew: 'Select at least 2 opportunities to compare.',
     tooMany: 'You can compare at most 3 opportunities.',
     notFound: 'None of the requested opportunities could be found.',
+    notEnoughFound: 'Only one of the selected opportunities could be found — pick at least 2 to compare.',
     addMore: 'Add more from favorites',
+    loadingProfile: 'Loading your profile…',
+    noProfile: 'Create a profile to see how these opportunities rank for you.',
+    createProfile: 'Create your profile',
     bucket: {
       top: 'Top match',
       backup: 'Strong backup',
@@ -2359,6 +2364,7 @@ export const zh = {
     },
     rankedFor: '为你排名了 {count} 个机会',
     fieldMatches: '你的方向有 {count} 个强匹配',
+    fieldMatchesOne: '你的方向有 1 个强匹配',
     thinInventory: '你的方向目前对口机会较少 —— 已按相关度排序',
     aiBadge: 'AI',
     tabs: {
@@ -2785,7 +2791,11 @@ export const zh = {
     tooFew: '请至少选择 2 个机会进行对比。',
     tooMany: '最多可以对比 3 个机会。',
     notFound: '未能找到任何请求的机会。',
+    notEnoughFound: '只找到 1 个所选机会——请至少选择 2 个进行对比。',
     addMore: '从收藏中添加',
+    loadingProfile: '正在加载你的档案…',
+    noProfile: '创建档案后即可查看这些机会与你的匹配排名。',
+    createProfile: '去创建档案',
     bucket: {
       top: '最佳匹配',
       backup: '稳妥备选',
