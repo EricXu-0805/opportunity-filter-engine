@@ -617,6 +617,117 @@ class TestScrapeLayer:
         assert not any("1945" in k for k in kws)
 
 
+class TestCuratedKeywordHygiene:
+    """Curated/taxonomy keyword lists get the same hygiene the derived branch
+    already applies (regression: the 6 multi-school configs shipped trailing
+    periods, prose fragments, and duplicate keywords verbatim)."""
+
+    def test_curated_strips_edge_punct_and_dedupes(self):
+        person = {"keywords": ["Genetics.", "genetics", " Genomics ", "Evolution"]}
+        kws = fg._clean_keywords(person)
+        assert kws == ["Genetics", "Genomics", "Evolution"]  # period + dup dropped
+
+    def test_curated_drops_prose_fragment_lead(self):
+        person = {"keywords": ["with emphasis on control", "robotics",
+                               "my research explores memory"]}
+        kws = fg._clean_keywords(person)
+        assert kws == ["robotics"]
+
+    def test_curated_keeps_determiner_led_humanities_area(self):
+        """The narrow prose-lead filter must NOT nuke legitimate determiner-led
+        research areas ("the Enlightenment", "in situ microscopy")."""
+        person = {"keywords": ["the Enlightenment", "in situ microscopy", "the Cold War"]}
+        assert fg._clean_keywords(person) == ["the Enlightenment", "in situ microscopy", "the Cold War"]
+
+    def test_curated_folds_internal_comma(self):
+        person = {"keywords": ["Plants, Soil and Algae"]}
+        assert fg._clean_keywords(person) == ["Plants / Soil and Algae"]
+
+
+class TestCorpusFacultyHygiene:
+    def test_clean_corpus_rebuilds_title_parenthetical(self):
+        rec = {
+            "source_type": "faculty_research",
+            "title": "Research with Prof. Ada Lovelace — CS (genetics, genetics, foo.)",
+            "keywords": ["genetics", "genetics", "foo."],
+        }
+        fg.clean_corpus_faculty_keywords([rec])
+        assert rec["keywords"] == ["genetics", "foo"]
+        assert rec["title"] == "Research with Prof. Ada Lovelace — CS (genetics, foo)"
+
+    def test_clean_corpus_leaves_parenless_title_alone(self):
+        rec = {
+            "source_type": "faculty_research",
+            "title": "Research with Prof. Ada Lovelace — HIST",
+            "keywords": ["architecture, design, and social history"],
+        }
+        fg.clean_corpus_faculty_keywords([rec])
+        assert rec["keywords"] == ["architecture / design / and social history"]
+        assert rec["title"] == "Research with Prof. Ada Lovelace — HIST"
+
+
+def _fac_rec(id_, *, school, pi_name, dept, email=None, url="", keywords=None):
+    return {
+        "id": id_,
+        "source_type": "faculty_research",
+        "school": school,
+        "pi_name": pi_name,
+        "department": dept,
+        "contact_email": email,
+        "url": url,
+        "title": f"Research with Prof. {pi_name} — X",
+        "keywords": keywords or [],
+        "metadata": {"is_active": True},
+    }
+
+
+class TestCollapseSamePersonFaculty:
+    def test_same_email_same_person_collapses_keeping_richer(self):
+        a = _fac_rec("a", school="utexas", pi_name="J. Eric Bickel", dept="ME",
+                     email="bickel@utexas.edu", url="https://me/bickel", keywords=["decision analysis"])
+        b = _fac_rec("b", school="utexas", pi_name="Eric Bickel", dept="PGE",
+                     email="bickel@utexas.edu", url="", keywords=["a", "b", "c", "d"])
+        res = fg.collapse_same_person_faculty([a, b])
+        kept_ids = {o["id"] for o in res["kept"]}
+        assert kept_ids == {"b"}  # b is keyword-richer
+        assert res["removed_by_school"] == {"utexas": 1}
+        # loser's profile URL is merged onto the survivor (b had none)
+        assert next(o for o in res["kept"] if o["id"] == "b")["url"] == "https://me/bickel"
+
+    def test_same_email_different_people_nulls_shared_inbox(self):
+        a = _fac_rec("a", school="uiuc", pi_name="Lauren Anaya", dept="Law",
+                     email="jhadler@illinois.edu")
+        b = _fac_rec("b", school="uiuc", pi_name="Stephen Rushin", dept="Law",
+                     email="jhadler@illinois.edu")
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"a", "b"}  # both kept
+        assert a["contact_email"] is None and b["contact_email"] is None
+        assert res["nulled_by_school"] == {"uiuc": 2}
+
+    def test_umbrella_collapse_keeps_peer_appointment(self):
+        """A College of Computing umbrella listing collapses into the specific
+        home school, but a genuine second appointment (City & Regional Planning)
+        is left as its own record."""
+        coc = _fac_rec("coc", school="gatech", pi_name="Clio Andris",
+                       dept="College of Computing", keywords=["gis"])
+        ic = _fac_rec("ic", school="gatech", pi_name="Clio Andris",
+                      dept="School of Interactive Computing", keywords=["gis", "hci", "maps"])
+        crp = _fac_rec("crp", school="gatech", pi_name="Clio Andris",
+                       dept="School of City & Regional Planning", keywords=["planning"])
+        res = fg.collapse_same_person_faculty([coc, ic, crp])
+        assert {o["id"] for o in res["kept"]} == {"ic", "crp"}  # only umbrella dropped
+        assert res["removed_by_school"] == {"gatech": 1}
+
+    def test_peer_joint_appointment_without_umbrella_is_left(self):
+        """Stanford Applied Physics + Physics (no email, no umbrella) stay two
+        records — the conservative no-email rule only collapses umbrella rosters."""
+        a = _fac_rec("a", school="stanford", pi_name="Jane Doe", dept="Department of Applied Physics")
+        b = _fac_rec("b", school="stanford", pi_name="Jane Doe", dept="Department of Physics")
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"a", "b"}
+        assert res["removed_by_school"] == {}
+
+
 # --- WordPress-REST api source (UCLA-style, no network in tests) -------------
 
 class TestWordPressApiSource:

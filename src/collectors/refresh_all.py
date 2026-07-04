@@ -775,6 +775,32 @@ def refresh_all(deep: bool = True) -> dict:
             unreconciled,
         )
 
+        # Corpus-wide faculty hygiene (idempotent, so it also guards against a
+        # future scrape reintroducing junk/duplicate keywords or a duplicate
+        # person). Keyword hygiene first (edge-strip, comma-fold, junk/prose
+        # drop, order-preserving de-dupe + title-parenthetical rebuild), then
+        # collapse same-school same-person duplicates the joint-appointment
+        # de-dup can't reach (cross-run same-email listings + umbrella rosters).
+        from .faculty_graph import (
+            clean_corpus_faculty_keywords,
+            collapse_same_person_faculty,
+        )
+        kw_cleaned = clean_corpus_faculty_keywords(all_opps)
+        collapse = collapse_same_person_faculty(all_opps)
+        all_opps = collapse["kept"]
+        removed_dupes = sum(collapse["removed_by_school"].values())
+        summary["sources"]["faculty_hygiene"] = {
+            "keywords_cleaned": kw_cleaned,
+            "duplicates_removed": removed_dupes,
+            "removed_by_school": collapse["removed_by_school"],
+            "shared_inbox_nulled": collapse["nulled_by_school"],
+            "status": "ok",
+        }
+        logger.info(
+            "faculty_hygiene: %d keyword list(s) cleaned, %d duplicate person(s) removed",
+            kw_cleaned, removed_dupes,
+        )
+
         with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
             json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
         summary["sources"]["deactivate_past"] = {
