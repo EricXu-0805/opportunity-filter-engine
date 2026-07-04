@@ -43,7 +43,6 @@ SCHOOLS_DIR = COLLECTORS_DIR / "schools"
 KNOWN_UNWIRED = {
     # -- engines / libraries / registries (consumed by wired collectors) --
     "base",  # vestigial ABC interface; real convention is fetch_and_normalize/merge_into_processed
-    "faculty_graph",  # generic engine, reached via schools/*_faculty wrappers
     "ucb_sources",  # data registry consumed by ucb_campus
     # -- deliberately manual / CLI / API-driven (never on the weekly refresh) --
     "handshake",  # per-school login cookies expire in days; manual --school runs only
@@ -246,6 +245,7 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         "school_audience",
         "auto_tagger",
         "intl_reconciliation",
+        "faculty_hygiene",  # post-processing pass (keyword clean + person dedup), not a source
         # Run key, not a record source: ucb_campus records ship as
         # ucb_research_programs / ucb_external_research / ucb_labs, whose
         # SOURCE_DEFAULTS coverage is asserted by test_ucb_campus.TestRegistry.

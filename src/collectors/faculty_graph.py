@@ -59,7 +59,7 @@ import hashlib
 import logging
 import os
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
@@ -146,6 +146,58 @@ _BARE_NAV_WORDS = frozenset({
 })
 
 
+# Prose-fragment lead-ins that scrape into a "research interest" list but are
+# never a standalone topic ("with emphasis on…", "our lab studies…", "my
+# research explores…", "in particular …"). Deliberately narrower than uiuc's
+# _LEADING_NONTOPICAL_RE, which also rejects any "the …"/"in …" lead: a curated
+# taxonomy legitimately holds determiner-led humanities areas ("the
+# Enlightenment", "the Cold War", "in situ microscopy"), so only first-person /
+# possessive / qualifier leads that can never name a research area are dropped.
+_PROSE_FRAGMENT_LEAD_RE = re.compile(
+    r"^(?:with|our|my|we|i|for example|in particular|in turn|in the|in a|in my)\b",
+    re.IGNORECASE,
+)
+
+
+def _hygiene_keyword(k: str) -> str | None:
+    """Clean one keyword (curated or derived): strip wrapping quotes and edge
+    punctuation, fold an internal comma to ' / ' (a comma would fragment the
+    title parenthetical the DQ gate comma-splits), and drop it when it is page
+    furniture, a publication venue, a room/contact residue, or a prose fragment.
+    Returns the cleaned keyword or ``None`` to drop. Reuses uiuc's
+    ``_is_junk_keyword`` as the shared junk gate so curated/taxonomy keywords are
+    held to the same bar the derived fallback already enforces."""
+    c = (k or "").strip().strip("\"'“”‘’").strip(" .,;:").strip()
+    if not c:
+        return None
+    if _PROSE_FRAGMENT_LEAD_RE.match(c):
+        return None
+    try:
+        from .uiuc_faculty import _is_junk_keyword
+    except Exception:  # noqa: BLE001
+        def _is_junk_keyword(_k):  # pragma: no cover
+            return False
+    if _is_junk_keyword(c):
+        return None
+    return re.sub(r"\s*,\s*", " / ", c)
+
+
+def _hygiene_keywords(kws: list[str]) -> list[str]:
+    """Clean + de-dupe a keyword list order-preserving (case-insensitive)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for k in kws or []:
+        c = _hygiene_keyword(k)
+        if c is None:
+            continue
+        low = c.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append(c)
+    return out
+
+
 def _clean_keywords(person: dict) -> list[str]:
     """Curated keywords win; otherwise derive a couple from research areas.
 
@@ -161,12 +213,13 @@ def _clean_keywords(person: dict) -> list[str]:
         # field ("Design", "Theory") is kept, and a multi-word phrase ("water
         # resources") is unaffected — only the standalone junk token is rejected.
         kws = [k for k in kws if " " in k or k.lower() not in _BARE_NAV_WORDS]
-        # A keyword is an atomic term; an internal comma (e.g. the taxonomy term
-        # "Plants, Soil and Algae") would break the title-parenthetical subset
-        # invariant (the DQ gate splits the parenthetical on commas), so fold it.
-        kws = [re.sub(r"\s*,\s*", " / ", k) for k in kws]
-        # de-dupe preserving order
-        return list(dict.fromkeys(kws))[:8]
+        # Hold curated/taxonomy keywords to the same hygiene the derived branch
+        # applies: strip edge punctuation/quotes, fold an internal comma to
+        # " / " (a comma breaks the title-parenthetical subset invariant), drop
+        # page-furniture / venue / room / prose-fragment junk, and de-dupe
+        # order-preserving. Previously only the derived fallback below cleaned,
+        # so a curated list shipped its junk verbatim.
+        return _hygiene_keywords(kws)[:8]
     raw = _strip_nav_furniture(person.get("research_areas", ""))
     # Split on ; | and , — directories delimit a research list with any of them
     # (Stanford Education uses " | " between areas; most use commas/semicolons).
@@ -1651,6 +1704,184 @@ def _fetch_faculty180(dept: dict) -> list[dict]:
         if len(users) < per_page or fresh == 0:
             break
     return specs
+
+
+# ---------------------------------------------------------------------------
+# Corpus-wide faculty hygiene (one-time cleanup + refresh-safe regression guard)
+# ---------------------------------------------------------------------------
+
+# A faculty title is "Research with Prof. <name> — <SHORT> (kw1, kw2, kw3)"; the
+# parenthetical is a subset of the record's keywords (a DQ invariant). When the
+# keyword list is cleaned/de-duped the parenthetical must be rebuilt from it. The
+# short segment carries no "(", so the lazy group stops at the keyword paren.
+_FAC_TITLE_PAREN_RE = re.compile(r"^(.+ — [^(]+?)(?: \(.+\))$")
+
+
+def _is_active_faculty(o: dict) -> bool:
+    return (o.get("source_type") == "faculty_research"
+            and (o.get("metadata") or {}).get("is_active", True))
+
+
+def clean_corpus_faculty_keywords(opps: list[dict]) -> int:
+    """Apply keyword hygiene (edge-strip, comma-fold, junk/prose drop, order-
+    preserving de-dupe) to every faculty record and rebuild the title
+    parenthetical when the record has one. Idempotent, so it doubles as a
+    refresh-safe guard against a future scrape reintroducing duplicate/junk
+    keywords. Mutates ``opps`` in place; returns the count of records changed."""
+    changed = 0
+    for o in opps:
+        if o.get("source_type") != "faculty_research":
+            continue
+        kws = o.get("keywords") or []
+        new = _hygiene_keywords(kws)
+        touched = False
+        if new != kws:
+            o["keywords"] = new
+            touched = True
+        title = o.get("title") or ""
+        m = _FAC_TITLE_PAREN_RE.match(title)
+        if m:
+            rebuilt = m.group(1) + (f" ({', '.join(new[:3])})" if new else "")
+            if rebuilt != title:
+                o["title"] = rebuilt
+                touched = True
+        if touched:
+            changed += 1
+    return changed
+
+
+# Umbrella rosters that re-list people whose home is a more specific department
+# (Georgia Tech's cc.gatech.edu "College of Computing" page lists everyone in the
+# Schools of Interactive Computing / Computational Science & Engineering / CS).
+# Keyed by school_slug -> the umbrella department names. Used ONLY for the
+# no-email same-name collapse: a record under an umbrella dept that co-occurs
+# with the same person under a specific dept is the redundant one.
+_UMBRELLA_DEPTS: dict[str, frozenset[str]] = {
+    "gatech": frozenset({"College of Computing"}),
+}
+
+
+def _name_tokens(name: str) -> set[str]:
+    """Lowercased alphabetic name tokens (length > 1 — drops middle initials)."""
+    return {t for t in re.findall(r"[a-z]+", (name or "").lower()) if len(t) > 1}
+
+
+def _norm_person_name(name: str) -> str:
+    """Order-insensitive normalized full name ("Last, First" == "First Last")."""
+    return " ".join(sorted(_name_tokens(name)))
+
+
+def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
+    """Fill the survivor's missing contact fields (email / profile link) from the
+    dropped duplicate, so collapsing never loses a usable address or URL."""
+    if not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip():
+        survivor["contact_email"] = loser["contact_email"]
+    for f in ("url", "source_url"):
+        if not (survivor.get(f) or "").strip() and (loser.get(f) or "").strip():
+            survivor[f] = loser[f]
+    app, lapp = survivor.get("application"), loser.get("application")
+    if isinstance(app, dict) and isinstance(lapp, dict):
+        if not (app.get("application_url") or "").strip() and (lapp.get("application_url") or "").strip():
+            app["application_url"] = lapp["application_url"]
+
+
+def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
+    """Keyword-richest record in a same-person group; on a keyword tie, prefer a
+    specific (non-umbrella) department over the umbrella roster."""
+    from .uiuc_faculty import _faculty_is_richer
+    best = group[0]
+    for o in group[1:]:
+        if _faculty_is_richer(o, best):
+            best = o
+        elif not _faculty_is_richer(best, o) and (
+            best.get("department") in umbrella and o.get("department") not in umbrella
+        ):
+            best = o
+    return best
+
+
+def collapse_same_person_faculty(opps: list[dict]) -> dict:
+    """Collapse duplicate ACTIVE faculty for the same person at one school and
+    prevent recreation on the next merge.
+
+    Two passes, both school-scoped and conservative:
+
+    * **Same contact_email.** A cross-appointed professor listed under two
+      departments (different profile URLs) shares one personal address. When the
+      records also share a name token (the surname), they are one person: keep
+      the keyword-richer record, merge the loser's email/link, delete the loser.
+      When they do NOT share a name (a scraped department/advising inbox on two
+      different people, e.g. two Law professors on one assistant's address), the
+      email is a mis-scraped shared inbox — null it on both rather than merge,
+      so a "Dear Prof. X" cold email can never reach the wrong person.
+
+    * **Same normalized name, both without email.** Only collapsed when one
+      record sits under an umbrella roster of the other (``_UMBRELLA_DEPTS``);
+      genuine joint appointments across two peer departments (Stanford Applied
+      Physics + Physics) are left as two records.
+
+    Mutates ``opps`` in place (nulls shared inboxes) and returns
+    ``{"kept": [...], "removed_by_school": {...}, "nulled_by_school": {...}}``."""
+    active = [o for o in opps if _is_active_faculty(o)]
+    remove: set[int] = set()
+    removed_by_school: Counter = Counter()
+    nulled_by_school: Counter = Counter()
+
+    by_email: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for o in active:
+        em = (o.get("contact_email") or "").strip().lower()
+        if em:
+            by_email[(o.get("school"), em)].append(o)
+    for (school, _em), group in by_email.items():
+        if len(group) < 2:
+            continue
+        common = set.intersection(*(_name_tokens(o.get("pi_name")) for o in group))
+        if common:
+            survivor = _pick_richer(group, frozenset())
+            for o in group:
+                if o is survivor:
+                    continue
+                _merge_faculty_fields(survivor, o)
+                remove.add(id(o))
+                removed_by_school[school] += 1
+        else:
+            for o in group:
+                o["contact_email"] = None
+                nulled_by_school[school] += 1
+
+    by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for o in active:
+        if id(o) in remove or (o.get("contact_email") or "").strip():
+            continue
+        nn = _norm_person_name(o.get("pi_name"))
+        if nn:
+            by_name[(o.get("school"), nn)].append(o)
+    for (school, _nn), group in by_name.items():
+        if len(group) < 2:
+            continue
+        umbrella = _UMBRELLA_DEPTS.get(school, frozenset())
+        if not umbrella:
+            continue
+        umbrella_recs = [o for o in group if o.get("department") in umbrella]
+        specific_recs = [o for o in group if o.get("department") not in umbrella]
+        # Only the umbrella listing is redundant. Genuine joint appointments
+        # across peer departments (Interactive Computing + City & Regional
+        # Planning) both stay — we merge the umbrella record's fields into the
+        # richer specific home record and delete only the umbrella record.
+        if not umbrella_recs or not specific_recs:
+            continue
+        survivor = _pick_richer(specific_recs, umbrella)
+        for o in umbrella_recs:
+            _merge_faculty_fields(survivor, o)
+            remove.add(id(o))
+            removed_by_school[school] += 1
+
+    kept = [o for o in opps if id(o) not in remove]
+    return {
+        "kept": kept,
+        "removed_by_school": dict(removed_by_school),
+        "nulled_by_school": dict(nulled_by_school),
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -389,6 +389,49 @@ class TestR70ADataQuality:
             f"fragment). First: {offenders[:5]}"
         )
 
+    def test_faculty_keywords_have_no_duplicates(self):
+        """A keyword list is a set of distinct areas; a repeated keyword (e.g.
+        'genetics, genetics') is scrape noise that also doubles up in the title
+        parenthetical. faculty_graph's keyword hygiene de-dupes order-preserving
+        (case-insensitively), so no faculty record may carry a duplicate."""
+        offenders = []
+        for o in _load_data():
+            if not _is_faculty(o):
+                continue
+            kws = o.get("keywords") or []
+            lowered = [(k or "").strip().lower() for k in kws]
+            if len(lowered) != len(set(lowered)):
+                offenders.append((o.get("id"), kws))
+        assert not offenders, (
+            f"{len(offenders)} faculty records carry duplicate keywords. "
+            f"First: {offenders[:3]}"
+        )
+
+    def test_no_same_school_same_email_faculty_duplicates(self):
+        """A cross-appointed professor listed under two departments shares one
+        personal email; those rows must collapse to a single record (else the
+        person surfaces twice and could be cold-emailed twice). A genuinely
+        shared department/advising inbox is nulled instead. Either way, no two
+        ACTIVE faculty at one school may share a non-null contact_email —
+        collapse_same_person_faculty guarantees this on every refresh."""
+        from collections import defaultdict
+
+        by_key: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for o in _load_data():
+            if not _is_faculty(o):
+                continue
+            if not (o.get("metadata") or {}).get("is_active", True):
+                continue
+            email = (o.get("contact_email") or "").strip().lower()
+            if email:
+                by_key[(o.get("school"), email)].append(o.get("id"))
+        dups = {k: ids for k, ids in by_key.items() if len(ids) > 1}
+        assert not dups, (
+            f"{len(dups)} school+email pairs have >1 active faculty record "
+            f"(uncollapsed joint appointment or shared inbox). First: "
+            f"{list(dups.items())[:3]}"
+        )
+
     def test_no_scraped_title_label_leak_in_descriptions(self):
         """A directory card's rank field is sometimes prefixed with its scraped
         label ("Position title: …" / "Title: …"); it must not leak into the
