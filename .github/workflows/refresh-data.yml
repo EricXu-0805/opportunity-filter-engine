@@ -61,6 +61,19 @@ jobs:
             # mock it), so install it + the browser only here, on deep runs.
             pip install playwright
             python -m playwright install --with-deps chromium
+            # First deep run of the month: also enable the gated per-profile
+            # enrichment pass (OFE_ENRICH_PROFILES). It follows each faculty
+            # profile link to recover the email/research the directory listing
+            # omits — render mode for the Cloudflare-walled schools (Princeton
+            # dept subdomains, umich), plain fetch for the rest. Expensive
+            # per-profile, so monthly not weekly (mirrors the Experts cadence
+            # below); the richer-dedup carry-forward keeps recovered fields, so
+            # already-enriched profiles are skipped on later runs (only records
+            # still missing a field are re-fetched).
+            if [ "$(date -u +%d)" -le 07 ]; then
+              echo "First week of the month — enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
+              export OFE_ENRICH_PROFILES=1
+            fi
             python -m src.collectors.refresh_all
           else
             echo "Running QUICK refresh (Thursday)"
