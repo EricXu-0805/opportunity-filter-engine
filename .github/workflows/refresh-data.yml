@@ -18,6 +18,13 @@ env:
   # June 16 2026 forced migration of node20 actions.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# A Monday deep run can outlast a manual dispatch fired later the same day;
+# two refreshes racing the same corpus file produce garbage merges. Queue,
+# never cancel (a 3h scrape is too expensive to kill).
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -175,3 +182,25 @@ jobs:
           done
           echo "::error::Required checks passed but the PR could not be merged."
           exit 1
+
+      # The refresh failed silently 7 runs in a row (6/25–7/02) before anyone
+      # noticed — cron failures send no notification by default.
+      - name: Alert operator on failure
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            exit 0
+          fi
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"JoinALab <onboarding@resend.dev>\",
+              \"to\": [\"$OPERATOR_EMAIL\"],
+              \"subject\": \"JoinALab: data refresh FAILED\",
+              \"text\": \"The scheduled data refresh failed.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe corpus has not been updated. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived).\"
+            }" || true
