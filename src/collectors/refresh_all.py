@@ -116,7 +116,11 @@ from .ucb_urap_projects import fetch_and_normalize as fetch_ucb_urap_projects
 from .ucb_urap_projects import merge_into_processed as merge_ucb_urap_projects
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
-from .uiuc_faculty import _null_shared_admin_emails
+from .uiuc_faculty import (
+    _null_shared_admin_emails,
+    _null_unit_inbox_emails,
+    _strip_furniture_keywords,
+)
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
 from .uiuc_faculty import missing_departments as faculty_missing_departments
@@ -654,23 +658,41 @@ def refresh_all(deep: bool = True) -> dict:
         with open(PROCESSED_FILE, encoding="utf-8") as f:
             all_opps = json.load(f)
 
-        pi_stats = enrich_pi(all_opps, save=True)
+        # max_scrapes: with the enricher now covering every school's faculty the
+        # missing-email backlog is ~9k profile pages; at DELAY=2s an uncapped run
+        # is ~7h — past the GitHub Actions 6h job limit. 1000 pages ≈ 45 min per
+        # run; successes stop being re-scraped, so the budget window advances
+        # through the backlog run over run.
+        pi_stats = enrich_pi(all_opps, save=True, max_scrapes=1000)
         summary["sources"]["pi_enricher"] = {
             "scraped": pi_stats["scraped"],
             "enriched": pi_stats["enriched"],
             "already_had": pi_stats["already_has_email"],
+            "skipped_budget": pi_stats["skipped_budget"],
             "status": "ok",
         }
-        logger.info(f"PI enricher: {pi_stats['enriched']} new emails found")
+        logger.info(
+            f"PI enricher: {pi_stats['enriched']} new emails found "
+            f"({pi_stats['skipped_budget']} left for next run by the scrape budget)")
 
         # The PI enricher re-scrapes profile pages for records still missing a
         # contact email and can re-attach a shared department/advising inbox the
-        # faculty merge already nulled. Re-run the threshold-based null pass so a
-        # shared inbox never reaches the corpus as a cold-email target.
+        # faculty merge already nulled. Re-run the threshold + pattern null
+        # passes so a shared/unit inbox never reaches the corpus as a cold-email
+        # target. These (and the furniture strip) cover every school's faculty;
+        # running them here also cleans the non-UIUC records merged AFTER the
+        # uiuc_faculty merge's corpus-wide DQ pass in this same run.
         renulled = _null_shared_admin_emails(all_opps)
         if renulled:
             logger.info(f"Re-nulled {renulled} shared department/admin inbox(es) re-attached by PI enrichment")
         summary["sources"]["pi_enricher"]["renulled_shared_emails"] = renulled
+        unit_nulled = _null_unit_inbox_emails(all_opps)
+        if unit_nulled:
+            logger.info(f"Nulled {unit_nulled} department/unit mailbox contact email(s)")
+        summary["sources"]["pi_enricher"]["nulled_unit_inboxes"] = unit_nulled
+        furniture = _strip_furniture_keywords(all_opps)
+        if furniture:
+            logger.info(f"Stripped junk keyword(s) from {furniture} faculty record(s)")
 
         # R70-C: deactivate past-deadline records. Previously only run as a
         # separate CI step (.github/workflows/refresh-data.yml) so local
