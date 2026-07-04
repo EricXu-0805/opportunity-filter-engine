@@ -67,7 +67,9 @@ export function ResultsHeader({
         </p>
         {!loading && data && typeof data.field_relevant_count === 'number' && data.field_relevant_count > 0 && (
           <p className="mt-1 text-[12px] sm:text-[13px] font-medium text-indigo-700">
-            {t('results.fieldMatches', { count: data.field_relevant_count })}
+            {data.field_relevant_count === 1
+              ? t('results.fieldMatchesOne')
+              : t('results.fieldMatches', { count: data.field_relevant_count })}
             {data.thin_inventory && (
               <span className="ml-1.5 font-normal text-gray-400">· {t('results.thinInventory')}</span>
             )}

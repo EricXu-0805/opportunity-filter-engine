@@ -453,6 +453,33 @@ class TestR70ADataQuality:
         ]
         assert not offenders, f"{len(offenders)} faculty carry inferred skills: {offenders[:5]}"
 
+    def test_single_letter_skills_only_with_context(self):
+        """Substring skill extraction once matched the bare letters 'C' and 'R'
+        inside ordinary prose, tagging 549 NSF REU abstracts with
+        skills_required=["C", "R"]. The live enricher legitimately emits them
+        only behind context gates ("R programming", not bare "R" — see
+        SKILL_PATTERNS), so a single-letter skill is junk exactly when the
+        enricher itself would NOT extract it from the record's own text."""
+        from src.normalizers.enricher import _combined_text, _extract_skills_from_text
+
+        offenders = []
+        for o in _load_data():
+            elig = o.get("eligibility") or {}
+            singles = {
+                s.strip()
+                for field in ("skills_required", "skills_preferred")
+                for s in elig.get(field) or []
+                if isinstance(s, str) and len(s.strip()) <= 1
+            }
+            if not singles:
+                continue
+            legitimate = set(_extract_skills_from_text(_combined_text(o)))
+            for s in sorted(singles - legitimate):
+                offenders.append((o.get("id"), s))
+        assert not offenders, (
+            f"{len(offenders)} context-less single-letter skill entries: {offenders[:5]}"
+        )
+
     def test_faculty_have_no_bare_research_keyword(self):
         """A bare 'research' (or other nav-junk) single-word keyword is
         zero-signal noise as a tag chip — every faculty keyword must be a real

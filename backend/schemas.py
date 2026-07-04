@@ -62,6 +62,14 @@ class ProfileRequest(BaseModel):
     def cap_name(cls, v: str) -> str:
         return v[:100]
 
+    # These four are interpolated verbatim into the chat system prompt —
+    # uncapped they let a 100k-char field balloon the prompt past the LLM
+    # context budget.
+    @field_validator("year", "major", "college", "experience_level")
+    @classmethod
+    def cap_short_text(cls, v: str) -> str:
+        return v[:100]
+
     @field_validator("home_school")
     @classmethod
     def normalize_home_school(cls, v: str) -> str:
@@ -93,6 +101,7 @@ class ProfileRequest(BaseModel):
                 result.append(SkillItem(name=item[:50], level="beginner"))
             elif isinstance(item, dict):
                 item["name"] = str(item.get("name", ""))[:50]
+                item["level"] = str(item.get("level", "beginner"))[:50]
                 result.append(SkillItem(**item))
             else:
                 result.append(item)
@@ -217,18 +226,6 @@ class RoadmapSkill(BaseModel):
 class RoadmapResponse(BaseModel):
     skills: list[RoadmapSkill]
     total_labs: int
-
-
-class ResumeParseResponse(BaseModel):
-    extracted_skills: list[str]
-    extracted_coursework: list[str]
-    experience_level: str
-    raw_text: str
-    success: bool
-    message: str = ""
-    # A labeled "Areas of Interest" / "Research Interests" line, used to seed the
-    # research-interests box when empty — the frontend's only semantic-match lever.
-    suggested_interests: str = ""
 
 
 class TailorRequest(BaseModel):

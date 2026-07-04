@@ -58,7 +58,6 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     # always wins over "/api/tailor").
     "/api/tailor/status": (60, 60),
     "/api/tailor": (10, 60),
-    "/api/resume/upload": (5, 60),
     "/api/resume/github": (10, 60),
     "/api/email/send-matches": (3, 3600),
     "/api/email/send-favorites": (3, 3600),
@@ -148,6 +147,11 @@ def _billable_class(request: Request, path: str) -> str | None:
     if path.startswith(_LLM_COST_PREFIXES):
         return "llm"
     if path.startswith("/api/opportunities/") and path.endswith("/chat"):
+        return "llm"
+    # Per-card explain is a paid LLM completion (the compare page fires one per
+    # card); the exact "/api/matches" check below misses it. Gap analysis and
+    # the plain matches list stay non-billable.
+    if path.startswith("/api/matches/") and path.endswith("/explain"):
         return "llm"
     if path == "/api/matches" and request.query_params.get("llm", "").lower() in ("1", "true"):
         return "llm"

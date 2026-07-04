@@ -202,6 +202,31 @@ describe('useProfileForm — GitHub auto-import on submit (PR5 ②)', () => {
     );
     expect(pushSpy).toHaveBeenCalledWith('/results');
   });
+
+  it('submit-then-unmount keeps the imported skills (stale pending save must not clobber)', async () => {
+    // Regression: editing github_url arms the debounced auto-save with the
+    // PRE-import profile. handleSubmit cleared the timer but left the ref, so
+    // the unmount flush re-saved that stale snapshot over the merged skills.
+    vi.mocked(parseGitHubProfile).mockResolvedValue({
+      username: 'octocat', extracted_skills: ['Go'], topics: [], repo_count: 3, top_repos: [],
+    });
+    vi.mocked(saveProfile).mockClear();
+    const { unmount } = render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    // Wait out the 500ms isInitialLoad window so the auto-save effect is live.
+    await act(async () => { await new Promise((r) => setTimeout(r, 550)); });
+    fireEvent.click(screen.getByTestId('set-gh')); // arms the debounced save WITHOUT Go
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    unmount();
+    const calls = vi.mocked(saveProfile).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const lastSaved = calls[calls.length - 1][0] as { skills: Array<{ name: string }> };
+    expect(lastSaved.skills).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'Go' })]),
+    );
+  });
 });
 
 function SchoolHarness() {

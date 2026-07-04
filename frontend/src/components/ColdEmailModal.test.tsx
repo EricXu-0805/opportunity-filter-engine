@@ -307,7 +307,34 @@ describe('ColdEmailModal', () => {
       expect(windowOpenMock).toHaveBeenCalledTimes(1);
       const url = windowOpenMock.mock.calls[0][0] as string;
       expect(url).toContain('mail.google.com');
-      expect(url).toContain('to=p@x.edu');
+      expect(url).toContain('to=p%40x.edu');
+    });
+
+    it('URL-encodes a user-edited recipient in the Gmail + Outlook deep links', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant({ subject: 'Hi', body: 'Hey', recipient_email: 'p@x.edu' })],
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile()}
+          opportunityId="opp"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Hi')).toBeInTheDocument());
+      const edited = 'p@x.edu?cc=evil@x.com&bcc=e2@x.com';
+      fireEvent.change(screen.getByDisplayValue('p@x.edu'), { target: { value: edited } });
+      fireEvent.click(screen.getByText('coldEmail.gmail'));
+      fireEvent.click(screen.getByText('coldEmail.outlook'));
+      const [gmailUrl, outlookUrl] = windowOpenMock.mock.calls.map((c) => c[0] as string);
+      for (const url of [gmailUrl, outlookUrl]) {
+        expect(url).toContain(`to=${encodeURIComponent(edited)}`);
+        // raw ?/&/@ must not leak extra query params into the compose URL
+        expect(url).not.toContain('&bcc=');
+        expect(url).not.toContain('cc=evil@x.com');
+      }
     });
   });
 
