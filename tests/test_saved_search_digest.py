@@ -181,7 +181,8 @@ class TestDigestCronSend:
         assert "digest-unsubscribe" in send["text"]
 
         assert len(patches) == 1
-        assert patches[0]["json"].keys() == {"last_digest_sent_at"}
+        assert patches[0]["json"].keys() == {"last_digest_sent_at", "new_match_ids"}
+        assert patches[0]["json"]["new_match_ids"] == []
         assert patches[0]["params"]["id"] == f"eq.{_digest_row()['id']}"
 
     def test_caps_items_at_ten(self, monkeypatch):
@@ -252,6 +253,56 @@ class TestDigestCronSend:
         client.get("/api/cron/saved-searches/digest", headers=AUTH)
         assert "<script>alert(1)</script>" not in sends[0]["html"]
         assert "&lt;script&gt;" in sends[0]["html"]
+
+
+class TestRefreshAccumulatesNewMatches:
+    """new_match_ids must survive nightly refreshes until a digest is sent —
+    the digest is throttled to one per 7 days, so overwriting the column with
+    each night's diff would silently drop ~6/7 of a week's matches."""
+
+    def _refresh_row(self, **overrides):
+        row = {
+            "id": "11111111-2222-3333-4444-555555555555",
+            "filters_json": {},
+            "query": "",
+            "last_result_ids": [],
+            "new_match_ids": [],
+        }
+        row.update(overrides)
+        return row
+
+    def test_unions_fresh_diff_with_pending_ids(self, monkeypatch):
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        # opp-a was already in last night's result set; opp-old accumulated
+        # from an earlier refresh and has since left the corpus — it must
+        # survive until the digest clears it, not vanish overnight.
+        row = self._refresh_row(last_result_ids=["opp-a"],
+                                new_match_ids=["opp-old", "opp-b"])
+        _install_stubs(monkeypatch, rows=[row], patches=patches)
+
+        r = client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+        assert r.status_code == 200
+        assert r.json()["status"] == "ok"
+
+        body = patches[0]["json"]
+        assert body["last_result_ids"] == ["opp-a", "opp-b"]
+        # opp-b is both pending and freshly diffed — deduped, order kept
+        assert body["new_match_ids"] == ["opp-old", "opp-b"]
+
+    def test_cap_keeps_newest_ids(self, monkeypatch):
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        pending = [f"pending-{i}" for i in range(ss_mod.NEW_MATCH_IDS_CAP - 1)]
+        row = self._refresh_row(new_match_ids=pending)
+        _install_stubs(monkeypatch, rows=[row], patches=patches)
+
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        got = patches[0]["json"]["new_match_ids"]
+        assert len(got) == ss_mod.NEW_MATCH_IDS_CAP
+        assert "pending-0" not in got  # oldest aged out
+        assert got[-2:] == ["opp-a", "opp-b"]  # fresh matches kept
 
 
 SID = "11111111-2222-3333-4444-555555555555"

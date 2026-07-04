@@ -1,6 +1,6 @@
 import re
 
-from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
+from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS, _tokenize
 
 # Tokenizer for skill matching: a letter followed by letters/digits/+/#/. so
 # "c++", "c#", "node.js" stay whole. Used to match a skill as a WHOLE token in a
@@ -200,6 +200,35 @@ def _short_interest(interests: str) -> str:
     if len(phrases) > 1 and len(out) < 40:
         out = f"{out}, {phrases[1]}"
     return out.rstrip(".")
+
+
+def _topic_domains(text: str) -> set[str]:
+    lower = text.lower()
+    return {
+        name
+        for name, vocab in (
+            ("wet", _WET_LAB_KEYWORDS),
+            ("dry", _DRY_LAB_KEYWORDS),
+            ("hum", _HUMANITIES_KEYWORDS),
+        )
+        if any(kw in lower for kw in vocab)
+    }
+
+
+def _alignment_plausible(interests: str, opp_topic_text: str) -> bool:
+    """Whether claiming the student's interests align with the opportunity's
+    topic is defensible. A cheap lexical check cannot see semantic kinship
+    ("deep learning" ~ "computer vision"), so it vetoes only on provable
+    mismatch: zero shared tokens AND provably different lab-type domains
+    ("machine learning" vs "environmental economics"). No topic text, or no
+    domain signal on either side, means there is nothing to disprove."""
+    if not opp_topic_text.strip():
+        return True
+    if set(_tokenize(interests)) & set(_tokenize(opp_topic_text)):
+        return True
+    interest_domains = _topic_domains(interests)
+    opp_domains = _topic_domains(opp_topic_text)
+    return not interest_domains or not opp_domains or bool(interest_domains & opp_domains)
 
 
 def _infer_research_topic(opportunity: dict) -> str:
@@ -535,6 +564,14 @@ def _p1_research_hook(p: dict) -> str:
         research_area = ""
     if research_topic and research_topic.lower() in _BROAD_FIELDS:
         research_topic = ""
+
+    # CE-7: every interest-bearing branch below asserts alignment ("aligns
+    # closely", "strongly resonates", "closely related") but nothing ever
+    # compared the opportunity's topic to the student's interests. On a
+    # provable mismatch, drop the interests so the claim-free openers below
+    # ("I came across ... and would like to learn more") take over.
+    if interests and not _alignment_plausible(interests, f"{research_topic} {research_area}"):
+        interests = ""
 
     # CE-2: compute the lab reference once so every branch drops the article
     # before a possessive proper-noun lab ("Prof. X's Research Group") — one

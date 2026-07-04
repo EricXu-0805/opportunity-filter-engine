@@ -46,12 +46,15 @@ test.describe('i18n: language switcher', () => {
     expect(html).toContain('生成匹配');
   });
 
-  test('Accept-Language header is used when no cookie', async ({ browser }) => {
+  test('first visit defaults to English even with a zh Accept-Language', async ({ browser }) => {
+    // Intentional product behavior (see i18n/server.ts): no cookie → English;
+    // Accept-Language is deliberately ignored — only an explicit switch flips it.
     const zhContext = await browser.newContext({ locale: 'zh-CN' });
     const page = await zhContext.newPage();
     const response = await page.goto('/');
     const html = await response!.text();
-    expect(html).toContain('匹配机会');
+    expect(html).toContain('Generate Matches');
+    expect(html).not.toContain('匹配机会');
     await zhContext.close();
   });
 
