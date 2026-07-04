@@ -392,10 +392,11 @@ def is_likely_non_opportunity(opp: dict) -> bool:
 
 # Sources whose postings are, by default, year-round research positions
 # without a fixed deadline. Displaying "missing deadline" for these is
-# misleading — they accept students any time (rolling basis).
+# misleading — they accept students any time (rolling basis). Faculty
+# cold-email targets are handled by source_type (see is_rolling_deadline),
+# not listed here, so the multi-school rollout can't drift this set.
 _ROLLING_BY_SOURCE: frozenset = frozenset({
-    "uiuc_faculty",  # professor research pages — contact anytime
-    "uiuc_sro",      # SRO lab index — most are rolling
+    "uiuc_sro",  # SRO lab index — most are rolling
 })
 
 _ROLLING_TEXT_PATTERNS: list[str] = [
@@ -424,6 +425,13 @@ def is_rolling_deadline(opp: dict) -> bool:
         return False
     source = opp.get("source", "")
     if source in _ROLLING_BY_SOURCE:
+        return True
+    # Faculty cold-email targets accept students year-round — a professor
+    # page has no application deadline. Every school's faculty collector
+    # (uiuc, the ucb_* fleet, the faculty_graph schools) emits this
+    # source_type, so keying on it instead of a per-source list means new
+    # schools inherit the rolling default automatically.
+    if opp.get("source_type") == "faculty_research":
         return True
     text = " ".join([
         (opp.get("title") or ""),

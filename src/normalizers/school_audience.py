@@ -15,8 +15,10 @@ VALID_AUDIENCES = frozenset({"campus", "open", "unknown"})
 
 SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "uiuc_our_rss": ("uiuc", "campus"),
+    # uiuc_faculty covers all four scrape paths (static + js + json + html
+    # variants) — they all emit source="uiuc_faculty", so one entry is the
+    # whole family.
     "uiuc_faculty": ("uiuc", "campus"),
-    "uiuc_js_faculty": ("uiuc", "campus"),
     "uiuc_siebel": ("uiuc", "campus"),
     "uiuc_urap": ("uiuc", "campus"),
     "uiuc_ursa": ("uiuc", "campus"),

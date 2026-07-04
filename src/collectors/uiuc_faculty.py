@@ -658,9 +658,20 @@ _PAGE_NOISE = re.compile(
 
 def _scrape_individual_page_keywords(url: str) -> list[str]:
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=8, verify=False)
+        resp = requests.get(url, headers=HEADERS, timeout=8)
         resp.raise_for_status()
         html = resp.text
+    except requests.exceptions.SSLError:
+        # A few departmental vhosts ship broken cert chains; retry unverified
+        # (same fallback pattern as uiuc_our_rss) rather than silently losing
+        # their research keywords, and warn so the cert rot stays visible.
+        logger.warning("SSL verification failed for %s — retrying unverified", url)
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=8, verify=False)
+            resp.raise_for_status()
+            html = resp.text
+        except requests.RequestException:
+            return []
     except requests.RequestException:
         return []
 
