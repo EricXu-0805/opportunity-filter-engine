@@ -70,11 +70,31 @@ def _drupal(short: str, name: str, majors: list[str], url: str) -> dict:
             "scrape": {"url": url, "selectors": _PERSON_CARD, "ladder_filter": _LADDER}}
 
 
+# Site Builder PROFILE pages sit behind the same Cloudflare wall as the listing
+# (→ render mode) and carry the fields the listing grid omits: a public mailto
+# and, on departments that use it, a research-areas taxonomy. Gated behind
+# OFE_ENRICH_PROFILES (render-per-profile is slow — it runs in the deliberate
+# enrichment pass, not the weekly refresh); the recovered contact_email/keywords
+# then ride the corpus forward via _carry_forward_enrichment. Verified live:
+# ECE/Physics profiles expose ``field-ps-people-email`` (absent from their
+# listing), and ECE lists ``field-research-areas .field__item`` as clean atomic
+# keywords. Only records still missing the field are fetched, so depts that
+# already ship emailed/keyworded (MAE/CBE listing emails, PHY/CEE categories)
+# cost nothing extra.
+_SB_PROFILE_ENRICH = {
+    "render": True,
+    "email_selector": ".field--name-field-ps-people-email a[href^='mailto:']",
+    "research_items_selector": ".field--name-field-research-areas .field__item",
+    "throttle": 0.3,
+}
+
+
 def _sb(short: str, name: str, majors: list[str], url: str) -> dict:
     """A Cloudflare-walled Site Builder department, fetched via render mode."""
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "render": True, "selectors": _SB_SELECTORS,
-                       "ladder_filter": _LADDER}}
+                       "ladder_filter": _LADDER},
+            "profile_enrich": _SB_PROFILE_ENRICH}
 
 
 SCHOOL: dict = {

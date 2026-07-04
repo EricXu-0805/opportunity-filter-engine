@@ -197,6 +197,17 @@ class TestSiteBuilderDepts:
         assert people["Jane Roe"]["email"] == "jroe@princeton.edu"
         assert people["Jane Roe"]["url"].endswith("/people/jane-roe")
 
+    def test_sb_depts_carry_render_profile_enrich(self):
+        # The Site Builder listing omits the email (and, off the category depts,
+        # research); the walled profile page carries both, recovered via a
+        # render-mode profile_enrich pass. Every SB dept must carry it.
+        sb = [self._dept(s) for s in ("MAE", "PHY", "EEB", "CBE", "CEE", "ECE", "PNI")]
+        for d in sb:
+            pe = d.get("profile_enrich")
+            assert pe and pe.get("render") is True
+            assert "mailto" in pe["email_selector"]
+            assert "field-research-areas" in pe["research_items_selector"]
+
     def test_research_category_becomes_keywords(self, monkeypatch):
         # Departments that file people under a research subfield (Physics → "…
         # Theory", CEE → thrusts) expose it via the sitewide-category taxonomy;
