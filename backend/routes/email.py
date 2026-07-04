@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
 FRONTEND_BASE = os.environ.get(
-    "FRONTEND_URL", "https://opportunity-filter-engine.vercel.app"
+    "FRONTEND_URL", "https://joinalab.com"
 ).rstrip("/")
 
 MAX_ITEMS_PER_EMAIL = 50
