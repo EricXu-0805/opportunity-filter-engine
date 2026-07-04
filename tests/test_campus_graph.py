@@ -17,6 +17,7 @@ import pytest
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.collectors.schools.princeton import SCHOOL as PRINCETON
+from src.collectors.schools.ucsd import SCHOOL as UCSD
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
 
 # --- Registry integrity ----------------------------------------------------
@@ -168,6 +169,37 @@ class TestPrinceton:
             assert o["school"] in ("princeton", None)
             assert o["organization"]
             assert o["location"] == "Princeton, NJ"
+
+    def test_breakdown_totals_consistent(self, recs):
+        bd = cg.source_breakdown(recs)
+        assert bd["total"] == len(recs)
+        assert sum(bd["by_source_type"].values()) == len(recs)
+        assert sum(bd["by_opportunity_type"].values()) == len(recs)
+
+
+# --- Per-school: UC San Diego (first UC-system rollout school) --------------
+
+class TestUcsd:
+    @pytest.fixture(scope="class")
+    def recs(self):
+        return cg.fetch_and_normalize(UCSD, deep=False)
+
+    def test_in_registry(self):
+        assert UCSD in SCHOOL_CONFIGS
+
+    def test_all_levels_represented(self, recs):
+        levels = {o["campus_source_type"] for o in recs}
+        assert {"announcement", "program", "department", "career", "lab"} <= levels
+
+    def test_summer_programs_present(self, recs):
+        assert any(o["opportunity_type"] == "summer_program" for o in recs)
+
+    def test_every_record_is_ucsd_scoped(self, recs):
+        for o in recs:
+            # campus + lab buckets are ucsd-homed; open (if any) is national.
+            assert o["school"] in ("ucsd", None)
+            assert o["organization"]
+            assert o["location"] == "La Jolla, CA"
 
     def test_breakdown_totals_consistent(self, recs):
         bd = cg.source_breakdown(recs)

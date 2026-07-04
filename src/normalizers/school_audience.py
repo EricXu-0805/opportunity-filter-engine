@@ -141,6 +141,11 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucla_research_programs": ("ucla", "campus"),
     "ucla_external_research": (None, "open"),
     "ucla_labs": ("ucla", "unknown"),
+    # University of California, San Diego (#9 on the campus_graph engine; first
+    # stop of the UC-system rollout).
+    "ucsd_research_programs": ("ucsd", "campus"),
+    "ucsd_external_research": (None, "open"),
+    "ucsd_labs": ("ucsd", "unknown"),
     # Michigan faculty directory (curated, via the faculty_graph engine). Single
     # source across departments (UIUC model); cold-email targets whose
     # cross-school openness is per-professor, so audience is unknown.
@@ -158,6 +163,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "wisc_faculty": ("wisc", "unknown"),
     # UCLA faculty directory (WordPress-REST, via the faculty_graph engine).
     "ucla_faculty": ("ucla", "unknown"),
+    # UCSD faculty directory (live-scraped, via the faculty_graph engine).
+    "ucsd_faculty": ("ucsd", "unknown"),
 }
 
 

@@ -100,6 +100,8 @@ FACULTY_SOURCES = frozenset({
     "ucla_faculty",
     # Princeton — live-scraped faculty (central-Drupal person-card grid).
     "princeton_faculty",
+    # UCSD — live-scraped faculty (single source across depts).
+    "ucsd_faculty",
 })
 
 GRACE_DAYS = 14
