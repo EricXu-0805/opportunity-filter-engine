@@ -10,6 +10,7 @@ import type {
   FieldKey,
   HealthResponse,
   HistoryEntry,
+  FeedbackInbox,
   SavedSearchHealth,
   TFunc,
   TriggerStatus,
@@ -25,6 +26,7 @@ export interface UseAdminDataResult {
   collectorHistory: CollectorHistoryEntry[];
   health: HealthResponse | null;
   savedSearchHealth: SavedSearchHealth | null;
+  feedbackInbox: FeedbackInbox | null;
   loading: boolean;
   error: string | null;
   activeFieldFilter: FieldKey | null;
@@ -49,6 +51,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   const [collectorHistory, setCollectorHistory] = useState<CollectorHistoryEntry[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [savedSearchHealth, setSavedSearchHealth] = useState<SavedSearchHealth | null>(null);
+  const [feedbackInbox, setFeedbackInbox] = useState<FeedbackInbox | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFieldFilter, setActiveFieldFilter] = useState<FieldKey | null>(null);
@@ -59,13 +62,14 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setLoading(true);
     setError(null);
     try {
-      const [main, hist, healthR, collector, collectorHist, ssHealth] = await Promise.all([
+      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox] = await Promise.all([
         adminFetch<AdminResponse>(`/admin/data-quality`, tok),
         adminFetch<{ history: HistoryEntry[] }>(`/admin/data-quality/history?limit=30`, tok),
         adminFetch<HealthResponse>(`/admin/health-check`, tok),
         adminFetch<CollectorStatus>(`/admin/collector-status`, tok),
         adminFetch<{ entries: CollectorHistoryEntry[]; count: number }>(`/admin/collector-status/history?limit=30`, tok),
         adminFetch<SavedSearchHealth>(`/admin/saved-search-health`, tok),
+        adminFetch<FeedbackInbox>(`/admin/feedback?limit=50`, tok),
       ]);
       if (main.status === 401) {
         setError('Invalid admin token');
@@ -90,6 +94,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setCollectorStatus(collector.data ?? null);
       setCollectorHistory(collectorHist.data?.entries ?? []);
       setSavedSearchHealth(ssHealth.data ?? null);
+      setFeedbackInbox(fbInbox.data ?? null);
     } finally {
       setLoading(false);
     }
@@ -137,6 +142,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setCollectorHistory([]);
     setHealth(null);
     setSavedSearchHealth(null);
+    setFeedbackInbox(null);
     setError(null);
   }, []);
 
@@ -176,6 +182,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     collectorHistory,
     health,
     savedSearchHealth,
+    feedbackInbox,
     loading,
     error,
     activeFieldFilter,

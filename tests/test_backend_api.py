@@ -2544,3 +2544,83 @@ class TestResponsePayloadTrim:
             "source_type": "faculty_research", "url": "https://ece.example.edu/x",
         })
         assert card["source_type"] == "faculty_research"
+
+
+class TestAdminFeedback:
+    def test_503_when_token_unset(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        r = client.get("/api/admin/feedback")
+        assert r.status_code == 503
+
+    def test_401_when_wrong_token(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        r = client.get("/api/admin/feedback", headers={"X-Admin-Token": "wrong"})
+        assert r.status_code == 401
+
+    def test_skipped_without_supabase_env(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        r = client.get("/api/admin/feedback", headers={"X-Admin-Token": "secret-abc"})
+        assert r.status_code == 200
+        assert r.json()["status"] == "skipped"
+
+    def test_inbox_and_thumbs_summary(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+
+        recent_ts = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+        old_ts = (datetime.now(UTC) - timedelta(days=40)).isoformat()
+        feedback_rows = [
+            {"id": "f1", "created_at": recent_ts, "message": "love it",
+             "email": None, "props": {"path": "/results"}},
+        ]
+        thumbs = [
+            {"opportunity_id": "opp-1", "verdict": "down", "created_at": recent_ts},
+            {"opportunity_id": "opp-1", "verdict": "down", "created_at": old_ts},
+            {"opportunity_id": "opp-2", "verdict": "up", "created_at": recent_ts},
+        ]
+
+        class FakeResponse:
+            def __init__(self, payload):
+                self._payload = payload
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return self._payload
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def get(self, url, params=None, headers=None):
+                if url.endswith("/rest/v1/feedback"):
+                    return FakeResponse(feedback_rows)
+                return FakeResponse(thumbs)
+
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod.httpx, "AsyncClient", FakeClient)
+
+        r = client.get("/api/admin/feedback", headers={"X-Admin-Token": "secret-abc"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] == 1
+        assert body["entries"][0]["message"] == "love it"
+        mf = body["match_feedback"]
+        assert mf["up"] == 1
+        assert mf["down"] == 2
+        assert mf["up_7d"] == 1
+        assert mf["down_7d"] == 1
+        assert mf["top_downvoted"][0]["opportunity_id"] == "opp-1"
+        assert mf["top_downvoted"][0]["downs"] == 2
