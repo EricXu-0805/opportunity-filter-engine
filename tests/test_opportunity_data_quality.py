@@ -453,6 +453,21 @@ class TestR70ADataQuality:
         ]
         assert not offenders, f"{len(offenders)} faculty carry inferred skills: {offenders[:5]}"
 
+    def test_no_single_letter_skills_required(self):
+        """Substring skill extraction once matched the bare letters 'C' and 'R'
+        inside ordinary prose, tagging 549 NSF REU abstracts with
+        skills_required=["C", "R"]. A single-letter token is never a reliable
+        prose signal for a language, so no record may carry one."""
+        offenders = [
+            (o.get("id"), s)
+            for o in _load_data()
+            for s in (o.get("eligibility") or {}).get("skills_required") or []
+            if isinstance(s, str) and len(s.strip()) <= 1
+        ]
+        assert not offenders, (
+            f"{len(offenders)} single-letter skills_required entries: {offenders[:5]}"
+        )
+
     def test_faculty_have_no_bare_research_keyword(self):
         """A bare 'research' (or other nav-junk) single-word keyword is
         zero-signal noise as a tag chip — every faculty keyword must be a real
