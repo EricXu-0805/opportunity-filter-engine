@@ -158,6 +158,26 @@ SITEBUILDER_HTML = """
 """
 
 
+# Physics (and CEE) additionally file each person under a research subfield via
+# the sitewide-category taxonomy — the source _SB_SELECTORS["research_items"] mines.
+SITEBUILDER_CATEGORY_HTML = """
+<div class="view-content">
+  <div class="content-list-item">
+    <a href="/people/dmitry-abanin"><img alt="Dmitry Abanin"/></a>
+    <div class="content-list-item-details">
+      <span class="field field--name-title">Dmitry Abanin</span>
+      <div class="field field--name-field-ps-people-position">Professor of Physics</div>
+      <div class="content-list-item-bottom">
+        <div class="field field--name-field-ps-sitewide-category">
+          <div class="tid-4 field__item">Condensed Matter Theory</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+"""
+
+
 class TestSiteBuilderDepts:
     def _dept(self, short):
         return next(d for d in SCHOOL["departments"] if d["short"] == short)
@@ -176,3 +196,13 @@ class TestSiteBuilderDepts:
         assert "Jane Roe" in people and "Post Doc" not in people  # postdoc dropped
         assert people["Jane Roe"]["email"] == "jroe@princeton.edu"
         assert people["Jane Roe"]["url"].endswith("/people/jane-roe")
+
+    def test_research_category_becomes_keywords(self, monkeypatch):
+        # Departments that file people under a research subfield (Physics → "…
+        # Theory", CEE → thrusts) expose it via the sitewide-category taxonomy;
+        # the shared _SB_SELECTORS research_items selector mines it into keywords.
+        from bs4 import BeautifulSoup
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda url, **kw: BeautifulSoup(SITEBUILDER_CATEGORY_HTML, "html.parser"))
+        people = {p["name"]: p for p in fg._scrape_directory(self._dept("PHY"))}
+        assert "Condensed Matter Theory" in (people["Dmitry Abanin"].get("keywords") or [])
