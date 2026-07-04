@@ -9,4 +9,6 @@ coverage/
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 .next/
-node_modules/
+node_modules
+
+e2e/.storage-state.json
