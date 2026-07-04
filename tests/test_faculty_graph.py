@@ -326,6 +326,32 @@ class TestScrapeLayer:
         assert out[0]["email"] == "nverma@princeton.edu"
         assert {"Computing & Networking", "Integrated Circuits & Systems"} <= set(out[0]["keywords"])
 
+    def test_hash_paginate_uses_single_render_session(self, monkeypatch):
+        """A hash-router directory (scrape.paginate.mode='hash') is walked in one
+        interactive render session via _render_paginated_soup, not the fetch-per-URL
+        loop (a fresh load with the fragment pre-set never leaves page 1)."""
+        from bs4 import BeautifulSoup
+        page_html = ('<div class="person"><h2 class="name">'
+                     '<a href="/p/a">Ada Prof</a></h2><p class="title">Professor</p></div>')
+        calls = {"paged": 0}
+
+        def fake_paginated(url, param="page", max_pages=12, card_sel="", timeout_ms=60000):
+            calls["paged"] += 1
+            return BeautifulSoup(page_html, "html.parser")
+
+        monkeypatch.setattr(fg, "_render_paginated_soup", fake_paginated)
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda *a, **k: (_ for _ in ()).throw(
+                                AssertionError("hash-paginate must not use per-URL render")))
+        dept = {"short": "CHEM", "scrape": {
+            "url": "https://lsa.umich.edu/chem/people/faculty.html", "render": True,
+            "selectors": {"card": ".person", "name": ".name", "title": ".title"},
+            "paginate": {"mode": "hash", "param": "page", "max": 5},
+        }}
+        people = fg._scrape_directory(dept)
+        assert calls["paged"] == 1
+        assert any(p["name"] == "Ada Prof" for p in people)
+
     def test_research_join_fills_areas_from_aggregator_page(self, monkeypatch):
         """When research areas live only on one shared page (a "research
         interests" index, or the directory card when the roster is fetched via
