@@ -15,6 +15,7 @@ from __future__ import annotations
 from .gatech import SCHOOL as GATECH
 from .princeton import SCHOOL as PRINCETON
 from .stanford import SCHOOL as STANFORD
+from .uchicago import SCHOOL as UCHICAGO
 from .ucla import SCHOOL as UCLA
 from .ucsd import SCHOOL as UCSD
 from .umich import SCHOOL as UMICH
@@ -34,4 +35,5 @@ SCHOOL_CONFIGS: list[dict] = [
     WISC,
     UCLA,
     UCSD,
+    UCHICAGO,
 ]
