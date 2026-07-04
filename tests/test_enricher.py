@@ -141,6 +141,32 @@ class TestNonOpportunityDetection:
         enrich_opportunity(opp)
         assert "undergraduate research" in opp["keywords"]
 
+    def test_faculty_skills_backfill_skipped(self):
+        """Faculty are research contacts, not postings with required skills:
+        inferring a skill from research-topic prose ("finite element" ->
+        FEA-required on a topology professor) is false-precise and degrades the
+        match, so faculty never get inferred skills."""
+        opp = _opp(
+            "Prof. X — Mathematics",
+            "Research in topology and geometry, including the finite element "
+            "method for numerical simulation of partial differential equations.",
+        )
+        opp["source_type"] = "faculty_research"
+        enrich_opportunity(opp)
+        assert not opp.get("eligibility", {}).get("skills_required")
+
+    def test_program_skills_backfill_kept(self):
+        """A real internship/program still gets inferred skills — the skip is
+        faculty-only."""
+        opp = _opp(
+            "Data Science Internship",
+            "Build models in Python and SQL; experience with machine learning "
+            "and finite element analysis simulation preferred for this role.",
+        )
+        opp["source_type"] = "internship"
+        enrich_opportunity(opp)
+        assert opp["eligibility"].get("skills_required")
+
 
 class TestInferKeywords:
     def test_language_keywords(self):
@@ -196,6 +222,13 @@ class TestEnrichOpportunity:
         opp["posted_date"] = "09/01/2026"
         enrich_opportunity(opp)
         assert opp["posted_date"] == "2026-09-01"
+
+    def test_normalizes_mmddyyyy_start_date(self):
+        # nsf_reu shipped start_date as MM/DD/YYYY alongside an ISO posted_date.
+        opp = _opp("REU", "")
+        opp["start_date"] = "06/01/2026"
+        enrich_opportunity(opp)
+        assert opp["start_date"] == "2026-06-01"
 
     def test_strips_timestamp_from_deadline(self):
         opp = _opp("Program", "")

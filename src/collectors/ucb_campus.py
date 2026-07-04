@@ -46,6 +46,7 @@ from urllib.parse import urljoin, urlsplit
 from src.normalizers.ucb_dedup import dedupe_against_existing
 
 from . import ucb_sources as reg
+from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
 
@@ -404,9 +405,12 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict]]:
             continue
         page_text = soup.get_text(" ", strip=True)
 
-        # Refinement for a seed page that backs a curated program.
+        # Refinement for a seed page that backs a curated program. Status reads
+        # the whole page (a "closed" banner can live in the header), but the
+        # excerpt uses the chrome-excluded main-content text so nav/menu
+        # furniture never lands in the shown description.
         status = _detect_status(page_text)
-        excerpt = page_text[:400]
+        excerpt = _readable_excerpt(soup)
         status_by_url[url] = {"status": status, "excerpt": excerpt}
 
         if not recursive or depth >= depth_limit:

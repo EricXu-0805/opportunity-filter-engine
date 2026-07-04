@@ -137,6 +137,16 @@ def validate(school: dict) -> list[str]:
 # Normalization (stdlib only)
 # ---------------------------------------------------------------------------
 
+# Bare single words that are directory/nav furniture, never a research area on
+# their own — dropped from a curated keyword list. Deliberately narrow: broad-
+# but-real fields ("design", "theory", "education") are NOT here, only tokens
+# that carry zero topical meaning as a standalone tag chip.
+_BARE_NAV_WORDS = frozenset({
+    "research", "people", "overview", "directory", "news", "events",
+    "resources", "resource",
+})
+
+
 def _clean_keywords(person: dict) -> list[str]:
     """Curated keywords win; otherwise derive a couple from research areas.
 
@@ -146,6 +156,12 @@ def _clean_keywords(person: dict) -> list[str]:
     """
     kws = [k.strip() for k in person.get("keywords", []) if k and k.strip()]
     if kws:
+        # Even a curated list can carry a bare nav-junk word ("Research",
+        # "People") that scraped in alongside real areas — zero-signal noise as
+        # a tag chip. Drop only these unambiguous non-areas; a broad-but-real
+        # field ("Design", "Theory") is kept, and a multi-word phrase ("water
+        # resources") is unaffected — only the standalone junk token is rejected.
+        kws = [k for k in kws if " " in k or k.lower() not in _BARE_NAV_WORDS]
         # A keyword is an atomic term; an internal comma (e.g. the taxonomy term
         # "Plants, Soil and Algae") would break the title-parenthetical subset
         # invariant (the DQ gate splits the parenthetical on commas), so fold it.

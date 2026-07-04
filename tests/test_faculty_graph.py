@@ -1348,3 +1348,20 @@ class TestNameCleaners:
         assert fg._flip_name("Little, Jr., Arthur L.") == "Arthur L. Little Jr."
         assert fg._flip_name("Smith, Arthur, III") == "Arthur Smith III"
         assert fg._flip_name("Zhou, Hong") == "Hong Zhou"  # plain still works
+
+
+class TestCleanKeywordsBareNav:
+    def test_drops_bare_nav_junk_word(self):
+        # A curated keyword list that scraped in a bare "Research" tag drops it
+        # but keeps the real areas; a multi-word phrase is never touched.
+        person = {"keywords": ["Sustainability", "High Performance Buildings", "Research"]}
+        assert fg._clean_keywords(person) == ["Sustainability", "High Performance Buildings"]
+
+    def test_keeps_broad_but_real_field(self):
+        # "Design"/"Theory" are broad but real research fields — NOT nav junk.
+        person = {"keywords": ["Design", "Theory", "People"]}
+        assert fg._clean_keywords(person) == ["Design", "Theory"]
+
+    def test_multiword_with_nav_token_kept(self):
+        person = {"keywords": ["Water Resources", "Research Methods"]}
+        assert fg._clean_keywords(person) == ["Water Resources", "Research Methods"]
