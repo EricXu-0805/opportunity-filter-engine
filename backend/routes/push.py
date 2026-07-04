@@ -6,6 +6,13 @@ from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Header, HTTPException
 
+from backend.routes.email import (
+    FRONTEND_BASE,
+    _enforce_recipient_quota,
+    _send_via_resend,
+    _validate_email,
+)
+
 router = APIRouter()
 
 
@@ -36,13 +43,58 @@ def _required_env(keys: list[str]) -> dict[str, str] | tuple[None, list[str]]:
     return out
 
 
+def _render_reminder_email(opportunity_id: str) -> tuple[str, str, str]:
+    url = f"{FRONTEND_BASE}/opportunities/{opportunity_id}"
+    subject = "Reminder: follow up on your application"
+    html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
+  <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td style="padding:32px 28px">
+    <div style="font-size:22px;font-weight:700;color:#4f46e5;letter-spacing:-0.5px">JoinALab</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
+    <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{subject}</h1>
+    <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
+      The follow-up reminder you set on an application is due today.
+    </p>
+    <a href="{url}" style="display:inline-block;margin-top:8px;padding:11px 22px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">View the opportunity</a>
+    <p style="margin-top:28px;color:#9ca3af;font-size:11px">
+      You set this reminder in JoinALab · <a href="{FRONTEND_BASE}/favorites" style="color:#4f46e5">Manage your tracker</a>
+    </p>
+  </td></tr>
+</table>
+</body></html>"""
+    text = (
+        f"{subject}\n\n"
+        "The follow-up reminder you set on an application is due today.\n"
+        f"{url}\n\n"
+        f"---\nSent from JoinALab · {FRONTEND_BASE}/favorites\n"
+    )
+    return subject, html, text
+
+
+async def _account_email(client, supabase_url: str, headers: dict, uid: str) -> str | None:
+    """device_id == Supabase auth uid; anonymous users have no email."""
+    resp = await client.get(
+        f"{supabase_url}/auth/v1/admin/users/{uid}", headers=headers,
+    )
+    if resp.status_code >= 400:
+        return None
+    try:
+        return _validate_email((resp.json() or {}).get("email") or "")
+    except ValueError:
+        return None
+
+
 @router.get("/cron/reminders")
 async def reminders_cron(authorization: str | None = Header(default=None)):
     """Invoked by an external scheduler (Vercel Cron / GitHub Actions).
 
     Scans push_subscriptions joined with interactions.remind_at where
     remind_at <= today and status in ('applied','replied','interviewing'),
-    sends a Web Push notification to each matching subscription.
+    sends a Web Push notification to each matching subscription. Falls back
+    to a reminder email when the device has no working push subscription.
+    Delivered reminders get remind_at cleared so they fire once, not daily;
+    gone (404/410) subscriptions are pruned.
     """
     _verify_cron_secret(authorization)
 
@@ -74,6 +126,11 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         "Content-Type": "application/json",
     }
     today = date.today().isoformat()
+    resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+    resend_from = os.environ.get("RESEND_FROM_EMAIL", "").strip()
+
+    sent, failed, emailed, pruned = 0, 0, 0, 0
+    vapid_claims = {"sub": env["VAPID_SUBJECT"]}
 
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.get(
@@ -102,38 +159,93 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         sub_resp.raise_for_status()
         subs = sub_resp.json()
 
-    subs_by_device: dict[str, list[dict]] = {}
-    for s in subs:
-        subs_by_device.setdefault(s["device_id"], []).append(s)
+        subs_by_device: dict[str, list[dict]] = {}
+        for s in subs:
+            subs_by_device.setdefault(s["device_id"], []).append(s)
 
-    sent, failed = 0, 0
-    vapid_claims = {"sub": env["VAPID_SUBJECT"]}
-    for row in due:
-        for sub in subs_by_device.get(row["device_id"], []):
-            payload = (
-                '{"title":"Reminder due","body":"You set a follow-up reminder for an application.",'
-                f'"url":"/opportunities/{row["opportunity_id"]}","tag":"reminder-{row["opportunity_id"]}"'
-                "}"
-            )
-            try:
-                webpush(
-                    subscription_info={
-                        "endpoint": sub["endpoint"],
-                        "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
-                    },
-                    data=payload,
-                    vapid_private_key=env["VAPID_PRIVATE_KEY"],
-                    vapid_claims=vapid_claims,
+        email_by_device: dict[str, str | None] = {}
+        now_iso = datetime.now(UTC).isoformat()
+
+        for row in due:
+            device_id = row["device_id"]
+            delivered = False
+            for sub in list(subs_by_device.get(device_id, [])):
+                payload = (
+                    '{"title":"Reminder due","body":"You set a follow-up reminder for an application.",'
+                    f'"url":"/opportunities/{row["opportunity_id"]}","tag":"reminder-{row["opportunity_id"]}"'
+                    "}"
                 )
-                sent += 1
-            except WebPushException:
-                failed += 1
+                sub_params = {
+                    "device_id": f"eq.{device_id}",
+                    "endpoint": f"eq.{sub['endpoint']}",
+                }
+                try:
+                    webpush(
+                        subscription_info={
+                            "endpoint": sub["endpoint"],
+                            "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
+                        },
+                        data=payload,
+                        vapid_private_key=env["VAPID_PRIVATE_KEY"],
+                        vapid_claims=vapid_claims,
+                    )
+                    sent += 1
+                    delivered = True
+                    await client.patch(
+                        f"{supabase_url}/rest/v1/push_subscriptions",
+                        params=sub_params,
+                        headers=headers,
+                        json={"last_delivered_at": now_iso},
+                    )
+                except WebPushException as e:
+                    failed += 1
+                    status = getattr(getattr(e, "response", None), "status_code", None)
+                    if status in (404, 410):
+                        await client.delete(
+                            f"{supabase_url}/rest/v1/push_subscriptions",
+                            params=sub_params,
+                            headers=headers,
+                        )
+                        subs_by_device[device_id].remove(sub)
+                        pruned += 1
+
+            if not delivered and resend_key and resend_from:
+                if device_id not in email_by_device:
+                    email_by_device[device_id] = await _account_email(
+                        client, supabase_url, headers, device_id,
+                    )
+                to_email = email_by_device[device_id]
+                if to_email:
+                    subject, html, text = _render_reminder_email(row["opportunity_id"])
+                    try:
+                        _enforce_recipient_quota(to_email)
+                        await _send_via_resend(
+                            api_key=resend_key, from_addr=resend_from, to=to_email,
+                            subject=subject, html=html, text=text,
+                        )
+                        emailed += 1
+                        delivered = True
+                    except HTTPException:
+                        failed += 1
+
+            if delivered:
+                await client.patch(
+                    f"{supabase_url}/rest/v1/interactions",
+                    params={
+                        "device_id": f"eq.{device_id}",
+                        "opportunity_id": f"eq.{row['opportunity_id']}",
+                    },
+                    headers=headers,
+                    json={"remind_at": None},
+                )
 
     return {
         "status": "ok",
         "due": len(due),
         "sent": sent,
         "failed": failed,
+        "emailed": emailed,
+        "pruned": pruned,
         "timestamp": datetime.now(UTC).isoformat(),
     }
 

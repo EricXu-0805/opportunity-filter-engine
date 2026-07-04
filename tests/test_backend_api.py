@@ -2056,24 +2056,35 @@ def _set_push_env(monkeypatch):
     monkeypatch.setenv("VAPID_PRIVATE_KEY", "vapid-priv")
     monkeypatch.setenv("VAPID_PUBLIC_KEY", "vapid-pub")
     monkeypatch.setenv("VAPID_SUBJECT", "mailto:ops@example.com")
+    # Email fallback stays inert unless a test opts in explicitly.
+    monkeypatch.delenv("RESEND_API_KEY", raising=False)
+    monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
 
 
-def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_impl=None, calls=None):
+def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_impl=None,
+                        calls=None, patches=None, deletes=None, account_email=None,
+                        emails=None):
     """Stub httpx.AsyncClient + pywebpush.webpush for the reminders cron.
 
     The route fetches due interactions then push subscriptions from Supabase
     over httpx and fans out Web Push notifications via pywebpush — neither may
-    touch the network in tests. ``interactions``/``subscriptions`` seed the two
-    Supabase GET responses (routed by url substring), and ``webpush_impl`` lets
-    a test simulate a successful delivery or a WebPushException.
+    touch the network in tests. ``interactions``/``subscriptions`` seed the
+    Supabase GET responses (routed by url substring), ``webpush_impl`` lets a
+    test simulate a successful delivery or a WebPushException, ``patches`` /
+    ``deletes`` capture delivery bookkeeping writes, ``account_email`` seeds
+    the auth-admin lookup (None -> 404, i.e. anonymous device), and ``emails``
+    captures the Resend fallback sends.
     """
     import httpx
     import pywebpush
 
+    from backend.routes import email as email_mod
+    from backend.routes import push as push_mod
+
     class _Resp:
-        def __init__(self, data):
+        def __init__(self, data, status_code=200):
             self._data = data
-            self.status_code = 200
+            self.status_code = status_code
 
         def json(self):
             return self._data
@@ -2092,16 +2103,37 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
             return False
 
         async def get(self, url, **kwargs):
+            if "/auth/v1/admin/users/" in url:
+                if account_email is None:
+                    return _Resp({}, status_code=404)
+                return _Resp({"email": account_email})
             if "push_subscriptions" in url:
                 return _Resp(subscriptions)
             return _Resp(interactions)
+
+        async def patch(self, url, **kwargs):
+            if patches is not None:
+                patches.append({"url": url, **kwargs})
+            return _Resp({}, status_code=204)
+
+        async def delete(self, url, **kwargs):
+            if deletes is not None:
+                deletes.append({"url": url, **kwargs})
+            return _Resp({}, status_code=204)
 
     def _default_webpush(**kwargs):
         if calls is not None:
             calls.append(kwargs)
 
+    async def _fake_send(**kwargs):
+        if emails is not None:
+            emails.append(kwargs)
+
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
     monkeypatch.setattr(pywebpush, "webpush", webpush_impl or _default_webpush)
+    monkeypatch.setattr(push_mod, "_send_via_resend", _fake_send)
+    # Per-recipient quota is in-memory module state shared across tests.
+    email_mod._recipient_sends.clear()
 
 
 _DUE_ROW = {
@@ -2276,6 +2308,148 @@ class TestPushRemindersCron:
         assert kwargs["vapid_private_key"] == "vapid-priv"
         assert kwargs["vapid_claims"] == {"sub": "mailto:ops@example.com"}
         assert kwargs["subscription_info"]["endpoint"] == "https://push.example.com/dev-1"
+
+
+class TestPushDeliveryBookkeeping:
+    """A delivered reminder must fire once, not daily: success stamps
+    push_subscriptions.last_delivered_at and clears interactions.remind_at;
+    gone endpoints (404/410) are pruned; devices with no working push fall
+    back to a Resend email to the account address (anonymous -> skip)."""
+
+    def _run(self):
+        return client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+
+    def test_success_stamps_delivery_and_clears_remind_at(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        patches: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW],
+            patches=patches,
+        )
+        r = self._run()
+        assert r.json()["sent"] == 1
+
+        sub_patches = [p for p in patches if "push_subscriptions" in p["url"]]
+        assert len(sub_patches) == 1
+        assert sub_patches[0]["json"].keys() == {"last_delivered_at"}
+        assert sub_patches[0]["params"]["endpoint"] == f"eq.{_SUB_ROW['endpoint']}"
+
+        int_patches = [p for p in patches if "interactions" in p["url"]]
+        assert len(int_patches) == 1
+        assert int_patches[0]["json"] == {"remind_at": None}
+        assert int_patches[0]["params"]["device_id"] == "eq.dev-1"
+        assert int_patches[0]["params"]["opportunity_id"] == "eq.opp-42"
+
+    def test_gone_subscription_deleted_and_remind_at_kept(self, monkeypatch):
+        from pywebpush import WebPushException
+
+        class _GoneResp:
+            status_code = 410
+
+        def _gone(**kwargs):
+            raise WebPushException("gone", response=_GoneResp())
+
+        _set_push_env(monkeypatch)
+        patches: list = []
+        deletes: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW],
+            webpush_impl=_gone, patches=patches, deletes=deletes,
+        )
+        r = self._run()
+        body = r.json()
+        assert body["failed"] == 1
+        assert body["pruned"] == 1
+        assert len(deletes) == 1
+        assert deletes[0]["params"]["endpoint"] == f"eq.{_SUB_ROW['endpoint']}"
+        assert patches == []  # nothing delivered -> remind_at untouched
+
+    def test_transient_failure_not_pruned(self, monkeypatch):
+        from pywebpush import WebPushException
+
+        def _boom(**kwargs):
+            raise WebPushException("delivery rejected")
+
+        _set_push_env(monkeypatch)
+        deletes: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW],
+            webpush_impl=_boom, deletes=deletes,
+        )
+        body = self._run().json()
+        assert body["pruned"] == 0
+        assert deletes == []
+
+    def test_email_fallback_when_no_subscription(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            patches=patches, emails=emails, account_email="user@example.com",
+        )
+        body = self._run().json()
+        assert body["sent"] == 0
+        assert body["emailed"] == 1
+
+        assert len(emails) == 1
+        assert emails[0]["to"] == "user@example.com"
+        assert "/opportunities/opp-42" in emails[0]["html"]
+
+        int_patches = [p for p in patches if "interactions" in p["url"]]
+        assert len(int_patches) == 1
+        assert int_patches[0]["json"] == {"remind_at": None}
+
+    def test_email_fallback_when_all_pushes_fail(self, monkeypatch):
+        from pywebpush import WebPushException
+
+        def _boom(**kwargs):
+            raise WebPushException("delivery rejected")
+
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW],
+            webpush_impl=_boom, emails=emails, account_email="user@example.com",
+        )
+        body = self._run().json()
+        assert body["failed"] == 1
+        assert body["emailed"] == 1
+        assert len(emails) == 1
+
+    def test_anonymous_device_skipped_remind_at_kept(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            patches=patches, emails=emails, account_email=None,
+        )
+        body = self._run().json()
+        assert body["emailed"] == 0
+        assert emails == []
+        assert patches == []
+
+    def test_no_email_fallback_without_resend_env(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            patches=patches, emails=emails, account_email="user@example.com",
+        )
+        body = self._run().json()
+        assert body["emailed"] == 0
+        assert emails == []
+        assert patches == []
 
 
 class TestVapidPublicKey:
