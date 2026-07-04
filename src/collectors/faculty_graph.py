@@ -68,7 +68,6 @@ from .ucb_common import (
     _detect_funding,
     _is_person_name,
     _strip_nav_furniture,
-    infer_skills_from_research,
 )
 
 logger = logging.getLogger(__name__)
@@ -202,6 +201,9 @@ def _clean_keywords(person: dict) -> list[str]:
     return list(dict.fromkeys(
         p for p in parts
         if 3 <= len(p) <= 60 and len(p.split()) <= 6 and not _is_junk_keyword(p)
+        # Same bare nav-junk rule the curated branch enforces — a prose split
+        # can strand a standalone "research"/"people" token too.
+        and (" " in p or p.lower() not in _BARE_NAV_WORDS)
     ))[:8]
 
 
@@ -288,7 +290,11 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     email = person.get("email") or None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
-    skills = infer_skills_from_research(person)
+    # Faculty are cold-email research contacts, not postings with required
+    # skills — inferring skills from research-topic prose is false-precise
+    # and degrades their match score (mirrors the R70A DQ gate; the enricher/
+    # llm_tagger backfills are already faculty-gated).
+    skills: list[str] = []
 
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     name_hash = hashlib.md5(f"{short}-{name}".encode()).hexdigest()[:8]
