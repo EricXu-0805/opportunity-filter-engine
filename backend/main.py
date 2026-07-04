@@ -58,7 +58,6 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     # always wins over "/api/tailor").
     "/api/tailor/status": (60, 60),
     "/api/tailor": (10, 60),
-    "/api/resume/upload": (5, 60),
     "/api/resume/github": (10, 60),
     "/api/email/send-matches": (3, 3600),
     "/api/email/send-favorites": (3, 3600),

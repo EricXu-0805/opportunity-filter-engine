@@ -43,10 +43,11 @@ afterEach(() => {
 });
 
 describe('parseResumePDF — worker bootstrap + IO', () => {
-  it('configures GlobalWorkerOptions.workerSrc to the documented CDN URL', async () => {
+  it('configures GlobalWorkerOptions.workerSrc to the self-hosted bundled worker (no CDN)', async () => {
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(['hello'])) });
     await parseResumePDF(fakeFile());
-    expect(globalWorkerOptions.workerSrc).toMatch(/^https:\/\/cdnjs\.cloudflare\.com\/.*pdf\.worker\.min\.mjs$/);
+    expect(globalWorkerOptions.workerSrc).toMatch(/pdf\.worker\.min\.mjs$/);
+    expect(globalWorkerOptions.workerSrc).not.toMatch(/cdnjs|cloudflare/);
   });
 
   it('passes the file.arrayBuffer() result through to getDocument({data})', async () => {
@@ -88,7 +89,7 @@ describe('parseResumePDF — image-only PDF', () => {
 });
 
 describe('parseResumePDF — skill extraction', () => {
-  it('detects the documented hard skills via case-insensitive substring match', async () => {
+  it('detects the documented hard skills via case-insensitive token match', async () => {
     mockGetDocument.mockReturnValue({
       promise: Promise.resolve(fakePdf(['Skilled in python, javascript, REACT and pyTorch'])),
     });
@@ -96,6 +97,46 @@ describe('parseResumePDF — skill extraction', () => {
     expect(res.extracted_skills).toEqual(
       expect.arrayContaining(['Python', 'JavaScript', 'React', 'PyTorch']),
     );
+  });
+
+  it('does NOT false-match short skills inside words (algorithms/career/scary)', async () => {
+    // Regression for the old substring matcher: 'Go' matched 'algorithms',
+    // 'R' matched 'career', 'C' matched any word containing a c.
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['advanced algorithms for scary career growth'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_skills).not.toContain('C');
+    expect(res.extracted_skills).not.toContain('R');
+    expect(res.extracted_skills).not.toContain('Go');
+    expect(res.extracted_skills).toEqual([]);
+  });
+
+  it('matches standalone C / R / Go tokens and keeps C distinct from C++/C#', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Languages: Go, R, C, C++ and C#'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_skills).toEqual(expect.arrayContaining(['C', 'C++', 'C#', 'R', 'Go']));
+  });
+
+  it('does not report C when only C++ is present, nor Java inside JavaScript', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Proficient in C++ and JavaScript'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_skills).toContain('C++');
+    expect(res.extracted_skills).toContain('JavaScript');
+    expect(res.extracted_skills).not.toContain('C');
+    expect(res.extracted_skills).not.toContain('Java');
+  });
+
+  it('still matches a skill at a sentence boundary ("Docker.")', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Deployed with Docker.'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_skills).toContain('Docker');
   });
 
   it('returns an empty skills array when the text mentions no known skills', async () => {
@@ -150,6 +191,59 @@ describe('parseResumePDF — coursework extraction', () => {
     const res = await parseResumePDF(fakeFile());
     expect(res.extracted_coursework).toEqual([]);
   });
+
+  it('extracts named courses from a labeled "Coursework:" list', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Coursework: Data Structures, Linear Algebra; Operating Systems'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_coursework).toEqual(['Data Structures', 'Linear Algebra', 'Operating Systems']);
+  });
+
+  it('combines labeled named courses with department codes', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Relevant Courses: Databases, CS 233'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_coursework).toContain('CS 233');
+    expect(res.extracted_coursework).toContain('Databases');
+  });
+
+  it('does not treat unlabeled prose as named courses', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['I enjoy data structures and building things'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_coursework).toEqual([]);
+  });
+});
+
+describe('parseResumePDF — research interests capture', () => {
+  it('captures a labeled "Research Interests" line into suggested_interests', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Research Interests: machine learning, computational neuroscience'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.suggested_interests).toBe('machine learning, computational neuroscience');
+  });
+
+  it('stops the capture at the next Capitalized section label on a flattened line', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf([
+        'Areas of Interest: AI systems, computer vision Languages: Mandarin (native), English',
+      ])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.suggested_interests).toBe('AI systems, computer vision');
+  });
+
+  it('ignores hobby "Personal Interests" lines and returns empty when unlabeled', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Personal Interests: hiking, chess. Python.'])),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.suggested_interests).toBe('');
+  });
 });
 
 describe('parseResumePDF — experience-level inference', () => {
@@ -197,12 +291,12 @@ describe('parseResumePDF — experience-level inference', () => {
 });
 
 describe('parseResumePDF — success response shape', () => {
-  it('caps raw_text at 3000 characters', async () => {
-    const longBody = 'Python '.repeat(800);
+  it('caps raw_text at 8000 characters (multi-page resumes feed the tailor flow)', async () => {
+    const longBody = 'Python '.repeat(2000);
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf([longBody])) });
     const res = await parseResumePDF(fakeFile());
     expect(res.success).toBe(true);
-    expect(res.raw_text.length).toBeLessThanOrEqual(3000);
+    expect(res.raw_text.length).toBe(8000);
   });
 
   it('builds the success message with the extracted counts', async () => {

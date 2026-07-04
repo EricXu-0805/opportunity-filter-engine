@@ -9,7 +9,6 @@ import {
   getOpportunitiesByIds,
   generateColdEmail,
   getEmailVariants,
-  uploadResume,
   refineEmail,
   parseGitHubProfile,
   getStats,
@@ -301,35 +300,7 @@ describe('cold-email endpoints', () => {
   });
 });
 
-describe('resume + github + stats', () => {
-  it('uploadResume POSTs FormData (no Content-Type override) to /resume/upload', async () => {
-    fetchMock.mockResolvedValue(
-      okJson({
-        extracted_skills: [],
-        extracted_coursework: [],
-        experience_level: 'beginner',
-        raw_text: '',
-        success: true,
-        message: 'ok',
-      }),
-    );
-    const file = new File(['hello'], 'resume.pdf', { type: 'application/pdf' });
-    await uploadResume(file);
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/resume/upload');
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
-    expect(init.method).toBe('POST');
-    expect(init.body).toBeInstanceOf(FormData);
-    /* Critical: FormData uploads must NOT have a Content-Type header — the
-       browser/node fetch needs to set the multipart boundary itself. */
-    expect(init.headers).toBeUndefined();
-  });
-
-  it('uploadResume throws on non-2xx with the API error message', async () => {
-    fetchMock.mockResolvedValue(badResponse(413, 'too big'));
-    const file = new File(['x'], 'r.pdf', { type: 'application/pdf' });
-    await expect(uploadResume(file)).rejects.toThrow('API 413: too big');
-  });
-
+describe('github + stats', () => {
   it('parseGitHubProfile URL-encodes the username path segment', async () => {
     fetchMock.mockResolvedValue(
       okJson({ username: 'a/b', extracted_skills: [], topics: [], repo_count: 0, top_repos: [] }),

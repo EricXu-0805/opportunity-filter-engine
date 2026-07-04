@@ -323,6 +323,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profileToSave));
     clearMatchCache();
     saveProfile(profileToSave).catch(() => {});
+    // This save supersedes any debounced one still pending; without clearing the
+    // ref, the unmount flush would re-save the pre-import profile and clobber
+    // the GitHub skills merged above.
+    pendingSaveRef.current = null;
     router.push('/results');
   }, [profile, searchWeight, router, importGitHubSkills]);
 

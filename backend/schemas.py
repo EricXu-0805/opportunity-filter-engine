@@ -225,18 +225,6 @@ class RoadmapResponse(BaseModel):
     total_labs: int
 
 
-class ResumeParseResponse(BaseModel):
-    extracted_skills: list[str]
-    extracted_coursework: list[str]
-    experience_level: str
-    raw_text: str
-    success: bool
-    message: str = ""
-    # A labeled "Areas of Interest" / "Research Interests" line, used to seed the
-    # research-interests box when empty — the frontend's only semantic-match lever.
-    suggested_interests: str = ""
-
-
 class TailorRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
