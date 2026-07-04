@@ -2713,6 +2713,55 @@ class TestMatchesHomeSchool:
         assert "uiuc-campus" not in ids
 
 
+class TestMatchesCrossSchoolToggle:
+    """include_cross_school (default False) flows through
+    ProfileRequest.model_dump() into rank_all: another school's non-campus
+    records are opt-in, while national records and summer programs always
+    show. ProfileRequest always stamps home_school (default 'uiuc'), so every
+    API profile takes the toggle path."""
+
+    @pytest.fixture
+    def cross_corpus(self, monkeypatch):
+        _opp = TestMatchesHomeSchool._opp
+        corpus = [
+            _opp("uiuc-fac", "uiuc", "unknown"),
+            _opp("ucb-fac", "ucb", "unknown"),
+            {**_opp("stanford-summer", "stanford", "open"),
+             "opportunity_type": "summer_program"},
+            _opp("national-open", None, "open"),
+        ]
+        monkeypatch.setattr("backend.routes.matches.load_opportunities", lambda: corpus)
+        monkeypatch.setattr(
+            "backend.routes.matches.load_opportunities_by_id",
+            lambda: {o["id"]: o for o in corpus},
+        )
+        return corpus
+
+    def _result_ids(self, body):
+        resp = client.post(
+            "/api/matches",
+            json={**body, "seeking_type": ["research", "summer_program"]},
+        )
+        assert resp.status_code == 200
+        return {r["opportunity_id"] for r in resp.json()["results"]}
+
+    def test_schema_default_is_off(self, sample_profile_req):
+        from backend.schemas import ProfileRequest
+
+        assert ProfileRequest(**sample_profile_req).include_cross_school is False
+
+    def test_default_hides_other_schools_but_keeps_national_and_summer(
+        self, cross_corpus, sample_profile_req,
+    ):
+        ids = self._result_ids(sample_profile_req)
+        assert "ucb-fac" not in ids
+        assert {"uiuc-fac", "stanford-summer", "national-open"} <= ids
+
+    def test_toggle_on_shows_other_schools(self, cross_corpus, sample_profile_req):
+        ids = self._result_ids({**sample_profile_req, "include_cross_school": True})
+        assert {"uiuc-fac", "ucb-fac", "stanford-summer", "national-open"} <= ids
+
+
 class TestColdEmailVariantsNullRecipient:
     """Regression: faculty rows null their (shared-admin) contact_email. The
     variants endpoint read it with ``.get("contact_email", "")`` — which returns

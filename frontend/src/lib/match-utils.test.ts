@@ -201,4 +201,9 @@ describe('hashProfile', () => {
     // must keep hitting the same cache entry as an explicit 'uiuc'.
     expect(hashProfile(base)).toBe(hashProfile({ ...base, home_school: 'uiuc' }));
   });
+
+  it('flipping include_cross_school misses the cache; absent field hashes like off', () => {
+    expect(hashProfile(base)).not.toBe(hashProfile({ ...base, include_cross_school: true }));
+    expect(hashProfile(base)).toBe(hashProfile({ ...base, include_cross_school: false }));
+  });
 });

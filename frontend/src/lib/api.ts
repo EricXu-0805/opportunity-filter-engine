@@ -77,6 +77,7 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     github_url: profile.github_url ?? '',
     search_weight: profile.search_weight ?? 50,
     exploring: profile.exploring ?? false,
+    include_cross_school: profile.include_cross_school ?? false,
   };
 }
 

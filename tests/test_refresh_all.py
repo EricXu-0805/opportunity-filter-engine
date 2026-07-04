@@ -291,7 +291,9 @@ def test_post_merge_pass_stamps_school_audience(monkeypatch, tmp_path):
     assert pass_info["by_source"] == {"uiuc_faculty": 1, "manual": 2}
 
     saved = {o["id"]: o for o in json.loads(processed.read_text(encoding="utf-8"))}
-    assert (saved["fac-1"]["school"], saved["fac-1"]["audience"]) == ("uiuc", "campus")
+    # uiuc_faculty is (uiuc, unknown) like every other school's directory —
+    # cross-school visibility is the matcher toggle's job, not the audience tag.
+    assert (saved["fac-1"]["school"], saved["fac-1"]["audience"]) == ("uiuc", "unknown")
     # Manual explicit values win (school normalized to a lowercase slug)...
     assert (saved["man-1"]["school"], saved["man-1"]["audience"]) == ("mit", "open")
     # ...and untagged manual records fall back to the conservative default.
