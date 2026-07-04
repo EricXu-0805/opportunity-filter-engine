@@ -15,13 +15,20 @@ export default defineConfig({
   // job timeout. Kept serial (workers: 1) so cross-file state stays predictable.
   retries: 1,
   workers: 1,
+  // A systemic breakage (e.g. a modal covering the viewport) makes every test
+  // eat its full timeout serially and the job hang to its 30m cap — bail after
+  // a burst of failures instead so CI reports red in minutes.
+  maxFailures: process.env.CI ? 10 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    storageState: undefined,
+    // Written by e2e/global-setup.ts: marks the onboarding tour as seen so the
+    // full-screen first-visit modal doesn't intercept every click.
+    storageState: './e2e/.storage-state.json',
   },
   projects: [
     {
@@ -51,6 +58,9 @@ export default defineConfig({
       // runs `npm run build` first. `next start` serves already-compiled routes,
       // avoiding the per-route on-demand compilation of `next dev` that pushed
       // the suite past the job timeout. Locally keep `next dev` for HMR.
+      // NOTE: the build must run with BACKEND_URL=http://127.0.0.1:8100 —
+      // rewrites are baked into the build (see ci.yml), or /api/* proxies to
+      // the live production backend instead of the local uvicorn above.
       command: process.env.CI
         ? `npm run start -- --port ${PORT} --hostname 127.0.0.1`
         : `npm run dev -- --port ${PORT} --hostname 127.0.0.1`,
