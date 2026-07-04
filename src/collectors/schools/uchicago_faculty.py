@@ -1,8 +1,15 @@
 """University of Chicago faculty config (via the faculty_graph engine).
 
-Thirty departments across the College's divisions + the professional schools,
-verified Jul 2026 (per-department directory probes; raw HTML/JSON snapshots
-reviewed by hand before selectors were pinned).
+Forty-one departments across the College's four collegiate divisions + the
+professional schools, verified Jul 2026 (per-department directory probes; raw
+HTML/JSON snapshots reviewed by hand before selectors were pinned). The full
+Arts & Humanities Division is covered except Germanic Studies (deferred —
+unreachable from the collection network, a proxy TLS failure rather than a bot
+wall). Art History (photo-tile) and Visual Arts (section-grouped
+"academic-profiles") use two further Drupal view templates. Booth (a client-side
+Coveo search) is deferred to a follow-up: it renders only through the headless
+path, and its Coveo grid populates too slowly for the engine's fixed render
+wait — it needs a wait-for-selector render mode (a separate engine change).
 
   * **Live scrape (21 departments), five directory families:**
       - *WordPress+FacetWP* -- CS (single-page card grid, per-profile "Focus
@@ -104,14 +111,26 @@ def _views(short: str, name: str, majors: list[str], url: str, *,
                        "ladder_filter": {"drop": r"emerit"}}}
 
 
+# Humanities/arts teaching-track ranks that a ladder cold-email directory should
+# drop. Ladder titles (Assistant/Associate/full/named/endowed Professor) never
+# contain these tokens; instructional/teaching-track ones do — so a keyword drop
+# separates them cleanly on the Family-B profile-tile pages, which mix roles.
+_HUM_DROP = (r"instructional professor|lecturer|teaching fellow|research associate"
+             r"|research professor|emerit|postdoctoral|harper-schmidt"
+             r"|collegiate assistant professor|of practice|of the practice"
+             r"|\binstructor\b|exchange|visiting")
+
+
 # The Humanities Division uses a SECOND Drupal Views variant ("profile-tile"):
 # tiles carry the name in ``h2.info > a > span`` and use ``field--name-field-*``
 # divs for title/email, with no research field. These pages are single-page (no
 # pagination) and mix ladder with instructional/visiting/teaching-fellow roles,
 # so a ladder_filter (or a section slice for the sectioned Philosophy page) is
-# mandatory, unlike the ladder-clean Family-A faculty views.
+# mandatory, unlike the ladder-clean Family-A faculty views. A few pages carry no
+# listing email (TAPS) -> gated per-profile mailto backfill.
 def _tile(short: str, name: str, majors: list[str], url: str, *,
-          ladder_filter: dict | None = None, section_filter: dict | None = None) -> dict:
+          ladder_filter: dict | None = None, section_filter: dict | None = None,
+          profile_enrich: dict | None = None) -> dict:
     scrape = {"url": url,
               "selectors": {"card": "div.views-row",
                             "name": "h2.info > a > span",
@@ -122,6 +141,8 @@ def _tile(short: str, name: str, majors: list[str], url: str, *,
         scrape["ladder_filter"] = ladder_filter
     if section_filter:
         scrape["section_filter"] = section_filter
+    if profile_enrich:
+        scrape["profile_enrich"] = profile_enrich
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url, "scrape": scrape}
 
@@ -229,6 +250,90 @@ SCHOOL: dict = {
         _tile("LING", "Department of Linguistics", ["Linguistics"],
               "https://linguistics.uchicago.edu/people/profiles",
               ladder_filter={"drop": r"instructional|teaching fellow|postdoc|emerit"}),
+        # Remaining Arts & Humanities Division — all Family-B profile-tile, all
+        # single-page, all mixing instructional/teaching-fellow roles, so the
+        # shared _HUM_DROP title filter isolates ladder faculty. Each page's
+        # canonical path differs (verified Jul 2026); EALC's ladder roster lives
+        # at /people/core-faculty, Slavic's at the combined faculty+instructional
+        # page, RLL/Classics/Music/TAPS at /people/faculty(-lecturers). Germanic
+        # Studies is deferred (unreachable from the collection network — a proxy
+        # TLS failure, not a bot wall; re-probe and add as a sibling _tile).
+        _tile("CLAS", "Department of Classics", ["Classical Studies"],
+              "https://classics.uchicago.edu/people/faculty",
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("CMLT", "Department of Comparative Literature", ["Comparative Literature"],
+              "https://complit.uchicago.edu/people/profiles",
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("EALC", "Department of East Asian Languages and Civilizations",
+              ["East Asian Languages and Civilizations"],
+              "https://ealc.uchicago.edu/people/core-faculty",
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("RLL", "Department of Romance Languages and Literatures",
+              ["Romance Languages and Literatures"],
+              "https://rll.uchicago.edu/people/faculty",
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("SLAV", "Department of Slavic Languages and Literatures",
+              ["Russian and East European Studies"],
+              "https://slavic.uchicago.edu/people/faculty-instructional-professors",
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("SALC", "Department of South Asian Languages and Civilizations",
+              ["South Asian Languages and Civilizations"],
+              "https://salc.uchicago.edu/people/profiles",
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("CMS", "Department of Cinema and Media Studies",
+              ["Cinema and Media Studies", "Media Arts and Design"],
+              "https://cms.uchicago.edu/people/profiles",
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("MUSI", "Department of Music", ["Music"],
+              "https://music.uchicago.edu/people/faculty-lecturers",
+              # emeriti are mixed into this listing (unlike the other Family-B
+              # pages), so the _HUM_DROP emerit token is load-bearing here.
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        _tile("TAPS", "Department of Theater and Performance Studies",
+              ["Theater and Performance Studies"],
+              "https://taps.uchicago.edu/people/faculty-lecturers",
+              # TAPS lists no email (mostly cross-appointed faculty) — ship as
+              # linked cold-email targets rather than pay the fragile per-profile
+              # backfill (its enrich pass rate-limited the shared uchicago.edu
+              # host and corrupted sibling listings in the batch run).
+              ladder_filter={"require": r"\bprofessor\b", "drop": _HUM_DROP}),
+        # Art History uses a "photo-tile" view: rank isn't on the listing (so no
+        # ladder_filter — the page is already the faculty roster, emeriti
+        # separate), and the name is a nested field span. Email is only on the
+        # profile page; shipped as a linked target (no per-profile backfill).
+        {
+            "short": "ARTH",
+            "name": "Department of Art History",
+            "majors": ["Art History", "Visual Arts"],
+            "directory_url": "https://arthistory.uchicago.edu/faculty/faculty-profiles",
+            "scrape": {
+                "url": "https://arthistory.uchicago.edu/faculty/faculty-profiles",
+                "selectors": {"card": "article.node--view-mode-photo-tile",
+                              "name": "span.person-name a span.field--name-title",
+                              "link": "span.person-name a",
+                              "research": "span.person-field",
+                              "email": "a[href^='mailto:' i]"},
+            },
+        },
+        # Visual Arts (DoVA) uses an "academic-profiles" section-grouped view:
+        # name-only rows under <h3> role headings (Faculty / Lecturers /
+        # Associate Faculty / Teaching Fellows / Emeritus). section_filter keeps
+        # ONLY the exact "Faculty" heading (^faculty$ so "Associate Faculty" and
+        # "Visual Arts Teaching Fellows" don't leak in); no listing rank/email,
+        # shipped as linked targets.
+        {
+            "short": "DOVA",
+            "name": "Department of Visual Arts",
+            "majors": ["Visual Arts", "Media Arts and Design"],
+            "directory_url": "https://dova.uchicago.edu/people/faculty",
+            "scrape": {
+                "url": "https://dova.uchicago.edu/people/faculty",
+                "selectors": {"card": "div.views-field-title",
+                              "name": "span.field-content a",
+                              "link": "span.field-content a"},
+                "section_filter": {"heading": "h3", "include": r"^faculty$"},
+            },
+        },
         # Physical Sciences — Geophysical Sciences is a MixItUp variant with a
         # different inner markup than the Stat/Math/Physics/Astro sites (no
         # people_content wrapper); the listing carries no email.
