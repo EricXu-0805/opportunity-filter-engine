@@ -114,6 +114,29 @@ export interface SavedSearchHealth {
   generated_at?: string;
 }
 
+export interface FeedbackEntry {
+  id: string;
+  created_at: string;
+  message: string;
+  email: string | null;
+  props?: { path?: string } & Record<string, unknown>;
+}
+
+export interface FeedbackInbox {
+  status: 'ok' | 'skipped';
+  reason?: string;
+  entries?: FeedbackEntry[];
+  count?: number;
+  match_feedback?: {
+    up: number;
+    down: number;
+    up_7d: number;
+    down_7d: number;
+    sample_size: number;
+    top_downvoted: { opportunity_id: string; downs: number; title: string | null }[];
+  };
+}
+
 export type TriggerStatus = {
   kind: 'idle' | 'busy' | 'ok' | 'err';
   message?: string;

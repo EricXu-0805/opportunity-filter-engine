@@ -27,6 +27,7 @@ function AdminInner() {
     collectorHistory,
     health,
     savedSearchHealth,
+    feedbackInbox,
     loading,
     error,
     activeFieldFilter,
@@ -61,6 +62,7 @@ function AdminInner() {
       collectorHistory={collectorHistory}
       health={health}
       savedSearchHealth={savedSearchHealth}
+      feedbackInbox={feedbackInbox}
       loading={loading}
       error={error}
       activeFieldFilter={activeFieldFilter}
