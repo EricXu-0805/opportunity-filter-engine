@@ -68,6 +68,47 @@ def test_author_topics_min_works(monkeypatch):
     assert oa.author_topics("Jane Roe", "I201448701", "Electrical Engineering") == []
 
 
+def test_school_inst_covers_every_registered_school():
+    # A school missing here silently gets zero OpenAlex enrichment (its
+    # faculty never become harvest targets), so the map must cover every
+    # registered school — the gap that hid ucb/umich/princeton.
+    from src.collectors.schools import SCHOOL_CONFIGS
+
+    slugs = {cfg["school_slug"] for cfg in SCHOOL_CONFIGS} | {"uiuc", "ucb"}
+    missing = slugs - set(oa.SCHOOL_INST)
+    assert not missing, f"schools without an OpenAlex institution id: {missing}"
+
+
+def test_targets_accepts_newly_mapped_schools():
+    opps = [
+        {"source_type": "faculty_research", "pi_name": "A", "school": "ucb",
+         "url": "https://eecs.berkeley.edu/a"},
+        {"source_type": "faculty_research", "pi_name": "B", "school": "princeton",
+         "url": "https://math.princeton.edu/b"},
+        {"source_type": "faculty_research", "pi_name": "C", "school": "unmapped-school",
+         "url": "https://x.edu/c"},
+    ]
+    assert [o["pi_name"] for o in oa._targets(opps, None)] == ["A", "B"]
+
+
+class _Resp429:
+    status_code = 429
+
+    @staticmethod
+    def json():
+        return {"error": "budget exhausted"}
+
+
+def test_get_warns_once_on_429(monkeypatch, caplog):
+    monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp429())
+    monkeypatch.setattr(oa, "_warned_429", False)
+    with caplog.at_level("WARNING", logger="src.collectors.openalex_enrich"):
+        assert oa._get({"search": "x"}) == {}
+        assert oa._get({"search": "y"}) == {}
+    warnings = [r for r in caplog.records if "429" in r.getMessage()]
+    assert len(warnings) == 1  # surfaced, but not once per author
+
+
 def test_apply_is_updates_only():
     opps = [
         {"pi_name": "A", "school": "uw", "url": "https://x.edu/a"},
