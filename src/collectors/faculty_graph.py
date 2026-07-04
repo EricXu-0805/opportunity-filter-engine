@@ -1456,12 +1456,29 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
         if url_v.startswith("//"):
             url_v = "https:" + url_v
         research = ""
-        if cfg.get("research_field"):
-            # Rich feeds (UCSD Biology) carry a per-person research summary —
-            # no profile scrape needed.
-            research = str(_dig(x, cfg["research_field"]) or "").strip()
+        keywords: list[str] = []
+        for rf in ([cfg["research_field"]] if isinstance(cfg.get("research_field"), str)
+                   else cfg.get("research_field") or []):
+            # Rich feeds (UCSD Biology) carry per-person research data — no
+            # profile scrape needed. A "[]" path segment fans out over a list
+            # (profileInfo.sections[].title → one clean area tag per section)
+            # and lands as keywords; a plain path is prose research_areas.
+            # First populated field wins.
+            if "[]" in rf:
+                head, tail = rf.split("[]", 1)
+                lst = _dig(x, head.strip("."))
+                vals = [str(_dig(i, tail.strip(".")) if tail.strip(".") else i or "").strip()
+                        for i in (lst if isinstance(lst, list) else [])
+                        if isinstance(i, dict | str)]
+                keywords = [v for v in vals if v]
+                if keywords:
+                    break
+            else:
+                research = str(_dig(x, rf) or "").strip()
+                if research:
+                    break
         specs.append(faculty(name, title=title, url=url_v, email=email,
-                             research_areas=research))
+                             research_areas=research, keywords=keywords))
     return specs
 
 
@@ -1622,10 +1639,14 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
         from .ucb_common import HEADERS
     except Exception:  # noqa: BLE001
         return
-    by_name = cfg.get("key", "slug") == "name"
+    key_kind = cfg.get("key", "slug")
 
     def _norm(raw: str) -> str:
-        if not by_name:
+        if key_kind == "email":
+            # HR/export feeds keyed by work email — the one identifier both
+            # sides carry verbatim (UCSD Math's export feed).
+            return (raw or "").strip().lower()
+        if key_kind != "name":
             return _join_slug(raw)
         # Order-insensitive name key: aggregators often list "Last, First"
         # while the roster spec holds "First Last" — sorting the tokens makes
@@ -1665,7 +1686,9 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
     for sp in specs:
         if sp.get("research_areas") or sp.get("keywords"):
             continue
-        key = _norm(sp.get("name", "")) if by_name else _join_slug(sp.get("url", ""))
+        raw = {"name": sp.get("name", ""), "email": sp.get("email", "")}.get(
+            key_kind, sp.get("url", ""))
+        key = _norm(raw)
         if key and key in mapping:
             sp["research_areas"] = "; ".join(mapping[key])
 

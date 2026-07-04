@@ -41,12 +41,16 @@ CSS class is the role filter; Public Health under alphabetical h2 sections;
 and Scripps Oceanography's Drupal Views listing (verified against a snapshot —
 the host is unreachable from some local egress paths; CI collects it fine).
 
-Deferred departments: Biology's API keeps the rank in a nested
-``titleInfo.standardTitle`` (dotted-path ``json_dir`` support exists; the feed
-recon is pending), and Chemistry & Biochemistry's server presents a mismatched
-TLS intermediate (an ECC leaf with the RSA intermediate), so strict-verify
-clients — requests, curl — can't connect at all (browsers survive via AIA
-chasing).
+All 32 targeted departments now collect. The two once-deferred cases:
+Biology's API keeps the rank in a nested ``titleInfo.standardTitle`` (reached
+via dotted-path ``json_dir``), and Chemistry & Biochemistry's server presents a
+mismatched TLS intermediate (an ECC leaf with the RSA intermediate) that
+strict-verify clients — requests, curl — can't connect through, so it rides the
+headless-render fetch (``scrape.render``), which survives via a browser's AIA
+chasing. (The UCSD REAL Portal — the campus research-project board — is
+deliberately excluded: Cloudflare bot-management plus a robots.txt that names
+AI crawlers signal no automated collection; route it through the AIP office if
+its data is ever needed.)
 
 Single source ("ucsd_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -284,16 +288,38 @@ SCHOOL: dict = {
                 "title_field": "titleInfo.standardTitle",
                 "email_field": "email",
                 "link_field": "profileInfo.profileURL",
-                "research_field": "profileInfo.researchSummary",
+                # Section tags first (clean area chips, 213/218 records);
+                # prose lab summary as fallback.
+                "research_field": ["profileInfo.sections[].title",
+                                   "profileInfo.researchSummary"],
                 "ladder_filter": {
                     "require": r"\bprofessor\b",
                     "drop": r"\bemerit|\badjunct|\bvisiting|of practice|\blecturer"},
             },
         },
         # ---- School of Physical Sciences -----------------------------------
-        # (Chemistry & Biochemistry deferred: the server's TLS chain ships the
-        # wrong intermediate — see module docstring; re-checked 2026-07-03,
-        # still broken on every SAN host.)
+        _dept(
+            "CHEM", "Department of Chemistry & Biochemistry",
+            ["Chemistry", "Biochemistry", "Pharmacological Chemistry",
+             "Molecular Synthesis"],
+            "https://chemistry.ucsd.edu/faculty/index.shtml",
+            {
+                # The server ships a mismatched TLS intermediate (ECC leaf with
+                # the RSA intermediate) that strict-verify clients can't
+                # connect through — but a real browser survives via AIA
+                # chasing, so this dept rides the headless-render fetch.
+                # Legacy tabbed directory: inline-styled cards, no title
+                # element (ranks are bare text nodes) — everyone ships with the
+                # default "Professor" title; the page lists no emeriti.
+                "render": True,
+                "selectors": {
+                    "card": "#tabs div[style*='float: right']",
+                    "name": "h5 > a.mylinks",
+                    "link": "h5 > a.mylinks",
+                },
+                "name_flip": True,
+            },
+        ),
         {
             "short": "PHYS", "name": "Department of Physics",
             "majors": ["Physics", "General Physics", "Astronomy & Astrophysics"],
@@ -510,6 +536,14 @@ SCHOOL: dict = {
                     "email": ".profile-listing-data a[href^='mailto:']",
                 },
                 "ladder_filter": _LADDER,
+                # Research lives only in profile-page prose ("...research
+                # examines/focuses on ..."). Gated pass.
+                "profile_enrich": {
+                    "research_re": (
+                        r"research\s+(?:examines|focuses on|explores"
+                        r"|centers on|investigates)\s+([^.]{10,300})"),
+                    "throttle": 1.0,
+                },
             },
         ),
         _dept(
@@ -694,6 +728,9 @@ SCHOOL: dict = {
                               ":not(:has(a[href^='mailto:']))"),
                     "title_strip_after": r"Ph\.D",
                     "email": ".profile-listing-data a[href^='mailto:']",
+                    # The card's info paragraph ends with the research line
+                    # after a double <br>.
+                    "research_re": r"<br\s*/?>\s*<br\s*/?>\s*([^<]{21,400})",
                 },
                 "section_filter": {
                     "include": r"^(Department Chair|Faculty)$", "heading": "h2"},
@@ -753,6 +790,11 @@ SCHOOL: dict = {
                         "article.profile-section-contact li.email a[href^='mailto:']",
                     "ladder_recheck": {
                         "drop": r"\blecturer|\bemerit|\bmemoriam|\bvisiting|\badjunct"},
+                    # Mostly the Performance Studies profiles carry a Research
+                    # Areas tab; artists' pages simply won't match.
+                    "research_re": (
+                        r"Research Areas\s*(.{10,400}?)\s*"
+                        r"(?:Biography|Education|Selected|Affiliations|$)"),
                     "throttle": 1.0,
                 },
             },
@@ -819,6 +861,15 @@ SCHOOL: dict = {
                                  r"|001603|001607|001680|001096)$")},
                 ],
             },
+            # The dept's own /export feed is useless as a roster (no name
+            # field) but fine as an email-keyed join: field_work_email →
+            # field_primary_research_area (108/335 populated).
+            "research_join": {
+                "url": "https://math.ucsd.edu/export/people/faculty",
+                "key": "email",
+                "item_re": (r'"field_work_email":\s*"(?P<key>[^"]+)"[^{}]*?'
+                            r'"field_primary_research_area":\s*"(?P<areas>[^"]+)"'),
+            },
         },
         # ---- Professional schools --------------------------------------------
         _dept(
@@ -841,7 +892,14 @@ SCHOOL: dict = {
                     "email": "a[href^='mailto:']",
                 },
                 "profile_enrich": {
-                    "research_re": r"Research Areas\s*(.{4,400}?)\s*(?:Industry Areas|Teaching|$)",
+                    # The accordion heading is "Research Areas" or "Research &
+                    # Industry Areas" (with an inner "Research Areas" label
+                    # under the combined form); bound before the neighbouring
+                    # sections.
+                    "research_re": (
+                        r"Research(?:\s*(?:&|and)\s*Industry)?\s+Areas\s*"
+                        r"(?:Research\s+Areas\s*)?(.{4,400}?)\s*"
+                        r"(?:Industry Areas|Teaching|Education|Biography|Rady School|$)"),
                     "throttle": 1.5,
                 },
             },
