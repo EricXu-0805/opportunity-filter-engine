@@ -62,7 +62,6 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/resume/github": (10, 60),
     "/api/email/send-matches": (3, 3600),
     "/api/email/send-favorites": (3, 3600),
-    "/api/email/restore-link": (3, 3600),
     "/api/import-url": (5, 60),
     "/api/import-text": (5, 60),
     # SEC-2: the opportunity chat endpoint issues a paid LLM completion per call
@@ -132,7 +131,6 @@ _EMAIL_SEND_PATHS = frozenset(
     {
         "/api/email/send-matches",
         "/api/email/send-favorites",
-        "/api/email/restore-link",
     }
 )
 
@@ -273,14 +271,23 @@ app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
+    # Whitelist first-party origins only — NO .vercel.app regex. Every real
+    # deploy (production on joinalab.com, and *.vercel.app previews) reaches
+    # the API same-origin through the Next.js `/api` rewrite proxy, so the
+    # browser never makes a cross-origin call to this backend and no
+    # .vercel.app origin needs a CORS grant. A regex on .vercel.app would be
+    # squattable anyway: Vercel project names are free-form, so an attacker
+    # can register a project whose auto-assigned production domain matches
+    # any pattern we could write (incl. one carrying our team slug).
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://joinalab.com",
+        "https://www.joinalab.com",
     ],
-    allow_origin_regex=r"^https://opportunity-filter-engine(-[a-z0-9-]+)?\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])

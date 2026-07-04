@@ -5,6 +5,7 @@ from src.normalizers.enricher import (
     enrich_opportunity,
     infer_keywords,
     infer_majors,
+    is_rolling_deadline,
 )
 
 
@@ -118,6 +119,55 @@ class TestNonOpportunityDetection:
         assert opp["metadata"]["is_active"] is False
         assert "auto-flagged" in opp["metadata"]["notes"]
 
+    def test_faculty_keyword_backfill_skipped(self):
+        """A keyword-empty faculty record must NOT get keywords inferred from its
+        boilerplate description ("...inquire about undergraduate research
+        positions in their lab.") — that injects the page-furniture keyword
+        'undergraduate research' the faculty DQ gate rejects, deterministically
+        failing every refresh. Honest-broad faculty stay broad."""
+        opp = _opp(
+            "Research with Prof. X — ECE",
+            "Research opportunity with Professor X at UW. Contact the professor "
+            "directly to inquire about undergraduate research positions in their lab.",
+        )
+        opp["source_type"] = "faculty_research"
+        enrich_opportunity(opp)
+        assert opp["keywords"] == []
+
+    def test_program_keyword_backfill_keeps_undergraduate_research(self):
+        """The same term is a LEGITIMATE keyword on a real REU program record —
+        the skip must be faculty-only, not a blanket junk-gate."""
+        opp = _opp("Summer REU Program", "A paid undergraduate research experience.")
+        opp["source_type"] = "program"
+        enrich_opportunity(opp)
+        assert "undergraduate research" in opp["keywords"]
+
+    def test_faculty_skills_backfill_skipped(self):
+        """Faculty are research contacts, not postings with required skills:
+        inferring a skill from research-topic prose ("finite element" ->
+        FEA-required on a topology professor) is false-precise and degrades the
+        match, so faculty never get inferred skills."""
+        opp = _opp(
+            "Prof. X — Mathematics",
+            "Research in topology and geometry, including the finite element "
+            "method for numerical simulation of partial differential equations.",
+        )
+        opp["source_type"] = "faculty_research"
+        enrich_opportunity(opp)
+        assert not opp.get("eligibility", {}).get("skills_required")
+
+    def test_program_skills_backfill_kept(self):
+        """A real internship/program still gets inferred skills — the skip is
+        faculty-only."""
+        opp = _opp(
+            "Data Science Internship",
+            "Build models in Python and SQL; experience with machine learning "
+            "and finite element analysis simulation preferred for this role.",
+        )
+        opp["source_type"] = "internship"
+        enrich_opportunity(opp)
+        assert opp["eligibility"].get("skills_required")
+
 
 class TestInferKeywords:
     def test_language_keywords(self):
@@ -168,6 +218,31 @@ class TestEnrichOpportunity:
         assert opp["eligibility"]["majors"] == first_majors
         assert opp["keywords"] == first_kws
 
+    def test_normalizes_mmddyyyy_posted_date(self):
+        opp = _opp("Program", "")
+        opp["posted_date"] = "09/01/2026"
+        enrich_opportunity(opp)
+        assert opp["posted_date"] == "2026-09-01"
+
+    def test_normalizes_mmddyyyy_start_date(self):
+        # nsf_reu shipped start_date as MM/DD/YYYY alongside an ISO posted_date.
+        opp = _opp("REU", "")
+        opp["start_date"] = "06/01/2026"
+        enrich_opportunity(opp)
+        assert opp["start_date"] == "2026-06-01"
+
+    def test_strips_timestamp_from_deadline(self):
+        opp = _opp("Program", "")
+        opp["deadline"] = "2026-05-01T23:59:59.999-05:00"
+        enrich_opportunity(opp)
+        assert opp["deadline"] == "2026-05-01"
+
+    def test_leaves_deadline_sentinel_untouched(self):
+        opp = _opp("Program", "")
+        opp["deadline"] = "Rolling"
+        enrich_opportunity(opp)
+        assert opp["deadline"] == "Rolling"
+
 
 class TestEnrichAll:
     def test_counts_additions(self):
@@ -179,3 +254,43 @@ class TestEnrichAll:
         m_added, k_added = enrich_all(opps)
         assert m_added >= 2  # linguistics + tesol
         assert k_added >= 2  # linguistics starts empty, tesol had unsorted
+
+
+class TestRollingDeadline:
+    """is_rolling_deadline: faculty records are rolling by source_type, not a
+    per-source list — every school's faculty collector inherits the default
+    without touching the enricher (the pre-multi-school _ROLLING_BY_SOURCE
+    list silently excluded ucb_*/umich/stanford/... faculty)."""
+
+    def _faculty(self, source: str) -> dict:
+        opp = _opp("Research with Prof. X — CS", "computational biology lab")
+        opp["source"] = source
+        opp["source_type"] = "faculty_research"
+        opp["deadline"] = None
+        return opp
+
+    def test_any_school_faculty_source_is_rolling(self):
+        for source in ("uiuc_faculty", "ucb_eecs_faculty", "stanford_faculty",
+                       "umich_faculty", "ucsd_faculty"):
+            assert is_rolling_deadline(self._faculty(source)), source
+
+    def test_uiuc_sro_stays_rolling_by_source(self):
+        opp = _opp("Summer lab position", "wet lab")
+        opp["source"] = "uiuc_sro"
+        opp["source_type"] = "uiuc_research"
+        opp["deadline"] = None
+        assert is_rolling_deadline(opp)
+
+    def test_explicit_deadline_beats_faculty_default(self):
+        opp = self._faculty("ucb_math_faculty")
+        opp["deadline"] = "2026-10-01"
+        assert not is_rolling_deadline(opp)
+
+    def test_non_faculty_unknown_source_needs_text_signal(self):
+        opp = _opp("Research program", "apply by the posted date")
+        opp["source"] = "some_new_source"
+        opp["source_type"] = "campus_program"
+        opp["deadline"] = None
+        assert not is_rolling_deadline(opp)
+        opp["description_clean"] = "applications accepted on a rolling basis"
+        assert is_rolling_deadline(opp)

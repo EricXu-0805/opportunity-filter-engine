@@ -1183,7 +1183,19 @@ def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[st
         if len(dl) >= 4 and any(re.search(rf"\b{re.escape(dl)}\b", k) for k in kws):
             matched.add(d)
             continue
-        if any(len(k) >= 4 and re.search(rf"\b{re.escape(k)}\b", dl) for k in kws):
+        # Reverse containment (opp keyword inside the chip) needs the SAME
+        # low-signal guard as the chip side above: without it a faculty whose
+        # only keyword is a broad department token ("engineering", "science",
+        # "systems") word-matches inside a specific chip ("chemical engineering",
+        # "computer science") and blanket-credits it into the strong-interest
+        # tier. A distinctive keyword ("physics" ⊂ "quantum physics") still
+        # counts — only lone broad tokens are suppressed.
+        if any(
+            len(k) >= 4
+            and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
+            and re.search(rf"\b{re.escape(k)}\b", dl)
+            for k in kws
+        ):
             matched.add(d)
     return matched
 

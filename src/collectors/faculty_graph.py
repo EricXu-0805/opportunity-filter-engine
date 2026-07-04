@@ -61,14 +61,13 @@ import os
 import re
 from collections import Counter
 from datetime import UTC, datetime
-from urllib.parse import urljoin
+from urllib.parse import unquote, urljoin
 
 from .ucb_common import (
     _RETIRED_TITLE_RE,
     _detect_funding,
     _is_person_name,
     _strip_nav_furniture,
-    infer_skills_from_research,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,6 +136,16 @@ def validate(school: dict) -> list[str]:
 # Normalization (stdlib only)
 # ---------------------------------------------------------------------------
 
+# Bare single words that are directory/nav furniture, never a research area on
+# their own — dropped from a curated keyword list. Deliberately narrow: broad-
+# but-real fields ("design", "theory", "education") are NOT here, only tokens
+# that carry zero topical meaning as a standalone tag chip.
+_BARE_NAV_WORDS = frozenset({
+    "research", "people", "overview", "directory", "news", "events",
+    "resources", "resource",
+})
+
+
 def _clean_keywords(person: dict) -> list[str]:
     """Curated keywords win; otherwise derive a couple from research areas.
 
@@ -146,6 +155,12 @@ def _clean_keywords(person: dict) -> list[str]:
     """
     kws = [k.strip() for k in person.get("keywords", []) if k and k.strip()]
     if kws:
+        # Even a curated list can carry a bare nav-junk word ("Research",
+        # "People") that scraped in alongside real areas — zero-signal noise as
+        # a tag chip. Drop only these unambiguous non-areas; a broad-but-real
+        # field ("Design", "Theory") is kept, and a multi-word phrase ("water
+        # resources") is unaffected — only the standalone junk token is rejected.
+        kws = [k for k in kws if " " in k or k.lower() not in _BARE_NAV_WORDS]
         # A keyword is an atomic term; an internal comma (e.g. the taxonomy term
         # "Plants, Soil and Algae") would break the title-parenthetical subset
         # invariant (the DQ gate splits the parenthetical on commas), so fold it.
@@ -186,6 +201,9 @@ def _clean_keywords(person: dict) -> list[str]:
     return list(dict.fromkeys(
         p for p in parts
         if 3 <= len(p) <= 60 and len(p.split()) <= 6 and not _is_junk_keyword(p)
+        # Same bare nav-junk rule the curated branch enforces — a prose split
+        # can strand a standalone "research"/"people" token too.
+        and (" " in p or p.lower() not in _BARE_NAV_WORDS)
     ))[:8]
 
 
@@ -246,21 +264,37 @@ _IN_MEMORIAM_RE = re.compile(r"\(\s*\d{4}\s*[-–—]\s*\d{4}\s*\)")
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
     name = _strip_credentials(_strip_pronouns((person.get("name") or "").strip()))
+    # Directory footnote markers ("David Barner*", "Jane Doe†" — accepting-
+    # students / area-head legends) ride the name anchor on some listings; a
+    # marked and unmarked crawl of the same person must hash to the same id.
+    name = re.sub(r"[\s*†‡]+$", "", name)
     if not _is_person_name(name):
         return None
     if _IN_MEMORIAM_RE.search(name):
         return None  # "Name (1948-2015)" — an in-memoriam entry, not active faculty
-    title = person.get("title") or "Professor"
+    # Some directory cards prefix the rank with a scraped field label
+    # ("Position title: Glynn LL Isaac Professor…", "Title: …"); strip it so the
+    # label doesn't leak into the description ("Research opportunity with
+    # Position title: … in the Department of Anthropology…").
+    title = re.sub(r"^\s*(?:position\s+title|title)\s*:\s*", "",
+                   person.get("title") or "Professor", flags=re.IGNORECASE).strip() or "Professor"
     if _RETIRED_TITLE_RE.search(title):
         return None
 
     short = dept["short"]
     dept_name = dept["name"]
-    profile_url = person.get("url", "")
+    # Some authoritative feeds (e.g. UCSD Physics' profile API) carry no
+    # per-person page; point at the directory the person is listed on rather
+    # than ship a record with no destination (the integrity gate requires url).
+    profile_url = person.get("url", "") or dept.get("directory_url", "")
     email = person.get("email") or None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
-    skills = infer_skills_from_research(person)
+    # Faculty are cold-email research contacts, not postings with required
+    # skills — inferring skills from research-topic prose is false-precise
+    # and degrades their match score (mirrors the R70A DQ gate; the enricher/
+    # llm_tagger backfills are already faculty-gated).
+    skills: list[str] = []
 
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     name_hash = hashlib.md5(f"{short}-{name}".encode()).hexdigest()[:8]
@@ -421,6 +455,18 @@ def _passes_field(card, ff: dict | None) -> bool:
     return not (ff.get("exclude") and text and re.search(ff["exclude"], text, re.I))
 
 
+def _clean_email(raw: str) -> str | None:
+    """Normalize a mailto/text email — hand-edited CMS anchors get creative.
+
+    Handles percent-encoded display-name forms ("mailto:Jane%20Doe%20%3Cjd%40x
+    .edu%3E"), trailing whitespace/nbsp, and "Name <addr>" text by extracting
+    the first address-shaped token after URL-decoding.
+    """
+    addr = unquote(raw or "").replace("mailto:", "").split("?")[0].strip()
+    m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
+    return m.group(0) if m else (addr or None)
+
+
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,
@@ -468,6 +514,14 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         href = urljoin(base_url, href) if href else base_url
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
+        if sel.get("title_re"):
+            # Hand-edited CMS cards sometimes keep the rank as loose text with no
+            # stable element path (UCSD Communication/Urban Studies); a regex over
+            # the card text extracts it where a CSS selector can't. Falls back to
+            # the CSS/default title when the pattern doesn't match.
+            m = re.search(sel["title_re"], card.get_text(" ", strip=True))
+            if m:
+                title = m.group(1).strip() or title
         if sel.get("title_strip_after"):
             # Some directories cram rank + office + phone into one cell; keep only
             # the text before the first contact marker (e.g. "Office"/"Phone").
@@ -494,12 +548,19 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             if m:
                 seg = _BR_RE.sub("; ", m.group(1))  # <br>-separated areas → delimiter
                 research = re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", seg)).strip()
+        if not research and not keywords and sel.get("research_re_text"):
+            # Same idea but over the card's rendered TEXT — for patterns whose
+            # character classes ([^.]) would trip on dots inside tag attributes
+            # (UCSD Sociology's "…PhD Harvard 1984. <areas>." card prose).
+            m = re.search(sel["research_re_text"], card.get_text(" ", strip=True), re.S)
+            if m:
+                research = re.sub(r"\s+", " ", m.group(1)).strip()
         email = None
         if sel.get("email"):
             e_el = card.select_one(sel["email"])
             if e_el is not None:
                 raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
-                email = raw.replace("mailto:", "").split("?")[0].strip() or None
+                email = _clean_email(raw)
         if _is_person_name(name):
             people.append(faculty(name, title=title, url=href, email=email,
                                   research_areas=research, keywords=keywords))
@@ -622,26 +683,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                     break
                 seen.update((p["name"], p["url"]) for p in fresh)
                 people.extend(fresh)
-        # Per-profile research enrichment (gated): follow each broad faculty's own
-        # profile page to recover a "Research Areas" block the directory listing
-        # omits. Only the records still missing research_areas are fetched, so a
-        # re-run (or a listing that already carries research) costs nothing extra.
-        enr = cfg.get("profile_enrich")
-        if enr and _PROFILE_ENRICH:
-            import time
-            throttle = enr.get("throttle", 0.0)
-            for p in people:
-                if not p.get("url") or p.get("research_areas") or p.get("keywords"):
-                    continue
-                pos, research, items = _enrich_profile(p["url"], enr)
-                if items:
-                    p["keywords"] = items
-                elif research:
-                    p["research_areas"] = research
-                if pos and enr.get("use_position_title"):
-                    p["title"] = pos
-                if throttle:
-                    time.sleep(throttle)
+        people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
         return []
@@ -820,8 +862,59 @@ def _fetch_digitalmeasures(url: str, dm: dict) -> str:
     return ""
 
 
-def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
-    """Fetch one profile page; extract (position, research-text, research-items).
+def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
+    """Per-profile enrichment pass (gated): follow each faculty's own profile
+    page to recover research areas / email / rank the directory listing omits.
+
+    Only records still missing the wanted fields are fetched, so a re-run (or a
+    listing that already carries them) costs nothing extra. ``always: True``
+    bypasses the OFE_ENRICH_PROFILES env gate — for directories whose LISTING
+    has no title/email at all (bare link-lists), the profile pass isn't
+    optional depth, it's where the record's core fields live. ``url_template``
+    builds the fetch URL from the person's email local-part instead of the
+    stored url (roster APIs whose per-person endpoint is keyed by username,
+    e.g. UCSD Physics ``/api/profile/<user>/<dept>``). ``ladder_recheck``
+    re-gates on rank AFTER titles exist (the listing-time gate saw only the
+    "Professor" default).
+    """
+    if not enr or not (_PROFILE_ENRICH or enr.get("always")):
+        return people
+    import time
+    throttle = enr.get("throttle", 0.0)
+    tpl = enr.get("url_template")
+    for p in people:
+        target = p.get("url") or ""
+        if tpl:
+            local = (p.get("email") or "").split("@")[0]
+            if not local:
+                continue
+            target = tpl.format(email_local=local)
+        if not target:
+            continue
+        want_research = not p.get("research_areas") and not p.get("keywords")
+        want_email = bool(enr.get("email_selector")) and not p.get("email")
+        want_title = bool(enr.get("title_selector"))
+        if not (want_research or want_email or want_title):
+            continue
+        pos, research, items, email = _enrich_profile(target, enr)
+        if items and want_research:
+            p["keywords"] = items
+        elif research and want_research:
+            p["research_areas"] = research
+        if email and want_email:
+            p["email"] = email
+        if pos and (enr.get("use_position_title") or enr.get("title_selector")):
+            p["title"] = pos
+        if throttle:
+            time.sleep(throttle)
+    lr = enr.get("ladder_recheck")
+    if lr:
+        people = [p for p in people if _passes_ladder(p.get("title") or "", lr)]
+    return people
+
+
+def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | None]:
+    """Fetch one profile page; extract (position, research-text, research-items, email).
 
     ``research-items`` is a clean atomic keyword list from a CSS
     ``research_items_selector`` (taxonomy-links markup); ``research-text`` is a
@@ -829,22 +922,34 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
     or the other depending on how the site stores research areas.
     """
     if not url:
-        return ("", "", [])
+        return ("", "", [], None)
     dm = enrich.get("digitalmeasures")
     if dm:
-        return ("", _fetch_digitalmeasures(url, dm), [])
+        return ("", _fetch_digitalmeasures(url, dm), [], None)
     try:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001
-        return ("", "", [])
+        return ("", "", [], None)
     soup = fetch_soup(url)
     if soup is None:
-        return ("", "", [])
+        return ("", "", [], None)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
     pos = ""
-    if enrich.get("position_re"):
+    if enrich.get("title_selector"):
+        # Directories whose LISTING carries no rank at all (a bare link-list,
+        # e.g. UCSD Literature/Theatre) keep it on the profile page in a stable
+        # element — a CSS selector beats a body-text regex there.
+        t_el = soup.select_one(enrich["title_selector"])
+        pos = t_el.get_text(" ", strip=True) if t_el else ""
+    if not pos and enrich.get("position_re"):
         m = re.search(enrich["position_re"], body, re.I)
         pos = m.group(0).strip() if m else ""
+    email = None
+    if enrich.get("email_selector"):
+        e_el = soup.select_one(enrich["email_selector"])
+        if e_el is not None:
+            raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
+            email = _clean_email(raw)
     items: list[str] = []
     if enrich.get("research_items_selector"):
         items = _clean_selector_items(soup, enrich["research_items_selector"])
@@ -879,7 +984,7 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str]]:
             if isinstance(vals, list):
                 raw = "; ".join(v for v in vals if isinstance(v, str) and v.strip())
                 kw = re.sub(r"[\r\n]+", "; ", raw).strip()
-    return (pos, kw, items)
+    return (pos, kw, items, email)
 
 
 def _fetch_wp_api(dept: dict) -> list[dict]:
@@ -961,7 +1066,7 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
         if meta_email_field:
             email = (str(meta.get(meta_email_field, "") or "").strip() or None)
         if enrich:
-            pos, extra_kw, extra_items = _enrich_profile(url, enrich)
+            pos, extra_kw, extra_items, extra_email = _enrich_profile(url, enrich)
             if pos:
                 title = pos
             if enrich.get("require_professor") and pos and not re.search(r"profess", pos, re.I):
@@ -970,6 +1075,8 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
                 keywords = extra_items + keywords
             elif extra_kw:
                 keywords.insert(0, extra_kw)
+            if extra_email and not email:
+                email = extra_email
         specs.append(
             faculty(name, title=title, url=url, email=email,
                     keywords=list(dict.fromkeys(keywords)))
@@ -1257,8 +1364,28 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #         "status_field": "status", "status_value": "Faculty",  # optional
 #         "ladder_filter": {"drop": "emerit|lecturer|of the practice"},
 #     }
+def _dig(record: dict, path: str):
+    """Read a field by name, or by dotted path for nested feeds.
+
+    UCSD Biology keeps the rank at ``titleInfo.standardTitle``; a plain key
+    (no dot) reads exactly like ``record.get(key)``, so flat configs are
+    unaffected. Any missing/non-dict hop resolves to None.
+    """
+    cur = record
+    for part in path.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    return cur
+
+
 def _fetch_json_dir(dept: dict) -> list[dict]:
-    """Best-effort faculty fetch from an authoritative JSON directory (opt-in)."""
+    """Best-effort faculty fetch from an authoritative JSON directory (opt-in).
+
+    Field-name options (``name_fields``, ``title_field``, ``email_field``,
+    ``link_field``, ``filter_field``, ``status_field``) accept dotted paths
+    into nested objects.
+    """
     cfg = dept.get("json_dir")
     if not cfg:
         return []
@@ -1268,7 +1395,13 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
         return []
     from .ucb_common import HEADERS
     try:
-        resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+        if str(cfg.get("method", "get")).lower() == "post":
+            # Some campus HR feeds only answer form POSTs (UCSD's EAH directory
+            # returns an empty body to a GET of the same URL).
+            resp = requests.post(cfg["url"], data=cfg.get("data"),
+                                 headers=HEADERS, timeout=25)
+        else:
+            resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
         resp.raise_for_status()
         recs = resp.json()
     except Exception:  # noqa: BLE001
@@ -1286,27 +1419,49 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
         if not isinstance(x, dict):
             continue
         if filt_field is not None:
-            fv = x.get(filt_field)
+            fv = _dig(x, filt_field)
             if filt_value not in (fv if isinstance(fv, list) else [fv]):
                 continue
         if status_field is not None:
-            sv = x.get(status_field)
+            sv = _dig(x, status_field)
             if status_value not in (sv if isinstance(sv, list) else [sv]):
                 continue
-        name = " ".join(str(x.get(f) or "").strip() for f in name_fields).strip()
+        # Regex gates over arbitrary fields, for feeds that need more than the
+        # single equality pair above (e.g. UCSD Math's HR feed: keep ladder
+        # job codes AND employee_class "Academic: Faculty", drop Retired).
+        if any(
+            (ff.get("include") and not re.search(ff["include"], str(_dig(x, ff["field"]) or ""), re.I))
+            or (ff.get("exclude") and re.search(ff["exclude"], str(_dig(x, ff["field"]) or ""), re.I))
+            for ff in cfg.get("field_filters", [])
+        ):
+            continue
+        name = " ".join(str(_dig(x, f) or "").strip() for f in name_fields).strip()
         if not _is_person_name(name):
             continue
-        title = x.get(cfg.get("title_field", "title")) or "Professor"
+        title = _dig(x, cfg.get("title_field", "title")) or "Professor"
         if isinstance(title, list):
             title = ", ".join(str(t) for t in title)
-        title = title.strip() or "Professor"
+        title = str(title).strip() or "Professor"
+        tm = cfg.get("title_map")
+        if tm:
+            # Feeds that carry a rank CODE, not a rank (HR job codes) — map it;
+            # unmapped codes fall back to the map's "_default" (or "Professor").
+            title = tm.get(title, tm.get("_default", "Professor"))
         if require_re and not re.search(require_re, title, re.I):
             continue
         if drop_re and re.search(drop_re, title, re.I):
             continue
-        email = (x.get(cfg.get("email_field", "email")) or "").strip() or None
-        url_v = (x.get(cfg.get("link_field", "link")) or "").strip()
-        specs.append(faculty(name, title=title, url=url_v, email=email))
+        email = str(_dig(x, cfg.get("email_field", "email")) or "").strip() or None
+        url_v = str(_dig(x, cfg.get("link_field", "link")) or "").strip()
+        if url_v.startswith("//"):
+            url_v = "https:" + url_v
+        research = ""
+        if cfg.get("research_field"):
+            # Rich feeds (UCSD Biology) carry a per-person research summary —
+            # no profile scrape needed.
+            research = str(_dig(x, cfg["research_field"]) or "").strip()
+        specs.append(faculty(name, title=title, url=url_v, email=email,
+                             research_areas=research))
     return specs
 
 
@@ -1425,6 +1580,9 @@ def _listing_urls(school: dict) -> set[str]:
     """
     urls: set[str] = set()
     for dept in school.get("departments", []):
+        v = (dept.get("directory_url") or "").strip().lower()
+        if v:
+            urls.add(v)
         for block in ("scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir"):
             cfg = dept.get(block)
             if isinstance(cfg, dict):
@@ -1462,24 +1620,46 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
         import requests
 
         from .ucb_common import HEADERS
-        resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
-        resp.raise_for_status()
-        page = resp.text
     except Exception:  # noqa: BLE001
         return
     by_name = cfg.get("key", "slug") == "name"
 
     def _norm(raw: str) -> str:
-        return re.sub(r"[^a-z]", "", (raw or "").lower()) if by_name else _join_slug(raw)
+        if not by_name:
+            return _join_slug(raw)
+        # Order-insensitive name key: aggregators often list "Last, First"
+        # while the roster spec holds "First Last" — sorting the tokens makes
+        # both hash to the same key. Single-letter tokens (middle initials,
+        # present on one side only) are dropped for the same reason.
+        toks = [t for t in re.findall(r"[a-z]+", _html.unescape(raw or "").lower())
+                if len(t) > 1]
+        return "".join(sorted(toks))
 
     mapping: dict[str, list[str]] = {}
-    for m in re.finditer(cfg["item_re"], page, re.I | re.S):
-        gd = m.groupdict()
-        key = _norm(gd.get("key", ""))
-        areas = _html.unescape(re.sub(
-            r"\s+", " ", _HTML_TAG_RE.sub(" ", _BR_RE.sub("; ", gd.get("areas", "") or "")))).strip()
-        if key and areas:
-            mapping.setdefault(key, []).append(areas)
+    url, next_re = cfg["url"], cfg.get("next_re")
+    for _hop in range(cfg.get("max_pages", 12)):
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=25)
+            resp.raise_for_status()
+            page = resp.text
+        except Exception:  # noqa: BLE001
+            break
+        for m in re.finditer(cfg["item_re"], page, re.I | re.S):
+            gd = m.groupdict()
+            key = _norm(gd.get("key", ""))
+            areas = _html.unescape(re.sub(
+                r"\s+", " ", _HTML_TAG_RE.sub(" ", _BR_RE.sub("; ", gd.get("areas", "") or "")))).strip()
+            if key and areas:
+                mapping.setdefault(key, []).append(areas)
+        # Paginated aggregators (Drupal JSON:API "links.next") expose the next
+        # page's URL in the body; single-page joins simply have no next_re.
+        if not next_re:
+            break
+        nm = re.search(next_re, page)
+        if not nm:
+            break
+        url = (nm.group(1).encode().decode("unicode_escape")
+               .replace("\\/", "/").replace("&amp;", "&"))
     if not mapping:
         return
     for sp in specs:
@@ -1525,6 +1705,10 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                     seen_urls_local.add(key)
                 specs.append(discovered)
             _apply_research_join(dept, specs)
+            # Dept-level profile_enrich serves the non-scrape sources too — a
+            # json_dir roster (UCSD Physics) has no scrape block to hang the
+            # pass on, but its people still have profile endpoints to follow.
+            specs = _apply_profile_enrich(specs, dept.get("profile_enrich"))
         for person in specs:
             rec = _normalize(school, dept, person)
             if rec is None:
@@ -1566,11 +1750,17 @@ def merge_into_processed(new_opps: list[dict]):
         existing = json.load(f)
     index = {o.get("id"): o for o in existing if o.get("id")}
     added = updated = 0
+    from .uiuc_faculty import _carry_forward_enrichment
+
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            cur = index[opp["id"]]
+            opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
-            index[opp["id"]].update(opp)
+            # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
+            # enrichment on the same stable id.
+            _carry_forward_enrichment(cur, opp)
+            cur.update(opp)
             updated += 1
         else:
             existing.append(opp)

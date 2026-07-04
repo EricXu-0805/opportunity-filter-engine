@@ -337,16 +337,20 @@ class TestDigestUnsubscribe:
         r = client.get(_unsub_url(sig="ab" * 16))
         assert r.status_code == 503
 
-    def test_token_not_interchangeable_with_restore_token(self, monkeypatch):
-        # The digest-unsub context prefix must keep the two token families
-        # disjoint even though they share RESTORE_LINK_SECRET.
+    def test_bare_payload_signature_rejected(self, monkeypatch):
+        # The "digest-unsub|" context prefix is what scopes the token to this
+        # action: a signature over the bare "id|ts" (no prefix) — the shape any
+        # other feature signing under RESTORE_LINK_SECRET would produce — must
+        # be rejected, so tokens can't be replayed across contexts.
+        import hashlib
+        import hmac
         _set_digest_env(monkeypatch)
-        from backend.routes.email import _sign_restore_payload
         ts = int(time.time())
-        restore_sig = _sign_restore_payload(SID, ts)
+        secret = ss_mod._restore_signing_secret().encode()
+        bare_sig = hmac.new(secret, f"{SID}|{ts}".encode(), hashlib.sha256).digest()[:16].hex()
         digest_sig = ss_mod._sign_digest_unsub(SID, ts)
-        assert restore_sig != digest_sig
-        r = client.get(_unsub_url(ts=ts, sig=restore_sig))
+        assert bare_sig != digest_sig
+        r = client.get(_unsub_url(ts=ts, sig=bare_sig))
         assert r.status_code == 400
 
 

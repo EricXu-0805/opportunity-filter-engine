@@ -1,8 +1,8 @@
 """Admin endpoints for data-quality monitoring + ops actions.
 
-Protected by the ADMIN_TOKEN env var. Always send via the X-Admin-Token
-header — the legacy ?token= query param still works but is discouraged
-because it leaks into referrer + access logs.
+Protected by the ADMIN_TOKEN env var, sent via the X-Admin-Token header
+only. The legacy ?token= query param was removed — query strings leak
+into referrer headers, access logs, and browser history.
 
 If ADMIN_TOKEN is unset, all admin requests return 503 (admin disabled).
 """
@@ -58,11 +58,11 @@ def _is_unsorted(keywords) -> bool:
     return all(k.strip().lower() in _UNSORTED_SENTINELS for k in cleaned)
 
 
-def _authenticate(token_query: str | None, token_header: str | None) -> None:
+def _authenticate(token_header: str | None) -> None:
     expected = os.environ.get("ADMIN_TOKEN")
     if not expected:
         raise HTTPException(status_code=503, detail="Admin endpoints disabled (ADMIN_TOKEN unset)")
-    provided = (token_header or token_query or "").encode("utf-8")
+    provided = (token_header or "").encode("utf-8")
     expected_bytes = expected.encode("utf-8")
     if not provided or not hmac.compare_digest(provided, expected_bytes):
         raise HTTPException(status_code=401, detail="Invalid admin token")
@@ -70,11 +70,10 @@ def _authenticate(token_query: str | None, token_header: str | None) -> None:
 
 @router.get("/admin/data-quality")
 async def data_quality(
-    token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
     force: bool = Query(default=False, description="Bypass cache"),
 ):
-    _authenticate(token, x_admin_token)
+    _authenticate(x_admin_token)
 
     now = time.time()
     if not force and _cache["snapshot"] and (now - _cache["built_at"]) < _CACHE_TTL_SECONDS:
@@ -231,11 +230,10 @@ def _append_history_snapshot(ts: datetime, total: int, global_counts: dict) -> N
 
 @router.get("/admin/data-quality/history")
 async def data_quality_history(
-    token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
     limit: int = Query(default=30, ge=1, le=365),
 ):
-    _authenticate(token, x_admin_token)
+    _authenticate(x_admin_token)
 
     if not _HISTORY_PATH.exists():
         return {"history": []}
@@ -256,7 +254,6 @@ async def data_quality_history(
 
 @router.get("/admin/collector-status")
 async def collector_status(
-    token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
 ):
     """Per-collector last-run health, written by refresh_all.py.
@@ -264,7 +261,7 @@ async def collector_status(
     Reads data/processed/collector_status.json. Returns an empty structure
     if the file doesn't exist yet (first deploy / refresh hasn't run).
     """
-    _authenticate(token, x_admin_token)
+    _authenticate(x_admin_token)
 
     if not _COLLECTOR_STATUS_PATH.exists():
         return {"sources": [], "last_run_at": None}
@@ -300,7 +297,6 @@ async def collector_status(
 
 @router.get("/admin/collector-status/history")
 async def collector_status_history(
-    token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
     limit: int = Query(default=30, ge=1, le=200),
 ):
@@ -311,7 +307,7 @@ async def collector_status_history(
     counts so the admin dashboard can chart "which source has been failing
     most weeks" without re-scanning opportunities.json.
     """
-    _authenticate(token, x_admin_token)
+    _authenticate(x_admin_token)
 
     if not _COLLECTOR_HISTORY_PATH.exists():
         return {"entries": [], "count": 0}
@@ -343,7 +339,6 @@ _HEALTH_THRESHOLDS = {
 
 @router.get("/admin/health-check")
 async def health_check(
-    token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
 ):
     """Compute alert-worthy data-quality regressions vs ~7 days ago.
@@ -352,7 +347,7 @@ async def health_check(
     Wired into the daily-reminders cron so an operator gets paged when
     a scrape silently degrades.
     """
-    _authenticate(token, x_admin_token)
+    _authenticate(x_admin_token)
 
     alerts: list[dict] = []
 
@@ -444,7 +439,6 @@ _SAVED_SEARCH_FETCH_LIMIT = 1000
 
 @router.get("/admin/saved-search-health")
 async def saved_search_health(
-    token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
 ):
     """Saved-search refresh-cron + email-digest health rollup.
@@ -456,7 +450,7 @@ async def saved_search_health(
     (local dev) returns status "unconfigured" instead of 500, mirroring the
     cron routes' skip behaviour.
     """
-    _authenticate(token, x_admin_token)
+    _authenticate(x_admin_token)
 
     env_result = _required_env(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
     if isinstance(env_result, tuple):
@@ -532,7 +526,6 @@ async def saved_search_health(
 @router.post("/admin/trigger-refresh")
 async def trigger_refresh(
     mode: str = Query(default="quick", pattern="^(quick|deep)$"),
-    token: str | None = Query(default=None),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
 ):
     """Dispatch the refresh-data.yml workflow on GitHub Actions.
@@ -541,7 +534,7 @@ async def trigger_refresh(
     repo) and GITHUB_REPO (e.g. 'EricXu-0805/opportunity-filter-engine').
     Returns 503 when either is unset so the UI can render a setup hint.
     """
-    _authenticate(token, x_admin_token)
+    _authenticate(x_admin_token)
 
     pat = os.environ.get("GITHUB_REFRESH_PAT")
     repo = os.environ.get("GITHUB_REPO", "EricXu-0805/opportunity-filter-engine")

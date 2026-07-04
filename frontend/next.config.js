@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Pin the Turbopack workspace root to this directory. A stray lockfile in an
+  // ancestor of the repo otherwise makes Next infer the parent as root and scan
+  // that whole (on macOS often iCloud-synced) tree — which stalls dev startup.
+  turbopack: {
+    root: __dirname,
+  },
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },

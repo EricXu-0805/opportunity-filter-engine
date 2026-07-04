@@ -3,12 +3,12 @@ import { loadCatalog } from './index';
 import { COLLEGE_MAJORS as UIUC_COLLEGE_MAJORS } from '@/lib/colleges';
 import { SCHOOLS } from '@/lib/schools';
 
-const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford'];
+const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford', 'ucsd'];
 
 // Anything html.unescape would have missed in the generated data files.
 const HTML_ENTITY = /&[a-zA-Z]+\d*;|&#\d+;/;
 
-describe('catalog data quality — all 8 generated schools', () => {
+describe('catalog data quality — generated school catalogs', () => {
   it.each(NEW_CATALOG_SLUGS)('%s: colleges and majors are non-empty, trimmed, entity-free', async (slug) => {
     const catalog = await loadCatalog(slug);
     expect(catalog).not.toBeNull();

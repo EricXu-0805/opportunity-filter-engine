@@ -20,6 +20,10 @@ export const STORAGE_KEYS = {
   LOCALE: 'ofe_lang',
   OAUTH_LINK_PROVIDER: 'ofe_oauth_link_provider',
   ONBOARDING_SEEN: 'ofe_onboarding_seen',
+  // Flow B: a merge-grant token minted on the anon (source) session right
+  // before an existing-account sign-in redirect. Survives the redirect in
+  // localStorage and is redeemed once on /auth/callback, then cleared.
+  MERGE_GRANT: 'ofe_merge_grant',
 } as const;
 
 // Window CustomEvent fired when the onboarding school gate sets the campus, so a

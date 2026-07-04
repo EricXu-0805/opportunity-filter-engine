@@ -24,6 +24,7 @@ const CATALOG_LOADERS: Record<string, () => Promise<CatalogModule>> = {
   gatech: () => import('./gatech'),
   utexas: () => import('./utexas'),
   ucla: () => import('./ucla'),
+  ucsd: () => import('./ucsd'),
   uw: () => import('./uw'),
   wisc: () => import('./wisc'),
   stanford: () => import('./stanford'),

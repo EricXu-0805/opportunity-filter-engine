@@ -173,6 +173,27 @@ export const SCHOOLS: School[] = [
     catalog: { colleges: 9, majors: 135 },
   },
   {
+    slug: 'ucsd',
+    domain: 'ucsd.edu',
+    name: 'University of California, San Diego',
+    shortName: 'UC San Diego',
+    nameZh: '加州大学圣地亚哥分校',
+    color: '#182B49',
+    location: 'La Jolla, CA',
+    // Campus-graph engine (13 seed records: the Undergraduate Research Hub
+    // (hub + research directory), its named academic-year programs (TRELS,
+    // Faculty Mentor Program, RSRI, STARTneuro), the paid SRP summer umbrella
+    // (UC Scholars, URS, McNair, …), the School of Biological Sciences research
+    // page, the career center, and SDSC) plus the live-scraped faculty
+    // directory (1,300 professors across 31 departments: Jacobs School
+    // engineering, Biology + Physics + Math via their JSON/HR feeds, the full
+    // Blink social-science and arts & humanities rosters, HDSI, Rady, and the
+    // Wertheim School of Public Health; Scripps Oceanography collects from CI
+    // egress and lands on top of this floor).
+    coverage: { campusOpportunities: 1313, note: 'universitySwitcher.coverageCampus' },
+    catalog: { colleges: 8, majors: 165 },
+  },
+  {
     slug: 'uw',
     domain: 'washington.edu',
     name: 'University of Washington',

@@ -1,5 +1,12 @@
-# Scraper Registry Configuration
-# Adding a new source = add entry here + implement collector class in src/collectors/
+# DOCUMENTATION ONLY — no code reads this file (grep "sources.yaml" in src/
+# to verify). The real registries live in code:
+#   * wiring / enablement:  src/collectors/refresh_all.py
+#   * campus-graph schools: src/collectors/schools/__init__.py (SCHOOL_CONFIGS)
+#   * UCB campus sources:   src/collectors/ucb_sources.py
+#   * school/audience tags: src/normalizers/school_audience.py (SOURCE_DEFAULTS)
+#   * stale-faculty scope:  src/normalizers/deactivate_stale_faculty.py (FACULTY_SOURCES)
+# The SOP for adding a source is docs/collector_sop.md. Entries below are a
+# historical sketch of the early UIUC-era sources and may be stale.
 
 sources:
   uiuc_our_rss:

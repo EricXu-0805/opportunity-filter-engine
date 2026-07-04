@@ -16,6 +16,7 @@ from .gatech import SCHOOL as GATECH
 from .princeton import SCHOOL as PRINCETON
 from .stanford import SCHOOL as STANFORD
 from .ucla import SCHOOL as UCLA
+from .ucsd import SCHOOL as UCSD
 from .umich import SCHOOL as UMICH
 from .utexas import SCHOOL as UTEXAS
 from .uw import SCHOOL as UW
@@ -32,4 +33,5 @@ SCHOOL_CONFIGS: list[dict] = [
     UTEXAS,
     WISC,
     UCLA,
+    UCSD,
 ]

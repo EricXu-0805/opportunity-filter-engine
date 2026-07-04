@@ -147,6 +147,47 @@ def test_derive_keywords_skips_already_specific():
     assert _derive_keywords_from_raw([opp]) == 0  # already has specific keywords
 
 
+class TestMergeCarriesForwardEnrichment:
+    def test_broad_rescrape_does_not_clobber_prior_enrichment(self, tmp_path, monkeypatch):
+        """merge_into_processed must carry richer prior keywords forward, or a
+        fresh broad dept re-scrape silently wipes enrichment (the guard the
+        UIUC/faculty_graph paths already had; ucb_common lacked it)."""
+        import json as _json
+
+        from src.collectors import ucb_common as uc
+
+        pf = tmp_path / "opportunities.json"
+        enriched = {
+            "id": "ucb-enrich-1",
+            "source": "ucb_mcb_faculty",
+            "source_type": "faculty_research",
+            "pi_name": "Jane Roe",
+            "department": "Molecular & Cell Biology",
+            "keywords": ["genomics", "genetics", "evolution"],
+            "title": "Research with Prof. Jane Roe — MCB (genomics)",
+            "contact_email": None,
+            "metadata": {"first_seen_at": "2026-01-01T00:00:00Z", "research_areas_raw": ""},
+        }
+        pf.write_text(_json.dumps([enriched]))
+        monkeypatch.setattr(uc, "PROCESSED_FILE", pf)
+
+        broad_rescrape = {
+            "id": "ucb-enrich-1",
+            "source": "ucb_mcb_faculty",
+            "source_type": "faculty_research",
+            "pi_name": "Jane Roe",
+            "department": "Molecular & Cell Biology",
+            "keywords": ["biology"],  # dept-label-only re-scrape
+            "title": "Research with Prof. Jane Roe — MCB",
+            "contact_email": None,
+            "metadata": {"first_seen_at": "2026-06-01T00:00:00Z", "research_areas_raw": ""},
+        }
+        uc.merge_into_processed([broad_rescrape])
+
+        saved = {o["id"]: o for o in _json.loads(pf.read_text())}["ucb-enrich-1"]
+        assert saved["keywords"] == ["genomics", "genetics", "evolution"]
+
+
 def test_incommon_ca_bundle_appends_intermediates_to_certifi():
     """The CA bundle fetch_soup uses must include certifi's roots AND the bundled
     InCommon intermediates, so an incomplete-chain .edu host verifies without
@@ -169,3 +210,36 @@ def test_incommon_ca_bundle_appends_intermediates_to_certifi():
     combined = Path(bundle).read_text()
     assert "InCommon RSA Server CA 2" in combined
     assert len(combined) > len(Path(certifi.where()).read_text())
+
+
+class TestReadableExcerptChrome:
+    def test_strip_page_chrome_removes_skip_and_toggle(self):
+        from src.collectors.ucb_common import _strip_page_chrome
+        out = _strip_page_chrome("Real content here Skip to main content Toggle navigation Home About")
+        assert "skip to" not in out.lower()
+        assert "toggle navigation" not in out.lower()
+        assert "Real content here" in out
+
+    def test_readable_excerpt_prefers_main_landmark(self):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.ucb_common import _readable_excerpt
+        html = (
+            "<html><body><nav>Home About People Faculty</nav>"
+            "<a href='#main'>Skip to main content</a>"
+            "<main>Undergraduate research in observational astrophysics.</main>"
+            "<footer>Instagram Linkedin</footer></body></html>"
+        )
+        soup = BeautifulSoup(html, "html.parser")
+        out = _readable_excerpt(soup)
+        assert out == "Undergraduate research in observational astrophysics."
+
+    def test_readable_excerpt_drops_chrome_dump_without_main(self):
+        # No main landmark and the page text carries chrome -> return nothing
+        # rather than ship a nav dump into the description.
+        from bs4 import BeautifulSoup
+
+        from src.collectors.ucb_common import _readable_excerpt
+        html = "<html><body><div>Skip to content Home About People Faculty Staff</div></body></html>"
+        soup = BeautifulSoup(html, "html.parser")
+        assert _readable_excerpt(soup) == ""

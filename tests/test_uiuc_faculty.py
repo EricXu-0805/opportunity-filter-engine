@@ -10,6 +10,7 @@ import re
 
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
+    _carry_forward_enrichment,
     _clean_research_phrase,
     _dedup_faculty_by_email,
     _dedup_faculty_records,
@@ -280,6 +281,66 @@ def test_demote_scoped_to_faculty_source():
     shared = ["a", "b"]
     rows = [{"source": "nsf_reu", "department": "X", "keywords": list(shared)} for _ in range(10)]
     assert _demote_shared_keyword_pollution(rows) == 0
+
+
+# Same-id merge guard: a broad/empty re-scrape must not clobber committed
+# OpenAlex/LLM enrichment (the P1 that would silently revert #369/#370).
+
+def test_carry_forward_preserves_enrichment_over_broad_rescrape():
+    existing = {
+        "pi_name": "Gordon Baym", "department": "Department of Physics",
+        "keywords": ["cold atom physics", "pulsars and gravitational waves"],
+        "title": "Research with Prof. Gordon Baym — Physics (cold atom physics)",
+        "description_raw": "Research areas: cold atom physics, pulsars.",
+        "description_clean": "Research areas: cold atom physics, pulsars.",
+    }
+    incoming = {
+        "pi_name": "Gordon Baym", "department": "Department of Physics",
+        "keywords": ["physics"],  # a directory re-scrape with only the dept label
+        "title": "Research with Prof. Gordon Baym — Physics",
+        "description_raw": "Contact the professor to inquire about research.",
+        "description_clean": "Contact the professor to inquire about research.",
+        "contact_email": "baym@illinois.edu",  # a fresh factual field
+    }
+    _carry_forward_enrichment(existing, incoming)
+    # enrichment carried forward onto the incoming (winning) record...
+    assert incoming["keywords"] == existing["keywords"]
+    assert incoming["title"] == existing["title"]
+    assert incoming["description_clean"] == existing["description_clean"]
+    # ...while the fresh factual field is untouched (still updates on merge)
+    assert incoming["contact_email"] == "baym@illinois.edu"
+
+
+def test_carry_forward_lets_richer_rescrape_win():
+    existing = {"pi_name": "A B", "department": "Department of Physics", "keywords": ["physics"]}
+    incoming = {
+        "pi_name": "A B", "department": "Department of Physics",
+        "keywords": ["quantum optics", "laser cooling", "bose-einstein condensates"],
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["keywords"] == ["quantum optics", "laser cooling", "bose-einstein condensates"]
+
+
+def test_is_junk_keyword_flags_journal_venues():
+    for k in ["ieee transactions on image processing", "acta astronautica",
+              "science advances", 'reviewer for "physical review letters"',
+              "ieee robotics and automation letters", "ieee access", "ieee spectrum"]:
+        assert _is_junk_keyword(k), f"{k!r} is a venue, not a research area"
+
+
+def test_is_junk_keyword_keeps_ieee_protocol_and_standard_areas():
+    # Bare "ieee" is only a venue when followed by a publication word; an IEEE
+    # standard/protocol is a real research area and must survive (the venue
+    # regex used to eat these, and the course-code rule matched "ieee 802").
+    for k in ["ieee 802.11 wireless networks", "ieee standards",
+              "ieee 754 floating-point arithmetic"]:
+        assert not _is_junk_keyword(k), f"{k!r} is a real area, not a venue/course"
+
+
+def test_is_junk_keyword_keeps_topical_areas():
+    for k in ["machine learning", "computer vision", "quantum optics",
+              "materials science", "control theory"]:
+        assert not _is_junk_keyword(k), f"{k!r} is a real research area"
 
 
 # DQ-2: recover real keywords from research_areas_raw for broad-only faculty.

@@ -196,6 +196,17 @@ class TestScrapeLayer:
         assert p["email"] == "ada@uw.edu"  # mailto: + ?subject stripped
         assert "Machine learning" in p["research_areas"]
 
+    def test_title_label_prefix_stripped_from_description(self):
+        """A card whose rank field carries its scraped label ("Position title:
+        Professor …") must not leak the label into the title or description."""
+        dept = SCHOOL["departments"][0]
+        person = {"name": "Henry Bunn", "url": "https://x.edu/p/bunn",
+                  "title": "Position title: Glynn LL Isaac Professor"}
+        opp = fg._normalize(SCHOOL, dept, person)
+        assert opp is not None
+        assert "Position title:" not in opp["description_clean"]
+        assert "Glynn LL Isaac Professor" in opp["description_clean"]
+
     def test_link_filter_drops_nonperson_cards(self, monkeypatch):
         """Some directory pages (e.g. Stanford English /people/faculty) mix
         person cards with featured-publication cards in the same markup; the
@@ -601,8 +612,8 @@ class TestWordPressApiSource:
         monkeypatch.setattr(fg, "_wp_get_json",
                             lambda url: records if "page=1" in url else [])
         monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
-                            ("Associate Professor", "Cognitive Psychology", [])
-                            if "ada" in url else ("Lecturer", "", []))
+                            ("Associate Professor", "Cognitive Psychology", [], None)
+                            if "ada" in url else ("Lecturer", "", [], None))
         dept = {"short": "PSYCH", "api": {
             "type": "wp", "base": "https://x.edu", "post_type": "faculty-page",
             "profile_enrich": {"require_professor": True},
@@ -918,6 +929,177 @@ class TestJsonDirSource:
     def test_json_dir_degrades_without_block(self):
         assert fg._fetch_json_dir({"short": "X"}) == []
 
+    def test_json_dir_dotted_paths_reach_nested_fields(self, monkeypatch):
+        """UCSD-Biology shape: rank nested at titleInfo.standardTitle."""
+        payload = [
+            {"person": {"first": "Rosalind", "last": "Franklin"},
+             "titleInfo": {"standardTitle": "Distinguished Professor"},
+             "contact": {"email": "rf@ucsd.edu"}, "profileUrl": "https://x.edu/rf/"},
+            {"person": {"first": "Ret", "last": "Ired"},
+             "titleInfo": {"standardTitle": "Professor Emeritus"},
+             "contact": {"email": "ri@ucsd.edu"}},
+            # missing nested hop → title falls back to default, ladder-kept
+            {"person": {"first": "Flat", "last": "Record"}, "titleInfo": None},
+        ]
+
+        class _Resp:
+            def raise_for_status(self): pass
+            def json(self): return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        dept = {"short": "BIO", "json_dir": {
+            "url": "https://x.edu/api/faculty",
+            "name_fields": ["person.first", "person.last"],
+            "title_field": "titleInfo.standardTitle",
+            "email_field": "contact.email",
+            "link_field": "profileUrl",
+            "ladder_filter": {"require": r"\bprofessor\b", "drop": r"\bemerit"}}}
+        people = fg._fetch_json_dir(dept)
+        assert [p["name"] for p in people] == ["Rosalind Franklin", "Flat Record"]
+        assert people[0]["title"] == "Distinguished Professor"
+        assert people[0]["email"] == "rf@ucsd.edu"
+        assert people[0]["url"] == "https://x.edu/rf/"
+
+
+class TestCleanEmail:
+    def test_percent_encoded_display_name_form(self):
+        assert fg._clean_email(
+            "mailto:Anthony%20Harb%20%3Canharb%40ucsd.edu%3E") == "anharb@ucsd.edu"
+
+    def test_trailing_whitespace_and_query(self):
+        assert fg._clean_email("mailto:bchoivanos@ucsd.edu ") == "bchoivanos@ucsd.edu"
+        assert fg._clean_email("mailto:a@x.edu?subject=hi") == "a@x.edu"
+
+    def test_empty_degrades_to_none(self):
+        assert fg._clean_email("") is None
+
+
+class TestTitleRe:
+    def test_title_re_extracts_loose_text_rank(self):
+        """UCSD Communication-style card: rank is loose text, no stable element."""
+        from bs4 import BeautifulSoup
+        html = """<ul>
+        <li class='card'><span class='data'>
+          <p class='h3'><a href='/f/ada.html'>Ada Prof</a></p>
+          Associate Professor, Chair
+          <p>Research Interests: media studies</p>
+        </span></li>
+        </ul>"""
+        soup = BeautifulSoup(html, "html.parser")
+        people = fg._parse_cards(soup, {
+            "card": "li.card", "name": "p.h3 > a",
+            "title_re": r"((?:(?:Distinguished|Associate|Assistant)\s+)?Professor(?:,\s*Chair)?)",
+        }, "https://x.edu/")
+        assert people[0]["title"] == "Associate Professor, Chair"
+
+    def test_title_re_miss_keeps_default(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            "<li class='card'><a href='/a.html'>Ada Prof</a></li>", "html.parser")
+        people = fg._parse_cards(soup, {
+            "card": "li.card", "name": ":self", "title_re": r"(Regius Chair)"},
+            "https://x.edu/")
+        assert people[0]["title"] == "Professor"
+
+
+class TestProfileCoreFieldEnrich:
+    """Link-list directories (UCSD Literature/Theatre): title/email/ladder all
+    live on the profile page; the ``always`` flag runs the pass without the
+    OFE_ENRICH_PROFILES env gate and ``ladder_recheck`` gates after titles exist."""
+
+    _LISTING = """<div><h1>Faculty</h1><div class='row'>
+      <a href='/people/faculty/ada.html'>Prof, Ada</a>
+      <a href='/people/faculty/lee.html'>Lect, Lee</a>
+    </div></div>"""
+
+    def _run(self, monkeypatch):
+        from bs4 import BeautifulSoup
+        profiles = {
+            "https://x.edu/people/faculty/ada.html": (
+                "<header class='hd'><p class='subhead'>Professor</p></header>"
+                "<article class='ct'><li class='email'>"
+                "<a href='mailto:ada@x.edu'>e</a></li></article>"),
+            "https://x.edu/people/faculty/lee.html": (
+                "<header class='hd'><p class='subhead'>Senior Continuing Lecturer"
+                "</p></header><article class='ct'><li class='email'>"
+                "<a href='mailto:lee@x.edu'>e</a></li></article>"),
+        }
+        import src.collectors.ucb_common as ucb_common
+        monkeypatch.setattr(
+            ucb_common, "fetch_soup",
+            lambda url, **k: BeautifulSoup(self._LISTING, "html.parser")
+            if "faculty/index" in url else BeautifulSoup(profiles[url], "html.parser"))
+        dept = {"short": "LIT", "scrape": {
+            "url": "https://x.edu/people/faculty/index.html",
+            "selectors": {"card": "div.row > a", "name": ":self", "link": ":self"},
+            "name_flip": True,
+            "profile_enrich": {
+                "always": True,
+                "title_selector": "header.hd p.subhead",
+                "email_selector": "article.ct li.email a[href^='mailto:']",
+                "ladder_recheck": {"require": r"\bprofessor\b",
+                                   "drop": r"\blecturer|\bemerit"},
+            },
+        }}
+        return dept
+
+    def test_profile_pass_fills_title_email_and_ladder_gates(self, monkeypatch):
+        dept = self._run(monkeypatch)
+        people = fg._scrape_directory(dept)
+        assert [p["name"] for p in people] == ["Ada Prof"]
+        assert people[0]["title"] == "Professor"
+        assert people[0]["email"] == "ada@x.edu"
+
+
+class TestJsonDirPostAndMaps:
+    def test_post_field_filters_and_title_map(self, monkeypatch):
+        """UCSD-Math shape: POST-only HR feed, job codes, class/status gates."""
+        payload = [
+            {"employee_preferred_first_name_current": "Ada",
+             "employee_preferred_last_name_current": "Lovelace",
+             "employee_class": "Academic: Faculty", "employee_status": "Active",
+             "job_code": "001200", "identity_email_address_current": "ada@x.edu"},
+            {"employee_preferred_first_name_current": "Ret",
+             "employee_preferred_last_name_current": "Ired",
+             "employee_class": "Academic: Faculty", "employee_status": "Retired",
+             "job_code": "001100", "identity_email_address_current": "ri@x.edu"},
+            {"employee_preferred_first_name_current": "Sta",
+             "employee_preferred_last_name_current": "Ffer",
+             "employee_class": "Staff", "employee_status": "Active",
+             "job_code": "007700", "identity_email_address_current": "st@x.edu"},
+        ]
+
+        class _Resp:
+            def raise_for_status(self): pass
+            def json(self): return payload
+
+        posts = {}
+
+        def _post(url, data=None, headers=None, timeout=None):
+            posts["data"] = data
+            return _Resp()
+
+        monkeypatch.setattr("requests.post", _post)
+        monkeypatch.setattr("requests.get",
+                            lambda *a, **k: (_ for _ in ()).throw(AssertionError("GET used")))
+        dept = {"short": "MATH", "json_dir": {
+            "url": "https://soeapp.x.edu/tools/eah/department.php",
+            "method": "post", "data": {"department_code[]": "000212"},
+            "name_fields": ["employee_preferred_first_name_current",
+                            "employee_preferred_last_name_current"],
+            "title_field": "job_code",
+            "title_map": {"001100": "Professor", "001200": "Associate Professor"},
+            "email_field": "identity_email_address_current",
+            "field_filters": [
+                {"field": "employee_class", "include": r"^Academic: Faculty$"},
+                {"field": "employee_status", "exclude": r"Retired|Terminated"},
+                {"field": "job_code", "include": r"^(001100|001200)$"},
+            ]}}
+        people = fg._fetch_json_dir(dept)
+        assert posts["data"] == {"department_code[]": "000212"}
+        assert [p["name"] for p in people] == ["Ada Lovelace"]
+        assert people[0]["title"] == "Associate Professor"
+
 
 class TestLinklessDirectoryDedup:
     def test_linkless_directory_is_not_collapsed_to_one(self, monkeypatch):
@@ -1166,3 +1348,20 @@ class TestNameCleaners:
         assert fg._flip_name("Little, Jr., Arthur L.") == "Arthur L. Little Jr."
         assert fg._flip_name("Smith, Arthur, III") == "Arthur Smith III"
         assert fg._flip_name("Zhou, Hong") == "Hong Zhou"  # plain still works
+
+
+class TestCleanKeywordsBareNav:
+    def test_drops_bare_nav_junk_word(self):
+        # A curated keyword list that scraped in a bare "Research" tag drops it
+        # but keeps the real areas; a multi-word phrase is never touched.
+        person = {"keywords": ["Sustainability", "High Performance Buildings", "Research"]}
+        assert fg._clean_keywords(person) == ["Sustainability", "High Performance Buildings"]
+
+    def test_keeps_broad_but_real_field(self):
+        # "Design"/"Theory" are broad but real research fields — NOT nav junk.
+        person = {"keywords": ["Design", "Theory", "People"]}
+        assert fg._clean_keywords(person) == ["Design", "Theory"]
+
+    def test_multiword_with_nav_token_kept(self):
+        person = {"keywords": ["Water Resources", "Research Methods"]}
+        assert fg._clean_keywords(person) == ["Water Resources", "Research Methods"]

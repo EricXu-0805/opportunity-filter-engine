@@ -32,6 +32,8 @@ from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_facu
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.ucla_faculty import fetch_and_normalize as fetch_ucla_faculty
 from .schools.ucla_faculty import merge_into_processed as merge_ucla_faculty
+from .schools.ucsd_faculty import fetch_and_normalize as fetch_ucsd_faculty
+from .schools.ucsd_faculty import merge_into_processed as merge_ucsd_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
 from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
@@ -554,6 +556,10 @@ def refresh_all(deep: bool = True) -> dict:
             # person-card grid, ladder-filtered). Most Princeton dept subdomains
             # are Cloudflare-walled, so coverage grows as reachable dirs are found.
             ("princeton_faculty", fetch_princeton_faculty, merge_princeton_faculty),
+            # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
+            # Physical/Social Sciences + HDSI (13 departments, three markup
+            # families; Physics via its public JSON profile API).
+            ("ucsd_faculty", fetch_ucsd_faculty, merge_ucsd_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")

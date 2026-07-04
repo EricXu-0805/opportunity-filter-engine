@@ -392,10 +392,11 @@ def is_likely_non_opportunity(opp: dict) -> bool:
 
 # Sources whose postings are, by default, year-round research positions
 # without a fixed deadline. Displaying "missing deadline" for these is
-# misleading — they accept students any time (rolling basis).
+# misleading — they accept students any time (rolling basis). Faculty
+# cold-email targets are handled by source_type (see is_rolling_deadline),
+# not listed here, so the multi-school rollout can't drift this set.
 _ROLLING_BY_SOURCE: frozenset = frozenset({
-    "uiuc_faculty",  # professor research pages — contact anytime
-    "uiuc_sro",      # SRO lab index — most are rolling
+    "uiuc_sro",  # SRO lab index — most are rolling
 })
 
 _ROLLING_TEXT_PATTERNS: list[str] = [
@@ -425,6 +426,13 @@ def is_rolling_deadline(opp: dict) -> bool:
     source = opp.get("source", "")
     if source in _ROLLING_BY_SOURCE:
         return True
+    # Faculty cold-email targets accept students year-round — a professor
+    # page has no application deadline. Every school's faculty collector
+    # (uiuc, the ucb_* fleet, the faculty_graph schools) emits this
+    # source_type, so keying on it instead of a per-source list means new
+    # schools inherit the rolling default automatically.
+    if opp.get("source_type") == "faculty_research":
+        return True
     text = " ".join([
         (opp.get("title") or ""),
         (opp.get("description_clean") or opp.get("description_raw") or ""),
@@ -449,18 +457,36 @@ def enrich_opportunity(opp: dict) -> dict:
         if inferred:
             elig["majors"] = inferred
 
-    if not elig.get("skills_required"):
+    # Skill inference is for program/job/internship listings, NOT faculty. A
+    # faculty record is a cold-email research contact, not a posting with
+    # "required skills": inferring them from research-topic prose is false-
+    # precise (a topology professor whose page says "finite element" gets
+    # skills_required=['FEA']) and it defeats the ranker's neutral skill score
+    # for honest-empty rolling faculty — routing a research-curious student's
+    # match through a skills mismatch they never should have been graded on.
+    if opp.get("source_type") != "faculty_research" and not elig.get("skills_required"):
         desc = opp.get("description_raw") or opp.get("description_clean") or ""
         if desc and len(desc) >= 80:
             inferred_skills = _extract_skills_from_text(desc)
             if inferred_skills:
                 elig["skills_required"] = inferred_skills
 
-    kws = opp.get("keywords") or []
-    if _is_unsorted(kws):
-        inferred_kws = infer_keywords(opp)
-        if inferred_kws:
-            opp["keywords"] = inferred_kws
+    # Keyword backfill is for program/listing records only. Faculty records get
+    # their keywords from the collectors' own junk-gated pipeline; inferring
+    # here from a faculty record's templated description ("...inquire about
+    # undergraduate research positions in their lab.") would inject the
+    # page-furniture keyword 'undergraduate research' into every empty-keyword
+    # professor, which the faculty DQ gate (test_faculty_keywords_have_no_junk)
+    # correctly rejects — deterministically failing every refresh. An
+    # honest-broad faculty record must stay broad, not get a fabricated keyword.
+    # (Blanket-junk-gating the inferred set instead is wrong: 'undergraduate
+    # research' is a *legitimate* keyword on a real REU program record.)
+    if opp.get("source_type") != "faculty_research":
+        kws = opp.get("keywords") or []
+        if _is_unsorted(kws):
+            inferred_kws = infer_keywords(opp)
+            if inferred_kws:
+                opp["keywords"] = inferred_kws
 
     if is_likely_non_opportunity(opp):
         meta = opp.setdefault("metadata", {})
@@ -473,7 +499,33 @@ def enrich_opportunity(opp: dict) -> dict:
     if "is_rolling" not in opp and is_rolling_deadline(opp):
         opp["is_rolling"] = True
 
+    _normalize_date_fields(opp)
+
     return opp
+
+
+def _normalize_date_fields(opp: dict) -> None:
+    """Coerce the single date fields to ISO ``YYYY-MM-DD`` so sort ('newest') and
+    the deadline-urgency badge work uniformly across sources, and so every date
+    the frontend renders is consistent. Known drifts: nsf_reu ships
+    ``posted_date`` AND ``start_date`` as ``MM/DD/YYYY`` (both set from the award
+    startDate; sorts lexically wrong / renders inconsistently) and handshake
+    ships ``deadline`` as a full ISO *timestamp* (the badge parser wants a date).
+    Sentinels ('Rolling', 'Open until filled') and unparseable values are left
+    untouched."""
+    from .deadlines import parse_to_date
+
+    dl = opp.get("deadline")
+    if isinstance(dl, str) and "T" in dl:  # strip time component off an ISO timestamp
+        d = parse_to_date(dl)
+        if d:
+            opp["deadline"] = d.isoformat()
+    for field in ("posted_date", "start_date"):
+        v = opp.get(field)
+        if isinstance(v, str) and v.strip() and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v.strip()):
+            d = parse_to_date(v)
+            if d:
+                opp[field] = d.isoformat()
 
 
 def enrich_all(opps: list[dict]) -> tuple[int, int]:

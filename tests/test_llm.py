@@ -95,6 +95,15 @@ class TestModelOverride:
         llm.chat_completion([{"role": "user", "content": "hi"}], model="gemini-3.1-pro")
         assert _CAPTURED.get("extra_body", {}).get("reasoning_effort") == "none"
 
+    def test_openrouter_gemini_slug_also_sends_reasoning_effort(self, monkeypatch):
+        # An OpenRouter-routed Gemini ("google/gemini-…", incl. the Ask-AI
+        # picker default + the chain's OpenRouter default) is still Gemini and
+        # must get reasoning_effort:none — the "gemini-" prefix alone missed it.
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}],
+                            model="google/gemini-2.0-flash-lite-001")
+        assert _CAPTURED.get("extra_body", {}).get("reasoning_effort") == "none"
+
     def test_non_gemini_override_sends_no_extra_body(self, monkeypatch):
         _use_provider(monkeypatch, "OPENAI_API_KEY")
         llm.chat_completion([{"role": "user", "content": "hi"}], model="gpt-5.5")

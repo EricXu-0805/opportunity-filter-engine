@@ -658,9 +658,20 @@ _PAGE_NOISE = re.compile(
 
 def _scrape_individual_page_keywords(url: str) -> list[str]:
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=8, verify=False)
+        resp = requests.get(url, headers=HEADERS, timeout=8)
         resp.raise_for_status()
         html = resp.text
+    except requests.exceptions.SSLError:
+        # A few departmental vhosts ship broken cert chains; retry unverified
+        # (same fallback pattern as uiuc_our_rss) rather than silently losing
+        # their research keywords, and warn so the cert rot stays visible.
+        logger.warning("SSL verification failed for %s — retrying unverified", url)
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=8, verify=False)
+            resp.raise_for_status()
+            html = resp.text
+        except requests.RequestException:
+            return []
     except requests.RequestException:
         return []
 
@@ -1076,6 +1087,29 @@ def _faculty_is_richer(a: dict, b: dict) -> bool:
     return ad > bd
 
 
+# Fields that carry run-once enrichment (OpenAlex/LLM research topics + the
+# title and descriptions rebuilt from them). A directory re-scrape emits these
+# too — broad or empty for exactly the faculty the enrichment targeted — so a
+# same-id merge must not let a poorer scrape overwrite them.
+_ENRICHMENT_CARRY_FIELDS = ("keywords", "title", "description_raw", "description_clean")
+
+
+def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
+    """When a re-scrape upserts over a committed record by stable id, keep the
+    committed record's enrichment if it is keyword-richer than the fresh scrape:
+    copy the carry fields onto ``incoming`` so BOTH merge styles preserve them —
+    ``existing.update(incoming)`` (faculty_graph) leaves them unchanged, and
+    ``index[id] = incoming`` (uiuc_faculty full-replace) keeps them. Every other
+    (volatile/factual) field still comes from the fresh scrape. No-op when the
+    fresh scrape is at least as rich, so a professor who added research areas to
+    their page still wins. This is the same-id guard the row-dedup
+    ``_faculty_is_richer`` never covered (it only collapses duplicate rows)."""
+    if _faculty_is_richer(existing, incoming):
+        for f in _ENRICHMENT_CARRY_FIELDS:
+            if f in existing:
+                incoming[f] = existing[f]
+
+
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
     """Collapse same-professor duplicate faculty rows (same profile URL + last
     name), keeping the richer record at its original position. Non-faculty rows
@@ -1190,7 +1224,10 @@ _RESEARCH_AREA_NAV_NOISE = re.compile(
     r"research programs?|related research|field research|colloqui",
     re.IGNORECASE,
 )
-_COURSE_CODE_RE = re.compile(r"\b[A-Za-z]{2,4}\s?\d{3}\b")
+# "CS 591", "ECE 220" — a dept code + number. Exempt "ieee" so an IEEE
+# standard/protocol research area ("IEEE 802.11", "IEEE 754") isn't mistaken
+# for a course listing (IEEE is a standards body, never a course department).
+_COURSE_CODE_RE = re.compile(r"\b(?!ieee\b)[A-Za-z]{2,4}\s?\d{3}\b", re.IGNORECASE)
 # Phrases opening with a conjunction/preposition/pronoun are sentence fragments,
 # not topics (e.g. "and freight applications", "including best practices").
 _LEADING_NONTOPICAL_RE = re.compile(
@@ -1284,6 +1321,28 @@ _CONTACT_INFO_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Journal / publication-venue names and editorial-service lines that an
+# enrichment pass sometimes scraped as a "research area" ("ieee transactions on
+# image processing", "acta astronautica", "science advances", "reviewer for
+# 'physical review letters'"). A venue is where the work appears, not the topic —
+# and it surfaces verbatim in the card title. Deliberately specific (real
+# journal grammar) so it never touches topical keywords: word-tested against the
+# full corpus, it flags 10 venue keywords and 0 research areas.
+_JOURNAL_VENUE_RE = re.compile(
+    # IEEE only as a publication venue ("IEEE Transactions/Access/Spectrum/…"),
+    # NOT bare "ieee" — that ate protocol/standard research areas like
+    # "IEEE 802.11 wireless networks" and "IEEE standards".
+    r"\bieee\s+(?:transactions|access|journal|spectrum|proceedings|communications|magazine|letters)\b"
+    r"|\btransactions on\b"
+    r"|\bacta\s+\w+"
+    r"|\barxiv\b"
+    r"|\bscience advances\b"
+    r"|\breviewer for\b"
+    r"|\b(?:physical review|physics|chemistry|automation|applied physics)\s+letters\b"
+    r"|\bnature[\s\-](?:communications|human|methods|physics|materials|genetics|medicine|reviews|biotechnology)",
+    re.IGNORECASE,
+)
+
 
 def _is_junk_keyword(k: str) -> bool:
     """True for a keyword that is page furniture, a course listing, a
@@ -1303,6 +1362,8 @@ def _is_junk_keyword(k: str) -> bool:
     if re.search(r"&[a-z]{2,}", kl):  # HTML-entity residue ("agents &amp", "se&nbsp")
         return True
     if re.search(r"\b(?:journal|proceedings)\b", kl):  # publication venue, not a topic
+        return True
+    if _JOURNAL_VENUE_RE.search(kl):  # a journal name / editorial-service line, not a topic
         return True
     if re.match(r"^(?:and|or|but|to)\b", kl):  # tail of a comma/sentence-split clause
         return True
@@ -1969,9 +2030,13 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
 
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            cur = index[opp["id"]]
+            opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}
             ).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
+            # enrichment on the same stable id.
+            _carry_forward_enrichment(cur, opp)
             index[opp["id"]] = opp
             updated += 1
         else:
