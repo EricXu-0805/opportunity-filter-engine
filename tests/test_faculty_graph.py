@@ -1545,3 +1545,78 @@ class TestUchicagoConfig:
         recs = fg.fetch_and_normalize(UC, deep=False)
         assert any(r["pi_name"] == "David Freedman" for r in recs)  # Neurobiology chair
         assert any(r["pi_name"] == "Carole Ober" for r in recs)  # Human Genetics chair
+
+
+class TestUciConfig:
+    def test_uci_config_valid(self):
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        assert fg.validate(UCI) == []
+
+    def test_uci_registered(self):
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        assert SOURCE_DEFAULTS[UCI["source"]] == ("uci", "unknown")
+        assert UCI["source"] in FACULTY_SOURCES
+
+    def test_uci_engineering_shares_one_selector_set(self):
+        """The six Samueli departments reuse the Drupal-7 bean-card selectors."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        eng = [d for d in UCI["departments"]
+               if d.get("directory_url", "").startswith("https://engineering.uci.edu/dept/")]
+        assert {d["short"] for d in eng} == {"EECS", "MAE", "BME", "CBE", "CEE", "MSE"}
+        cards = {d["scrape"]["selectors"]["card"] for d in eng}
+        assert cards == {"div.bean-call-to-action-block"}
+
+    def test_uci_socsci_field_filter_anchors_on_primary_department(self):
+        """The shared social-sciences table concatenates the primary department
+        with research-center names; the filter must anchor on 'Department of X'."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        poli = next(d for d in UCI["departments"] if d["short"] == "POLISCI")
+        assert poli["scrape"]["field_filter"]["include"].startswith(r"^\s*Department of")
+
+
+class TestUcsbConfig:
+    def test_ucsb_config_valid(self):
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        assert fg.validate(UCSB) == []
+
+    def test_ucsb_registered(self):
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        assert SOURCE_DEFAULTS[UCSB["source"]] == ("ucsb", "unknown")
+        assert UCSB["source"] in FACULTY_SOURCES
+
+    def test_ucsb_unfiltered_pages_carry_strict_ladder_filter(self):
+        """Family C all-people pages (polsci/soc/chem/math) list grad students and
+        emeriti — each must ship a ladder_filter or it pollutes the corpus."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        for short in ("POLSCI", "SOC", "CHEM", "MATH", "MATSCI"):
+            dept = next(d for d in UCSB["departments"] if d["short"] == short)
+            assert dept["scrape"].get("ladder_filter"), short
+
+
+class TestNameLastSplitCells:
+    def test_two_cell_name_is_joined(self, monkeypatch):
+        """UCI Chemistry's Drupal table splits the name across a first-name and a
+        last-name cell; the engine joins them via the ``name_last`` selector."""
+        from bs4 import BeautifulSoup
+        html = """<table><tbody>
+          <tr class='odd'>
+            <td class='first'>Ioan</td><td class='last'>Andricioaei</td>
+            <td class='title'>Professor</td>
+            <td class='email'>andricio@uci.edu</td>
+            <td class='pos'>Faculty</td>
+          </tr>
+          <tr class='even'>
+            <td class='first'>Retta</td><td class='last'>Retired</td>
+            <td class='title'>Professor Emeritus</td>
+            <td class='email'>rr@uci.edu</td>
+            <td class='pos'>Emeritus Faculty</td>
+          </tr>
+        </tbody></table>"""
+        soup = BeautifulSoup(html, "html.parser")
+        people = fg._parse_cards(soup, {
+            "card": "tr.odd, tr.even",
+            "name": "td.first", "name_last": "td.last",
+            "title": "td.title", "email": "td.email",
+        }, "https://x.edu/", ladder_filter={"require": r"\bprofessor\b", "drop": r"\bemerit"})
+        assert [p["name"] for p in people] == ["Ioan Andricioaei"]
+        assert people[0]["email"] == "andricio@uci.edu"
