@@ -299,6 +299,33 @@ class TestScrapeLayer:
         assert people[0]["research_areas"] == ""  # not enriched
         assert calls == ["https://www.cc.gatech.edu/people/faculty"]  # only the listing
 
+    def test_profile_enrich_render_uses_headless_for_walled_profiles(self, monkeypatch):
+        """render:True routes the per-profile fetch through the headless browser
+        (Princeton dept subdomains / umich, whose profiles sit behind the same
+        Cloudflare wall as the listing), lifting the email + research-areas the
+        listing omits — and never falls back to a plain fetch_soup."""
+        from bs4 import BeautifulSoup
+        profile = ('<div class="field--name-field-ps-people-email">'
+                   '<a href="mailto:nverma@princeton.edu">nverma@princeton.edu</a></div>'
+                   '<div class="field--name-field-research-areas">'
+                   '<div class="field__item">Computing &amp; Networking</div>'
+                   '<div class="field__item">Integrated Circuits &amp; Systems</div></div>')
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda url, **kw: BeautifulSoup(profile, "html.parser"))
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: (_ for _ in ()).throw(
+                                AssertionError("plain fetch_soup used for a render profile")))
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        enr = {"render": True,
+               "email_selector": ".field--name-field-ps-people-email a[href^='mailto:']",
+               "research_items_selector": ".field--name-field-research-areas .field__item"}
+        people = [{"name": "Naveen Verma", "title": "Professor",
+                   "url": "https://ece.princeton.edu/people/nverma",
+                   "email": None, "research_areas": "", "keywords": []}]
+        out = fg._apply_profile_enrich(people, enr)
+        assert out[0]["email"] == "nverma@princeton.edu"
+        assert {"Computing & Networking", "Integrated Circuits & Systems"} <= set(out[0]["keywords"])
+
     def test_research_join_fills_areas_from_aggregator_page(self, monkeypatch):
         """When research areas live only on one shared page (a "research
         interests" index, or the directory card when the roster is fetched via
