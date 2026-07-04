@@ -82,12 +82,23 @@ _EECS_SELECTORS = {
 }
 
 
-def _scrape(url: str, selectors: dict, *, name_flip: bool = False) -> dict:
+# Several LSA people grids (Chemistry, Psychology, Statistics, MCDB) render only
+# 12 cards per page behind a client-side hash router — the rest load as the URL
+# fragment changes to ``#…&page=N``. Physics/Math/Economics/EEB list everyone on
+# one page, so they omit this. Walked in one render session by the engine's
+# hash-paginate path (dedup by name+url).
+_LSA_PAGINATE = {"mode": "hash", "param": "page", "max": 12}
+
+
+def _scrape(url: str, selectors: dict, *, name_flip: bool = False,
+            paginate: dict | None = None) -> dict:
     """A render-mode scrape block for a Cloudflare-walled Michigan directory."""
     block = {"url": url, "render": True, "selectors": selectors,
              "ladder_filter": _LADDER}
     if name_flip:
         block["name_flip"] = True
+    if paginate:
+        block["paginate"] = paginate
     return block
 
 SCHOOL: dict = {
@@ -328,7 +339,7 @@ SCHOOL: dict = {
             "name": "Molecular, Cellular & Developmental Biology",
             "majors": ["Molecular Biology", "Cellular Biology", "Biology", "Biochemistry"],
             "directory_url": "https://lsa.umich.edu/mcdb/people/faculty.html",
-            "scrape": _scrape("https://lsa.umich.edu/mcdb/people/faculty.html", _LSA_SELECTORS),
+            "scrape": _scrape("https://lsa.umich.edu/mcdb/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Kenneth Cadigan", title="Professor",
@@ -385,7 +396,7 @@ SCHOOL: dict = {
             "name": "Department of Statistics",
             "majors": ["Statistics", "Data Science"],
             "directory_url": "https://lsa.umich.edu/stats/people/faculty.html",
-            "scrape": _scrape("https://lsa.umich.edu/stats/people/faculty.html", _LSA_SELECTORS),
+            "scrape": _scrape("https://lsa.umich.edu/stats/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Ji Zhu", title="Professor",
@@ -536,7 +547,7 @@ SCHOOL: dict = {
             "name": "Department of Chemistry",
             "majors": ["Chemistry", "Biochemistry", "Chemical Biology"],
             "directory_url": "https://lsa.umich.edu/chem/people/faculty.html",
-            "scrape": _scrape("https://lsa.umich.edu/chem/people/faculty.html", _LSA_SELECTORS),
+            "scrape": _scrape("https://lsa.umich.edu/chem/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Melanie Sanford", title="Professor",
@@ -746,7 +757,7 @@ SCHOOL: dict = {
             "name": "Department of Psychology",
             "majors": ["Psychology", "Cognitive Science", "Neuroscience"],
             "directory_url": "https://lsa.umich.edu/psych/people/faculty.html",
-            "scrape": _scrape("https://lsa.umich.edu/psych/people/faculty.html", _LSA_SELECTORS),
+            "scrape": _scrape("https://lsa.umich.edu/psych/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Ethan Kross", title="Professor",

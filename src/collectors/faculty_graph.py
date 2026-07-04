@@ -582,7 +582,7 @@ def _paginated_url(base: str, page: int, param: str) -> str:
     return f"{paged}{sep}{query}" if query else paged
 
 
-def _render_soup(url: str, timeout_ms: int = 45000):
+def _render_soup(url: str, timeout_ms: int = 60000):
     """Fetch a URL through a headless-Chromium browser and return a BeautifulSoup.
 
     The escape hatch for directories a plain ``requests`` GET can't read: pages
@@ -629,6 +629,57 @@ def _render_soup(url: str, timeout_ms: int = 45000):
     return BeautifulSoup(html, "html.parser") if html else None
 
 
+def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
+                          card_sel: str = "", timeout_ms: int = 60000):
+    """Walk a client-side hash-router directory in ONE render session.
+
+    Some AEM "people" grids (Michigan LSA — Chemistry, Psychology, Statistics,
+    MCDB) render ~12 cards per page and only advance when the URL fragment changes
+    *in-page* (a hashchange event); a fresh load with ``#…page=N`` pre-set never
+    bootstraps past page 1, so the normal fetch-per-URL paginator can't drive them.
+    This loads the base once, then re-navigates the SAME page to ``#…&page=N`` for
+    each page (a same-document navigation that fires the router), accumulating each
+    page's ``card_sel`` outerHTML until a page surfaces nothing new or the cap is
+    hit. Returns a soup of all pages' cards concatenated (parsed by the caller's
+    normal selectors), or ``None`` where Playwright/Chromium is unavailable.
+    """
+    if not card_sel:
+        return None
+    try:
+        from bs4 import BeautifulSoup
+        from playwright.sync_api import sync_playwright
+
+        from .ucb_common import HEADERS
+    except ImportError:
+        return None
+    parts: list[str] = []
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
+                seen: set[str] = set()
+                for pg in range(1, max_pages + 1):
+                    target = url if pg == 1 else f"{url}#q=&alpha=&{param}={pg}"
+                    page.goto(target, wait_until="domcontentloaded", timeout=timeout_ms)
+                    page.wait_for_timeout(3500 if pg == 1 else 2500)
+                    cards = page.eval_on_selector_all(
+                        card_sel, "els => els.map(e => e.outerHTML)")
+                    fresh = [c for c in cards if c not in seen]
+                    if pg > 1 and not fresh:
+                        break
+                    seen.update(fresh)
+                    parts.extend(fresh)
+            finally:
+                browser.close()
+    except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
+        logger.warning("faculty_graph: paginated render failed for %s: %s", url, e)
+        return None
+    if not parts:
+        return None
+    return BeautifulSoup("<div>" + "".join(parts) + "</div>", "html.parser")
+
+
 def _scrape_directory(dept: dict) -> list[dict]:
     """Best-effort parse of a department directory into faculty specs.
 
@@ -660,14 +711,23 @@ def _scrape_directory(dept: dict) -> list[dict]:
     link_f = cfg.get("link_filter")
     sf = cfg.get("section_filter")
     ff = cfg.get("field_filter")
-    soup = fetch(base)
+    pag = cfg.get("paginate")
+    if cfg.get("render") and pag and pag.get("mode") == "hash":
+        # Client-side hash-router grids (AEM "Michigan LSA" people pages) render
+        # only ~12 cards per page and advance solely on an in-page hashchange — a
+        # fresh load with the fragment pre-set never bootstraps past page 1. Walk
+        # every page inside one render session (below) instead of the fetch-per-URL
+        # loop, which can't drive a same-document router.
+        soup = _render_paginated_soup(base, pag.get("param", "page"),
+                                      pag.get("max", 12), sel.get("card", ""))
+    else:
+        soup = fetch(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
         people = _parse_cards(soup, sel, base, lf, flip, link_f, sf, ff)
-        pag = cfg.get("paginate")
-        if pag:
+        if pag and pag.get("mode") != "hash":
             param = pag.get("param", "page")
             path_mode = pag.get("mode") == "path"
             seen = {(p["name"], p["url"]) for p in people}
