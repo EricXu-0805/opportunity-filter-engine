@@ -1,32 +1,55 @@
 """University of Chicago faculty config (via the faculty_graph engine).
 
-Mechanism mix, verified Jul 2026 (per-department directory probes; raw HTML/JSON
-snapshots reviewed by hand before selectors were pinned):
+Thirty departments across the College's divisions + the professional schools,
+verified Jul 2026 (per-department directory probes; raw HTML/JSON snapshots
+reviewed by hand before selectors were pinned).
 
-  * **Live scrape (8 departments).** CS (WordPress+FacetWP card grid, single
-    page, per-profile "Focus Areas" enrich), the four PSD MixItUp directories
-    (Statistics, Mathematics, Physics, Astronomy & Astrophysics -- same CMS,
-    shared selector set, no emails on the listing), the two Drupal Views
-    directories (Economics, Psychology -- paginated, emailed + interest-tagged
-    cards), and PME (server-rendered card-spotlight grid, emailed + research
-    topics via per-card taxonomy spans).
-  * **Curated seeds from the sites' own JSON APIs (6 departments).** Chemistry's
-    directory page and the five BSD department sites (Ecology & Evolution,
+  * **Live scrape (21 departments), five directory families:**
+      - *WordPress+FacetWP* -- CS (single-page card grid, per-profile "Focus
+        Areas" enrich).
+      - *PSD MixItUp* -- Statistics, Mathematics, Physics, Astronomy (one CMS,
+        shared selector set; no listing email, so a gated per-profile mailto
+        pass backfills it). Geophysical Sciences is a MixItUp *variant* (no
+        people_content wrapper, no listing email either).
+      - *Drupal Views "bio-*"* -- Economics, Psychology + the five Social
+        Sciences Division depts (Sociology, Political Science, History,
+        Anthropology, Comparative Human Development). Paginated, emailed,
+        interest-tagged; the /people/faculty view is ladder-clean (emeriti on a
+        separate page).
+      - *Drupal Views "profile-tile"* (Humanities Division) -- Philosophy
+        (section-sliced to Core Faculty), English, Linguistics. Single-page,
+        emailed; mixes instructional/visiting/teaching-fellow roles, so a
+        title/section filter is mandatory.
+      - *PME card-spotlight* -- emailed + research topics via taxonomy spans.
+      - *Professional-school directories* -- Harris (teaser-table, profile-type
+        field filter), Law (profile-list, profile_type=103 view), Crown Family
+        School (person-card, capital-T "mailTo:" recovered by _clean_email),
+        Divinity (faceted-path faculty view, no listing email -> gated profile
+        mailto pass). Booth is deliberately omitted (a JS-only Coveo search with
+        no scrapable feed); the Data Science Institute is skipped (its whole
+        roster is cross-appointed CS/Stat/Harris/etc. -- adding it would
+        double-count).
+  * **Curated seeds from the sites' own JSON APIs (9 departments).** Chemistry's
+    directory page and the eight BSD department sites (Ecology & Evolution,
     Neurobiology, Human Genetics, Molecular Genetics & Cell Biology,
-    Biochemistry & Molecular Biology) are JS-only shells; the shared BSD data
+    Biochemistry & Molecular Biology, Organismal Biology & Anatomy, Public
+    Health Sciences, Microbiology) are JS-only shells; the shared BSD data
     endpoint (bsd-data.prod.uchicago.edu/api/faculty_index) additionally
     requires a uchicago Referer header the engine doesn't send. Their rosters
     were pulled from the APIs (chemistry: live-ucchem.pantheonsite.io/api/
     faculty_index) in Jul 2026 and frozen as curated ``faculty(...)`` seeds --
-    the Michigan model. Migrate to live ``json_dir`` blocks if the engine grows
-    per-source headers + relative-link joins.
+    the Michigan model. Each BSD seed keeps its PRIMARY appointment only
+    (``department[0]`` -- the API repeats joint appointments in every dept they
+    touch) and links to the stable ``profiles.uchicago.edu`` research-network
+    URL. Migrate to live ``json_dir`` blocks if the engine grows per-source
+    headers + relative-link joins.
 
 BSD department chairs carry the literal title "Chair" (Carole Ober, David
 Freedman, ...), not "...Professor", so the BSD dumps used a drop-only rank
 filter -- requiring "professor" would have dropped every chair. Emails are
-absent from all six API rosters and from the PSD MixItUp listings; records
-there ship as linked, keyworded cold-email targets (confidence 0.5), like the
-UW Arts & Sciences departments.
+absent from all nine API rosters and from the PSD/geosci MixItUp listings;
+records there ship as linked, keyworded cold-email targets, like the UW Arts &
+Sciences departments.
 
 Single source ("uchicago_faculty") across all departments (the UIUC model); the
 department rides on each record's ``department`` field, and ids are namespaced
@@ -53,6 +76,13 @@ def _psd(short: str, name: str, majors: list[str], url: str, *,
                                      "name": ".people_content h3 span",
                                      "link": "a",
                                      "title": ".people_content h3 b"},
+                       # The MixItUp listing cards carry no email; each professor's
+                       # profile page keeps a personal mailto. Backfill it via the
+                       # gated per-profile pass (OFE_ENRICH_PROFILES=1 for the
+                       # one-shot generation run; off in weekly CI, where the
+                       # already-enriched emails carry forward through the merge).
+                       "profile_enrich": {"email_selector": "a[href^='mailto:']",
+                                          "throttle": 0.75},
                        **({"ladder_filter": ladder_filter} if ladder_filter else {})}}
 
 
@@ -72,6 +102,28 @@ def _views(short: str, name: str, majors: list[str], url: str, *,
                                      "research": "div.bio-interest"},
                        "paginate": {"param": "page", "start": 1, "max": max_pages},
                        "ladder_filter": {"drop": r"emerit"}}}
+
+
+# The Humanities Division uses a SECOND Drupal Views variant ("profile-tile"):
+# tiles carry the name in ``h2.info > a > span`` and use ``field--name-field-*``
+# divs for title/email, with no research field. These pages are single-page (no
+# pagination) and mix ladder with instructional/visiting/teaching-fellow roles,
+# so a ladder_filter (or a section slice for the sectioned Philosophy page) is
+# mandatory, unlike the ladder-clean Family-A faculty views.
+def _tile(short: str, name: str, majors: list[str], url: str, *,
+          ladder_filter: dict | None = None, section_filter: dict | None = None) -> dict:
+    scrape = {"url": url,
+              "selectors": {"card": "div.views-row",
+                            "name": "h2.info > a > span",
+                            "link": "h2.info > a",
+                            "title": "div.field--name-field-person-faculty-title",
+                            "email": "div.field--name-field-person-email > a"}}
+    if ladder_filter:
+        scrape["ladder_filter"] = ladder_filter
+    if section_filter:
+        scrape["section_filter"] = section_filter
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": url, "scrape": scrape}
 
 
 SCHOOL: dict = {
@@ -142,6 +194,137 @@ SCHOOL: dict = {
         _views("PSYCH", "Department of Psychology",
                ["Psychology"],
                "https://psychology.uchicago.edu/people/faculty", max_pages=5),
+        # Social Sciences Division — same Family-A bio-* Drupal Views as Econ/
+        # Psych. Each dept's /people/faculty view is ladder-clean (emeriti live
+        # on a separate page), so the drop-emerit in _views is just a safety net.
+        _views("SOC", "Department of Sociology", ["Sociology"],
+               "https://sociology.uchicago.edu/people/faculty", max_pages=3),
+        _views("POLISCI", "Department of Political Science", ["Political Science"],
+               "https://political-science.uchicago.edu/people/faculty", max_pages=4),
+        _views("HIST", "Department of History", ["History"],
+               "https://history.uchicago.edu/people/faculty", max_pages=5),
+        # Anthropology's path is capitalized — the server 403s /people/faculty
+        # and redirects /people/faculty -> /People/Faculty.
+        _views("ANTHRO", "Department of Anthropology", ["Anthropology"],
+               "https://anthropology.uchicago.edu/People/Faculty", max_pages=3),
+        _views("HDEV", "Department of Comparative Human Development",
+               ["Comparative Human Development"],
+               "https://humdev.uchicago.edu/people/faculty", max_pages=3),
+        # Humanities Division — Family-B profile-tile. Philosophy is sectioned
+        # (slice the Core Faculty group); English + Linguistics are flat lists
+        # mixing instructional/visiting/teaching-fellow roles, gated by title.
+        _tile("PHIL", "Department of Philosophy", ["Philosophy"],
+              "https://philosophy.uchicago.edu/people/profiles",
+              section_filter={"heading": "h3", "include": r"core faculty"},
+              ladder_filter={"drop": r"emerit|instructional|visiting|lecturer"}),
+        _tile("ENGL", "Department of English Language and Literature",
+              ["English Language and Literature", "Creative Writing"],
+              "https://english.uchicago.edu/people/faculty-and-lecturers",
+              # exclude on the literal "Collegiate Assistant Professor" (a
+              # Harper-Schmidt fellowship), not bare "Collegiate" — else a real
+              # Associate Professor in the Humanities Collegiate Division drops.
+              ladder_filter={"require": r"\bprofessor\b",
+                             "drop": r"instructional|visiting|collegiate assistant professor"
+                                     r"|teaching fellow|harper-schmidt|advisor|postdoc|emerit"}),
+        _tile("LING", "Department of Linguistics", ["Linguistics"],
+              "https://linguistics.uchicago.edu/people/profiles",
+              ladder_filter={"drop": r"instructional|teaching fellow|postdoc|emerit"}),
+        # Physical Sciences — Geophysical Sciences is a MixItUp variant with a
+        # different inner markup than the Stat/Math/Physics/Astro sites (no
+        # people_content wrapper); the listing carries no email.
+        {
+            "short": "GEOS",
+            "name": "Department of the Geophysical Sciences",
+            "majors": ["Geophysical Sciences", "Environmental Science", "Climate and Sustainable Growth"],
+            "directory_url": "https://geosci.uchicago.edu/people/",
+            "scrape": {
+                "url": "https://geosci.uchicago.edu/people/",
+                "selectors": {"card": "li.mix.academic-faculty",
+                              "name": "h2 > a", "link": "h2 > a",
+                              "title": "h2 > small",
+                              "research": "dl > dd"},
+                "ladder_filter": {"drop": r"emerit"},
+            },
+        },
+        # Professional schools. Each has its own directory theme; Booth is
+        # deliberately omitted (a JS-only Coveo search with no scrapable feed).
+        {
+            "short": "HARRIS",
+            "name": "Harris School of Public Policy",
+            "majors": ["Public Policy Studies", "Economics"],
+            "directory_url": "https://harris.uchicago.edu/directory",
+            "scrape": {
+                "url": "https://harris.uchicago.edu/directory",
+                "selectors": {"card": "article.teaser-table--profile",
+                              "name": "h2.teaser-table--title a",
+                              "link": "h2.teaser-table--title a",
+                              "title": "div.teaser-table--job-title .field__item",
+                              "email": "div.teaser-table--link a[href^='mailto:' i]"},
+                # the directory mixes Faculty / Lecturer / PhD Student / Staff /
+                # Visiting Academic as a per-card profile-type; keep Faculty, then
+                # require "professor" to drop the Research Associates within it.
+                "field_filter": {"selector": "div.teaser-table--profile-type", "include": r"Faculty"},
+                "ladder_filter": {"require": r"professor", "drop": r"emerit|visiting|lecturer"},
+                "paginate": {"param": "page", "start": 1, "max": 4},
+            },
+        },
+        {
+            "short": "LAW",
+            "name": "University of Chicago Law School",
+            "majors": ["Law, Letters, and Society"],
+            # profile_type=103 is the Full-Time Teaching Faculty view; the title
+            # filter drops the clinical/practice/visiting ranks mixed into it.
+            "directory_url": "https://www.law.uchicago.edu/directory?profile_type=103",
+            "scrape": {
+                "url": "https://www.law.uchicago.edu/directory?profile_type=103",
+                "selectors": {"card": "li.profile-list__item",
+                              "name": ".profile-list--item__name a span",
+                              "link": ".profile-list--item__name a",
+                              "title": ".profile-list--item__job-title",
+                              "email": ".profile-list--item__contact a[href^='mailto:' i]"},
+                "ladder_filter": {"require": r"professor",
+                                  "drop": r"emerit|visiting|lecturer|clinical|from practice|of practice|fellow|director"},
+                "paginate": {"param": "page", "start": 1, "max": 5},
+            },
+        },
+        {
+            "short": "CROWN",
+            "name": "Crown Family School of Social Work, Policy, and Practice",
+            "majors": ["Public Policy Studies"],
+            # /research-faculty/faculty-directory, NOT /directory (which mixes
+            # staff, doctoral students, and centers). Emails use a capital-T
+            # "mailTo:" scheme the engine's _clean_email regex still recovers.
+            "directory_url": "https://crownschool.uchicago.edu/research-faculty/faculty-directory",
+            "scrape": {
+                "url": "https://crownschool.uchicago.edu/research-faculty/faculty-directory",
+                "selectors": {"card": "article.node--type-person.node--view-mode-card",
+                              "name": "h3.person-name a",
+                              "link": "h3.person-name a",
+                              "title": "span.person-title",
+                              "email": ".card-details a[href^='mailto:' i]"},
+                "ladder_filter": {"require": r"professor", "drop": r"emerit|lecturer|instructional"},
+                "paginate": {"param": "page", "start": 1, "max": 3},
+            },
+        },
+        {
+            "short": "DIV",
+            "name": "University of Chicago Divinity School",
+            "majors": ["Religious Studies"],
+            # Faceted PATH URL selects the "faculty" role (emeritus/visiting/
+            # associated/teaching-fellows live under sibling path segments). The
+            # listing carries no email; the per-profile pass (gated) backfills it.
+            "directory_url": "https://divinity.uchicago.edu/directory/all/faculty/all/all",
+            "scrape": {
+                "url": "https://divinity.uchicago.edu/directory/all/faculty/all/all",
+                "selectors": {"card": "div.faculty-detail-section",
+                              "name": "h5.name-faculty",
+                              "link": "a[href^='/directory/']",
+                              "title": "h5.name-faculty + span"},
+                "ladder_filter": {"require": r"professor", "drop": r"emerit|visiting|lecturer|instructional|fellow"},
+                "paginate": {"param": "page", "start": 1, "max": 5},
+                "profile_enrich": {"email_selector": "a[href^='mailto:' i]", "throttle": 0.75},
+            },
+        },
         {
             "short": "PME",
             "name": "Pritzker School of Molecular Engineering",
@@ -589,6 +772,174 @@ SCHOOL: dict = {
                     keywords=["Biochemistry", "Cell and Molecular Biology", "Cryo-Electron Microscopy", "Neurodegenerative Diseases", "Neurodevelopmental Diseases", "RNA", "RNA Processing, Post-Transcriptional", "tRNA"]),
             faculty("Marcos Sotomayor", title="Professor",
                     url="https://biochem.uchicago.edu/marcos-sotomayor-phd"),
+            ],
+        },
+        {
+            "short": "OBA",
+            "name": "Department of Organismal Biology and Anatomy",
+            "majors": ["Biological Sciences", "Neuroscience"],
+            "directory_url": "https://biologicalsciences.uchicago.edu/our-faculty",
+            "faculty": [
+            faculty("Melina E Hale", title="William Rainey Harper Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37051"),
+            faculty("Urs C. Schmidt-Ott", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/38358",
+                    keywords=["Axis Specification", "Development and Evolution", "Drosophila", "Embryogenesis", "Gene Network", "Genomics", "Mosquito", "Pattern Formation"]),
+            faculty("Victoria E. Prince", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37123"),
+            faculty("Zeray Alemseged", title="Donald N. Pritzker Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/8725711"),
+            faculty("Zhe-Xi Luo", title="Mila Pierce-Rhoads Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37171",
+                    keywords=["Evolutionary Biology", "Paleontology", "Mammalian Evolution", "Vertebrate Evolutionary Development"]),
+            faculty("Neil H. Shubin", title="Robert R. Bensley Distinguished Service Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/38183"),
+            faculty("Michael I. Coates", title="Chair",
+                    url="https://profiles.uchicago.edu/profiles/profile/37831"),
+            faculty("Callum F. Ross", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/38637"),
+            faculty("Mark Westneat", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/38515"),
+            faculty("Nipam Patel", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/2119198"),
+            faculty("Paul Sereno", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/36802",
+                    keywords=["dinosaurs", "Sahara", "ancient humans", "exploration", "discovery", "engagement"]),
+            faculty("Daniel Margoliash", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37294",
+                    keywords=["Behavior", "Development", "Systems", "Circuits", "Cellular"]),
+            faculty("Heather Marlow", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/15493674",
+                    keywords=["Genomics", "Evolution", "Regulatory Networks"]),
+            faculty("Nicholas G. Hatsopoulos", title="A.J. Carlson Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/39039"),
+            faculty("Stephanie Palmer", title="Associate Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/38337"),
+            faculty("Zewdi Tsegai", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/31923676"),
+            faculty("Jasmine Nirody", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/31923674"),
+            faculty("Matthew Kaufman", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/13441987",
+                    keywords=["Calcium Imaging", "Computational Modeling", "Decision Making", "Dimensionality Reduction", "Dynamical Systems", "Motor Control", "Mouse", "Population Activity"]),
+            faculty("Amy Herbert", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/56816020"),
+            ],
+        },
+        {
+            "short": "PBHS",
+            "name": "Department of Public Health Sciences",
+            "majors": ["Public Policy Studies", "Data Science", "Statistics"],
+            "directory_url": "https://publichealth.bsd.uchicago.edu/",
+            "faculty": [
+            faculty("Lin Chen", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/38501",
+                    keywords=["big data", "integrative genomics", "statistical methods", "software development"]),
+            faculty("R. Tamara Konetzka", title="Louis Block Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37087",
+                    keywords=["Health Economics", "Long-Term Care", "Medicaid", "Medicare", "Post-Acute Care"]),
+            faculty("Habibul Ahsan", title="Louis Block Distinguished Service Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37251",
+                    keywords=["Disease Prevention", "Early Diagnosis of Cancer", "Global Health", "Precision Medicine", "Risk Assessment"]),
+            faculty("Dezheng Huo", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37017",
+                    keywords=["Breast Cancer", "Genetic Epidemiology", "Genetics", "Population", "Health Disparity", "Outcomes Research", "Risk Prediction"]),
+            faculty("Diane Sperling Lauderdale", title="Louis Block Distinguished Service Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/38924",
+                    keywords=["Aging", "Demographic", "Disparities", "Health Status", "Epidemiology", "Sleep"]),
+            faculty("Donald Hedeker", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/2927290",
+                    keywords=["ecological momentary assessment", "longitudinal data analysis", "mixed-effects models", "ordinal data"]),
+            faculty("Loren Saulsberry", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/14781317",
+                    keywords=["Cancer Prevention and Control", "Health Disparities", "Health Policy", "Health Services Research", "Pharmacogenomics", "Precision Medicine"]),
+            faculty("Brandon L. Pierce", title="Chair",
+                    url="https://profiles.uchicago.edu/profiles/profile/39150",
+                    keywords=["Aging", "Arsenic", "Cancer", "Epigenetics", "gene regulation", "Gene-Environment Interaction", "Genetic Epidemiology", "Telomeres"]),
+            faculty("James J. Dignam", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37229",
+                    keywords=["clinical trials", "competing risks", "health disparities in cancer", "modeling", "survival analysis"]),
+            faculty("Brian Chih-Hung Chiu", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37126",
+                    keywords=["Epigenetics", "Health disparities", "Liquid biopsy", "Molecular epidemiology", "Multiple Myeloma", "Non-Hodgkin Lymphoma", "Translational population research"]),
+            faculty("Yuan Ji", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/2927292"),
+            faculty("Marcia Tan", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/14781316",
+                    keywords=["Behavioral Sciences", "Health Disparities", "Minority Health", "Tobacco Cessation", "Weight Management"]),
+            faculty("Aresha Martinez-Cardoso", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/14630620",
+                    keywords=["Aging", "Demographic", "Demographic and Health Surveys", "Health Status", "Immigration and Emigration", "Latinos", "Migration", "Race"]),
+            faculty("Harold Pollack", title="Helen Ross Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/12760229"),
+            faculty("Mei-Yin Chen Polley", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/18786504",
+                    keywords=["biomarker reproducibility", "brain cancer", "breast cancer", "cancer biomarker", "clinical trials", "prognostic modeling"]),
+            faculty("Prachi Sanghavi", title="Associate Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/5478620",
+                    keywords=["Burn injuries", "Fracking", "Healthcare quality measurement", "Long term care", "Low-value services", "Medicaid", "Medicare", "Pre-hospital care"]),
+            faculty("Kavi Bhalla", title="Associate Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/9913633",
+                    keywords=["Burden of disease", "Global Health", "Injury prevention", "Road safety", "Traffic Accident"]),
+            faculty("Eric Polley", title="Associate Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/22565320",
+                    keywords=["Assay Development", "Cancer Genomics", "Causal Inference", "Data Science", "Precision Medicine", "Prognostic Risk Models", "Risk Assessment"]),
+            faculty("Jasmin Tiro", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/28934556",
+                    keywords=["Behavioral Sciences", "Cancer Prevention and Control", "Disparities", "Healthcare", "Health Behavior Interventions"]),
+            faculty("Joseph Dov Bruch", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/28934559",
+                    keywords=["Financial Sector", "Health Policy", "Social Epidemiology"]),
+            faculty("Betsy Q Cliff", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/28934554",
+                    keywords=["Health economics", "Health policy", "Health insurance", "Consumer behavior"]),
+            faculty("Kate Burrows", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/36891715",
+                    keywords=["Climate change and health", "Environmental Health", "Environmental Justice", "Health Disparities", "Mental Health", "Natural Disasters"]),
+            faculty("Rebekah Israel Cross", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/36891719",
+                    keywords=["Child Health", "Critical Theory", "Housing", "Maternal Health", "Racism", "Urban Development"]),
+            faculty("Wanwen Zeng", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/96508467"),
+            ],
+        },
+        {
+            "short": "MICRO",
+            "name": "Department of Microbiology",
+            "majors": ["Biological Sciences"],
+            "directory_url": "https://microbiology.uchicago.edu/",
+            "faculty": [
+            faculty("Tatyana Golovkina", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37082",
+                    keywords=["viruses", "bacteria", "commensal microbes"]),
+            faculty("Dominique Missiakas", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37807",
+                    keywords=["Animal Disease Models", "Antibodies", "Bacterial", "Bacterial pathogenesis", "Envelope assembly", "Gram Positive Bacteria", "Protein secretion"]),
+            faculty("Glenn C. Randall", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37535",
+                    keywords=["dengue virus", "hepatitis C virus", "noroviruses", "virus-host interactions"]),
+            faculty("Jueqi Chen", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/17338331",
+                    keywords=["Biochemistry", "Fluorescence Microscopy", "Inflammation", "Innate Immunity", "Microbiology"]),
+            faculty("Mark Mimee", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/17589333",
+                    keywords=["Bacteriophage", "Bioengineering", "Host-Pathogen Interactions", "Microbiota", "Synthetic Biology"]),
+            faculty("Sam Light", title="Neubauer Family Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/18601347",
+                    keywords=["Bacterial Pathogenesis", "Human Microbiome", "Microbial Genetics", "Protein Biochemistry"]),
+            faculty("Laurie Comstock", title="Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/23820259",
+                    keywords=["Antimicrobial proteins", "Bacterial antagonism", "Bacterial interactions", "Bacteroidales", "Gut symbionts", "Microbiome", "Microbiota"]),
+            faculty("Shabaana Khader", title="Chair",
+                    url="https://profiles.uchicago.edu/profiles/profile/28934558"),
+            faculty("Mohammed Kaplan", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/36292832"),
+            faculty("Erin Green", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/37151120",
+                    keywords=["Bacteria", "bacterial pathogenesis", "bacterial signal transduction", "gene regulation", "Proteostasis"]),
+            faculty("Elias Gerrick", title="Assistant Professor",
+                    url="https://profiles.uchicago.edu/profiles/profile/49423489",
+                    keywords=["Diet", "Gut microbiota", "Host-microbe interactions", "Microbe-microbe interactions", "Protists"]),
             ],
         },
     ],

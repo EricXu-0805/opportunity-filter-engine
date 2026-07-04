@@ -114,7 +114,7 @@ describe('registry — switcher metadata', () => {
     expect(bySlug('wisc')?.coverage.campusOpportunities).toBe(1781);
     expect(bySlug('ucla')?.coverage.campusOpportunities).toBe(2033);
     expect(bySlug('ucsd')?.coverage.campusOpportunities).toBe(1313);
-    expect(bySlug('uchicago')?.coverage.campusOpportunities).toBe(458);
+    expect(bySlug('uchicago')?.coverage.campusOpportunities).toBe(881);
     // All twelve registered schools now have a live campus collector.
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending).toEqual([]);
