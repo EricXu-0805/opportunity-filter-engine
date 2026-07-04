@@ -7,7 +7,6 @@ import type {
   ColdEmailResponse,
   EmailStyle,
   EmailVariantsResponse,
-  ResumeParseResponse,
   StatsResponse,
   TailorResponse,
 } from './types';
@@ -283,22 +282,6 @@ export async function getEmailVariants(
     method: 'POST',
     body: JSON.stringify({ profile: toProfileRequest(profile), opportunity_id: opportunityId }),
   });
-}
-
-/** POST /api/resume/upload — upload & parse a resume PDF */
-export async function uploadResume(file: File): Promise<ResumeParseResponse> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const res = await fetch(`${API_BASE}/resume/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${errBody}`);
-  }
-  return res.json() as Promise<ResumeParseResponse>;
 }
 
 export async function refineEmail(
