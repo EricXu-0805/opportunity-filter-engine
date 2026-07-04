@@ -23,6 +23,7 @@ protects it on refresh -> zero weekly cost.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sys
@@ -31,6 +32,8 @@ import time
 import requests
 
 from .ucb_common import PROCESSED_FILE
+
+logger = logging.getLogger(__name__)
 
 _HEADERS = {"User-Agent": "ofe-research/1.0 (mailto:eric.guoyi.xu@gmail.com)"}
 _API = "https://api.openalex.org/authors"
@@ -47,6 +50,14 @@ SCHOOL_INST = {
     "stanford": "I97018004",
     "gatech": "I130701444",
     "wisc": "I135310074",
+    # Verified 2026-07-05 via GET /institutions?search=… (display_name + ROR):
+    "ucb": "I95457486",        # University of California, Berkeley (ror 01an7q238)
+    "umich": "I27837315",      # University of Michigan [Ann Arbor] (ror 00jmfr291)
+    "princeton": "I20089843",  # Princeton University (ror 00hx57361)
+    "ucsd": "I36258959",       # University of California San Diego (ror 0168r3w48)
+    "uchicago": "I40347166",   # University of Chicago (ror 024mw5h28)
+    "uci": "I204250578",       # University of California, Irvine (ror 04gyf1771)
+    "ucsb": "I154570441",      # University of California, Santa Barbara (ror 02t274463)
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)
@@ -147,16 +158,32 @@ def _clean_topic(t: str) -> str:
     return t.lower()
 
 
+_warned_429 = False
+
+
 def _get(params: dict) -> dict:
     # OpenAlex metered its API in 2026 (every call costs credits, $0 free/day);
     # the prepaid key authorizes the request via the api_key query param. Absent
     # a key the call returns a 429 budget error (no "results") -> stays broad.
+    global _warned_429
     key = os.environ.get("OPENALEX_API_KEY")
     if key:
         params = {**params, "api_key": key}
     for attempt in range(4):
         try:
-            return requests.get(_API, params=params, headers=_HEADERS, timeout=20).json()
+            resp = requests.get(_API, params=params, headers=_HEADERS, timeout=20)
+            if resp.status_code == 429:
+                # Budget exhaustion won't clear within a retry loop; warn once
+                # per process so a 0-match harvest is never mistaken for
+                # "no authors found".
+                if not _warned_429:
+                    _warned_429 = True
+                    logger.warning(
+                        "OpenAlex returned 429 (rate limit / daily budget exhausted) — "
+                        "authors resolve to no results, so the harvest yields 0 topics. "
+                        "Set OPENALEX_API_KEY or retry after the budget resets.")
+                return {}
+            return resp.json()
         except Exception:
             time.sleep(1.2 * (attempt + 1))
     return {}

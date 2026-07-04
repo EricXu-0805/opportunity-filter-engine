@@ -166,7 +166,8 @@ def _stub_with_processed_file(monkeypatch, tmp_path, seeded):
     monkeypatch.setattr(refresh_all, "PROCESSED_FILE", processed)
     monkeypatch.setattr(
         refresh_all, "enrich_pi",
-        lambda opps, save=True: {"scraped": 0, "enriched": 0, "already_has_email": 0})
+        lambda opps, save=True, max_scrapes=None: {
+            "scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0})
     monkeypatch.setattr(refresh_all, "_null_shared_admin_emails", lambda opps: 0)
     return processed
 

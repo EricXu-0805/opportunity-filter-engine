@@ -18,6 +18,8 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
+from src.normalizers.school_audience import SOURCE_DEFAULTS
+
 from .ucb_common import _is_person_name
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,46 @@ PROCESSED_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 
 HEADERS = {"User-Agent": "OpportunityFilterEngine/1.0 (educational project)"}
 DELAY = 2
+
+# school slug -> its institutional email/URL domains. Email recovery only ever
+# accepts an address on the record's OWN school's domain (wrong-person guard:
+# a personal Gmail or another university's address on the page is never a safe
+# "Dear Prof. X" target), and the scrape gate only follows URLs on those
+# domains (+ nsf.gov). Schools slugs match schools.ts / school_audience.
+SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
+    "uiuc": ("illinois.edu",),
+    "ucb": ("berkeley.edu",),
+    "uw": ("washington.edu", "uw.edu"),
+    "ucla": ("ucla.edu",),
+    "utexas": ("utexas.edu",),
+    "stanford": ("stanford.edu",),
+    "gatech": ("gatech.edu",),
+    "wisc": ("wisc.edu",),
+    "umich": ("umich.edu",),
+    "princeton": ("princeton.edu",),
+    "ucsd": ("ucsd.edu",),
+    "uchicago": ("uchicago.edu",),
+    "uci": ("uci.edu",),
+    "ucsb": ("ucsb.edu",),
+}
+# National records (school=None: SRO catalog, NSF REU, …) keep the historical
+# UIUC-only recovery scope.
+_DEFAULT_DOMAINS = ("illinois.edu",)
+
+
+def _school_domains(opp: dict) -> tuple[str, ...]:
+    """The record's own school's email/URL domains. Falls back from the stamped
+    ``school`` field to the source registry (fresh records are stamped by
+    apply_school_audience only AFTER this enricher runs in refresh_all)."""
+    school = opp.get("school") or SOURCE_DEFAULTS.get(opp.get("source") or "", (None, ""))[0]
+    return SCHOOL_EMAIL_DOMAINS.get(school, _DEFAULT_DOMAINS)
+
+
+def _email_re(domains: tuple[str, ...]) -> re.Pattern:
+    """Matches an address on one of ``domains`` incl. subdomains
+    (jdoe@austin.utexas.edu), never a lookalike (myillinois.edu)."""
+    alts = "|".join(re.escape(d) for d in domains)
+    return re.compile(rf"[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)*(?:{alts})\b")
 
 # R70-B: emails extracted from BeautifulSoup whose local-part is the result
 # of adjacent HTML-element concatenation (e.g. "265-4317nslack@illinois.edu"
@@ -70,7 +112,7 @@ def _fetch_soup(url: str) -> BeautifulSoup | None:
         return None
 
 
-def _extract_contact_from_sro(soup: BeautifulSoup) -> dict:
+def _extract_contact_from_sro(soup: BeautifulSoup, domains: tuple[str, ...] = _DEFAULT_DOMAINS) -> dict:
     result = {}
 
     contact_div = soup.select_one("div.field--name-field-contact-email-s-")
@@ -112,7 +154,7 @@ def _extract_contact_from_sro(soup: BeautifulSoup) -> dict:
         # into a single token. Without it, `<strong>265-4317</strong><a>nslack@..</a>`
         # collapses to "265-4317nslack@.." and the regex extracts a corrupted address.
         full_text = soup.get_text(separator=" ", strip=True)
-        emails = re.findall(r"[a-zA-Z0-9_.+-]+@illinois\.edu", full_text)
+        emails = _email_re(domains).findall(full_text)
         filtered = [e for e in emails if e != "ugresearch@illinois.edu" and _is_likely_real_email(e)]
         if filtered:
             result["contact_email"] = filtered[0]
@@ -152,16 +194,16 @@ NOISE_EMAILS = {
 }
 
 
-def _extract_contact_from_generic_page(soup: BeautifulSoup) -> dict:
+def _extract_contact_from_generic_page(soup: BeautifulSoup, domains: tuple[str, ...] = _DEFAULT_DOMAINS) -> dict:
     result = {}
     # R70-B: separator=" " prevents adjacent HTML elements from concatenating
     # into a single token. Without it the regex picks up phone+name+email
     # mashed together as one "email".
     text = soup.get_text(separator=" ", strip=True)
 
-    illinois_emails = re.findall(r"[a-zA-Z0-9_.+-]+@illinois\.edu", text)
+    school_emails = _email_re(domains).findall(text)
     personal = [
-        e for e in illinois_emails
+        e for e in school_emails
         if e not in NOISE_EMAILS and _is_likely_real_email(e)
     ]
     if personal:
@@ -198,9 +240,10 @@ def _extract_contact_from_generic_page(soup: BeautifulSoup) -> dict:
     return result
 
 
-def enrich_opportunities(opps: list[dict], save: bool = False) -> dict:
+def enrich_opportunities(opps: list[dict], save: bool = False,
+                         max_scrapes: int | None = None) -> dict:
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
-             "scraped": 0, "inferred_pi": 0, "failed": 0}
+             "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0}
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -209,12 +252,20 @@ def enrich_opportunities(opps: list[dict], save: bool = False) -> dict:
 
         enriched = False
         url = opp.get("url", "")
-
+        domains = _school_domains(opp)
         if opp.get("source") == "uiuc_sro" and url.startswith("https://researchops"):
+            scrapeable, extract = True, _extract_contact_from_sro
+        else:
+            scrapeable = bool(url) and (any(d in url for d in domains) or "nsf.gov" in url)
+            extract = _extract_contact_from_generic_page
+
+        if scrapeable and max_scrapes is not None and stats["scraped"] >= max_scrapes:
+            stats["skipped_budget"] += 1
+        elif scrapeable:
             soup = _fetch_soup(url)
             stats["scraped"] += 1
             if soup:
-                info = _extract_contact_from_sro(soup)
+                info = extract(soup, domains)
                 if info.get("contact_email"):
                     opp["contact_email"] = info["contact_email"]
                     enriched = True
@@ -222,17 +273,6 @@ def enrich_opportunities(opps: list[dict], save: bool = False) -> dict:
                 # really an institution/place ("Berkeley", "UC Berkeley") must
                 # never become a pi_name — two such records collide on the
                 # ucb_* joint-appointment data-quality gate and block the refresh.
-                if info.get("pi_name") and not opp.get("pi_name") and _is_person_name(info["pi_name"]):
-                    opp["pi_name"] = info["pi_name"]
-            time.sleep(DELAY)
-        elif url and ("illinois.edu" in url or "nsf.gov" in url):
-            soup = _fetch_soup(url)
-            stats["scraped"] += 1
-            if soup:
-                info = _extract_contact_from_generic_page(soup)
-                if info.get("contact_email"):
-                    opp["contact_email"] = info["contact_email"]
-                    enriched = True
                 if info.get("pi_name") and not opp.get("pi_name") and _is_person_name(info["pi_name"]):
                     opp["pi_name"] = info["pi_name"]
             time.sleep(DELAY)
