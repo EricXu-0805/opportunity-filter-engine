@@ -84,16 +84,20 @@ test.describe('Performance budget', () => {
 
 test.describe('Bundle budget', () => {
   test('home page first-load JS transferred size', async ({ page }) => {
-    let jsBytes = 0;
-    const bodyReads: Promise<void>[] = [];
+    // response.body() is the DECOMPRESSED payload — request().sizes() reports
+    // the actual on-the-wire (gzipped) bytes this budget is about.
+    const sizeReads: Promise<number>[] = [];
     page.on('response', resp => {
       const url = resp.url();
       if (url.includes('/_next/static/chunks/') && url.endsWith('.js')) {
-        bodyReads.push(resp.body().then(buf => { jsBytes += buf.length; }).catch(() => {}));
+        sizeReads.push(
+          resp.request().sizes().then(s => s.responseBodySize)
+            .catch(() => resp.body().then(b => b.length).catch(() => 0)),
+        );
       }
     });
     await page.goto('/', { waitUntil: 'networkidle' });
-    await Promise.all(bodyReads);
+    const jsBytes = (await Promise.all(sizeReads)).reduce((a, b) => a + b, 0);
     const kb = Math.round(jsBytes / 1024);
     console.log(`Home first-load JS: ${kb} KB transferred`);
     const isDev = kb > 1000;
