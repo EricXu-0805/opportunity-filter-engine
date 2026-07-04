@@ -13,7 +13,35 @@ const KNOWN_SKILLS = [
   'LaTeX', 'Excel', 'SPSS', 'SAS', 'Stata',
 ];
 
+// A skill token must not be flanked by a letter or the tech punctuation
+// +/# (so "C" is rejected inside "C++"/"C#" and "Go" inside "Algorithms").
+// Digits and '.' are intentionally excluded so "Docker." (sentence end) and
+// "Python3" still match, while "Node.js"/"scikit-learn" match via the literal.
+const SKILL_BOUNDARY = '[A-Za-z+#]';
+
+const SKILL_PATTERNS = KNOWN_SKILLS.map((skill) => ({
+  skill,
+  pattern: new RegExp(
+    `(?<!${SKILL_BOUNDARY})${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!${SKILL_BOUNDARY})`,
+    'i',
+  ),
+}));
+
 const COURSE_PATTERN = /\b([A-Z]{2,4})\s+(\d{3,4})\b/g;
+
+// Matches a "Coursework:" / "Relevant Courses -" label and captures the rest
+// of the line, so named courses ("Data Structures") are extracted, not just
+// department codes ("CS 124"). Requires the label to be followed by : - or —.
+const COURSEWORK_LABEL = /\b(?:relevant\s+)?(?:course\s?work|courses)\b\s*[:\-—]\s*(.+)/i;
+
+// Matches an "Areas of Interest" / "Research Interests" / "Research Areas" label.
+// PDF extraction often flattens the whole resume onto one line, so the value is
+// cut at the next "Capitalized Label:" (e.g. "Languages:") rather than running to
+// end-of-line — the stop pattern is case SENSITIVE so it isn't tripped by
+// lowercase hyphenated words ("full-stack"). Hobby/"Personal Interests" lines are
+// deliberately excluded — this seeds a research-matching signal, not pastimes.
+const INTERESTS_LABEL = /\b(?:areas?\s+of\s+interest|research\s+interests?|research\s+areas?)\b\s*[:\-—]\s*/i;
+const INTERESTS_STOP = /\s+[A-Z][A-Za-z][A-Za-z &/]*\s*[:—]/;
 
 const EXP_KEYWORDS: Record<string, string[]> = {
   strong: ['led', 'managed', 'architected', 'published', 'co-author', 'principal'],
@@ -22,17 +50,44 @@ const EXP_KEYWORDS: Record<string, string[]> = {
 };
 
 function extractSkills(text: string): string[] {
-  const lower = text.toLowerCase();
-  return KNOWN_SKILLS.filter(s => lower.includes(s.toLowerCase()));
+  return SKILL_PATTERNS.filter(({ pattern }) => pattern.test(text)).map(({ skill }) => skill);
+}
+
+function trimCourse(s: string): string {
+  return s.replace(/^[ .\t]+/, '').replace(/[ .\t]+$/, '');
 }
 
 function extractCoursework(text: string): string[] {
-  const matches: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = COURSE_PATTERN.exec(text)) !== null) {
-    matches.push(`${m[1]} ${m[2]}`);
+  const courses: string[] = [];
+  for (const m of text.matchAll(COURSE_PATTERN)) {
+    courses.push(`${m[1]} ${m[2]}`);
   }
-  return Array.from(new Set(matches)).sort();
+  for (const line of text.split('\n')) {
+    const label = COURSEWORK_LABEL.exec(line);
+    if (!label) continue;
+    for (const item of label[1].split(/[;,]/)) {
+      const name = trimCourse(item);
+      if (name && /[A-Za-z]/.test(name) && name.length >= 3 && name.length <= 40) {
+        courses.push(name);
+      }
+    }
+  }
+  return Array.from(new Set(courses)).sort();
+}
+
+/** Capture a labeled research-interests line from a resume. The form's only
+ * semantic-match lever is research_interests_text, so a resume-only user
+ * otherwise contributes no topical signal. Returns '' when no section exists. */
+function extractResearchInterests(text: string): string {
+  for (const line of text.split('\n')) {
+    const label = INTERESTS_LABEL.exec(line);
+    if (!label) continue;
+    const rest = line.slice(label.index + label[0].length);
+    const stop = INTERESTS_STOP.exec(rest);
+    const phrase = trimCourse(stop ? rest.slice(0, stop.index) : rest);
+    if (phrase.length >= 3 && phrase.length <= 300) return phrase;
+  }
+  return '';
 }
 
 function inferExperienceLevel(text: string): string {
@@ -47,8 +102,10 @@ function inferExperienceLevel(text: string): string {
 
 export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).toString();
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -79,13 +136,15 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   const skills = extractSkills(rawText);
   const coursework = extractCoursework(rawText);
   const experience = inferExperienceLevel(rawText);
+  const interests = extractResearchInterests(rawText);
 
   return {
     extracted_skills: skills,
     extracted_coursework: coursework,
     experience_level: experience,
-    raw_text: rawText.slice(0, 3000),
+    raw_text: rawText.slice(0, 8000),
     success: true,
     message: `Extracted ${skills.length} skills, ${coursework.length} courses from resume.`,
+    suggested_interests: interests,
   };
 }
