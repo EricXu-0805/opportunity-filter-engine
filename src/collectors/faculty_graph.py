@@ -496,6 +496,13 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if not name_el:
             continue
         name = name_el.get_text(" ", strip=True)
+        if sel.get("name_last"):
+            # Directories that split the name across two cells (a first-name and
+            # a last-name column, e.g. UCI Chemistry's Drupal table): the ``name``
+            # selector holds the first name, ``name_last`` the surname.
+            last_el = card.select_one(sel["name_last"])
+            if last_el:
+                name = f"{name} {last_el.get_text(' ', strip=True)}".strip()
         if sel.get("name_strip"):
             # Some directories prefix the name link with boilerplate ("Learn more
             # about <Name>"); strip it to recover the clean, properly-cased name.

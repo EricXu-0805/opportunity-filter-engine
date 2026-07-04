@@ -150,6 +150,14 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "uchicago_research_programs": ("uchicago", "campus"),
     "uchicago_external_research": (None, "open"),
     "uchicago_labs": ("uchicago", "unknown"),
+    # University of California, Irvine (#11 on the campus_graph engine).
+    "uci_research_programs": ("uci", "campus"),
+    "uci_external_research": (None, "open"),
+    "uci_labs": ("uci", "unknown"),
+    # University of California, Santa Barbara (#12 on the campus_graph engine).
+    "ucsb_research_programs": ("ucsb", "campus"),
+    "ucsb_external_research": (None, "open"),
+    "ucsb_labs": ("ucsb", "unknown"),
     # Michigan faculty directory (curated, via the faculty_graph engine). Single
     # source across departments (UIUC model); cold-email targets whose
     # cross-school openness is per-professor, so audience is unknown.
@@ -171,6 +179,10 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucsd_faculty": ("ucsd", "unknown"),
     # UChicago faculty directory (live-scraped + curated-API, via faculty_graph).
     "uchicago_faculty": ("uchicago", "unknown"),
+    # UC Irvine faculty directory (live-scraped, via the faculty_graph engine).
+    "uci_faculty": ("uci", "unknown"),
+    # UC Santa Barbara faculty directory (live-scraped, via the faculty_graph engine).
+    "ucsb_faculty": ("ucsb", "unknown"),
 }
 
 

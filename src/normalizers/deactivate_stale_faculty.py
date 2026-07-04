@@ -104,6 +104,10 @@ FACULTY_SOURCES = frozenset({
     "princeton_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
+    # UC Irvine — live-scraped faculty (single source across depts).
+    "uci_faculty",
+    # UC Santa Barbara — live-scraped faculty (single source across depts).
+    "ucsb_faculty",
 })
 
 GRACE_DAYS = 14

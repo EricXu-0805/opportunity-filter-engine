@@ -32,8 +32,12 @@ from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_facu
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
 from .schools.uchicago_faculty import merge_into_processed as merge_uchicago_faculty
+from .schools.uci_faculty import fetch_and_normalize as fetch_uci_faculty
+from .schools.uci_faculty import merge_into_processed as merge_uci_faculty
 from .schools.ucla_faculty import fetch_and_normalize as fetch_ucla_faculty
 from .schools.ucla_faculty import merge_into_processed as merge_ucla_faculty
+from .schools.ucsb_faculty import fetch_and_normalize as fetch_ucsb_faculty
+from .schools.ucsb_faculty import merge_into_processed as merge_ucsb_faculty
 from .schools.ucsd_faculty import fetch_and_normalize as fetch_ucsd_faculty
 from .schools.ucsd_faculty import merge_into_processed as merge_ucsd_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
@@ -566,6 +570,15 @@ def refresh_all(deep: bool = True) -> dict:
             # (CS/Stat/Math/Physics/Astro/Econ/Psych/PME) + 6 curated API-dump
             # departments (Chemistry + the five BSD sites, JS-only shells).
             ("uchicago_faculty", fetch_uchicago_faculty, merge_uchicago_faculty),
+            # UC Irvine faculty (live-scraped via faculty_graph): Samueli
+            # Engineering (shared Drupal-7 selectors), Physical Sciences, the
+            # social-science DataTable, Social Ecology, Economics, and the Bio
+            # WordPress-REST roster (22 departments).
+            ("uci_faculty", fetch_uci_faculty, merge_uci_faculty),
+            # UC Santa Barbara faculty (live-scraped via faculty_graph): all
+            # Drupal (SiteFarm) in five Views card families across Engineering,
+            # the sciences, social sciences, and Bren (18 departments).
+            ("ucsb_faculty", fetch_ucsb_faculty, merge_ucsb_faculty),
         ]:
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")
