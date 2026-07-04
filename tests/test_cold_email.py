@@ -120,6 +120,38 @@ class TestP1ResearchHookCE1:
         assert "computer vision" in h
 
 
+class TestP1ResearchHookCE7:
+    """An alignment claim needs evidence: a specific-but-off-topic keyword
+    ("environmental economics" for an ML student) must not be claimed to
+    "align closely" with the student's interests (CE-7)."""
+
+    def test_cross_domain_area_makes_no_alignment_claim(self):
+        h = _hook(research_area="environmental economics", lab=_LAB,
+                  interests="machine learning")
+        assert "aligns closely with my interest" not in h
+        assert "aligns with my interest" not in h
+        assert _LAB in h  # falls back to the claim-free lab-only hook
+
+    def test_cross_domain_topic_makes_no_resonates_claim(self):
+        h = _hook(research_topic="environmental economics", lab=_LAB,
+                  interests="machine learning")
+        assert "resonates with my interest" not in h
+        assert "closely aligns with my interest" not in h
+        # the claim-free opener still cites the professor's actual work
+        assert "your work on environmental economics" in h
+        assert "would like to learn more" in h
+
+    def test_token_overlap_keeps_the_claim(self):
+        h = _hook(research_area="machine learning for healthcare", lab=_LAB,
+                  interests="machine learning")
+        assert "aligns closely with my interest in machine learning" in h
+
+    def test_no_topic_signal_keeps_the_lab_hook(self):
+        h = _hook(lab=_LAB, interests="machine learning")
+        assert _LAB in h
+        assert "my background in machine learning is closely related" in h
+
+
 class TestP1ResearchHookCE2:
     def test_possessive_lab_drops_the_article(self):
         h = _hook(research_topic="internet of things", lab=_LAB, interests="robotics")
