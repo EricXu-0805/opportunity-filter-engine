@@ -194,6 +194,26 @@ export const SCHOOLS: School[] = [
     catalog: { colleges: 8, majors: 165 },
   },
   {
+    slug: 'uchicago',
+    domain: 'uchicago.edu',
+    name: 'University of Chicago',
+    shortName: 'UChicago',
+    nameZh: '芝加哥大学',
+    color: '#800000',
+    location: 'Chicago, IL',
+    // Campus-graph engine (10 school-scoped seed records: the CCRF hub, its
+    // Quad grant/scholars programs + the College Summer Institute, the Jeff
+    // Metcalf internship program + UChicago Handshake, BFI and BSCD research
+    // pathways, and the James Franck Institute; the DSI Summer Lab, MRSEC REU,
+    // and EDE+ are national/open, not counted) plus the faculty directory
+    // (448 professors across 14 departments: live-scraped CS, the four PSD
+    // MixItUp sites (Stat/Math/Physics/Astro), Economics + Psychology Drupal
+    // Views, and PME, with Chemistry + the five BSD departments frozen from
+    // their JSON APIs).
+    coverage: { campusOpportunities: 458, note: 'universitySwitcher.coverageCampus' },
+    catalog: { colleges: 4, majors: 56 },
+  },
+  {
     slug: 'uw',
     domain: 'washington.edu',
     name: 'University of Washington',

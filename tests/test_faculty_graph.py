@@ -1365,3 +1365,78 @@ class TestCleanKeywordsBareNav:
     def test_multiword_with_nav_token_kept(self):
         person = {"keywords": ["Water Resources", "Research Methods"]}
         assert fg._clean_keywords(person) == ["Water Resources", "Research Methods"]
+
+
+class TestUchicagoConfig:
+    def test_uchicago_config_valid(self):
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        assert fg.validate(UC) == []
+
+    def test_uchicago_registered(self):
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        assert SOURCE_DEFAULTS[UC["source"]] == ("uchicago", "unknown")
+        assert UC["source"] in FACULTY_SOURCES
+
+    def test_uchicago_every_department_has_a_live_source_or_curated_seeds(self):
+        """8 scrape directories + 6 curated API-dump departments (Chemistry +
+        the five BSD sites are JS-only shells; the BSD endpoint needs a Referer
+        header the engine doesn't send)."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        scraped = {d["short"] for d in UC["departments"] if d.get("scrape", {}).get("selectors", {}).get("card")}
+        curated = {d["short"] for d in UC["departments"] if d.get("faculty")}
+        assert scraped == {"CS", "STAT", "MATH", "PHYS", "ASTRO", "ECON", "PSYCH", "PME"}
+        assert curated == {"CHEM", "ECEV", "NEURO", "HG", "MGCB", "BMB"}
+        for d in UC["departments"]:
+            assert d["short"] in scraped or len(d["faculty"]) >= 15, d["short"]
+
+    def test_uchicago_econ_psych_paginate(self):
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        for short in ("ECON", "PSYCH"):
+            dept = next(d for d in UC["departments"] if d["short"] == short)
+            assert dept["scrape"]["paginate"]["param"] == "page", short
+
+    def test_uchicago_psd_mixitup_fixture_parses_and_ladder_filters(self, monkeypatch):
+        """The four PSD departments share one MixItUp CMS: <li class="mix
+        <role>"> cards, name in the h3 span, rank in the h3 b. The role class
+        scopes the card selector (emeriti carry "emeriti-faculty", never
+        "faculty") and stray emeritus *titles* inside .faculty are dropped by
+        the title filter."""
+        from bs4 import BeautifulSoup
+        html = """
+        <ul>
+          <li class="mix faculty"><a href="/people/profile/matthew-stephens/">
+            <div class="people_content"><h3><span>Matthew Stephens</span>
+            <b>Chair, Ralph W. Gerard Professor</b></h3></div></a></li>
+          <li class="mix faculty"><a href="/people/profile/old-timer/">
+            <div class="people_content"><h3><span>Old Timer</span>
+            <b>Professor Emeritus</b></h3></div></a></li>
+          <li class="mix emeriti-faculty"><a href="/people/profile/gone-emerita/">
+            <div class="people_content"><h3><span>Gone Emerita</span>
+            <b>Professor</b></h3></div></a></li>
+        </ul>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        stat = next(d for d in UC["departments"] if d["short"] == "STAT")
+        people = fg._scrape_directory(stat)
+        assert [p["name"] for p in people] == ["Matthew Stephens"]
+        assert people[0]["url"] == "https://stat.uchicago.edu/people/profile/matthew-stephens/"
+
+    def test_uchicago_curated_id_stability(self):
+        """Deterministic ids for the API-dump seeds — drift here duplicates the
+        corpus on the next refresh (pin per SOP §E)."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        recs = fg.fetch_and_normalize(UC, deep=False)
+        by_name = {r["pi_name"]: r["id"] for r in recs}
+        assert by_name["Paul Alivisatos"] == "faculty-uchicago-chem-d542f26a"
+        assert by_name["David Freedman"] == "faculty-uchicago-neuro-64d98df9"
+        assert by_name["Joseph Thornton"] == "faculty-uchicago-ecev-99ac4574"
+
+    def test_uchicago_bsd_chairs_survive_the_rank_filter(self):
+        """BSD chairs carry the literal title "Chair" — the dump filter was
+        drop-only, so they must be present in the curated seeds."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        recs = fg.fetch_and_normalize(UC, deep=False)
+        assert any(r["pi_name"] == "David Freedman" for r in recs)  # Neurobiology chair
+        assert any(r["pi_name"] == "Carole Ober" for r in recs)  # Human Genetics chair

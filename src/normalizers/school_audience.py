@@ -146,6 +146,10 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucsd_research_programs": ("ucsd", "campus"),
     "ucsd_external_research": (None, "open"),
     "ucsd_labs": ("ucsd", "unknown"),
+    # University of Chicago (#10 on the campus_graph engine).
+    "uchicago_research_programs": ("uchicago", "campus"),
+    "uchicago_external_research": (None, "open"),
+    "uchicago_labs": ("uchicago", "unknown"),
     # Michigan faculty directory (curated, via the faculty_graph engine). Single
     # source across departments (UIUC model); cold-email targets whose
     # cross-school openness is per-professor, so audience is unknown.
@@ -165,6 +169,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucla_faculty": ("ucla", "unknown"),
     # UCSD faculty directory (live-scraped, via the faculty_graph engine).
     "ucsd_faculty": ("ucsd", "unknown"),
+    # UChicago faculty directory (live-scraped + curated-API, via faculty_graph).
+    "uchicago_faculty": ("uchicago", "unknown"),
 }
 
 
