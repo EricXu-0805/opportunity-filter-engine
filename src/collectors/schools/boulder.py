@@ -190,7 +190,7 @@ SCHOOL: dict = {
                     department="Laboratory for Atmospheric and Space Physics",
                     lab_or_program="LASP",
                     opportunity_type="research",
-                    paid="paid",
+                    paid="yes",
                     compensation="Paid student research/engineering positions",
                     eligibility_majors=["Aerospace Engineering", "Physics",
                                         "Astronomy", "Computer Science",
