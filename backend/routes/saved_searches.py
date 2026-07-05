@@ -137,9 +137,11 @@ def _digest_footer_text(search_name: str, unsubscribe_url: str) -> str:
 
 
 def _render_digest_email(
-    search_name: str, items: list[dict], unsubscribe_url: str,
+    search_name: str, items: list[dict], unsubscribe_url: str, overflow: int = 0,
 ) -> tuple[str, str, str]:
-    count = len(items)
+    # Subject counts the whole batch, not just the rendered rows — a week can
+    # accumulate more matches than the email shows.
+    count = len(items) + overflow
     subject = (
         f"1 new match for \"{search_name}\"" if count == 1
         else f"{count} new matches for \"{search_name}\""
@@ -162,6 +164,12 @@ def _render_digest_email(
         )
         rows_text.append(f"#{i} {title}\n  {org}{dl_str}\n  {detail_url}\n")
 
+    overflow_html = (
+        f'<p style="color:#6b7280;font-size:13px;margin:14px 0 0">+{overflow} more in the app</p>'
+        if overflow > 0 else ""
+    )
+    overflow_text = f"+{overflow} more in the app\n" if overflow > 0 else ""
+
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
   <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
@@ -175,6 +183,7 @@ def _render_digest_email(
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}
     </table>
+    {overflow_html}
     <a href="{FRONTEND_BASE}/favorites" style="display:inline-block;margin-top:24px;padding:11px 22px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">View all in JoinALab</a>
     {_digest_footer_html(search_name, unsubscribe_url)}
   </td></tr>
@@ -184,6 +193,7 @@ def _render_digest_email(
     text = (
         f"{subject}\n\n"
         + "".join(rows_text)
+        + overflow_text
         + f"\nView all: {FRONTEND_BASE}/favorites\n"
         + _digest_footer_text(search_name, unsubscribe_url)
     )
@@ -361,7 +371,11 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
             sid = str(row.get("id", "?"))
             try:
                 new_ids = row.get("new_match_ids") or []
-                items = [opp_by_id[i] for i in new_ids if i in opp_by_id][:DIGEST_MAX_ITEMS]
+                # new_match_ids accumulates oldest-first (refresh appends);
+                # show the freshest matches and summarize the rest.
+                matched = [opp_by_id[i] for i in reversed(new_ids) if i in opp_by_id]
+                items = matched[:DIGEST_MAX_ITEMS]
+                overflow = len(matched) - len(items)
                 if not items:
                     skipped += 1
                     continue
@@ -392,6 +406,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
 
                 subject, html, text = _render_digest_email(
                     row.get("name") or "Saved search", items, unsubscribe_url,
+                    overflow=overflow,
                 )
                 await _send_via_resend(
                     api_key=api_key, from_addr=from_addr, to=to_email,

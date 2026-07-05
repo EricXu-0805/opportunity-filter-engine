@@ -49,6 +49,8 @@ API_VERSION = "2.7.0"
 
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 
+CHAT_RATE_KEY = "/api/opportunities/*/chat"
+
 RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/matches": (10, 60),
     "/api/cold-email": (15, 60),
@@ -64,13 +66,15 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/email/send-favorites": (3, 3600),
     "/api/import-url": (5, 60),
     "/api/import-text": (5, 60),
-    # SEC-2: the opportunity chat endpoint issues a paid LLM completion per call
-    # but is under /api/opportunities/{id}/chat with no dedicated key, so it used
-    # to inherit the loose 60/60 default — an unauthenticated paid-LLM
-    # cost/quota-exhaustion vector. The trailing slash scopes this to the
-    # detail + chat sub-routes (cheap detail GETs share it, which 20/min easily
-    # covers) while leaving the bare /api/opportunities list/stats on the default.
+    # SEC-2: detail sub-routes under /api/opportunities/{id} used to inherit the
+    # loose 60/60 default. The trailing slash scopes this bucket to them while
+    # leaving the bare /api/opportunities list/stats on the default.
     "/api/opportunities/": (20, 60),
+    # The paid chat endpoint gets its OWN per-IP bucket (synthetic key, resolved
+    # in _rate_limit_key — no real path starts with it): sharing the
+    # /api/opportunities/ bucket let one chatty user exhaust the quota that
+    # detail GETs draw on, and vice versa.
+    CHAT_RATE_KEY: (15, 60),
 }
 DEFAULT_RATE = (60, 60)
 
@@ -84,6 +88,8 @@ _RATE_LIMIT_PREFIXES_BY_LEN = sorted(RATE_LIMITS, key=len, reverse=True)
 def _rate_limit_key(path: str) -> str:
     """The RATE_LIMITS key governing ``path`` by longest matching prefix, or the
     path itself (→ DEFAULT_RATE) when none match."""
+    if path.startswith("/api/opportunities/") and path.endswith("/chat"):
+        return CHAT_RATE_KEY
     for prefix in _RATE_LIMIT_PREFIXES_BY_LEN:
         if path.startswith(prefix):
             return prefix

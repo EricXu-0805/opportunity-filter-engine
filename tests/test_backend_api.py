@@ -935,6 +935,87 @@ class TestExplainPromptSanitization:
         assert "P" * 120 in user
 
 
+class TestExplainServerCache:
+    """The compare page fires one explain LLM call per card; sessionStorage only
+    dedupes within a single browser session. The server-side TTL cache must make
+    repeat (opportunity, profile) requests free within the TTL."""
+
+    @pytest.fixture(autouse=True)
+    def _clean_cache(self):
+        import backend.routes.matches as m_module
+        m_module._explain_cache.clear()
+        yield
+        m_module._explain_cache.clear()
+
+    @pytest.fixture
+    def opp_id(self):
+        return data_loader.load_opportunities()[0]["id"]
+
+    def _stub_llm(self, monkeypatch, calls):
+        import backend.routes.matches as m_module
+
+        def fake(messages, **_kwargs):
+            calls.append(1)
+            return "cached fit summary"
+
+        monkeypatch.setattr(m_module, "chat_completion", fake)
+
+    def test_repeat_request_hits_cache(self, sample_profile_req, opp_id, monkeypatch):
+        calls: list = []
+        self._stub_llm(monkeypatch, calls)
+        r1 = client.post(f"/api/matches/{opp_id}/explain", json=sample_profile_req)
+        r2 = client.post(f"/api/matches/{opp_id}/explain", json=sample_profile_req)
+        assert r1.status_code == 200 and r2.status_code == 200
+        assert r1.json()["method"] == "llm"
+        assert r2.json()["method"] == "llm"
+        assert r2.json()["explanation"] == r1.json()["explanation"]
+        assert len(calls) == 1
+
+    def test_different_profile_misses_cache(self, sample_profile_req, opp_id, monkeypatch):
+        calls: list = []
+        self._stub_llm(monkeypatch, calls)
+        client.post(f"/api/matches/{opp_id}/explain", json=sample_profile_req)
+        other = {**sample_profile_req, "major": "Physics"}
+        client.post(f"/api/matches/{opp_id}/explain", json=other)
+        assert len(calls) == 2
+
+    def test_expired_entry_refetches(self, sample_profile_req, opp_id, monkeypatch):
+        import backend.routes.matches as m_module
+        calls: list = []
+        self._stub_llm(monkeypatch, calls)
+        client.post(f"/api/matches/{opp_id}/explain", json=sample_profile_req)
+        assert len(m_module._explain_cache) == 1
+        key = next(iter(m_module._explain_cache))
+        ts, text = m_module._explain_cache[key]
+        m_module._explain_cache[key] = (ts - m_module._EXPLAIN_CACHE_TTL_SECONDS - 1, text)
+        client.post(f"/api/matches/{opp_id}/explain", json=sample_profile_req)
+        assert len(calls) == 2
+
+    def test_local_fallback_not_cached(self, sample_profile_req, opp_id, monkeypatch):
+        import backend.routes.matches as m_module
+        calls: list = []
+
+        def fake_none(messages, **_kwargs):
+            calls.append(1)
+            return None
+
+        monkeypatch.setattr(m_module, "chat_completion", fake_none)
+        r = client.post(f"/api/matches/{opp_id}/explain", json=sample_profile_req)
+        assert r.json()["method"] == "local"
+        assert m_module._explain_cache == {}
+        client.post(f"/api/matches/{opp_id}/explain", json=sample_profile_req)
+        assert len(calls) == 2
+
+    def test_put_evicts_to_stay_bounded(self):
+        import backend.routes.matches as m_module
+        for i in range(m_module._EXPLAIN_CACHE_MAX_ENTRIES):
+            m_module._explain_cache_put(f"k{i}", "t")
+        m_module._explain_cache_put("overflow", "t")
+        assert len(m_module._explain_cache) <= m_module._EXPLAIN_CACHE_MAX_ENTRIES
+        assert "overflow" in m_module._explain_cache
+        assert "k0" not in m_module._explain_cache  # oldest evicted
+
+
 class TestOpportunityChatHardening:
     """H1: the /opportunities/{id}/chat endpoint is the one conversational LLM
     surface. It must defend the prompt against injection, flatten free-text
@@ -2726,18 +2807,52 @@ class TestRateLimitResolution:
         assert RATE_LIMITS[_rate_limit_key("/api/tailor/status")] == (60, 60)
         assert RATE_LIMITS[_rate_limit_key("/api/tailor")] == (10, 60)
 
-    def test_chat_endpoint_is_capped_not_default(self):
-        from backend.main import DEFAULT_RATE, RATE_LIMITS, _rate_limit_key
-        # SEC-2: the paid chat path must hit the /api/opportunities/ bucket.
-        limit = RATE_LIMITS[_rate_limit_key("/api/opportunities/abc123/chat")]
-        assert limit == (20, 60)
-        assert limit != DEFAULT_RATE
+    def test_chat_endpoint_gets_own_bucket(self):
+        from backend.main import CHAT_RATE_KEY, DEFAULT_RATE, RATE_LIMITS, _rate_limit_key
+        # SEC-2: the paid chat path must not share a bucket with cheap detail
+        # GETs — one chatty user used to exhaust the whole opportunities quota.
+        key = _rate_limit_key("/api/opportunities/abc123/chat")
+        assert key == CHAT_RATE_KEY
+        assert RATE_LIMITS[key] == (15, 60)
+        assert RATE_LIMITS[key] != DEFAULT_RATE
+
+    def test_detail_get_keeps_opportunities_bucket(self):
+        from backend.main import RATE_LIMITS, _rate_limit_key
+        key = _rate_limit_key("/api/opportunities/abc123")
+        assert key == "/api/opportunities/"
+        assert RATE_LIMITS[key] == (20, 60)
 
     def test_opportunities_list_keeps_default(self):
         from backend.main import DEFAULT_RATE, RATE_LIMITS, _rate_limit_key
         # The bare list/stats endpoint (no trailing slash) stays generous.
         key = _rate_limit_key("/api/opportunities")
         assert RATE_LIMITS.get(key, DEFAULT_RATE) == DEFAULT_RATE
+
+
+class TestChatBucketIsolation:
+    """Exhausting the chat bucket must 429 chat only — detail GETs keep their
+    own /api/opportunities/ quota."""
+
+    def test_chat_429_leaves_detail_gets_unthrottled(self, monkeypatch):
+        from backend import main as main_mod
+
+        monkeypatch.setattr(main_mod, "RATE_LIMIT_DISABLED", False)
+        main_mod._rate_buckets.clear()
+        main_mod._global_buckets.clear()
+        main_mod._last_purge = 0.0
+
+        chat_limit = main_mod.RATE_LIMITS[main_mod.CHAT_RATE_KEY][0]
+        for _ in range(chat_limit):
+            r = client.post("/api/opportunities/nope/chat", json={"message": "hi"})
+            assert r.status_code != 429
+        r = client.post("/api/opportunities/nope/chat", json={"message": "hi"})
+        assert r.status_code == 429
+
+        r = client.get("/api/opportunities/nope")
+        assert r.status_code == 404  # not 429 — detail bucket untouched
+
+        main_mod._rate_buckets.clear()
+        main_mod._global_buckets.clear()
 
 
 class TestBillableClass:
