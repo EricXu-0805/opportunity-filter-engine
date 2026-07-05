@@ -373,3 +373,13 @@ pgvector/Postgres (JSON+TF-IDF fine at ~5k records); E2E-as-required-check (wait
 ---
 
 **Plan paths verified present:** `src/collectors/ucb_common.py`, `src/collectors/refresh_all.py`, `src/normalizers/school_audience.py`, `src/normalizers/deactivate_stale_faculty.py`, `src/matcher/ranker.py`, `backend/routes/matches.py`, `tests/test_opportunity_data_quality.py`, `frontend/src/lib/schools.ts` (all confirmed). New modules `src/collectors/school_config.py` and `src/collectors/faculty_base.py` do not yet exist (Wave 0 creates them).
+
+---
+
+## 9. Disposal notes — 2026-07-05 (deferred WITH reasons; don't leave these hanging or re-raise as new)
+
+- **Google Scholar integration → substituted, not deferred.** OpenAlex enrichment (topics + institution IDs, 14 schools in `openalex_enrich.py`) already delivers what Scholar would (scholarly topics, recent works for cold-email personalization). Scraping Scholar violates its ToS and gets IP-banned fast; there is no official API. Decision: never scrape Scholar; extend OpenAlex instead.
+- **UCSD REAL portal (anti-bot) → defer.** UCSD already carries ~1,372 faculty from dept directories; REAL is an incremental listings source, not a coverage gap. Revisit only if a headless-fetch path ships for other blockers anyway.
+- **LinkedIn/Handshake browser extension → design doc (`docs/BROWSER_EXTENSION.md`), fall track.** Separate product line (store review, permissions, support). Handshake as a *data source* is live and parameterized (`HANDSHAKE_SCHOOLS`) — the 2026-07 audit confirmed it is not hardcoded.
+- **Org/institutional accounts → design doc (`docs/ORG_ACCOUNTS.md`).** Only `account_type: 'personal'` reserve ships now; build triggers defined in the doc.
+- **Grad/PhD support → design + UIUC pilot plan (`docs/GRAD_SUPPORT.md`).** Faculty corpus already serves prospective-PhD outreach; pilot = profile options + eligibility caveats + grad email template.

@@ -184,6 +184,8 @@ export interface ChatMessage {
 export interface ChatResponse {
   reply: string;
   method: 'llm' | 'local';
+  /** True when a stream failed after partial output — `reply` holds what arrived. */
+  errored?: boolean;
 }
 
 /** One Ask-AI model the picker may offer (mirrors `llm.chat_model_options`). */
@@ -192,26 +194,96 @@ export interface ChatModelOption {
   label: string;
 }
 
+/**
+ * With `onDelta`, requests SSE streaming (`?stream=1`) and invokes it per
+ * content chunk; the resolved `reply` is the accumulated text. An old backend
+ * answering plain JSON degrades gracefully (single `onDelta` with the full
+ * reply). Without `onDelta`, the blocking JSON path is unchanged.
+ */
 export async function chatWithOpportunity(
   opportunityId: string,
   message: string,
   history: ChatMessage[],
   profile: ProfileData | null,
   model?: string,
+  onDelta?: (chunk: string) => void,
 ): Promise<ChatResponse> {
   void track('ai_feature_used', { feature: 'chat' });
-  return request<ChatResponse>(
-    `/opportunities/${encodeURIComponent(opportunityId)}/chat`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        message,
-        history,
-        profile: profile ? toProfileRequest(profile) : null,
-        ...(model ? { model } : {}),
-      }),
-    },
-  );
+  const path = `/opportunities/${encodeURIComponent(opportunityId)}/chat`;
+  const body = JSON.stringify({
+    message,
+    history,
+    profile: profile ? toProfileRequest(profile) : null,
+    ...(model ? { model } : {}),
+  });
+  if (!onDelta) {
+    return request<ChatResponse>(path, { method: 'POST', body });
+  }
+
+  const res = await fetch(`${API_BASE}${path}?stream=1`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body,
+  });
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => 'Unknown error');
+    throw new Error(`API ${res.status}: ${errBody}`);
+  }
+  if (!res.headers.get('content-type')?.includes('text/event-stream') || !res.body) {
+    const json = (await res.json()) as ChatResponse;
+    onDelta(json.reply);
+    return json;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let reply = '';
+  let method: 'llm' | 'local' = 'llm';
+  let errored = false;
+  let done = false;
+
+  const handleFrame = (frame: string) => {
+    for (const line of frame.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const payload = JSON.parse(line.slice(6)) as {
+        delta?: string;
+        error?: boolean;
+        done?: boolean;
+        method?: 'llm' | 'local';
+      };
+      if (typeof payload.delta === 'string') {
+        reply += payload.delta;
+        onDelta(payload.delta);
+      }
+      if (payload.error) errored = true;
+      if (payload.done) {
+        done = true;
+        if (payload.method) method = payload.method;
+      }
+    }
+  };
+
+  try {
+    for (;;) {
+      const { value, done: readerDone } = await reader.read();
+      if (readerDone) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        handleFrame(frame);
+      }
+    }
+  } catch (err) {
+    if (reply) return { reply, method, errored: true };
+    throw err;
+  }
+  if (!reply && !done) {
+    throw new Error('API stream: connection closed before any data');
+  }
+  return { reply, method, errored };
 }
 
 /** Ask-AI model options — empty array when OpenRouter isn't configured
