@@ -1,11 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Sparkles, X } from 'lucide-react';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { track, trackOnce } from '@/lib/analytics';
 import type { TFunc } from './types';
+
+const DISMISS_EVENT = 'ofe:concierge-cta-dismissed';
+
+function subscribeDismissal(onChange: () => void) {
+  window.addEventListener(DISMISS_EVENT, onChange);
+  return () => window.removeEventListener(DISMISS_EVENT, onChange);
+}
 
 /**
  * The concierge willingness-to-pay funnel entry, placed inside the results
@@ -15,13 +22,18 @@ import type { TFunc } from './types';
  * payments on. Dismissal persists per browser.
  */
 export function ConciergeCta({ t }: { t: TFunc }) {
-  const [dismissed, setDismissed] = useState(true);
+  // External-store read (not state-in-effect): server snapshot says dismissed,
+  // so SSR renders nothing and the card appears on the client without a
+  // hydration mismatch.
+  const dismissed = useSyncExternalStore(
+    subscribeDismissal,
+    () => localStorage.getItem(STORAGE_KEYS.RESULTS_CTA_DISMISSED) === '1',
+    () => true,
+  );
 
   useEffect(() => {
-    const seen = localStorage.getItem(STORAGE_KEYS.RESULTS_CTA_DISMISSED) === '1';
-    setDismissed(seen);
-    if (!seen) trackOnce('concierge_cta_view');
-  }, []);
+    if (!dismissed) trackOnce('concierge_cta_view');
+  }, [dismissed]);
 
   if (dismissed) return null;
 
@@ -36,7 +48,7 @@ export function ConciergeCta({ t }: { t: TFunc }) {
         data-testid="concierge-cta-dismiss"
         onClick={() => {
           localStorage.setItem(STORAGE_KEYS.RESULTS_CTA_DISMISSED, '1');
-          setDismissed(true);
+          window.dispatchEvent(new Event(DISMISS_EVENT));
         }}
         className="absolute top-3 right-3 p-1 text-indigo-300 hover:text-indigo-500 transition-colors"
       >
