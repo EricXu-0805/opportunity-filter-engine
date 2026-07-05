@@ -1865,3 +1865,123 @@ class TestMajorDriveRealCorpus:
         vet_rel = sum(1 for r in vet if r.bucket != "low_fit" and r.field_relevant)
         # The CS-dominated corpus has far more CS-relevant inventory than vet.
         assert cs_rel > vet_rel
+
+
+class TestCorpusPrecomputeEquivalence:
+    """The per-record precompute (register_corpus: statics + TF-IDF row matrix)
+    is a pure hoist — ranking a registered corpus must be byte-identical to
+    ranking the same records unregistered (the ad-hoc compute path)."""
+
+    def _mini_corpus(self):
+        base_deadline = (date.today() + timedelta(days=20)).isoformat()
+        passed_deadline = (date.today() - timedelta(days=30)).isoformat()
+        corpus = []
+        kw_pool = [
+            ["machine learning", "computer vision", "robotics"],
+            ["computational biology", "genomics"],
+            ["quantum", "condensed matter physics", "physics"],
+            ["medieval history", "poetry"],
+            ["natural language processing", "large language models"],
+            ["undergraduate research", "engineering"],
+            [],
+            ["data science", "statistics", "optimization"],
+        ]
+        for i in range(32):
+            kws = kw_pool[i % len(kw_pool)]
+            corpus.append({
+                "id": f"pre-{i}",
+                "title": f"Research Assistant {i} — {kws[0] if kws else 'General'}",
+                "organization": "University of Illinois" if i % 3 else "NASA JPL",
+                "opportunity_type": ["research", "internship", "summer_program"][i % 3],
+                "school": ["uiuc", "ucb", None][i % 3],
+                "on_campus": i % 2 == 0,
+                "paid": ["yes", "stipend", "unknown", "no"][i % 4],
+                "deadline": [base_deadline, passed_deadline, ""][i % 3],
+                "keywords": kws,
+                "pi_name": f"Ada Lovelace {i}" if i % 4 == 0 else "",
+                "lab_or_program": f"Vision Lab {i}" if i % 5 == 0 else "",
+                "department": ["Computer Science", "Electrical & Computer Engineering", ""][i % 3],
+                "source_type": "faculty_research" if i % 2 == 0 else "job_board",
+                "is_rolling": i % 2 == 0,
+                "description_raw": (
+                    f"Position {i}: mentorship and training with publication and "
+                    "conference opportunities for undergraduate students."
+                    + (" PhD students preferred." if i % 7 == 0 else "")
+                ),
+                "eligibility": {
+                    "preferred_year": [["freshman", "sophomore"], ["junior", "senior"], []][i % 3],
+                    "majors": [["Computer Science"], ["Physics"], []][i % 3],
+                    "international_friendly": ["yes", "unknown", "no"][i % 3],
+                    "skills_required": [["python", "pytorch"], [], ["r"]][i % 3],
+                },
+                "application": {"application_effort": ["low", "medium", "high"][i % 3],
+                                "requires_resume": "yes"},
+            })
+        return corpus
+
+    def _profiles(self):
+        explicit = {
+            "year": "sophomore", "major": "ECE", "secondary_interests": ["CS"],
+            "international_student": True, "home_school": "uiuc",
+            "include_cross_school": True,
+            "hard_skills": [{"name": "Python", "level": "experienced"},
+                            {"name": "PyTorch", "level": "beginner"}],
+            "coursework": ["ECE 120", "CS 225"], "experience_level": "some",
+            "resume_ready": True, "can_cold_email": True,
+            "research_interests_text": "machine learning for computer vision and robotics",
+            "desired_fields": ["machine learning", "robotics"],
+            "seeking_type": [], "search_weight": 70,
+            "college": "Grainger College of Engineering",
+            "preferences": {"min_match_threshold": 0},
+        }
+        implicit_only = {
+            **explicit,
+            "research_interests_text": "", "desired_fields": [],
+            "search_weight": 30, "exploring": True,
+        }
+        return explicit, implicit_only
+
+    @pytest.fixture
+    def _isolated_precompute(self):
+        import src.matcher.embeddings as emb
+        import src.matcher.ranker as rk
+        saved = (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
+                 rk._corpus_ids, rk._static_cache, rk._sim_matrix)
+        yield
+        (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
+         rk._corpus_ids, rk._static_cache, rk._sim_matrix) = saved
+
+    def test_top20_byte_identical_with_and_without_precompute(self, _isolated_precompute):
+        from dataclasses import asdict
+
+        import src.matcher.embeddings as emb
+        import src.matcher.ranker as rk
+        from backend.data_loader import _opportunity_corpus_text
+
+        corpus = self._mini_corpus()
+        emb.fit_tfidf_corpus([_opportunity_corpus_text(o) for o in corpus])
+
+        rk.register_corpus([])  # unbind: forces the ad-hoc per-call path
+        baselines = [rank_all(p, corpus) for p in self._profiles()]
+
+        rk.register_corpus(corpus)
+        assert rk._sim_matrix is not None  # the TF-IDF row matrix engaged
+        fasts = [rank_all(p, corpus) for p in self._profiles()]
+
+        for baseline, fast in zip(baselines, fasts, strict=False):
+            top_base = json.dumps([asdict(r) for r in baseline[:20]], sort_keys=True)
+            top_fast = json.dumps([asdict(r) for r in fast[:20]], sort_keys=True)
+            assert top_fast == top_base
+            assert [asdict(r) for r in fast] == [asdict(r) for r in baseline]
+
+    def test_register_corpus_invalidates_on_new_list(self, _isolated_precompute):
+        import src.matcher.ranker as rk
+        corpus = self._mini_corpus()
+        rk.register_corpus(corpus)
+        st_first = rk._opp_static(corpus[0])
+        assert rk._opp_static(corpus[0]) is st_first  # cached for the bound list
+
+        reloaded = [dict(o) for o in corpus]
+        rk.register_corpus(reloaded)
+        assert rk._corpus_ref is reloaded
+        assert rk._opp_static(corpus[0]) is not st_first  # old ids no longer cached

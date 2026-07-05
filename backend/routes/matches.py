@@ -431,7 +431,13 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = profile.model_dump()
-    result = await asyncio.to_thread(rank_opportunity, profile_dict, opp)
+    # Same responsiveness signals as the /matches list pass (rank_opportunity
+    # already derives the remaining context — weights, implicit steer — from
+    # the profile), so the modal score always equals the list score.
+    responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
+    result = await asyncio.to_thread(
+        rank_opportunity, profile_dict, opp, responsiveness=responsiveness
+    )
 
     cache_key = _explain_cache_key(opportunity_id, profile_dict)
     llm_text = _explain_cache_get(cache_key)

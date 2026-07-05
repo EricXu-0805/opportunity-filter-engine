@@ -3345,3 +3345,50 @@ class TestAdminFeedback:
         assert replay["current_agreement"] == 1.0
         assert replay["best_candidate"] is None
         assert replay["sample_n"] == 50
+
+
+class TestExplainScoreConsistency:
+    """/matches/{id}/explain must score with the same context as the /matches
+    list (slider weights, exploring, implicit major steer, fitted similarity)
+    so the modal score equals the list score for the same profile."""
+
+    def _assert_explain_matches_list(self, profile, monkeypatch):
+        import backend.routes.matches as m_module
+        monkeypatch.setattr(m_module, "_llm_explanation", lambda *a, **k: None)
+        listing = client.post("/api/matches?limit=3", json=profile).json()
+        assert listing["results"]
+        for r in listing["results"]:
+            resp = client.post(
+                f"/api/matches/{r['opportunity_id']}/explain", json=profile
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["method"] == "local"
+            assert body["final_score"] == r["final_score"]
+            assert body["eligibility_score"] == r["eligibility_score"]
+            assert body["readiness_score"] == r["readiness_score"]
+            assert body["upside_score"] == r["upside_score"]
+
+    def test_off_default_slider_profile(self, sample_profile_req, monkeypatch):
+        # search_weight != 50 exposed the old bug: the list used slider-blended
+        # weights while explain silently used the defaults.
+        self._assert_explain_matches_list(
+            {**sample_profile_req, "search_weight": 80}, monkeypatch
+        )
+
+    def test_no_interest_profile_implicit_steer(self, sample_profile_req, monkeypatch):
+        # An empty-interest profile ranks with the major-derived implicit steer;
+        # explain must apply the same steer, not score steer-less.
+        self._assert_explain_matches_list(
+            {**sample_profile_req, "research_interests_text": "", "search_weight": 35},
+            monkeypatch,
+        )
+
+
+class TestRankerCorpusRegistration:
+    def test_load_opportunities_registers_ranker_precompute(self):
+        import src.matcher.ranker as rk
+        opps = data_loader.load_opportunities()
+        assert rk._corpus_ref is opps
+        assert rk._sim_matrix is not None
+        assert rk._sim_matrix.shape[0] == len(opps)
