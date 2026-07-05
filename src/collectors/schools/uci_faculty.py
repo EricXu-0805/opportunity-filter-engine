@@ -11,9 +11,14 @@ Second UC-system rollout school after UCSD. Directory markup by family
   "Research Interests:" line are on the listing card.
 - **Physical Sciences** (Drupal Views, but a different field schema per dept):
   Chemistry and Mathematics are ``tr``-row tables gated to the "Faculty" position
-  section; Physics & Astronomy and Earth System Science are ``div.views-row``
-  grids. Physics carries no rank on the listing, so its ladder gate runs on the
-  profile page (``profile_enrich`` + ``ladder_recheck``).
+  section; Earth System Science is a ``div.views-row`` grid. Physics & Astronomy
+  serves its faculty listing under an HTTP 404 status (a Drupal soft-404 that a
+  strict GET rejects), so it fetches through the headless browser
+  (``scrape.render``), which ignores the status line; the dedicated
+  ``/people/faculty`` page is faculty-scoped, with the email in a text field.
+- **Computer Science** (WordPress ``person__`` cards on cs.ics.uci.edu): the
+  roster is client-rendered, so it too fetches via ``scrape.render``; rank
+  (``.person__job-title``) drives the ladder filter and email is a mailto link.
 - **Economics** (custom PHP): ``div.faculty-info`` cards on ``faculty.php`` (the
   core-ladder page; other ranks are separate PHP pages), research on the listing.
 - **School of Social Sciences** (one campus-wide DataTable): a single
@@ -24,19 +29,18 @@ Second UC-system rollout school after UCSD. Directory markup by family
 - **Social Ecology** (Drupal 10 Bootstrap cards): one school directory covering
   Psychological Science, Criminology/Law & Society, and Urban Planning & Public
   Policy, sliced by the department-link ``field_filter``; rank is on the profile.
-Deferred departments (each needs a mechanism the static engine doesn't have):
-- **ICS** (Computer Science / Informatics / Statistics): ics/stat serve a bot
-  "Access Notice" even to a headless browser; cs/informatics render their
-  roster from an internal API not present in the served HTML.
+Deferred departments (each needs a mechanism this engine can't apply cleanly):
+- **ICS — Informatics & Statistics**: informatics.uci.edu and stat.uci.edu serve
+  a bot "Access Notice" even to a headless browser (Computer Science, on the
+  separate cs.ics.uci.edu host, is collected via render — see above).
 - **Humanities** (History/Philosophy/English/Linguistics): the directory loads
   via a Drupal views-AJAX call the static fetch can't reach.
-- **Physics & Astronomy**: its faculty listing serves content under an HTTP 404
-  status (a Drupal soft-404) and carries no rank on the listing.
 - **Biological Sciences** (Charlie Dunlop School): the ``biosci_people`` WordPress
   REST feed gives clean name+link for ~157 faculty, but the Divi profile pages
-  render email/rank/research client-side (static HTML exposes only a shared dept
-  inbox). Recovering ICS/Physics/Bio all want a per-profile headless pass — a
-  follow-up once the render path is wired for this school.
+  render the personal email/rank client-side — even fully rendered, the page
+  exposes only a shared department inbox (never a usable cold-email address), so
+  the records would ship without a contact. Deferred until a per-person data
+  source surfaces.
 
 Single source ("uci_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -168,10 +172,45 @@ SCHOOL: dict = {
                 "ladder_filter": _LADDER,
             },
         ),
-        # (Physics & Astronomy deferred: its faculty listing serves content under
-        # an HTTP 404 status — a Drupal soft-404 the strict fetch can't accept —
-        # and carries no rank on the listing, so the ladder gate would need a
-        # per-profile pass against JS-rendered profile pages. See module docstring.)
+        _dept(
+            "PHYS", "Department of Physics & Astronomy",
+            ["Physics", "Applied Physics", "Astrophysics"],
+            "https://www.physics.uci.edu/people/faculty",
+            {
+                # The faculty page serves content under an HTTP 404 status (Drupal
+                # soft-404) that a strict GET rejects — render bypasses the status
+                # line. The /people/faculty page is faculty-scoped (no all-people
+                # roster), so no ladder filter; email is a text field, not a link.
+                "render": True,
+                "selectors": {
+                    "card": "div.views-row",
+                    "name": "div.views-field-title a",
+                    "link": "div.views-field-title a",
+                    "email": "div.views-field-field-email",
+                },
+            },
+        ),
+        # ---- Bren School of ICS: Computer Science (WordPress, rendered) -----
+        _dept(
+            "CS", "Department of Computer Science",
+            ["Computer Science", "Software Engineering", "Data Science"],
+            "https://cs.ics.uci.edu/faculty/",
+            {
+                # cs.ics.uci.edu renders its roster client-side (person__ BEM
+                # cards) from late XHRs, so it needs networkidle — a plain
+                # domcontentloaded render comes back empty. Rank is on the card,
+                # so ladder-filter the teaching/adjunct/joint entries out of 72.
+                "render": True,
+                "render_wait": "networkidle",
+                "selectors": {
+                    "card": "div.person__content",
+                    "name": "h3",
+                    "title": ".person__job-title",
+                    "email": "a[href^='mailto:']",
+                },
+                "ladder_filter": _LADDER,
+            },
+        ),
         _dept(
             "ESS", "Department of Earth System Science",
             ["Earth System Science", "Environmental Science"],

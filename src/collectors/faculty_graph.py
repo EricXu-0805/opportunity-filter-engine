@@ -642,13 +642,16 @@ def _paginated_url(base: str, page: int, param: str) -> str:
     return f"{paged}{sep}{query}" if query else paged
 
 
-def _render_soup(url: str, timeout_ms: int = 60000):
+def _render_soup(url: str, timeout_ms: int = 60000,
+                 wait_until: str = "domcontentloaded", settle_ms: int = 3500):
     """Fetch a URL through a headless-Chromium browser and return a BeautifulSoup.
 
     The escape hatch for directories a plain ``requests`` GET can't read: pages
     rendered client-side (the cards exist only after JS runs) and sites behind
     Cloudflare's bot wall (a real browser passes the JS challenge that 403s a
-    bare request). Opt-in per department via ``scrape["render"] = True``.
+    bare request). Opt-in per department via ``scrape["render"] = True``; a slow
+    client-rendered roster whose cards land only after its XHRs finish can opt
+    into ``scrape["render_wait"] = "networkidle"`` (UCI cs.ics.uci.edu).
 
     Playwright is imported lazily so the module still imports where Playwright/
     Chromium isn't installed; there it returns ``None`` and the caller degrades
@@ -675,9 +678,9 @@ def _render_soup(url: str, timeout_ms: int = 60000):
                 browser = p.chromium.launch(headless=True)
                 try:
                     page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
-                    page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                    page.goto(url, wait_until=wait_until, timeout=timeout_ms)
                     # Let client-side card grids / Cloudflare interstitials settle.
-                    page.wait_for_timeout(3500)
+                    page.wait_for_timeout(settle_ms)
                     html = page.content()
                 finally:
                     browser.close()
@@ -763,7 +766,14 @@ def _scrape_directory(dept: dict) -> list[dict]:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001
         return []
-    fetch = _render_soup if cfg.get("render") else fetch_soup
+    if cfg.get("render"):
+        # A slow client-rendered roster can request networkidle (its cards land
+        # only after late XHRs); default stays domcontentloaded for speed.
+        rw = cfg.get("render_wait", "domcontentloaded")
+        def fetch(u, _rw=rw):
+            return _render_soup(u, wait_until=_rw)
+    else:
+        fetch = fetch_soup
     base = cfg["url"]
     sel = cfg.get("selectors", {})
     lf = cfg.get("ladder_filter")
