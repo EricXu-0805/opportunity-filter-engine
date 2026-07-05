@@ -53,4 +53,28 @@ describe('SkillTags — custom skill input', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onChange).toHaveBeenCalledWith([{ name: 'Rust', level: 'beginner' }]);
   });
+
+  it('Enter on an empty input does nothing', () => {
+    const { onChange, input } = setup();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('Enter on a whitespace-only input does nothing', () => {
+    const { onChange, input } = setup();
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('SkillTags — selected tag labels (i18n)', () => {
+  it('renders the level label and remove button from the dictionary', () => {
+    const { onChange } = setup([{ name: 'Python', level: 'beginner' }]);
+    const levelBtn = screen.getByRole('button', { name: 'Beginner' });
+    expect(levelBtn).toHaveAttribute('title', 'Click to change level (Beginner)');
+    fireEvent.click(levelBtn);
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'experienced' }]);
+    expect(screen.getByRole('button', { name: 'Remove Python' })).toBeInTheDocument();
+  });
 });

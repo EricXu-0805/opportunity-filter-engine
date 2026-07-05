@@ -597,6 +597,13 @@ export const en = {
     addMorePlaceholder: 'Add more…',
     addCustom: 'Add “{skill}”',
     addAnyHint: 'Don\'t see yours? Type any skill and press Enter to add it.',
+    levels: {
+      beginner: 'Beginner',
+      experienced: 'Experienced',
+      expert: 'Expert',
+    },
+    cycleLevelTitle: 'Click to change level ({level})',
+    remove: 'Remove {skill}',
   },
   results: {
     title: 'Your Matches',
@@ -2341,6 +2348,13 @@ export const zh = {
     addMorePlaceholder: '继续添加…',
     addCustom: '添加“{skill}”',
     addAnyHint: '没有你的技能？直接输入并回车即可添加。',
+    levels: {
+      beginner: '入门',
+      experienced: '熟练',
+      expert: '精通',
+    },
+    cycleLevelTitle: '点击切换水平（{level}）',
+    remove: '移除 {skill}',
   },
   results: {
     title: '你的匹配',

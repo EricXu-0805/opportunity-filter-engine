@@ -47,10 +47,10 @@ const ALL_SKILLS = [
   'Blender', 'Maya', 'Photoshop', 'Illustrator',
 ] as const;
 
-const LEVEL_CONFIG: Record<SkillLevel, { label: string; color: string; bg: string; ring: string }> = {
-  beginner:    { label: 'Beginner',    color: 'text-slate-600',  bg: 'bg-slate-100',  ring: 'ring-slate-200' },
-  experienced: { label: 'Experienced', color: 'text-indigo-700',   bg: 'bg-indigo-50',    ring: 'ring-indigo-200' },
-  expert:      { label: 'Expert',      color: 'text-violet-700', bg: 'bg-violet-50',  ring: 'ring-violet-200' },
+const LEVEL_CONFIG: Record<SkillLevel, { color: string; bg: string; ring: string }> = {
+  beginner:    { color: 'text-slate-600',  bg: 'bg-slate-100',  ring: 'ring-slate-200' },
+  experienced: { color: 'text-indigo-700', bg: 'bg-indigo-50',  ring: 'ring-indigo-200' },
+  expert:      { color: 'text-violet-700', bg: 'bg-violet-50',  ring: 'ring-violet-200' },
 };
 
 const LEVELS: SkillLevel[] = ['beginner', 'experienced', 'expert'];
@@ -114,6 +114,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
       >
         {selected.map((skill) => {
           const cfg = LEVEL_CONFIG[skill.level];
+          const levelLabel = t(`skills.levels.${skill.level}`);
           return (
             <span
               key={skill.name}
@@ -127,9 +128,9 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                   cycleLevel(skill.name);
                 }}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} hover:brightness-95 transition-all cursor-pointer select-none`}
-                title={`Click to change level (${cfg.label})`}
+                title={t('skills.cycleLevelTitle', { level: levelLabel })}
               >
-                {cfg.label}
+                {levelLabel}
               </button>
               <button
                 type="button"
@@ -138,7 +139,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                   removeSkill(skill.name);
                 }}
                 className="p-0.5 rounded hover:bg-black/5 transition-colors"
-                aria-label={`Remove ${skill.name}`}
+                aria-label={t('skills.remove', { skill: skill.name })}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -157,6 +158,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
+                if (trimmed.length === 0) return;
                 if (available.length > 0) addSkill(available[0]);
                 else if (canAddCustom) addSkill(trimmed);
               }
