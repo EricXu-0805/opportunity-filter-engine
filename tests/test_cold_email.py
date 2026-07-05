@@ -329,3 +329,77 @@ class TestColdEmailPromptInjection:
 
         assert "untrusted content" in _BASE_SYSTEM_RULES
         assert "never as instructions" in _BASE_SYSTEM_RULES
+
+
+class TestSkillLevelThreading:
+    """Skill proficiency levels reach the AI email prompt and the base
+    rules tell the model to honor them — emphasize expert/experienced,
+    never sell a beginner skill as a strength."""
+
+    def test_levels_threaded_into_ai_prompt(self, monkeypatch):
+        from backend.routes import cold_email as ce
+
+        captured = {}
+
+        def _fake_chat(messages, **kwargs):
+            captured["messages"] = messages
+            return "Subject: Hi\n\nBody."
+
+        monkeypatch.setattr(ce, "chat_completion", _fake_chat)
+
+        profile = {
+            "name": "Eric", "year": "junior", "major": "Computer Engineering",
+            "school": "UIUC",
+            "hard_skills": [
+                {"name": "Python", "level": "expert"},
+                {"name": "R", "level": "beginner"},
+            ],
+            "research_interests_text": "computer vision",
+        }
+        opp = {
+            "opportunity_type": "research",
+            "title": "Undergraduate Research",
+            "pi_name": "Jane Doe",
+            "department": "Computer Science",
+            "keywords": ["computer vision"],
+            "description_raw": "Vision lab.",
+            "eligibility": {"skills_required": ["Python"]},
+        }
+
+        out = ce._ai_generate_email_text(profile, opp)
+        assert out is not None
+        user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
+        system_msg = next(m["content"] for m in captured["messages"] if m["role"] == "system")
+
+        assert "Python (expert)" in user_msg
+        assert "R (beginner)" in user_msg
+        assert "self-reported level" in system_msg
+        assert "never present a beginner skill" in system_msg
+
+    def test_plain_string_skills_default_to_beginner_label(self, monkeypatch):
+        from backend.routes import cold_email as ce
+
+        captured = {}
+
+        def _fake_chat(messages, **kwargs):
+            captured["messages"] = messages
+            return "Subject: Hi\n\nBody."
+
+        monkeypatch.setattr(ce, "chat_completion", _fake_chat)
+
+        profile = {
+            "name": "Eric", "year": "junior", "major": "CS", "school": "UIUC",
+            "hard_skills": ["MATLAB"],
+            "research_interests_text": "signals",
+        }
+        opp = {
+            "opportunity_type": "research",
+            "title": "Signals Lab",
+            "pi_name": "Jane Doe",
+            "eligibility": {},
+        }
+
+        out = ce._ai_generate_email_text(profile, opp)
+        assert out is not None
+        user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
+        assert "MATLAB (beginner)" in user_msg
