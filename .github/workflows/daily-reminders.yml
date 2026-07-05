@@ -55,7 +55,7 @@ jobs:
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \
             -d "{
-              \"from\": \"JoinALab <onboarding@resend.dev>\",
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
               \"to\": [\"$OPERATOR_EMAIL\"],
               \"subject\": \"JoinALab: data-quality alert\",
               \"text\": \"The daily health-check found anomalies:\n\n$ALERTS\n\nDashboard: ${{ secrets.FRONTEND_URL }}/admin\"
@@ -95,8 +95,8 @@ jobs:
               print(f\"Match analysis: {round((a.get('up_rate') or 0) * 100)}% up-rate over {a.get('sample_n')} votes\")
           ")
           if [ -n "$ANALYSIS" ]; then DIGEST=$(printf '%s\n\n%s' "$DIGEST" "$ANALYSIS"); fi
-          export DIGEST_BODY="$DIGEST" FB_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}"
-          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s new user feedback" % os.environ["FB_COUNT"], "text": "New feedback in the last 25h:\n\n%s\n\nInbox: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
+          export DIGEST_BODY="$DIGEST" FB_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}" MAIL_FROM="${{ vars.RESEND_FROM_EMAIL }}"
+          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": os.environ.get("MAIL_FROM") or "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s new user feedback" % os.environ["FB_COUNT"], "text": "New feedback in the last 25h:\n\n%s\n\nInbox: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \
@@ -128,8 +128,8 @@ jobs:
               lines.append(f\"- [{o.get('created_at','')[:16]}] {o.get('package','?')} {amt} · order {o.get('id','')[:8]}\")
           print('\\n'.join(lines))
           ")
-          export DIGEST_BODY="$DIGEST" ORDER_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}"
-          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s order(s) awaiting confirmation" % os.environ["ORDER_COUNT"], "text": "Orders claimed as paid in the last 25h:\n\n%s\n\nConfirm: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
+          export DIGEST_BODY="$DIGEST" ORDER_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}" MAIL_FROM="${{ vars.RESEND_FROM_EMAIL }}"
+          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": os.environ.get("MAIL_FROM") or "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s order(s) awaiting confirmation" % os.environ["ORDER_COUNT"], "text": "Orders claimed as paid in the last 25h:\n\n%s\n\nConfirm: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \

@@ -24,6 +24,7 @@ export const STORAGE_KEYS = {
   // before an existing-account sign-in redirect. Survives the redirect in
   // localStorage and is redeemed once on /auth/callback, then cleared.
   MERGE_GRANT: 'ofe_merge_grant',
+  RESULTS_CTA_DISMISSED: 'ofe_results_cta_dismissed',
 } as const;
 
 // Window CustomEvent fired when the onboarding school gate sets the campus, so a

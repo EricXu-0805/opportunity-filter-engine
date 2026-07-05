@@ -577,6 +577,19 @@ class TestRankAll:
         assert "opp-001" in result_ids
         assert "opp-002" not in result_ids
 
+    def test_equal_scores_tie_break_deterministically(self, sample_profile, sample_opportunities):
+        """Scores round to 0.1, so tie bands are common; without a secondary
+        key the order followed corpus file order and reshuffled every refresh
+        (2026-07 audit: 17-way tie observed reordering)."""
+        sample_profile["preferences"]["exclude_citizenship_restricted"] = False
+        base = next(o for o in sample_opportunities if o["id"] == "opp-001")
+        twin_a = dict(base, id="tie-aaa")
+        twin_b = dict(base, id="tie-zzz")
+        for ordering in ([twin_a, twin_b], [twin_b, twin_a]):
+            results = rank_all(sample_profile, list(sample_opportunities) + ordering)
+            tie_ids = [r.opportunity_id for r in results if r.opportunity_id.startswith("tie-")]
+            assert tie_ids == ["tie-aaa", "tie-zzz"]
+
     def test_sorted_descending(self, sample_profile, sample_opportunities):
         sample_profile["preferences"]["exclude_citizenship_restricted"] = False
         results = rank_all(sample_profile, sample_opportunities)
@@ -769,6 +782,22 @@ class TestTopicAlignmentPenalty:
     def test_aligned_keyword_no_penalty(self):
         opp = self._research(["computer vision", "robotics"])
         assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
+    def test_plural_interest_matches_adjective_keyword(self):
+        """'robotics' must align with 'adaptive robotic manipulation' — the
+        2026-07 audit found morphology mismatches demoting the only
+        robotics-keyworded ME professor to rank 1218 while keywordless REUs
+        escaped, inverting the ranking."""
+        prof = self._profile("robotics, mechanical design, thermal systems")
+        opp = self._research(
+            ["adaptive robotic manipulation", "bioinspiration",
+             "computational modeling", "rapid prototyping techniques"])
+        assert _topic_alignment_penalty(prof, opp) == 1.0
+
+    def test_morphology_does_not_rescue_true_mismatch(self):
+        prof = self._profile("robotics, mechanical design, thermal systems")
+        opp = self._research(["medieval manuscripts", "poetry translation"])
+        assert _topic_alignment_penalty(prof, opp) == TOPIC_MISMATCH_PENALTY
 
     def test_confirmed_mismatch_penalized(self):
         opp = self._research(["computers and education", "computer science"])
@@ -1682,11 +1711,14 @@ class TestExploreDiversity:
         by_id = {o["id"]: o for o in opps}
         return [by_id[r.opportunity_id]["keywords"][0] for r in results]
 
-    def test_default_order_is_unchanged_without_flag(self):
+    def test_default_order_has_no_diversity_reorder(self):
         opps = self._opps()
         a = [r.opportunity_id for r in rank_all(self._profile(False), opps)]
-        # default = no diversity reorder; insertion-stable within equal scores
-        assert a == [o["id"] for o in opps]
+        # default = no diversity reorder; equal scores order by id (the
+        # deterministic tie-break), independent of corpus file order
+        assert a == sorted(a)
+        b = [r.opportunity_id for r in rank_all(self._profile(False), list(reversed(opps)))]
+        assert b == a
 
     def test_exploring_interleaves_areas_at_the_top(self):
         opps = self._opps()

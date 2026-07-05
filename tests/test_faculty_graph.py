@@ -718,6 +718,33 @@ class TestCollapseSamePersonFaculty:
         assert {o["id"] for o in res["kept"]} == {"ic", "crp"}  # only umbrella dropped
         assert res["removed_by_school"] == {"gatech": 1}
 
+    def test_credential_suffix_same_url_same_dept_collapses(self):
+        """"Scott L. Delp, Ph.D." and "Scott L. Delp" on ONE profile URL in ONE
+        department are a scrape artifact, not a joint appointment (2026-07
+        audit: two such Stanford pairs survived every dedup pass)."""
+        a = _fac_rec("a", school="stanford", pi_name="Scott L. Delp, Ph.D.",
+                     dept="Department of Mechanical Engineering",
+                     url="https://me.stanford.edu/delp", keywords=["biomechanics"])
+        b = _fac_rec("b", school="stanford", pi_name="Scott L. Delp",
+                     dept="Department of Mechanical Engineering",
+                     url="https://me.stanford.edu/delp/",
+                     keywords=["biomechanics", "neuromuscular simulation"])
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"b"}
+        assert res["removed_by_school"] == {"stanford": 1}
+
+    def test_credential_suffix_across_depts_stays(self):
+        """The same name variants on DIFFERENT departments (cross-appointment)
+        keep both records — only the same-URL-same-dept case collapses."""
+        a = _fac_rec("a", school="stanford", pi_name="Scott L. Delp, Ph.D.",
+                     dept="Department of Mechanical Engineering",
+                     url="https://me.stanford.edu/delp")
+        b = _fac_rec("b", school="stanford", pi_name="Scott L. Delp",
+                     dept="Department of Bioengineering",
+                     url="https://bioe.stanford.edu/delp")
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"a", "b"}
+
     def test_peer_joint_appointment_without_umbrella_is_left(self):
         """Stanford Applied Physics + Physics (no email, no umbrella) stay two
         records — the conservative no-email rule only collapses umbrella rosters."""

@@ -1377,6 +1377,16 @@ _BROAD_FIELDS = frozenset({
 })
 
 
+def _stem_align_token(t: str) -> str:
+    """Fold trivial plurals for alignment comparisons so "robotics" meets
+    "robotic manipulation" (2026-07 audit: morphology mismatches re-inverted
+    the topic penalty — the only robotics-keyworded ME prof was demoted while
+    keywordless REUs escaped)."""
+    if len(t) > 4 and t.endswith("s") and not t.endswith("ss"):
+        return t[:-1]
+    return t
+
+
 def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     """Demote research postings whose area contradicts a student's stated
     interests. Returns a multiplier in (0, 1].
@@ -1461,7 +1471,12 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
             t for t in _tokenize(kw)
             if t not in _GENERIC_INTEREST_WORDS and t not in _LOW_SIGNAL_ALIGN_TOKENS
         }
-        if exact or substring or (keyword_meaningful & interest_meaningful):
+        # Compare stemmed forms so singular/plural variants of the same topic
+        # count as overlap; low-signal tokens were already filtered above, so
+        # stemming cannot promote a filler word.
+        keyword_stems = {_stem_align_token(t) for t in keyword_meaningful}
+        interest_stems = {_stem_align_token(t) for t in interest_meaningful}
+        if exact or substring or (keyword_stems & interest_stems):
             return 1.0
     return TOPIC_MISMATCH_PENALTY
 
@@ -1477,9 +1492,19 @@ def _seasonal_multiplier(opportunity: dict, today=None) -> float:
         return 1.0
     if opportunity.get("opportunity_type") != "summer_program":
         return 1.0
+    from datetime import date
     if today is None:
-        from datetime import date
         today = date.today()
+    # Only a verifiably-open application window earns the lift. 279 dateless
+    # summer records (closed 2026 cycles that can never expire) monopolized
+    # July top-15s through this multiplier — a record with no future deadline
+    # gets a neutral 1.0, not a boost (2026-07 audit).
+    try:
+        dl = date.fromisoformat((opportunity.get("deadline") or "")[:10])
+    except ValueError:
+        return 1.0
+    if dl < today:
+        return 1.0
     if today.month in SEASONAL_BOOST_MONTHS:
         return SEASONAL_BOOST_FACTOR
     return 1.0
@@ -1753,7 +1778,10 @@ def semantic_rerank(
         blended = (1.0 - w) * rule + w * float(sim) * 100.0
         r.final_score = round(max(0.0, min(100.0, blended)), 1)
 
-    results.sort(key=lambda r: r.final_score, reverse=True)
+    # Deterministic tie-break: scores round to 0.1, so equal-score bands
+    # (17-way ties were observed) otherwise reorder whenever corpus file
+    # order shifts between refreshes.
+    results.sort(key=lambda r: (-r.final_score, r.opportunity_id))
     # Buckets were assigned on the pre-blend scores; recompute them so the labels
     # and per-bucket counts match the re-ranked order (semantic=true used to
     # return stale buckets).
@@ -1951,7 +1979,10 @@ def rank_all(
         if result.final_score >= min_threshold:
             results.append(result)
 
-    results.sort(key=lambda r: r.final_score, reverse=True)
+    # Deterministic tie-break: scores round to 0.1, so equal-score bands
+    # (17-way ties were observed) otherwise reorder whenever corpus file
+    # order shifts between refreshes.
+    results.sort(key=lambda r: (-r.final_score, r.opportunity_id))
     _assign_buckets(results)
 
     if exploring:
