@@ -1794,3 +1794,62 @@ class TestNameLastSplitCells:
         }, "https://x.edu/", ladder_filter={"require": r"\bprofessor\b", "drop": r"\bemerit"})
         assert [p["name"] for p in people] == ["Ioan Andricioaei"]
         assert people[0]["email"] == "andricio@uci.edu"
+
+
+class TestMergePreservesRecentWorks:
+    def _record(self, **overrides):
+        rec = {
+            "id": "umich-eng-jane-roe",
+            "source": "umich_faculty",
+            "source_type": "faculty_research",
+            "school": "umich",
+            "pi_name": "Jane Roe",
+            "department": "Mechanical Engineering",
+            "keywords": ["soft robotics", "grippers"],
+            "title": "Research with Prof. Jane Roe — ME (soft robotics, grippers)",
+            "url": "https://me.umich.edu/jane-roe",
+            "metadata": {"first_seen_at": "2026-01-01T00:00:00Z"},
+        }
+        rec.update(overrides)
+        return rec
+
+    def test_equally_rich_rescrape_keeps_recent_works(self, tmp_path, monkeypatch):
+        """metadata.recent_works is run-once OpenAlex enrichment no scrape can
+        reproduce, and the merge replaces metadata wholesale — so it must be
+        carried even when the richer-gate does NOT fire (equal keywords)."""
+        import json as _json
+
+        works = [{"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}]
+        committed = self._record()
+        committed["metadata"]["recent_works"] = works
+        pf = tmp_path / "opportunities.json"
+        pf.write_text(_json.dumps([committed]))
+        monkeypatch.setattr("src.collectors.ucb_common.PROCESSED_FILE", pf)
+
+        added, updated = fg.merge_into_processed([self._record()])
+        assert (added, updated) == (0, 1)
+        saved = _json.loads(pf.read_text())
+        assert len(saved) == 1
+        assert saved[0]["metadata"]["recent_works"] == works
+        assert saved[0]["metadata"]["first_seen_at"] == "2026-01-01T00:00:00Z"
+
+    def test_keyword_richer_rescrape_updates_keywords_but_keeps_works(
+        self, tmp_path, monkeypatch,
+    ):
+        import json as _json
+
+        works = [{"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}]
+        committed = self._record()
+        committed["metadata"]["recent_works"] = works
+        pf = tmp_path / "opportunities.json"
+        pf.write_text(_json.dumps([committed]))
+        monkeypatch.setattr("src.collectors.ucb_common.PROCESSED_FILE", pf)
+
+        richer = self._record(
+            keywords=["soft robotics", "grippers", "haptics"],
+            title="Research with Prof. Jane Roe — ME (soft robotics, grippers, haptics)",
+        )
+        fg.merge_into_processed([richer])
+        saved = _json.loads(pf.read_text())[0]
+        assert saved["keywords"] == ["soft robotics", "grippers", "haptics"]
+        assert saved["metadata"]["recent_works"] == works

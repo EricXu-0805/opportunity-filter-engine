@@ -1103,11 +1103,20 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     (volatile/factual) field still comes from the fresh scrape. No-op when the
     fresh scrape is at least as rich, so a professor who added research areas to
     their page still wins. This is the same-id guard the row-dedup
-    ``_faculty_is_richer`` never covered (it only collapses duplicate rows)."""
+    ``_faculty_is_richer`` never covered (it only collapses duplicate rows).
+
+    ``metadata.recent_works`` (OpenAlex publication titles) is carried
+    UNCONDITIONALLY when the fresh scrape lacks it: no directory scrape ever
+    produces it, so even a keyword-richer re-scrape must not wipe it — and the
+    merge paths replace ``metadata`` wholesale (``cur.update(opp)`` /
+    full-replace), which would otherwise drop it silently."""
     if _faculty_is_richer(existing, incoming):
         for f in _ENRICHMENT_CARRY_FIELDS:
             if f in existing:
                 incoming[f] = existing[f]
+    works = (existing.get("metadata") or {}).get("recent_works")
+    if works and not (incoming.get("metadata") or {}).get("recent_works"):
+        incoming.setdefault("metadata", {})["recent_works"] = works
 
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
