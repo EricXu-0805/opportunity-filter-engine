@@ -243,6 +243,18 @@ describe('OpportunityChatbot — error handling', () => {
     expect(screen.queryAllByText('unique-user-marker').filter((el) => el.tagName !== 'TEXTAREA')).toHaveLength(0);
   });
 
+  it('shows the translated rate-limit message on a 429 instead of the raw API error', async () => {
+    mockChat.mockRejectedValue(new Error('API 429: {"detail":"Rate limit exceeded. Try again later."}'));
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/);
+    fireEvent.change(textarea, { target: { value: 'hi' } });
+    fireEvent.submit(textarea.closest('form')!);
+
+    await waitFor(() => expect(screen.getByText(/chatbot.errorRateLimited/)).toBeInTheDocument());
+    expect(screen.queryByText(/API 429/)).toBeNull();
+  });
+
   it('falls back to the generic error message when the thrown value is not an Error', async () => {
     mockChat.mockRejectedValue('not an Error instance');
     render(<OpportunityChatbot opportunity={OPP} profile={null} />);
