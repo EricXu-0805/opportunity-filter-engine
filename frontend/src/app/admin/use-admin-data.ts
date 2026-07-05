@@ -11,6 +11,7 @@ import type {
   HealthResponse,
   HistoryEntry,
   FeedbackInbox,
+  OrdersInbox,
   SavedSearchHealth,
   TFunc,
   TriggerStatus,
@@ -27,6 +28,7 @@ export interface UseAdminDataResult {
   health: HealthResponse | null;
   savedSearchHealth: SavedSearchHealth | null;
   feedbackInbox: FeedbackInbox | null;
+  ordersInbox: OrdersInbox | null;
   loading: boolean;
   error: string | null;
   activeFieldFilter: FieldKey | null;
@@ -38,6 +40,7 @@ export interface UseAdminDataResult {
   handleSubmitToken: (e: React.FormEvent) => void;
   handleLock: () => void;
   handleTriggerRefresh: (mode: 'quick' | 'deep') => Promise<void>;
+  handleConfirmOrder: (id: string) => Promise<void>;
 }
 
 export function useAdminData(t: TFunc): UseAdminDataResult {
@@ -52,6 +55,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [savedSearchHealth, setSavedSearchHealth] = useState<SavedSearchHealth | null>(null);
   const [feedbackInbox, setFeedbackInbox] = useState<FeedbackInbox | null>(null);
+  const [ordersInbox, setOrdersInbox] = useState<OrdersInbox | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFieldFilter, setActiveFieldFilter] = useState<FieldKey | null>(null);
@@ -62,7 +66,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setLoading(true);
     setError(null);
     try {
-      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox] = await Promise.all([
+      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox] = await Promise.all([
         adminFetch<AdminResponse>(`/admin/data-quality`, tok),
         adminFetch<{ history: HistoryEntry[] }>(`/admin/data-quality/history?limit=30`, tok),
         adminFetch<HealthResponse>(`/admin/health-check`, tok),
@@ -70,6 +74,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
         adminFetch<{ entries: CollectorHistoryEntry[]; count: number }>(`/admin/collector-status/history?limit=30`, tok),
         adminFetch<SavedSearchHealth>(`/admin/saved-search-health`, tok),
         adminFetch<FeedbackInbox>(`/admin/feedback?limit=50`, tok),
+        adminFetch<OrdersInbox>(`/admin/orders?limit=50`, tok),
       ]);
       if (main.status === 401) {
         setError('Invalid admin token');
@@ -95,6 +100,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setCollectorHistory(collectorHist.data?.entries ?? []);
       setSavedSearchHealth(ssHealth.data ?? null);
       setFeedbackInbox(fbInbox.data ?? null);
+      setOrdersInbox(ordInbox.data ?? null);
     } finally {
       setLoading(false);
     }
@@ -143,8 +149,19 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setHealth(null);
     setSavedSearchHealth(null);
     setFeedbackInbox(null);
+    setOrdersInbox(null);
     setError(null);
   }, []);
+
+  const handleConfirmOrder = useCallback(async (id: string) => {
+    if (!token) return;
+    const res = await adminFetch(`/admin/orders/${id}/confirm`, token, { method: 'POST' });
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    await fetchAll(token);
+  }, [token, fetchAll]);
 
   const handleTriggerRefresh = useCallback(async (mode: 'quick' | 'deep') => {
     if (!token) return;
@@ -183,6 +200,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     health,
     savedSearchHealth,
     feedbackInbox,
+    ordersInbox,
     loading,
     error,
     activeFieldFilter,
@@ -194,5 +212,6 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     handleSubmitToken,
     handleLock,
     handleTriggerRefresh,
+    handleConfirmOrder,
   };
 }

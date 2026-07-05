@@ -7,6 +7,7 @@ import { CollectorStatusSection } from './CollectorStatusSection';
 import { FreshnessBanner } from './FreshnessBanner';
 import { RefreshTriggerSection } from './RefreshTriggerSection';
 import { FeedbackSection } from './FeedbackSection';
+import { OrdersSection } from './OrdersSection';
 import { SavedSearchHealthSection } from './SavedSearchHealthSection';
 import { SourceFreshnessChart } from './SourceFreshnessChart';
 import { SourceTable } from './SourceTable';
@@ -22,6 +23,7 @@ import type {
   HealthResponse,
   HistoryEntry,
   FeedbackInbox,
+  OrdersInbox,
   SavedSearchHealth,
   TFunc,
   TriggerStatus,
@@ -36,6 +38,7 @@ export function AdminDashboard({
   health,
   savedSearchHealth,
   feedbackInbox,
+  ordersInbox,
   loading,
   error,
   activeFieldFilter,
@@ -46,6 +49,7 @@ export function AdminDashboard({
   onRefresh,
   onLock,
   onTriggerRefresh,
+  onConfirmOrder,
   t,
 }: {
   data: AdminResponse | null;
@@ -55,6 +59,7 @@ export function AdminDashboard({
   health: HealthResponse | null;
   savedSearchHealth: SavedSearchHealth | null;
   feedbackInbox: FeedbackInbox | null;
+  ordersInbox: OrdersInbox | null;
   loading: boolean;
   error: string | null;
   activeFieldFilter: FieldKey | null;
@@ -65,6 +70,7 @@ export function AdminDashboard({
   onRefresh: () => void;
   onLock: () => void;
   onTriggerRefresh: (mode: 'quick' | 'deep') => void;
+  onConfirmOrder: (id: string) => Promise<void>;
   t: TFunc;
 }) {
   return (
@@ -149,6 +155,7 @@ export function AdminDashboard({
 
             <SavedSearchHealthSection health={savedSearchHealth} t={t} />
             <FeedbackSection inbox={feedbackInbox} t={t} />
+            <OrdersSection inbox={ordersInbox} onConfirm={onConfirmOrder} t={t} />
 
             <RefreshTriggerSection
               status={triggerStatus}

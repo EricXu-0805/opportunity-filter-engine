@@ -166,6 +166,26 @@ export interface FeedbackInbox {
   };
 }
 
+export interface OrderEntry {
+  id: string;
+  device_id: string;
+  package: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  channel: string;
+  note?: string | null;
+  created_at: string;
+  paid_at?: string | null;
+}
+
+export interface OrdersInbox {
+  status: 'ok' | 'skipped';
+  reason?: string;
+  orders?: OrderEntry[];
+  count?: number;
+}
+
 export type TriggerStatus = {
   kind: 'idle' | 'busy' | 'ok' | 'err';
   message?: string;
