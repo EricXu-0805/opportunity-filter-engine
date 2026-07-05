@@ -193,6 +193,9 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   ucsb_external_research: 'results.filters.sourceUcsbExternalResearch',
   ucsb_labs: 'results.filters.sourceUcsbLabs',
   ucsb_faculty: 'results.filters.sourceUcsbFaculty',
+  boulder_research_programs: 'results.filters.sourceBoulderResearchPrograms',
+  boulder_labs: 'results.filters.sourceBoulderLabs',
+  boulder_faculty: 'results.filters.sourceBoulderFaculty',
 };
 
 export function sourceLabel(source: string, t: TFunc): string {
