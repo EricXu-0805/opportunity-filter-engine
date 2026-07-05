@@ -1,0 +1,58 @@
+{
+  "gatech": {
+    "campus": 1214,
+    "national": 2996
+  },
+  "princeton": {
+    "campus": 461,
+    "national": 2996
+  },
+  "stanford": {
+    "campus": 1407,
+    "national": 2996
+  },
+  "ucb": {
+    "campus": 2929,
+    "national": 2996
+  },
+  "uchicago": {
+    "campus": 1027,
+    "national": 2996
+  },
+  "uci": {
+    "campus": 591,
+    "national": 2996
+  },
+  "ucla": {
+    "campus": 2025,
+    "national": 2996
+  },
+  "ucsb": {
+    "campus": 552,
+    "national": 2996
+  },
+  "ucsd": {
+    "campus": 1385,
+    "national": 2996
+  },
+  "uiuc": {
+    "campus": 3269,
+    "national": 2996
+  },
+  "umich": {
+    "campus": 112,
+    "national": 2996
+  },
+  "utexas": {
+    "campus": 2220,
+    "national": 2996
+  },
+  "uw": {
+    "campus": 2222,
+    "national": 2996
+  },
+  "wisc": {
+    "campus": 1756,
+    "national": 2996
+  }
+}

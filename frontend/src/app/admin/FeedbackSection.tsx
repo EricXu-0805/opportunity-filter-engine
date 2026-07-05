@@ -1,8 +1,89 @@
 'use client';
 
-import { MessageSquareText, ThumbsDown } from 'lucide-react';
+import { BarChart3, MessageSquareText, ThumbsDown } from 'lucide-react';
 import { StatCard } from './StatCard';
-import type { FeedbackInbox, TFunc } from './types';
+import type { FeedbackAnalysis, FeedbackRateRow, TFunc, FeedbackInbox } from './types';
+
+function RateBreakdown({ title, rows }: { title: string; rows?: FeedbackRateRow[] }) {
+  if (!rows || rows.length === 0) return null;
+  return (
+    <div>
+      <p className="text-[11px] font-medium text-gray-400 mb-1">{title}</p>
+      <ul className="space-y-1">
+        {rows.map((r) => (
+          <li key={r.key} className="flex items-center gap-2 text-[12px] text-gray-600">
+            <span className="w-24 truncate shrink-0">{r.key}</span>
+            <span className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+              <span
+                className="block h-full rounded-full bg-indigo-400"
+                style={{ width: `${Math.round(r.up_rate * 100)}%` }}
+              />
+            </span>
+            <span className="w-16 text-right tabular-nums text-gray-500">
+              {Math.round(r.up_rate * 100)}% · {r.n}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AnalysisBlock({ analysis, t }: { analysis: FeedbackAnalysis; t: TFunc }) {
+  const replay = analysis.replay;
+  return (
+    <div className="mt-4">
+      <p className="text-[12px] font-medium text-gray-500 mb-2 flex items-center gap-1">
+        <BarChart3 className="w-3 h-3" /> {t('admin.feedback.analysisTitle')}
+      </p>
+      {analysis.insufficient ? (
+        <p className="text-[13px] text-gray-400 italic">
+          {t('admin.feedback.analysisInsufficient', {
+            n: analysis.sample_n,
+            needed: analysis.needed ?? 50,
+          })}
+        </p>
+      ) : (
+        <>
+          <p className="text-[12px] text-gray-600 mb-2">
+            {t('admin.feedback.analysisUpRate', {
+              rate: Math.round((analysis.up_rate ?? 0) * 100),
+              n: analysis.sample_n,
+            })}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <RateBreakdown title={t('admin.feedback.analysisByBucket')} rows={analysis.by_bucket} />
+            <RateBreakdown title={t('admin.feedback.analysisByScore')} rows={analysis.by_score_band} />
+            <RateBreakdown title={t('admin.feedback.analysisBySchool')} rows={analysis.by_school} />
+            <RateBreakdown title={t('admin.feedback.analysisByPosition')} rows={analysis.by_position} />
+          </div>
+          {replay && (
+            <div className="mt-3 text-[12px] text-gray-600">
+              <p>
+                {t('admin.feedback.analysisAgreement', {
+                  value:
+                    replay.current_agreement != null
+                      ? `${Math.round(replay.current_agreement * 100)}%`
+                      : '—',
+                })}
+                {replay.mode === 'weight_replay' && replay.best_candidate && (
+                  <>
+                    {' · '}
+                    {t('admin.feedback.analysisReplayBest', {
+                      weights: `${replay.best_candidate.eligibility}/${replay.best_candidate.readiness}/${replay.best_candidate.upside}`,
+                      delta: `${replay.delta != null && replay.delta > 0 ? '+' : ''}${Math.round((replay.delta ?? 0) * 100)}%`,
+                    })}
+                  </>
+                )}
+              </p>
+              <p className="mt-0.5 text-[11px] text-gray-400">{replay.note}</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 export function FeedbackSection({ inbox, t }: { inbox: FeedbackInbox | null; t: TFunc }) {
   if (!inbox) return null;
@@ -26,6 +107,7 @@ export function FeedbackSection({ inbox, t }: { inbox: FeedbackInbox | null; t: 
               <StatCard label={t('admin.feedback.thumbsDown7d')} value={mf.down_7d} color={mf.down_7d > 0 ? 'amber' : 'gray'} />
             </div>
           )}
+          {mf?.analysis && <AnalysisBlock analysis={mf.analysis} t={t} />}
           {mf && mf.top_downvoted.length > 0 && (
             <div className="mt-3">
               <p className="text-[12px] font-medium text-gray-500 mb-1 flex items-center gap-1">
