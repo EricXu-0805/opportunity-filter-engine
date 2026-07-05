@@ -206,6 +206,28 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('princeton'),
     catalog: { colleges: 5, majors: 37 },
   },
+  {
+    slug: 'uci',
+    domain: 'uci.edu',
+    name: 'University of California, Irvine',
+    shortName: 'UC Irvine',
+    nameZh: '加州大学欧文分校',
+    color: '#0064A4',
+    location: 'Irvine, CA',
+    coverage: campusCoverage('uci'),
+    catalog: { colleges: 14, majors: 84 },
+  },
+  {
+    slug: 'ucsb',
+    domain: 'ucsb.edu',
+    name: 'University of California, Santa Barbara',
+    shortName: 'UC Santa Barbara',
+    nameZh: '加州大学圣塔芭芭拉分校',
+    color: '#003660',
+    location: 'Santa Barbara, CA',
+    coverage: campusCoverage('ucsb'),
+    catalog: { colleges: 3, majors: 73 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));

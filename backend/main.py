@@ -36,7 +36,9 @@ from backend.routes import (
     import_url,
     matches,
     opportunities,
+    orders,
     push,
+    responsiveness,
     resume,
     roadmap,
     saved_searches,
@@ -47,6 +49,8 @@ from backend.routes import email as email_routes
 API_VERSION = "2.7.0"
 
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
+
+CHAT_RATE_KEY = "/api/opportunities/*/chat"
 
 RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/matches": (10, 60),
@@ -63,13 +67,15 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/email/send-favorites": (3, 3600),
     "/api/import-url": (5, 60),
     "/api/import-text": (5, 60),
-    # SEC-2: the opportunity chat endpoint issues a paid LLM completion per call
-    # but is under /api/opportunities/{id}/chat with no dedicated key, so it used
-    # to inherit the loose 60/60 default — an unauthenticated paid-LLM
-    # cost/quota-exhaustion vector. The trailing slash scopes this to the
-    # detail + chat sub-routes (cheap detail GETs share it, which 20/min easily
-    # covers) while leaving the bare /api/opportunities list/stats on the default.
+    # SEC-2: detail sub-routes under /api/opportunities/{id} used to inherit the
+    # loose 60/60 default. The trailing slash scopes this bucket to them while
+    # leaving the bare /api/opportunities list/stats on the default.
     "/api/opportunities/": (20, 60),
+    # The paid chat endpoint gets its OWN per-IP bucket (synthetic key, resolved
+    # in _rate_limit_key — no real path starts with it): sharing the
+    # /api/opportunities/ bucket let one chatty user exhaust the quota that
+    # detail GETs draw on, and vice versa.
+    CHAT_RATE_KEY: (15, 60),
 }
 DEFAULT_RATE = (60, 60)
 
@@ -83,6 +89,8 @@ _RATE_LIMIT_PREFIXES_BY_LEN = sorted(RATE_LIMITS, key=len, reverse=True)
 def _rate_limit_key(path: str) -> str:
     """The RATE_LIMITS key governing ``path`` by longest matching prefix, or the
     path itself (→ DEFAULT_RATE) when none match."""
+    if path.startswith("/api/opportunities/") and path.endswith("/chat"):
+        return CHAT_RATE_KEY
     for prefix in _RATE_LIMIT_PREFIXES_BY_LEN:
         if path.startswith(prefix):
             return prefix
@@ -296,6 +304,9 @@ app.add_middleware(
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])
 app.include_router(roadmap.router, prefix="/api", tags=["roadmap"])
+# Before opportunities: its static /opportunities/responsiveness path would
+# otherwise be swallowed by the dynamic /opportunities/{opportunity_id} route.
+app.include_router(responsiveness.router, prefix="/api", tags=["responsiveness"])
 app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(tailor.router, prefix="/api", tags=["tailor"])
@@ -306,6 +317,7 @@ app.include_router(email_routes.router, prefix="/api", tags=["email"])
 app.include_router(import_url.router, prefix="/api", tags=["import-url"])
 app.include_router(import_text.router, prefix="/api", tags=["import-text"])
 app.include_router(saved_searches.router, prefix="/api", tags=["saved-searches"])
+app.include_router(orders.router, prefix="/api", tags=["orders"])
 
 
 @app.get("/api/health")

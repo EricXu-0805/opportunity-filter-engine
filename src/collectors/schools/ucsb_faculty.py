@@ -303,6 +303,39 @@ SCHOOL: dict = {
 }
 
 
+# --- Research-interest enrichment (gated OFE_ENRICH_PROFILES) ----------------
+# The listings carry no research, but the SiteFarm profile pages do. Each entry
+# below is merged into the department's ``profile_enrich`` (a shared per-profile
+# fetch also does the email pass where one already exists). Two SiteFarm class
+# conventions coexist — double-dash ``.field--name-*``/``.field--item`` (modern)
+# and single-dash ``.field-name-*``/``.field-item`` (legacy) — plus a handful of
+# departments whose research is prose in the bio (regex over the profile text).
+# Verified live Jul 2026. Departments left out keep 0 keywords on purpose:
+# Political Science (space-run prose, no clean split), Chemistry (a long research
+# *statement*, not areas), Mechanical Engineering (taxonomy block needs a
+# soup-contains hop, only 8 faculty) — documented rather than shipped noisy.
+_RESEARCH_ENRICH: dict[str, dict] = {
+    # Structured taxonomy fields → one clean keyword per element.
+    "CS": {"research_items_selector": ".field--name-field-research-areas .field--item"},
+    "COMM": {"research_items_selector": ".field--name-field-research-area-s- .field--item"},
+    "CHEMENGR": {"research_items_selector": ".field-name-field-people-research-area .field-item"},
+    "MATSCI": {"research_items_selector": ".field-name-field-people-research-area .field-item"},
+    "BREN": {"research_items_selector": ".field--name-field-department .field--item"},
+    # Prose-body departments (Sociology, Mathematics, PSTAT, Political Science)
+    # were tried and dropped: their bios have no clean, consistently-labelled
+    # research line, so a regex either misses most people or runs past the areas
+    # into the address/office block (a "Santa Barbara" leak). Kept at 0 keywords
+    # rather than ship location noise — only the structured taxonomy-field
+    # departments above are enriched.
+}
+for _d in SCHOOL["departments"]:
+    _re = _RESEARCH_ENRICH.get(_d["short"])
+    if not _re:
+        continue
+    enr = _d["scrape"].setdefault("profile_enrich", {"throttle": 1.0})
+    enr.update(_re)
+
+
 def fetch_and_normalize(deep: bool = True) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
     return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)

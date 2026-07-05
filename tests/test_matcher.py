@@ -194,6 +194,63 @@ class TestSkillMapMemoization:
         assert score_eligibility(profile, opp) == score_eligibility(profile, opp, skill_map=smap)
 
 
+class TestSkillLevelMatchingContract:
+    """The skill-level annotation work (tailor / cold-email prompt threading)
+    must not change matching. These pin the ranker's pre-existing level
+    handling so any accidental coupling breaks loudly:
+      - plain string skills keep weight 1.0 (levels stay optional)
+      - annotated weights follow PROFICIENCY_WEIGHTS exactly as before
+      - unknown level strings fall back to the 'experienced' weight
+    """
+
+    def test_proficiency_weights_pinned(self):
+        from src.matcher.config import PROFICIENCY_WEIGHTS
+        assert PROFICIENCY_WEIGHTS == {
+            "expert": 1.0,
+            "experienced": 0.75,
+            "beginner": 0.5,
+        }
+
+    def test_parse_skills_level_weights_unchanged(self):
+        from src.matcher.ranker import _parse_skills
+        smap = _parse_skills([
+            {"name": "Python", "level": "expert"},
+            {"name": "Java", "level": "experienced"},
+            {"name": "R", "level": "beginner"},
+            {"name": "Go", "level": "familiar"},
+            "MATLAB",
+        ])
+        assert smap["python"] == 1.0
+        assert smap["java"] == 0.75
+        assert smap["r"] == 0.5
+        assert smap["go"] == 0.75  # unknown label → experienced weight
+        assert smap["matlab"] == 1.0  # plain string, no level
+
+    def test_string_and_expert_annotated_skills_score_identically(self):
+        from src.matcher.ranker import score_eligibility
+        opp = {
+            "opportunity_type": "research",
+            "eligibility": {
+                "preferred_year": ["junior"], "majors": ["CS"],
+                "skills_required": ["Python", "Java"],
+                "international_friendly": "yes",
+            },
+        }
+        base = {"year": "junior", "major": "CS", "seeking_type": ["research"]}
+        plain = score_eligibility({**base, "hard_skills": ["Python", "Java"]}, opp)
+        annotated = score_eligibility(
+            {
+                **base,
+                "hard_skills": [
+                    {"name": "Python", "level": "expert"},
+                    {"name": "Java", "level": "expert"},
+                ],
+            },
+            opp,
+        )
+        assert plain[0] == annotated[0]
+
+
 class TestTypePreferenceNormalisation:
     """R69-D: _type_preference_score normalises inputs so case / space /
     hyphen drift from non-form callers (share URLs, admin debug, future

@@ -23,6 +23,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from backend.data_loader import load_opportunities
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
+from src.matcher.feedback_learning import analyze_votes
 
 router = APIRouter()
 
@@ -619,8 +620,11 @@ async def feedback_inbox(
 
             mf_resp = await client.get(
                 f"{supabase_url}/rest/v1/match_feedback",
+                # select=* so bucket/final_score feed the analysis block and the
+                # request stays valid whether or not migration 018 (context) has
+                # been applied yet.
                 params={
-                    "select": "opportunity_id,verdict,created_at",
+                    "select": "*",
                     "order": "created_at.desc",
                     "limit": "1000",
                 },
@@ -635,7 +639,11 @@ async def feedback_inbox(
     up = sum(1 for t in thumbs if t.get("verdict") == "up")
     down = sum(1 for t in thumbs if t.get("verdict") == "down")
     recent = [t for t in thumbs if (_parse_iso_ts(t.get("created_at")) or week_ago) >= week_ago]
-    titles = {o.get("id"): o.get("title") for o in load_opportunities()}
+    titles: dict = {}
+    schools: dict = {}
+    for o in load_opportunities():
+        titles[o.get("id")] = o.get("title")
+        schools[o.get("id")] = o.get("school")
     down_counts = Counter(
         t["opportunity_id"] for t in thumbs if t.get("verdict") == "down" and t.get("opportunity_id")
     )
@@ -655,5 +663,6 @@ async def feedback_inbox(
             "down_7d": sum(1 for t in recent if t.get("verdict") == "down"),
             "sample_size": len(thumbs),
             "top_downvoted": top_downvoted,
+            "analysis": analyze_votes(thumbs, schools),
         },
     }

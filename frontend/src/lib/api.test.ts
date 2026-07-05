@@ -442,3 +442,92 @@ describe('deriveDesiredFields', () => {
     expect(deriveDesiredFields('understanding language')).toEqual(['understanding language']);
   });
 })
+
+describe('chatWithOpportunity — SSE streaming (onDelta present)', () => {
+  function sseResponse(frames: string[]): Response {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const frame of frames) controller.enqueue(encoder.encode(frame));
+        controller.close();
+      },
+    });
+    return new Response(stream, {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    });
+  }
+
+  it('accumulates deltas, calls onDelta per chunk, and takes method from the done event', async () => {
+    fetchMock.mockResolvedValue(sseResponse([
+      'data: {"delta":"Hel"}\n\n',
+      'data: {"delta":"lo"}\n\ndata: {"done":true,"method":"llm"}\n\n',
+    ]));
+    const onDelta = vi.fn();
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, onDelta);
+
+    expect(result).toEqual({ reply: 'Hello', method: 'llm', errored: false });
+    expect(onDelta.mock.calls.map((c) => c[0])).toEqual(['Hel', 'lo']);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe('/api/opportunities/opp-1/chat?stream=1');
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((init.headers as Record<string, string>)['Accept']).toBe('text/event-stream');
+  });
+
+  it('falls back to res.json() when the backend answers plain JSON, calling onDelta once', async () => {
+    fetchMock.mockResolvedValue(okJson({ reply: 'plain reply', method: 'llm' }));
+    const onDelta = vi.fn();
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, onDelta);
+
+    expect(result).toEqual({ reply: 'plain reply', method: 'llm' });
+    expect(onDelta).toHaveBeenCalledTimes(1);
+    expect(onDelta).toHaveBeenCalledWith('plain reply');
+  });
+
+  it('marks the result errored when an error event follows partial deltas', async () => {
+    fetchMock.mockResolvedValue(sseResponse([
+      'data: {"delta":"par"}\n\n',
+      'data: {"error":true}\n\n',
+      'data: {"done":true,"method":"llm"}\n\n',
+    ]));
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn());
+    expect(result).toEqual({ reply: 'par', method: 'llm', errored: true });
+  });
+
+  it('surfaces the local-fallback stream with method local', async () => {
+    fetchMock.mockResolvedValue(sseResponse([
+      'data: {"delta":"AI chat is not configured…","method":"local"}\n\n',
+      'data: {"done":true,"method":"local"}\n\n',
+    ]));
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn());
+    expect(result.method).toBe('local');
+    expect(result.reply).toContain('AI chat is not configured');
+  });
+
+  it('throws "API {status}" on a non-2xx streaming response', async () => {
+    fetchMock.mockResolvedValue(badResponse(429, 'slow down'));
+    await expect(
+      chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn()),
+    ).rejects.toThrow('API 429: slow down');
+  });
+
+  it('returns the partial reply as errored when the stream breaks mid-read', async () => {
+    const encoder = new TextEncoder();
+    let pulls = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (pulls++ === 0) {
+          controller.enqueue(encoder.encode('data: {"delta":"cut "}\n\n'));
+        } else {
+          controller.error(new Error('network reset'));
+        }
+      },
+    });
+    fetchMock.mockResolvedValue(new Response(stream, {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    }));
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn());
+    expect(result).toEqual({ reply: 'cut ', method: 'llm', errored: true });
+  });
+});

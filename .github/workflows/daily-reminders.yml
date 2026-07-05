@@ -88,8 +88,48 @@ jobs:
               lines.append(f\"- [{e.get('created_at','')[:16]}] {who} {path}\n  {e.get('message','')}\")
           print('\\n'.join(lines))
           ")
+          ANALYSIS=$(echo "$BODY" | python3 -c "
+          import sys, json
+          a = ((json.load(sys.stdin).get('match_feedback') or {}).get('analysis')) or {}
+          if a and not a.get('insufficient'):
+              print(f\"Match analysis: {round((a.get('up_rate') or 0) * 100)}% up-rate over {a.get('sample_n')} votes\")
+          ")
+          if [ -n "$ANALYSIS" ]; then DIGEST=$(printf '%s\n\n%s' "$DIGEST" "$ANALYSIS"); fi
           export DIGEST_BODY="$DIGEST" FB_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}"
           PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s new user feedback" % os.environ["FB_COUNT"], "text": "New feedback in the last 25h:\n\n%s\n\nInbox: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" || true
+
+      - name: New-orders digest
+        # Orders a user claimed as paid sit in awaiting_confirm until the
+        # operator confirms on /admin — without this, claims land invisibly.
+        if: env.ADMIN_TOKEN != '' && env.RESEND_API_KEY != ''
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "$OPERATOR_EMAIL" ]; then exit 0; fi
+          BODY=$(curl -sf -H "X-Admin-Token: $ADMIN_TOKEN" \
+                 "${{ secrets.BACKEND_URL }}/api/admin/orders?status=awaiting_confirm&since_hours=25&limit=50") || exit 0
+          COUNT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
+          if [ "$COUNT" = "0" ]; then
+            echo "No new claimed orders in the last 25h"
+            exit 0
+          fi
+          DIGEST=$(echo "$BODY" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          lines = []
+          for o in d.get('orders', []):
+              amt = '%s %.2f' % ((o.get('currency') or 'usd').upper(), (o.get('amount_cents') or 0) / 100)
+              lines.append(f\"- [{o.get('created_at','')[:16]}] {o.get('package','?')} {amt} · order {o.get('id','')[:8]}\")
+          print('\\n'.join(lines))
+          ")
+          export DIGEST_BODY="$DIGEST" ORDER_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}"
+          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s order(s) awaiting confirmation" % os.environ["ORDER_COUNT"], "text": "Orders claimed as paid in the last 25h:\n\n%s\n\nConfirm: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \

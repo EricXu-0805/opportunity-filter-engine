@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { loadCatalog } from './index';
 import { COLLEGE_MAJORS as UIUC_COLLEGE_MAJORS } from '@/lib/colleges';
 import { SCHOOLS } from '@/lib/schools';
+import { en, zh } from '@/i18n/dictionaries';
 
-const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford', 'ucsd', 'uchicago'];
+const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford', 'ucsd', 'uchicago', 'uci', 'ucsb'];
 
 // Anything html.unescape would have missed in the generated data files.
 const HTML_ENTITY = /&[a-zA-Z]+\d*;|&#\d+;/;
@@ -60,6 +61,28 @@ describe('loadCatalog — loader contract', () => {
   it('returns null for slugs without a catalog', async () => {
     expect(await loadCatalog('future-school')).toBeNull();
     expect(await loadCatalog('')).toBeNull();
+  });
+});
+
+describe('zh catalog parity — every catalog label has dictionary entries', () => {
+  it('every college and major of every registered school exists in en and zh colleges/majors namespaces', async () => {
+    const enColleges = en.colleges as Record<string, string>;
+    const zhColleges = zh.colleges as Record<string, string>;
+    const enMajors = en.majors as Record<string, string>;
+    const zhMajors = zh.majors as Record<string, string>;
+    const missing: string[] = [];
+    for (const school of SCHOOLS) {
+      const catalog = await loadCatalog(school.slug);
+      for (const [college, majors] of Object.entries(catalog!)) {
+        if (!enColleges[college]) missing.push(`en colleges: ${school.slug}/${college}`);
+        if (!zhColleges[college]) missing.push(`zh colleges: ${school.slug}/${college}`);
+        for (const major of majors) {
+          if (!enMajors[major]) missing.push(`en majors: ${school.slug}/${major}`);
+          if (!zhMajors[major]) missing.push(`zh majors: ${school.slug}/${major}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });
 
