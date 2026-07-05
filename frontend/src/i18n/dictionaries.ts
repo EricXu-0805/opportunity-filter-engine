@@ -1432,6 +1432,12 @@ export const en = {
     remove: 'Remove {skill}',
   },
   results: {
+    conciergeCta: {
+      title: 'Want a human to handle the outreach?',
+      desc: 'Concierge service: we tailor your résumé, draft and send grounded emails to your top matches, and follow up — you approve every send.',
+      button: 'Get application help',
+      dismiss: 'Dismiss',
+    },
     title: 'Your Matches',
     analyzing: 'Analyzing your profile...',
     analyzingAi: 'Analyzing with AI smart match...',
@@ -4037,6 +4043,12 @@ export const zh = {
     remove: '移除 {skill}',
   },
   results: {
+    conciergeCta: {
+      title: '想让真人帮你把申请投出去？',
+      desc: '代投服务：为你的高匹配机会定制简历、起草并代发有据可依的邮件、跟进回复——每一封都经你确认。',
+      button: '获取申请代办',
+      dismiss: '关闭',
+    },
     title: '你的匹配',
     analyzing: '正在分析你的档案...',
     analyzingAi: '正在进行 AI 智能匹配...',
