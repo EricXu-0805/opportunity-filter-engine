@@ -16,6 +16,7 @@ import pytest
 
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
+from src.collectors.schools.boulder import SCHOOL as BOULDER
 from src.collectors.schools.princeton import SCHOOL as PRINCETON
 from src.collectors.schools.uci import SCHOOL as UCI
 from src.collectors.schools.ucsb import SCHOOL as UCSB
@@ -261,6 +262,30 @@ class TestUcsb:
             assert o["school"] in ("ucsb", None)
             assert o["organization"]
             assert o["location"] == "Santa Barbara, CA"
+
+    def test_breakdown_totals_consistent(self, recs):
+        bd = cg.source_breakdown(recs)
+        assert bd["total"] == len(recs)
+        assert sum(bd["by_source_type"].values()) == len(recs)
+
+
+class TestBoulder:
+    @pytest.fixture(scope="class")
+    def recs(self):
+        return cg.fetch_and_normalize(BOULDER, deep=False)
+
+    def test_in_registry(self):
+        assert BOULDER in SCHOOL_CONFIGS
+
+    def test_all_levels_represented(self, recs):
+        levels = {o["campus_source_type"] for o in recs}
+        assert {"announcement", "program", "department", "career", "lab"} <= levels
+
+    def test_every_record_is_boulder_scoped(self, recs):
+        for o in recs:
+            assert o["school"] in ("boulder", None)
+            assert o["organization"]
+            assert o["location"] == "Boulder, CO"
 
     def test_breakdown_totals_consistent(self, recs):
         bd = cg.source_breakdown(recs)

@@ -1118,6 +1118,15 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     if works and not (incoming.get("metadata") or {}).get("recent_works"):
         incoming.setdefault("metadata", {})["recent_works"] = works
 
+    # contact_email is carried the same unconditional way: for schools whose
+    # listings never expose emails (e.g. CU Experts), the address exists ONLY
+    # because a gated per-profile pass once found it — a listing-only refresh
+    # emits None and would silently wipe every one of them. A fresh scrape
+    # that actually carries an email still wins (professor changed address).
+    email = existing.get("contact_email")
+    if email and not incoming.get("contact_email"):
+        incoming["contact_email"] = email
+
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
     """Collapse same-professor duplicate faculty rows (same profile URL + last
