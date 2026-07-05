@@ -13,10 +13,19 @@ export type MatchVerdict = 'up' | 'down';
 export interface MatchFeedbackContext {
   bucket: string;
   finalScore: number;
+  position?: number;
 }
 
 function isMissingTable(message: string | undefined): boolean {
   return Boolean(message?.toLowerCase().includes('does not exist'));
+}
+
+// Migration 018 adds the context column; before it's applied, PostgREST
+// rejects the payload with "Could not find the 'context' column ..." (or
+// Postgres with 'column "context" ... does not exist') — retry without it.
+function isMissingContextColumn(message: string | undefined): boolean {
+  const m = (message ?? '').toLowerCase();
+  return m.includes("'context' column") || m.includes('column "context"');
 }
 
 export async function getMatchFeedback(ids: string[]): Promise<Map<string, MatchVerdict>> {
@@ -71,19 +80,29 @@ export async function setMatchFeedback(
 
   // created_at is refreshed on re-vote so the row always records when the
   // *current* verdict was given — the old verdict is overwritten anyway.
-  const { error } = await supabase
+  const row: Record<string, unknown> = {
+    device_id: deviceId,
+    opportunity_id: opportunityId,
+    verdict,
+    bucket: context.bucket,
+    final_score: context.finalScore,
+    created_at: new Date().toISOString(),
+  };
+  if (typeof context.position === 'number' && Number.isFinite(context.position)) {
+    row.context = { position: context.position };
+  }
+
+  let { error } = await supabase
     .from('match_feedback')
-    .upsert(
-      {
-        device_id: deviceId,
-        opportunity_id: opportunityId,
-        verdict,
-        bucket: context.bucket,
-        final_score: context.finalScore,
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: 'device_id,opportunity_id' },
-    );
+    .upsert(row, { onConflict: 'device_id,opportunity_id' });
+
+  if (error && row.context && isMissingContextColumn(error.message)) {
+    const fallback = { ...row };
+    delete fallback.context;
+    ({ error } = await supabase
+      .from('match_feedback')
+      .upsert(fallback, { onConflict: 'device_id,opportunity_id' }));
+  }
 
   if (error) {
     if (!isMissingTable(error.message)) {
