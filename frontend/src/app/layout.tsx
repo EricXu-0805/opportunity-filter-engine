@@ -62,6 +62,7 @@ export const metadata: Metadata = {
       'zh': `${SITE_URL}?lang=zh`,
     },
   },
+  manifest: '/manifest.json',
 };
 
 export default async function RootLayout({

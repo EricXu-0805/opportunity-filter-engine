@@ -108,6 +108,52 @@ describe('setMatchFeedback', () => {
     );
   });
 
+  it('includes context.position when the card position is known', async () => {
+    const q = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValue(q);
+
+    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85, position: 7 });
+
+    expect(ok).toBe(true);
+    expect(q.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ context: { position: 7 } }),
+      { onConflict: 'device_id,opportunity_id' },
+    );
+  });
+
+  it('omits context entirely when position is absent (pre-018 rows stay identical)', async () => {
+    const q = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValue(q);
+
+    await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85 });
+
+    expect(q.upsert).toHaveBeenCalledWith(
+      expect.not.objectContaining({ context: expect.anything() }),
+      { onConflict: 'device_id,opportunity_id' },
+    );
+  });
+
+  it('retries without context when the column does not exist yet (migration 018 lag)', async () => {
+    const failing = makeQuery({
+      data: null,
+      error: { message: "Could not find the 'context' column of 'match_feedback' in the schema cache" },
+    });
+    const succeeding = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValueOnce(failing).mockReturnValueOnce(succeeding);
+
+    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'reach', finalScore: 42, position: 3 });
+
+    expect(ok).toBe(true);
+    expect(failing.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ context: { position: 3 } }),
+      { onConflict: 'device_id,opportunity_id' },
+    );
+    expect(succeeding.upsert).toHaveBeenCalledWith(
+      expect.not.objectContaining({ context: expect.anything() }),
+      { onConflict: 'device_id,opportunity_id' },
+    );
+  });
+
   it('deletes the row scoped to (device_id, opportunity_id) when verdict is null', async () => {
     const q = makeQuery({ data: null, error: null });
     mockFrom.mockReturnValue(q);

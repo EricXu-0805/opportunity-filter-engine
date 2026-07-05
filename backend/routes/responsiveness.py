@@ -1,0 +1,103 @@
+"""Internal responsiveness signals (红黑榜 v1) — aggregated and anonymous.
+
+Rolls the append-only interaction_status_changes log up into per-opportunity
+{contacted_n, replied_n} counts. Service-role access is required because RLS
+scopes that table to each device's own rows. Privacy guarantees enforced HERE,
+not in the client: only aggregates with contacted_n >= RESPONSIVENESS_MIN_N
+ever leave the endpoint, and no device-level data is exposed anywhere.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import time
+
+from fastapi import APIRouter
+
+from src.matcher.config import RESPONSIVENESS_MIN_N
+
+router = APIRouter()
+logger = logging.getLogger("ofe.responsiveness")
+
+CONTACT_STATUSES = frozenset({"applied", "replied", "interviewing", "rejected"})
+REPLIED_STATUSES = frozenset({"replied", "interviewing"})
+
+_CACHE_TTL = 3600
+_PAGE_SIZE = 1000
+_MAX_PAGES = 50
+
+_cache: dict[str, dict[str, int]] | None = None
+_cache_time: float = 0.0
+
+
+async def _fetch_status_rows(supabase_url: str, headers: dict) -> list[dict]:
+    import httpx
+
+    rows: list[dict] = []
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for page in range(_MAX_PAGES):
+            resp = await client.get(
+                f"{supabase_url}/rest/v1/interaction_status_changes",
+                params={
+                    "select": "opportunity_id,device_id,to_status",
+                    "limit": str(_PAGE_SIZE),
+                    "offset": str(page * _PAGE_SIZE),
+                    "order": "changed_at.desc",
+                },
+                headers=headers,
+            )
+            resp.raise_for_status()
+            batch = resp.json()
+            rows.extend(batch)
+            if len(batch) < _PAGE_SIZE:
+                break
+    return rows
+
+
+def _aggregate(rows: list[dict]) -> dict[str, dict[str, int]]:
+    contacted: dict[str, set[str]] = {}
+    replied: dict[str, set[str]] = {}
+    for row in rows:
+        opp = row.get("opportunity_id")
+        dev = row.get("device_id")
+        status = row.get("to_status")
+        if not opp or not dev:
+            continue
+        if status in CONTACT_STATUSES:
+            contacted.setdefault(opp, set()).add(dev)
+        if status in REPLIED_STATUSES:
+            replied.setdefault(opp, set()).add(dev)
+    return {
+        opp: {"contacted_n": len(devs), "replied_n": len(replied.get(opp, ()))}
+        for opp, devs in contacted.items()
+        if len(devs) >= RESPONSIVENESS_MIN_N
+    }
+
+
+async def signals_map() -> dict[str, dict[str, int]]:
+    global _cache, _cache_time
+    now = time.time()
+    if _cache is not None and now - _cache_time < _CACHE_TTL:
+        return _cache
+
+    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not supabase_url or not key:
+        return {}
+
+    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+    try:
+        rows = await _fetch_status_rows(supabase_url, headers)
+    except Exception as exc:
+        logger.warning("responsiveness fetch failed: %s", type(exc).__name__)
+        return _cache or {}
+
+    _cache = _aggregate(rows)
+    _cache_time = now
+    return _cache
+
+
+@router.get("/opportunities/responsiveness")
+async def get_responsiveness():
+    return {"signals": await signals_map(), "min_n": RESPONSIVENESS_MIN_N}

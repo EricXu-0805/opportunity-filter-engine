@@ -11,12 +11,13 @@ from fastapi import APIRouter, HTTPException, Query
 from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.llm import _resolve, chat_completion
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.routes.responsiveness import signals_map
 from backend.schemas import (
     MatchesResponse,
     MatchResultResponse,
     ProfileRequest,
 )
-from src.matcher.config import THIN_INVENTORY_FLOOR
+from src.matcher.config import RESPONSIVENESS_BONUS, THIN_INVENTORY_FLOOR
 from src.matcher.ranker import (
     _assign_buckets,
     _diversify_explore,
@@ -249,7 +250,10 @@ async def get_matches(
             "exclude_citizenship_restricted": profile_dict.get("international_student", True),
         }
 
-    results = await asyncio.to_thread(rank_all, profile_dict, opportunities)
+    responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
+    results = await asyncio.to_thread(
+        rank_all, profile_dict, opportunities, responsiveness=responsiveness
+    )
 
     opp_lookup = load_opportunities_by_id()
 

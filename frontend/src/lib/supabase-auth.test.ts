@@ -32,6 +32,7 @@ const {
   mockSignInWithOtp,
   mockSignInWithOAuth,
   mockLinkIdentity,
+  mockSignOut,
 } = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
@@ -41,6 +42,7 @@ const {
     mockSignInWithOtp: vi.fn(),
     mockSignInWithOAuth: vi.fn(),
     mockLinkIdentity: vi.fn(),
+    mockSignOut: vi.fn(),
   };
 });
 
@@ -52,7 +54,7 @@ vi.mock('@supabase/supabase-js', () => ({
       signInWithOtp: mockSignInWithOtp,
       signInWithOAuth: mockSignInWithOAuth,
       linkIdentity: mockLinkIdentity,
-      signOut: vi.fn().mockResolvedValue({ error: null }),
+      signOut: mockSignOut,
       signInAnonymously: vi.fn().mockResolvedValue({
         data: { user: { id: 'new-anon-uid' } },
         error: null,
@@ -72,6 +74,7 @@ import {
   signInExistingOAuth,
   signInOrLinkEmail,
   signInWithOAuthProvider,
+  signOutOfAccount,
 } from './supabase';
 
 const REDIRECT = 'https://app.test/auth/callback';
@@ -523,5 +526,22 @@ describe('signInExistingOAuth — forced sign-in-to-existing path', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('rate-limited');
+  });
+});
+
+describe('signOutOfAccount', () => {
+  beforeEach(() => {
+    mockGetSession.mockReset();
+    mockSignOut.mockReset();
+  });
+
+  it('signs out with scope:"local" — other devices keep their sessions — then re-anons', async () => {
+    mockSignOut.mockResolvedValueOnce({ error: null });
+    mockGetSession.mockResolvedValueOnce(noSession());
+
+    const newId = await signOutOfAccount();
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(newId).toBe('new-anon-uid');
   });
 });

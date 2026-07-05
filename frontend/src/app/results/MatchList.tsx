@@ -16,6 +16,7 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.isNew === next.isNew &&
     prev.profile === next.profile &&
     prev.feedbackVerdict === next.feedbackVerdict &&
+    prev.position === next.position &&
     prev.onDraftEmail === next.onDraftEmail &&
     prev.onToggleFavorite === next.onToggleFavorite &&
     prev.onTrackInteraction === next.onTrackInteraction &&
@@ -36,6 +37,9 @@ export interface MatchListProps {
   onToggleFavorite: (opportunityId: string) => void;
   onTrackInteraction: (opportunityId: string, type: InteractionType) => void;
   onFeedback: (opportunityId: string, verdict: MatchVerdict | null, context: MatchFeedbackContext) => void;
+  // 1-based rank of matches[0] minus one within the full filtered list, so
+  // each card can report its absolute list position with feedback votes.
+  positionOffset: number;
   page: number;
   totalPages: number;
   onPageChange: (next: number) => void;
@@ -54,6 +58,7 @@ export function MatchList({
   onToggleFavorite,
   onTrackInteraction,
   onFeedback,
+  positionOffset,
   page,
   totalPages,
   onPageChange,
@@ -101,6 +106,7 @@ export function MatchList({
                 isNew={isNew}
                 feedbackVerdict={feedback.get(match.opportunity.id) ?? null}
                 onFeedback={onFeedback}
+                position={positionOffset + idx + 1}
               />
             </div>
           );
