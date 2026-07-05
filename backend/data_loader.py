@@ -53,6 +53,19 @@ def _maybe_fit_tfidf(opportunities: list[dict], mtime: float) -> None:
         logger.warning("TF-IDF corpus fit failed: %s", e)
 
 
+def _maybe_register_ranker_corpus(opportunities: list[dict]) -> None:
+    """Bind the ranker's per-record precompute to the freshly-cached corpus
+    list. Idempotent per list object (register_corpus no-ops on the same
+    list), so calling on every request only re-registers after a reload.
+    Must run AFTER _maybe_fit_tfidf — the precomputed similarity matrix
+    needs the fitted vectorizer."""
+    try:
+        from src.matcher.ranker import register_corpus
+        register_corpus(opportunities)
+    except Exception as e:
+        logger.warning("Ranker corpus precompute failed: %s", e)
+
+
 def load_opportunities() -> list[dict]:
     global _opp_cache, _opp_cache_by_id, _opp_cache_mtime
 
@@ -66,6 +79,7 @@ def load_opportunities() -> list[dict]:
             _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
             _opp_cache_mtime = mtime
         _maybe_fit_tfidf(_opp_cache, mtime)
+        _maybe_register_ranker_corpus(_opp_cache)
         return _opp_cache
 
     examples = EXAMPLES_DIR / "sample_opportunities.json"
