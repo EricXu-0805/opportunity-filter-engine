@@ -626,6 +626,7 @@ function ResultsContent() {
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
               onFeedback={handleFeedback}
+              positionOffset={(page - 1) * PAGE_SIZE}
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}

@@ -3159,3 +3159,74 @@ class TestAdminFeedback:
         assert mf["down_7d"] == 1
         assert mf["top_downvoted"][0]["opportunity_id"] == "opp-1"
         assert mf["top_downvoted"][0]["downs"] == 2
+        assert mf["analysis"] == {"insufficient": True, "needed": 50, "sample_n": 3}
+
+    def test_analysis_block_at_min_sample(self, monkeypatch):
+        from datetime import UTC, datetime
+
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+
+        ts = datetime.now(UTC).isoformat()
+        thumbs = [
+            {"opportunity_id": "opp-uiuc", "verdict": "up", "created_at": ts,
+             "bucket": "high_priority", "final_score": 85, "context": {"position": 2}}
+            for _ in range(30)
+        ] + [
+            {"opportunity_id": "opp-uw", "verdict": "down", "created_at": ts,
+             "bucket": "reach", "final_score": 45, "context": None}
+            for _ in range(20)
+        ]
+
+        class FakeResponse:
+            def __init__(self, payload):
+                self._payload = payload
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return self._payload
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def get(self, url, params=None, headers=None):
+                if url.endswith("/rest/v1/feedback"):
+                    return FakeResponse([])
+                assert params["select"] == "*"
+                return FakeResponse(thumbs)
+
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod.httpx, "AsyncClient", FakeClient)
+        monkeypatch.setattr(admin_mod, "load_opportunities", lambda: [
+            {"id": "opp-uiuc", "title": "CV Lab", "school": "uiuc"},
+            {"id": "opp-uw", "title": "Bio Lab", "school": "uw"},
+        ])
+
+        r = client.get("/api/admin/feedback", headers={"X-Admin-Token": "secret-abc"})
+        assert r.status_code == 200
+        analysis = r.json()["match_feedback"]["analysis"]
+        assert analysis["sample_n"] == 50
+        assert analysis["up_rate"] == 0.6
+        assert {row["key"]: row["up_rate"] for row in analysis["by_bucket"]} == {
+            "high_priority": 1.0, "reach": 0.0,
+        }
+        assert {row["key"]: row["n"] for row in analysis["by_score_band"]} == {"80-100": 30, "40-60": 20}
+        assert {row["key"]: row["up_rate"] for row in analysis["by_school"]} == {"uiuc": 1.0, "uw": 0.0}
+        assert {row["key"]: row["n"] for row in analysis["by_position"]} == {"1-3": 30}
+        assert analysis["keyword_overlap"]["available"] is False
+        # votes carry no per-layer component scores → replay degrades honestly
+        replay = analysis["replay"]
+        assert replay["mode"] == "score_band_agreement"
+        assert replay["current_agreement"] == 1.0
+        assert replay["best_candidate"] is None
+        assert replay["sample_n"] == 50
