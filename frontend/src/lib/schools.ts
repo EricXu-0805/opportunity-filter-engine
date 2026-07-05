@@ -228,6 +228,17 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('ucsb'),
     catalog: { colleges: 3, majors: 73 },
   },
+  {
+    slug: 'boulder',
+    domain: 'colorado.edu',
+    name: 'University of Colorado Boulder',
+    shortName: 'CU Boulder',
+    nameZh: '科罗拉多大学博尔德分校',
+    color: '#CFB87C',
+    location: 'Boulder, CO',
+    coverage: campusCoverage('boulder'),
+    catalog: { colleges: 6, majors: 78 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));
