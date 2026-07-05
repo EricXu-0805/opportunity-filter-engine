@@ -11,6 +11,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
+from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
     COLLEGE_AFFINITY_MAX,
@@ -43,6 +44,15 @@ from .config import (
     TOPIC_UNKNOWN_PENALTY,
     WEIGHTS_DEFAULT,
 )
+
+# Every school slug the platform collects for. All are R1s, so records hosted
+# at any of them share one brand score — ranking registered schools against
+# each other (the old caltech/mit/... list) is not the product's job.
+REGISTERED_SCHOOLS = frozenset(s for s, _ in SOURCE_DEFAULTS.values() if s)
+
+# External prestige brands (labs/agencies/schools we don't collect for),
+# word-bounded so "mit" can't match Smithsonian/Smiths/Smith+Nephew.
+_PRESTIGE_ORG_RE = re.compile(r"\b(?:caltech|mit|stanford|cmu|berkeley|nasa|doe)\b")
 
 
 @dataclass
@@ -949,15 +959,14 @@ def score_upside(
             reasons_fit.append("On-campus — no work authorization concerns")
 
     # Brand/prestige (15%)
-    # Simple heuristic for V1 — can be refined
     brand_score = 60.0
     org = (opportunity.get("organization") or "").lower()
-    prestigious = ["caltech", "mit", "stanford", "cmu", "berkeley", "nasa", "doe"]
-    if any(p in org for p in prestigious):
+    if opportunity.get("school") in REGISTERED_SCHOOLS:
+        brand_score = 90.0
+        reasons_fit.append("Major research university — strong resume builder")
+    elif _PRESTIGE_ORG_RE.search(org):
         brand_score = 95.0
         reasons_fit.append("Prestigious institution — strong resume builder")
-    elif "uiuc" in org or "illinois" in org:
-        brand_score = 70.0
 
     desc = (opportunity.get("description_raw") or "").lower()
     mentor_keywords = ["mentor", "training", "learn", "guided", "supervision", "teach", "onboard"]
