@@ -54,6 +54,20 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
     const historyForApi = messages.slice(-20);
     setMessages((prev) => [...prev, newUserMsg]);
     setLoading(true);
+    // First delta pushes the assistant bubble (visually replacing the
+    // spinner); later deltas extend it in place.
+    let assistantStarted = false;
+    const onDelta = (chunk: string) => {
+      if (!assistantStarted) {
+        assistantStarted = true;
+        setMessages((prev) => [...prev, { role: 'assistant', content: chunk }]);
+      } else {
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          return [...prev.slice(0, -1), { role: 'assistant', content: last.content + chunk }];
+        });
+      }
+    };
     try {
       const resp = await chatWithOpportunity(
         opportunity.id,
@@ -61,12 +75,20 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
         historyForApi,
         shareProfile ? profile : null,
         selectedModel || undefined,
+        onDelta,
       );
-      setMessages((prev) => [...prev, { role: 'assistant', content: resp.reply }]);
+      if (!assistantStarted && resp.reply) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: resp.reply }]);
+      }
+      if (resp.errored) {
+        setError(t('chatbot.errorGeneric'));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('chatbot.errorGeneric'));
-      setMessages((prev) => prev.slice(0, -1));
-      setInput(trimmed);
+      if (!assistantStarted) {
+        setMessages((prev) => prev.slice(0, -1));
+        setInput(trimmed);
+      }
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -220,7 +242,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
           </div>
         ))}
 
-        {loading && (
+        {loading && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex gap-2">
             <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
               <Bot className="w-3.5 h-3.5 text-indigo-600" aria-hidden="true" />
