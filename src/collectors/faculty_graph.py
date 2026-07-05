@@ -1771,9 +1771,21 @@ _UMBRELLA_DEPTS: dict[str, frozenset[str]] = {
 }
 
 
+# "Scott L. Delp, Ph.D." must normalize equal to "Scott L. Delp" — credential
+# suffixes made the same person on the same profile URL survive dedup twice.
+_CREDENTIAL_TOKENS = frozenset({
+    "ph", "phd", "dphil", "md", "dvm", "dds", "jd", "esq", "mba", "msc",
+    "dr", "prof", "jr", "sr", "ii", "iii", "iv",
+})
+
+
 def _name_tokens(name: str) -> set[str]:
-    """Lowercased alphabetic name tokens (length > 1 — drops middle initials)."""
-    return {t for t in re.findall(r"[a-z]+", (name or "").lower()) if len(t) > 1}
+    """Lowercased alphabetic name tokens (length > 1 — drops middle initials;
+    credential/honorific tokens excluded)."""
+    return {
+        t for t in re.findall(r"[a-z]+", (name or "").lower())
+        if len(t) > 1 and t not in _CREDENTIAL_TOKENS
+    }
 
 
 def _norm_person_name(name: str) -> str:
@@ -1867,6 +1879,27 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         if nn:
             by_name[(o.get("school"), nn)].append(o)
     for (school, _nn), group in by_name.items():
+        if len(group) < 2:
+            continue
+        # Same person twice under ONE department with the same profile URL is a
+        # scrape artifact (typically a credential-suffix name variant), not a
+        # joint appointment — collapse it regardless of umbrella config.
+        by_url_dept: dict[tuple[str, str], list[dict]] = defaultdict(list)
+        for o in group:
+            u = (o.get("url") or "").strip().rstrip("/").lower()
+            if u:
+                by_url_dept[(u, o.get("department") or "")].append(o)
+        for dgroup in by_url_dept.values():
+            if len(dgroup) < 2:
+                continue
+            survivor = _pick_richer(dgroup, frozenset())
+            for o in dgroup:
+                if o is survivor:
+                    continue
+                _merge_faculty_fields(survivor, o)
+                remove.add(id(o))
+                removed_by_school[school] += 1
+        group = [o for o in group if id(o) not in remove]
         if len(group) < 2:
             continue
         umbrella = _UMBRELLA_DEPTS.get(school, frozenset())
