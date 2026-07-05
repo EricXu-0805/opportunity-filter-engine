@@ -3,7 +3,7 @@ import { loadCatalog } from './index';
 import { COLLEGE_MAJORS as UIUC_COLLEGE_MAJORS } from '@/lib/colleges';
 import { SCHOOLS } from '@/lib/schools';
 
-const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford', 'ucsd', 'uchicago'];
+const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford', 'ucsd', 'uchicago', 'uci', 'ucsb'];
 
 // Anything html.unescape would have missed in the generated data files.
 const HTML_ENTITY = /&[a-zA-Z]+\d*;|&#\d+;/;
