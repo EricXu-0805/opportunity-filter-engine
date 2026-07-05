@@ -37,6 +37,11 @@ export interface ProfileData {
   format_preference?: string;
   name?: string;
   experience_level?: string;
+  /**
+   * Account tier. 'org' is reserved at the type level only (no org tables
+   * yet); readers default to 'personal' when absent.
+   */
+  account_type?: 'personal' | 'org';
 }
 
 // ── Backend Profile Request ──────────────────────────────────────────

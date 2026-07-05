@@ -28,6 +28,7 @@ function AdminInner() {
     health,
     savedSearchHealth,
     feedbackInbox,
+    ordersInbox,
     loading,
     error,
     activeFieldFilter,
@@ -39,6 +40,7 @@ function AdminInner() {
     handleSubmitToken,
     handleLock,
     handleTriggerRefresh,
+    handleConfirmOrder,
   } = useAdminData(t);
 
   if (!token) {
@@ -63,6 +65,7 @@ function AdminInner() {
       health={health}
       savedSearchHealth={savedSearchHealth}
       feedbackInbox={feedbackInbox}
+      ordersInbox={ordersInbox}
       loading={loading}
       error={error}
       activeFieldFilter={activeFieldFilter}
@@ -73,6 +76,7 @@ function AdminInner() {
       onRefresh={() => fetchAll(token)}
       onLock={handleLock}
       onTriggerRefresh={handleTriggerRefresh}
+      onConfirmOrder={handleConfirmOrder}
       t={t}
     />
   );

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Verify migrations 017/018 (Flow B cross-device merge) against a real,
-# throwaway Postgres cluster — no docker, no Supabase. Spins an ephemeral
-# cluster in a temp dir, loads test stubs -> the effective prod schema
-# (migrations, 004 is excluded because 006 supersedes it) -> 017/018, runs
-# flow_b_merge_test.sql, and tears everything down.
+# Verify migrations 017/018 (Flow B cross-device merge) + 019 (orders RLS)
+# against a real, throwaway Postgres cluster — no docker, no Supabase. Spins
+# an ephemeral cluster in a temp dir, loads test stubs -> the effective prod
+# schema (migrations, 004 is excluded because 006 supersedes it), runs
+# flow_b_merge_test.sql + orders_rls_test.sql, and tears everything down.
 #
 # Usage:  supabase/tests/run_flow_b_test.sh
 # Requires: postgresql@16 (initdb/pg_ctl/psql on PATH).
@@ -45,5 +45,8 @@ done
 
 echo "==> run flow_b_merge_test.sql"
 "${PSQL[@]}" -f "$HERE/flow_b_merge_test.sql"
+
+echo "==> run orders_rls_test.sql"
+"${PSQL[@]}" -f "$HERE/orders_rls_test.sql"
 
 echo "==> OK"
