@@ -431,6 +431,24 @@ export const en = {
     },
   },
   home: {
+    walkthrough: {
+      title: 'How JoinALab works',
+      subtitle: 'From profile to a sent application in three steps — here is the real product.',
+      steps: {
+        profile: {
+          title: 'Tell us your background',
+          caption: 'Major, year, interests, skills — or import them from your résumé or GitHub in one click.',
+        },
+        matches: {
+          title: 'Get ranked, honest matches',
+          caption: 'Thousands of live opportunities scored against your profile, with international-student eligibility called out.',
+        },
+        act: {
+          title: 'Act on the best ones',
+          caption: 'Ask AI about any posting, tailor your résumé, draft a grounded cold email, and track every application.',
+        },
+      },
+    },
     hero: {
       tagline: 'AI-Powered Opportunity Matching',
       title: 'Find Your Perfect',
@@ -2221,6 +2239,24 @@ export const zh = {
     },
   },
   home: {
+    walkthrough: {
+      title: 'JoinALab 如何工作',
+      subtitle: '从填写档案到发出申请，三步走完——以下是真实产品界面。',
+      steps: {
+        profile: {
+          title: '填写你的背景',
+          caption: '专业、年级、兴趣、技能——也可以一键从简历或 GitHub 导入。',
+        },
+        matches: {
+          title: '获得诚实的匹配排名',
+          caption: '数千条实时机会按你的背景打分排序，国际学生资格清晰标注。',
+        },
+        act: {
+          title: '对最合适的立即行动',
+          caption: '就任何岗位提问 AI、定制简历、生成有据可依的冷邮件，并跟踪每一份申请。',
+        },
+      },
+    },
     hero: {
       tagline: 'AI 驱动的机会匹配',
       title: '找到最合适的',
