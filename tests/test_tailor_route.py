@@ -761,6 +761,120 @@ class TestLocale:
         assert "STRICT RULES:" in captured["system"]
 
 
+class TestSkillLevelThreading:
+    """Skill proficiency levels reach the LLM prompt and the system prompt
+    tells the model to honor them (highlight expert/experienced, never
+    overclaim beginner). Plain-string skills stay valid with no level."""
+
+    @pytest.fixture
+    def leveled_profile(self, python_profile) -> dict:
+        return {
+            **python_profile,
+            "hard_skills": [
+                {"name": "Python", "level": "expert"},
+                {"name": "Java", "level": "beginner"},
+            ],
+        }
+
+    def test_levels_threaded_into_user_prompt(
+        self, leveled_profile, real_opp_id, monkeypatch,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            captured["user"] = messages[1]["content"]
+            return json.dumps({"bullets": [
+                {"text": "Implemented Python ML projects in CS 225", "source_evidence": "Python"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": leveled_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python work in CS 225"],
+            },
+        )
+        assert resp.status_code == 200
+        assert "- Python (expert)" in captured["user"]
+        assert "- Java (beginner)" in captured["user"]
+
+    def test_en_system_prompt_states_level_honesty_rule(
+        self, leveled_profile, real_opp_id, monkeypatch,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            return json.dumps({"bullets": [
+                {"text": "Implemented Python ML projects in CS 225", "source_evidence": "Python"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": leveled_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python work in CS 225"],
+            },
+        )
+        assert resp.status_code == 200
+        assert "self-reported" in captured["system"]
+        assert "never present a beginner skill" in captured["system"]
+
+    def test_zh_system_prompt_states_level_honesty_rule(
+        self, leveled_profile, real_opp_id, monkeypatch,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["system"] = messages[0]["content"]
+            return json.dumps({"bullets": [
+                {"text": "在 CS 225 用 Python 完成机器学习项目", "source_evidence": "Python"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        resp = client.post(
+            "/api/tailor",
+            json={
+                "profile": leveled_profile,
+                "opportunity_id": real_opp_id,
+                "original_bullets": ["Did Python work in CS 225"],
+                "locale": "zh",
+            },
+        )
+        assert resp.status_code == 200
+        assert "自评水平" in captured["system"]
+        assert "绝不能" in captured["system"]
+
+    def test_plain_string_skill_has_no_level_suffix(self, monkeypatch):
+        """Backward compat: a raw string skill renders as a bare '- Name'
+        line — no '(level)' annotation is invented for it."""
+        captured: dict = {}
+
+        def fake_chat(messages, **kwargs):
+            captured["user"] = messages[1]["content"]
+            return json.dumps({"bullets": [
+                {"text": "Used MATLAB for signal analysis", "source_evidence": "MATLAB"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        out = tailor_module._ai_tailor_bullets(
+            {"name": "S", "major": "EE", "year": "junior", "hard_skills": ["MATLAB"]},
+            {"title": "Lab", "eligibility": {}, "keywords": []},
+            ["Did MATLAB signal work"],
+        )
+        assert out is not None
+        assert "- MATLAB\n" in captured["user"]
+        assert "- MATLAB (" not in captured["user"]
+
+
 class TestUnitHelpers:
     """Unit tests for the validator + evidence builder, no HTTP layer."""
 

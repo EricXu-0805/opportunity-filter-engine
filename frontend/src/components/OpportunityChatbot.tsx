@@ -84,7 +84,12 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
         setError(t('chatbot.errorGeneric'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('chatbot.errorGeneric'));
+      const message = err instanceof Error ? err.message : '';
+      if (message.startsWith('API 429')) {
+        setError(t('chatbot.errorRateLimited'));
+      } else {
+        setError(message || t('chatbot.errorGeneric'));
+      }
       if (!assistantStarted) {
         setMessages((prev) => prev.slice(0, -1));
         setInput(trimmed);

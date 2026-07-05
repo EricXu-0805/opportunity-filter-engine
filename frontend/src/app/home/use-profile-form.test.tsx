@@ -63,7 +63,7 @@ vi.mock('@/lib/supabase', () => ({
 import { useProfileForm } from './use-profile-form';
 import { saveProfile } from '@/lib/supabase';
 import { parseGitHubProfile } from '@/lib/api';
-import { HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
+import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from '@/lib/storage-keys';
 
 const RESUME = (suggested_interests: string) => ({
   extracted_skills: [] as string[],
@@ -157,6 +157,7 @@ function FullHarness() {
       <button data-testid="parseA" onClick={() => form.handleResumeParsed(RESUME('computer vision, machine learning'))}>A</button>
       <button data-testid="parseB" onClick={() => form.handleResumeParsed(RESUME('robotics'))}>B</button>
       <button data-testid="set-gh" onClick={() => form.update('github_url', 'https://github.com/octocat')}>set</button>
+      <button data-testid="set-skill" onClick={() => form.update('skills', [{ name: 'Rust', level: 'expert' }])}>skill</button>
       <button data-testid="submit" onClick={() => { void form.handleSubmit(); }}>submit</button>
     </div>
   );
@@ -226,6 +227,24 @@ describe('useProfileForm — GitHub auto-import on submit (PR5 ②)', () => {
     expect(lastSaved.skills).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Go' })]),
     );
+  });
+});
+
+describe('useProfileForm — skill levels persist through the save path', () => {
+  it('handleSubmit saves skills with their levels to supabase and localStorage', async () => {
+    vi.mocked(saveProfile).mockClear();
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    fireEvent.click(screen.getByTestId('set-skill'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(saveProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ skills: [{ name: 'Rust', level: 'expert' }] }),
+    );
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!);
+    expect(stored.skills).toEqual([{ name: 'Rust', level: 'expert' }]);
+    expect(pushSpy).toHaveBeenCalledWith('/results');
   });
 });
 

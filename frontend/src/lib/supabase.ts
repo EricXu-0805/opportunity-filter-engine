@@ -943,6 +943,73 @@ export async function submitFeedback(
   return true;
 }
 
+// Concierge manual-payment orders (migration 019). The client may only
+// INSERT its own pending order and SELECT its own rows — every status
+// transition happens server-side (mark-paid-claimed + admin confirm).
+export interface OrderRow {
+  id: string;
+  package: string;
+  amount_cents: number;
+  currency: string;
+  status: 'pending' | 'awaiting_confirm' | 'paid' | 'cancelled' | 'refunded';
+  channel: string;
+  created_at: string;
+  paid_at: string | null;
+}
+
+export async function createOrder(
+  pkg: { id: string; amountCents: number; currency: string },
+): Promise<OrderRow | null> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return null;
+
+  const { data, error } = await supabase
+    .from('orders')
+    .insert({
+      device_id: deviceId,
+      package: pkg.id,
+      amount_cents: pkg.amountCents,
+      currency: pkg.currency,
+      channel: 'manual',
+    })
+    .select()
+    .single();
+  if (error || !data) {
+    console.warn('[ofe] order insert failed:', error?.message);
+    return null;
+  }
+  return data as OrderRow;
+}
+
+export async function getMyOrders(): Promise<OrderRow[]> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return [];
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id,package,amount_cents,currency,status,channel,created_at,paid_at')
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data as OrderRow[];
+}
+
+export async function claimOrderPaid(orderId: string): Promise<boolean> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return false;
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
+  try {
+    const res = await fetch(`${apiBase}/orders/${orderId}/mark-paid-claimed`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
 
 export interface InteractionRecord {
