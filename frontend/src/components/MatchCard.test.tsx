@@ -13,6 +13,7 @@ vi.mock('@/i18n/client', () => ({
 
 vi.mock('@/lib/api', () => ({
   getGapAnalysis: vi.fn(),
+  getResponsivenessSignals: vi.fn().mockResolvedValue({}),
 }));
 
 import MatchCard from './MatchCard';

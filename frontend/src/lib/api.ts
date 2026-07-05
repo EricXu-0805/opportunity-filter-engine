@@ -379,6 +379,23 @@ export async function getStats(): Promise<StatsResponse> {
   return request<StatsResponse>('/opportunities/stats/summary');
 }
 
+export interface ResponsivenessSignal {
+  contacted_n: number;
+  replied_n: number;
+}
+
+/**
+ * GET /api/opportunities/responsiveness — anonymous aggregate signals
+ * (opportunity_id → counts). The backend only ships aggregates with
+ * contacted_n >= its min-N floor; nothing individual-level ever arrives here.
+ */
+export async function getResponsivenessSignals(): Promise<Record<string, ResponsivenessSignal>> {
+  const data = await request<{ signals?: Record<string, ResponsivenessSignal> }>(
+    '/opportunities/responsiveness',
+  );
+  return data.signals ?? {};
+}
+
 /**
  * Fire-and-forget ping to wake a sleeping Render free-tier backend.
  * First cold-start can take 20-40s; calling this on app mount means the

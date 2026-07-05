@@ -31,6 +31,8 @@ from .config import (
     INTL_UNKNOWN_INTERNSHIP_SCORE,
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
+    RESPONSIVENESS_BONUS,
+    RESPONSIVENESS_MIN_N,
     SEASONAL_BOOST_ENABLED,
     SEASONAL_BOOST_FACTOR,
     SEASONAL_BOOST_MONTHS,
@@ -335,6 +337,23 @@ def _home_school_affinity(profile: dict, opportunity: dict) -> float:
     if not home:
         return 0.0
     return HOME_SCHOOL_AFFINITY_MAX if opportunity.get("school") == home else 0.0
+
+
+def _responsiveness_bonus(
+    opportunity: dict, responsiveness: dict[str, dict] | None
+) -> float:
+    """Additive bonus (0..3) when aggregated internal signals show students
+    recently got replies here: >= RESPONSIVENESS_MIN_N distinct devices made
+    contact and >= 1 reached got-reply/interviewing. OFF by default
+    (OFE_RESPONSIVENESS_BONUS=0); clamped so it can only break ties."""
+    if not responsiveness or RESPONSIVENESS_BONUS <= 0:
+        return 0.0
+    sig = responsiveness.get(opportunity.get("id", ""))
+    if not sig:
+        return 0.0
+    if sig.get("contacted_n", 0) < RESPONSIVENESS_MIN_N or sig.get("replied_n", 0) < 1:
+        return 0.0
+    return min(RESPONSIVENESS_BONUS, 3.0)
 
 
 def _major_match_score(
@@ -1465,6 +1484,7 @@ def rank_opportunity(
     precomputed_sim: float | None = None,
     today=None,
     implicit_keywords: set[str] | None = None,
+    responsiveness: dict[str, dict] | None = None,
 ) -> MatchResult:
     if precomputed_eligibility is not None:
         elig_score, elig_fit, elig_gap = precomputed_eligibility
@@ -1489,7 +1509,8 @@ def rank_opportunity(
     interest_bonus = _interest_bonus(profile, opportunity)
     college_bonus = _college_affinity(profile, opportunity)
     home_bonus = _home_school_affinity(profile, opportunity)
-    raw = min(100.0, raw + interest_bonus + college_bonus + home_bonus)
+    resp_bonus = _responsiveness_bonus(opportunity, responsiveness)
+    raw = min(100.0, raw + interest_bonus + college_bonus + home_bonus + resp_bonus)
 
     # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
     # eligibility layer). A separate raw multiplier here double-counted the same
@@ -1808,7 +1829,11 @@ def _diversify_explore(
     return out
 
 
-def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
+def rank_all(
+    profile: dict,
+    opportunities: list[dict],
+    responsiveness: dict[str, dict] | None = None,
+) -> list[MatchResult]:
     """Rank all opportunities for a profile. Returns sorted by final_score desc."""
     search_weight = profile.get("search_weight", 50)
     exploring = bool(profile.get("exploring"))
@@ -1912,6 +1937,7 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             precomputed_eligibility=elig_triple,
             precomputed_sim=sims_by_id.get(opp.get("id")),
             implicit_keywords=implicit_kw,
+            responsiveness=responsiveness,
         )
         if result.final_score >= min_threshold:
             results.append(result)
