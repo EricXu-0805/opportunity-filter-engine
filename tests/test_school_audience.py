@@ -35,6 +35,19 @@ def test_mapped_source_is_restamped_from_defaults_ignoring_record_values():
     assert opp["audience"] == expected_audience
 
 
+def test_faculty_sources_are_uniformly_unknown_audience():
+    # Symmetry pin: every faculty directory (uiuc_faculty included — it was
+    # 'campus' pre-toggle, hiding 3k+ UIUC professors from every other
+    # school's students) is a cold-email target with professor-specific
+    # openness. Visibility is the cross-school toggle's job, not a per-school
+    # audience tag.
+    offenders = {
+        source: pair for source, pair in SOURCE_DEFAULTS.items()
+        if source.endswith("_faculty") and pair[1] != "unknown"
+    }
+    assert not offenders
+
+
 def test_unmapped_invalid_audience_coerced_to_unknown():
     opp = {"source": "manual", "school": "uiuc", "audience": "everyone"}
     apply_school_audience([opp])

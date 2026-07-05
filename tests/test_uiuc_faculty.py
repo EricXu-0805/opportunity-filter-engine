@@ -103,25 +103,28 @@ def test_null_unit_inbox_emails_nulls_unit_mailboxes_keeps_personal():
     a personal address, including the vowel-stripped and initials shapes UIUC
     uses ("fhnstck@" for Fahnestock, "geg@" for Gary E. Gladding), is preserved."""
     opps = [
-        {"source": "uiuc_faculty", "department": "Department of English",
-         "pi_name": "Susan Koshy", "contact_email": "english@illinois.edu"},
-        {"source": "uiuc_faculty", "department": "Department of Physics",
-         "pi_name": "Pengjie Wang", "contact_email": "mainoffice@physics.illinois.edu"},
-        {"source": "uiuc_faculty", "department": "Department of Animal Sciences",
-         "pi_name": "Carl M. Parsons", "contact_email": "poultry@illinois.edu"},
-        {"source": "uiuc_faculty", "department": "Department of Anthropology",
-         "pi_name": "Kathryn Clancy", "contact_email": "anthro@illinois.edu"},
+        _fac_email("Susan Koshy", "Department of English", "english@illinois.edu", "u/sk"),
+        _fac_email("Pengjie Wang", "Department of Physics", "mainoffice@physics.illinois.edu", "u/pw"),
+        _fac_email("Carl M. Parsons", "Department of Animal Sciences", "poultry@illinois.edu", "u/cp"),
+        _fac_email("Kathryn Clancy", "Department of Anthropology", "anthro@illinois.edu", "u/kc"),
+        # unit inboxes at OTHER schools are the same pattern — nulled too
+        _fac_email("Jane Roe", "Scheller College of Business", "dean@scheller.gatech.edu",
+                   "u/jr", source="gatech_faculty"),
+        _fac_email("John Poe", "Nelson Institute", "info@nelson.wisc.edu",
+                   "u/jp", source="wisc_faculty"),
         # personal addresses that must SURVIVE
-        {"source": "uiuc_faculty", "department": "Department of Civil Engineering",
-         "pi_name": "Larry A. Fahnestock", "contact_email": "fhnstck@illinois.edu"},
-        {"source": "uiuc_faculty", "department": "Department of Physics",
-         "pi_name": "Gary E. Gladding", "contact_email": "geg@illinois.edu"},
+        _fac_email("Larry A. Fahnestock", "Department of Civil Engineering",
+                   "fhnstck@illinois.edu", "u/lf"),
+        _fac_email("Gary E. Gladding", "Department of Physics", "geg@illinois.edu", "u/gg"),
+        _fac_email("Linda Bushnell", "Electrical & Computer Engineering",
+                   "lb2@uw.edu", "u/lb", source="uw_faculty"),
     ]
     nulled = _null_unit_inbox_emails(opps)
-    assert nulled == 4
-    assert [o["contact_email"] for o in opps[:4]] == [None, None, None, None]
-    assert opps[4]["contact_email"] == "fhnstck@illinois.edu"
-    assert opps[5]["contact_email"] == "geg@illinois.edu"
+    assert nulled == 6
+    assert [o["contact_email"] for o in opps[:6]] == [None] * 6
+    assert opps[6]["contact_email"] == "fhnstck@illinois.edu"
+    assert opps[7]["contact_email"] == "geg@illinois.edu"
+    assert opps[8]["contact_email"] == "lb2@uw.edu"
 
 
 def test_null_wrong_person_emails_nulls_only_curated_ids():
@@ -537,10 +540,12 @@ def test_strip_furniture_keywords_drops_contact_residue_and_backfills_broad():
     # Mixed record keeps its real area; contact-only record falls back to the
     # department broad field rather than being left with an empty keyword list.
     opps = [
-        {"source": "uiuc_faculty", "department": "Department of Physics",
+        {"source": "uiuc_faculty", "source_type": "faculty_research",
+         "department": "Department of Physics",
          "keywords": ["condensed matter physics", "ceperley@illinois.edu",
                       "(217) 244-0646", "229 loomis laboratory"]},
-        {"source": "uiuc_faculty", "department": "Department of Physics",
+        {"source": "uiuc_faculty", "source_type": "faculty_research",
+         "department": "Department of Physics",
          "keywords": ["327 loomis laboratory", "covey@illinois.edu"]},
     ]
     changed = _strip_furniture_keywords(opps)
@@ -548,6 +553,22 @@ def test_strip_furniture_keywords_drops_contact_residue_and_backfills_broad():
     assert opps[0]["keywords"] == ["condensed matter physics"]
     assert opps[1]["keywords"] == [_dept_broad_field("Department of Physics")]
     assert opps[1]["keywords"] == ["physics"]
+
+
+def test_strip_furniture_keywords_covers_every_faculty_school():
+    # The junk patterns are school-agnostic: a gatech_faculty record is cleaned
+    # exactly like a uiuc_faculty one, while a non-faculty record (course page
+    # with a scraped phone number) is never touched.
+    opps = [
+        {"source": "gatech_faculty", "source_type": "faculty_research",
+         "department": "School of Physics",
+         "keywords": ["quantum computing", "(404) 894-5200"]},
+        {"source": "uiuc_our_rss", "source_type": "research_listing",
+         "keywords": ["(217) 244-0646"]},
+    ]
+    assert _strip_furniture_keywords(opps) == 1
+    assert opps[0]["keywords"] == ["quantum computing"]
+    assert opps[1]["keywords"] == ["(217) 244-0646"]
 
 
 def test_split_compound_keywords_atomizes_comma_joined():
@@ -597,18 +618,21 @@ def test_run_faculty_dq_makes_a_dirty_scrape_quality_clean():
     # Mirrors the exact branch failures: course-code + comma-joined keywords, a
     # title with nav-menu pollution, and a shared department inbox on >=3 profs.
     rows = [
-        {"source": "uiuc_faculty", "pi_name": "Ada Lovelace",
+        {"source": "uiuc_faculty", "source_type": "faculty_research",
+         "pi_name": "Ada Lovelace",
          "department": "Computer Science",
          "title": "Research with Prof. Ada Lovelace — CS",
          "keywords": ["compilers, architecture, and parallel computing",
                       "cs 591 sn - systems and networking seminar"],
          "metadata": {}, "contact_email": "advising@illinois.edu"},
-        {"source": "uiuc_faculty", "pi_name": "Alan Turing",
+        {"source": "uiuc_faculty", "source_type": "faculty_research",
+         "pi_name": "Alan Turing",
          "department": "Computer Science",
          "title": "Research with Prof. Alan Turing — CS",
          "keywords": ["computer vision, object recognition, scene understanding"],
          "metadata": {}, "contact_email": "advising@illinois.edu"},
-        {"source": "uiuc_faculty", "pi_name": "Grace Hopper",
+        {"source": "uiuc_faculty", "source_type": "faculty_research",
+         "pi_name": "Grace Hopper",
          "department": "Computer Science",
          "title": "Research with Prof. Grace Hopper — CS",
          "keywords": ["machine learning"],
@@ -631,9 +655,10 @@ def test_run_faculty_dq_makes_a_dirty_scrape_quality_clean():
 
 # DQ-4: collapse a joint-appointment professor duplicated across departments.
 
-def _fac_email(pi_name, department, email, url):
+def _fac_email(pi_name, department, email, url, source="uiuc_faculty"):
     return {
-        "source": "uiuc_faculty", "pi_name": pi_name, "department": department,
+        "source": source, "source_type": "faculty_research",
+        "pi_name": pi_name, "department": department,
         "contact_email": email, "source_url": url, "description": "",
     }
 
@@ -702,6 +727,21 @@ def test_null_shared_admin_email_across_distinct_professors():
     assert nulled == 3
     assert all(r["contact_email"] is None for r in rows[:3])
     assert rows[3]["contact_email"] == "ddiaz@illinois.edu"  # personal email kept
+
+
+def test_null_shared_admin_email_covers_every_faculty_school():
+    # A coordinator inbox scraped onto 3 distinct Stanford professors is nulled
+    # like a UIUC one; a non-faculty record sharing the address is untouched.
+    rows = [
+        _fac_email("Alice Adams", "CS", "admissions@cs.stanford.edu", "u/aa", source="stanford_faculty"),
+        _fac_email("Bob Brown", "CS", "admissions@cs.stanford.edu", "u/bb", source="stanford_faculty"),
+        _fac_email("Carol Clark", "CS", "admissions@cs.stanford.edu", "u/cc", source="stanford_faculty"),
+        {"source": "nsf_reu", "source_type": "research_program", "pi_name": "Dana Diaz",
+         "contact_email": "admissions@cs.stanford.edu"},
+    ]
+    assert _null_shared_admin_emails(rows) == 3
+    assert all(r["contact_email"] is None for r in rows[:3])
+    assert rows[3]["contact_email"] == "admissions@cs.stanford.edu"
 
 
 def test_joint_appointment_personal_email_is_not_nulled():

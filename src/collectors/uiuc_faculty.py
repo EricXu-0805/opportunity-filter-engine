@@ -1470,16 +1470,24 @@ _KEYWORD_FRAGMENT_PREFIX_RE = re.compile(
 )
 
 
+def _is_faculty_record(opp: dict) -> bool:
+    """Any school's faculty record (uiuc_faculty, uw_faculty, ucb_*_faculty, …) —
+    every faculty collector emits source_type='faculty_research'. The junk-keyword
+    and shared-inbox patterns are school-agnostic, so the hygiene passes below
+    gate on this instead of source == 'uiuc_faculty'."""
+    return opp.get("source_type") == "faculty_research"
+
+
 def _strip_furniture_keywords(opps: list[dict]) -> int:
-    """Drop junk faculty keywords corpus-wide — page furniture ('undergraduate
-    research', 'tondeur lectures', job titles), dangling/truncated fragments
-    ('molecular mechanisms of', 'columbia uni'), and sentence fragments — via
-    _is_junk_keyword, restoring the broad field if a record is left empty.
-    Genuine areas like 'water resources' or 'machine teaching' are preserved.
-    Returns count changed."""
+    """Drop junk faculty keywords corpus-wide (every school's faculty) — page
+    furniture ('undergraduate research', 'tondeur lectures', job titles),
+    dangling/truncated fragments ('molecular mechanisms of', 'columbia uni'), and
+    sentence fragments — via _is_junk_keyword, restoring the broad field if a
+    record is left empty. Genuine areas like 'water resources' or 'machine
+    teaching' are preserved. Returns count changed."""
     changed = 0
     for o in opps:
-        if o.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(o):
             continue
         kws = o.get("keywords") or []
         kept = [k for k in kws if not _is_junk_keyword(k)]
@@ -1598,11 +1606,12 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     """Null contact_email when it is shared by many distinct professors — a
     scraped department/advising inbox, not a personal address. A 'Dear Professor
     X' cold email sent to a shared coordinator inbox misfires; an empty recipient
-    (the modal then disables send) is safer than a confidently wrong one. Mutates
-    ``opps`` in place; returns the count nulled."""
+    (the modal then disables send) is safer than a confidently wrong one. Covers
+    every school's faculty (emails are domain-unique, so cross-school counting
+    never conflates). Mutates ``opps`` in place; returns the count nulled."""
     names_by_email: dict[str, set[str]] = defaultdict(set)
     for opp in opps:
-        if opp.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(opp):
             continue
         email = (opp.get("contact_email") or "").strip().lower()
         if email:
@@ -1614,7 +1623,7 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     }
     nulled = 0
     for opp in opps:
-        if opp.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(opp):
             continue
         if (opp.get("contact_email") or "").strip().lower() in shared:
             opp["contact_email"] = None
@@ -1649,10 +1658,11 @@ def _null_unit_inbox_emails(opps: list[dict]) -> int:
     """Null contact_email when its local-part is a department/unit/role mailbox
     rather than a personal address. The match is exact (local-part in the generic
     set or equal to a department-name word), never a substring, so a personal
-    username is never clipped. Mutates ``opps`` in place; returns the count nulled."""
+    username is never clipped. Covers every school's faculty. Mutates ``opps``
+    in place; returns the count nulled."""
     nulled = 0
     for opp in opps:
-        if opp.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(opp):
             continue
         email = opp.get("contact_email") or ""
         if "@" not in email:

@@ -47,6 +47,9 @@ class ProfileRequest(BaseModel):
     # suppresses the topic-alignment penalty, de-emphasizes readiness, and
     # diversity-samples the top buckets) for students without a settled direction.
     exploring: bool = False
+    # Cross-school opt-in: other schools' resources are hidden by default
+    # (home school first); national records and summer programs always show.
+    include_cross_school: bool = False
     preferences: ProfilePreferences | None = None
 
     @field_validator("research_interests_text")
@@ -57,6 +60,14 @@ class ProfileRequest(BaseModel):
     @field_validator("name")
     @classmethod
     def cap_name(cls, v: str) -> str:
+        return v[:100]
+
+    # These four are interpolated verbatim into the chat system prompt —
+    # uncapped they let a 100k-char field balloon the prompt past the LLM
+    # context budget.
+    @field_validator("year", "major", "college", "experience_level")
+    @classmethod
+    def cap_short_text(cls, v: str) -> str:
         return v[:100]
 
     @field_validator("home_school")
@@ -90,6 +101,7 @@ class ProfileRequest(BaseModel):
                 result.append(SkillItem(name=item[:50], level="beginner"))
             elif isinstance(item, dict):
                 item["name"] = str(item.get("name", ""))[:50]
+                item["level"] = str(item.get("level", "beginner"))[:50]
                 result.append(SkillItem(**item))
             else:
                 result.append(item)
@@ -214,18 +226,6 @@ class RoadmapSkill(BaseModel):
 class RoadmapResponse(BaseModel):
     skills: list[RoadmapSkill]
     total_labs: int
-
-
-class ResumeParseResponse(BaseModel):
-    extracted_skills: list[str]
-    extracted_coursework: list[str]
-    experience_level: str
-    raw_text: str
-    success: bool
-    message: str = ""
-    # A labeled "Areas of Interest" / "Research Interests" line, used to seed the
-    # research-interests box when empty — the frontend's only semantic-match lever.
-    suggested_interests: str = ""
 
 
 class TailorRequest(BaseModel):

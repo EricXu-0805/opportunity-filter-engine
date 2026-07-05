@@ -166,7 +166,8 @@ def _stub_with_processed_file(monkeypatch, tmp_path, seeded):
     monkeypatch.setattr(refresh_all, "PROCESSED_FILE", processed)
     monkeypatch.setattr(
         refresh_all, "enrich_pi",
-        lambda opps, save=True: {"scraped": 0, "enriched": 0, "already_has_email": 0})
+        lambda opps, save=True, max_scrapes=None: {
+            "scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0})
     monkeypatch.setattr(refresh_all, "_null_shared_admin_emails", lambda opps: 0)
     return processed
 
@@ -291,7 +292,9 @@ def test_post_merge_pass_stamps_school_audience(monkeypatch, tmp_path):
     assert pass_info["by_source"] == {"uiuc_faculty": 1, "manual": 2}
 
     saved = {o["id"]: o for o in json.loads(processed.read_text(encoding="utf-8"))}
-    assert (saved["fac-1"]["school"], saved["fac-1"]["audience"]) == ("uiuc", "campus")
+    # uiuc_faculty is (uiuc, unknown) like every other school's directory —
+    # cross-school visibility is the matcher toggle's job, not the audience tag.
+    assert (saved["fac-1"]["school"], saved["fac-1"]["audience"]) == ("uiuc", "unknown")
     # Manual explicit values win (school normalized to a lowercase slug)...
     assert (saved["man-1"]["school"], saved["man-1"]["audience"]) == ("mit", "open")
     # ...and untagged manual records fall back to the conservative default.

@@ -407,6 +407,7 @@ def _ai_extract_bullets(resume_text: str, *, limit: int = 12) -> list[str] | Non
         ],
         max_tokens=900,
         temperature=0.0,
+        **model_for("extract"),
     )
     if not raw:
         return None

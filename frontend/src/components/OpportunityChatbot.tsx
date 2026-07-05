@@ -49,7 +49,9 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
     setError(null);
     setInput('');
     const newUserMsg: ChatMessage = { role: 'user', content: trimmed };
-    const historyForApi = messages.slice();
+    // Backend ChatRequest 422s on >20 history items — send only the recent
+    // window; the UI keeps the full transcript.
+    const historyForApi = messages.slice(-20);
     setMessages((prev) => [...prev, newUserMsg]);
     setLoading(true);
     try {

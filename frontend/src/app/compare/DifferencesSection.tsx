@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Check, X, ChevronDown } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
-import { FIELD_SCORERS, type OppScore } from './scores';
+import { FIELD_SCORERS } from './scores';
 import { useT } from '@/i18n/client';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
@@ -50,7 +50,7 @@ function normalizeForComparison(v: string | string[] | undefined): string {
 }
 
 interface Props {
-  rows: Array<{ opp: Opportunity; score: OppScore }>;
+  rows: Array<{ opp: Opportunity }>;
   profile: ProfileData | null;
 }
 
@@ -150,7 +150,7 @@ function Row({
   isIdenticalSection,
 }: {
   field: FieldSpec;
-  rows: Array<{ opp: Opportunity; score: OppScore }>;
+  rows: Array<{ opp: Opportunity }>;
   profile: ProfileData | null;
   gridStyle: React.CSSProperties;
   t: Replier;

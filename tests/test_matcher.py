@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.matcher.config import (
     EXPLORE_MAJOR_MISMATCH_FLOOR,
+    HOME_SCHOOL_AFFINITY_MAX,
     TOPIC_MISMATCH_PENALTY,
     TOPIC_UNKNOWN_PENALTY,
 )
@@ -26,6 +27,7 @@ from src.matcher.ranker import (
     _assign_buckets,
     _college_affinity,
     _compute_weights,
+    _home_school_affinity,
     _is_undergrad,
     _major_match_score,
     _normalize_type_key,
@@ -1314,7 +1316,9 @@ class TestFacultyUpsideReweight:
 
 class TestSchoolScopeFilter:
     """rank_all excludes another school's campus-only records before scoring;
-    'open' and 'unknown' audiences always pass regardless of host school."""
+    'open' and 'unknown' audiences pass for profiles without a home_school
+    (cross-school hiding is undefined without a home — see
+    TestCrossSchoolToggle for the opt-in behavior when one is set)."""
 
     @staticmethod
     def _opp(ident, school, audience):
@@ -1368,9 +1372,10 @@ class TestSchoolScopeFilter:
             ids = self._ids(self._profile(home_school=home), corpus)
             assert {"national-open", "ucb-unknown"} <= ids, f"home={home}"
 
-    def test_ucb_faculty_unknown_stays_visible_for_uiuc_home(self):
-        # Pins today's behavior: UIUC users see the ~200 UCB faculty
-        # cold-email targets (school='ucb', audience='unknown').
+    def test_ucb_faculty_unknown_stays_visible_without_home_school(self):
+        # A profile with no home_school keeps the pre-toggle behavior: the
+        # UCB faculty cold-email targets (school='ucb', audience='unknown')
+        # stay visible even though include_cross_school defaults to off.
         ucb_faculty = self._opp("ucb-fac", "ucb", "unknown")
         ucb_faculty["source"] = "ucb_eecs_faculty"
         ucb_faculty["source_type"] = "faculty_research"
@@ -1392,6 +1397,104 @@ class TestSchoolScopeFilter:
         ]
         ids = self._ids(self._profile(home_school="ucb"), corpus)
         assert ids == {"national-open", "legacy-untagged"}
+
+
+class TestCrossSchoolToggle:
+    """Cross-school resources are opt-in (include_cross_school, default off,
+    Eric 2026-07: 正常肯定还是会优先本学校的科研): another school's non-campus
+    records are hidden unless the toggle is on — except national records
+    (school=None) and summer programs, which recruit everywhere. When on, the
+    home school wins ties via the HOME_SCHOOL_AFFINITY_MAX additive bonus."""
+
+    @staticmethod
+    def _opp(ident, school, audience, opportunity_type="research"):
+        return {
+            "id": ident,
+            "title": f"Research position {ident}",
+            "opportunity_type": opportunity_type,
+            "school": school,
+            "audience": audience,
+            "eligibility": {},
+            "metadata": {"is_active": True},
+        }
+
+    @staticmethod
+    def _profile(include_cross_school=False, home_school="uiuc"):
+        return {
+            "year": "freshman",
+            "major": "CS",
+            "home_school": home_school,
+            "include_cross_school": include_cross_school,
+            "preferences": {"min_match_threshold": 0},
+        }
+
+    @pytest.fixture
+    def corpus(self):
+        return [
+            self._opp("home-fac", "uiuc", "unknown"),
+            self._opp("ucb-fac", "ucb", "unknown"),
+            self._opp("stanford-summer", "stanford", "open",
+                      opportunity_type="summer_program"),
+            self._opp("national-open", None, "open"),
+        ]
+
+    def _ids(self, profile, corpus):
+        return {r.opportunity_id for r in rank_all(profile, corpus)}
+
+    def test_off_hides_other_school_faculty(self, corpus):
+        ids = self._ids(self._profile(), corpus)
+        assert "home-fac" in ids
+        assert "ucb-fac" not in ids
+
+    def test_off_keeps_national_and_summer_programs(self, corpus):
+        ids = self._ids(self._profile(), corpus)
+        assert {"national-open", "stanford-summer"} <= ids
+
+    def test_on_shows_other_school_records(self, corpus):
+        ids = self._ids(self._profile(include_cross_school=True), corpus)
+        assert {"home-fac", "ucb-fac", "stanford-summer", "national-open"} <= ids
+
+    def test_no_home_school_keeps_pre_toggle_behavior(self, corpus):
+        prof = self._profile()
+        del prof["home_school"]
+        assert "ucb-fac" in self._ids(prof, corpus)
+
+    def test_uiuc_faculty_symmetric_cross_school(self):
+        # Symmetry regression: uiuc_faculty is (uiuc, unknown) like every
+        # other school's directory, so a UCB student sees it exactly when the
+        # toggle is on.
+        fac = self._opp("uiuc-fac", "uiuc", "unknown")
+        on = self._profile(include_cross_school=True, home_school="ucb")
+        off = self._profile(home_school="ucb")
+        assert self._ids(on, [fac]) == {"uiuc-fac"}
+        assert self._ids(off, [fac]) == set()
+
+    def test_home_school_bonus_orders_home_first_on_ties(self):
+        corpus = [
+            self._opp("ucb-fac", "ucb", "unknown"),
+            self._opp("home-fac", "uiuc", "unknown"),
+        ]
+        results = rank_all(self._profile(include_cross_school=True), corpus)
+        assert [r.opportunity_id for r in results] == ["home-fac", "ucb-fac"]
+        assert results[0].final_score > results[1].final_score
+
+    def test_home_school_bonus_never_outranks_better_topical_match(self):
+        prof = self._profile(include_cross_school=True)
+        prof["research_interests_text"] = "machine learning"
+        prof["desired_fields"] = ["machine learning"]
+        strong = self._opp("ucb-ml", "ucb", "unknown")
+        strong["keywords"] = ["machine learning"]
+        weak = self._opp("home-other", "uiuc", "unknown")
+        weak["keywords"] = ["medieval history"]
+        results = rank_all(prof, [strong, weak])
+        assert results[0].opportunity_id == "ucb-ml"
+
+    def test_bonus_inert_when_toggle_off(self):
+        prof = self._profile()
+        home = self._opp("home-fac", "uiuc", "unknown")
+        assert _home_school_affinity(prof, home) == 0.0
+        prof_on = self._profile(include_cross_school=True)
+        assert _home_school_affinity(prof_on, home) == HOME_SCHOOL_AFFINITY_MAX
 
 
 class TestExploreMajorFloor:
