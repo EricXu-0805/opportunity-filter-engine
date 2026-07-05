@@ -17,6 +17,17 @@ describe('resolvePath', () => {
     expect(resolvePath(en as never, 'common')).toBeUndefined();
     expect(resolvePath(en as never, 'nav')).toBeUndefined();
   });
+
+  it('resolves keys that contain literal dots via exact-key match', () => {
+    expect(resolvePath(zh as never, 'colleges.Michael G. Foster School of Business')).toBe('福斯特商学院');
+    expect(resolvePath(en as never, 'colleges.Lyndon B. Johnson School of Public Affairs')).toBe(
+      'Lyndon B. Johnson School of Public Affairs',
+    );
+  });
+
+  it('still returns undefined for dotted keys absent from the namespace', () => {
+    expect(resolvePath(en as never, 'colleges.No Such J. School')).toBeUndefined();
+  });
 });
 
 describe('interpolate', () => {
@@ -59,6 +70,14 @@ describe('translate', () => {
   it('interpolates variables', () => {
     expect(translate('en', 'home.hero.oppCount', { count: 1234 })).toBe('1234 active opportunities');
     expect(translate('zh', 'home.hero.oppCount', { count: 1234 })).toBe('1234 个活跃机会');
+  });
+
+  it('translates non-UIUC catalog names under zh (UCB spot check)', () => {
+    expect(translate('zh', 'majors.Electrical Engineering & Computer Sciences')).toBe('电气工程与计算机科学');
+    expect(translate('zh', 'colleges.College of Letters and Science')).toBe('文理学院');
+    expect(translate('en', 'majors.Electrical Engineering & Computer Sciences')).toBe(
+      'Electrical Engineering & Computer Sciences',
+    );
   });
 });
 

@@ -12,6 +12,7 @@ vi.mock('@/i18n/client', () => ({
 
 import { AcademicProfileCard } from './AcademicProfileCard';
 import { DEFAULT_PROFILE } from './types';
+import { translate } from '@/i18n/translate';
 import type { ProfileData } from '@/lib/types';
 
 const t = (key: string, vars?: Record<string, string | number>) =>
@@ -96,6 +97,21 @@ describe('AcademicProfileCard — catalog vs free-text fallback', () => {
       expect(screen.getByRole('option', { name: 'Spieker Undergraduate Business Program' })).toBeInTheDocument(),
     );
     expect((document.querySelector('select#major') as HTMLSelectElement).disabled).toBe(false);
+  });
+
+  it('zh: ucb college and major options render translated', async () => {
+    const zhT = (key: string, vars?: Record<string, string | number>) => translate('zh', key, vars);
+    render(
+      <AcademicProfileCard
+        profile={{ ...DEFAULT_PROFILE, home_school: 'ucb', college: 'College of Engineering' }}
+        update={vi.fn()}
+        t={zhT}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: '哈斯商学院' })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('option', { name: '电气工程与计算机科学' })).toBeInTheDocument();
   });
 
   it('a school without a catalog degrades college/major to free-text inputs with a note', () => {
