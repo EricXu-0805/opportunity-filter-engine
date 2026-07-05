@@ -101,6 +101,14 @@ def _scrape(url: str, selectors: dict, *, name_flip: bool = False,
         block["paginate"] = paginate
     return block
 
+
+def _lsa(short: str, name: str, majors: list[str], slug: str) -> dict:
+    """A scrape-only LSA department (AEM ``.person`` grid, hash-paginated). All
+    LSA people directories share the theme, so a whole department is one line."""
+    url = f"https://lsa.umich.edu/{slug}/people/faculty.html"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": _scrape(url, _LSA_SELECTORS, paginate=_LSA_PAGINATE)}
+
 SCHOOL: dict = {
     "school_slug": "umich",
     "source": "umich_faculty",
@@ -1087,6 +1095,28 @@ SCHOOL: dict = {
                 ),
             ],
         },
+        _lsa("AMCULT", "Department of American Culture", ['American Culture', 'Ethnic Studies'], "ac"),
+        _lsa("ANTHRO", "Department of Anthropology", ['Anthropology'], "anthro"),
+        _lsa("APHYS", "Applied Physics Program", ['Applied Physics', 'Physics'], "appliedphysics"),
+        _lsa("ALC", "Department of Asian Languages & Cultures", ['Asian Studies', 'Asian Languages'], "asian"),
+        _lsa("COMPLIT", "Department of Comparative Literature", ['Comparative Literature'], "complit"),
+        _lsa("EARTH", "Department of Earth & Environmental Sciences", ['Earth Science', 'Environmental Science', 'Geology'], "earth"),
+        _lsa("ENGLISH", "Department of English Language & Literature", ['English', 'Creative Writing'], "english"),
+        _lsa("FTVM", "Department of Film, Television & Media", ['Film & Media Studies'], "ftvm"),
+        _lsa("GERMAN", "Department of Germanic Languages & Literatures", ['German'], "german"),
+        _lsa("HISTART", "Department of the History of Art", ['History of Art'], "histart"),
+        _lsa("HISTORY", "Department of History", ['History'], "history"),
+        _lsa("JUDAIC", "Frankel Center for Judaic Studies", ['Judaic Studies'], "judaic"),
+        _lsa("LING", "Department of Linguistics", ['Linguistics'], "linguistics"),
+        _lsa("MIDEAST", "Department of Middle East Studies", ['Middle East Studies'], "middleeast"),
+        _lsa("NATIVEAM", "Native American Studies", ['Native American Studies'], "native"),
+        _lsa("NEUROSCI", "Neuroscience Program", ['Neuroscience'], "neurosci"),
+        _lsa("ORGSTUDIES", "Organizational Studies Program", ['Organizational Studies'], "orgstudies"),
+        _lsa("PHIL", "Department of Philosophy", ['Philosophy'], "philosophy"),
+        _lsa("POLISCI", "Department of Political Science", ['Political Science', 'Public Policy'], "polisci"),
+        _lsa("RLL", "Department of Romance Languages & Literatures", ['Spanish', 'French', 'Italian', 'Romance Languages'], "rll"),
+        _lsa("SLAVIC", "Department of Slavic Languages & Literatures", ['Slavic Studies', 'Russian'], "slavic"),
+        _lsa("SOC", "Department of Sociology", ['Sociology'], "soc"),
     ],
 }
 
