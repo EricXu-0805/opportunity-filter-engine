@@ -9,7 +9,7 @@ name: Refresh Opportunity Data
 #   | Mon | uiuc (+ Experts monthly, +Chromium)| ~90-150 min | ~120-180 min    |
 #   | Tue | ucb                               | ~60-100 min | —               |
 #   | Wed | uw,wisc                           | ~15-30 min  | ~75-130 min     |
-#   | Thu | utexas,ucla                       | ~15-30 min  | ~75-130 min     |
+#   | Thu | utexas,ucla,boulder               | ~25-45 min  | ~85-150 min     |
 #   | Fri | stanford,ucsd,princeton           | ~15-30 min  | ~70-120 min     |
 #   | Sat | gatech,uchicago,uci,ucsb,umich    | ~20-35 min  | ~75-130 min     |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
@@ -77,7 +77,7 @@ jobs:
               1) SHARD="uiuc" ;;
               2) SHARD="ucb" ;;
               3) SHARD="uw,wisc" ;;
-              4) SHARD="utexas,ucla" ;;
+              4) SHARD="utexas,ucla,boulder" ;;
               5) SHARD="stanford,ucsd,princeton" ;;
               6) SHARD="gatech,uchicago,uci,ucsb,umich" ;;
               7) SHARD="national" ;;

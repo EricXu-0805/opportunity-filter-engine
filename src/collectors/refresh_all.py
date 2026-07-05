@@ -26,6 +26,8 @@ from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
+from .schools.boulder_faculty import fetch_and_normalize as fetch_boulder_faculty
+from .schools.boulder_faculty import merge_into_processed as merge_boulder_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
@@ -622,6 +624,10 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # Drupal (SiteFarm) in five Views card families across Engineering,
             # the sciences, social sciences, and Bren (18 departments).
             ("ucsb_faculty", fetch_ucsb_faculty, merge_ucsb_faculty),
+            # CU Boulder faculty (live-scraped via faculty_graph): one VIVO
+            # template (experts.colorado.edu dept pages) across 51 departments;
+            # research chips + emails ride the gated per-profile pass.
+            ("boulder_faculty", fetch_boulder_faculty, merge_boulder_faculty),
         ]:
             # Direct SOURCE_DEFAULTS index: an unregistered source must fail
             # loudly here (KeyError) rather than silently run outside the shard

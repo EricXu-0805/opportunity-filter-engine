@@ -1767,6 +1767,68 @@ class TestUcsbConfig:
             assert dept["scrape"].get("ladder_filter"), short
 
 
+class TestBoulderConfig:
+    def test_boulder_config_valid(self):
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        assert fg.validate(BOULDER) == []
+
+    def test_boulder_registered(self):
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        assert SOURCE_DEFAULTS[BOULDER["source"]] == ("boulder", "unknown")
+        assert BOULDER["source"] in FACULTY_SOURCES
+
+    def test_boulder_every_dept_gates_the_vivo_role_sections(self):
+        """Every CU Experts dept page lists the roster in role-grouped h3
+        sections ("faculty administrative position" / "faculty position" /
+        "other researchers and staff") — each dept must keep only the anchored
+        faculty-position section AND ladder-filter the loose-text ranks
+        (Adjoint/clinical/visiting ride the same section)."""
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        for dept in BOULDER["departments"]:
+            sf = dept["scrape"].get("section_filter")
+            assert sf and sf["include"] == r"^faculty position$", dept["short"]
+            assert dept["scrape"].get("ladder_filter"), dept["short"]
+
+    def test_boulder_vivo_cards_parse(self):
+        """Representative CU Experts markup: the section gate keeps only the
+        faculty-position rows, the last-comma title_re extracts the loose-text
+        rank, name_flip un-inverts "Last, First", and the ladder gate drops the
+        Adjoint/Lecturer rows and the rank-less row (whose mis-captured first
+        name never matches the professor require-gate)."""
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        html = """
+        <ul><li class="subclass"><h3>faculty administrative position</h3>
+          <ul class="subclass-property-list">
+            <li><a href="/display/fisid_1" title="person name">Evans, John A</a>, Chair</li>
+          </ul></li>
+        <li class="subclass"><h3>faculty position</h3>
+          <ul class="subclass-property-list">
+            <li><a href="/display/fisid_1" title="person name">Evans, John A</a>, Associate Professor</li>
+            <li><a href="/display/fisid_2" title="person name">Baker, Daniel N</a>, Professor Adjoint (Academic)</li>
+            <li><a href="/display/fisid_3" title="person name">Allred, Aaron</a>, Lecturer</li>
+            <li><a href="/display/fisid_4" title="person name">Doe, Jane</a></li>
+            <li><a href="/display/fisid_5" title="person name">Frew, Eric W</a>, Professor</li>
+          </ul></li>
+        <li class="subclass"><h3>other researchers and staff</h3>
+          <ul class="subclass-property-list">
+            <li><a href="/display/fisid_6" title="person name">Smith, Bob</a>, Research Associate</li>
+          </ul></li></ul>
+        """
+        scrape = BOULDER["departments"][0]["scrape"]
+        people = fg._parse_cards(
+            BeautifulSoup(html, "html.parser"), scrape["selectors"],
+            "https://experts.colorado.edu/display/deptid_10318",
+            ladder_filter=scrape["ladder_filter"], name_flip=True,
+            section_filter=scrape["section_filter"])
+        assert [(p["name"], p["title"]) for p in people] == [
+            ("John A Evans", "Associate Professor"),
+            ("Eric W Frew", "Professor"),
+        ]
+        assert people[0]["url"] == "https://experts.colorado.edu/display/fisid_1"
+
+
 class TestNameLastSplitCells:
     def test_two_cell_name_is_joined(self, monkeypatch):
         """UCI Chemistry's Drupal table splits the name across a first-name and a
