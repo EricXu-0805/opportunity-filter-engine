@@ -49,6 +49,9 @@ _WORKS_API = "https://api.openalex.org/works"
 # 86MB corpus in a 2GB-RAM backend: hard-cap what apply may store per faculty.
 _MAX_WORKS = 3
 _TITLE_CAP = 200
+# Over-fetch so the per-work field filter (drops OpenAlex same-name conflation
+# outliers) still leaves _MAX_WORKS survivors in the common case.
+_WORKS_FETCH = 10
 
 # school slug -> OpenAlex institution id (resolved once via /institutions). The
 # id is matched against each candidate author's full affiliation history, so a
@@ -258,18 +261,31 @@ def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) 
     return out
 
 
-def author_recent_works(author_id: str, max_works: int = _MAX_WORKS) -> list[dict]:
+def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS) -> list[dict]:
     """Up to ``max_works`` most recent works for a matched author: title + year
-    only, title capped at ``_TITLE_CAP`` chars (corpus lives in a 2GB backend)."""
+    only, title capped at ``_TITLE_CAP`` chars (corpus lives in a 2GB backend).
+
+    OpenAlex author-name disambiguation conflates distinct same-name people
+    under one author id, and the recency sort surfaces the mis-attributed
+    outliers first (a CS/NLP professor gets a myocardial-cell-injury paper). So
+    when the department maps to a field family, a work whose ``primary_topic``
+    field is incompatible with it is dropped — the same wrong-field guard the
+    author-topics pass applies, at the per-work level. Better to cite no paper
+    than the wrong person's."""
+    allowed = _dept_fields(dept)
     j = _get({
         "filter": f"author.id:{author_id}",
         "sort": "publication_date:desc",
-        "per-page": max_works,
-        "select": "display_name,publication_year",
+        "per-page": _WORKS_FETCH,
+        "select": "display_name,publication_year,primary_topic",
     }, url=_WORKS_API)
     out: list[dict] = []
     seen: set[str] = set()
     for w in j.get("results", []) or []:
+        if allowed is not None:
+            field = ((w.get("primary_topic") or {}).get("field") or {}).get("display_name", "")
+            if field not in allowed:
+                continue
         title = re.sub(r"\s+", " ", (w.get("display_name") or "")).strip()[:_TITLE_CAP]
         year = w.get("publication_year")
         # preprint + published version of one paper share a display_name
@@ -368,10 +384,11 @@ def harvest_works(
         targets = targets[:sample]
     mapping: dict[str, list[dict]] = {}
     for i, o in enumerate(targets):
-        best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], o.get("department", ""))
+        dept = o.get("department", "")
+        best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], dept)
         time.sleep(throttle)
         if best and best.get("id"):
-            works = author_recent_works(best["id"])
+            works = author_recent_works(best["id"], dept)
             time.sleep(throttle)
             if works:
                 mapping[_record_url(o)] = works

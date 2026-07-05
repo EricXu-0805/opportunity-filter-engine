@@ -130,25 +130,30 @@ class _Resp200:
         return self._payload
 
 
+def _work(title, year, field="Engineering"):
+    return {"display_name": title, "publication_year": year,
+            "primary_topic": {"field": {"display_name": field}}}
+
+
 def test_author_recent_works_fetch(monkeypatch):
     seen = {}
 
     def _fake_get(url, params=None, headers=None, timeout=None):
         seen["url"], seen["params"] = url, params
         return _Resp200({"results": [
-            {"display_name": "Soft  Robotic\nGrippers for Fruit Harvesting", "publication_year": 2026},
-            {"display_name": "No Year Paper", "publication_year": None},
-            {"display_name": "T" * 500, "publication_year": 2025},
-            {"display_name": "Fourth Paper Beyond Cap", "publication_year": 2024},
+            _work("Soft  Robotic\nGrippers for Fruit Harvesting", 2026),
+            _work("No Year Paper", None),
+            _work("T" * 500, 2025),
+            _work("Fourth Paper Beyond Cap", 2024),
         ]})
 
     monkeypatch.setattr(oa.requests, "get", _fake_get)
-    works = oa.author_recent_works("https://openalex.org/A123")
+    works = oa.author_recent_works("https://openalex.org/A123", "Mechanical Engineering")
     assert seen["url"] == oa._WORKS_API
     assert seen["params"]["filter"] == "author.id:https://openalex.org/A123"
     assert seen["params"]["sort"] == "publication_date:desc"
-    assert seen["params"]["per-page"] == oa._MAX_WORKS
-    assert seen["params"]["select"] == "display_name,publication_year"
+    assert seen["params"]["per-page"] == oa._WORKS_FETCH
+    assert seen["params"]["select"] == "display_name,publication_year,primary_topic"
     # whitespace collapsed, yearless dropped, titles capped at 200, max 3 kept
     assert works[0] == {"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}
     assert len(works[1]["title"]) == 200
@@ -156,13 +161,41 @@ def test_author_recent_works_fetch(monkeypatch):
     assert all(w["year"] for w in works)
 
 
+def test_author_recent_works_drops_wrong_field_conflation(monkeypatch):
+    # OpenAlex conflates same-name people: a CS/NLP professor's author id gets
+    # a myocardial-biology paper as the most recent work. The per-work field
+    # filter must drop it and keep the real CS papers behind it.
+    monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp200({"results": [
+        _work("MiR-32-3p improves ISO induced AC16 myocardial cell injury", 2026,
+              field="Biochemistry, Genetics and Molecular Biology"),
+        _work("Structure-guided discovery of pyrazolo-pyridin-amines", 2026, field="Medicine"),
+        _work("Dense Passage Retrieval for Open-Domain QA", 2025, field="Computer Science"),
+        _work("Evaluating Large Language Models", 2024, field="Computer Science"),
+    ]}))
+    works = oa.author_recent_works("A1", "Department of Computer Science")
+    assert [w["title"] for w in works] == [
+        "Dense Passage Retrieval for Open-Domain QA",
+        "Evaluating Large Language Models",
+    ]
+
+
+def test_author_recent_works_ungated_dept_keeps_all(monkeypatch):
+    # A department with no field mapping can't be judged, so every work passes
+    # (same philosophy as the ungated author-topics path).
+    monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp200({"results": [
+        _work("An Interdisciplinary Study", 2026, field="Medicine"),
+    ]}))
+    assert oa.author_recent_works("A1", "Zzz Unit") == [
+        {"title": "An Interdisciplinary Study", "year": 2026}]
+
+
 def test_author_recent_works_dedups_preprint_published_pairs(monkeypatch):
     monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp200({"results": [
-        {"display_name": "Same Paper Twice", "publication_year": 2026},
-        {"display_name": "same  paper twice", "publication_year": 2026},
-        {"display_name": "A Different Paper", "publication_year": 2025},
+        _work("Same Paper Twice", 2026),
+        _work("same  paper twice", 2026),
+        _work("A Different Paper", 2025),
     ]}))
-    works = oa.author_recent_works("A1")
+    works = oa.author_recent_works("A1", "Electrical Engineering")
     assert [w["title"] for w in works] == ["Same Paper Twice", "A Different Paper"]
 
 
@@ -184,7 +217,7 @@ def test_harvest_works_targets_matched_authors_only(monkeypatch):
 
     monkeypatch.setattr(oa, "_match_author", _fake_match)
     monkeypatch.setattr(oa, "author_recent_works",
-                        lambda aid: [{"title": "Recent Paper", "year": 2026}])
+                        lambda aid, dept="": [{"title": "Recent Paper", "year": 2026}])
     mapping = oa.harvest_works(opps, throttle=0)
     # keyworded faculty ARE works targets; already-enriched + unmapped schools are not
     assert mapping == {"https://x.edu/a": [{"title": "Recent Paper", "year": 2026}]}
