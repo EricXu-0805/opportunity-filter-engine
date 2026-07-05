@@ -125,7 +125,9 @@ _BASE_SYSTEM_RULES = (
     "2. The key sentence — name ONE specific aspect of THIS lab's work (a "
     "provided research area, topic, or keyword) and state concretely why it "
     "connects to the student. This proves they did their homework; it is the "
-    "single most important sentence.\n"
+    "single most important sentence. If a recent publication is provided, "
+    "reference it here naturally — its exact title and year, at most once; "
+    "never invent or alter a paper title or year.\n"
     "3. Concrete fit: the relevant skills and coursework the student actually "
     "has, tied to that work. Show evidence, do not self-praise.\n"
     "4. One clear ask: a brief meeting to discuss getting involved; offer the "
@@ -238,6 +240,20 @@ def _recommended_style(lab_type: str | None) -> str:
     return _RECOMMENDED_STYLE_BY_LAB_TYPE.get(lab_type or "", "professional")
 
 
+def _format_recent_work(opp: dict) -> str:
+    """The professor's single most recent OpenAlex work as '"<title>" (<year>)',
+    or "" when none is stored. Sanitized like every other scraped field."""
+    works = (opp.get("metadata") or {}).get("recent_works") or []
+    if not works:
+        return ""
+    w = works[0]
+    title = _sanitize_field(str(w.get("title", "")), max_len=200)
+    year = w.get("year")
+    if not title:
+        return ""
+    return f'"{title}" ({year})' if year else f'"{title}"'
+
+
 def _ai_generate_email_text(
     profile_dict: dict, opp: dict, style: str | None = None
 ) -> str | None:
@@ -288,6 +304,7 @@ def _ai_generate_email_text(
     research_area = _sanitize_field(p["research_area"], max_len=150) or "(unspecified)"
     research_topic = _sanitize_field(p["research_topic"], max_len=200) or "(none)"
     opp_desc = _sanitize_field(p["opp_desc"], max_len=600) or "(no description)"
+    recent_work = _format_recent_work(opp) or "(none)"
 
     user = (
         f"STUDENT:\n"
@@ -307,6 +324,7 @@ def _ai_generate_email_text(
         f"- Lab / program: {lab}\n"
         f"- Research area: {research_area}\n"
         f"- Specific topic signal: {research_topic}\n"
+        f"- Recent publication by this professor: {recent_work}\n"
         f"- Required skills: {required_str}\n"
         f"- Description excerpt: {opp_desc}\n"
         f"\n"
@@ -344,6 +362,12 @@ def _build_email_corpus(p: dict, opp: dict) -> str:
     parts.append(str(opp.get("department", "")))
     parts.append(str(opp.get("pi_name", "")))
     parts.extend(str(k) for k in (opp.get("keywords") or []))
+    # Real paper titles/years offered to the prompt are legitimate vocabulary;
+    # without them here the anti-fabrication gate would reject a draft for
+    # citing the very publication we told it about.
+    for w in (opp.get("metadata") or {}).get("recent_works") or []:
+        parts.append(str(w.get("title", "")))
+        parts.append(str(w.get("year", "")))
     return " ".join(parts).lower()
 
 
