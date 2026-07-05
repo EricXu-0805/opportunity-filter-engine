@@ -24,6 +24,7 @@ import {
   ThumbsDown,
 } from 'lucide-react';
 import Badge from './Badge';
+import ResponsivenessBadge from './ResponsivenessBadge';
 import ScoreBar from './ScoreBar';
 import { InteractionStatusMenu } from './InteractionStatusMenu';
 import { getGapAnalysis } from '@/lib/api';
@@ -213,6 +214,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             <DollarSign className="w-3 h-3" />
             {paid.label}
           </Badge>
+          <ResponsivenessBadge opportunityId={opp.id} />
           {opp.source && <Badge variant="gray">{opp.source}</Badge>}
           {scopeChip && (
             <Badge variant={scopeChip.kind === 'open' ? 'green' : 'gray'} dot>
