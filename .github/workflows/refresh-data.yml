@@ -255,7 +255,7 @@ jobs:
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \
             -d "{
-              \"from\": \"JoinALab <onboarding@resend.dev>\",
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
               \"to\": [\"$OPERATOR_EMAIL\"],
               \"subject\": \"JoinALab: data refresh FAILED (shard: ${SHARD:-full})\",
               \"text\": \"The scheduled data refresh failed.\n\nShard: ${SHARD:-full}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived).\"
