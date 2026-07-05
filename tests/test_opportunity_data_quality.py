@@ -675,6 +675,23 @@ class TestSchoolAudience:
             f"First 3: {offenders[:3]}"
         )
 
+    def test_uiuc_manual_seeds_are_school_tagged(self):
+        """The 17 hand-curated uiuc-* manual records shipped school=None for
+        months, leaking UIUC lab postings into every school's toggle-off view
+        (a UIUC ECE lab ranked #2 for a UCSD CS student — 2026-07 audit).
+        Manual seeds hosted at a school must carry its slug and a real
+        audience so the scope filter can do its job."""
+        offenders = [
+            (o["id"], o.get("school"), o.get("audience"))
+            for o in _load_data()
+            if o.get("source") == "manual" and o["id"].startswith("uiuc-")
+            and not (o.get("school") == "uiuc" and o.get("audience") in ("campus", "open"))
+        ]
+        assert not offenders, (
+            f"{len(offenders)} uiuc manual seeds missing school/audience tags. "
+            f"First 3: {offenders[:3]}"
+        )
+
     def test_school_is_none_or_lowercase_slug(self):
         offenders = [
             (o.get("source"), o.get("id"), o.get("school"))
