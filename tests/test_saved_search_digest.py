@@ -185,7 +185,8 @@ class TestDigestCronSend:
         assert patches[0]["json"]["new_match_ids"] == []
         assert patches[0]["params"]["id"] == f"eq.{_digest_row()['id']}"
 
-    def test_caps_items_at_ten(self, monkeypatch):
+    def test_caps_items_at_ten_newest_first_with_overflow(self, monkeypatch):
+        # new_match_ids accumulates oldest-first: opp-14 is the newest match.
         _set_digest_env(monkeypatch)
         opps = [{"id": f"opp-{i}", "title": f"Opp {i}", "organization": "Org",
                  "deadline": ""} for i in range(15)]
@@ -197,8 +198,22 @@ class TestDigestCronSend:
         )
         r = client.get("/api/cron/saved-searches/digest", headers=AUTH)
         assert r.json()["sent"] == 1
-        assert "Opp 9" in sends[0]["html"]
-        assert "Opp 10" not in sends[0]["html"]
+        html = sends[0]["html"]
+        assert "Opp 14" in html and "Opp 5" in html  # newest ten kept
+        assert "Opp 4" not in html  # oldest five overflow
+        assert html.index("Opp 14") < html.index("Opp 5")  # newest first
+        assert sends[0]["subject"].startswith("15 new matches")  # whole batch
+        assert "+5 more in the app" in html
+        assert "+5 more in the app" in sends[0]["text"]
+
+    def test_newest_first_in_text_body(self, monkeypatch):
+        _set_digest_env(monkeypatch)
+        sends: list = []
+        _install_stubs(monkeypatch, rows=[_digest_row()], sends=sends)
+        client.get("/api/cron/saved-searches/digest", headers=AUTH)
+        text = sends[0]["text"]
+        # stored order is [opp-a, opp-b]; opp-b is newer so it renders first
+        assert text.index("NLP Internship") < text.index("Vision Lab RA")
 
     def test_throttles_within_seven_days(self, monkeypatch):
         _set_digest_env(monkeypatch)
@@ -418,6 +433,17 @@ class TestDigestRenderer:
         # html attribute-escapes the query-string ampersands; text keeps it raw
         assert url.replace("&", "&amp;") in html
         assert url in text
+
+    def test_overflow_counts_into_subject_and_bodies(self):
+        s, html, text = ss_mod._render_digest_email("X", [_OPP_A], "https://u", overflow=7)
+        assert s.startswith("8 new matches ")
+        assert "+7 more in the app" in html
+        assert "+7 more in the app" in text
+
+    def test_no_overflow_line_when_batch_fits(self):
+        _, html, text = ss_mod._render_digest_email("X", [_OPP_A], "https://u")
+        assert "more in the app" not in html
+        assert "more in the app" not in text
 
 
 if __name__ == "__main__":
