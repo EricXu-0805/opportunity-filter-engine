@@ -18,6 +18,8 @@ import os
 import sys
 from datetime import date, timedelta
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.collectors.refresh_all as refresh_all
@@ -269,6 +271,149 @@ def test_partial_scrape_gate_surfaces_in_summary(monkeypatch, tmp_path):
     assert pass_info["skipped_partial_scrape"] == ["uiuc_faculty"]
     saved = json.loads(processed.read_text(encoding="utf-8"))
     assert all(o["metadata"]["is_active"] is True for o in saved)
+
+
+# --- Per-school shard scoping -------------------------------------------------
+#
+# The daily rotation runs refresh_all(schools={...}) / refresh_all(national=True).
+# The single invariant that makes a partial run safe is: skipped collectors
+# write NOTHING into summary["sources"] — deactivate_stale_faculty builds its
+# fetched_counts only from sources reporting "ok" in this run's summary, so a
+# source absent from the summary can never have its records deactivated.
+
+
+def test_uw_shard_runs_only_uw_collectors(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True, schools={"uw"})
+    assert set(summary["sources"]) == {"uw_faculty", "campus_graph:uw"}
+    assert summary["shard"] == {"schools": ["uw"], "national": False}
+
+
+def test_uiuc_shard_runs_exactly_uiuc_sources(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"})
+    # uiuc_sro is NOT here: it catalogs external programs hosted elsewhere
+    # (school=None in SOURCE_DEFAULTS), so it belongs to the national shard.
+    assert set(summary["sources"]) == {
+        "uiuc_our_rss", "uiuc_faculty", "uiuc_urap", "uiuc_ursa",
+        "uiuc_drp", "uiuc_siebel", "uiuc_other",
+    }
+
+
+def test_ucb_shard_runs_exactly_ucb_sources(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True, schools={"ucb"})
+    assert set(summary["sources"]) == {
+        "ucb_urap", "ucb_campus", "ucb_urap_projects", *UCB_FACULTY_SOURCES,
+    }
+
+
+def test_national_shard_runs_exactly_national_sources(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True, national=True)
+    assert set(summary["sources"]) == {"uiuc_sro", "nsf_reu", "simplify_internships"}
+    assert summary["shard"] == {"schools": [], "national": True}
+
+
+def test_unknown_or_empty_shard_raises(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    with pytest.raises(ValueError, match="unknown school slug"):
+        refresh_all.refresh_all(deep=True, schools={"uw", "notaschool"})
+    with pytest.raises(ValueError, match="at least one school"):
+        refresh_all.refresh_all(deep=True, schools=set())
+
+
+# --- Shard deactivation scoping ------------------------------------------------
+#
+# THE guarantee of the rotation: a shard run for school X must be provably
+# unable to deactivate or degrade school Y's records — byte-identical, not
+# just "still active".
+
+
+def _shard_seeds():
+    return [
+        _seed_faculty("uiuc_faculty", "uiuc-stale", days_ago=30),
+        _seed_faculty("uiuc_faculty", "uiuc-fresh", days_ago=1),
+        _seed_faculty("ucb_eecs_faculty", "ucb-stale", days_ago=60),
+        _seed_faculty("uw_faculty", "uw-stale", days_ago=60),
+    ]
+
+
+def test_uiuc_shard_leaves_other_schools_byte_identical(monkeypatch, tmp_path):
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, _shard_seeds())
+    # First shard run brings the seeds to the global-pass fixed point (school/
+    # audience stamps, rule tags, keyword hygiene) so the second run's diff is
+    # attributable to the uiuc shard alone.
+    refresh_all.refresh_all(deep=True, schools={"umich"})
+    baseline = {o["id"]: json.dumps(o, sort_keys=True)
+                for o in json.loads(processed.read_text(encoding="utf-8"))}
+    assert json.loads(baseline["uiuc-stale"])["metadata"]["is_active"] is True
+
+    # uiuc shard with a full-size uiuc_faculty scrape (2 fetched vs 2 active
+    # passes the MIN_SCRAPE_RATIO gate).
+    monkeypatch.setattr(refresh_all, "fetch_faculty",
+                        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"})
+
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 1
+    saved = {o["id"]: o for o in json.loads(processed.read_text(encoding="utf-8"))}
+    assert saved["uiuc-stale"]["metadata"]["is_active"] is False
+    assert saved["uiuc-stale"]["metadata"]["deactivation_reason"] == \
+        "absent_from_directory_rescrape"
+    assert saved["uiuc-fresh"]["metadata"]["is_active"] is True
+    # ucb/uw are both past GRACE_DAYS, yet must come out byte-identical —
+    # active flags, keywords, emails, everything.
+    for ident in ("ucb-stale", "uw-stale"):
+        assert saved[ident]["metadata"]["is_active"] is True
+        assert json.dumps(saved[ident], sort_keys=True) == baseline[ident]
+
+
+def test_uiuc_shard_summary_has_no_other_school_sources(monkeypatch, tmp_path):
+    """The invariant §safety rests on: sources that did not run this shard are
+    entirely ABSENT from summary["sources"] — not present as "ok, fetched: 0"."""
+    _stub_with_processed_file(monkeypatch, tmp_path, _shard_seeds())
+    monkeypatch.setattr(refresh_all, "fetch_faculty",
+                        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"})
+    sources = set(summary["sources"])
+    assert not {s for s in sources if s.startswith(("ucb_", "uw_", "campus_graph:"))}
+    assert sources & FACULTY_SOURCES == {"uiuc_faculty"}
+
+
+def test_national_run_touches_no_faculty(monkeypatch, tmp_path):
+    seeded = [_seed_faculty("uiuc_faculty", "uiuc-stale", days_ago=60)]
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
+    summary = refresh_all.refresh_all(deep=True, national=True)
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
+    saved = json.loads(processed.read_text(encoding="utf-8"))[0]
+    assert saved["metadata"]["is_active"] is True
+
+
+def test_pi_enrichment_pool_scoped_to_shard_and_never_truncates(monkeypatch, tmp_path):
+    """Sharded runs must call enrich_pi with save=False: enrich_pi(save=True)
+    writes its INPUT list to PROCESSED_FILE, so a shard-scoped subset would
+    truncate the corpus to that subset."""
+    seeds = _shard_seeds()
+    _stub_with_processed_file(monkeypatch, tmp_path, seeds)
+    captured = {}
+
+    def fake_enrich(opps, save=True, max_scrapes=None):
+        captured["sources"] = {o["source"] for o in opps}
+        captured["size"] = len(opps)
+        captured["save"] = save
+        return {"scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0}
+
+    monkeypatch.setattr(refresh_all, "enrich_pi", fake_enrich)
+    monkeypatch.setattr(refresh_all, "fetch_faculty",
+                        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+
+    refresh_all.refresh_all(deep=True, schools={"uiuc"})
+    assert captured["sources"] == {"uiuc_faculty"}
+    assert captured["save"] is False
+
+    refresh_all.refresh_all(deep=True)
+    assert captured["size"] == len(seeds)
+    assert captured["save"] is True
 
 
 def test_post_merge_pass_stamps_school_audience(monkeypatch, tmp_path):

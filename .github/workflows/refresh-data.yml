@@ -1,9 +1,24 @@
 name: Refresh Opportunity Data
 
+# Daily per-school shard rotation (UTC day → shard). Every scheduled run is a
+# DEEP run for its shard — each shard's weekly run IS its deep run. Balanced
+# by faculty counts + which scrapes visit profile pages weekly:
+#
+#   | Day | Shard                             | Weekly est. | First-week est. |
+#   |-----|-----------------------------------|-------------|-----------------|
+#   | Mon | uiuc (+ Experts monthly, +Chromium)| ~90-150 min | ~120-180 min    |
+#   | Tue | ucb                               | ~60-100 min | —               |
+#   | Wed | uw,wisc                           | ~15-30 min  | ~75-130 min     |
+#   | Thu | utexas,ucla                       | ~15-30 min  | ~75-130 min     |
+#   | Fri | stanford,ucsd,princeton           | ~15-30 min  | ~70-120 min     |
+#   | Sat | gatech,uchicago,uci,ucsb,umich    | ~20-35 min  | ~75-130 min     |
+#   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
+#
+# First-week column = the monthly per-profile enrichment (OFE_ENRICH_PROFILES)
+# now runs on each school's OWN shard day in the first week of the month.
 on:
   schedule:
-    - cron: '0 6 * * 1'    # Monday 6am UTC — deep scrape + enrich
-    - cron: '0 6 * * 4'    # Thursday 6am UTC — quick refresh
+    - cron: '0 6 * * *'    # daily 6am UTC — that day's shard, deep
   workflow_dispatch:
     inputs:
       deep:
@@ -12,15 +27,20 @@ on:
         default: 'false'
         type: choice
         options: ['true', 'false']
+      schools:
+        description: 'Shard: comma-separated school slugs (e.g. uw,wisc), literal "national" for the school-less sources, empty = full refresh'
+        required: false
+        default: ''
+        type: string
 
 env:
   # Surface Node 24 breakage now, on our schedule, ahead of GitHub's
   # June 16 2026 forced migration of node20 actions.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# A Monday deep run can outlast a manual dispatch fired later the same day;
-# two refreshes racing the same corpus file produce garbage merges. Queue,
-# never cancel (a 3h scrape is too expensive to kill).
+# A deep shard can outlast a manual dispatch fired later the same day; two
+# refreshes racing the same corpus file produce garbage merges. Queue, never
+# cancel (a long scrape is too expensive to kill).
 concurrency:
   group: refresh-data
   cancel-in-progress: false
@@ -28,11 +48,9 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # Deep Monday scrape now runs ~3.7h and grows with the corpus (160→224 min
-    # over June as schools were added); the first Monday of the month also fires
-    # the Illinois Experts pass on the same job. 300 gives real headroom until
-    # the deep scrape moves to the VPS (the agreed "when a run nears the cap"
-    # trigger — see memory ofe-github-actions-budget). Quick mode finishes <1h.
+    # Shards are budgeted far under this (worst day ~3h: Monday uiuc in the
+    # first week of the month); 300 is headroom, and a full manual refresh
+    # (empty schools input) still fits.
     timeout-minutes: 300
     permissions:
       contents: write
@@ -49,10 +67,30 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Determine shard
+        id: shard
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "shard=${{ inputs.schools }}" >> $GITHUB_OUTPUT
+          else
+            case "$(date -u +%u)" in
+              1) SHARD="uiuc" ;;
+              2) SHARD="ucb" ;;
+              3) SHARD="uw,wisc" ;;
+              4) SHARD="utexas,ucla" ;;
+              5) SHARD="stanford,ucsd,princeton" ;;
+              6) SHARD="gatech,uchicago,uci,ucsb,umich" ;;
+              7) SHARD="national" ;;
+            esac
+            echo "shard=$SHARD" >> $GITHUB_OUTPUT
+          fi
+
       - name: Determine scrape mode
         id: mode
+        # Scheduled shard runs are ALWAYS deep — each shard's weekly run is its
+        # deep run. Manual dispatches honor the input.
         run: |
-          if [[ "${{ github.event.schedule }}" == "0 6 * * 1" ]] || [[ "${{ inputs.deep }}" == "true" ]]; then
+          if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ inputs.deep }}" == "true" ]]; then
             echo "deep=true" >> $GITHUB_OUTPUT
           else
             echo "deep=false" >> $GITHUB_OUTPUT
@@ -60,47 +98,63 @@ jobs:
 
       - name: Run data refresh
         run: |
+          SHARD="${{ steps.shard.outputs.shard }}"
+          ARGS=""
+          if [[ "$SHARD" == "national" ]]; then
+            ARGS="--national"
+          elif [[ -n "$SHARD" ]]; then
+            ARGS="--schools $SHARD"
+          fi
           if [[ "${{ steps.mode.outputs.deep }}" == "true" ]]; then
-            echo "Running DEEP refresh (Monday or manual)"
+            echo "Running DEEP refresh (shard: ${SHARD:-full})"
             # The 4 ACES faculty directories render via Drupal Views AJAX, so the
             # deep run drives headless Chromium (uiuc_js_faculty). Playwright is
             # not in requirements.txt (the collector lazy-imports it and tests
-            # mock it), so install it + the browser only here, on deep runs.
-            pip install playwright
-            python -m playwright install --with-deps chromium
-            # First deep run of the month: also enable the gated per-profile
-            # enrichment pass (OFE_ENRICH_PROFILES). It follows each faculty
-            # profile link to recover the email/research the directory listing
-            # omits — render mode for the Cloudflare-walled schools (Princeton
-            # dept subdomains, umich), plain fetch for the rest. Expensive
-            # per-profile, so monthly not weekly (mirrors the Experts cadence
-            # below); the richer-dedup carry-forward keeps recovered fields, so
-            # already-enriched profiles are skipped on later runs (only records
-            # still missing a field are re-fetched).
-            if [ "$(date -u +%d)" -le 07 ]; then
+            # mock it), so install it + the browser only when the run includes
+            # uiuc — the only shard that needs the browser.
+            if [[ -z "$SHARD" || ",$SHARD," == *",uiuc,"* ]]; then
+              pip install playwright
+              python -m playwright install --with-deps chromium
+            fi
+            # First run of the month for this shard: enable the gated
+            # per-profile enrichment pass (OFE_ENRICH_PROFILES). It follows each
+            # faculty profile link to recover the email/research the directory
+            # listing omits — render mode for the Cloudflare-walled schools
+            # (Princeton dept subdomains, umich), plain fetch for the rest.
+            # Expensive per-profile, so monthly not weekly; the richer-dedup
+            # carry-forward keeps recovered fields, so already-enriched profiles
+            # are skipped on later runs. Each school gets its monthly pass on
+            # its own shard day in the first week of the month.
+            if [[ "$SHARD" != "national" ]] && [ "$(date -u +%d)" -le 07 ]; then
               echo "First week of the month — enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
               export OFE_ENRICH_PROFILES=1
             fi
-            python -m src.collectors.refresh_all
+            python -m src.collectors.refresh_all $ARGS
           else
-            echo "Running QUICK refresh (Thursday)"
-            python -m src.collectors.refresh_all --no-deep
+            echo "Running QUICK refresh (shard: ${SHARD:-full})"
+            python -m src.collectors.refresh_all --no-deep $ARGS
           fi
 
-      - name: Monthly Illinois Experts enrichment (first week, deep runs only)
+      - name: Monthly Illinois Experts enrichment (first week, deep uiuc runs only)
         # Pure fingerprints change slowly, so the per-person Experts scrape runs
         # ~monthly, not weekly — the keyword-richer dedup keeps its concepts when
-        # the weekly broad re-scrape re-fetches the same faculty. Folds into the
-        # data-refresh PR below. Polite: ~1s/person, only the broad-only faculty.
+        # the weekly broad re-scrape re-fetches the same faculty. uiuc = Monday,
+        # so this fires on the first Monday of the month (same cadence as when
+        # every deep run was a Monday full run). Folds into the data-refresh PR
+        # below. Polite: ~1s/person, only the broad-only faculty.
         if: steps.mode.outputs.deep == 'true'
         run: |
-          if [ "$(date -u +%d)" -le 07 ]; then
+          SHARD="${{ steps.shard.outputs.shard }}"
+          if [[ -n "$SHARD" && ",$SHARD," != *",uiuc,"* ]]; then
+            echo "Shard '$SHARD' does not include uiuc — skipping Experts pass"
+          elif [ "$(date -u +%d)" -le 07 ]; then
             echo "First week of the month — running Illinois Experts enrichment"
             python -m src.collectors.uiuc_experts --refresh
           else
             echo "Not the first week of the month — skipping Experts pass"
           fi
 
+      # Daily, corpus-wide, cheap/offline passes — deliberately NOT sharded.
       - name: Retroactive enricher pass
         run: python -m src.normalizers.enrich_processed --save
 
@@ -133,17 +187,18 @@ jobs:
           fi
 
           MODE="${{ steps.mode.outputs.deep == 'true' && 'deep' || 'quick' }}"
+          SHARD="${{ steps.shard.outputs.shard }}"
           TOTAL=$(python3 -c "import json; print(len(json.load(open('data/processed/opportunities.json'))))")
           EMAILS=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('contact_email')))")
           INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
-          MSG="chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode)"
+          MSG="chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode, shard: ${SHARD:-full})"
           BRANCH="auto/refresh-data-${{ github.run_id }}"
           REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # A deep scrape runs ~2.5h, during which other PRs can merge to main and
+          # A deep scrape can run hours, during which other PRs can merge to main and
           # rewrite these same data files. Branching from the run-start checkout would
           # then conflict at PR-open time — and GitHub schedules NO pull_request CI on a
           # PR it can't compute a merge commit for, so the required checks below would
@@ -166,7 +221,7 @@ jobs:
           git push "$REMOTE" "$BRANCH"
 
           gh pr create --base main --head "$BRANCH" --title "$MSG" \
-            --body "Automated ${MODE} data refresh. Merges automatically once Backend + Frontend checks pass."
+            --body "Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
 
           # Wait for the required checks to register, then watch them to completion.
           for i in $(seq 1 12); do
@@ -190,6 +245,7 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+          SHARD: ${{ steps.shard.outputs.shard }}
         run: |
           if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
             echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
@@ -201,6 +257,6 @@ jobs:
             -d "{
               \"from\": \"JoinALab <onboarding@resend.dev>\",
               \"to\": [\"$OPERATOR_EMAIL\"],
-              \"subject\": \"JoinALab: data refresh FAILED\",
-              \"text\": \"The scheduled data refresh failed.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe corpus has not been updated. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived).\"
+              \"subject\": \"JoinALab: data refresh FAILED (shard: ${SHARD:-full})\",
+              \"text\": \"The scheduled data refresh failed.\n\nShard: ${SHARD:-full}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived).\"
             }" || true
