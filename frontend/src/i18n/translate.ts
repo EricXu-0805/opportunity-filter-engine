@@ -12,9 +12,17 @@ interface DeepObj { [key: string]: DeepValue }
 export function resolvePath(dict: DeepObj, path: Path): string | undefined {
   const parts = path.split('.');
   let cur: DeepValue = dict;
-  for (const part of parts) {
-    if (typeof cur !== 'object' || cur === null || !(part in cur)) return undefined;
-    cur = (cur as DeepObj)[part];
+  for (let i = 0; i < parts.length; i++) {
+    if (typeof cur !== 'object' || cur === null) return undefined;
+    // Catalog names can contain literal dots ("Michael G. Foster School of
+    // Business"), which naive splitting would shred — prefer an exact-key
+    // match on the remaining path before descending segment by segment.
+    const rest = parts.slice(i).join('.');
+    if (i < parts.length - 1 && typeof (cur as DeepObj)[rest] === 'string') {
+      return (cur as DeepObj)[rest] as string;
+    }
+    if (!(parts[i] in cur)) return undefined;
+    cur = (cur as DeepObj)[parts[i]];
   }
   return typeof cur === 'string' ? cur : undefined;
 }
