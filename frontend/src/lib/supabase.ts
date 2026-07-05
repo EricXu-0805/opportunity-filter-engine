@@ -390,18 +390,21 @@ export async function signInExistingEmail(
 }
 
 // =====================================================================
-// R65 P1 Flow B: cross-device anonymous-data merge (migration 017).
+// R65 P1 Flow B: cross-device anonymous-data merge (migrations 017/018).
 // =====================================================================
 //
 // When a device built its OWN data while still anonymous and then signs
 // into an EXISTING account (the signInExisting* paths below), that data
 // lives under the throwaway anon uid and is invisible under RLS to the
-// permanent account. `mintMergeGrant` runs on the still-anon session just
-// before the sign-in redirect and stashes a single-use, 15-minute,
-// (optionally) email-bound grant token; `redeemPendingMerge` runs once on
-// /auth/callback after sign-in and merges the source rows into the now-
-// permanent account (SECURITY DEFINER functions do the actual cross-uid
-// move — see 017_cross_device_merge.sql for the takeover-proof model).
+// permanent account. A mint runs on the still-anon session just before
+// the sign-in redirect and stashes a single-use, 15-minute grant —
+// email-bound on the email path (`mintMergeGrant`), device-secret-bound
+// on the OAuth path (`mintSecretMergeGrant`, the email is unknowable
+// pre-consent); `redeemPendingMerge` runs once on /auth/callback after
+// sign-in and merges the source rows into the now-permanent account
+// (SECURITY DEFINER functions do the actual cross-uid move — see
+// 017_cross_device_merge.sql + 018_oauth_merge_secret.sql for the
+// takeover-proof model).
 
 export interface MergeSummary {
   merged: boolean;
@@ -418,8 +421,8 @@ function asCount(v: unknown): number {
 /**
  * Mint a merge grant for the CURRENT (anonymous) session, to be redeemed
  * after signing into an existing account. `targetEmail` binds the grant to
- * the account being signed into (email path); pass null when it isn't known
- * yet (OAuth, resolved only after provider consent).
+ * the account being signed into (email path; the OAuth path uses
+ * `mintSecretMergeGrant` instead).
  *
  * Best-effort and MUST NOT throw: minting is a nice-to-have on top of
  * sign-in, so any failure (RPC error, offline, private-mode storage) is
@@ -444,21 +447,79 @@ async function mintMergeGrant(targetEmail: string | null): Promise<void> {
   }
 }
 
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return bytesToHex(new Uint8Array(digest));
+}
+
+/**
+ * OAuth twin of `mintMergeGrant`: the target email is unknowable before
+ * provider consent, so the grant is bound to a random secret instead. The
+ * secret never leaves this browser except as its SHA-256 hash at mint;
+ * redemption always lands back in this browser (the PKCE callback reads the
+ * same localStorage), which presents the raw secret as proof of possession.
+ * A stolen token is useless without it. Same best-effort/never-throw
+ * contract as `mintMergeGrant`.
+ */
+async function mintSecretMergeGrant(): Promise<void> {
+  if (!SUPABASE_CONFIGURED || typeof window === 'undefined') return;
+  try {
+    const secret = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+    const { data, error } = await supabase.rpc('mint_merge_grant', {
+      p_target_email: null,
+      p_secret_hash: await sha256Hex(secret),
+    });
+    if (error || typeof data !== 'string') {
+      if (error) console.warn('[ofe] merge mint skipped:', error.message);
+      return;
+    }
+    try {
+      localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: data, secret }));
+    } catch { /* private mode */ }
+  } catch (e) {
+    console.warn('[ofe] merge mint error:', e);
+  }
+}
+
 /**
  * Redeem a pending merge grant (if any) after sign-in. Safe to call
  * unconditionally: returns null when there's no token. One-shot — the token
  * is cleared before the RPC so a re-land on /auth/callback can't double-run.
+ *
+ * The slot holds either a bare token (email path) or JSON `{token, secret}`
+ * (OAuth path) — the latter presents the device secret so the SQL side can
+ * verify possession against the hash it stored at mint.
  */
 export async function redeemPendingMerge(): Promise<MergeSummary | null> {
   if (!SUPABASE_CONFIGURED || typeof window === 'undefined') return null;
-  let token: string | null = null;
-  try { token = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT); } catch { return null; }
-  if (!token) return null;
+  let stashed: string | null = null;
+  try { stashed = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT); } catch { return null; }
+  if (!stashed) return null;
   try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
+
+  let token = stashed;
+  let secret: string | null = null;
+  if (stashed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(stashed) as { token?: unknown; secret?: unknown };
+      if (typeof parsed.token !== 'string' || typeof parsed.secret !== 'string') return null;
+      token = parsed.token;
+      secret = parsed.secret;
+    } catch {
+      return null;
+    }
+  }
 
   let rpcResult;
   try {
-    rpcResult = await supabase.rpc('redeem_merge_grant', { p_token: token });
+    rpcResult = await supabase.rpc(
+      'redeem_merge_grant',
+      secret === null ? { p_token: token } : { p_token: token, p_secret: secret },
+    );
   } catch (e) {
     // Transport/network failure. The token is already cleared above (one-shot),
     // so a rejected RPC can't be retried — sign-in still succeeded, we just
@@ -580,9 +641,7 @@ export async function signInWithOAuthProvider(
  * `identity_already_exists` conflict — the Google/Microsoft identity
  * already belongs to ANOTHER account, so linking is impossible and the
  * only way forward is signing into that account. The anon session's
- * data stays under its own auth.uid() (not destroyed, but not visible
- * to the permanent user until Flow B cross-device merge ships) — the
- * same caveat the email-taken path warns about.
+ * data follows via the Flow B merge grant minted below.
  */
 export async function signInExistingOAuth(
   provider: OAuthProvider,
@@ -595,11 +654,11 @@ export async function signInExistingOAuth(
       message: 'Sign-in is unavailable: Supabase is not configured.',
     };
   }
-  // Flow B: intentionally NO merge grant is minted on the OAuth path. The
-  // target email isn't known until after provider consent, and an unbound
-  // grant would be redeemable by any account holding the token (a leaked-token
-  // cross-account theft surface). OAuth-path cross-device merge is deferred
-  // until it can bind the email post-consent; the email path (bound) DOES merge.
+  // Flow B: the target email isn't known until after provider consent, so the
+  // grant can't be email-bound here. It's bound to a device secret instead —
+  // redemption lands back in THIS browser (PKCE callback + localStorage), which
+  // alone holds the raw secret, so a leaked token stays unredeemable.
+  await mintSecretMergeGrant();
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -672,7 +731,9 @@ function mapAuthError(raw: string, code?: string): SignInOutcome {
  * Returns the new device id (anon uid) or null on failure.
  */
 export async function signOutOfAccount(): Promise<string | null> {
-  const { error } = await supabase.auth.signOut();
+  // scope:'local' — signing out THIS device must not revoke the account's
+  // sessions on every other device (the default 'global' does).
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) console.warn('[ofe] signOut failed:', error.message);
   clearOAuthLinkProvider(); // don't let a stale link-provider stash cross sessions
   return ensureAnonSession();

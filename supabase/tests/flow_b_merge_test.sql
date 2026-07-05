@@ -1,13 +1,14 @@
--- Flow B merge tests (migration 017). Run against an ephemeral cluster that
--- has loaded _stubs.sql -> migrations 002..016 -> 017. Each scenario is a
--- self-contained DO block that RAISEs on failure; with ON_ERROR_STOP the
--- runner exits nonzero on the first failing assertion.
+-- Flow B merge tests (migrations 017 + 018). Run against an ephemeral cluster
+-- that has loaded _stubs.sql -> migrations 002..016 -> 017 -> 018. Each
+-- scenario is a self-contained DO block that RAISEs on failure; with
+-- ON_ERROR_STOP the runner exits nonzero on the first failing assertion.
 --
 -- Identity is switched with set_config('test.uid'/'test.jwt', ...) which the
 -- auth.uid()/auth.jwt() stubs read — the same claims the SECURITY DEFINER
--- functions consult in production. Minting now requires an ANONYMOUS session
--- (is_anonymous claim) and a MANDATORY target email (email binding), so every
--- mint sets a jwt with "is_anonymous": true.
+-- functions consult in production. Minting requires an ANONYMOUS session
+-- (is_anonymous claim) and EXACTLY ONE binding — a target email (email path,
+-- scenarios 1-5) or a device-secret hash (OAuth path, 018, scenario 6) — so
+-- every mint sets a jwt with "is_anonymous": true.
 
 \set ON_ERROR_STOP on
 \timing off
@@ -352,6 +353,115 @@ BEGIN
   END;
 
   RAISE WARNING 'PASS scenario 5 (anon-only mint, mandatory email, no unbound redemption)';
+END $$;
+
+-- =====================================================================
+-- Scenario 6: OAuth device-secret binding (migration 018)
+-- =====================================================================
+DO $$
+DECLARE
+  o text := '11111111-1111-4111-8111-111111111111';  -- OAuth anon source
+  p text := '22222222-2222-4222-8222-222222222222';  -- OAuth sign-in target
+  q text := '33333333-3333-4333-8333-333333333333';  -- attacker target
+  es text := '44444444-4444-4444-8444-444444444444'; -- email-path source (6e)
+  et text := '66666666-6666-4666-8666-666666666666'; -- email-path target (6e)
+  the_secret text := 'oauth-device-secret';
+  tok uuid;
+  res jsonb;
+  c int;
+BEGIN
+  -- ---- seed SOURCE (O) + mint a secret-bound grant as anon O ----
+  INSERT INTO favorites (device_id, opportunity_id) VALUES (o, 'opp-oauth');
+  INSERT INTO saved_searches (device_id, name) VALUES (o, 'O search');
+
+  PERFORM set_config('test.uid', o, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
+  tok := mint_merge_grant(NULL, encode(sha256(convert_to(the_secret, 'UTF8')), 'hex'));
+
+  -- (b) stolen token WITHOUT the secret is refused (1-arg delegate path)
+  PERFORM set_config('test.uid', q, false);
+  PERFORM set_config('test.jwt', '{"email":"attacker@ex.com"}', false);
+  BEGIN
+    PERFORM redeem_merge_grant(tok);
+    RAISE EXCEPTION 'TEST FAIL s6b: secretless redeem should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%not bound to this session%' THEN
+      RAISE EXCEPTION 'TEST FAIL s6b: wrong error %', sqlerrm;
+    END IF;
+  END;
+
+  -- (c) wrong secret refused
+  BEGIN
+    PERFORM redeem_merge_grant(tok, 'wrong');
+    RAISE EXCEPTION 'TEST FAIL s6c: wrong-secret redeem should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%not bound to this session%' THEN
+      RAISE EXCEPTION 'TEST FAIL s6c: wrong error %', sqlerrm;
+    END IF;
+  END;
+
+  SELECT count(*) INTO c FROM favorites WHERE device_id = o;
+  IF c <> 1 THEN RAISE EXCEPTION 'TEST FAIL s6: source data should be intact after refusals'; END IF;
+  PERFORM 1 FROM merged_devices WHERE source_device_id = o;
+  IF FOUND THEN RAISE EXCEPTION 'TEST FAIL s6: source should not be tombstoned after refusals'; END IF;
+
+  -- (a) happy path: the browser holding the raw secret redeems (failed
+  --     attempts above must not have consumed the grant); the signed-in
+  --     email is irrelevant to a secret-bound grant.
+  PERFORM set_config('test.uid', p, false);
+  PERFORM set_config('test.jwt', '{"email":"whoever@ex.com"}', false);
+  res := redeem_merge_grant(tok, the_secret);
+  IF (res->>'merged')::boolean IS NOT TRUE THEN
+    RAISE EXCEPTION 'TEST FAIL s6a: expected merged=true, got %', res;
+  END IF;
+  SELECT count(*) INTO c FROM favorites WHERE device_id = p;
+  IF c <> 1 THEN RAISE EXCEPTION 'TEST FAIL s6a favorites: want 1 got %', c; END IF;
+  SELECT count(*) INTO c FROM saved_searches WHERE device_id = p;
+  IF c <> 1 THEN RAISE EXCEPTION 'TEST FAIL s6a saved_searches: want 1 got %', c; END IF;
+  SELECT count(*) INTO c FROM favorites WHERE device_id = o;
+  IF c <> 0 THEN RAISE EXCEPTION 'TEST FAIL s6a: source not drained'; END IF;
+  PERFORM 1 FROM merged_devices WHERE source_device_id = o AND target_device_id = p;
+  IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s6a: no tombstone'; END IF;
+  PERFORM 1 FROM merge_grants WHERE token = tok AND consumed_at IS NOT NULL;
+  IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s6a: grant not consumed'; END IF;
+
+  -- (d) mint binding rule: exactly one of email / secret hash
+  PERFORM set_config('test.uid', q, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
+  BEGIN
+    PERFORM mint_merge_grant('x@ex.com', encode(sha256(convert_to('s', 'UTF8')), 'hex'));
+    RAISE EXCEPTION 'TEST FAIL s6d: double-bound mint should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%not both%' THEN
+      RAISE EXCEPTION 'TEST FAIL s6d: wrong error %', sqlerrm;
+    END IF;
+  END;
+  BEGIN
+    PERFORM mint_merge_grant(NULL, NULL);
+    RAISE EXCEPTION 'TEST FAIL s6d2: unbound mint should have failed';
+  EXCEPTION WHEN others THEN
+    IF sqlerrm NOT LIKE '%target email is required%' THEN
+      RAISE EXCEPTION 'TEST FAIL s6d2: wrong error %', sqlerrm;
+    END IF;
+  END;
+
+  -- (e) email-path regression: an email-bound grant (minted via the 1-arg
+  --     delegate) still redeems, and a spurious p_secret is ignored.
+  INSERT INTO favorites (device_id, opportunity_id) VALUES (es, 'opp-email');
+  PERFORM set_config('test.uid', es, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
+  tok := mint_merge_grant('e6@ex.com');
+
+  PERFORM set_config('test.uid', et, false);
+  PERFORM set_config('test.jwt', '{"email":"e6@ex.com"}', false);
+  res := redeem_merge_grant(tok, 'spurious-secret');
+  IF (res->>'merged')::boolean IS NOT TRUE THEN
+    RAISE EXCEPTION 'TEST FAIL s6e: expected merged=true, got %', res;
+  END IF;
+  SELECT count(*) INTO c FROM favorites WHERE device_id = et;
+  IF c <> 1 THEN RAISE EXCEPTION 'TEST FAIL s6e: email-bound merge did not move rows'; END IF;
+
+  RAISE WARNING 'PASS scenario 6 (OAuth secret binding: possession redeems, stolen/wrong secret refused, exactly-one binding, email path intact)';
 END $$;
 
 SELECT 'ALL FLOW B TESTS PASSED' AS result;
