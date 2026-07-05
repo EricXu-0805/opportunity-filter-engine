@@ -14,13 +14,26 @@ vi.mock('@/i18n/client', () => ({
 }));
 
 const mockChat = vi.fn<
-  (oppId: string, msg: string, history: unknown[], profile: ProfileData | null, model?: string) => Promise<ChatResponse>
+  (
+    oppId: string,
+    msg: string,
+    history: unknown[],
+    profile: ProfileData | null,
+    model?: string,
+    onDelta?: (chunk: string) => void,
+  ) => Promise<ChatResponse>
 >();
 const mockGetChatModels = vi.fn<() => Promise<{ id: string; label: string }[]>>();
 
 vi.mock('@/lib/api', () => ({
-  chatWithOpportunity: (oppId: string, msg: string, history: unknown[], profile: ProfileData | null, model?: string) =>
-    mockChat(oppId, msg, history, profile, model),
+  chatWithOpportunity: (
+    oppId: string,
+    msg: string,
+    history: unknown[],
+    profile: ProfileData | null,
+    model?: string,
+    onDelta?: (chunk: string) => void,
+  ) => mockChat(oppId, msg, history, profile, model, onDelta),
   getChatModels: () => mockGetChatModels(),
 }));
 
@@ -122,7 +135,7 @@ describe('OpportunityChatbot — welcome + suggested prompts', () => {
 
     await waitFor(() =>
       // 5th arg is the picked model — undefined when the picker is on "Auto".
-      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'chatbot.suggested.fit', [], null, undefined),
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'chatbot.suggested.fit', [], null, undefined, expect.any(Function)),
     );
   });
 });
@@ -137,7 +150,7 @@ describe('OpportunityChatbot — send flow', () => {
     fireEvent.submit(textarea.closest('form')!);
 
     await waitFor(() =>
-      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'tell me more', [], PROFILE, undefined),
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'tell me more', [], PROFILE, undefined, expect.any(Function)),
     );
   });
 
@@ -269,7 +282,7 @@ describe('OpportunityChatbot — profile share toggle', () => {
     fireEvent.change(textarea, { target: { value: 'hi' } });
     fireEvent.submit(textarea.closest('form')!);
 
-    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, undefined));
+    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, undefined, expect.any(Function)));
   });
 });
 
@@ -282,7 +295,7 @@ describe('OpportunityChatbot — keyboard + clear', () => {
     fireEvent.change(textarea, { target: { value: 'kbd' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
 
-    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'kbd', [], null, undefined));
+    await waitFor(() => expect(mockChat).toHaveBeenCalledWith(OPP.id, 'kbd', [], null, undefined, expect.any(Function)));
   });
 
   it('Shift+Enter does NOT submit (newline path)', async () => {
@@ -343,6 +356,7 @@ describe('OpportunityChatbot — chat history propagation', () => {
         ],
         null,
         undefined,
+        expect.any(Function),
       ),
     );
   });
@@ -395,7 +409,80 @@ describe('OpportunityChatbot — model picker', () => {
     fireEvent.submit(textarea.closest('form')!);
 
     await waitFor(() =>
-      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, 'gpt-4o-mini'),
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, 'gpt-4o-mini', expect.any(Function)),
     );
+  });
+});
+
+describe('OpportunityChatbot — SSE streaming', () => {
+  it('renders partial text progressively and hides the spinner after the first delta', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((res) => { release = res; });
+    mockChat.mockImplementation(async (_o, _m, _h, _p, _model, onDelta) => {
+      onDelta!('The lab');
+      await gate;
+      onDelta!(' pays $15/hr.');
+      return { reply: 'The lab pays $15/hr.', method: 'llm' };
+    });
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'is it paid?' } });
+    fireEvent.submit(textarea.closest('form')!);
+
+    await waitFor(() => expect(screen.getByText('The lab')).toBeInTheDocument());
+    expect(screen.queryByText(/chatbot.thinking/)).toBeNull();
+    expect(textarea).toBeDisabled();
+
+    release();
+    await waitFor(() => expect(screen.getByText('The lab pays $15/hr.')).toBeInTheDocument());
+    await waitFor(() => expect(textarea).toBeEnabled());
+    expect(screen.queryAllByText('The lab')).toHaveLength(0);
+  });
+
+  it('keeps the partial text and shows the generic error when the result is errored', async () => {
+    mockChat.mockImplementation(async (_o, _m, _h, _p, _model, onDelta) => {
+      onDelta!('Partial answer');
+      return { reply: 'Partial answer', method: 'llm', errored: true };
+    });
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'stream-err-q' } });
+    fireEvent.submit(textarea.closest('form')!);
+
+    await waitFor(() => expect(screen.getByText(/chatbot.errorGeneric/)).toBeInTheDocument());
+    expect(screen.getByText('Partial answer')).toBeInTheDocument();
+    expect(screen.getByText('stream-err-q')).toBeInTheDocument();
+  });
+
+  it('keeps the partial bubble (and the user bubble) when the call throws after a delta', async () => {
+    mockChat.mockImplementation(async (_o, _m, _h, _p, _model, onDelta) => {
+      onDelta!('half a reply');
+      throw new Error('stream cut');
+    });
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'my question' } });
+    fireEvent.submit(textarea.closest('form')!);
+
+    await waitFor(() => expect(screen.getByText(/stream cut/)).toBeInTheDocument());
+    expect(screen.getByText('half a reply')).toBeInTheDocument();
+    expect(screen.getByText('my question')).toBeInTheDocument();
+    expect(textarea.value).toBe('');
+  });
+
+  it('preserves the legacy failure path when the call throws before any delta', async () => {
+    mockChat.mockRejectedValue(new Error('total failure'));
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'no-delta-q' } });
+    fireEvent.submit(textarea.closest('form')!);
+
+    await waitFor(() => expect(screen.getByText(/total failure/)).toBeInTheDocument());
+    expect(screen.queryAllByText('no-delta-q').filter((el) => el.tagName !== 'TEXTAREA')).toHaveLength(0);
+    expect(textarea.value).toBe('no-delta-q');
   });
 });

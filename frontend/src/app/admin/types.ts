@@ -122,6 +122,34 @@ export interface FeedbackEntry {
   props?: { path?: string } & Record<string, unknown>;
 }
 
+export interface FeedbackRateRow {
+  key: string;
+  n: number;
+  up_rate: number;
+}
+
+export interface FeedbackReplayReport {
+  mode: 'weight_replay' | 'score_band_agreement';
+  current_agreement: number | null;
+  best_candidate: { eligibility: number; readiness: number; upside: number } | null;
+  delta: number | null;
+  sample_n: number;
+  note: string;
+}
+
+export interface FeedbackAnalysis {
+  insufficient?: boolean;
+  needed?: number;
+  sample_n: number;
+  up_rate?: number;
+  by_bucket?: FeedbackRateRow[];
+  by_score_band?: FeedbackRateRow[];
+  by_school?: FeedbackRateRow[];
+  by_position?: FeedbackRateRow[];
+  keyword_overlap?: { available: boolean; reason: string };
+  replay?: FeedbackReplayReport;
+}
+
 export interface FeedbackInbox {
   status: 'ok' | 'skipped';
   reason?: string;
@@ -134,6 +162,7 @@ export interface FeedbackInbox {
     down_7d: number;
     sample_size: number;
     top_downvoted: { opportunity_id: string; downs: number; title: string | null }[];
+    analysis?: FeedbackAnalysis;
   };
 }
 
