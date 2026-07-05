@@ -1230,7 +1230,7 @@ export const en = {
   home: {
     walkthrough: {
       title: 'How JoinALab works',
-      subtitle: 'From profile to a sent application in three steps — here is the real product.',
+      subtitle: 'From profile to a sent application — a tour of the real product. It plays on its own; click any step to explore.',
       steps: {
         profile: {
           title: 'Tell us your background',
@@ -1240,9 +1240,21 @@ export const en = {
           title: 'Get ranked, honest matches',
           caption: 'Thousands of live opportunities scored against your profile, with international-student eligibility called out.',
         },
+        compare: {
+          title: 'Compare your shortlist',
+          caption: 'Match scores, eligibility, and an AI verdict for each pick — Top Match, Strong Backup, or Reach — side by side.',
+        },
         act: {
-          title: 'Act on the best ones',
-          caption: 'Ask AI about any posting, tailor your résumé, draft a grounded cold email, and track every application.',
+          title: 'Dig deeper with Ask AI',
+          caption: 'Every posting has an AI assistant that knows the lab — ask about fit or next steps, then apply and mark your status.',
+        },
+        email: {
+          title: 'Draft a grounded cold email',
+          caption: 'A personalized draft citing the professor’s actual research, with tone controls, refine chat, and mistakes to avoid.',
+        },
+        tracker: {
+          title: 'Track every application',
+          caption: 'A board of everything you’ve applied to — statuses, notes, and reminders so no reply falls through.',
         },
       },
     },
@@ -3841,7 +3853,7 @@ export const zh = {
   home: {
     walkthrough: {
       title: 'JoinALab 如何工作',
-      subtitle: '从填写档案到发出申请，三步走完——以下是真实产品界面。',
+      subtitle: '从填写档案到发出申请——真实产品完整导览。自动播放，也可点击任意步骤查看。',
       steps: {
         profile: {
           title: '填写你的背景',
@@ -3851,9 +3863,21 @@ export const zh = {
           title: '获得诚实的匹配排名',
           caption: '数千条实时机会按你的背景打分排序，国际学生资格清晰标注。',
         },
+        compare: {
+          title: '并排比较候选',
+          caption: '匹配分、资格与 AI 判定（首选 / 稳妥备选 / 冲刺）一屏看全。',
+        },
         act: {
-          title: '对最合适的立即行动',
-          caption: '就任何岗位提问 AI、定制简历、生成有据可依的冷邮件，并跟踪每一份申请。',
+          title: '用 Ask AI 深入了解',
+          caption: '每条机会都配了解该实验室的 AI 助手——问契合度、下一步怎么做，然后申请并标记状态。',
+        },
+        email: {
+          title: '生成有据可依的冷邮件',
+          caption: '引用教授真实研究方向的个性化草稿，支持语气切换、对话式润色，并提示常见错误。',
+        },
+        tracker: {
+          title: '跟踪每一份申请',
+          caption: '看板式管理所有申请——状态、笔记、提醒，不漏掉任何回复。',
         },
       },
     },
