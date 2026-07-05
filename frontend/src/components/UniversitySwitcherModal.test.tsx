@@ -10,7 +10,7 @@ vi.mock('@/i18n/client', () => ({
 }));
 
 import UniversitySwitcherModal from './UniversitySwitcherModal';
-import { SCHOOLS, UCB_CAMPUS_OPPORTUNITIES } from '@/lib/schools';
+import { SCHOOLS } from '@/lib/schools';
 
 function renderModal(initialSelectedSlug = 'uiuc') {
   const onCancel = vi.fn();
@@ -46,14 +46,26 @@ describe('UniversitySwitcherModal — rendering', () => {
 
   it('shows coverage chips: counts for live schools, pending note otherwise', () => {
     renderModal();
-    expect(screen.getByText('universitySwitcher.coverageCampusNational:4,700')).toBeInTheDocument();
-    // Derived from the config-driven estimate (not a hardcoded 200) so this
-    // tracks the schools.ts constant as UCB coverage is refreshed.
+    // Expected chip text derives from the registry (which itself derives from
+    // school-stats.json at build time), so this test never goes stale as the
+    // corpus grows. getAllByText because two schools can floor to the same
+    // rounded count (uw and utexas both show 2,200 today).
+    const uiuc = SCHOOLS.find((s) => s.slug === 'uiuc')!;
     expect(
       screen.getByText(
-        `universitySwitcher.coverageCampus:${UCB_CAMPUS_OPPORTUNITIES.toLocaleString()}`,
+        `universitySwitcher.coverageCampusNational:${(
+          uiuc.coverage.campusOpportunities as number
+        ).toLocaleString()}`,
       ),
     ).toBeInTheDocument();
+    const ucb = SCHOOLS.find((s) => s.slug === 'ucb')!;
+    expect(
+      screen.getAllByText(
+        `universitySwitcher.coverageCampus:${(
+          ucb.coverage.campusOpportunities as number
+        ).toLocaleString()}`,
+      ).length,
+    ).toBeGreaterThanOrEqual(1);
     // Derive the expected pending count from the registry rather than a fixed
     // "minus N live schools" — the live set grows as campus collectors ship
     // (UIUC, UCB, Princeton, …).
