@@ -1049,6 +1049,114 @@ class TestOpportunityChatHardening:
         assert captured["model_id"] == "gemini-flash"
 
 
+class TestOpportunityChatStreaming:
+    """SSE streaming for /opportunities/{id}/chat: opt-in via ?stream=1 or the
+    Accept header, local-fallback when the provider chain yields nothing, an
+    error frame after partial output, and the JSON path untouched."""
+
+    @pytest.fixture
+    def opp_id(self):
+        return data_loader.load_opportunities()[0]["id"]
+
+    @staticmethod
+    def _events(text: str) -> list[dict]:
+        return [
+            json.loads(line[len("data: "):])
+            for line in text.split("\n\n")
+            if line.startswith("data: ")
+        ]
+
+    def test_stream_param_yields_sse_deltas_then_done(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+
+        def fake_stream(_messages, _model_id=None):
+            yield "Hel"
+            yield "lo"
+
+        monkeypatch.setattr(op_module, "_llm_chat_stream", fake_stream)
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat?stream=1", json={"message": "Is this paid?"}
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/event-stream")
+        events = self._events(resp.text)
+        assert [e["delta"] for e in events if "delta" in e] == ["Hel", "lo"]
+        assert events[-1] == {"done": True, "method": "llm"}
+
+    def test_accept_header_alone_triggers_streaming(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+
+        def fake_stream(_messages, _model_id=None):
+            yield "hi"
+
+        monkeypatch.setattr(op_module, "_llm_chat_stream", fake_stream)
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat",
+            json={"message": "Is this paid?"},
+            headers={"accept": "text/event-stream"},
+        )
+        assert resp.headers["content-type"].startswith("text/event-stream")
+        assert self._events(resp.text)[-1] == {"done": True, "method": "llm"}
+
+    def test_empty_stream_falls_back_to_local_single_delta(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+        monkeypatch.setattr(op_module, "_llm_chat_stream", lambda _m, _model_id=None: iter(()))
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat?stream=1", json={"message": "Is this paid?"}
+        )
+        events = self._events(resp.text)
+        deltas = [e for e in events if "delta" in e]
+        assert len(deltas) == 1
+        assert "AI chat is not configured" in deltas[0]["delta"]
+        assert deltas[0]["method"] == "local"
+        assert events[-1] == {"done": True, "method": "local"}
+
+    def test_mid_stream_raise_emits_error_frame_after_partial(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+
+        def fake_stream(_messages, _model_id=None):
+            yield "partial"
+            raise RuntimeError("provider died mid-stream")
+
+        monkeypatch.setattr(op_module, "_llm_chat_stream", fake_stream)
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat?stream=1", json={"message": "Is this paid?"}
+        )
+        assert self._events(resp.text) == [
+            {"delta": "partial"},
+            {"error": True},
+            {"done": True, "method": "llm"},
+        ]
+
+    def test_plain_post_keeps_json_path_unchanged(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+        monkeypatch.setattr(
+            op_module, "_llm_chat_call", lambda _m, _model_id=None: "Yes, it is paid."
+        )
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat", json={"message": "Is this paid?"}
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/json")
+        assert resp.json() == {"reply": "Yes, it is paid.", "method": "llm"}
+
+    def test_stream_passes_picked_model_through(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+        captured: dict = {}
+
+        def fake_stream(_messages, model_id=None):
+            captured["model_id"] = model_id
+            yield "ok"
+
+        monkeypatch.setattr(op_module, "_llm_chat_stream", fake_stream)
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat?stream=1",
+            json={"message": "hi", "model": "gemini-flash"},
+        )
+        assert resp.status_code == 200
+        assert captured["model_id"] == "gemini-flash"
+
+
 class TestChatModelPicker:
     """Ask-AI model picker: the catalog endpoint is gated on OpenRouter being
     configured, so the UI hides the picker when nothing is wired."""
@@ -1129,6 +1237,133 @@ class TestLLMChatCompletionRetry:
             monkeypatch.delenv(var, raising=False)
         from backend.lib.llm import chat_completion
         assert chat_completion([{"role": "user", "content": "hi"}]) is None
+
+
+class TestLLMChatCompletionStream:
+    """chat_completion_stream: real token streaming for OpenAI/OpenRouter,
+    single-delta passthrough for Gemini (its endpoint isn't streamed), empty
+    stream (no raise) on total failure, and mid-iteration errors propagating
+    so the route can emit an SSE error frame after partial output."""
+
+    def _fake_openai_module(
+        self, calls: list, *, create_failures: int = 0, raise_after: int | None = None
+    ):
+        import types
+
+        class _Delta:
+            def __init__(self, content):
+                self.content = content
+
+        class _StreamChoice:
+            def __init__(self, content):
+                self.delta = _Delta(content)
+
+        class _Chunk:
+            def __init__(self, choices):
+                self.choices = choices
+
+        class _Msg:
+            content = "full non-stream reply"
+
+        class _MsgChoice:
+            message = _Msg()
+
+        class _Resp:
+            choices = [_MsgChoice()]
+
+        def _stream():
+            yield _Chunk([])  # OpenRouter-style keep-alive/usage frame
+            yield _Chunk([_StreamChoice(None)])  # role-only first frame
+            for i, delta in enumerate(("Hel", "lo")):
+                if raise_after is not None and i == raise_after:
+                    raise RuntimeError("mid-stream failure")
+                yield _Chunk([_StreamChoice(delta)])
+
+        class _Completions:
+            def create(self, **kwargs):
+                calls.append(kwargs)
+                if len(calls) <= create_failures:
+                    raise RuntimeError("transient upstream error")
+                return _stream() if kwargs.get("stream") else _Resp()
+
+        class _Chat:
+            completions = _Completions()
+
+        class _Client:
+            def __init__(self, **kwargs):
+                pass
+
+            chat = _Chat()
+
+        module = types.ModuleType("openai")
+        module.OpenAI = _Client
+        return module
+
+    def _only_provider(self, monkeypatch, env_var: str | None):
+        for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        if env_var:
+            monkeypatch.setenv(env_var, "fake")
+
+    def test_streams_real_deltas_with_openai(self, monkeypatch):
+        self._only_provider(monkeypatch, "OPENAI_API_KEY")
+        calls: list = []
+        monkeypatch.setitem(sys.modules, "openai", self._fake_openai_module(calls))
+        from backend.lib.llm import chat_completion_stream
+        out = list(chat_completion_stream([{"role": "user", "content": "hi"}]))
+        assert out == ["Hel", "lo"]
+        assert calls[0]["stream"] is True
+
+    def test_gemini_yields_single_full_reply_without_streaming(self, monkeypatch):
+        self._only_provider(monkeypatch, "GEMINI_API_KEY")
+        calls: list = []
+        monkeypatch.setitem(sys.modules, "openai", self._fake_openai_module(calls))
+        from backend.lib.llm import chat_completion_stream
+        out = list(chat_completion_stream([{"role": "user", "content": "hi"}]))
+        assert out == ["full non-stream reply"]
+        assert len(calls) == 1
+        assert "stream" not in calls[0]
+
+    def test_yields_nothing_when_no_provider_configured(self, monkeypatch):
+        self._only_provider(monkeypatch, None)
+        from backend.lib.llm import chat_completion_stream
+        assert list(chat_completion_stream([{"role": "user", "content": "hi"}])) == []
+
+    def test_retries_stream_creation_then_streams(self, monkeypatch):
+        self._only_provider(monkeypatch, "OPENAI_API_KEY")
+        calls: list = []
+        monkeypatch.setitem(
+            sys.modules, "openai", self._fake_openai_module(calls, create_failures=1)
+        )
+        monkeypatch.setattr("backend.lib.llm.time.sleep", lambda *_: None)
+        from backend.lib.llm import chat_completion_stream
+        out = list(chat_completion_stream([{"role": "user", "content": "hi"}]))
+        assert out == ["Hel", "lo"]
+        assert len(calls) == 2
+
+    def test_yields_nothing_when_creation_exhausts_attempts(self, monkeypatch):
+        self._only_provider(monkeypatch, "OPENAI_API_KEY")
+        calls: list = []
+        monkeypatch.setitem(
+            sys.modules, "openai", self._fake_openai_module(calls, create_failures=99)
+        )
+        monkeypatch.setattr("backend.lib.llm.time.sleep", lambda *_: None)
+        from backend.lib.llm import chat_completion_stream
+        assert list(chat_completion_stream([{"role": "user", "content": "hi"}])) == []
+        assert len(calls) == 2
+
+    def test_mid_iteration_raise_propagates_after_partial(self, monkeypatch):
+        self._only_provider(monkeypatch, "OPENAI_API_KEY")
+        calls: list = []
+        monkeypatch.setitem(
+            sys.modules, "openai", self._fake_openai_module(calls, raise_after=1)
+        )
+        from backend.lib.llm import chat_completion_stream
+        collected: list = []
+        with pytest.raises(RuntimeError, match="mid-stream failure"):
+            for delta in chat_completion_stream([{"role": "user", "content": "hi"}]):
+                collected.append(delta)
+        assert collected == ["Hel"]
 
 
 class TestTfidfCorpusFit:
@@ -2924,3 +3159,74 @@ class TestAdminFeedback:
         assert mf["down_7d"] == 1
         assert mf["top_downvoted"][0]["opportunity_id"] == "opp-1"
         assert mf["top_downvoted"][0]["downs"] == 2
+        assert mf["analysis"] == {"insufficient": True, "needed": 50, "sample_n": 3}
+
+    def test_analysis_block_at_min_sample(self, monkeypatch):
+        from datetime import UTC, datetime
+
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+
+        ts = datetime.now(UTC).isoformat()
+        thumbs = [
+            {"opportunity_id": "opp-uiuc", "verdict": "up", "created_at": ts,
+             "bucket": "high_priority", "final_score": 85, "context": {"position": 2}}
+            for _ in range(30)
+        ] + [
+            {"opportunity_id": "opp-uw", "verdict": "down", "created_at": ts,
+             "bucket": "reach", "final_score": 45, "context": None}
+            for _ in range(20)
+        ]
+
+        class FakeResponse:
+            def __init__(self, payload):
+                self._payload = payload
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return self._payload
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def get(self, url, params=None, headers=None):
+                if url.endswith("/rest/v1/feedback"):
+                    return FakeResponse([])
+                assert params["select"] == "*"
+                return FakeResponse(thumbs)
+
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod.httpx, "AsyncClient", FakeClient)
+        monkeypatch.setattr(admin_mod, "load_opportunities", lambda: [
+            {"id": "opp-uiuc", "title": "CV Lab", "school": "uiuc"},
+            {"id": "opp-uw", "title": "Bio Lab", "school": "uw"},
+        ])
+
+        r = client.get("/api/admin/feedback", headers={"X-Admin-Token": "secret-abc"})
+        assert r.status_code == 200
+        analysis = r.json()["match_feedback"]["analysis"]
+        assert analysis["sample_n"] == 50
+        assert analysis["up_rate"] == 0.6
+        assert {row["key"]: row["up_rate"] for row in analysis["by_bucket"]} == {
+            "high_priority": 1.0, "reach": 0.0,
+        }
+        assert {row["key"]: row["n"] for row in analysis["by_score_band"]} == {"80-100": 30, "40-60": 20}
+        assert {row["key"]: row["up_rate"] for row in analysis["by_school"]} == {"uiuc": 1.0, "uw": 0.0}
+        assert {row["key"]: row["n"] for row in analysis["by_position"]} == {"1-3": 30}
+        assert analysis["keyword_overlap"]["available"] is False
+        # votes carry no per-layer component scores → replay degrades honestly
+        replay = analysis["replay"]
+        assert replay["mode"] == "score_band_agreement"
+        assert replay["current_agreement"] == 1.0
+        assert replay["best_candidate"] is None
+        assert replay["sample_n"] == 50

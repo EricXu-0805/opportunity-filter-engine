@@ -11,6 +11,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
+from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
     COLLEGE_AFFINITY_MAX,
@@ -31,6 +32,8 @@ from .config import (
     INTL_UNKNOWN_INTERNSHIP_SCORE,
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
+    RESPONSIVENESS_BONUS,
+    RESPONSIVENESS_MIN_N,
     SEASONAL_BOOST_ENABLED,
     SEASONAL_BOOST_FACTOR,
     SEASONAL_BOOST_MONTHS,
@@ -43,6 +46,15 @@ from .config import (
     TOPIC_UNKNOWN_PENALTY,
     WEIGHTS_DEFAULT,
 )
+
+# Every school slug the platform collects for. All are R1s, so records hosted
+# at any of them share one brand score — ranking registered schools against
+# each other (the old caltech/mit/... list) is not the product's job.
+REGISTERED_SCHOOLS = frozenset(s for s, _ in SOURCE_DEFAULTS.values() if s)
+
+# External prestige brands (labs/agencies/schools we don't collect for),
+# word-bounded so "mit" can't match Smithsonian/Smiths/Smith+Nephew.
+_PRESTIGE_ORG_RE = re.compile(r"\b(?:caltech|mit|stanford|cmu|berkeley|nasa|doe)\b")
 
 
 @dataclass
@@ -335,6 +347,23 @@ def _home_school_affinity(profile: dict, opportunity: dict) -> float:
     if not home:
         return 0.0
     return HOME_SCHOOL_AFFINITY_MAX if opportunity.get("school") == home else 0.0
+
+
+def _responsiveness_bonus(
+    opportunity: dict, responsiveness: dict[str, dict] | None
+) -> float:
+    """Additive bonus (0..3) when aggregated internal signals show students
+    recently got replies here: >= RESPONSIVENESS_MIN_N distinct devices made
+    contact and >= 1 reached got-reply/interviewing. OFF by default
+    (OFE_RESPONSIVENESS_BONUS=0); clamped so it can only break ties."""
+    if not responsiveness or RESPONSIVENESS_BONUS <= 0:
+        return 0.0
+    sig = responsiveness.get(opportunity.get("id", ""))
+    if not sig:
+        return 0.0
+    if sig.get("contacted_n", 0) < RESPONSIVENESS_MIN_N or sig.get("replied_n", 0) < 1:
+        return 0.0
+    return min(RESPONSIVENESS_BONUS, 3.0)
 
 
 def _major_match_score(
@@ -949,15 +978,14 @@ def score_upside(
             reasons_fit.append("On-campus — no work authorization concerns")
 
     # Brand/prestige (15%)
-    # Simple heuristic for V1 — can be refined
     brand_score = 60.0
     org = (opportunity.get("organization") or "").lower()
-    prestigious = ["caltech", "mit", "stanford", "cmu", "berkeley", "nasa", "doe"]
-    if any(p in org for p in prestigious):
+    if opportunity.get("school") in REGISTERED_SCHOOLS:
+        brand_score = 90.0
+        reasons_fit.append("Major research university — strong resume builder")
+    elif _PRESTIGE_ORG_RE.search(org):
         brand_score = 95.0
         reasons_fit.append("Prestigious institution — strong resume builder")
-    elif "uiuc" in org or "illinois" in org:
-        brand_score = 70.0
 
     desc = (opportunity.get("description_raw") or "").lower()
     mentor_keywords = ["mentor", "training", "learn", "guided", "supervision", "teach", "onboard"]
@@ -1465,6 +1493,7 @@ def rank_opportunity(
     precomputed_sim: float | None = None,
     today=None,
     implicit_keywords: set[str] | None = None,
+    responsiveness: dict[str, dict] | None = None,
 ) -> MatchResult:
     if precomputed_eligibility is not None:
         elig_score, elig_fit, elig_gap = precomputed_eligibility
@@ -1489,7 +1518,8 @@ def rank_opportunity(
     interest_bonus = _interest_bonus(profile, opportunity)
     college_bonus = _college_affinity(profile, opportunity)
     home_bonus = _home_school_affinity(profile, opportunity)
-    raw = min(100.0, raw + interest_bonus + college_bonus + home_bonus)
+    resp_bonus = _responsiveness_bonus(opportunity, responsiveness)
+    raw = min(100.0, raw + interest_bonus + college_bonus + home_bonus + resp_bonus)
 
     # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
     # eligibility layer). A separate raw multiplier here double-counted the same
@@ -1808,7 +1838,11 @@ def _diversify_explore(
     return out
 
 
-def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
+def rank_all(
+    profile: dict,
+    opportunities: list[dict],
+    responsiveness: dict[str, dict] | None = None,
+) -> list[MatchResult]:
     """Rank all opportunities for a profile. Returns sorted by final_score desc."""
     search_weight = profile.get("search_weight", 50)
     exploring = bool(profile.get("exploring"))
@@ -1912,6 +1946,7 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             precomputed_eligibility=elig_triple,
             precomputed_sim=sims_by_id.get(opp.get("id")),
             implicit_keywords=implicit_kw,
+            responsiveness=responsiveness,
         )
         if result.final_score >= min_threshold:
             results.append(result)

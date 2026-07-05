@@ -1,19 +1,22 @@
 /*
- * Flow B cross-device merge wiring (migration 017).
+ * Flow B cross-device merge wiring (migrations 017 + 018).
  *
  * Covers the two client-side halves the SECURITY DEFINER SQL relies on:
  *   - mint (exercised through signInExistingEmail / signInExistingOAuth):
- *     an existing-account sign-in must stash a grant token bound to the
- *     right email, and minting must NEVER block sign-in.
+ *     an existing-account sign-in must stash a grant bound to the right
+ *     email (email path) or to a device secret whose SHA-256 hash is all
+ *     the server ever sees (OAuth path), and minting must NEVER block
+ *     sign-in.
  *   - redeemPendingMerge: one-shot redeem on /auth/callback, tolerant of
  *     expired/used/not-bound grants (they surface as an RPC error and must
  *     NOT fail the sign-in).
  *
- * The SQL correctness (dedup, conflict rules, takeover/replay/expiry
- * refusal) is verified separately against real Postgres in
+ * The SQL correctness (dedup, conflict rules, takeover/replay/expiry/
+ * secret-binding refusal) is verified separately against real Postgres in
  * supabase/tests/flow_b_merge_test.sql.
  */
 
+import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockRpc, mockSignInWithOtp, mockSignInWithOAuth } = vi.hoisted(() => {
@@ -101,13 +104,46 @@ describe('mint (via signInExistingEmail)', () => {
   });
 });
 
-describe('mint (via signInExistingOAuth)', () => {
-  it('does NOT mint on the OAuth path (email unknown pre-consent → an unbound grant would be theft-prone)', async () => {
+describe('mint (via signInExistingOAuth) — device-secret binding', () => {
+  it('mints a secret-bound grant (null email + SHA-256 hash) and stashes {token, secret}', async () => {
+    mockRpc.mockResolvedValueOnce({ data: GRANT, error: null });
+
     const result = await signInExistingOAuth('google', REDIRECT);
 
     expect(result.ok).toBe(true);
-    // no mint RPC, no token stashed — OAuth-path merge is deferred
-    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+    const [fn, args] = mockRpc.mock.calls[0] as [string, { p_target_email: unknown; p_secret_hash: string }];
+    expect(fn).toBe('mint_merge_grant');
+    expect(args.p_target_email).toBeNull();
+    expect(args.p_secret_hash).toMatch(/^[0-9a-f]{64}$/);
+
+    const raw = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT);
+    const stash = JSON.parse(raw!) as { token: string; secret: string };
+    expect(stash.token).toBe(GRANT);
+    expect(stash.secret).toMatch(/^[0-9a-f]{64}$/);
+    // Recompute the hash via node:crypto — independent of the SubtleCrypto
+    // path under test — to pin "server stores sha256(secret), nothing else".
+    expect(createHash('sha256').update(stash.secret).digest('hex')).toBe(args.p_secret_hash);
+    // mint happens BEFORE the redirect
+    expect(mockSignInWithOAuth).toHaveBeenCalled();
+  });
+
+  it('does not block sign-in when the mint RPC errors', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+
+    const result = await signInExistingOAuth('google', REDIRECT);
+
+    expect(result.ok).toBe(true);
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+    expect(mockSignInWithOAuth).toHaveBeenCalled();
+  });
+
+  it('does not block sign-in when the mint RPC throws', async () => {
+    mockRpc.mockRejectedValueOnce(new Error('network'));
+
+    const result = await signInExistingOAuth('google', REDIRECT);
+
+    expect(result.ok).toBe(true);
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
     expect(mockSignInWithOAuth).toHaveBeenCalled();
   });
@@ -166,6 +202,46 @@ describe('redeemPendingMerge', () => {
 
     expect(res).toBeNull();
     // token already cleared before the RPC → a thrown RPC can't cause a retry
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
+  it('redeems a JSON {token, secret} slot by presenting the secret (OAuth path)', async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.MERGE_GRANT,
+      JSON.stringify({ token: GRANT, secret: 'device-secret-hex' }),
+    );
+    mockRpc.mockResolvedValueOnce({
+      data: { merged: true, summary: { favorites: 1 } },
+      error: null,
+    });
+
+    const res = await redeemPendingMerge();
+
+    expect(mockRpc).toHaveBeenCalledWith('redeem_merge_grant', {
+      p_token: GRANT,
+      p_secret: 'device-secret-hex',
+    });
+    expect(res?.merged).toBe(true);
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
+  it('returns null, clears the slot, and makes no RPC on a malformed JSON slot', async () => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, '{not-json');
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toBeNull();
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
+  it('returns null and makes no RPC when the JSON slot is missing token/secret strings', async () => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: GRANT }));
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toBeNull();
+    expect(mockRpc).not.toHaveBeenCalled();
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 

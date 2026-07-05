@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SCHOOLS, UCB_CAMPUS_OPPORTUNITIES, bySlug, detectSchoolFromEmail } from './schools';
+import { SCHOOLS, bySlug, detectSchoolFromEmail } from './schools';
+import stats from './school-stats.json';
 
 describe('detectSchoolFromEmail — known schools', () => {
   it('matches an exact known domain', () => {
@@ -94,28 +95,33 @@ describe('registry — switcher metadata', () => {
     }
   });
 
-  it('every school ships live campus coverage — no pending left', () => {
-    expect(bySlug('uiuc')?.coverage.campusOpportunities).toBe(4700);
-    // UCB coverage is the config-driven estimate, not a magic literal — assert
-    // it tracks the computed constant and clears a conservative floor that the
-    // shipped dataset (~369 school='ucb' records) already exceeds, so the chip
-    // can't silently revert to the stale 200.
-    expect(bySlug('ucb')?.coverage.campusOpportunities).toBe(UCB_CAMPUS_OPPORTUNITIES);
-    expect(UCB_CAMPUS_OPPORTUNITIES).toBeGreaterThanOrEqual(300);
-    // Campus-graph schools (US-News Top-50 rollout): conservative seed-floor
-    // counts of school=<slug> records (campus + lab buckets; the open/national
-    // programs are not counted), not 'pending'.
-    expect(bySlug('princeton')?.coverage.campusOpportunities).toBe(462);
-    expect(bySlug('umich')?.coverage.campusOpportunities).toBe(110);
-    expect(bySlug('uw')?.coverage.campusOpportunities).toBe(2259);
-    expect(bySlug('gatech')?.coverage.campusOpportunities).toBe(1301);
-    expect(bySlug('stanford')?.coverage.campusOpportunities).toBe(1422);
-    expect(bySlug('utexas')?.coverage.campusOpportunities).toBe(2351);
-    expect(bySlug('wisc')?.coverage.campusOpportunities).toBe(1781);
-    expect(bySlug('ucla')?.coverage.campusOpportunities).toBe(2033);
-    expect(bySlug('ucsd')?.coverage.campusOpportunities).toBe(1385);
-    expect(bySlug('uchicago')?.coverage.campusOpportunities).toBe(881);
-    // All twelve registered schools now have a live campus collector.
+  it('every school ships live campus coverage derived from the corpus stats', () => {
+    const entries = Object.values(stats) as { campus: number; national: number }[];
+    expect(entries.length).toBeGreaterThan(0);
+    const national = entries[0].national;
+    expect(national).toBeGreaterThan(0);
+    for (const entry of entries) expect(entry.national).toBe(national);
+
+    for (const school of SCHOOLS) {
+      const stat = (stats as Record<string, { campus: number; national: number }>)[school.slug];
+      expect(stat, school.slug).toBeDefined();
+      expect(stat.campus, school.slug).toBeGreaterThan(0);
+
+      const c = school.coverage.campusOpportunities;
+      expect(typeof c, school.slug).toBe('number');
+      // UIUC's chip counts campus + national (its historical semantics);
+      // every other school shows campus-only.
+      const raw = school.slug === 'uiuc' ? stat.campus + stat.national : stat.campus;
+      expect(school.coverage.note).toBe(
+        school.slug === 'uiuc'
+          ? 'universitySwitcher.coverageCampusNational'
+          : 'universitySwitcher.coverageCampus',
+      );
+      // Floored, never overstating, and within one floor step of the raw count.
+      expect(c as number, school.slug).toBeLessThanOrEqual(raw);
+      expect(raw - (c as number), school.slug).toBeLessThan(100);
+    }
+
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending).toEqual([]);
     expect(SCHOOLS.length).toBe(12);

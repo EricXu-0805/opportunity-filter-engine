@@ -88,6 +88,13 @@ jobs:
               lines.append(f\"- [{e.get('created_at','')[:16]}] {who} {path}\n  {e.get('message','')}\")
           print('\\n'.join(lines))
           ")
+          ANALYSIS=$(echo "$BODY" | python3 -c "
+          import sys, json
+          a = ((json.load(sys.stdin).get('match_feedback') or {}).get('analysis')) or {}
+          if a and not a.get('insufficient'):
+              print(f\"Match analysis: {round((a.get('up_rate') or 0) * 100)}% up-rate over {a.get('sample_n')} votes\")
+          ")
+          if [ -n "$ANALYSIS" ]; then DIGEST=$(printf '%s\n\n%s' "$DIGEST" "$ANALYSIS"); fi
           export DIGEST_BODY="$DIGEST" FB_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}"
           PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s new user feedback" % os.environ["FB_COUNT"], "text": "New feedback in the last 25h:\n\n%s\n\nInbox: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
           curl -sf -X POST https://api.resend.com/emails \
