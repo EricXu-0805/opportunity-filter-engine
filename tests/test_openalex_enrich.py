@@ -118,3 +118,101 @@ def test_apply_is_updates_only():
     assert n == 1
     assert opps[0]["keywords"] == ["robotics"]
     assert opps[1]["keywords"] == ["existing"]
+
+
+class _Resp200:
+    status_code = 200
+
+    def __init__(self, payload):
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+def test_author_recent_works_fetch(monkeypatch):
+    seen = {}
+
+    def _fake_get(url, params=None, headers=None, timeout=None):
+        seen["url"], seen["params"] = url, params
+        return _Resp200({"results": [
+            {"display_name": "Soft  Robotic\nGrippers for Fruit Harvesting", "publication_year": 2026},
+            {"display_name": "No Year Paper", "publication_year": None},
+            {"display_name": "T" * 500, "publication_year": 2025},
+            {"display_name": "Fourth Paper Beyond Cap", "publication_year": 2024},
+        ]})
+
+    monkeypatch.setattr(oa.requests, "get", _fake_get)
+    works = oa.author_recent_works("https://openalex.org/A123")
+    assert seen["url"] == oa._WORKS_API
+    assert seen["params"]["filter"] == "author.id:https://openalex.org/A123"
+    assert seen["params"]["sort"] == "publication_date:desc"
+    assert seen["params"]["per-page"] == oa._MAX_WORKS
+    assert seen["params"]["select"] == "display_name,publication_year"
+    # whitespace collapsed, yearless dropped, titles capped at 200, max 3 kept
+    assert works[0] == {"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}
+    assert len(works[1]["title"]) == 200
+    assert len(works) <= oa._MAX_WORKS
+    assert all(w["year"] for w in works)
+
+
+def test_author_recent_works_dedups_preprint_published_pairs(monkeypatch):
+    monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp200({"results": [
+        {"display_name": "Same Paper Twice", "publication_year": 2026},
+        {"display_name": "same  paper twice", "publication_year": 2026},
+        {"display_name": "A Different Paper", "publication_year": 2025},
+    ]}))
+    works = oa.author_recent_works("A1")
+    assert [w["title"] for w in works] == ["Same Paper Twice", "A Different Paper"]
+
+
+def test_harvest_works_targets_matched_authors_only(monkeypatch):
+    opps = [
+        {"pi_name": "A Match", "school": "uw", "url": "https://x.edu/a",
+         "keywords": ["robotics"], "source_type": "faculty_research"},
+        {"pi_name": "B NoMatch", "school": "uw", "url": "https://x.edu/b",
+         "source_type": "faculty_research"},
+        {"pi_name": "C Done", "school": "uw", "url": "https://x.edu/c",
+         "source_type": "faculty_research",
+         "metadata": {"recent_works": [{"title": "old", "year": 2020}]}},
+        {"pi_name": "D Other", "school": "not-registered", "url": "https://y.edu/d",
+         "source_type": "faculty_research"},
+    ]
+
+    def _fake_match(name, inst_id, dept=""):
+        return {"id": "A1"} if "Match" in name and "No" not in name else None
+
+    monkeypatch.setattr(oa, "_match_author", _fake_match)
+    monkeypatch.setattr(oa, "author_recent_works",
+                        lambda aid: [{"title": "Recent Paper", "year": 2026}])
+    mapping = oa.harvest_works(opps, throttle=0)
+    # keyworded faculty ARE works targets; already-enriched + unmapped schools are not
+    assert mapping == {"https://x.edu/a": [{"title": "Recent Paper", "year": 2026}]}
+
+
+def test_apply_works_is_updates_only_and_capped():
+    opps = [
+        {"pi_name": "A", "school": "uw", "url": "https://x.edu/a",
+         "source_type": "faculty_research"},
+        {"pi_name": "B", "school": "uw", "url": "https://x.edu/b",
+         "source_type": "faculty_research",
+         "metadata": {"recent_works": [{"title": "keep me", "year": 2020}]}},
+        {"pi_name": "C", "school": "uw", "url": "https://x.edu/c",
+         "source_type": "faculty_research"},
+    ]
+    mapping = {
+        "https://x.edu/a": [{"title": "W" * 300, "year": 2026},
+                            {"title": "Second", "year": 2025},
+                            {"title": "Third", "year": 2024},
+                            {"title": "Fourth", "year": 2023}],
+        "https://x.edu/b": [{"title": "overwrite attempt", "year": 2026}],
+    }
+    before = len(opps)
+    n = oa.apply_works(opps, mapping)
+    assert n == 1
+    assert len(opps) == before
+    stored = opps[0]["metadata"]["recent_works"]
+    assert len(stored) == oa._MAX_WORKS
+    assert len(stored[0]["title"]) == oa._TITLE_CAP
+    assert opps[1]["metadata"]["recent_works"] == [{"title": "keep me", "year": 2020}]
+    assert "metadata" not in opps[2] or not opps[2]["metadata"].get("recent_works")

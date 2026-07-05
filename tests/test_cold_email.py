@@ -403,3 +403,81 @@ class TestSkillLevelThreading:
         assert out is not None
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
         assert "MATLAB (beginner)" in user_msg
+
+
+class TestRecentWorkGrounding:
+    """metadata.recent_works (OpenAlex paper titles) must reach the AI prompt
+    (exactly one, the most recent) AND the evidence corpus, so a draft citing
+    the real title passes the anti-fabrication gate — while the same citation
+    with no stored works is still rejected as a fabricated claim."""
+
+    _WORKS = [
+        {"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026},
+        {"title": "Older Paper That Must Not Be Offered", "year": 2019},
+    ]
+
+    def _profile(self):
+        return {
+            "name": "Eric", "year": "freshman", "major": "Computer Engineering",
+            "school": "UIUC", "hard_skills": ["Python"],
+            "research_interests_text": "brain-computer interfaces",
+        }
+
+    def _opp(self, works=None):
+        opp = {
+            "opportunity_type": "research", "title": "Undergraduate Research",
+            "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Group",
+            "department": "Electrical Engineering",
+            "keywords": ["brain-computer interfaces"],
+            "description_raw": "Research on neural interfaces.",
+            "eligibility": {"skills_required": ["Python"]},
+        }
+        if works is not None:
+            opp["metadata"] = {"recent_works": works}
+        return opp
+
+    def _capture_prompt(self, monkeypatch, opp):
+        from backend.routes import cold_email as ce
+
+        captured = {}
+
+        def _fake_chat(messages, **kwargs):
+            captured["messages"] = messages
+            return "Subject: Hi\n\nBody."
+
+        monkeypatch.setattr(ce, "chat_completion", _fake_chat)
+        assert ce._ai_generate_email_text(self._profile(), opp) is not None
+        return next(m["content"] for m in captured["messages"] if m["role"] == "user")
+
+    def test_prompt_offers_only_the_most_recent_title_with_year(self, monkeypatch):
+        user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
+        assert '"NeuroFlow: Decoding Imagined Speech from ECoG Arrays" (2026)' in user_msg
+        assert "Older Paper" not in user_msg
+
+    def test_prompt_shows_none_when_absent(self, monkeypatch):
+        user_msg = self._capture_prompt(monkeypatch, self._opp())
+        assert "- Recent publication by this professor: (none)" in user_msg
+
+    def _validate_draft(self, opp):
+        from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
+        from backend.routes.cold_email import _EMAIL_SCAFFOLDING, _build_email_corpus
+
+        draft = (
+            "Dear Professor Doe,\n"
+            "Your 2026 paper NeuroFlow: Decoding Imagined Speech from ECoG Arrays "
+            "connects directly to my interest in brain-computer interfaces.\n"
+            "Best regards,\nEric"
+        )
+        corpus = _build_email_corpus(_common_parts(self._profile(), opp), opp)
+        return validate_no_fabrication(
+            draft, corpus, extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
+        )
+
+    def test_draft_citing_stored_title_passes(self):
+        passed, fabricated = self._validate_draft(self._opp(self._WORKS))
+        assert passed, f"grounded citation flagged as fabrication: {fabricated}"
+
+    def test_same_citation_without_stored_works_is_rejected(self):
+        passed, fabricated = self._validate_draft(self._opp())
+        assert not passed
+        assert "neuroflow" in fabricated
