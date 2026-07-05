@@ -384,6 +384,32 @@ class TestUpsideScoring:
         _, fit, _ = score_upside(sample_profile, opp)
         assert any("prestigious" in f.lower() for f in fit)
 
+    def _brand_opp(self, organization, school=None):
+        return {
+            "id": f"brand-{organization}", "organization": organization,
+            "school": school, "paid": "unknown", "on_campus": False,
+            "eligibility": {}, "application": {}, "description_raw": "",
+        }
+
+    def test_smithsonian_gets_no_prestige_reason(self, sample_profile):
+        for org in ["Smithsonian Institution", "Smiths Detection Group", "Smith+Nephew"]:
+            _, fit, _ = score_upside(sample_profile, self._brand_opp(org))
+            assert not any("prestigious" in f.lower() for f in fit), org
+
+    def test_registered_schools_get_equal_brand_score(self, sample_profile):
+        uw_total, uw_fit, _ = score_upside(
+            sample_profile, self._brand_opp("University of Washington", school="uw"))
+        ucb_total, ucb_fit, _ = score_upside(
+            sample_profile, self._brand_opp("UC Berkeley", school="ucb"))
+        assert uw_total == ucb_total
+        for fit in (uw_fit, ucb_fit):
+            assert any("major research university" in f.lower() for f in fit)
+            assert not any("prestigious" in f.lower() for f in fit)
+
+    def test_external_prestige_org_word_bounded(self, sample_profile):
+        _, fit, _ = score_upside(sample_profile, self._brand_opp("MIT Lincoln Laboratory"))
+        assert any("prestigious" in f.lower() for f in fit)
+
     def test_score_range(self, sample_profile, good_match_opportunity):
         score, _, _ = score_upside(sample_profile, good_match_opportunity)
         assert 0 <= score <= 100
