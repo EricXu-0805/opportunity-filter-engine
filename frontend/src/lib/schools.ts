@@ -207,7 +207,7 @@ export const SCHOOLS: School[] = [
     // Metcalf internship program + UChicago Handshake, BFI and BSCD research
     // pathways, and the James Franck Institute; the DSI Summer Lab, MRSEC REU,
     // and EDE+ are national/open, not counted) plus the faculty directory
-    // (1,034 professors across 41 departments spanning the College's four
+    // (1,017 professors across 41 departments spanning the College's four
     // collegiate divisions and the professional schools: 32 live-scraped
     // directories in six families — WordPress/FacetWP (CS), PSD MixItUp
     // (Stat/Math/Physics/Astro/Geophysical), Drupal Views bio-* (Econ, Psych +
@@ -218,7 +218,7 @@ export const SCHOOLS: School[] = [
     // departments frozen from their JSON APIs. Booth (client-side Coveo, needs a
     // wait-for-selector render) and the cross-appointed Data Science Institute
     // are deferred/excluded.
-    coverage: { campusOpportunities: 1044, note: 'universitySwitcher.coverageCampus' },
+    coverage: { campusOpportunities: 1027, note: 'universitySwitcher.coverageCampus' },
     catalog: { colleges: 4, majors: 56 },
   },
   {
