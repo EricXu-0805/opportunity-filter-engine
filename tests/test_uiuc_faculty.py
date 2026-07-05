@@ -324,6 +324,37 @@ def test_carry_forward_lets_richer_rescrape_win():
     assert incoming["keywords"] == ["quantum optics", "laser cooling", "bose-einstein condensates"]
 
 
+def test_carry_forward_preserves_profile_pass_email():
+    """Schools like CU Experts expose emails ONLY on per-profile pages, and the
+    profile pass is gated to first-week runs — a listing-only re-scrape emits no
+    contact_email and must not wipe the committed one, even when the fresh
+    scrape is keyword-richer (the carry is unconditional, like recent_works)."""
+    existing = {
+        "pi_name": "A B", "department": "Computer Science",
+        "keywords": ["physics"], "contact_email": "a.b@colorado.edu",
+    }
+    incoming = {
+        "pi_name": "A B", "department": "Computer Science",
+        "keywords": ["quantum optics", "laser cooling", "bose-einstein condensates"],
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["contact_email"] == "a.b@colorado.edu"
+    assert incoming["keywords"] == ["quantum optics", "laser cooling", "bose-einstein condensates"]
+
+
+def test_carry_forward_fresh_email_still_wins():
+    existing = {
+        "pi_name": "A B", "department": "Computer Science",
+        "keywords": ["physics"], "contact_email": "old@colorado.edu",
+    }
+    incoming = {
+        "pi_name": "A B", "department": "Computer Science",
+        "keywords": ["physics"], "contact_email": "new@colorado.edu",
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["contact_email"] == "new@colorado.edu"
+
+
 def test_is_junk_keyword_flags_journal_venues():
     for k in ["ieee transactions on image processing", "acta astronautica",
               "science advances", 'reviewer for "physical review letters"',
