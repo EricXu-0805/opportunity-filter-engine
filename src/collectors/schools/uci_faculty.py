@@ -152,6 +152,14 @@ SCHOOL: dict = {
                 "field_filter": {"selector": "td.views-field-field-position",
                                  "include": r"^\s*Faculty\s*$"},
                 "ladder_filter": _LADDER,
+                # Research areas live on the dept profile page as a taxonomy
+                # field (gated OFE_ENRICH_PROFILES); the stored link is the
+                # /people/<slug> profile.
+                "profile_enrich": {
+                    "research_items_selector":
+                        "section.field-name-field-research-interests-to-disp .field-item",
+                    "throttle": 1.0,
+                },
             },
         ),
         _dept(
