@@ -27,8 +27,12 @@ Purdue's directories are server-rendered, so they scrape with a plain request
   the department in the title cell after ``//`` and the email in the fourth cell;
   each department config filters that shared listing to its department.
 
-More Purdue colleges (Health & Human Sciences, Polytechnic, Daniels Business) are
-added as their markup is identified.
+* **Purdue Polytechnic Institute** — five schools from one Drupal JSON:API feed
+  (``faculty_graph._fetch_poly_jsonapi``), located by directory node title; each
+  record lands emailed + titled + keyworded (research-interest taxonomy).
+
+More Purdue colleges (Health & Human Sciences, Daniels Business) are added as their
+markup is identified.
 
 Single source ("purdue_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -112,6 +116,14 @@ def _cla(short: str, name: str, majors: list[str], include: str) -> dict:
             "scrape": {"url": _CLA_URL, "selectors": _CLA_SEL,
                        "ladder_filter": _CLA_LADDER,
                        "field_filter": {"selector": "td:nth-child(2)", "include": include}}}
+
+
+# Purdue Polytechnic Institute: five schools from one Drupal JSON:API feed
+# (faculty_graph._fetch_poly_jsonapi), located by the directory node title.
+def _poly(short: str, name: str, majors: list[str], code: str, node_title: str) -> dict:
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": f"https://polytechnic.purdue.edu/academic-areas/{code}/directory",
+            "poly_api": {"node_title": node_title}}
 
 
 SCHOOL: dict = {
@@ -288,6 +300,23 @@ SCHOOL: dict = {
              ["Anthropology"], r"//\s*Anthropology"),
         _cla("COMM", "Brian Lamb School of Communication",
              ["Communication"], r"//\s*Communication"),
+        # --- Purdue Polytechnic Institute (Drupal JSON:API, node per school) ---
+        _poly("SOET", "School of Engineering Technology",
+              ["Engineering Technology", "Mechanical Engineering Technology"],
+              "soet", "SOET Directory"),
+        _poly("ACC", "School of Applied & Creative Computing",
+              ["Computer and Information Technology", "Cybersecurity",
+               "Computer Graphics Technology"],
+              "acc", "School of Applied and Creative Computing Directory"),
+        _poly("SATT", "School of Aviation & Transportation Technology",
+              ["Aviation Technology", "Aeronautical Engineering Technology"],
+              "satt", "SATT Directory"),
+        _poly("BSC", "Bowen School of Construction",
+              ["Construction Management Technology"],
+              "bsc", "Bowen School of Construction Directory"),
+        _poly("TLI", "Department of Technology Leadership & Innovation",
+              ["Technology Leadership and Innovation"],
+              "tli", "TLI Directory"),
     ],
 }
 

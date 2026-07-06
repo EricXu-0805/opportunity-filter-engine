@@ -124,8 +124,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, or coa_api config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api", "poly_api")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, coa_api, or poly_api config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -2177,6 +2177,113 @@ def _fetch_coa_api(dept: dict) -> list[dict]:
     return specs
 
 
+# ---------------------------------------------------------------------------
+# Purdue Polytechnic Institute directory (Drupal JSON:API, deep mode)
+# ---------------------------------------------------------------------------
+#
+# Purdue Polytechnic serves every school's directory from one Drupal JSON:API
+# feed: ``node--directory`` (a department page) -> field_directory_section
+# (paragraphs) -> field_person (``user--user`` entities) -> field_research_interests
+# (taxonomy terms). A department config opts in with a ``poly_api`` block:
+#
+#     "poly_api": {"node_title": "SOET Directory"}
+#
+# One include-expanded request returns every school; the feed is cached and the
+# target department located by its node title, then its people resolved through the
+# relationship chain. Users carry display_name + field_job_title + public ``mail`` +
+# a ``/profile`` path + research-interest terms, so records land emailed + titled +
+# keyworded. A ladder gate keeps professorial faculty.
+
+_POLY_BASE = "https://polytechnic.purdue.edu"
+_POLY_URL = (_POLY_BASE + "/jsonapi/node/directory"
+             "?include=field_directory_section.field_person,"
+             "field_directory_section.field_person.field_research_interests")
+_POLY_LADDER = {"require": r"\bprofessor\b",
+                "drop": r"\bemerit|\badjunct|\bvisiting|\blecturer|\binstructor"}
+_POLY_FEED_CACHE: dict = {}
+
+
+def _poly_feed() -> dict:
+    """Fetch (and cache) the Polytechnic JSON:API directory feed."""
+    if "d" in _POLY_FEED_CACHE:
+        return _POLY_FEED_CACHE["d"]
+    data: dict = {}
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+        resp = requests.get(_POLY_URL, headers={**HEADERS, "Accept": "application/vnd.api+json"},
+                            timeout=45)
+        resp.raise_for_status()
+        j = resp.json()
+        if isinstance(j, dict):
+            data = j
+    except Exception as e:  # noqa: BLE001 — degrade to {} like fetch_soup
+        logger.warning("faculty_graph: Polytechnic feed fetch failed: %s", e)
+    _POLY_FEED_CACHE["d"] = data
+    return data
+
+
+def _fetch_poly_jsonapi(dept: dict) -> list[dict]:
+    """Best-effort Purdue Polytechnic fetch (opt-in via ``poly_api``).
+
+    Locates the department's ``node--directory`` by title and resolves its people
+    through field_directory_section -> field_person, landing them name + rank +
+    public email + profile URL + research-interest keywords.
+    """
+    cfg = dept.get("poly_api")
+    if not cfg:
+        return []
+    feed = _poly_feed()
+    data = feed.get("data") or []
+    if not data:
+        return []
+    lut = {(o.get("type"), o.get("id")): o
+           for o in (feed.get("included") or []) if isinstance(o, dict)}
+
+    def rel(obj, field):
+        r = (obj.get("relationships", {}).get(field, {}) or {}).get("data")
+        return (r if isinstance(r, list) else [r]) if r else []
+
+    node = next((n for n in data if isinstance(n, dict)
+                 and n.get("attributes", {}).get("title") == cfg.get("node_title")), None)
+    if node is None:
+        return []
+    lf = cfg.get("ladder_filter", _POLY_LADDER)
+    specs: list[dict] = []
+    seen: set = set()
+    for sec in rel(node, "field_directory_section"):
+        para = lut.get((sec.get("type"), sec.get("id")))
+        if not para:
+            continue
+        for pu in rel(para, "field_person"):
+            u = lut.get((pu.get("type"), pu.get("id")))
+            if not u or u.get("id") in seen:
+                continue
+            seen.add(u.get("id"))
+            a = u.get("attributes", {})
+            name = (a.get("display_name")
+                    or " ".join(p for p in ((a.get("field_first_name") or "").strip(),
+                                            (a.get("field_last_name") or "").strip()) if p))
+            if not name:
+                continue
+            title = _wp_text(a.get("field_job_title") or "") or "Professor"
+            if not _passes_ladder(title, lf):
+                continue
+            alias = (a.get("path") or {}).get("alias") or ""
+            url = f"{_POLY_BASE}{alias}" if alias else ""
+            email = (a.get("mail") or "").strip() or None
+            kws: list[str] = []
+            for t in rel(u, "field_research_interests"):
+                term = lut.get((t.get("type"), t.get("id")))
+                nm = term.get("attributes", {}).get("name") if term else None
+                if nm:
+                    kws.append(nm)
+            specs.append(faculty(name, title=title, url=url, email=email,
+                                 keywords=list(dict.fromkeys(kws))[:8]))
+    return specs
+
+
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
@@ -2204,7 +2311,8 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept) + _fetch_coa_api(dept)):
+                               + _fetch_json_dir(dept) + _fetch_coa_api(dept)
+                               + _fetch_poly_jsonapi(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue
