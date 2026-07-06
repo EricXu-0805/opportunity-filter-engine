@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import time
+from collections import Counter
 
 import requests
 from bs4 import BeautifulSoup
@@ -95,6 +96,25 @@ def _pick_personal_email(emails: list[str], pi_name: str) -> str | None:
             if _name_match(e.partition("@")[0], first, last):
                 return e
     return cands[0] if len(cands) == 1 else None
+
+
+def drop_shared_inboxes(mapping: dict[str, str], name_by_url: dict[str, str]) -> dict[str, str]:
+    """Reject shared / department inboxes the single-candidate fallback can latch
+    onto when a profile page carries no personal address. An email is trusted only
+    when it is unique to one professor, or its local-part matches the name of the
+    professor it is attached to — so ``studentinfo@`` shared across 25 faculty is
+    dropped, while ``grauman@`` recurring because one professor is listed under two
+    departments is kept."""
+    freq = Counter(mapping.values())
+    clean: dict[str, str] = {}
+    for url, email in mapping.items():
+        if freq[email] == 1:
+            clean[url] = email
+            continue
+        first, last = _name_parts(name_by_url.get(url, ""))
+        if last and _name_match(email.split("@", 1)[0], first, last):
+            clean[url] = email
+    return clean
 
 
 def _fetch(url: str) -> BeautifulSoup | None:
@@ -177,6 +197,12 @@ def harvest_emails(
             time.sleep(throttle)
         if progress and (i + 1) % 100 == 0:
             print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} emails", flush=True)
+    name_by_url = {
+        (o.get("source_url") or o.get("url")): (o.get("pi_name") or "")
+        for o in opps
+        if o.get("source_type") == "faculty_research"
+    }
+    mapping = drop_shared_inboxes(mapping, name_by_url)
     if checkpoint_path:
         json.dump(mapping, open(checkpoint_path, "w"), indent=2)
     return mapping

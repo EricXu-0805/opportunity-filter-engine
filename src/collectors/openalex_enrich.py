@@ -321,23 +321,53 @@ def harvest_openalex(
     sample: int | None = None,
     throttle: float = 0.15,
     progress: bool = False,
+    checkpoint_path: str | None = None,
+    checkpoint_every: int = 50,
+    abort_after_empty: int = 50,
+    resume: bool = False,
 ) -> dict[str, list[str]]:
     """Pure harvest: ``{url: topics}`` for fieldless faculty with a confident
-    OpenAlex institution match. ``_is_junk_keyword`` gates each topic."""
+    OpenAlex institution match. ``_is_junk_keyword`` gates each topic. Same
+    metered-budget guards as ``harvest_works``: checkpoint the partial mapping
+    every ``checkpoint_every`` matches, and abort after ``abort_after_empty``
+    consecutive misses (budget-exhaustion signature)."""
     from .uiuc_faculty import _is_junk_keyword
 
     targets = _targets(opps, schools)
     if sample is not None:
         targets = targets[:sample]
     mapping: dict[str, list[str]] = {}
+    if resume and checkpoint_path and os.path.exists(checkpoint_path):
+        mapping = json.load(open(checkpoint_path))
+        done = set(mapping)
+        before = len(targets)
+        targets = [o for o in targets if _record_url(o) not in done]
+        print(f"  resuming: {len(mapping)} already harvested, "
+              f"{len(targets)}/{before} targets remain", flush=True)
+    consecutive_empty = 0
+    since_checkpoint = 0
     for i, o in enumerate(targets):
         tops = author_topics(o["pi_name"], SCHOOL_INST[o["school"]], o.get("department", ""))
         time.sleep(throttle)
         tops = [t for t in tops if not _is_junk_keyword(t)]
         if tops:
             mapping[_record_url(o)] = tops
+            consecutive_empty = 0
+            since_checkpoint += 1
+            if checkpoint_path and since_checkpoint >= checkpoint_every:
+                json.dump(mapping, open(checkpoint_path, "w"), indent=2)
+                since_checkpoint = 0
+        else:
+            consecutive_empty += 1
+            if consecutive_empty >= abort_after_empty:
+                print(f"  aborting at {i + 1}/{len(targets)} — {abort_after_empty} "
+                      f"consecutive misses (budget likely exhausted); "
+                      f"{len(mapping)} matched", flush=True)
+                break
         if progress and (i + 1) % 100 == 0:
             print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} matched", flush=True)
+    if checkpoint_path:
+        json.dump(mapping, open(checkpoint_path, "w"), indent=2)
     return mapping
 
 
@@ -379,24 +409,61 @@ def harvest_works(
     sample: int | None = None,
     throttle: float = 0.2,
     progress: bool = False,
+    checkpoint_path: str | None = None,
+    checkpoint_every: int = 50,
+    abort_after_empty: int = 50,
+    resume: bool = False,
 ) -> dict[str, list[dict]]:
     """Pure harvest: ``{url: [{title, year}, ...]}`` for faculty with a confident
-    OpenAlex author match (same institution/surname/field gates as topics)."""
+    OpenAlex author match (same institution/surname/field gates as topics).
+
+    OpenAlex is metered (paid per call), so two guards protect the budget:
+    with ``checkpoint_path`` set, the partial mapping is flushed there every
+    ``checkpoint_every`` matches, so a crash or 429 never loses paid-for
+    records; and ``abort_after_empty`` consecutive misses stops the run — that
+    many misses in a row is the unmistakable signature of budget exhaustion
+    (match rate ~65%, so even 50 misses running is otherwise ~0 probability),
+    which avoids spinning through thousands of 429'd requests."""
     targets = _works_targets(opps, schools)
     if sample is not None:
         targets = targets[:sample]
     mapping: dict[str, list[dict]] = {}
+    # Resume a budget-aborted run without re-paying for records already harvested:
+    # load the checkpoint and skip every URL it already covers.
+    if resume and checkpoint_path and os.path.exists(checkpoint_path):
+        mapping = json.load(open(checkpoint_path))
+        done = set(mapping)
+        before = len(targets)
+        targets = [o for o in targets if _record_url(o) not in done]
+        print(f"  resuming: {len(mapping)} already harvested, "
+              f"{len(targets)}/{before} targets remain", flush=True)
+    consecutive_empty = 0
+    since_checkpoint = 0
     for i, o in enumerate(targets):
         dept = o.get("department", "")
         best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], dept)
         time.sleep(throttle)
+        works = author_recent_works(best["id"], dept) if best and best.get("id") else []
         if best and best.get("id"):
-            works = author_recent_works(best["id"], dept)
             time.sleep(throttle)
-            if works:
-                mapping[_record_url(o)] = works
+        if works:
+            mapping[_record_url(o)] = works
+            consecutive_empty = 0
+            since_checkpoint += 1
+            if checkpoint_path and since_checkpoint >= checkpoint_every:
+                json.dump(mapping, open(checkpoint_path, "w"), indent=2)
+                since_checkpoint = 0
+        else:
+            consecutive_empty += 1
+            if consecutive_empty >= abort_after_empty:
+                print(f"  aborting at {i + 1}/{len(targets)} — {abort_after_empty} "
+                      f"consecutive misses (budget likely exhausted); "
+                      f"{len(mapping)} matched", flush=True)
+                break
         if progress and (i + 1) % 100 == 0:
             print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} matched", flush=True)
+    if checkpoint_path:
+        json.dump(mapping, open(checkpoint_path, "w"), indent=2)
     return mapping
 
 
@@ -444,6 +511,7 @@ def _cli(argv: list[str]) -> int:
         schools = rest[0].split(",") if rest and not rest[0].startswith("-") else None
         out = "openalex.json"
         sample = None
+        resume = "--resume" in rest
         for i, a in enumerate(rest):
             if a == "--out":
                 out = rest[i + 1]
@@ -451,7 +519,14 @@ def _cli(argv: list[str]) -> int:
                 sample = int(rest[i + 1])
         opps = json.load(open(PROCESSED_FILE))
         fn = harvest_openalex if mode == "harvest" else harvest_works
-        mapping = fn(opps, schools=schools, sample=sample, progress=True)
+        # checkpoint_path=out makes the harvest flush partial results as it
+        # goes, so a metered-budget 429 mid-run preserves paid-for records.
+        # --resume reloads that checkpoint and skips already-harvested URLs, so a
+        # run continued the next day never re-pays for records already collected.
+        mapping = fn(
+            opps, schools=schools, sample=sample, progress=True,
+            checkpoint_path=out, resume=resume,
+        )
         json.dump(mapping, open(out, "w"), indent=2)
         print(f"matched {len(mapping)} faculty -> {out}")
         return 0
