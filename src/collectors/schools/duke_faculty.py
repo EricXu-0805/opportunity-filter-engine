@@ -1,11 +1,20 @@
 """Duke University faculty config (via the faculty_graph engine).
 
-Duke's Pratt School of Engineering department directories are client-side
-rendered, so they use render mode; each shares a rich ``.faculty-overview`` card
-carrying the name + profile link, a public mailto, and a research-interests
-block, so records land emailed + keyworded in one pass. Trinity College / CS use
-a thinner ``.member-card`` (name + Scholars@Duke link only) and are deferred
-until per-profile Scholars enrichment is wired.
+Two directory themes:
+
+* **Pratt School of Engineering** — client-side-rendered department pages sharing
+  a rich ``.faculty-overview`` card (name + profile link, public mailto, research
+  interests), so records land emailed + keyworded in one render pass.
+
+* **Trinity College of Arts & Sciences** — server-rendered department pages sharing
+  a thin ``.member-card`` (a photo + name wrapped in a single ``<a>`` to the
+  person's Scholars@Duke profile — no rank, email, or research on the listing).
+  Like UCSD's bare link-lists, the record's core fields live on the profile, so a
+  per-profile pass runs on every refresh (``always``): it reads the rank from the
+  Scholars ``.sub-h1`` and the public email from ``.prof-contact-info``, and the
+  ladder gate fires afterward (the ``/people/faculty`` listing mixes in cross-
+  appointed emeriti). A ``link_filter`` keeps only Scholars-linked cards, dropping
+  the handful of legacy dept-page emeritus links that can't be enriched.
 
 Single source ("duke_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -36,6 +45,30 @@ def _pratt(short: str, name: str, majors: list[str], url: str) -> dict:
                        "ladder_filter": _LADDER}}
 
 
+# Trinity College shared theme: ``div.member-card`` = a single ``<a href=
+# "scholars.duke.edu/person/..">`` wrapping the photo + a ``.h4`` name heading.
+# No rank/email/research on the listing -> the Scholars@Duke profile pass supplies
+# them (server-rendered, plain fetch). ``link_filter`` keeps only Scholars-linked
+# cards so every kept record is enrichable + ladder-gatable.
+_TRINITY = {"card": ".member-card", "name": ".h4", "link": "a"}
+_SCHOLARS_ENRICH = {
+    "always": True,
+    "title_selector": ".sub-h1.font-bold",
+    "email_selector": ".prof-contact-info a[href^='mailto:']",
+    "ladder_recheck": {"require": r"\bprofessor\b",
+                       "drop": r"\bemerit|\badjunct|\bvisiting|\blecturer"},
+    "throttle": 0.25,
+}
+
+
+def _trinity(short: str, name: str, majors: list[str], host: str) -> dict:
+    url = f"https://{host}.duke.edu/people/faculty"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _TRINITY,
+                       "link_filter": r"scholars\.duke\.edu/person/",
+                       "profile_enrich": _SCHOLARS_ENRICH}}
+
+
 SCHOOL: dict = {
     "school_slug": "duke",
     "source": "duke_faculty",
@@ -48,6 +81,7 @@ SCHOOL: dict = {
         "arrangement; ask the professor."
     ),
     "departments": [
+        # --- Pratt School of Engineering (render mode, rich cards) ---
         _pratt("ECE", "Department of Electrical & Computer Engineering",
                ["Electrical Engineering", "Computer Engineering"],
                "https://ece.duke.edu/faculty"),
@@ -59,6 +93,20 @@ SCHOOL: dict = {
         _pratt("CEE", "Department of Civil & Environmental Engineering",
                ["Civil Engineering", "Environmental Engineering"],
                "https://cee.duke.edu/faculty"),
+        # --- Trinity College of Arts & Sciences (Scholars@Duke enrich) ---
+        _trinity("BIO", "Department of Biology", ["Biology"], "biology"),
+        _trinity("CHEM", "Department of Chemistry", ["Chemistry"], "chem"),
+        _trinity("CS", "Department of Computer Science",
+                 ["Computer Science"], "cs"),
+        _trinity("ECON", "Department of Economics", ["Economics"], "econ"),
+        _trinity("MATH", "Department of Mathematics", ["Mathematics"], "math"),
+        _trinity("PHYS", "Department of Physics", ["Physics"], "phy"),
+        _trinity("POLSCI", "Department of Political Science",
+                 ["Political Science"], "polisci"),
+        _trinity("PSYNEURO", "Department of Psychology & Neuroscience",
+                 ["Psychology", "Neuroscience"], "psychandneuro"),
+        _trinity("STAT", "Department of Statistical Science",
+                 ["Statistical Science"], "stat"),
     ],
 }
 
