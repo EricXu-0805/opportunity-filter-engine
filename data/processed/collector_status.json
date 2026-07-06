@@ -1,37 +1,52 @@
 {
-  "duration_seconds": 9002.7,
+  "duration_seconds": 1680.5,
   "shard": {
     "national": false,
     "schools": [
-      "uiuc"
+      "duke",
+      "purdue"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 15,
+      "rule_based_tagged": 14,
       "status": "ok"
+    },
+    "campus_graph:duke": {
+      "error": "Port could not be cast to integer value as '(949) 824-1947'",
+      "status": "error"
+    },
+    "campus_graph:purdue": {
+      "error": "Port could not be cast to integer value as '(949) 824-1947'",
+      "status": "error"
     },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 20887,
+      "skipped_rolling": 27139,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 3254,
-      "newly_deactivated": 2,
+      "kept_fresh": 2146,
+      "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
+    "duke_faculty": {
+      "fetched": 346,
+      "new": 346,
+      "status": "ok",
+      "updated": 0
+    },
     "faculty_hygiene": {
-      "duplicates_removed": 19,
-      "keywords_cleaned": 62,
+      "duplicates_removed": 22,
+      "keywords_cleaned": 60,
       "removed_by_school": {
-        "uiuc": 19
+        "purdue": 22
       },
       "shared_inbox_nulled": {
-        "uiuc": 8
+        "purdue": 2
       },
       "status": "ok"
     },
@@ -40,19 +55,26 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 2963,
-      "enriched": 351,
-      "nulled_unit_inboxes": 8,
-      "renulled_shared_emails": 312,
-      "scraped": 373,
+      "already_had": 1922,
+      "enriched": 113,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 3,
+      "scraped": 224,
       "skipped_budget": 0,
       "status": "ok"
+    },
+    "purdue_faculty": {
+      "fetched": 1800,
+      "new": 1800,
+      "status": "ok",
+      "updated": 0
     },
     "school_audience": {
       "by_source": {
         "boulder_faculty": 1586,
         "boulder_labs": 4,
         "boulder_research_programs": 5,
+        "duke_faculty": 346,
         "gatech_external_research": 2,
         "gatech_faculty": 1206,
         "gatech_labs": 1,
@@ -63,6 +85,7 @@
         "princeton_faculty": 452,
         "princeton_labs": 2,
         "princeton_research_programs": 7,
+        "purdue_faculty": 1800,
         "simplify_internships": 2079,
         "stanford_external_research": 1,
         "stanford_faculty": 1395,
@@ -129,7 +152,7 @@
         "uchicago_faculty": 1017,
         "uchicago_labs": 1,
         "uchicago_research_programs": 9,
-        "uci_faculty": 576,
+        "uci_faculty": 956,
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
@@ -137,14 +160,14 @@
         "ucla_labs": 1,
         "ucla_research_programs": 9,
         "ucsb_external_research": 1,
-        "ucsb_faculty": 537,
+        "ucsb_faculty": 816,
         "ucsb_labs": 2,
         "ucsb_research_programs": 13,
         "ucsd_faculty": 1372,
         "ucsd_labs": 1,
         "ucsd_research_programs": 12,
         "uiuc_drp": 2,
-        "uiuc_faculty": 3268,
+        "uiuc_faculty": 3249,
         "uiuc_other": 7,
         "uiuc_our_rss": 26,
         "uiuc_siebel": 14,
@@ -168,58 +191,11 @@
         "wisc_research_programs": 8
       },
       "status": "ok",
-      "tagged": 25879
-    },
-    "uiuc_drp": {
-      "fetched": 2,
-      "new": 0,
-      "status": "ok",
-      "updated": 1
-    },
-    "uiuc_faculty": {
-      "empty_departments": [],
-      "enriched": true,
-      "fetched": 3821,
-      "html_fetched": 822,
-      "js_fetched": 167,
-      "json_fetched": 562,
-      "new": 518,
-      "status": "ok",
-      "updated": 3303
-    },
-    "uiuc_other": {
-      "fetched": 7,
-      "new": 0,
-      "status": "ok",
-      "updated": 2
-    },
-    "uiuc_our_rss": {
-      "fetched": 25,
-      "new": 0,
-      "status": "ok",
-      "updated": 25
-    },
-    "uiuc_siebel": {
-      "fetched": 14,
-      "new": 0,
-      "status": "ok",
-      "updated": 0
-    },
-    "uiuc_urap": {
-      "fetched": 1,
-      "new": 0,
-      "status": "ok",
-      "updated": 0
-    },
-    "uiuc_ursa": {
-      "fetched": 1,
-      "new": 0,
-      "status": "ok",
-      "updated": 0
+      "tagged": 28665
     }
   },
-  "timestamp": "2026-07-06T10:34:14.723152",
-  "total_in_file": 25860,
-  "total_new": 518,
-  "total_updated": 3331
+  "timestamp": "2026-07-06T15:08:58.519698",
+  "total_in_file": 28643,
+  "total_new": 2146,
+  "total_updated": 0
 }
