@@ -77,6 +77,34 @@ async def list_opportunities(
     }
 
 
+# Schools whose coverage the university-switcher badge reports. The count comes
+# from each opportunity's ``source`` prefix (``umich_faculty`` -> ``umich``), so
+# the chip tracks the live corpus instead of a hardcoded number that drifts.
+_SCHOOL_SLUGS = frozenset({
+    "umich", "princeton", "uchicago", "gatech", "ucla", "utexas",
+    "uw", "ucsd", "stanford", "wisc", "ucb", "uiuc",
+})
+
+
+@router.get("/opportunities/coverage")
+async def opportunity_coverage():
+    """Per-school active-opportunity counts for the university-switcher badge.
+
+    Derived from the live corpus so the switcher chip reflects real coverage
+    instead of the hand-maintained ``campusOpportunities`` numbers in the
+    frontend's schools.ts (which drift as the data grows). ``school`` is the slug
+    the source name is prefixed with; inactive records are excluded.
+    """
+    counts: Counter[str] = Counter()
+    for o in load_opportunities():
+        if (o.get("metadata") or {}).get("is_active") is False:
+            continue
+        slug = (o.get("source") or "").split("_", 1)[0]
+        if slug in _SCHOOL_SLUGS:
+            counts[slug] += 1
+    return {"counts": dict(counts)}
+
+
 @router.post("/opportunities/batch")
 async def get_opportunities_batch(request: dict):
     """Return multiple opportunities by ID in a single request.
