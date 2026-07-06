@@ -11,7 +11,7 @@ import { loadProfile, onAuthChange, saveProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, type SaveStatus, type TFunc } from './types';
 
-const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior']);
+const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Masters', 'PhD']);
 const VALID_SEEKING = new Set(['research', 'summer_program', 'internship', 'fellowship']);
 
 function applyPrefillFromQuery(

@@ -695,22 +695,44 @@ def _coursework_score(
     return min(100.0, count_score + relevance)
 
 
+_UNDERGRAD_ORDER = ["freshman", "sophomore", "junior", "senior"]
+
+
+def _is_grad_year(y: str) -> bool:
+    """True for a graduate-level year term — the student's own year or a program's
+    audience. Guards the "undergraduate" substring trap (it contains "graduate")."""
+    y = y.lower().strip()
+    if "undergrad" in y:
+        return False
+    return any(t in y for t in ("phd", "ph.d", "doctoral", "doctorate", "master", "graduate")) \
+        or y in {"grad", "ms", "msc"}
+
+
 def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
-    if not preferred_years or "unknown" in preferred_years:
+    if not preferred_years or "unknown" in [p.lower() for p in preferred_years]:
         return 40.0  # Unknown year pref = can't tell if it fits
 
-    year_order = ["freshman", "sophomore", "junior", "senior"]
-    student_year_lower = student_year.lower().strip()
+    sy = student_year.lower().strip()
+    prefs = [p.lower().strip() for p in preferred_years]
 
-    if student_year_lower in [y.lower() for y in preferred_years]:
+    if sy in prefs:
         return 100.0
 
-    # One year off
+    # A grad student fits any grad-level opening; an undergraduate-only program is
+    # a hard mismatch (a PhD can't take an REU), not "one year off".
+    if _is_grad_year(sy):
+        return 100.0 if any(_is_grad_year(p) for p in prefs) else 0.0
+
+    # Undergraduate student. A program open generically to "undergraduates" fits
+    # any class year; a grad-only program does not; otherwise reward one year off.
+    if any("undergrad" in p for p in prefs):
+        return 100.0
+    if all(_is_grad_year(p) for p in prefs):
+        return 0.0
     try:
-        s_idx = year_order.index(student_year_lower)
-        for py in preferred_years:
-            p_idx = year_order.index(py.lower().strip())
-            if abs(s_idx - p_idx) == 1:
+        s_idx = _UNDERGRAD_ORDER.index(sy)
+        for p in prefs:
+            if p in _UNDERGRAD_ORDER and abs(s_idx - _UNDERGRAD_ORDER.index(p)) == 1:
                 return 50.0
     except ValueError:
         pass
@@ -788,10 +810,16 @@ def score_eligibility(
         profile.get("year", ""),
         elig.get("preferred_year", [])
     )
+    pref_years = elig.get("preferred_year", [])
     if year_score >= 80:
         reasons_fit.append(f"Accepts {profile['year']} students")
     elif year_score < 50:
-        reasons_gap.append(f"Typically targets {', '.join(elig.get('preferred_year', []))}")
+        if _is_grad_year(profile.get("year", "")) and pref_years and not any(
+            _is_grad_year(p) for p in pref_years
+        ):
+            reasons_gap.append("For undergraduates — not a graduate-level opening")
+        else:
+            reasons_gap.append(f"Typically targets {', '.join(pref_years)}")
 
     # Major match (20% weight)
     student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])

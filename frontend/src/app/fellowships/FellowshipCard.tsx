@@ -9,7 +9,7 @@ interface FellowshipCardProps {
   opp: Opportunity;
 }
 
-const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior']);
+const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Masters', 'PhD']);
 
 function buildPrefillHref(opp: Opportunity): string {
   const params = new URLSearchParams();

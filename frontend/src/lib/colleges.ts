@@ -168,4 +168,4 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
 
 export const COLLEGES = Object.keys(COLLEGE_MAJORS);
 
-export const GRADES = ['Freshman', 'Sophomore', 'Junior', 'Senior'] as const;
+export const GRADES = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Masters', 'PhD'] as const;
