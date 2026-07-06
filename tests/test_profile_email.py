@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from src.collectors.profile_email import (
     _pick_personal_email,
     apply_emails,
+    drop_shared_inboxes,
     email_for_profile,
     harvest_emails,
 )
@@ -13,6 +14,27 @@ from src.collectors.profile_email import (
 def _soup(mailtos, text=""):
     anchors = "".join(f'<a href="mailto:{m}">{m}</a>' for m in mailtos)
     return BeautifulSoup(f"<html><body>{anchors}<p>{text}</p></body></html>", "html.parser")
+
+
+class TestDropSharedInboxes:
+    def test_drops_dept_inbox_keeps_unique_and_name_matched(self):
+        mapping = {
+            "u/a": "studentinfo@atmos.ucla.edu",  # shared, matches nobody → drop
+            "u/b": "studentinfo@atmos.ucla.edu",
+            "u/c": "studentinfo@atmos.ucla.edu",
+            "u/d": "lykpi@math.wisc.edu",         # unique → keep
+            "u/e": "grauman@cs.utexas.edu",       # shared but name-matches → keep
+            "u/f": "grauman@cs.utexas.edu",       # same professor, two listings
+        }
+        names = {
+            "u/a": "Alice Atmos", "u/b": "Bob Breeze", "u/c": "Cara Cloud",
+            "u/d": "Yingkun Li",
+            "u/e": "Kristen Grauman", "u/f": "Kristen Grauman",
+        }
+        clean = drop_shared_inboxes(mapping, names)
+        assert set(clean) == {"u/d", "u/e", "u/f"}
+        assert clean["u/d"] == "lykpi@math.wisc.edu"
+        assert clean["u/e"] == "grauman@cs.utexas.edu"
 
 
 class TestPickPersonalEmail:

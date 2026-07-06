@@ -49,6 +49,7 @@ KNOWN_UNWIRED = {
     "manual_importer",  # CLI import of hand-curated JSON/CSV entries
     "llm_enrich",  # run-once-per-school LLM keyword mining (cost-controlled)
     "openalex_enrich",  # run-once OpenAlex topic backfill (metered API)
+    "profile_email",  # run-once 2-hop profile email backfill (on-demand, not weekly)
     "uiuc_experts",  # monthly Illinois-Experts enrichment, separate CI step
     "url_parser",  # powers /api/import-url — request-driven, not batch
 }
