@@ -124,8 +124,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, or json_dir config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, or coa_api config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -2089,6 +2089,94 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
             sp["research_areas"] = "; ".join(mapping[key])
 
 
+# ---------------------------------------------------------------------------
+# Purdue College of Agriculture directory API (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# Purdue's College of Agriculture serves every department's directory from one
+# React SPA backed by a public POST endpoint that returns the whole college's
+# roster as structured JSON. A department config opts in with a ``coa_api`` block:
+#
+#     "coa_api": {"dept_id": 10}          # department id from the ListDepartment API
+#
+# One POST returns all ~2100 CoA people; the roster is cached per organization
+# (all nine departments share it) and filtered to the department's Faculty-
+# classified members client-side — no server-side department filter exists. Names
+# are pre-split (FirstName/LastName), the public email + rank ride each record, and
+# the per-person profile page is ``ag.purdue.edu/directory/<alias>``. A ladder gate
+# keeps professorial faculty (the "Faculty" classification also carries the odd
+# extension/administrative title).
+
+_COA_BASE = "https://ag.purdue.edu"
+_COA_LADDER = {"require": r"\bprof",
+               "drop": r"\bemerit|\badjunct|\bvisiting|\bcourtesy|\blecturer|\binstructor|\bpostdoc"}
+_COA_ROSTER_CACHE: dict[str, list] = {}
+
+
+def _coa_roster(org: str) -> list:
+    """Fetch (and cache per org) the full College of Agriculture roster."""
+    if org in _COA_ROSTER_CACHE:
+        return _COA_ROSTER_CACHE[org]
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+    except Exception:  # noqa: BLE001
+        return []
+    rows: list = []
+    try:
+        resp = requests.post(
+            f"{_COA_BASE}/api/pi/2021/api/Directory/ListStaffDirectory",
+            # The API 500s on the default Accept: text/html — force JSON.
+            headers={**HEADERS, "Content-Type": "application/x-www-form-urlencoded",
+                     "Accept": "application/json"},
+            data={"organization": org, "page": 1, "pageSize": 5000}, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if isinstance(data, dict) and isinstance(data.get("Data"), list):
+            rows = data["Data"]
+    except Exception as e:  # noqa: BLE001 — degrade to [] like fetch_soup
+        logger.warning("faculty_graph: CoA roster fetch failed for %s: %s", org, e)
+    _COA_ROSTER_CACHE[org] = rows
+    return rows
+
+
+def _fetch_coa_api(dept: dict) -> list[dict]:
+    """Best-effort Purdue College of Agriculture fetch (opt-in via ``coa_api``).
+
+    Filters the cached college roster to this department's Faculty-classified
+    members and lands them name + rank + public email + profile URL.
+    """
+    cfg = dept.get("coa_api")
+    if not cfg:
+        return []
+    org = cfg.get("organization", "CoA")
+    dept_id = cfg.get("dept_id")
+    lf = cfg.get("ladder_filter", _COA_LADDER)
+    specs: list[dict] = []
+    for rec in _coa_roster(org):
+        if not isinstance(rec, dict):
+            continue
+        # Keep only records with a Faculty-classified membership in this dept.
+        if not any(isinstance(d, dict) and d.get("Id") == dept_id
+                   and (d.get("ClassificationId") == 4
+                        or d.get("classification") == "Faculty")
+                   for d in (rec.get("DepartmentList") or [])):
+            continue
+        name = " ".join(p for p in ((rec.get("FirstName") or "").strip(),
+                                     (rec.get("LastName") or "").strip()) if p)
+        if not name:
+            continue
+        title = _wp_text(rec.get("Title") or "") or "Professor"
+        if not _passes_ladder(title, lf):
+            continue
+        alias = (rec.get("stralias") or "").strip()
+        url = f"{_COA_BASE}/directory/{alias}" if alias else ""
+        email = (rec.get("Email") or "").strip() or None
+        specs.append(faculty(name, title=title, url=url, email=email))
+    return specs
+
+
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
@@ -2116,7 +2204,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept)):
+                               + _fetch_json_dir(dept) + _fetch_coa_api(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue
