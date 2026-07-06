@@ -17,6 +17,13 @@ export interface ProfileData {
   home_school?: string;
   college: string;
   major: string;
+  /**
+   * Additional majors and minors beyond the primary `major` — double majors,
+   * interdisciplinary combinations, minors. Optional for backward compatibility
+   * with stored profiles that predate the field; maps to the backend request's
+   * `secondary_interests` (extra major + keyword matching signal).
+   */
+  additional_majors?: string[];
   grade: string;
   is_international: boolean;
   research_interests: string;

@@ -104,6 +104,10 @@ FACULTY_SOURCES = frozenset({
     "princeton_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
+    # Purdue — server-rendered faculty (single source across depts).
+    "purdue_faculty",
+    # Duke — render-mode Pratt engineering faculty (single source across depts).
+    "duke_faculty",
     # UC Irvine — live-scraped faculty (single source across depts).
     "uci_faculty",
     # UC Santa Barbara — live-scraped faculty (single source across depts).

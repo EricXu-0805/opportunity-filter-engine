@@ -57,19 +57,20 @@ function friendlyFloor(n: number): number {
   return n;
 }
 
-function campusCoverage(
-  slug: string,
-  opts: { includeNational?: boolean } = {},
-): SchoolCoverage {
+/*
+ * The chip counts only this school's own campus-hosted records. The national
+ * `audience='open'` pool is shared by every school, so folding it into any one
+ * card's number both overstates that card and reads inconsistently across the
+ * grid — it's explained once in the switcher footer instead.
+ */
+function campusCoverage(slug: string): SchoolCoverage {
   const stat = SCHOOL_STATS[slug];
   if (!stat?.campus) {
     return { campusOpportunities: 'pending', note: 'universitySwitcher.coveragePending' };
   }
   return {
-    campusOpportunities: friendlyFloor(stat.campus + (opts.includeNational ? stat.national : 0)),
-    note: opts.includeNational
-      ? 'universitySwitcher.coverageCampusNational'
-      : 'universitySwitcher.coverageCampus',
+    campusOpportunities: friendlyFloor(stat.campus),
+    note: 'universitySwitcher.coverageCampus',
   };
 }
 
@@ -82,7 +83,7 @@ export const SCHOOLS: School[] = [
     nameZh: '伊利诺伊大学香槟分校',
     color: '#E84A27',
     location: 'Urbana-Champaign, IL',
-    coverage: campusCoverage('uiuc', { includeNational: true }),
+    coverage: campusCoverage('uiuc'),
     catalog: { colleges: 12, majors: 141 },
   },
   {
@@ -150,6 +151,28 @@ export const SCHOOLS: School[] = [
     location: 'La Jolla, CA',
     coverage: campusCoverage('ucsd'),
     catalog: { colleges: 8, majors: 165 },
+  },
+  {
+    slug: 'purdue',
+    domain: 'purdue.edu',
+    name: 'Purdue University',
+    shortName: 'Purdue',
+    nameZh: '普渡大学',
+    color: '#CEB888',
+    location: 'West Lafayette, IN',
+    coverage: campusCoverage('purdue'),
+    catalog: { colleges: 9, majors: 58 },
+  },
+  {
+    slug: 'duke',
+    domain: 'duke.edu',
+    name: 'Duke University',
+    shortName: 'Duke',
+    nameZh: '杜克大学',
+    color: '#00539B',
+    location: 'Durham, NC',
+    coverage: campusCoverage('duke'),
+    catalog: { colleges: 2, majors: 25 },
   },
   {
     slug: 'uchicago',

@@ -107,6 +107,60 @@ def _socsci(short: str, name: str, majors: list[str], dept_name: str) -> dict:
     }
 
 
+# School of Humanities — the Drupal "faculty-listing-item" card (T1). Rank +
+# email + research on the listing; emeriti/lecturers sit on separate pages, so
+# _LADDER is a light safety net. A gated per-profile pass backfills the few
+# cards whose email isn't on the listing (e.g. History).
+def _hum(short: str, name: str, majors: list[str], url: str) -> dict:
+    return _dept(short, name, majors, url, {
+        "selectors": {
+            "card": "div.paragraph--type--uci-faculty-listing-item",
+            "name": ".faculty-listing-title .field--name-field-title .field__item",
+            "link": "a[href*='faculty.uci.edu/profile']",
+            "title": ".field--name-field-faculty-member-title",
+            "email": ".faculty-listing-contact a[href^='mailto:']",
+            "research": ".field--name-field-research-interest",
+        },
+        "ladder_filter": _LADDER,
+        "profile_enrich": {"email_selector": "a[href^='mailto:']", "throttle": 1.0},
+    })
+
+
+# School of Biological Sciences — the central www.bio.uci.edu/academics/faculty/
+# <slug>/ pages are server-rendered `bs-staff` cards (T5) with rank + email on
+# the listing (the dept SUBDOMAINS are JS-only, so use these). Emeriti/
+# in-memoriam are separate slugs, so the roster is clean.
+def _bio(short: str, name: str, majors: list[str], slug: str) -> dict:
+    url = f"https://www.bio.uci.edu/academics/faculty/{slug}/"
+    return _dept(short, name, majors, url, {
+        "selectors": {
+            "card": "div.entry",
+            "name": "h2.text-175",
+            "link": "a",
+            "title": "h3.text-11",
+            "email": ".bs-staff-contact a[href^='mailto:']",
+        },
+        "ladder_filter": _LADDER,
+    })
+
+
+# Professional schools on the WordPress "cp-dir" directory theme (T6): Public
+# Health, Pharmacy, Nursing. Rank in `.cp-dir-field-academic_title`; email is on
+# the listing for a subset only, so a gated per-profile pass backfills the rest.
+def _cpdir(short: str, name: str, majors: list[str], url: str) -> dict:
+    return _dept(short, name, majors, url, {
+        "selectors": {
+            "card": "div.cp-dir-content-entry.profile-card",
+            "name": ".cp-dir-field-post_title",
+            "link": "a",
+            "title": ".cp-dir-field-academic_title",
+            "email": "a[href^='mailto:']",
+        },
+        "ladder_filter": _LADDER,
+        "profile_enrich": {"email_selector": "a[href^='mailto:']", "throttle": 1.0},
+    })
+
+
 SCHOOL: dict = {
     "school_slug": "uci",
     "source": "uci_faculty",
@@ -322,12 +376,55 @@ SCHOOL: dict = {
                 },
             },
         ),
-        # (Charlie Dunlop School of Biological Sciences deferred: its WordPress
-        # biosci_people REST feed gives clean name+link for all 157 faculty, but
-        # the Divi profile pages render email/rank/research client-side — the
-        # static HTML exposes only a shared dept inbox (never a usable
-        # cold-email address). Recovering it needs a per-profile headless pass.
-        # See module docstring.)
+        # ==== Depth expansion ================================================
+        # School of Biological Sciences — via the server-rendered central pages
+        # (the dept subdomains' biosci_people feed is JS/profile-gated, per the
+        # note that used to sit here). Email + rank on the listing.
+        _bio("MBB", "Department of Molecular Biology & Biochemistry",
+             ["Biological Sciences", "Biochemistry & Molecular Biology"],
+             "molecular-biology-and-biochemistry"),
+        _bio("NBB", "Department of Neurobiology & Behavior",
+             ["Neurobiology", "Biological Sciences"],
+             "neurobiology-and-behavior"),
+        _bio("DCB", "Department of Developmental & Cell Biology",
+             ["Developmental & Cell Biology", "Biological Sciences"],
+             "developmental-and-cell-biology-faculty"),
+        _bio("EEB", "Department of Ecology & Evolutionary Biology",
+             ["Ecology & Evolutionary Biology", "Biological Sciences"],
+             "ecology-and-evolutionary-biology"),
+        # School of Humanities (T1 faculty-listing cards).
+        _hum("HIST", "Department of History", ["History"],
+             "https://www.humanities.uci.edu/history/core-faculty"),
+        _hum("PHIL", "Department of Philosophy", ["Philosophy"],
+             "https://www.humanities.uci.edu/philosophy/faculty"),
+        _hum("ARTH", "Department of Art History", ["Art History"],
+             "https://www.humanities.uci.edu/arthistory/core-faculty"),
+        _hum("CLAS", "Department of Classics", ["Classics"],
+             "https://www.humanities.uci.edu/classics/faculty"),
+        _hum("FMS", "Department of Film & Media Studies", ["Film & Media Studies"],
+             "https://www.humanities.uci.edu/filmandmediastudies/core-faculty"),
+        # Merage School of Business — static faculty table (T8). The rank rides
+        # in the row text after the name (no clean field), so title_re captures
+        # it and _LADDER drops emeriti/lecturers/joint appointments; the row
+        # class encodes the academic area.
+        _dept("MERAGE", "Paul Merage School of Business",
+              ["Business Administration", "Management"],
+              "https://merage.uci.edu/research-faculty/faculty-directory/index.html",
+              {"selectors": {"card": "tr.deptRow", "name": "td strong a",
+                             "link": "td strong a", "email": "td a[href^='mailto:']",
+                             "title_re": r"((?:Assistant |Associate |Distinguished )?"
+                                         r"(?:Chancellor's )?Professor(?:\s+Emeritus)?)"},
+               "ladder_filter": {"require": r"\bprofessor\b",
+                                 "drop": r"emerit|lecturer|joint appointment|adjunct|visiting"}}),
+        # Professional schools (cp-dir T6): email backfilled per-profile.
+        _cpdir("PUBHLTH", "Program in Public Health",
+               ["Public Health", "Public Health Sciences"],
+               "https://publichealth.uci.edu/about/our-faculty/"),
+        _cpdir("PHARM", "School of Pharmacy & Pharmaceutical Sciences",
+               ["Pharmaceutical Sciences", "Pharmacy"],
+               "https://pharmsci.uci.edu/about/our-faculty/"),
+        _cpdir("NURS", "Sue & Bill Gross School of Nursing", ["Nursing"],
+               "https://nursing.uci.edu/faculty-research/our-faculty/"),
     ],
 }
 
