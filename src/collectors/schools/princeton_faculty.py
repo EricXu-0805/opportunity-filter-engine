@@ -166,6 +166,21 @@ SCHOOL: dict = {
         _sb("ASTRO", "Department of Astrophysical Sciences",
             ["Astrophysical Sciences", "Astronomy"],
             "https://web.astro.princeton.edu/people"),
+        # Humanities & social sciences (same Site Builder theme, render mode).
+        _sb("HIS", "Department of History", ["History"],
+            "https://history.princeton.edu/people/faculty"),
+        _sb("SOC", "Department of Sociology", ["Sociology"],
+            "https://sociology.princeton.edu/people/faculty"),
+        _sb("ENG", "Department of English", ["English"],
+            "https://english.princeton.edu/people/faculty"),
+        _sb("PHI", "Department of Philosophy", ["Philosophy"],
+            "https://philosophy.princeton.edu/people/faculty"),
+        _sb("ANT", "Department of Anthropology", ["Anthropology"],
+            "https://anthropology.princeton.edu/people/faculty"),
+        _sb("COM", "Department of Comparative Literature", ["Comparative Literature"],
+            "https://complit.princeton.edu/people/faculty"),
+        _sb("ART", "Department of Art & Archaeology", ["Art History", "Archaeology"],
+            "https://artandarchaeology.princeton.edu/people/faculty"),
     ],
 }
 
