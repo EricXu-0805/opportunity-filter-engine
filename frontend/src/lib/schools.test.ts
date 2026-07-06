@@ -109,14 +109,10 @@ describe('registry — switcher metadata', () => {
 
       const c = school.coverage.campusOpportunities;
       expect(typeof c, school.slug).toBe('number');
-      // UIUC's chip counts campus + national (its historical semantics);
-      // every other school shows campus-only.
-      const raw = school.slug === 'uiuc' ? stat.campus + stat.national : stat.campus;
-      expect(school.coverage.note).toBe(
-        school.slug === 'uiuc'
-          ? 'universitySwitcher.coverageCampusNational'
-          : 'universitySwitcher.coverageCampus',
-      );
+      // Every school's chip counts only its own campus records; the shared
+      // national open-opportunity pool is explained in the footer, not per card.
+      const raw = stat.campus;
+      expect(school.coverage.note).toBe('universitySwitcher.coverageCampus');
       // Floored, never overstating, and within one floor step of the raw count.
       expect(c as number, school.slug).toBeLessThanOrEqual(raw);
       expect(raw - (c as number), school.slug).toBeLessThan(100);
