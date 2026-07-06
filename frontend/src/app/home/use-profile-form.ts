@@ -249,7 +249,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       return {
         ...prev,
         [key]: value,
-        ...(clearMajor ? { major: '' } : {}),
+        // Additional majors are catalog-scoped like the primary, so a college
+        // switch invalidates them too.
+        ...(clearMajor ? { major: '', additional_majors: [] } : {}),
       };
     });
   }, []);

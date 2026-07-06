@@ -137,6 +137,24 @@ describe('getMatches', () => {
     expect(body.include_cross_school).toBe(true);
   });
 
+  it('maps additional_majors to secondary_interests', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile({ additional_majors: ['Statistics', 'Data Science'] }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.secondary_interests).toEqual(['Statistics', 'Data Science']);
+  });
+
+  it('sends secondary_interests=[] for profiles that predate additional majors', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile());
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.secondary_interests).toEqual([]);
+  });
+
   it('defaults home_school to uiuc for profiles that predate the switcher', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),

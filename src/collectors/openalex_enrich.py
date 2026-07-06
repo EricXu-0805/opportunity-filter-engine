@@ -74,6 +74,8 @@ SCHOOL_INST = {
     "uci": "I204250578",       # University of California, Irvine (ror 04gyf1771)
     "ucsb": "I154570441",      # University of California, Santa Barbara (ror 02t274463)
     "boulder": "I188538660",   # University of Colorado Boulder (ror 02ttsq026)
+    "purdue": "I219193219",    # Purdue University West Lafayette (ror 02dqehb95)
+    "duke": "I170897317",      # Duke University (ror 00py81415)
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)

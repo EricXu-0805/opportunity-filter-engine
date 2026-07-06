@@ -13,8 +13,10 @@ touches the refresh wiring again — only this list grows.
 from __future__ import annotations
 
 from .boulder import SCHOOL as BOULDER
+from .duke import SCHOOL as DUKE
 from .gatech import SCHOOL as GATECH
 from .princeton import SCHOOL as PRINCETON
+from .purdue import SCHOOL as PURDUE
 from .stanford import SCHOOL as STANFORD
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
@@ -42,4 +44,6 @@ SCHOOL_CONFIGS: list[dict] = [
     UCI,
     UCSB,
     BOULDER,
+    PURDUE,
+    DUKE,
 ]

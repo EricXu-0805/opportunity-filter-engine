@@ -3,12 +3,20 @@
     "campus": 1595,
     "national": 2978
   },
+  "duke": {
+    "campus": 346,
+    "national": 2978
+  },
   "gatech": {
     "campus": 1214,
     "national": 2978
   },
   "princeton": {
     "campus": 461,
+    "national": 2978
+  },
+  "purdue": {
+    "campus": 1778,
     "national": 2978
   },
   "stanford": {
@@ -24,7 +32,7 @@
     "national": 2978
   },
   "uci": {
-    "campus": 591,
+    "campus": 971,
     "national": 2978
   },
   "ucla": {
@@ -32,7 +40,7 @@
     "national": 2978
   },
   "ucsb": {
-    "campus": 552,
+    "campus": 831,
     "national": 2978
   },
   "ucsd": {
@@ -40,7 +48,7 @@
     "national": 2978
   },
   "uiuc": {
-    "campus": 3286,
+    "campus": 3388,
     "national": 2978
   },
   "umich": {
