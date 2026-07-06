@@ -155,6 +155,26 @@ def test_normalize_keeps_real_person():
     assert opp["department"] == cfg["name"]
 
 
+def test_normalize_never_infers_skills_for_faculty():
+    """Faculty must carry no inferred skills — a prior collector pass mined the
+    research prose for skills (statistical->R, deep learning->PyTorch), which
+    the R70A DQ gate rejects and which silently failed the first-week deep
+    refresh. Even a description dense with skill-trigger words yields empty
+    skills at the source, matching faculty_graph and the downstream guards."""
+    cfg = DEPARTMENTS["mcb"]
+    opp = normalize_faculty(
+        {"name": "Jane Q. Researcher",
+         "url": "https://mcb.illinois.edu/directory/profile/jresearcher",
+         "research_areas": "statistical genomics, machine learning, deep learning, "
+                           "bioinformatics, computational biology, epidemiology",
+         "research_description": "Uses Python and R for data science and neural networks."},
+        cfg,
+    )
+    assert opp is not None
+    assert opp["eligibility"]["skills_required"] == []
+    assert opp["eligibility"]["skills_preferred"] == []
+
+
 def test_new_departments_registered_with_valid_config():
     assert NEWLY_ADDED <= set(DEPARTMENTS)
     for key in NEWLY_ADDED:
