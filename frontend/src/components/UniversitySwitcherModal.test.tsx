@@ -52,12 +52,12 @@ describe('UniversitySwitcherModal — rendering', () => {
     // rounded count (uw and utexas both show 2,200 today).
     const uiuc = SCHOOLS.find((s) => s.slug === 'uiuc')!;
     expect(
-      screen.getByText(
-        `universitySwitcher.coverageCampusNational:${(
+      screen.getAllByText(
+        `universitySwitcher.coverageCampus:${(
           uiuc.coverage.campusOpportunities as number
         ).toLocaleString()}`,
-      ),
-    ).toBeInTheDocument();
+      ).length,
+    ).toBeGreaterThanOrEqual(1);
     const ucb = SCHOOLS.find((s) => s.slug === 'ucb')!;
     expect(
       screen.getAllByText(
