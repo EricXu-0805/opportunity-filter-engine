@@ -28,10 +28,14 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
 from .schools.boulder_faculty import fetch_and_normalize as fetch_boulder_faculty
 from .schools.boulder_faculty import merge_into_processed as merge_boulder_faculty
+from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
+from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
 from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
+from .schools.purdue_faculty import fetch_and_normalize as fetch_purdue_faculty
+from .schools.purdue_faculty import merge_into_processed as merge_purdue_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
@@ -611,6 +615,11 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).
             ("ucsd_faculty", fetch_ucsd_faculty, merge_ucsd_faculty),
+            # Purdue faculty (server-rendered via faculty_graph): Computer Science.
+            ("purdue_faculty", fetch_purdue_faculty, merge_purdue_faculty),
+            # Duke faculty (render-mode via faculty_graph): Pratt School of
+            # Engineering (ECE/BME/MEMS/CEE), rich .faculty-overview cards.
+            ("duke_faculty", fetch_duke_faculty, merge_duke_faculty),
             # UChicago faculty (via faculty_graph): 8 live-scraped directories
             # (CS/Stat/Math/Physics/Astro/Econ/Psych/PME) + 6 curated API-dump
             # departments (Chemistry + the five BSD sites, JS-only shells).

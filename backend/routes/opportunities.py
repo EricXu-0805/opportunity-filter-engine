@@ -83,6 +83,7 @@ async def list_opportunities(
 _SCHOOL_SLUGS = frozenset({
     "umich", "princeton", "uchicago", "gatech", "ucla", "utexas",
     "uw", "ucsd", "stanford", "wisc", "ucb", "uiuc",
+    "purdue", "duke", "uci", "ucsb", "boulder",
 })
 
 

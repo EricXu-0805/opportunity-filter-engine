@@ -184,6 +184,16 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucla_faculty": ("ucla", "unknown"),
     # UCSD faculty directory (live-scraped, via the faculty_graph engine).
     "ucsd_faculty": ("ucsd", "unknown"),
+    # Purdue (campus-graph engine) + faculty (server-rendered).
+    "purdue_research_programs": ("purdue", "campus"),
+    "purdue_external_research": (None, "open"),
+    "purdue_labs": ("purdue", "unknown"),
+    "purdue_faculty": ("purdue", "unknown"),
+    # Duke (campus-graph engine) + faculty (render-mode Pratt directories).
+    "duke_research_programs": ("duke", "campus"),
+    "duke_external_research": (None, "open"),
+    "duke_labs": ("duke", "unknown"),
+    "duke_faculty": ("duke", "unknown"),
     # UChicago faculty directory (live-scraped + curated-API, via faculty_graph).
     "uchicago_faculty": ("uchicago", "unknown"),
     # UC Irvine faculty directory (live-scraped, via the faculty_graph engine).
