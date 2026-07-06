@@ -1815,6 +1815,32 @@ class TestUciConfig:
         poli = next(d for d in UCI["departments"] if d["short"] == "POLISCI")
         assert poli["scrape"]["field_filter"]["include"].startswith(r"^\s*Department of")
 
+    def test_uci_depth_humanities_bio_professional_added(self):
+        """Depth expansion: Bio-Sci central pages, Humanities T1 cards, Merage,
+        and the cp-dir professional schools are all registered."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        shorts = {d["short"] for d in UCI["departments"]}
+        for s in ("MBB", "NBB", "DCB", "EEB", "HIST", "PHIL", "ARTH", "CLAS",
+                  "FMS", "MERAGE", "PUBHLTH", "PHARM", "NURS"):
+            assert s in shorts, s
+
+    def test_uci_bio_uses_central_server_rendered_pages(self):
+        """Bio depts must scrape the central www.bio.uci.edu pages (server-
+        rendered), not the JS-only dept subdomains."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        for s in ("MBB", "NBB", "DCB", "EEB"):
+            dept = next(d for d in UCI["departments"] if d["short"] == s)
+            assert dept["scrape"]["url"].startswith("https://www.bio.uci.edu/academics/faculty/"), s
+            assert not dept["scrape"].get("render")  # server-rendered, no headless needed
+
+    def test_uci_merage_extracts_rank_via_title_re(self):
+        """Merage's static table has no rank field — title_re must capture the
+        rank from the row text so _LADDER can drop emeriti/lecturers."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        mer = next(d for d in UCI["departments"] if d["short"] == "MERAGE")
+        assert mer["scrape"]["selectors"].get("title_re")
+        assert "emerit" in mer["scrape"]["ladder_filter"]["drop"]
+
 
 class TestUcsbConfig:
     def test_ucsb_config_valid(self):
@@ -1832,6 +1858,25 @@ class TestUcsbConfig:
         from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
         for short in ("POLSCI", "SOC", "CHEM", "MATH", "MATSCI"):
             dept = next(d for d in UCSB["departments"] if d["short"] == short)
+            assert dept["scrape"].get("ladder_filter"), short
+
+    def test_ucsb_depth_humanities_arts_added(self):
+        """Depth expansion: the Humanities & Fine Arts + ethnic-studies block
+        (Family B) and the custom-theme depts are all registered."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        shorts = {d["short"] for d in UCSB["departments"]}
+        for s in ("PHIL", "ARTHI", "LING", "GLOBAL", "CHICST", "BLKST", "THDA",
+                  "FRIT", "ASAM", "GEOL", "ENGL", "HIST", "EALCS", "TMP",
+                  "MUS", "FAMST", "FEMST"):
+            assert s in shorts, s
+
+    def test_ucsb_famB_and_profile_email_depts_use_the_shared_selectors(self):
+        """Every Family-B / no-listing-email dept scrapes name+rank off the
+        people-profiles theme and backfills email from the profile page (gated)."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        for short in ("PHIL", "ARTHI", "LING", "THDA", "MUS", "FAMST", "FEMST"):
+            dept = next(d for d in UCSB["departments"] if d["short"] == short)
+            assert dept["scrape"]["profile_enrich"]["email_selector"] == "a[href^='mailto:']", short
             assert dept["scrape"].get("ladder_filter"), short
 
 
