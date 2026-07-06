@@ -1499,11 +1499,21 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #
 #     "json_dir": {
 #         "url": "https://www.scheller.gatech.edu/directory/index.json",
-#         "name_fields": ["firstName", "lastName"],   # joined with a space
+#         "name_fields": ["firstName", "lastName"],   # joined + whitespace-collapsed
 #         "filter_field": "academic", "filter_value": "Finance",
 #         "status_field": "status", "status_value": "Faculty",  # optional
 #         "ladder_filter": {"drop": "emerit|lecturer|of the practice"},
 #     }
+#
+# Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
+#     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
+#     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
+#     "filter_value": "Microbiology",
+#     "research_field": "interests[]",                               # list -> keywords
+#     "link_base": "https://chemistry.uchicago.edu",                 # join relative pathAlias
+#     # or, when the microsite host isn't resolvable, pull a stable link from a list:
+#     "link_list": {"field": "websites", "match_key": "name",
+#                   "match_value": "Research Network Profile", "url_key": "url"},
 def _dig(record: dict, path: str):
     """Read a field by name, or by dotted path for nested feeds.
 
@@ -1534,14 +1544,18 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     except Exception:  # noqa: BLE001
         return []
     from .ucb_common import HEADERS
+    # Some feeds gate on a same-origin Referer (UChicago's shared BSD roster
+    # endpoint returns empty to a header-less request); merge any per-source
+    # headers over the browser-like defaults.
+    hdrs = {**HEADERS, **(cfg.get("headers") or {})}
     try:
         if str(cfg.get("method", "get")).lower() == "post":
             # Some campus HR feeds only answer form POSTs (UCSD's EAH directory
             # returns an empty body to a GET of the same URL).
             resp = requests.post(cfg["url"], data=cfg.get("data"),
-                                 headers=HEADERS, timeout=25)
+                                 headers=hdrs, timeout=25)
         else:
-            resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+            resp = requests.get(cfg["url"], headers=hdrs, timeout=25)
         resp.raise_for_status()
         recs = resp.json()
     except Exception:  # noqa: BLE001
@@ -1553,6 +1567,7 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     require_re, drop_re = lf.get("require"), lf.get("drop")
     name_fields = cfg.get("name_fields", ["firstName", "lastName"])
     filt_field, filt_value = cfg.get("filter_field"), cfg.get("filter_value")
+    filt_index = cfg.get("filter_index")
     status_field, status_value = cfg.get("status_field"), cfg.get("status_value")
     specs: list[dict] = []
     for x in recs:
@@ -1560,7 +1575,16 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
             continue
         if filt_field is not None:
             fv = _dig(x, filt_field)
-            if filt_value not in (fv if isinstance(fv, list) else [fv]):
+            if filt_index is not None:
+                # Match at a fixed list position instead of membership — a shared
+                # roster feed lists every joint appointment in the record's
+                # department array, so keying on department[0] (the PRIMARY
+                # appointment) keeps a cross-listed professor in one home dept
+                # only, not once per department they touch.
+                fv = fv[filt_index] if isinstance(fv, list) and len(fv) > filt_index else None
+                if fv != filt_value:
+                    continue
+            elif filt_value not in (fv if isinstance(fv, list) else [fv]):
                 continue
         if status_field is not None:
             sv = _dig(x, status_field)
@@ -1575,7 +1599,8 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
             for ff in cfg.get("field_filters", [])
         ):
             continue
-        name = " ".join(str(_dig(x, f) or "").strip() for f in name_fields).strip()
+        name = re.sub(r"\s+", " ",
+                      " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
         if not _is_person_name(name):
             continue
         title = _dig(x, cfg.get("title_field", "title")) or "Professor"
@@ -1592,9 +1617,25 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
         if drop_re and re.search(drop_re, title, re.I):
             continue
         email = str(_dig(x, cfg.get("email_field", "email")) or "").strip() or None
-        url_v = str(_dig(x, cfg.get("link_field", "link")) or "").strip()
+        ll = cfg.get("link_list")
+        if ll:
+            # The profile URL lives in a list of {name,url} objects (a feed's
+            # "websites" array) rather than a scalar field — pick the entry whose
+            # match_key equals match_value (e.g. the stable "Research Network
+            # Profile" link, since the per-dept microsite host isn't resolvable).
+            url_v = ""
+            for item in (_dig(x, ll["field"]) or []):
+                if isinstance(item, dict) and item.get(ll["match_key"]) == ll["match_value"]:
+                    url_v = str(item.get(ll["url_key"], "") or "").strip()
+                    break
+        else:
+            url_v = str(_dig(x, cfg.get("link_field", "link")) or "").strip()
         if url_v.startswith("//"):
             url_v = "https:" + url_v
+        elif url_v.startswith("/") and cfg.get("link_base"):
+            # A feed carrying a relative pathAlias (Chemistry: "/paul-alivisatos")
+            # joins onto the department site host.
+            url_v = cfg["link_base"].rstrip("/") + url_v
         research = ""
         keywords: list[str] = []
         for rf in ([cfg["research_field"]] if isinstance(cfg.get("research_field"), str)
