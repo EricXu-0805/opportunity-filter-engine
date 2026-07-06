@@ -9,6 +9,7 @@ export const DEFAULT_PROFILE: ProfileData = {
   home_school: 'uiuc',
   college: '',
   major: '',
+  additional_majors: [],
   grade: '',
   is_international: false,
   research_interests: '',

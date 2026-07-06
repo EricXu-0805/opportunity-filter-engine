@@ -70,6 +70,28 @@ def _famA(short: str, name: str, majors: list[str], url: str) -> dict:
     })
 
 
+# Family B: the shared UCSB "people-profiles" Drupal theme across Humanities &
+# Fine Arts and the ethnic/area-studies social sciences. Same markup as the
+# existing POLSCI/SOC entries — name+link in ``.views-field-nothing h3 a``, rank
+# in ``.views-field-field-title``; NO email on the listing (it lives on each
+# server-rendered profile page → gated per-profile mailto backfill). Two
+# card-container variants: the classic ``div.view-content > div`` and a
+# responsive-grid ``div.views-view-responsive-grid__item-inner`` (theater/frit/
+# asamst — pass ``card=``). _LADDER drops emeriti/lecturers/affiliated/grad.
+def _famB(short: str, name: str, majors: list[str], url: str, *,
+          card: str = "div.view-content > div") -> dict:
+    return _dept(short, name, majors, url, {
+        "selectors": {
+            "card": card,
+            "name": ".views-field-nothing h3 a",
+            "link": ".views-field-nothing h3 a",
+            "title": ".views-field-field-title",
+        },
+        "ladder_filter": _LADDER,
+        "profile_enrich": {"email_selector": "a[href^='mailto:']", "throttle": 1.0},
+    })
+
+
 SCHOOL: dict = {
     "school_slug": "ucsb",
     "source": "ucsb_faculty",
@@ -299,6 +321,84 @@ SCHOOL: dict = {
                 "ladder_filter": _LADDER,
             },
         ),
+        # ==== Depth expansion: Humanities & Fine Arts + ethnic/area studies ===
+        # Family A (email + research on listing): Geological Sciences.
+        _famA("GEOL", "Department of Earth Science",
+              ["Earth Science", "Geological Sciences", "Geology"],
+              "https://www.geol.ucsb.edu/people/faculty"),
+        # Family B (people-profiles theme; email via per-profile backfill).
+        _famB("PHIL", "Department of Philosophy", ["Philosophy"],
+              "https://www.philosophy.ucsb.edu/people"),
+        _famB("ARTHI", "Department of History of Art & Architecture",
+              ["History of Art & Architecture", "Art History"],
+              "https://www.arthistory.ucsb.edu/people"),
+        _famB("LING", "Department of Linguistics", ["Linguistics"],
+              "https://www.linguistics.ucsb.edu/people"),
+        _famB("GLOBAL", "Department of Global Studies", ["Global Studies"],
+              "https://www.global.ucsb.edu/people"),
+        _famB("CHICST", "Department of Chicana & Chicano Studies",
+              ["Chicana & Chicano Studies"], "https://www.chicst.ucsb.edu/people"),
+        _famB("BLKST", "Department of Black Studies", ["Black Studies"],
+              "https://www.blackstudies.ucsb.edu/people"),
+        # Family B, responsive-grid card variant.
+        _famB("THDA", "Department of Theater & Dance", ["Theater", "Dance"],
+              "https://www.theaterdance.ucsb.edu/people",
+              card="div.views-view-responsive-grid__item-inner"),
+        _famB("FRIT", "Department of French & Italian", ["French", "Italian"],
+              "https://frit.ucsb.edu/people",
+              card="div.views-view-responsive-grid__item-inner"),
+        _famB("ASAM", "Department of Asian American Studies",
+              ["Asian American Studies"], "https://www.asamst.ucsb.edu/people",
+              card="div.views-view-responsive-grid__item-inner"),
+        # ---- Custom themes, email on the listing ----------------------------
+        _dept("ENGL", "Department of English", ["English"],
+              "https://www.english.ucsb.edu/people/faculty/",
+              {"selectors": {"card": "li.table--list--row", "name": ".table--name a",
+                             "link": ".table--name a", "title": ".table--position",
+                             "email": ".table--desc a[href^='mailto:']"},
+               "ladder_filter": _LADDER}),
+        _dept("HIST", "Department of History", ["History"],
+              "https://www.history.ucsb.edu/directory/faculty/",
+              {"selectors": {"card": ".faculty_card", "name": "a.faculty_name",
+                             "link": "a.faculty_name", "title": "label.faculty_title",
+                             "email": "a.faculty_email[href^='mailto:']"},
+               "ladder_filter": _LADDER}),
+        _dept("EALCS", "Department of East Asian Languages & Cultural Studies",
+              ["East Asian Languages & Cultural Studies"],
+              "https://www.eastasian.ucsb.edu/people/faculty/",
+              {"selectors": {"card": "div.card.dir-card",
+                             "name": "a.directory-name h5.card-title",
+                             "link": "a.directory-name",
+                             "email": ".card-details a[href^='mailto:']"},
+               "ladder_filter": _LADDER}),
+        _dept("TMP", "Technology Management Program", ["Technology Management"],
+              "https://tmp.ucsb.edu/faculty",
+              {"selectors": {"card": ".views-row", "name": "h2.teaser-title a",
+                             "link": "h2.teaser-title a", "title": "p strong",
+                             "email": "a[href^='mailto:']"},
+               "ladder_filter": _LADDER}),
+        # ---- Custom themes, email via per-profile backfill ------------------
+        _dept("MUS", "Department of Music", ["Music"],
+              "https://music.ucsb.edu/people/faculty",
+              {"selectors": {"card": ".node--type-people.node--view-mode-teaser",
+                             "name": ".group-right h2", "link": ".node-readmore a",
+                             "title": ".field--name-field-position"},
+               "ladder_filter": _LADDER,
+               "profile_enrich": {"email_selector": "a[href^='mailto:']", "throttle": 1.0}}),
+        _dept("FAMST", "Department of Film & Media Studies", ["Film & Media Studies"],
+              "https://www.filmandmedia.ucsb.edu/people/faculty/",
+              {"selectors": {"card": "div.entity.entity--person",
+                             "name": ".entity__meta h3 a", "link": ".entity__meta h3 a",
+                             "title": ".entity__meta > p", "research": ".entity__interests li a"},
+               "ladder_filter": _LADDER,
+               "profile_enrich": {"email_selector": "a[href^='mailto:']", "throttle": 1.0}}),
+        _dept("FEMST", "Department of Feminist Studies", ["Feminist Studies"],
+              "https://femst.ucsb.edu/people/full-directory",
+              {"selectors": {"card": ".views-row",
+                             "name": ".views-field-nothing a h2.teaser-title",
+                             "link": ".views-field-nothing a", "title": ".person-title"},
+               "ladder_filter": _LADDER,
+               "profile_enrich": {"email_selector": "a[href^='mailto:']", "throttle": 1.0}}),
     ],
 }
 

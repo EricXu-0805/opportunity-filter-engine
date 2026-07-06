@@ -1618,25 +1618,46 @@ class TestUchicagoConfig:
         assert SOURCE_DEFAULTS[UC["source"]] == ("uchicago", "unknown")
         assert UC["source"] in FACULTY_SOURCES
 
-    def test_uchicago_every_department_has_a_live_source_or_curated_seeds(self):
-        """32 scrape directories + 9 curated API-dump departments (Chemistry +
-        the eight BSD sites are JS-only shells; the BSD endpoint needs a Referer
-        header the engine doesn't send). Every department must resolve to one or
-        the other — a dept with neither is a wiring bug."""
+    def test_uchicago_every_department_has_a_live_source(self):
+        """33 scrape directories (incl. Booth via headless render) + 9 live
+        json_dir feeds (Chemistry's own Pantheon API + the eight BSD depts on
+        the shared Referer-gated endpoint). No curated seeds remain — every
+        department resolves to a live source, or it's a wiring bug."""
         from src.collectors.schools.uchicago_faculty import SCHOOL as UC
         scraped = {d["short"] for d in UC["departments"] if d.get("scrape", {}).get("selectors", {}).get("card")}
+        json_dir = {d["short"] for d in UC["departments"] if d.get("json_dir")}
         curated = {d["short"] for d in UC["departments"] if d.get("faculty")}
         assert scraped == {"CS", "STAT", "MATH", "PHYS", "ASTRO", "ECON", "PSYCH", "PME",
                            "SOC", "POLISCI", "HIST", "ANTHRO", "HDEV",
                            "PHIL", "ENGL", "LING", "GEOS",
-                           "HARRIS", "LAW", "CROWN", "DIV",
+                           "HARRIS", "LAW", "CROWN", "DIV", "BOOTH",
                            "CLAS", "CMLT", "EALC", "RLL", "SLAV", "SALC", "CMS",
                            "MUSI", "TAPS", "ARTH", "DOVA"}
-        assert curated == {"CHEM", "ECEV", "NEURO", "HG", "MGCB", "BMB",
-                           "OBA", "PBHS", "MICRO"}
-        assert not (scraped & curated)  # a dept is one mechanism or the other
+        assert json_dir == {"CHEM", "ECEV", "NEURO", "HG", "MGCB", "BMB",
+                            "OBA", "PBHS", "MICRO"}
+        assert curated == set()  # curated seeds fully migrated to live json_dir
         for d in UC["departments"]:
-            assert d["short"] in scraped or len(d["faculty"]) >= 10, d["short"]
+            assert d["short"] in scraped or d["short"] in json_dir, d["short"]
+
+    def test_uchicago_booth_uses_networkidle_render(self):
+        """Booth's Coveo grid populates only after late XHRs — it must render
+        (headless) and wait for networkidle, not a fixed settle that grabs 0."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        booth = next(d for d in UC["departments"] if d["short"] == "BOOTH")
+        assert booth["scrape"]["render"] is True
+        assert booth["scrape"]["render_wait"] == "networkidle"
+
+    def test_uchicago_bsd_json_dir_uses_referer_primary_and_link_list(self):
+        """The BSD feed is shared + Referer-gated + lists joint appointments; the
+        config must send a Referer, key on the PRIMARY department (index 0), and
+        pull the stable profiles.uchicago.edu link from the websites list."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        micro = next(d for d in UC["departments"] if d["short"] == "MICRO")
+        jd = micro["json_dir"]
+        assert jd["headers"]["Referer"].startswith("https://")
+        assert jd["filter_index"] == 0 and jd["filter_value"] == "Microbiology"
+        assert jd["link_list"]["match_value"] == "Research Network Profile"
+        assert jd["research_field"] == "interests[]"
 
     def test_uchicago_dova_section_filter_is_exact_faculty(self):
         """DoVA groups Faculty / Associate Faculty / Teaching Fellows / Emeritus
@@ -1699,26 +1720,73 @@ class TestUchicagoConfig:
         assert [p["name"] for p in people] == ["Matthew Stephens"]
         assert people[0]["url"] == "https://stat.uchicago.edu/people/profile/matthew-stephens/"
 
-    def test_uchicago_curated_id_stability(self):
-        """Deterministic ids for the API-dump seeds — drift here duplicates the
-        corpus on the next refresh (pin per SOP §E)."""
+    def test_uchicago_bsd_json_dir_primary_link_keywords_and_chair(self, monkeypatch):
+        """Drive the MICRO json_dir over a fake shared-BSD payload (no network):
+        the primary-appointment filter keeps department[0]=="Microbiology" and
+        drops a record whose Microbiology appointment is secondary; the chair
+        (title "Chair") survives the drop-only rank filter; interests[] become
+        keywords; and link_list resolves the profiles.uchicago.edu URL."""
+        class _Resp:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self):
+                return {"data": [
+                    {"firstName": "Tatyana", "lastName": "Golovkina", "title": "Professor",
+                     "department": ["Microbiology"], "interests": ["viruses", "bacteria"],
+                     "websites": [{"name": "Research Network Profile",
+                                   "url": "https://profiles.uchicago.edu/profiles/profile/37082"}]},
+                    {"firstName": "Dom", "lastName": "Chair", "title": "Chair",
+                     "department": ["Microbiology"], "interests": ["pathogenesis"],
+                     "websites": [{"name": "Research Network Profile",
+                                   "url": "https://profiles.uchicago.edu/profiles/profile/1"}]},
+                    {"firstName": "Cross", "lastName": "Listed", "title": "Professor",
+                     "department": ["Medicine", "Microbiology"], "interests": ["x"],
+                     "websites": []},
+                    {"firstName": "Em", "lastName": "Past", "title": "Professor Emeritus",
+                     "department": ["Microbiology"], "interests": [], "websites": []},
+                ]}
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
         from src.collectors.schools.uchicago_faculty import SCHOOL as UC
-        recs = fg.fetch_and_normalize(UC, deep=False)
-        by_name = {r["pi_name"]: r["id"] for r in recs}
-        assert by_name["Paul Alivisatos"] == "faculty-uchicago-chem-d542f26a"
-        assert by_name["David Freedman"] == "faculty-uchicago-neuro-64d98df9"
-        assert by_name["Joseph Thornton"] == "faculty-uchicago-ecev-99ac4574"
-        assert by_name["Melina E Hale"] == "faculty-uchicago-oba-a5bd418d"
-        assert by_name["Lin Chen"] == "faculty-uchicago-pbhs-cce0a743"
-        assert by_name["Tatyana Golovkina"] == "faculty-uchicago-micro-42a25379"
+        micro = next(d for d in UC["departments"] if d["short"] == "MICRO")
+        people = fg._fetch_json_dir(micro)
+        names = {p["name"] for p in people}
+        assert "Tatyana Golovkina" in names          # primary Microbiology
+        assert "Dom Chair" in names                   # chair kept (drop-only filter)
+        assert "Cross Listed" not in names            # secondary appt excluded
+        assert "Em Past" not in names                 # emeritus dropped
+        golovkina = next(p for p in people if p["name"] == "Tatyana Golovkina")
+        assert golovkina["url"] == "https://profiles.uchicago.edu/profiles/profile/37082"
+        assert golovkina["keywords"] == ["viruses", "bacteria"]
 
-    def test_uchicago_bsd_chairs_survive_the_rank_filter(self):
-        """BSD chairs carry the literal title "Chair" — the dump filter was
-        drop-only, so they must be present in the curated seeds."""
+    def test_uchicago_chemistry_json_dir_link_base_join(self, monkeypatch):
+        """Chemistry's feed carries a relative pathAlias; link_base joins it onto
+        the department host, and interests[] land as keywords."""
+        class _Resp:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self):
+                return {"data": [
+                    {"fullName": "Paul Alivisatos", "title": "Distinguished Service Professor",
+                     "pathAlias": "/paul-alivisatos",
+                     "interests": ["Materials Chemistry", "Physical Chemistry"]},
+                ]}
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
         from src.collectors.schools.uchicago_faculty import SCHOOL as UC
-        recs = fg.fetch_and_normalize(UC, deep=False)
-        assert any(r["pi_name"] == "David Freedman" for r in recs)  # Neurobiology chair
-        assert any(r["pi_name"] == "Carole Ober" for r in recs)  # Human Genetics chair
+        chem = next(d for d in UC["departments"] if d["short"] == "CHEM")
+        people = fg._fetch_json_dir(chem)
+        assert people[0]["name"] == "Paul Alivisatos"
+        assert people[0]["url"] == "https://chemistry.uchicago.edu/paul-alivisatos"
+        assert people[0]["keywords"] == ["Materials Chemistry", "Physical Chemistry"]
+
+    def test_uchicago_bsd_id_is_deterministic(self):
+        """The dept+name id scheme is stable (same person ⇒ same id every run),
+        so a re-scrape upserts rather than duplicating (SOP §E)."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        micro = next(d for d in UC["departments"] if d["short"] == "MICRO")
+        spec = fg.faculty("Tatyana Golovkina", title="Professor")
+        a = fg._normalize(UC, micro, spec)
+        b = fg._normalize(UC, micro, spec)
+        assert a["id"] == b["id"] == "faculty-uchicago-micro-42a25379"
 
 
 class TestUciConfig:
@@ -1747,6 +1815,32 @@ class TestUciConfig:
         poli = next(d for d in UCI["departments"] if d["short"] == "POLISCI")
         assert poli["scrape"]["field_filter"]["include"].startswith(r"^\s*Department of")
 
+    def test_uci_depth_humanities_bio_professional_added(self):
+        """Depth expansion: Bio-Sci central pages, Humanities T1 cards, Merage,
+        and the cp-dir professional schools are all registered."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        shorts = {d["short"] for d in UCI["departments"]}
+        for s in ("MBB", "NBB", "DCB", "EEB", "HIST", "PHIL", "ARTH", "CLAS",
+                  "FMS", "MERAGE", "PUBHLTH", "PHARM", "NURS"):
+            assert s in shorts, s
+
+    def test_uci_bio_uses_central_server_rendered_pages(self):
+        """Bio depts must scrape the central www.bio.uci.edu pages (server-
+        rendered), not the JS-only dept subdomains."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        for s in ("MBB", "NBB", "DCB", "EEB"):
+            dept = next(d for d in UCI["departments"] if d["short"] == s)
+            assert dept["scrape"]["url"].startswith("https://www.bio.uci.edu/academics/faculty/"), s
+            assert not dept["scrape"].get("render")  # server-rendered, no headless needed
+
+    def test_uci_merage_extracts_rank_via_title_re(self):
+        """Merage's static table has no rank field — title_re must capture the
+        rank from the row text so _LADDER can drop emeriti/lecturers."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        mer = next(d for d in UCI["departments"] if d["short"] == "MERAGE")
+        assert mer["scrape"]["selectors"].get("title_re")
+        assert "emerit" in mer["scrape"]["ladder_filter"]["drop"]
+
 
 class TestUcsbConfig:
     def test_ucsb_config_valid(self):
@@ -1764,6 +1858,25 @@ class TestUcsbConfig:
         from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
         for short in ("POLSCI", "SOC", "CHEM", "MATH", "MATSCI"):
             dept = next(d for d in UCSB["departments"] if d["short"] == short)
+            assert dept["scrape"].get("ladder_filter"), short
+
+    def test_ucsb_depth_humanities_arts_added(self):
+        """Depth expansion: the Humanities & Fine Arts + ethnic-studies block
+        (Family B) and the custom-theme depts are all registered."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        shorts = {d["short"] for d in UCSB["departments"]}
+        for s in ("PHIL", "ARTHI", "LING", "GLOBAL", "CHICST", "BLKST", "THDA",
+                  "FRIT", "ASAM", "GEOL", "ENGL", "HIST", "EALCS", "TMP",
+                  "MUS", "FAMST", "FEMST"):
+            assert s in shorts, s
+
+    def test_ucsb_famB_and_profile_email_depts_use_the_shared_selectors(self):
+        """Every Family-B / no-listing-email dept scrapes name+rank off the
+        people-profiles theme and backfills email from the profile page (gated)."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        for short in ("PHIL", "ARTHI", "LING", "THDA", "MUS", "FAMST", "FEMST"):
+            dept = next(d for d in UCSB["departments"] if d["short"] == short)
+            assert dept["scrape"]["profile_enrich"]["email_selector"] == "a[href^='mailto:']", short
             assert dept["scrape"].get("ladder_filter"), short
 
 
