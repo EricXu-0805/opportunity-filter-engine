@@ -548,7 +548,11 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             name_el = card.select_one(sel["name"]) if sel.get("name") else None
         if not name_el:
             continue
-        name = name_el.get_text(" ", strip=True)
+        # Collapse internal whitespace runs — a name split across text nodes
+        # by ``<br>``/nbsp (e.g. Purdue Chemistry's "Ryan&#160;\n Altman") comes
+        # back from get_text with embedded newlines/double-spaces that would leak
+        # into pi_name and trip the data-quality name checks.
+        name = re.sub(r"\s+", " ", name_el.get_text(" ", strip=True)).strip()
         if sel.get("name_last"):
             # Directories that split the name across two cells (a first-name and
             # a last-name column, e.g. UCI Chemistry's Drupal table): the ``name``
