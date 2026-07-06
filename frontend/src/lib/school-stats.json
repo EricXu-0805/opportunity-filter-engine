@@ -3,12 +3,20 @@
     "campus": 1595,
     "national": 2978
   },
+  "duke": {
+    "campus": 346,
+    "national": 2978
+  },
   "gatech": {
     "campus": 1214,
     "national": 2978
   },
   "princeton": {
     "campus": 461,
+    "national": 2978
+  },
+  "purdue": {
+    "campus": 1778,
     "national": 2978
   },
   "stanford": {
