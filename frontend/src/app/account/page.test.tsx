@@ -14,6 +14,9 @@ const mockGetFavorites = vi.fn();
 const mockGetInteractions = vi.fn();
 const mockJoinWaitlist = vi.fn();
 const mockTrack = vi.fn();
+const mockCreateOrder = vi.fn();
+const mockGetMyOrders = vi.fn();
+const mockClaimOrderPaid = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   getAuthState: () => mockGetAuthState(),
@@ -22,6 +25,9 @@ vi.mock('@/lib/supabase', () => ({
   getFavorites: () => mockGetFavorites(),
   getInteractionsFull: () => mockGetInteractions(),
   joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
+  createOrder: (...args: unknown[]) => mockCreateOrder(...args),
+  getMyOrders: () => mockGetMyOrders(),
+  claimOrderPaid: (...args: unknown[]) => mockClaimOrderPaid(...args),
 }));
 
 vi.mock('@/lib/analytics', () => ({
@@ -43,11 +49,14 @@ beforeEach(() => {
   mockGetInteractions.mockResolvedValue(new Map([['x', {}], ['y', {}]]));
   mockLoadProfile.mockResolvedValue(null);
   mockJoinWaitlist.mockResolvedValue(true);
+  mockGetMyOrders.mockResolvedValue([]);
+  mockClaimOrderPaid.mockResolvedValue(true);
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe('AccountPage — identity', () => {
@@ -152,5 +161,98 @@ describe('AccountPage — paid-intent CTA', () => {
       expect(mockJoinWaitlist).toHaveBeenCalledWith('eric@example.com', { source: 'account' }),
     );
     await waitFor(() => expect(screen.getByText('account.intentDone')).toBeInTheDocument());
+  });
+});
+
+describe('AccountPage — payments flag OFF (regression)', () => {
+  beforeEach(() => {
+    mockGetAuthState.mockResolvedValue({
+      session: {}, user: { id: 'u1', is_anonymous: false }, isAnonymous: false,
+      email: 'eric@example.com',
+    });
+  });
+
+  it('renders exactly the waitlist CTA — no order flow, no orders fetch', async () => {
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.intentCta')).toBeInTheDocument());
+    expect(screen.queryByText('account.choosePackage')).not.toBeInTheDocument();
+    expect(screen.queryByText('account.paidClaimCta')).not.toBeInTheDocument();
+    expect(screen.getByText('account.freePlan')).toBeInTheDocument();
+    expect(mockGetMyOrders).not.toHaveBeenCalled();
+    expect(mockCreateOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe('AccountPage — payments flag ON (order flow)', () => {
+  const pendingOrder = {
+    id: 'ord-1',
+    package: 'single_email',
+    amount_cents: 990,
+    currency: 'usd',
+    status: 'pending' as const,
+    channel: 'manual',
+    created_at: '2026-07-05T00:00:00+00:00',
+    paid_at: null,
+  };
+
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_PAYMENTS', 'true');
+    mockGetAuthState.mockResolvedValue({
+      session: {}, user: { id: 'u1', is_anonymous: false }, isAnonymous: false,
+      email: 'eric@example.com',
+    });
+    mockCreateOrder.mockResolvedValue(pendingOrder);
+  });
+
+  it('replaces the waitlist CTA with the package chooser', async () => {
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.choosePackage')).toBeInTheDocument());
+    expect(screen.queryByText('account.intentCta')).not.toBeInTheDocument();
+    expect(screen.getByText('account.packageSingleEmail')).toBeInTheDocument();
+    expect(screen.getByText('account.packageFullPackage')).toBeInTheDocument();
+    expect(screen.getByText('$9.90')).toBeInTheDocument();
+    expect(screen.getByText('$49.00')).toBeInTheDocument();
+  });
+
+  it('choose package → QR page with order id → claim paid → awaiting confirm', async () => {
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.packageSingleEmail')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('account.packageSingleEmail'));
+    await waitFor(() => expect(mockCreateOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'single_email', amountCents: 990 }),
+    ));
+
+    await waitFor(() => expect(screen.getByText('account.paidClaimCta')).toBeInTheDocument());
+    expect(screen.getByAltText('account.payWechat')).toHaveAttribute('src', '/pay/wechat.png');
+    expect(screen.getByAltText('account.payAlipay')).toHaveAttribute('src', '/pay/alipay.png');
+    expect(screen.getByText(/ord-1/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('account.paidClaimCta'));
+    await waitFor(() => expect(mockClaimOrderPaid).toHaveBeenCalledWith('ord-1'));
+    await waitFor(() =>
+      expect(screen.getByText('account.orderAwaitingConfirm')).toBeInTheDocument(),
+    );
+  });
+
+  it('resumes an awaiting_confirm order from the server on reload', async () => {
+    mockGetMyOrders.mockResolvedValue([{ ...pendingOrder, status: 'awaiting_confirm' }]);
+    render(<AccountPage />);
+    await waitFor(() =>
+      expect(screen.getByText('account.orderAwaitingConfirm')).toBeInTheDocument(),
+    );
+    expect(mockCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('shows the paid package as the current plan', async () => {
+    mockGetMyOrders.mockResolvedValue([
+      { ...pendingOrder, status: 'paid', paid_at: '2026-07-05T01:00:00+00:00' },
+    ]);
+    render(<AccountPage />);
+    await waitFor(() =>
+      expect(screen.getAllByText('account.packageSingleEmail').length).toBeGreaterThan(0),
+    );
+    expect(screen.getByText('account.paidPlanDesc')).toBeInTheDocument();
+    expect(screen.queryByText('account.freePlan')).not.toBeInTheDocument();
   });
 });

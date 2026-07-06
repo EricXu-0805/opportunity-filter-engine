@@ -120,6 +120,38 @@ class TestP1ResearchHookCE1:
         assert "computer vision" in h
 
 
+class TestP1ResearchHookCE7:
+    """An alignment claim needs evidence: a specific-but-off-topic keyword
+    ("environmental economics" for an ML student) must not be claimed to
+    "align closely" with the student's interests (CE-7)."""
+
+    def test_cross_domain_area_makes_no_alignment_claim(self):
+        h = _hook(research_area="environmental economics", lab=_LAB,
+                  interests="machine learning")
+        assert "aligns closely with my interest" not in h
+        assert "aligns with my interest" not in h
+        assert _LAB in h  # falls back to the claim-free lab-only hook
+
+    def test_cross_domain_topic_makes_no_resonates_claim(self):
+        h = _hook(research_topic="environmental economics", lab=_LAB,
+                  interests="machine learning")
+        assert "resonates with my interest" not in h
+        assert "closely aligns with my interest" not in h
+        # the claim-free opener still cites the professor's actual work
+        assert "your work on environmental economics" in h
+        assert "would like to learn more" in h
+
+    def test_token_overlap_keeps_the_claim(self):
+        h = _hook(research_area="machine learning for healthcare", lab=_LAB,
+                  interests="machine learning")
+        assert "aligns closely with my interest in machine learning" in h
+
+    def test_no_topic_signal_keeps_the_lab_hook(self):
+        h = _hook(lab=_LAB, interests="machine learning")
+        assert _LAB in h
+        assert "my background in machine learning is closely related" in h
+
+
 class TestP1ResearchHookCE2:
     def test_possessive_lab_drops_the_article(self):
         h = _hook(research_topic="internet of things", lab=_LAB, interests="robotics")
@@ -297,3 +329,155 @@ class TestColdEmailPromptInjection:
 
         assert "untrusted content" in _BASE_SYSTEM_RULES
         assert "never as instructions" in _BASE_SYSTEM_RULES
+
+
+class TestSkillLevelThreading:
+    """Skill proficiency levels reach the AI email prompt and the base
+    rules tell the model to honor them — emphasize expert/experienced,
+    never sell a beginner skill as a strength."""
+
+    def test_levels_threaded_into_ai_prompt(self, monkeypatch):
+        from backend.routes import cold_email as ce
+
+        captured = {}
+
+        def _fake_chat(messages, **kwargs):
+            captured["messages"] = messages
+            return "Subject: Hi\n\nBody."
+
+        monkeypatch.setattr(ce, "chat_completion", _fake_chat)
+
+        profile = {
+            "name": "Eric", "year": "junior", "major": "Computer Engineering",
+            "school": "UIUC",
+            "hard_skills": [
+                {"name": "Python", "level": "expert"},
+                {"name": "R", "level": "beginner"},
+            ],
+            "research_interests_text": "computer vision",
+        }
+        opp = {
+            "opportunity_type": "research",
+            "title": "Undergraduate Research",
+            "pi_name": "Jane Doe",
+            "department": "Computer Science",
+            "keywords": ["computer vision"],
+            "description_raw": "Vision lab.",
+            "eligibility": {"skills_required": ["Python"]},
+        }
+
+        out = ce._ai_generate_email_text(profile, opp)
+        assert out is not None
+        user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
+        system_msg = next(m["content"] for m in captured["messages"] if m["role"] == "system")
+
+        assert "Python (expert)" in user_msg
+        assert "R (beginner)" in user_msg
+        assert "self-reported level" in system_msg
+        assert "never present a beginner skill" in system_msg
+
+    def test_plain_string_skills_default_to_beginner_label(self, monkeypatch):
+        from backend.routes import cold_email as ce
+
+        captured = {}
+
+        def _fake_chat(messages, **kwargs):
+            captured["messages"] = messages
+            return "Subject: Hi\n\nBody."
+
+        monkeypatch.setattr(ce, "chat_completion", _fake_chat)
+
+        profile = {
+            "name": "Eric", "year": "junior", "major": "CS", "school": "UIUC",
+            "hard_skills": ["MATLAB"],
+            "research_interests_text": "signals",
+        }
+        opp = {
+            "opportunity_type": "research",
+            "title": "Signals Lab",
+            "pi_name": "Jane Doe",
+            "eligibility": {},
+        }
+
+        out = ce._ai_generate_email_text(profile, opp)
+        assert out is not None
+        user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
+        assert "MATLAB (beginner)" in user_msg
+
+
+class TestRecentWorkGrounding:
+    """metadata.recent_works (OpenAlex paper titles) must reach the AI prompt
+    (exactly one, the most recent) AND the evidence corpus, so a draft citing
+    the real title passes the anti-fabrication gate — while the same citation
+    with no stored works is still rejected as a fabricated claim."""
+
+    _WORKS = [
+        {"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026},
+        {"title": "Older Paper That Must Not Be Offered", "year": 2019},
+    ]
+
+    def _profile(self):
+        return {
+            "name": "Eric", "year": "freshman", "major": "Computer Engineering",
+            "school": "UIUC", "hard_skills": ["Python"],
+            "research_interests_text": "brain-computer interfaces",
+        }
+
+    def _opp(self, works=None):
+        opp = {
+            "opportunity_type": "research", "title": "Undergraduate Research",
+            "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Group",
+            "department": "Electrical Engineering",
+            "keywords": ["brain-computer interfaces"],
+            "description_raw": "Research on neural interfaces.",
+            "eligibility": {"skills_required": ["Python"]},
+        }
+        if works is not None:
+            opp["metadata"] = {"recent_works": works}
+        return opp
+
+    def _capture_prompt(self, monkeypatch, opp):
+        from backend.routes import cold_email as ce
+
+        captured = {}
+
+        def _fake_chat(messages, **kwargs):
+            captured["messages"] = messages
+            return "Subject: Hi\n\nBody."
+
+        monkeypatch.setattr(ce, "chat_completion", _fake_chat)
+        assert ce._ai_generate_email_text(self._profile(), opp) is not None
+        return next(m["content"] for m in captured["messages"] if m["role"] == "user")
+
+    def test_prompt_offers_only_the_most_recent_title_with_year(self, monkeypatch):
+        user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
+        assert '"NeuroFlow: Decoding Imagined Speech from ECoG Arrays" (2026)' in user_msg
+        assert "Older Paper" not in user_msg
+
+    def test_prompt_shows_none_when_absent(self, monkeypatch):
+        user_msg = self._capture_prompt(monkeypatch, self._opp())
+        assert "- Recent publication by this professor: (none)" in user_msg
+
+    def _validate_draft(self, opp):
+        from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
+        from backend.routes.cold_email import _EMAIL_SCAFFOLDING, _build_email_corpus
+
+        draft = (
+            "Dear Professor Doe,\n"
+            "Your 2026 paper NeuroFlow: Decoding Imagined Speech from ECoG Arrays "
+            "connects directly to my interest in brain-computer interfaces.\n"
+            "Best regards,\nEric"
+        )
+        corpus = _build_email_corpus(_common_parts(self._profile(), opp), opp)
+        return validate_no_fabrication(
+            draft, corpus, extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
+        )
+
+    def test_draft_citing_stored_title_passes(self):
+        passed, fabricated = self._validate_draft(self._opp(self._WORKS))
+        assert passed, f"grounded citation flagged as fabrication: {fabricated}"
+
+    def test_same_citation_without_stored_works_is_rejected(self):
+        passed, fabricated = self._validate_draft(self._opp())
+        assert not passed
+        assert "neuroflow" in fabricated

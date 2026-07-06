@@ -168,7 +168,15 @@ jobs:
         # playwright.config webServer) serves pre-compiled routes, cutting the
         # run dramatically. The Frontend job already proves `npm run build`
         # passes in CI.
+        #
+        # BACKEND_URL must be set at BUILD time: next.config.js rewrites are
+        # baked into routes-manifest.json during `next build` and are NOT
+        # re-evaluated by `next start` — without it the built app proxies
+        # /api/* to the LIVE production backend instead of the local uvicorn
+        # the Playwright webServer boots.
         run: npm run build
+        env:
+          BACKEND_URL: http://127.0.0.1:8100
 
       - name: Run E2E tests
         run: npm run test:e2e -- --project=chromium

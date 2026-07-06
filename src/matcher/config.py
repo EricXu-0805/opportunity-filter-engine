@@ -146,7 +146,23 @@ ELIG_MAJOR_WEIGHT = _env_float("OFE_ELIG_MAJOR_W", 0.24)
 # driver. Missing department → no bonus, never a penalty.
 COLLEGE_AFFINITY_MAX = _env_float("OFE_COLLEGE_AFFINITY_MAX", 4.0)
 
+# Home-school priority: when the cross-school toggle (include_cross_school) is
+# on, the student's own school gets a small additive nudge (pre-stretch, like
+# the college affinity) so 本校 wins ties against an equally-scored cross-school
+# record — but stays far too small to outrank a clearly better topical match
+# elsewhere (interests LEAD is the product law).
+HOME_SCHOOL_AFFINITY_MAX = _env_float("OFE_HOME_SCHOOL_AFFINITY_MAX", 4.0)
+
 # Thin-inventory honesty: when a profile has fewer than this many topically
 # relevant visible results, the client shows "few matches in your field" instead
 # of implying the padded generic total is all field-relevant.
 THIN_INVENTORY_FLOOR = int(_env_float("OFE_THIN_INVENTORY_FLOOR", 8))
+
+# Internal responsiveness signals (红黑榜 v1, aggregated + anonymous): an
+# opportunity where >= RESPONSIVENESS_MIN_N distinct devices made contact AND
+# at least one reached got-reply/interviewing earns a small additive bonus.
+# Default 0 = OFF — Eric flips the env once the signal has enough volume. The
+# ranker clamps the effective bonus to 3.0 so responsiveness breaks ties but
+# can never outrank topical fit (interests LEAD is the product law).
+RESPONSIVENESS_MIN_N = 3
+RESPONSIVENESS_BONUS = _env_float("OFE_RESPONSIVENESS_BONUS", 0.0)

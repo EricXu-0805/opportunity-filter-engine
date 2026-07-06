@@ -6,6 +6,8 @@ export type FunnelEvent =
   | 'match_opened'
   | 'ai_feature_used'
   | 'intent_clicked'
+  | 'concierge_cta_view'
+  | 'order_created'
   | 'feedback_submitted'
   | 'onboarding_completed';
 

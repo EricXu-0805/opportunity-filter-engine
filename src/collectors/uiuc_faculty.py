@@ -744,41 +744,6 @@ def _extract_research_keywords(person: dict, dept_config: dict) -> list[str]:
     return found[:8]
 
 
-def _infer_skills_from_research(person: dict) -> list[str]:
-    """Infer likely required skills from research description."""
-    text = " ".join([
-        person.get("research_areas", ""),
-        person.get("research_description", ""),
-    ]).lower()
-
-    SKILL_MAP = {
-        "Python": ["python", "machine learning", "deep learning", "data science",
-                    "natural language", "computational", "bioinformatics"],
-        "C++": ["c++", "systems", "embedded", "robotics", "high performance",
-                "parallel computing", "compilers"],
-        "MATLAB": ["matlab", "signal processing", "control", "power systems",
-                    "circuits", "electromagnetics"],
-        "R": ["statistical", "biostatistics", "epidemiology", "ecology"],
-        "PyTorch": ["deep learning", "neural network", "computer vision",
-                     "reinforcement learning", "nlp"],
-        "TensorFlow": ["deep learning", "machine learning", "neural network"],
-        "SQL": ["database", "data management", "information systems"],
-        "Linux": ["systems", "networking", "security", "cloud"],
-        "Java": ["software engineering", "distributed", "android"],
-        "machine learning": ["machine learning", "artificial intelligence",
-                              "data science", "pattern recognition"],
-        "data analysis": ["data science", "statistics", "computational",
-                           "bioinformatics", "genomics"],
-    }
-
-    skills = set()
-    for skill, triggers in SKILL_MAP.items():
-        if any(t in text for t in triggers):
-            skills.add(skill)
-
-    return sorted(skills)[:5]
-
-
 def normalize_faculty(
     person: dict, dept_config: dict, keywords: list[str] | None = None
 ) -> dict | None:
@@ -811,7 +776,6 @@ def normalize_faculty(
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     if keywords is None:
         keywords = _extract_research_keywords(person, dept_config)
-    skills = _infer_skills_from_research(person)
 
     desc_parts = [
         f"Research opportunity with {title} {name} in the {dept_name} at UIUC.",
@@ -855,8 +819,15 @@ def normalize_faculty(
             "preferred_year": ["sophomore", "junior", "senior"],
             "min_gpa": None,
             "majors": dept_config["majors"],
-            "skills_required": skills[:3],
-            "skills_preferred": skills[3:],
+            # Faculty are cold-email research contacts, not postings — never
+            # infer skills from their research prose (a topology professor whose
+            # page says "finite element" would become FEA-required, defeating
+            # the ranker's neutral skill score). The corpus DQ gate enforces
+            # this; the two downstream skill-writers (llm_tagger / enricher)
+            # already skip source_type=="faculty_research", so the collector
+            # must not seed skills at the source either.
+            "skills_required": [],
+            "skills_preferred": [],
             "citizenship_required": False,
             "international_friendly": "yes",
             "work_auth_notes": "On-campus research — no work authorization required",
@@ -1103,11 +1074,29 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     (volatile/factual) field still comes from the fresh scrape. No-op when the
     fresh scrape is at least as rich, so a professor who added research areas to
     their page still wins. This is the same-id guard the row-dedup
-    ``_faculty_is_richer`` never covered (it only collapses duplicate rows)."""
+    ``_faculty_is_richer`` never covered (it only collapses duplicate rows).
+
+    ``metadata.recent_works`` (OpenAlex publication titles) is carried
+    UNCONDITIONALLY when the fresh scrape lacks it: no directory scrape ever
+    produces it, so even a keyword-richer re-scrape must not wipe it — and the
+    merge paths replace ``metadata`` wholesale (``cur.update(opp)`` /
+    full-replace), which would otherwise drop it silently."""
     if _faculty_is_richer(existing, incoming):
         for f in _ENRICHMENT_CARRY_FIELDS:
             if f in existing:
                 incoming[f] = existing[f]
+    works = (existing.get("metadata") or {}).get("recent_works")
+    if works and not (incoming.get("metadata") or {}).get("recent_works"):
+        incoming.setdefault("metadata", {})["recent_works"] = works
+
+    # contact_email is carried the same unconditional way: for schools whose
+    # listings never expose emails (e.g. CU Experts), the address exists ONLY
+    # because a gated per-profile pass once found it — a listing-only refresh
+    # emits None and would silently wipe every one of them. A fresh scrape
+    # that actually carries an email still wins (professor changed address).
+    email = existing.get("contact_email")
+    if email and not incoming.get("contact_email"):
+        incoming["contact_email"] = email
 
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
@@ -1470,16 +1459,24 @@ _KEYWORD_FRAGMENT_PREFIX_RE = re.compile(
 )
 
 
+def _is_faculty_record(opp: dict) -> bool:
+    """Any school's faculty record (uiuc_faculty, uw_faculty, ucb_*_faculty, …) —
+    every faculty collector emits source_type='faculty_research'. The junk-keyword
+    and shared-inbox patterns are school-agnostic, so the hygiene passes below
+    gate on this instead of source == 'uiuc_faculty'."""
+    return opp.get("source_type") == "faculty_research"
+
+
 def _strip_furniture_keywords(opps: list[dict]) -> int:
-    """Drop junk faculty keywords corpus-wide — page furniture ('undergraduate
-    research', 'tondeur lectures', job titles), dangling/truncated fragments
-    ('molecular mechanisms of', 'columbia uni'), and sentence fragments — via
-    _is_junk_keyword, restoring the broad field if a record is left empty.
-    Genuine areas like 'water resources' or 'machine teaching' are preserved.
-    Returns count changed."""
+    """Drop junk faculty keywords corpus-wide (every school's faculty) — page
+    furniture ('undergraduate research', 'tondeur lectures', job titles),
+    dangling/truncated fragments ('molecular mechanisms of', 'columbia uni'), and
+    sentence fragments — via _is_junk_keyword, restoring the broad field if a
+    record is left empty. Genuine areas like 'water resources' or 'machine
+    teaching' are preserved. Returns count changed."""
     changed = 0
     for o in opps:
-        if o.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(o):
             continue
         kws = o.get("keywords") or []
         kept = [k for k in kws if not _is_junk_keyword(k)]
@@ -1598,11 +1595,12 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     """Null contact_email when it is shared by many distinct professors — a
     scraped department/advising inbox, not a personal address. A 'Dear Professor
     X' cold email sent to a shared coordinator inbox misfires; an empty recipient
-    (the modal then disables send) is safer than a confidently wrong one. Mutates
-    ``opps`` in place; returns the count nulled."""
+    (the modal then disables send) is safer than a confidently wrong one. Covers
+    every school's faculty (emails are domain-unique, so cross-school counting
+    never conflates). Mutates ``opps`` in place; returns the count nulled."""
     names_by_email: dict[str, set[str]] = defaultdict(set)
     for opp in opps:
-        if opp.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(opp):
             continue
         email = (opp.get("contact_email") or "").strip().lower()
         if email:
@@ -1614,7 +1612,7 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     }
     nulled = 0
     for opp in opps:
-        if opp.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(opp):
             continue
         if (opp.get("contact_email") or "").strip().lower() in shared:
             opp["contact_email"] = None
@@ -1649,10 +1647,11 @@ def _null_unit_inbox_emails(opps: list[dict]) -> int:
     """Null contact_email when its local-part is a department/unit/role mailbox
     rather than a personal address. The match is exact (local-part in the generic
     set or equal to a department-name word), never a substring, so a personal
-    username is never clipped. Mutates ``opps`` in place; returns the count nulled."""
+    username is never clipped. Covers every school's faculty. Mutates ``opps``
+    in place; returns the count nulled."""
     nulled = 0
     for opp in opps:
-        if opp.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(opp):
             continue
         email = opp.get("contact_email") or ""
         if "@" not in email:

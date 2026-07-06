@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
 FRONTEND_BASE = os.environ.get(
-    "FRONTEND_URL", "https://opportunity-filter-engine.vercel.app"
+    "FRONTEND_URL", "https://joinalab.com"
 ).rstrip("/")
 
 MAX_ITEMS_PER_EMAIL = 50
@@ -275,19 +275,21 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
             + (f"  notes: {f.notes}\n" if f.notes.strip() else "")
         )
 
-    html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white;padding:32px 24px">
-  <tr><td>
-    <div style="font-size:22px;font-weight:700;color:#0f172a">JoinALab</div>
-    <h1 style="font-size:24px;margin:20px 0 8px">{_html_escape(subject)}</h1>
-    <p style="color:#6b7280;font-size:14px;margin:0 0 20px">
+    html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
+  <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td style="padding:32px 28px">
+    <div style="font-size:22px;font-weight:700;color:#4f46e5;letter-spacing:-0.5px">JoinALab</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
+    <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{_html_escape(subject)}</h1>
+    <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
       Your saved opportunities, with any notes and status you've tracked.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}
     </table>
     <p style="margin-top:28px;color:#9ca3af;font-size:11px">
-      Sent from JoinALab · <a href="{FRONTEND_BASE}/favorites" style="color:#9ca3af">View in app</a>
+      Sent from JoinALab · <a href="{FRONTEND_BASE}/favorites" style="color:#4f46e5">View in app</a>
     </p>
   </td></tr>
 </table>

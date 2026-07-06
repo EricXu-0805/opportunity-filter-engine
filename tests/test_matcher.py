@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.matcher.config import (
     EXPLORE_MAJOR_MISMATCH_FLOOR,
+    HOME_SCHOOL_AFFINITY_MAX,
     TOPIC_MISMATCH_PENALTY,
     TOPIC_UNKNOWN_PENALTY,
 )
@@ -26,6 +27,7 @@ from src.matcher.ranker import (
     _assign_buckets,
     _college_affinity,
     _compute_weights,
+    _home_school_affinity,
     _is_undergrad,
     _major_match_score,
     _normalize_type_key,
@@ -190,6 +192,63 @@ class TestSkillMapMemoization:
         }
         smap = _parse_skills(profile["hard_skills"])
         assert score_eligibility(profile, opp) == score_eligibility(profile, opp, skill_map=smap)
+
+
+class TestSkillLevelMatchingContract:
+    """The skill-level annotation work (tailor / cold-email prompt threading)
+    must not change matching. These pin the ranker's pre-existing level
+    handling so any accidental coupling breaks loudly:
+      - plain string skills keep weight 1.0 (levels stay optional)
+      - annotated weights follow PROFICIENCY_WEIGHTS exactly as before
+      - unknown level strings fall back to the 'experienced' weight
+    """
+
+    def test_proficiency_weights_pinned(self):
+        from src.matcher.config import PROFICIENCY_WEIGHTS
+        assert PROFICIENCY_WEIGHTS == {
+            "expert": 1.0,
+            "experienced": 0.75,
+            "beginner": 0.5,
+        }
+
+    def test_parse_skills_level_weights_unchanged(self):
+        from src.matcher.ranker import _parse_skills
+        smap = _parse_skills([
+            {"name": "Python", "level": "expert"},
+            {"name": "Java", "level": "experienced"},
+            {"name": "R", "level": "beginner"},
+            {"name": "Go", "level": "familiar"},
+            "MATLAB",
+        ])
+        assert smap["python"] == 1.0
+        assert smap["java"] == 0.75
+        assert smap["r"] == 0.5
+        assert smap["go"] == 0.75  # unknown label → experienced weight
+        assert smap["matlab"] == 1.0  # plain string, no level
+
+    def test_string_and_expert_annotated_skills_score_identically(self):
+        from src.matcher.ranker import score_eligibility
+        opp = {
+            "opportunity_type": "research",
+            "eligibility": {
+                "preferred_year": ["junior"], "majors": ["CS"],
+                "skills_required": ["Python", "Java"],
+                "international_friendly": "yes",
+            },
+        }
+        base = {"year": "junior", "major": "CS", "seeking_type": ["research"]}
+        plain = score_eligibility({**base, "hard_skills": ["Python", "Java"]}, opp)
+        annotated = score_eligibility(
+            {
+                **base,
+                "hard_skills": [
+                    {"name": "Python", "level": "expert"},
+                    {"name": "Java", "level": "expert"},
+                ],
+            },
+            opp,
+        )
+        assert plain[0] == annotated[0]
 
 
 class TestTypePreferenceNormalisation:
@@ -382,6 +441,32 @@ class TestUpsideScoring:
         _, fit, _ = score_upside(sample_profile, opp)
         assert any("prestigious" in f.lower() for f in fit)
 
+    def _brand_opp(self, organization, school=None):
+        return {
+            "id": f"brand-{organization}", "organization": organization,
+            "school": school, "paid": "unknown", "on_campus": False,
+            "eligibility": {}, "application": {}, "description_raw": "",
+        }
+
+    def test_smithsonian_gets_no_prestige_reason(self, sample_profile):
+        for org in ["Smithsonian Institution", "Smiths Detection Group", "Smith+Nephew"]:
+            _, fit, _ = score_upside(sample_profile, self._brand_opp(org))
+            assert not any("prestigious" in f.lower() for f in fit), org
+
+    def test_registered_schools_get_equal_brand_score(self, sample_profile):
+        uw_total, uw_fit, _ = score_upside(
+            sample_profile, self._brand_opp("University of Washington", school="uw"))
+        ucb_total, ucb_fit, _ = score_upside(
+            sample_profile, self._brand_opp("UC Berkeley", school="ucb"))
+        assert uw_total == ucb_total
+        for fit in (uw_fit, ucb_fit):
+            assert any("major research university" in f.lower() for f in fit)
+            assert not any("prestigious" in f.lower() for f in fit)
+
+    def test_external_prestige_org_word_bounded(self, sample_profile):
+        _, fit, _ = score_upside(sample_profile, self._brand_opp("MIT Lincoln Laboratory"))
+        assert any("prestigious" in f.lower() for f in fit)
+
     def test_score_range(self, sample_profile, good_match_opportunity):
         score, _, _ = score_upside(sample_profile, good_match_opportunity)
         assert 0 <= score <= 100
@@ -491,6 +576,19 @@ class TestRankAll:
         result_ids = {r.opportunity_id for r in results}
         assert "opp-001" in result_ids
         assert "opp-002" not in result_ids
+
+    def test_equal_scores_tie_break_deterministically(self, sample_profile, sample_opportunities):
+        """Scores round to 0.1, so tie bands are common; without a secondary
+        key the order followed corpus file order and reshuffled every refresh
+        (2026-07 audit: 17-way tie observed reordering)."""
+        sample_profile["preferences"]["exclude_citizenship_restricted"] = False
+        base = next(o for o in sample_opportunities if o["id"] == "opp-001")
+        twin_a = dict(base, id="tie-aaa")
+        twin_b = dict(base, id="tie-zzz")
+        for ordering in ([twin_a, twin_b], [twin_b, twin_a]):
+            results = rank_all(sample_profile, list(sample_opportunities) + ordering)
+            tie_ids = [r.opportunity_id for r in results if r.opportunity_id.startswith("tie-")]
+            assert tie_ids == ["tie-aaa", "tie-zzz"]
 
     def test_sorted_descending(self, sample_profile, sample_opportunities):
         sample_profile["preferences"]["exclude_citizenship_restricted"] = False
@@ -684,6 +782,22 @@ class TestTopicAlignmentPenalty:
     def test_aligned_keyword_no_penalty(self):
         opp = self._research(["computer vision", "robotics"])
         assert _topic_alignment_penalty(self._profile(), opp) == 1.0
+
+    def test_plural_interest_matches_adjective_keyword(self):
+        """'robotics' must align with 'adaptive robotic manipulation' — the
+        2026-07 audit found morphology mismatches demoting the only
+        robotics-keyworded ME professor to rank 1218 while keywordless REUs
+        escaped, inverting the ranking."""
+        prof = self._profile("robotics, mechanical design, thermal systems")
+        opp = self._research(
+            ["adaptive robotic manipulation", "bioinspiration",
+             "computational modeling", "rapid prototyping techniques"])
+        assert _topic_alignment_penalty(prof, opp) == 1.0
+
+    def test_morphology_does_not_rescue_true_mismatch(self):
+        prof = self._profile("robotics, mechanical design, thermal systems")
+        opp = self._research(["medieval manuscripts", "poetry translation"])
+        assert _topic_alignment_penalty(prof, opp) == TOPIC_MISMATCH_PENALTY
 
     def test_confirmed_mismatch_penalized(self):
         opp = self._research(["computers and education", "computer science"])
@@ -1314,7 +1428,9 @@ class TestFacultyUpsideReweight:
 
 class TestSchoolScopeFilter:
     """rank_all excludes another school's campus-only records before scoring;
-    'open' and 'unknown' audiences always pass regardless of host school."""
+    'open' and 'unknown' audiences pass for profiles without a home_school
+    (cross-school hiding is undefined without a home — see
+    TestCrossSchoolToggle for the opt-in behavior when one is set)."""
 
     @staticmethod
     def _opp(ident, school, audience):
@@ -1368,9 +1484,10 @@ class TestSchoolScopeFilter:
             ids = self._ids(self._profile(home_school=home), corpus)
             assert {"national-open", "ucb-unknown"} <= ids, f"home={home}"
 
-    def test_ucb_faculty_unknown_stays_visible_for_uiuc_home(self):
-        # Pins today's behavior: UIUC users see the ~200 UCB faculty
-        # cold-email targets (school='ucb', audience='unknown').
+    def test_ucb_faculty_unknown_stays_visible_without_home_school(self):
+        # A profile with no home_school keeps the pre-toggle behavior: the
+        # UCB faculty cold-email targets (school='ucb', audience='unknown')
+        # stay visible even though include_cross_school defaults to off.
         ucb_faculty = self._opp("ucb-fac", "ucb", "unknown")
         ucb_faculty["source"] = "ucb_eecs_faculty"
         ucb_faculty["source_type"] = "faculty_research"
@@ -1392,6 +1509,104 @@ class TestSchoolScopeFilter:
         ]
         ids = self._ids(self._profile(home_school="ucb"), corpus)
         assert ids == {"national-open", "legacy-untagged"}
+
+
+class TestCrossSchoolToggle:
+    """Cross-school resources are opt-in (include_cross_school, default off,
+    Eric 2026-07: 正常肯定还是会优先本学校的科研): another school's non-campus
+    records are hidden unless the toggle is on — except national records
+    (school=None) and summer programs, which recruit everywhere. When on, the
+    home school wins ties via the HOME_SCHOOL_AFFINITY_MAX additive bonus."""
+
+    @staticmethod
+    def _opp(ident, school, audience, opportunity_type="research"):
+        return {
+            "id": ident,
+            "title": f"Research position {ident}",
+            "opportunity_type": opportunity_type,
+            "school": school,
+            "audience": audience,
+            "eligibility": {},
+            "metadata": {"is_active": True},
+        }
+
+    @staticmethod
+    def _profile(include_cross_school=False, home_school="uiuc"):
+        return {
+            "year": "freshman",
+            "major": "CS",
+            "home_school": home_school,
+            "include_cross_school": include_cross_school,
+            "preferences": {"min_match_threshold": 0},
+        }
+
+    @pytest.fixture
+    def corpus(self):
+        return [
+            self._opp("home-fac", "uiuc", "unknown"),
+            self._opp("ucb-fac", "ucb", "unknown"),
+            self._opp("stanford-summer", "stanford", "open",
+                      opportunity_type="summer_program"),
+            self._opp("national-open", None, "open"),
+        ]
+
+    def _ids(self, profile, corpus):
+        return {r.opportunity_id for r in rank_all(profile, corpus)}
+
+    def test_off_hides_other_school_faculty(self, corpus):
+        ids = self._ids(self._profile(), corpus)
+        assert "home-fac" in ids
+        assert "ucb-fac" not in ids
+
+    def test_off_keeps_national_and_summer_programs(self, corpus):
+        ids = self._ids(self._profile(), corpus)
+        assert {"national-open", "stanford-summer"} <= ids
+
+    def test_on_shows_other_school_records(self, corpus):
+        ids = self._ids(self._profile(include_cross_school=True), corpus)
+        assert {"home-fac", "ucb-fac", "stanford-summer", "national-open"} <= ids
+
+    def test_no_home_school_keeps_pre_toggle_behavior(self, corpus):
+        prof = self._profile()
+        del prof["home_school"]
+        assert "ucb-fac" in self._ids(prof, corpus)
+
+    def test_uiuc_faculty_symmetric_cross_school(self):
+        # Symmetry regression: uiuc_faculty is (uiuc, unknown) like every
+        # other school's directory, so a UCB student sees it exactly when the
+        # toggle is on.
+        fac = self._opp("uiuc-fac", "uiuc", "unknown")
+        on = self._profile(include_cross_school=True, home_school="ucb")
+        off = self._profile(home_school="ucb")
+        assert self._ids(on, [fac]) == {"uiuc-fac"}
+        assert self._ids(off, [fac]) == set()
+
+    def test_home_school_bonus_orders_home_first_on_ties(self):
+        corpus = [
+            self._opp("ucb-fac", "ucb", "unknown"),
+            self._opp("home-fac", "uiuc", "unknown"),
+        ]
+        results = rank_all(self._profile(include_cross_school=True), corpus)
+        assert [r.opportunity_id for r in results] == ["home-fac", "ucb-fac"]
+        assert results[0].final_score > results[1].final_score
+
+    def test_home_school_bonus_never_outranks_better_topical_match(self):
+        prof = self._profile(include_cross_school=True)
+        prof["research_interests_text"] = "machine learning"
+        prof["desired_fields"] = ["machine learning"]
+        strong = self._opp("ucb-ml", "ucb", "unknown")
+        strong["keywords"] = ["machine learning"]
+        weak = self._opp("home-other", "uiuc", "unknown")
+        weak["keywords"] = ["medieval history"]
+        results = rank_all(prof, [strong, weak])
+        assert results[0].opportunity_id == "ucb-ml"
+
+    def test_bonus_inert_when_toggle_off(self):
+        prof = self._profile()
+        home = self._opp("home-fac", "uiuc", "unknown")
+        assert _home_school_affinity(prof, home) == 0.0
+        prof_on = self._profile(include_cross_school=True)
+        assert _home_school_affinity(prof_on, home) == HOME_SCHOOL_AFFINITY_MAX
 
 
 class TestExploreMajorFloor:
@@ -1496,11 +1711,14 @@ class TestExploreDiversity:
         by_id = {o["id"]: o for o in opps}
         return [by_id[r.opportunity_id]["keywords"][0] for r in results]
 
-    def test_default_order_is_unchanged_without_flag(self):
+    def test_default_order_has_no_diversity_reorder(self):
         opps = self._opps()
         a = [r.opportunity_id for r in rank_all(self._profile(False), opps)]
-        # default = no diversity reorder; insertion-stable within equal scores
-        assert a == [o["id"] for o in opps]
+        # default = no diversity reorder; equal scores order by id (the
+        # deterministic tie-break), independent of corpus file order
+        assert a == sorted(a)
+        b = [r.opportunity_id for r in rank_all(self._profile(False), list(reversed(opps)))]
+        assert b == a
 
     def test_exploring_interleaves_areas_at_the_top(self):
         opps = self._opps()
@@ -1647,3 +1865,123 @@ class TestMajorDriveRealCorpus:
         vet_rel = sum(1 for r in vet if r.bucket != "low_fit" and r.field_relevant)
         # The CS-dominated corpus has far more CS-relevant inventory than vet.
         assert cs_rel > vet_rel
+
+
+class TestCorpusPrecomputeEquivalence:
+    """The per-record precompute (register_corpus: statics + TF-IDF row matrix)
+    is a pure hoist — ranking a registered corpus must be byte-identical to
+    ranking the same records unregistered (the ad-hoc compute path)."""
+
+    def _mini_corpus(self):
+        base_deadline = (date.today() + timedelta(days=20)).isoformat()
+        passed_deadline = (date.today() - timedelta(days=30)).isoformat()
+        corpus = []
+        kw_pool = [
+            ["machine learning", "computer vision", "robotics"],
+            ["computational biology", "genomics"],
+            ["quantum", "condensed matter physics", "physics"],
+            ["medieval history", "poetry"],
+            ["natural language processing", "large language models"],
+            ["undergraduate research", "engineering"],
+            [],
+            ["data science", "statistics", "optimization"],
+        ]
+        for i in range(32):
+            kws = kw_pool[i % len(kw_pool)]
+            corpus.append({
+                "id": f"pre-{i}",
+                "title": f"Research Assistant {i} — {kws[0] if kws else 'General'}",
+                "organization": "University of Illinois" if i % 3 else "NASA JPL",
+                "opportunity_type": ["research", "internship", "summer_program"][i % 3],
+                "school": ["uiuc", "ucb", None][i % 3],
+                "on_campus": i % 2 == 0,
+                "paid": ["yes", "stipend", "unknown", "no"][i % 4],
+                "deadline": [base_deadline, passed_deadline, ""][i % 3],
+                "keywords": kws,
+                "pi_name": f"Ada Lovelace {i}" if i % 4 == 0 else "",
+                "lab_or_program": f"Vision Lab {i}" if i % 5 == 0 else "",
+                "department": ["Computer Science", "Electrical & Computer Engineering", ""][i % 3],
+                "source_type": "faculty_research" if i % 2 == 0 else "job_board",
+                "is_rolling": i % 2 == 0,
+                "description_raw": (
+                    f"Position {i}: mentorship and training with publication and "
+                    "conference opportunities for undergraduate students."
+                    + (" PhD students preferred." if i % 7 == 0 else "")
+                ),
+                "eligibility": {
+                    "preferred_year": [["freshman", "sophomore"], ["junior", "senior"], []][i % 3],
+                    "majors": [["Computer Science"], ["Physics"], []][i % 3],
+                    "international_friendly": ["yes", "unknown", "no"][i % 3],
+                    "skills_required": [["python", "pytorch"], [], ["r"]][i % 3],
+                },
+                "application": {"application_effort": ["low", "medium", "high"][i % 3],
+                                "requires_resume": "yes"},
+            })
+        return corpus
+
+    def _profiles(self):
+        explicit = {
+            "year": "sophomore", "major": "ECE", "secondary_interests": ["CS"],
+            "international_student": True, "home_school": "uiuc",
+            "include_cross_school": True,
+            "hard_skills": [{"name": "Python", "level": "experienced"},
+                            {"name": "PyTorch", "level": "beginner"}],
+            "coursework": ["ECE 120", "CS 225"], "experience_level": "some",
+            "resume_ready": True, "can_cold_email": True,
+            "research_interests_text": "machine learning for computer vision and robotics",
+            "desired_fields": ["machine learning", "robotics"],
+            "seeking_type": [], "search_weight": 70,
+            "college": "Grainger College of Engineering",
+            "preferences": {"min_match_threshold": 0},
+        }
+        implicit_only = {
+            **explicit,
+            "research_interests_text": "", "desired_fields": [],
+            "search_weight": 30, "exploring": True,
+        }
+        return explicit, implicit_only
+
+    @pytest.fixture
+    def _isolated_precompute(self):
+        import src.matcher.embeddings as emb
+        import src.matcher.ranker as rk
+        saved = (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
+                 rk._corpus_ids, rk._static_cache, rk._sim_matrix)
+        yield
+        (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
+         rk._corpus_ids, rk._static_cache, rk._sim_matrix) = saved
+
+    def test_top20_byte_identical_with_and_without_precompute(self, _isolated_precompute):
+        from dataclasses import asdict
+
+        import src.matcher.embeddings as emb
+        import src.matcher.ranker as rk
+        from backend.data_loader import _opportunity_corpus_text
+
+        corpus = self._mini_corpus()
+        emb.fit_tfidf_corpus([_opportunity_corpus_text(o) for o in corpus])
+
+        rk.register_corpus([])  # unbind: forces the ad-hoc per-call path
+        baselines = [rank_all(p, corpus) for p in self._profiles()]
+
+        rk.register_corpus(corpus)
+        assert rk._sim_matrix is not None  # the TF-IDF row matrix engaged
+        fasts = [rank_all(p, corpus) for p in self._profiles()]
+
+        for baseline, fast in zip(baselines, fasts, strict=False):
+            top_base = json.dumps([asdict(r) for r in baseline[:20]], sort_keys=True)
+            top_fast = json.dumps([asdict(r) for r in fast[:20]], sort_keys=True)
+            assert top_fast == top_base
+            assert [asdict(r) for r in fast] == [asdict(r) for r in baseline]
+
+    def test_register_corpus_invalidates_on_new_list(self, _isolated_precompute):
+        import src.matcher.ranker as rk
+        corpus = self._mini_corpus()
+        rk.register_corpus(corpus)
+        st_first = rk._opp_static(corpus[0])
+        assert rk._opp_static(corpus[0]) is st_first  # cached for the bound list
+
+        reloaded = [dict(o) for o in corpus]
+        rk.register_corpus(reloaded)
+        assert rk._corpus_ref is reloaded
+        assert rk._opp_static(corpus[0]) is not st_first  # old ids no longer cached

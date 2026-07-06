@@ -114,6 +114,78 @@ export interface SavedSearchHealth {
   generated_at?: string;
 }
 
+export interface FeedbackEntry {
+  id: string;
+  created_at: string;
+  message: string;
+  email: string | null;
+  props?: { path?: string } & Record<string, unknown>;
+}
+
+export interface FeedbackRateRow {
+  key: string;
+  n: number;
+  up_rate: number;
+}
+
+export interface FeedbackReplayReport {
+  mode: 'weight_replay' | 'score_band_agreement';
+  current_agreement: number | null;
+  best_candidate: { eligibility: number; readiness: number; upside: number } | null;
+  delta: number | null;
+  sample_n: number;
+  note: string;
+}
+
+export interface FeedbackAnalysis {
+  insufficient?: boolean;
+  needed?: number;
+  sample_n: number;
+  up_rate?: number;
+  by_bucket?: FeedbackRateRow[];
+  by_score_band?: FeedbackRateRow[];
+  by_school?: FeedbackRateRow[];
+  by_position?: FeedbackRateRow[];
+  keyword_overlap?: { available: boolean; reason: string };
+  replay?: FeedbackReplayReport;
+}
+
+export interface FeedbackInbox {
+  status: 'ok' | 'skipped';
+  reason?: string;
+  entries?: FeedbackEntry[];
+  count?: number;
+  match_feedback?: {
+    up: number;
+    down: number;
+    up_7d: number;
+    down_7d: number;
+    sample_size: number;
+    top_downvoted: { opportunity_id: string; downs: number; title: string | null }[];
+    analysis?: FeedbackAnalysis;
+  };
+}
+
+export interface OrderEntry {
+  id: string;
+  device_id: string;
+  package: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  channel: string;
+  note?: string | null;
+  created_at: string;
+  paid_at?: string | null;
+}
+
+export interface OrdersInbox {
+  status: 'ok' | 'skipped';
+  reason?: string;
+  orders?: OrderEntry[];
+  count?: number;
+}
+
 export type TriggerStatus = {
   kind: 'idle' | 'busy' | 'ok' | 'err';
   message?: string;

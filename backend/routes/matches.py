@@ -5,18 +5,20 @@ import hashlib
 import json
 import os
 import re
+import time
 
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.llm import _resolve, chat_completion
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.routes.responsiveness import signals_map
 from backend.schemas import (
     MatchesResponse,
     MatchResultResponse,
     ProfileRequest,
 )
-from src.matcher.config import THIN_INVENTORY_FLOOR
+from src.matcher.config import RESPONSIVENESS_BONUS, THIN_INVENTORY_FLOOR
 from src.matcher.ranker import (
     _assign_buckets,
     _diversify_explore,
@@ -249,7 +251,10 @@ async def get_matches(
             "exclude_citizenship_restricted": profile_dict.get("international_student", True),
         }
 
-    results = await asyncio.to_thread(rank_all, profile_dict, opportunities)
+    responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
+    results = await asyncio.to_thread(
+        rank_all, profile_dict, opportunities, responsiveness=responsiveness
+    )
 
     opp_lookup = load_opportunities_by_id()
 
@@ -375,6 +380,45 @@ def _llm_explanation(
     )
 
 
+# The compare page fires one explain call per card; the frontend's
+# sessionStorage cache only helps within a single browser session, so the
+# server still pays a paid LLM completion on every first visit. Cache the LLM
+# text per (opportunity, profile) — the local ranking around it is cheap and
+# always recomputed.
+_EXPLAIN_CACHE_TTL_SECONDS = 3600
+_EXPLAIN_CACHE_MAX_ENTRIES = 500
+_explain_cache: dict[str, tuple[float, str]] = {}
+
+
+def _explain_cache_key(opportunity_id: str, profile: dict) -> str:
+    profile_hash = hashlib.sha256(
+        json.dumps(profile, sort_keys=True, default=str).encode()
+    ).hexdigest()[:16]
+    return f"{opportunity_id}:{profile_hash}"
+
+
+def _explain_cache_get(key: str) -> str | None:
+    entry = _explain_cache.get(key)
+    if entry is None:
+        return None
+    ts, text = entry
+    if time.time() - ts > _EXPLAIN_CACHE_TTL_SECONDS:
+        _explain_cache.pop(key, None)
+        return None
+    return text
+
+
+def _explain_cache_put(key: str, text: str) -> None:
+    if len(_explain_cache) >= _EXPLAIN_CACHE_MAX_ENTRIES:
+        now = time.time()
+        for k in [k for k, (ts, _) in _explain_cache.items()
+                  if now - ts > _EXPLAIN_CACHE_TTL_SECONDS]:
+            _explain_cache.pop(k, None)
+        while len(_explain_cache) >= _EXPLAIN_CACHE_MAX_ENTRIES:
+            _explain_cache.pop(next(iter(_explain_cache)))
+    _explain_cache[key] = (time.time(), text)
+
+
 @router.post("/matches/{opportunity_id}/explain")
 async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
     """Render a personalized fit summary for one opportunity. Lazy / on-demand
@@ -387,15 +431,26 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = profile.model_dump()
-    result = await asyncio.to_thread(rank_opportunity, profile_dict, opp)
-
-    llm_text = await asyncio.to_thread(
-        _llm_explanation,
-        profile_dict,
-        opp,
-        result.reasons_fit,
-        result.reasons_gap,
+    # Same responsiveness signals as the /matches list pass (rank_opportunity
+    # already derives the remaining context — weights, implicit steer — from
+    # the profile), so the modal score always equals the list score.
+    responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
+    result = await asyncio.to_thread(
+        rank_opportunity, profile_dict, opp, responsiveness=responsiveness
     )
+
+    cache_key = _explain_cache_key(opportunity_id, profile_dict)
+    llm_text = _explain_cache_get(cache_key)
+    if llm_text is None:
+        llm_text = await asyncio.to_thread(
+            _llm_explanation,
+            profile_dict,
+            opp,
+            result.reasons_fit,
+            result.reasons_gap,
+        )
+        if llm_text:
+            _explain_cache_put(cache_key, llm_text)
 
     if llm_text:
         return {

@@ -16,7 +16,10 @@ import pytest
 
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
+from src.collectors.schools.boulder import SCHOOL as BOULDER
 from src.collectors.schools.princeton import SCHOOL as PRINCETON
+from src.collectors.schools.uci import SCHOOL as UCI
+from src.collectors.schools.ucsb import SCHOOL as UCSB
 from src.collectors.schools.ucsd import SCHOOL as UCSD
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
 
@@ -206,3 +209,85 @@ class TestUcsd:
         assert bd["total"] == len(recs)
         assert sum(bd["by_source_type"].values()) == len(recs)
         assert sum(bd["by_opportunity_type"].values()) == len(recs)
+
+
+class TestUci:
+    @pytest.fixture(scope="class")
+    def recs(self):
+        return cg.fetch_and_normalize(UCI, deep=False)
+
+    def test_in_registry(self):
+        assert UCI in SCHOOL_CONFIGS
+
+    def test_all_levels_represented(self, recs):
+        levels = {o["campus_source_type"] for o in recs}
+        assert {"announcement", "program", "department", "career", "lab"} <= levels
+
+    def test_summer_programs_present(self, recs):
+        assert any(o["opportunity_type"] == "summer_program" for o in recs)
+
+    def test_every_record_is_uci_scoped(self, recs):
+        for o in recs:
+            assert o["school"] in ("uci", None)
+            assert o["organization"]
+            assert o["location"] == "Irvine, CA"
+
+    def test_breakdown_totals_consistent(self, recs):
+        bd = cg.source_breakdown(recs)
+        assert bd["total"] == len(recs)
+        assert sum(bd["by_source_type"].values()) == len(recs)
+
+
+class TestUcsb:
+    @pytest.fixture(scope="class")
+    def recs(self):
+        return cg.fetch_and_normalize(UCSB, deep=False)
+
+    def test_in_registry(self):
+        assert UCSB in SCHOOL_CONFIGS
+
+    def test_levels_represented(self, recs):
+        levels = {o["campus_source_type"] for o in recs}
+        assert {"announcement", "program", "department", "lab"} <= levels
+
+    def test_summer_programs_present(self, recs):
+        assert any(o["opportunity_type"] == "summer_program" for o in recs)
+
+    def test_open_bucket_is_national(self, recs):
+        # Cal-Bridge is a statewide consortium — emitted open (school None).
+        assert any(o["school"] is None for o in recs)
+
+    def test_every_record_is_ucsb_scoped(self, recs):
+        for o in recs:
+            assert o["school"] in ("ucsb", None)
+            assert o["organization"]
+            assert o["location"] == "Santa Barbara, CA"
+
+    def test_breakdown_totals_consistent(self, recs):
+        bd = cg.source_breakdown(recs)
+        assert bd["total"] == len(recs)
+        assert sum(bd["by_source_type"].values()) == len(recs)
+
+
+class TestBoulder:
+    @pytest.fixture(scope="class")
+    def recs(self):
+        return cg.fetch_and_normalize(BOULDER, deep=False)
+
+    def test_in_registry(self):
+        assert BOULDER in SCHOOL_CONFIGS
+
+    def test_all_levels_represented(self, recs):
+        levels = {o["campus_source_type"] for o in recs}
+        assert {"announcement", "program", "department", "career", "lab"} <= levels
+
+    def test_every_record_is_boulder_scoped(self, recs):
+        for o in recs:
+            assert o["school"] in ("boulder", None)
+            assert o["organization"]
+            assert o["location"] == "Boulder, CO"
+
+    def test_breakdown_totals_consistent(self, recs):
+        bd = cg.source_breakdown(recs)
+        assert bd["total"] == len(recs)
+        assert sum(bd["by_source_type"].values()) == len(recs)

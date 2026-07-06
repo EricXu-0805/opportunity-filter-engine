@@ -1,7 +1,8 @@
 'use client';
 
-import { memo } from 'react';
+import { Fragment, memo } from 'react';
 import MatchCard from '@/components/MatchCard';
+import { ConciergeCta } from './ConciergeCta';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
 import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
@@ -16,6 +17,7 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.isNew === next.isNew &&
     prev.profile === next.profile &&
     prev.feedbackVerdict === next.feedbackVerdict &&
+    prev.position === next.position &&
     prev.onDraftEmail === next.onDraftEmail &&
     prev.onToggleFavorite === next.onToggleFavorite &&
     prev.onTrackInteraction === next.onTrackInteraction &&
@@ -36,6 +38,9 @@ export interface MatchListProps {
   onToggleFavorite: (opportunityId: string) => void;
   onTrackInteraction: (opportunityId: string, type: InteractionType) => void;
   onFeedback: (opportunityId: string, verdict: MatchVerdict | null, context: MatchFeedbackContext) => void;
+  // 1-based rank of matches[0] minus one within the full filtered list, so
+  // each card can report its absolute list position with feedback votes.
+  positionOffset: number;
   page: number;
   totalPages: number;
   onPageChange: (next: number) => void;
@@ -54,6 +59,7 @@ export function MatchList({
   onToggleFavorite,
   onTrackInteraction,
   onFeedback,
+  positionOffset,
   page,
   totalPages,
   onPageChange,
@@ -85,24 +91,31 @@ export function MatchList({
             ? 'ring-2 ring-amber-400/70 rounded-2xl'
             : '';
           return (
-            <div
-              key={match.opportunity.id}
-              id={`match-card-${match.opportunity.id}`}
-              className={`transition-all ${ringClass}`}
-            >
-              <MemoizedMatchCard
-                match={match}
-                profile={profile}
-                onDraftEmail={onDraftEmail}
-                isFavorited={favs.has(match.opportunity.id)}
-                onToggleFavorite={onToggleFavorite}
-                interaction={interactions.get(match.opportunity.id)}
-                onTrackInteraction={onTrackInteraction}
-                isNew={isNew}
-                feedbackVerdict={feedback.get(match.opportunity.id) ?? null}
-                onFeedback={onFeedback}
-              />
-            </div>
+            <Fragment key={match.opportunity.id}>
+              <div
+                id={`match-card-${match.opportunity.id}`}
+                className={`transition-all ${ringClass}`}
+              >
+                <MemoizedMatchCard
+                  match={match}
+                  profile={profile}
+                  onDraftEmail={onDraftEmail}
+                  isFavorited={favs.has(match.opportunity.id)}
+                  onToggleFavorite={onToggleFavorite}
+                  interaction={interactions.get(match.opportunity.id)}
+                  onTrackInteraction={onTrackInteraction}
+                  isNew={isNew}
+                  feedbackVerdict={feedback.get(match.opportunity.id) ?? null}
+                  onFeedback={onFeedback}
+                  position={positionOffset + idx + 1}
+                />
+              </div>
+              {page === 1 && idx === Math.min(3, matches.length - 1) && (
+                <div className="lg:col-span-2">
+                  <ConciergeCta t={t} />
+                </div>
+              )}
+            </Fragment>
           );
         })}
       </div>

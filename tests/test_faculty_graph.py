@@ -299,6 +299,59 @@ class TestScrapeLayer:
         assert people[0]["research_areas"] == ""  # not enriched
         assert calls == ["https://www.cc.gatech.edu/people/faculty"]  # only the listing
 
+    def test_profile_enrich_render_uses_headless_for_walled_profiles(self, monkeypatch):
+        """render:True routes the per-profile fetch through the headless browser
+        (Princeton dept subdomains / umich, whose profiles sit behind the same
+        Cloudflare wall as the listing), lifting the email + research-areas the
+        listing omits — and never falls back to a plain fetch_soup."""
+        from bs4 import BeautifulSoup
+        profile = ('<div class="field--name-field-ps-people-email">'
+                   '<a href="mailto:nverma@princeton.edu">nverma@princeton.edu</a></div>'
+                   '<div class="field--name-field-research-areas">'
+                   '<div class="field__item">Computing &amp; Networking</div>'
+                   '<div class="field__item">Integrated Circuits &amp; Systems</div></div>')
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda url, **kw: BeautifulSoup(profile, "html.parser"))
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: (_ for _ in ()).throw(
+                                AssertionError("plain fetch_soup used for a render profile")))
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        enr = {"render": True,
+               "email_selector": ".field--name-field-ps-people-email a[href^='mailto:']",
+               "research_items_selector": ".field--name-field-research-areas .field__item"}
+        people = [{"name": "Naveen Verma", "title": "Professor",
+                   "url": "https://ece.princeton.edu/people/nverma",
+                   "email": None, "research_areas": "", "keywords": []}]
+        out = fg._apply_profile_enrich(people, enr)
+        assert out[0]["email"] == "nverma@princeton.edu"
+        assert {"Computing & Networking", "Integrated Circuits & Systems"} <= set(out[0]["keywords"])
+
+    def test_hash_paginate_uses_single_render_session(self, monkeypatch):
+        """A hash-router directory (scrape.paginate.mode='hash') is walked in one
+        interactive render session via _render_paginated_soup, not the fetch-per-URL
+        loop (a fresh load with the fragment pre-set never leaves page 1)."""
+        from bs4 import BeautifulSoup
+        page_html = ('<div class="person"><h2 class="name">'
+                     '<a href="/p/a">Ada Prof</a></h2><p class="title">Professor</p></div>')
+        calls = {"paged": 0}
+
+        def fake_paginated(url, param="page", max_pages=12, card_sel="", timeout_ms=60000):
+            calls["paged"] += 1
+            return BeautifulSoup(page_html, "html.parser")
+
+        monkeypatch.setattr(fg, "_render_paginated_soup", fake_paginated)
+        monkeypatch.setattr(fg, "_render_soup",
+                            lambda *a, **k: (_ for _ in ()).throw(
+                                AssertionError("hash-paginate must not use per-URL render")))
+        dept = {"short": "CHEM", "scrape": {
+            "url": "https://lsa.umich.edu/chem/people/faculty.html", "render": True,
+            "selectors": {"card": ".person", "name": ".name", "title": ".title"},
+            "paginate": {"mode": "hash", "param": "page", "max": 5},
+        }}
+        people = fg._scrape_directory(dept)
+        assert calls["paged"] == 1
+        assert any(p["name"] == "Ada Prof" for p in people)
+
     def test_research_join_fills_areas_from_aggregator_page(self, monkeypatch):
         """When research areas live only on one shared page (a "research
         interests" index, or the directory card when the roster is fetched via
@@ -562,6 +615,144 @@ class TestScrapeLayer:
         # the prose clause / date-tagged / gerund-flagged fragments are gone
         assert not any("research interests include" in k.lower() for k in kws)
         assert not any("1945" in k for k in kws)
+
+
+class TestCuratedKeywordHygiene:
+    """Curated/taxonomy keyword lists get the same hygiene the derived branch
+    already applies (regression: the 6 multi-school configs shipped trailing
+    periods, prose fragments, and duplicate keywords verbatim)."""
+
+    def test_curated_strips_edge_punct_and_dedupes(self):
+        person = {"keywords": ["Genetics.", "genetics", " Genomics ", "Evolution"]}
+        kws = fg._clean_keywords(person)
+        assert kws == ["Genetics", "Genomics", "Evolution"]  # period + dup dropped
+
+    def test_curated_drops_prose_fragment_lead(self):
+        person = {"keywords": ["with emphasis on control", "robotics",
+                               "my research explores memory"]}
+        kws = fg._clean_keywords(person)
+        assert kws == ["robotics"]
+
+    def test_curated_keeps_determiner_led_humanities_area(self):
+        """The narrow prose-lead filter must NOT nuke legitimate determiner-led
+        research areas ("the Enlightenment", "in situ microscopy")."""
+        person = {"keywords": ["the Enlightenment", "in situ microscopy", "the Cold War"]}
+        assert fg._clean_keywords(person) == ["the Enlightenment", "in situ microscopy", "the Cold War"]
+
+    def test_curated_folds_internal_comma(self):
+        person = {"keywords": ["Plants, Soil and Algae"]}
+        assert fg._clean_keywords(person) == ["Plants / Soil and Algae"]
+
+
+class TestCorpusFacultyHygiene:
+    def test_clean_corpus_rebuilds_title_parenthetical(self):
+        rec = {
+            "source_type": "faculty_research",
+            "title": "Research with Prof. Ada Lovelace — CS (genetics, genetics, foo.)",
+            "keywords": ["genetics", "genetics", "foo."],
+        }
+        fg.clean_corpus_faculty_keywords([rec])
+        assert rec["keywords"] == ["genetics", "foo"]
+        assert rec["title"] == "Research with Prof. Ada Lovelace — CS (genetics, foo)"
+
+    def test_clean_corpus_leaves_parenless_title_alone(self):
+        rec = {
+            "source_type": "faculty_research",
+            "title": "Research with Prof. Ada Lovelace — HIST",
+            "keywords": ["architecture, design, and social history"],
+        }
+        fg.clean_corpus_faculty_keywords([rec])
+        assert rec["keywords"] == ["architecture / design / and social history"]
+        assert rec["title"] == "Research with Prof. Ada Lovelace — HIST"
+
+
+def _fac_rec(id_, *, school, pi_name, dept, email=None, url="", keywords=None):
+    return {
+        "id": id_,
+        "source_type": "faculty_research",
+        "school": school,
+        "pi_name": pi_name,
+        "department": dept,
+        "contact_email": email,
+        "url": url,
+        "title": f"Research with Prof. {pi_name} — X",
+        "keywords": keywords or [],
+        "metadata": {"is_active": True},
+    }
+
+
+class TestCollapseSamePersonFaculty:
+    def test_same_email_same_person_collapses_keeping_richer(self):
+        a = _fac_rec("a", school="utexas", pi_name="J. Eric Bickel", dept="ME",
+                     email="bickel@utexas.edu", url="https://me/bickel", keywords=["decision analysis"])
+        b = _fac_rec("b", school="utexas", pi_name="Eric Bickel", dept="PGE",
+                     email="bickel@utexas.edu", url="", keywords=["a", "b", "c", "d"])
+        res = fg.collapse_same_person_faculty([a, b])
+        kept_ids = {o["id"] for o in res["kept"]}
+        assert kept_ids == {"b"}  # b is keyword-richer
+        assert res["removed_by_school"] == {"utexas": 1}
+        # loser's profile URL is merged onto the survivor (b had none)
+        assert next(o for o in res["kept"] if o["id"] == "b")["url"] == "https://me/bickel"
+
+    def test_same_email_different_people_nulls_shared_inbox(self):
+        a = _fac_rec("a", school="uiuc", pi_name="Lauren Anaya", dept="Law",
+                     email="jhadler@illinois.edu")
+        b = _fac_rec("b", school="uiuc", pi_name="Stephen Rushin", dept="Law",
+                     email="jhadler@illinois.edu")
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"a", "b"}  # both kept
+        assert a["contact_email"] is None and b["contact_email"] is None
+        assert res["nulled_by_school"] == {"uiuc": 2}
+
+    def test_umbrella_collapse_keeps_peer_appointment(self):
+        """A College of Computing umbrella listing collapses into the specific
+        home school, but a genuine second appointment (City & Regional Planning)
+        is left as its own record."""
+        coc = _fac_rec("coc", school="gatech", pi_name="Clio Andris",
+                       dept="College of Computing", keywords=["gis"])
+        ic = _fac_rec("ic", school="gatech", pi_name="Clio Andris",
+                      dept="School of Interactive Computing", keywords=["gis", "hci", "maps"])
+        crp = _fac_rec("crp", school="gatech", pi_name="Clio Andris",
+                       dept="School of City & Regional Planning", keywords=["planning"])
+        res = fg.collapse_same_person_faculty([coc, ic, crp])
+        assert {o["id"] for o in res["kept"]} == {"ic", "crp"}  # only umbrella dropped
+        assert res["removed_by_school"] == {"gatech": 1}
+
+    def test_credential_suffix_same_url_same_dept_collapses(self):
+        """"Scott L. Delp, Ph.D." and "Scott L. Delp" on ONE profile URL in ONE
+        department are a scrape artifact, not a joint appointment (2026-07
+        audit: two such Stanford pairs survived every dedup pass)."""
+        a = _fac_rec("a", school="stanford", pi_name="Scott L. Delp, Ph.D.",
+                     dept="Department of Mechanical Engineering",
+                     url="https://me.stanford.edu/delp", keywords=["biomechanics"])
+        b = _fac_rec("b", school="stanford", pi_name="Scott L. Delp",
+                     dept="Department of Mechanical Engineering",
+                     url="https://me.stanford.edu/delp/",
+                     keywords=["biomechanics", "neuromuscular simulation"])
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"b"}
+        assert res["removed_by_school"] == {"stanford": 1}
+
+    def test_credential_suffix_across_depts_stays(self):
+        """The same name variants on DIFFERENT departments (cross-appointment)
+        keep both records — only the same-URL-same-dept case collapses."""
+        a = _fac_rec("a", school="stanford", pi_name="Scott L. Delp, Ph.D.",
+                     dept="Department of Mechanical Engineering",
+                     url="https://me.stanford.edu/delp")
+        b = _fac_rec("b", school="stanford", pi_name="Scott L. Delp",
+                     dept="Department of Bioengineering",
+                     url="https://bioe.stanford.edu/delp")
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"a", "b"}
+
+    def test_peer_joint_appointment_without_umbrella_is_left(self):
+        """Stanford Applied Physics + Physics (no email, no umbrella) stay two
+        records — the conservative no-email rule only collapses umbrella rosters."""
+        a = _fac_rec("a", school="stanford", pi_name="Jane Doe", dept="Department of Applied Physics")
+        b = _fac_rec("b", school="stanford", pi_name="Jane Doe", dept="Department of Physics")
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"a", "b"}
+        assert res["removed_by_school"] == {}
 
 
 # --- WordPress-REST api source (UCLA-style, no network in tests) -------------
@@ -929,6 +1120,34 @@ class TestJsonDirSource:
     def test_json_dir_degrades_without_block(self):
         assert fg._fetch_json_dir({"short": "X"}) == []
 
+    def test_json_dir_research_field_list_and_array_segment(self, monkeypatch):
+        """UCSD-Biology shape: sections[].title area tags win, prose fallback."""
+        payload = [
+            {"fname": "Tag", "lname": "Ged",
+             "titleInfo": {"standardTitle": "Professor"},
+             "profileInfo": {"sections": [{"title": "Neurobiology"},
+                                          {"title": "Genetics"}],
+                             "researchSummary": "prose fallback"}},
+            {"fname": "Pro", "lname": "Se",
+             "titleInfo": {"standardTitle": "Professor"},
+             "profileInfo": {"sections": [],
+                             "researchSummary": "Studies kelp forests"}},
+        ]
+
+        class _Resp:
+            def raise_for_status(self): pass
+            def json(self): return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        dept = {"short": "BIO", "json_dir": {
+            "url": "https://x.edu/api", "name_fields": ["fname", "lname"],
+            "title_field": "titleInfo.standardTitle",
+            "research_field": ["profileInfo.sections[].title",
+                               "profileInfo.researchSummary"]}}
+        people = fg._fetch_json_dir(dept)
+        assert people[0]["keywords"] == ["Neurobiology", "Genetics"]
+        assert people[1]["research_areas"] == "Studies kelp forests"
+
     def test_json_dir_dotted_paths_reach_nested_fields(self, monkeypatch):
         """UCSD-Biology shape: rank nested at titleInfo.standardTitle."""
         payload = [
@@ -1099,6 +1318,28 @@ class TestJsonDirPostAndMaps:
         assert posts["data"] == {"department_code[]": "000212"}
         assert [p["name"] for p in people] == ["Ada Lovelace"]
         assert people[0]["title"] == "Associate Professor"
+
+
+class TestResearchJoinEmailKey:
+    def test_email_keyed_join_fills_research(self, monkeypatch):
+        """UCSD-Math shape: export feed keyed by work email."""
+        page = ('[{"field_work_email":"ada@x.edu","view_node_1":"/p/ada",'
+                '"field_primary_research_area":"Statistics"}]')
+
+        class _Resp:
+            text = page
+            def raise_for_status(self): pass
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        dept = {"short": "MATH", "research_join": {
+            "url": "https://x.edu/export", "key": "email",
+            "item_re": (r'"field_work_email":\s*"(?P<key>[^"]+)"[^{}]*?'
+                        r'"field_primary_research_area":\s*"(?P<areas>[^"]+)"')}}
+        specs = [fg.faculty("Ada Lovelace", email="ADA@x.edu"),
+                 fg.faculty("No Match", email="nm@x.edu")]
+        fg._apply_research_join(dept, specs)
+        assert specs[0]["research_areas"] == "Statistics"
+        assert not specs[1]["research_areas"]
 
 
 class TestLinklessDirectoryDedup:
@@ -1365,3 +1606,425 @@ class TestCleanKeywordsBareNav:
     def test_multiword_with_nav_token_kept(self):
         person = {"keywords": ["Water Resources", "Research Methods"]}
         assert fg._clean_keywords(person) == ["Water Resources", "Research Methods"]
+
+
+class TestUchicagoConfig:
+    def test_uchicago_config_valid(self):
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        assert fg.validate(UC) == []
+
+    def test_uchicago_registered(self):
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        assert SOURCE_DEFAULTS[UC["source"]] == ("uchicago", "unknown")
+        assert UC["source"] in FACULTY_SOURCES
+
+    def test_uchicago_every_department_has_a_live_source(self):
+        """33 scrape directories (incl. Booth via headless render) + 9 live
+        json_dir feeds (Chemistry's own Pantheon API + the eight BSD depts on
+        the shared Referer-gated endpoint). No curated seeds remain — every
+        department resolves to a live source, or it's a wiring bug."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        scraped = {d["short"] for d in UC["departments"] if d.get("scrape", {}).get("selectors", {}).get("card")}
+        json_dir = {d["short"] for d in UC["departments"] if d.get("json_dir")}
+        curated = {d["short"] for d in UC["departments"] if d.get("faculty")}
+        assert scraped == {"CS", "STAT", "MATH", "PHYS", "ASTRO", "ECON", "PSYCH", "PME",
+                           "SOC", "POLISCI", "HIST", "ANTHRO", "HDEV",
+                           "PHIL", "ENGL", "LING", "GEOS",
+                           "HARRIS", "LAW", "CROWN", "DIV", "BOOTH",
+                           "CLAS", "CMLT", "EALC", "RLL", "SLAV", "SALC", "CMS",
+                           "MUSI", "TAPS", "ARTH", "DOVA"}
+        assert json_dir == {"CHEM", "ECEV", "NEURO", "HG", "MGCB", "BMB",
+                            "OBA", "PBHS", "MICRO"}
+        assert curated == set()  # curated seeds fully migrated to live json_dir
+        for d in UC["departments"]:
+            assert d["short"] in scraped or d["short"] in json_dir, d["short"]
+
+    def test_uchicago_booth_uses_networkidle_render(self):
+        """Booth's Coveo grid populates only after late XHRs — it must render
+        (headless) and wait for networkidle, not a fixed settle that grabs 0."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        booth = next(d for d in UC["departments"] if d["short"] == "BOOTH")
+        assert booth["scrape"]["render"] is True
+        assert booth["scrape"]["render_wait"] == "networkidle"
+
+    def test_uchicago_bsd_json_dir_uses_referer_primary_and_link_list(self):
+        """The BSD feed is shared + Referer-gated + lists joint appointments; the
+        config must send a Referer, key on the PRIMARY department (index 0), and
+        pull the stable profiles.uchicago.edu link from the websites list."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        micro = next(d for d in UC["departments"] if d["short"] == "MICRO")
+        jd = micro["json_dir"]
+        assert jd["headers"]["Referer"].startswith("https://")
+        assert jd["filter_index"] == 0 and jd["filter_value"] == "Microbiology"
+        assert jd["link_list"]["match_value"] == "Research Network Profile"
+        assert jd["research_field"] == "interests[]"
+
+    def test_uchicago_dova_section_filter_is_exact_faculty(self):
+        """DoVA groups Faculty / Associate Faculty / Teaching Fellows / Emeritus
+        under sibling <h3>s; the filter must anchor ^faculty$ so the adjacent
+        'Associate Faculty' and 'Visual Arts Teaching Fellows' groups don't leak."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        dova = next(d for d in UC["departments"] if d["short"] == "DOVA")
+        assert dova["scrape"]["section_filter"] == {"heading": "h3", "include": r"^faculty$"}
+
+    def test_uchicago_paginated_views_carry_page_param(self):
+        """The Drupal Views depts (Econ/Psych + the five SSD bio-* views + the
+        four professional schools) paginate via ?page=N."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        for short in ("ECON", "PSYCH", "SOC", "POLISCI", "HIST", "ANTHRO", "HDEV",
+                      "HARRIS", "LAW", "CROWN", "DIV"):
+            dept = next(d for d in UC["departments"] if d["short"] == short)
+            assert dept["scrape"]["paginate"]["param"] == "page", short
+
+    def test_uchicago_philosophy_slices_core_faculty_section(self):
+        """Philosophy's single page lists Core/Affiliated/Emeritus under sibling
+        <h3> headings; the section_filter keeps only the Core Faculty group."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        phil = next(d for d in UC["departments"] if d["short"] == "PHIL")
+        assert phil["scrape"]["section_filter"] == {"heading": "h3", "include": r"core faculty"}
+
+    def test_uchicago_family_b_tile_selectors(self):
+        """The Humanities profile-tile variant reads the name from h2.info and
+        title/email from field--name-field-* divs (distinct from the bio-* views)."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        engl = next(d for d in UC["departments"] if d["short"] == "ENGL")
+        sel = engl["scrape"]["selectors"]
+        assert sel["name"] == "h2.info > a > span"
+        assert sel["title"] == "div.field--name-field-person-faculty-title"
+
+    def test_uchicago_psd_mixitup_fixture_parses_and_ladder_filters(self, monkeypatch):
+        """The four PSD departments share one MixItUp CMS: <li class="mix
+        <role>"> cards, name in the h3 span, rank in the h3 b. The role class
+        scopes the card selector (emeriti carry "emeriti-faculty", never
+        "faculty") and stray emeritus *titles* inside .faculty are dropped by
+        the title filter."""
+        from bs4 import BeautifulSoup
+        html = """
+        <ul>
+          <li class="mix faculty"><a href="/people/profile/matthew-stephens/">
+            <div class="people_content"><h3><span>Matthew Stephens</span>
+            <b>Chair, Ralph W. Gerard Professor</b></h3></div></a></li>
+          <li class="mix faculty"><a href="/people/profile/old-timer/">
+            <div class="people_content"><h3><span>Old Timer</span>
+            <b>Professor Emeritus</b></h3></div></a></li>
+          <li class="mix emeriti-faculty"><a href="/people/profile/gone-emerita/">
+            <div class="people_content"><h3><span>Gone Emerita</span>
+            <b>Professor</b></h3></div></a></li>
+        </ul>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        stat = next(d for d in UC["departments"] if d["short"] == "STAT")
+        people = fg._scrape_directory(stat)
+        assert [p["name"] for p in people] == ["Matthew Stephens"]
+        assert people[0]["url"] == "https://stat.uchicago.edu/people/profile/matthew-stephens/"
+
+    def test_uchicago_bsd_json_dir_primary_link_keywords_and_chair(self, monkeypatch):
+        """Drive the MICRO json_dir over a fake shared-BSD payload (no network):
+        the primary-appointment filter keeps department[0]=="Microbiology" and
+        drops a record whose Microbiology appointment is secondary; the chair
+        (title "Chair") survives the drop-only rank filter; interests[] become
+        keywords; and link_list resolves the profiles.uchicago.edu URL."""
+        class _Resp:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self):
+                return {"data": [
+                    {"firstName": "Tatyana", "lastName": "Golovkina", "title": "Professor",
+                     "department": ["Microbiology"], "interests": ["viruses", "bacteria"],
+                     "websites": [{"name": "Research Network Profile",
+                                   "url": "https://profiles.uchicago.edu/profiles/profile/37082"}]},
+                    {"firstName": "Dom", "lastName": "Chair", "title": "Chair",
+                     "department": ["Microbiology"], "interests": ["pathogenesis"],
+                     "websites": [{"name": "Research Network Profile",
+                                   "url": "https://profiles.uchicago.edu/profiles/profile/1"}]},
+                    {"firstName": "Cross", "lastName": "Listed", "title": "Professor",
+                     "department": ["Medicine", "Microbiology"], "interests": ["x"],
+                     "websites": []},
+                    {"firstName": "Em", "lastName": "Past", "title": "Professor Emeritus",
+                     "department": ["Microbiology"], "interests": [], "websites": []},
+                ]}
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        micro = next(d for d in UC["departments"] if d["short"] == "MICRO")
+        people = fg._fetch_json_dir(micro)
+        names = {p["name"] for p in people}
+        assert "Tatyana Golovkina" in names          # primary Microbiology
+        assert "Dom Chair" in names                   # chair kept (drop-only filter)
+        assert "Cross Listed" not in names            # secondary appt excluded
+        assert "Em Past" not in names                 # emeritus dropped
+        golovkina = next(p for p in people if p["name"] == "Tatyana Golovkina")
+        assert golovkina["url"] == "https://profiles.uchicago.edu/profiles/profile/37082"
+        assert golovkina["keywords"] == ["viruses", "bacteria"]
+
+    def test_uchicago_chemistry_json_dir_link_base_join(self, monkeypatch):
+        """Chemistry's feed carries a relative pathAlias; link_base joins it onto
+        the department host, and interests[] land as keywords."""
+        class _Resp:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self):
+                return {"data": [
+                    {"fullName": "Paul Alivisatos", "title": "Distinguished Service Professor",
+                     "pathAlias": "/paul-alivisatos",
+                     "interests": ["Materials Chemistry", "Physical Chemistry"]},
+                ]}
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        chem = next(d for d in UC["departments"] if d["short"] == "CHEM")
+        people = fg._fetch_json_dir(chem)
+        assert people[0]["name"] == "Paul Alivisatos"
+        assert people[0]["url"] == "https://chemistry.uchicago.edu/paul-alivisatos"
+        assert people[0]["keywords"] == ["Materials Chemistry", "Physical Chemistry"]
+
+    def test_uchicago_bsd_id_is_deterministic(self):
+        """The dept+name id scheme is stable (same person ⇒ same id every run),
+        so a re-scrape upserts rather than duplicating (SOP §E)."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        micro = next(d for d in UC["departments"] if d["short"] == "MICRO")
+        spec = fg.faculty("Tatyana Golovkina", title="Professor")
+        a = fg._normalize(UC, micro, spec)
+        b = fg._normalize(UC, micro, spec)
+        assert a["id"] == b["id"] == "faculty-uchicago-micro-42a25379"
+
+
+class TestUciConfig:
+    def test_uci_config_valid(self):
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        assert fg.validate(UCI) == []
+
+    def test_uci_registered(self):
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        assert SOURCE_DEFAULTS[UCI["source"]] == ("uci", "unknown")
+        assert UCI["source"] in FACULTY_SOURCES
+
+    def test_uci_engineering_shares_one_selector_set(self):
+        """The six Samueli departments reuse the Drupal-7 bean-card selectors."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        eng = [d for d in UCI["departments"]
+               if d.get("directory_url", "").startswith("https://engineering.uci.edu/dept/")]
+        assert {d["short"] for d in eng} == {"EECS", "MAE", "BME", "CBE", "CEE", "MSE"}
+        cards = {d["scrape"]["selectors"]["card"] for d in eng}
+        assert cards == {"div.bean-call-to-action-block"}
+
+    def test_uci_socsci_field_filter_anchors_on_primary_department(self):
+        """The shared social-sciences table concatenates the primary department
+        with research-center names; the filter must anchor on 'Department of X'."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        poli = next(d for d in UCI["departments"] if d["short"] == "POLISCI")
+        assert poli["scrape"]["field_filter"]["include"].startswith(r"^\s*Department of")
+
+    def test_uci_depth_humanities_bio_professional_added(self):
+        """Depth expansion: Bio-Sci central pages, Humanities T1 cards, Merage,
+        and the cp-dir professional schools are all registered."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        shorts = {d["short"] for d in UCI["departments"]}
+        for s in ("MBB", "NBB", "DCB", "EEB", "HIST", "PHIL", "ARTH", "CLAS",
+                  "FMS", "MERAGE", "PUBHLTH", "PHARM", "NURS"):
+            assert s in shorts, s
+
+    def test_uci_bio_uses_central_server_rendered_pages(self):
+        """Bio depts must scrape the central www.bio.uci.edu pages (server-
+        rendered), not the JS-only dept subdomains."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        for s in ("MBB", "NBB", "DCB", "EEB"):
+            dept = next(d for d in UCI["departments"] if d["short"] == s)
+            assert dept["scrape"]["url"].startswith("https://www.bio.uci.edu/academics/faculty/"), s
+            assert not dept["scrape"].get("render")  # server-rendered, no headless needed
+
+    def test_uci_merage_extracts_rank_via_title_re(self):
+        """Merage's static table has no rank field — title_re must capture the
+        rank from the row text so _LADDER can drop emeriti/lecturers."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        mer = next(d for d in UCI["departments"] if d["short"] == "MERAGE")
+        assert mer["scrape"]["selectors"].get("title_re")
+        assert "emerit" in mer["scrape"]["ladder_filter"]["drop"]
+
+
+class TestUcsbConfig:
+    def test_ucsb_config_valid(self):
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        assert fg.validate(UCSB) == []
+
+    def test_ucsb_registered(self):
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        assert SOURCE_DEFAULTS[UCSB["source"]] == ("ucsb", "unknown")
+        assert UCSB["source"] in FACULTY_SOURCES
+
+    def test_ucsb_unfiltered_pages_carry_strict_ladder_filter(self):
+        """Family C all-people pages (polsci/soc/chem/math) list grad students and
+        emeriti — each must ship a ladder_filter or it pollutes the corpus."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        for short in ("POLSCI", "SOC", "CHEM", "MATH", "MATSCI"):
+            dept = next(d for d in UCSB["departments"] if d["short"] == short)
+            assert dept["scrape"].get("ladder_filter"), short
+
+    def test_ucsb_depth_humanities_arts_added(self):
+        """Depth expansion: the Humanities & Fine Arts + ethnic-studies block
+        (Family B) and the custom-theme depts are all registered."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        shorts = {d["short"] for d in UCSB["departments"]}
+        for s in ("PHIL", "ARTHI", "LING", "GLOBAL", "CHICST", "BLKST", "THDA",
+                  "FRIT", "ASAM", "GEOL", "ENGL", "HIST", "EALCS", "TMP",
+                  "MUS", "FAMST", "FEMST"):
+            assert s in shorts, s
+
+    def test_ucsb_famB_and_profile_email_depts_use_the_shared_selectors(self):
+        """Every Family-B / no-listing-email dept scrapes name+rank off the
+        people-profiles theme and backfills email from the profile page (gated)."""
+        from src.collectors.schools.ucsb_faculty import SCHOOL as UCSB
+        for short in ("PHIL", "ARTHI", "LING", "THDA", "MUS", "FAMST", "FEMST"):
+            dept = next(d for d in UCSB["departments"] if d["short"] == short)
+            assert dept["scrape"]["profile_enrich"]["email_selector"] == "a[href^='mailto:']", short
+            assert dept["scrape"].get("ladder_filter"), short
+
+
+class TestBoulderConfig:
+    def test_boulder_config_valid(self):
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        assert fg.validate(BOULDER) == []
+
+    def test_boulder_registered(self):
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        assert SOURCE_DEFAULTS[BOULDER["source"]] == ("boulder", "unknown")
+        assert BOULDER["source"] in FACULTY_SOURCES
+
+    def test_boulder_every_dept_gates_the_vivo_role_sections(self):
+        """Every CU Experts dept page lists the roster in role-grouped h3
+        sections ("faculty administrative position" / "faculty position" /
+        "other researchers and staff") — each dept must keep only the anchored
+        faculty-position section AND ladder-filter the loose-text ranks
+        (Adjoint/clinical/visiting ride the same section)."""
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        for dept in BOULDER["departments"]:
+            sf = dept["scrape"].get("section_filter")
+            assert sf and sf["include"] == r"^faculty position$", dept["short"]
+            assert dept["scrape"].get("ladder_filter"), dept["short"]
+
+    def test_boulder_vivo_cards_parse(self):
+        """Representative CU Experts markup: the section gate keeps only the
+        faculty-position rows, the last-comma title_re extracts the loose-text
+        rank, name_flip un-inverts "Last, First", and the ladder gate drops the
+        Adjoint/Lecturer rows and the rank-less row (whose mis-captured first
+        name never matches the professor require-gate)."""
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools.boulder_faculty import SCHOOL as BOULDER
+        html = """
+        <ul><li class="subclass"><h3>faculty administrative position</h3>
+          <ul class="subclass-property-list">
+            <li><a href="/display/fisid_1" title="person name">Evans, John A</a>, Chair</li>
+          </ul></li>
+        <li class="subclass"><h3>faculty position</h3>
+          <ul class="subclass-property-list">
+            <li><a href="/display/fisid_1" title="person name">Evans, John A</a>, Associate Professor</li>
+            <li><a href="/display/fisid_2" title="person name">Baker, Daniel N</a>, Professor Adjoint (Academic)</li>
+            <li><a href="/display/fisid_3" title="person name">Allred, Aaron</a>, Lecturer</li>
+            <li><a href="/display/fisid_4" title="person name">Doe, Jane</a></li>
+            <li><a href="/display/fisid_5" title="person name">Frew, Eric W</a>, Professor</li>
+          </ul></li>
+        <li class="subclass"><h3>other researchers and staff</h3>
+          <ul class="subclass-property-list">
+            <li><a href="/display/fisid_6" title="person name">Smith, Bob</a>, Research Associate</li>
+          </ul></li></ul>
+        """
+        scrape = BOULDER["departments"][0]["scrape"]
+        people = fg._parse_cards(
+            BeautifulSoup(html, "html.parser"), scrape["selectors"],
+            "https://experts.colorado.edu/display/deptid_10318",
+            ladder_filter=scrape["ladder_filter"], name_flip=True,
+            section_filter=scrape["section_filter"])
+        assert [(p["name"], p["title"]) for p in people] == [
+            ("John A Evans", "Associate Professor"),
+            ("Eric W Frew", "Professor"),
+        ]
+        assert people[0]["url"] == "https://experts.colorado.edu/display/fisid_1"
+
+
+class TestNameLastSplitCells:
+    def test_two_cell_name_is_joined(self, monkeypatch):
+        """UCI Chemistry's Drupal table splits the name across a first-name and a
+        last-name cell; the engine joins them via the ``name_last`` selector."""
+        from bs4 import BeautifulSoup
+        html = """<table><tbody>
+          <tr class='odd'>
+            <td class='first'>Ioan</td><td class='last'>Andricioaei</td>
+            <td class='title'>Professor</td>
+            <td class='email'>andricio@uci.edu</td>
+            <td class='pos'>Faculty</td>
+          </tr>
+          <tr class='even'>
+            <td class='first'>Retta</td><td class='last'>Retired</td>
+            <td class='title'>Professor Emeritus</td>
+            <td class='email'>rr@uci.edu</td>
+            <td class='pos'>Emeritus Faculty</td>
+          </tr>
+        </tbody></table>"""
+        soup = BeautifulSoup(html, "html.parser")
+        people = fg._parse_cards(soup, {
+            "card": "tr.odd, tr.even",
+            "name": "td.first", "name_last": "td.last",
+            "title": "td.title", "email": "td.email",
+        }, "https://x.edu/", ladder_filter={"require": r"\bprofessor\b", "drop": r"\bemerit"})
+        assert [p["name"] for p in people] == ["Ioan Andricioaei"]
+        assert people[0]["email"] == "andricio@uci.edu"
+
+
+class TestMergePreservesRecentWorks:
+    def _record(self, **overrides):
+        rec = {
+            "id": "umich-eng-jane-roe",
+            "source": "umich_faculty",
+            "source_type": "faculty_research",
+            "school": "umich",
+            "pi_name": "Jane Roe",
+            "department": "Mechanical Engineering",
+            "keywords": ["soft robotics", "grippers"],
+            "title": "Research with Prof. Jane Roe — ME (soft robotics, grippers)",
+            "url": "https://me.umich.edu/jane-roe",
+            "metadata": {"first_seen_at": "2026-01-01T00:00:00Z"},
+        }
+        rec.update(overrides)
+        return rec
+
+    def test_equally_rich_rescrape_keeps_recent_works(self, tmp_path, monkeypatch):
+        """metadata.recent_works is run-once OpenAlex enrichment no scrape can
+        reproduce, and the merge replaces metadata wholesale — so it must be
+        carried even when the richer-gate does NOT fire (equal keywords)."""
+        import json as _json
+
+        works = [{"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}]
+        committed = self._record()
+        committed["metadata"]["recent_works"] = works
+        pf = tmp_path / "opportunities.json"
+        pf.write_text(_json.dumps([committed]))
+        monkeypatch.setattr("src.collectors.ucb_common.PROCESSED_FILE", pf)
+
+        added, updated = fg.merge_into_processed([self._record()])
+        assert (added, updated) == (0, 1)
+        saved = _json.loads(pf.read_text())
+        assert len(saved) == 1
+        assert saved[0]["metadata"]["recent_works"] == works
+        assert saved[0]["metadata"]["first_seen_at"] == "2026-01-01T00:00:00Z"
+
+    def test_keyword_richer_rescrape_updates_keywords_but_keeps_works(
+        self, tmp_path, monkeypatch,
+    ):
+        import json as _json
+
+        works = [{"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}]
+        committed = self._record()
+        committed["metadata"]["recent_works"] = works
+        pf = tmp_path / "opportunities.json"
+        pf.write_text(_json.dumps([committed]))
+        monkeypatch.setattr("src.collectors.ucb_common.PROCESSED_FILE", pf)
+
+        richer = self._record(
+            keywords=["soft robotics", "grippers", "haptics"],
+            title="Research with Prof. Jane Roe — ME (soft robotics, grippers, haptics)",
+        )
+        fg.merge_into_processed([richer])
+        saved = _json.loads(pf.read_text())[0]
+        assert saved["keywords"] == ["soft robotics", "grippers", "haptics"]
+        assert saved["metadata"]["recent_works"] == works

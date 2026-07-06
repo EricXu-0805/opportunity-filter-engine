@@ -10,7 +10,10 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
+from datetime import date
+from functools import lru_cache
 
+from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
     COLLEGE_AFFINITY_MAX,
@@ -23,6 +26,7 @@ from .config import (
     EXPLORE_READINESS_DROP,
     GRAD_LEVEL_PENALTY,
     HIGH_PRIORITY_TARGET_COUNT,
+    HOME_SCHOOL_AFFINITY_MAX,
     IMPLICIT_MAJOR_KEYWORD_CEILING,
     IMPLICIT_MAJOR_PER_HIT,
     INTEREST_BONUS_CAP,
@@ -30,6 +34,8 @@ from .config import (
     INTL_UNKNOWN_INTERNSHIP_SCORE,
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
+    RESPONSIVENESS_BONUS,
+    RESPONSIVENESS_MIN_N,
     SEASONAL_BOOST_ENABLED,
     SEASONAL_BOOST_FACTOR,
     SEASONAL_BOOST_MONTHS,
@@ -42,6 +48,15 @@ from .config import (
     TOPIC_UNKNOWN_PENALTY,
     WEIGHTS_DEFAULT,
 )
+
+# Every school slug the platform collects for. All are R1s, so records hosted
+# at any of them share one brand score — ranking registered schools against
+# each other (the old caltech/mit/... list) is not the product's job.
+REGISTERED_SCHOOLS = frozenset(s for s, _ in SOURCE_DEFAULTS.values() if s)
+
+# External prestige brands (labs/agencies/schools we don't collect for),
+# word-bounded so "mit" can't match Smithsonian/Smiths/Smith+Nephew.
+_PRESTIGE_ORG_RE = re.compile(r"\b(?:caltech|mit|stanford|cmu|berkeley|nasa|doe)\b")
 
 
 @dataclass
@@ -180,12 +195,18 @@ RELATED_MAJORS = {
 }
 
 
+# Flattened alias→group lookup (first group wins, matching the original
+# iteration order over MAJOR_GROUPS) — rebuilding the upper-cased alias sets on
+# every call was ~16% of a warm rank_all.
+_MAJOR_ALIAS_LOOKUP: dict[str, str] = {}
+for _group, _aliases in MAJOR_GROUPS.items():
+    for _alias in _aliases:
+        _MAJOR_ALIAS_LOOKUP.setdefault(_alias.upper(), _group)
+
+
 def _normalize_major(major: str) -> str:
     major_upper = major.upper().strip()
-    for group, aliases in MAJOR_GROUPS.items():
-        if major_upper in {a.upper() for a in aliases}:
-            return group
-    return major_upper
+    return _MAJOR_ALIAS_LOOKUP.get(major_upper, major_upper)
 
 
 _STEM_MAJORS = frozenset({
@@ -308,6 +329,21 @@ def _profile_implicit_keywords(profile: dict) -> set[str]:
     return {k.lower() for k in out}
 
 
+def _implicit_steer(profile: dict) -> set[str]:
+    """The major-derived steer exactly as rank_all gates it: applied ONLY when
+    the student gave no explicit interests — with a stated interest, the
+    implicit major keywords would compete with and dilute it (e.g. a vet major
+    + "computer vision" interest must still surface CV work, not biology). So
+    "explicit interests LEAD, major DRIVES the rest" holds by construction.
+    Shared by rank_all and rank_opportunity's default path so a single-record
+    caller (the explain endpoint) scores identically to the list."""
+    has_explicit_interest = (
+        len((profile.get("research_interests_text") or "").strip()) >= 4
+        or bool(profile.get("desired_fields"))
+    )
+    return set() if has_explicit_interest else _profile_implicit_keywords(profile)
+
+
 def _college_affinity(profile: dict, opportunity: dict) -> float:
     """Additive bonus (0..COLLEGE_AFFINITY_MAX) when the opportunity's department
     matches the student's college. Missing department → 0.0 (never a penalty),
@@ -316,10 +352,41 @@ def _college_affinity(profile: dict, opportunity: dict) -> float:
     stems = COLLEGE_DEPARTMENT_SIGNALS.get(college)
     if not stems:
         return 0.0
-    dept = (opportunity.get("department") or "").lower()
+    dept = _opp_static(opportunity).dept_lower
     if not dept:
         return 0.0
     return COLLEGE_AFFINITY_MAX if any(stem in dept for stem in stems) else 0.0
+
+
+def _home_school_affinity(profile: dict, opportunity: dict) -> float:
+    """Additive bonus (0..HOME_SCHOOL_AFFINITY_MAX) for the student's own
+    school when cross-school discovery is on — the home school wins ties
+    without outranking a clearly better topical match elsewhere. 0.0 when the
+    toggle is off (the visible pool is already home-heavy) or the profile has
+    no home school."""
+    if not profile.get("include_cross_school"):
+        return 0.0
+    home = str(profile.get("home_school") or "").strip().lower()
+    if not home:
+        return 0.0
+    return HOME_SCHOOL_AFFINITY_MAX if opportunity.get("school") == home else 0.0
+
+
+def _responsiveness_bonus(
+    opportunity: dict, responsiveness: dict[str, dict] | None
+) -> float:
+    """Additive bonus (0..3) when aggregated internal signals show students
+    recently got replies here: >= RESPONSIVENESS_MIN_N distinct devices made
+    contact and >= 1 reached got-reply/interviewing. OFF by default
+    (OFE_RESPONSIVENESS_BONUS=0); clamped so it can only break ties."""
+    if not responsiveness or RESPONSIVENESS_BONUS <= 0:
+        return 0.0
+    sig = responsiveness.get(opportunity.get("id", ""))
+    if not sig:
+        return 0.0
+    if sig.get("contacted_n", 0) < RESPONSIVENESS_MIN_N or sig.get("replied_n", 0) < 1:
+        return 0.0
+    return min(RESPONSIVENESS_BONUS, 3.0)
 
 
 def _major_match_score(
@@ -449,19 +516,15 @@ def _interest_bonus(profile: dict, opportunity: dict) -> float:
     if len(interests) < 4:
         return 0.0
 
-    signal_text = " ".join(filter(None, [
-        opportunity.get("title", ""),
-        " ".join(opportunity.get("keywords", []) or []),
-        opportunity.get("lab_or_program", "") or "",
-    ])).lower()
+    signal_text = _opp_static(opportunity).signal_text
     if not signal_text:
         return 0.0
 
-    tokens = [t for t in _tokenize(interests) if t not in _GENERIC_INTEREST_WORDS]
+    tokens = _interest_bonus_tokens(interests)
     if not tokens:
         return 0.0
 
-    hits = sum(1 for t in set(tokens) if t in signal_text)
+    hits = sum(1 for t in tokens if t in signal_text)
     if hits == 0:
         return 0.0
     return min(INTEREST_BONUS_CAP, hits * INTEREST_BONUS_PER_HIT)
@@ -589,32 +652,40 @@ def _skill_overlap_score(
     return min(100.0, ratio * 100)
 
 
-def _coursework_score(student_courses: set[str], opportunity: dict) -> float:
+def _coursework_score(
+    student_courses: set[str] | frozenset[str],
+    opportunity: dict,
+    course_tokens: frozenset[str] | None = None,
+) -> float:
     """Score coursework on count + relevance to the opportunity.
 
     Count alone caps at COURSEWORK_MAX_FROM_COUNT (70) so a student who
     listed 7 generic courses doesn't get a perfect score; relevant courses
     (course code prefix matches an opportunity keyword/skill, e.g. CS473
     → 'cs' tag, or BIOL420 → biology lab) earn an additional bonus on top.
+
+    ``course_tokens`` is the caller-precomputed token set for
+    ``student_courses`` (score_readiness derives both from one cached pass);
+    None means build it here.
     """
     if not student_courses:
         return 30.0
 
     count_score = min(COURSEWORK_MAX_FROM_COUNT, len(student_courses) * COURSEWORK_PER_COURSE)
 
-    keywords = [k.lower() for k in opportunity.get("keywords", []) or [] if isinstance(k, str)]
-    skills = [s.lower() for s in opportunity.get("eligibility", {}).get("skills_required", []) or [] if isinstance(s, str)]
-    signals = set(keywords) | set(skills)
+    signals = _opp_static(opportunity).course_signals
     if not signals:
         return count_score
 
-    course_tokens: set[str] = set()
-    for c in student_courses:
-        cl = c.lower()
-        course_tokens.add(cl)
-        prefix = "".join(ch for ch in cl if ch.isalpha())
-        if prefix:
-            course_tokens.add(prefix)
+    if course_tokens is None:
+        tokens: set[str] = set()
+        for c in student_courses:
+            cl = c.lower()
+            tokens.add(cl)
+            prefix = "".join(ch for ch in cl if ch.isalpha())
+            if prefix:
+                tokens.add(prefix)
+        course_tokens = frozenset(tokens)
 
     overlap = sum(1 for sig in signals if any(sig in tok or tok in sig for tok in course_tokens if len(tok) >= 2))
     if overlap == 0:
@@ -870,8 +941,8 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
     elif exp_score <= 30:
         reasons_gap.append("Limited prior experience — position may be competitive")
 
-    student_courses = set(c.upper().strip() for c in profile.get("coursework", []))
-    course_score = _coursework_score(student_courses, opportunity)
+    student_courses, course_tokens = _course_sets(tuple(profile.get("coursework", []) or []))
+    course_score = _coursework_score(student_courses, opportunity, course_tokens=course_tokens)
 
     # Cold email (15%)
     email_score = 100.0 if profile.get("can_cold_email") else 40.0
@@ -892,16 +963,25 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
     return total, reasons_fit, reasons_gap
 
 
+_MENTOR_KEYWORDS = ("mentor", "training", "learn", "guided", "supervision", "teach", "onboard")
+_PATHWAY_KEYWORDS = ("publication", "paper", "co-author", "return", "continue", "conference", "thesis")
+
+
 def score_upside(
     profile: dict,
     opportunity: dict,
     precomputed_sim: float | None = None,
     implicit_keywords: set[str] | None = None,
+    desired_overlap: set[str] | None = None,
 ) -> tuple[float, list[str], list[str]]:
     """Score upside (0-100). ``precomputed_sim`` lets rank_all supply a batched
     research-interest similarity (identical to the per-pair value) instead of
     recomputing it here per opportunity. ``implicit_keywords`` is the student's
-    major-derived field steer (see ``_profile_implicit_keywords``)."""
+    major-derived field steer (see ``_profile_implicit_keywords``).
+    ``desired_overlap`` is the caller-precomputed ``_desired_field_overlap``
+    result (rank_opportunity computes it once for both this layer and
+    field_relevant); None means compute it here."""
+    st = _opp_static(opportunity)
     reasons_fit = []
     reasons_gap = []
 
@@ -912,9 +992,8 @@ def score_upside(
         reasons_fit.append("Paid opportunity" if paid_score == 100 else "Includes stipend")
 
     # First-experience friendly (25%)
-    elig = opportunity.get("eligibility", {})
     first_exp_score = 40.0  # Default: no signal of freshman-friendliness
-    if "freshman" in [y.lower() for y in elig.get("preferred_year", [])]:
+    if st.first_exp:
         first_exp_score = 100.0
         reasons_fit.append("Explicitly welcomes first-time researchers")
 
@@ -934,35 +1013,25 @@ def score_upside(
             reasons_fit.append("On-campus — no work authorization concerns")
 
     # Brand/prestige (15%)
-    # Simple heuristic for V1 — can be refined
-    brand_score = 60.0
-    org = (opportunity.get("organization") or "").lower()
-    prestigious = ["caltech", "mit", "stanford", "cmu", "berkeley", "nasa", "doe"]
-    if any(p in org for p in prestigious):
-        brand_score = 95.0
-        reasons_fit.append("Prestigious institution — strong resume builder")
-    elif "uiuc" in org or "illinois" in org:
-        brand_score = 70.0
+    brand_score = st.brand_score
+    if st.brand_reason:
+        reasons_fit.append(st.brand_reason)
 
-    desc = (opportunity.get("description_raw") or "").lower()
-    mentor_keywords = ["mentor", "training", "learn", "guided", "supervision", "teach", "onboard"]
-    mentor_hits = sum(1 for k in mentor_keywords if k in desc)
-    mentor_score = 35.0 + min(55.0, mentor_hits * 20.0)
-
-    pathway_keywords = ["publication", "paper", "co-author", "return", "continue", "conference", "thesis"]
-    pathway_hits = sum(1 for k in pathway_keywords if k in desc)
-    pathway_score = 40.0 + min(55.0, pathway_hits * 18.0)
-    if pathway_hits >= 2:
+    mentor_score = st.mentor_score
+    pathway_score = st.pathway_score
+    if st.pathway_reason:
         reasons_fit.append("Potential for publication or long-term involvement")
 
     keyword_score = 25.0
-    opp_kw_list = [k.lower() for k in opportunity.get("keywords", [])]
-    opp_keywords = set(opp_kw_list)
+    opp_keywords = st.kw_set
     desired = set(f.lower() for f in profile.get("desired_fields", []))
     interest_reason = ""
     interest_overlap: set[str] = set()
     if opp_keywords and desired:
-        interest_overlap = _desired_field_overlap(desired, opp_kw_list)
+        interest_overlap = (
+            desired_overlap if desired_overlap is not None
+            else _desired_field_overlap(desired, list(st.kw_lower), static=st)
+        )
         if interest_overlap:
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
             interest_reason = f"Matches your interests: {', '.join(sorted(interest_overlap))}"
@@ -982,17 +1051,11 @@ def score_upside(
             )
 
     research_text = profile.get("research_interests_text", "").lower()
-    lab = opportunity.get("lab_or_program", "")
-    pi_name = opportunity.get("pi_name", "")
-    opp_desc = (opportunity.get("description_raw") or opportunity.get("description_clean") or "").lower()
 
-    specific_kw = list(dict.fromkeys(
-        kw for kw in opp_kw_list if kw not in _GENERIC_KEYWORDS
-    ))
-    clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
-    lab_label = clean_pi and f"Prof. {clean_pi}" or lab or opportunity.get("department", "")
+    specific_kw = st.specific_kw
+    lab_label = st.lab_label
 
-    if research_text and (opp_desc or specific_kw):
+    if research_text and (st.has_desc or specific_kw):
         # Both the batched (rank_all) and per-pair sims are corpus-fitted TF-IDF,
         # so the same scale applies either way and the two paths score identically.
         sim = (
@@ -1004,7 +1067,7 @@ def score_upside(
             pre_sim_len = len(reasons_fit)
             # Display only genuine research areas — drop role/format tokens so a
             # job title never reads as a topic ("...work on CV, research assistant").
-            display_kw = _topical_keywords(specific_kw)
+            display_kw = st.display_kw
             work = ", ".join(display_kw[:3])
             # Name the interest terms that actually overlap the lab's areas rather
             # than echoing a mid-word slice of the student's free-text interests.
@@ -1035,7 +1098,7 @@ def score_upside(
                 if all(kw in reasons_fit[-1] for kw in interest_overlap):
                     reasons_fit.remove(interest_reason)
 
-    has_skill_signal = bool(opportunity.get("eligibility", {}).get("skills_required"))
+    has_skill_signal = st.has_skill_signal
     if opportunity.get("source_type") == "faculty_research":
         # Faculty postings (uiuc_faculty + ucb_*_faculty — source_type
         # 'faculty_research' is carried by exactly the faculty collectors) have
@@ -1149,7 +1212,9 @@ def _topical_keywords(keywords: list[str]) -> list[str]:
     return [kw for kw in keywords if kw.lower() not in _ROLE_PROCESS_TOKENS]
 
 
-def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[str]:
+def _desired_field_overlap(
+    desired: set[str], opp_keywords: list[str], static: "_OppStatic | None" = None
+) -> set[str]:
     """Which of the student's desired-field chips align with an opportunity's
     keywords. Exact set intersection (the prior logic) is 100% blind to the
     OpenAlex enrichment: a 'machine learning' chip never matched an enriched
@@ -1163,9 +1228,19 @@ def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[st
     labels (what the student asked for) for the reason text."""
     if not desired or not opp_keywords:
         return set()
-    kws = [k.lower().strip() for k in opp_keywords if k and k.strip()]
-    kw_set = set(kws)
-    kw_canon = {_canonicalize_skill(k) for k in kws}
+    if static is not None:
+        kws: list[str] | tuple[str, ...] = static.ov_kws
+        kw_set: set[str] | frozenset[str] = static.ov_set
+        kw_canon: set[str] | frozenset[str] = static.ov_canon
+        containment_res: list[re.Pattern[str]] | tuple[re.Pattern[str], ...] = static.containment_res
+    else:
+        kws = [k.lower().strip() for k in opp_keywords if k and k.strip()]
+        kw_set = set(kws)
+        kw_canon = {_canonicalize_skill(k) for k in kws}
+        containment_res = [
+            _word_re(k) for k in kws
+            if len(k) >= 4 and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
+        ]
     matched: set[str] = set()
     for d in desired:
         dl = d.lower().strip()
@@ -1180,9 +1255,11 @@ def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[st
         # any "data visualization"/"distributed systems" keyword.
         if " " not in dl and dl in _LOW_SIGNAL_ALIGN_TOKENS:
             continue
-        if len(dl) >= 4 and any(re.search(rf"\b{re.escape(dl)}\b", k) for k in kws):
-            matched.add(d)
-            continue
+        if len(dl) >= 4:
+            dl_re = _word_re(dl)
+            if any(dl_re.search(k) for k in kws):
+                matched.add(d)
+                continue
         # Reverse containment (opp keyword inside the chip) needs the SAME
         # low-signal guard as the chip side above: without it a faculty whose
         # only keyword is a broad department token ("engineering", "science",
@@ -1190,12 +1267,7 @@ def _desired_field_overlap(desired: set[str], opp_keywords: list[str]) -> set[st
         # "computer science") and blanket-credits it into the strong-interest
         # tier. A distinctive keyword ("physics" ⊂ "quantum physics") still
         # counts — only lone broad tokens are suppressed.
-        if any(
-            len(k) >= 4
-            and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
-            and re.search(rf"\b{re.escape(k)}\b", dl)
-            for k in kws
-        ):
+        if any(p.search(dl) for p in containment_res):
             matched.add(d)
     return matched
 
@@ -1334,6 +1406,16 @@ _BROAD_FIELDS = frozenset({
 })
 
 
+def _stem_align_token(t: str) -> str:
+    """Fold trivial plurals for alignment comparisons so "robotics" meets
+    "robotic manipulation" (2026-07 audit: morphology mismatches re-inverted
+    the topic penalty — the only robotics-keyworded ME prof was demoted while
+    keywordless REUs escaped)."""
+    if len(t) > 4 and t.endswith("s") and not t.endswith("ss"):
+        return t[:-1]
+    return t
+
+
 def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     """Demote research postings whose area contradicts a student's stated
     interests. Returns a multiplier in (0, 1].
@@ -1362,21 +1444,12 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
         return 1.0
 
     interest = (profile.get("research_interests_text") or "").strip().lower()
-    interest_tokens = {t for t in _tokenize(interest) if t not in _GENERIC_INTEREST_WORDS}
+    interest_tokens, interest_canon = _topic_interest_sets(interest)
     if len(interest_tokens) < 2:
         return 1.0
 
-    # Canonicalize the interest tokens too (not just the keyword) so a student
-    # who types an acronym ("ml", "nlp", "cv") aligns with a posting keyword
-    # stored as the full phrase, and vice-versa — without this the student's
-    # best topical match got the MISMATCH penalty (RANK-2).
-    interest_canon = {_canonicalize_skill(t) for t in interest_tokens}
-
-    specific = [
-        k.lower() for k in _extract_specific_keywords(opportunity)
-        if k.lower() not in _BROAD_FIELDS
-    ]
-    if not specific:
+    st = _opp_static(opportunity)
+    if not st.topic_has_specific:
         return TOPIC_UNKNOWN_PENALTY
 
     # Align over the FULL keyword list (minus broad department fields), not just
@@ -1389,12 +1462,10 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     # `specific` gate above still decides whether the lab has ANY topic signal at
     # all, so this does not start penalizing broad-field-only labs.
     interest_meaningful = interest_tokens - _LOW_SIGNAL_ALIGN_TOKENS
-    candidates = [
-        k.lower() for k in (opportunity.get("keywords") or [])
-        if k.lower() not in _BROAD_FIELDS
-    ]
-    for kw in candidates:
-        canon = _canonicalize_skill(kw)
+    # Stemmed comparison folds singular/plural topic variants (#443); the
+    # keyword side is pre-stemmed into topic_candidates at corpus load.
+    interest_stems = frozenset(_stem_align_token(t) for t in interest_meaningful)
+    for kw, canon, keyword_stems in st.topic_candidates:
         # Whole-token / canonical equality aligns regardless of length, so a
         # short acronym keyword ("nlp") or a short canonicalized interest still
         # matches. The len>=4 gate is kept only for loose substring containment,
@@ -1414,11 +1485,7 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
         # off-topic lab (zero shared meaningful token) still gets the mismatch
         # penalty, and a student who typed the exact broad phrase still aligns
         # via the `substring` check above.
-        keyword_meaningful = {
-            t for t in _tokenize(kw)
-            if t not in _GENERIC_INTEREST_WORDS and t not in _LOW_SIGNAL_ALIGN_TOKENS
-        }
-        if exact or substring or (keyword_meaningful & interest_meaningful):
+        if exact or substring or (keyword_stems & interest_stems):
             return 1.0
     return TOPIC_MISMATCH_PENALTY
 
@@ -1434,12 +1501,267 @@ def _seasonal_multiplier(opportunity: dict, today=None) -> float:
         return 1.0
     if opportunity.get("opportunity_type") != "summer_program":
         return 1.0
+    from datetime import date
     if today is None:
-        from datetime import date
         today = date.today()
+    # Only a verifiably-open application window earns the lift. 279 dateless
+    # summer records (closed 2026 cycles that can never expire) monopolized
+    # July top-15s through this multiplier — a record with no future deadline
+    # gets a neutral 1.0, not a boost (2026-07 audit).
+    try:
+        dl = date.fromisoformat((opportunity.get("deadline") or "")[:10])
+    except ValueError:
+        return 1.0
+    if dl < today:
+        return 1.0
     if today.month in SEASONAL_BOOST_MONTHS:
         return SEASONAL_BOOST_FACTOR
     return 1.0
+
+
+# --- Corpus precompute ---
+#
+# Everything below hoists per-record work that is PROFILE-INDEPENDENT (keyword
+# normalization, description keyword scans, static regex results, parsed
+# deadlines) out of the per-request scoring loop. `register_corpus` is called
+# by the backend data loader whenever the corpus (re)loads; invalidation is
+# by list identity — a reload builds a new list, so stale statics can never
+# be served. Records are treated as immutable between reloads (they are:
+# nothing mutates them after _sanitize_opportunity). Unregistered dicts
+# (unit tests, ad-hoc callers) are computed fresh per call and never cached,
+# so behavior — including mutation between calls — is unchanged for them.
+
+@dataclass(slots=True)
+class _OppStatic:
+    kw_lower: tuple[str, ...]
+    kw_set: frozenset[str]
+    specific_kw: tuple[str, ...]
+    display_kw: tuple[str, ...]
+    ov_kws: tuple[str, ...]
+    ov_set: frozenset[str]
+    ov_canon: frozenset[str]
+    containment_res: "tuple[re.Pattern[str], ...]"
+    course_signals: frozenset[str]
+    first_exp: bool
+    brand_score: float
+    brand_reason: str | None
+    mentor_score: float
+    pathway_score: float
+    pathway_reason: bool
+    has_desc: bool
+    has_skill_signal: bool
+    lab_label: str
+    signal_text: str
+    dept_lower: str
+    topic_candidates: tuple[tuple[str, str, frozenset[str]], ...]
+    topic_has_specific: bool
+    requires_grad: bool
+    research_summary: str
+    deadline_date: date | None
+
+
+def _build_opp_static(opp: dict) -> _OppStatic:
+    keywords = opp.get("keywords", []) or []
+    kw_lower = tuple(k.lower() for k in keywords)
+    kw_set = frozenset(kw_lower)
+    specific_kw = tuple(dict.fromkeys(kw for kw in kw_lower if kw not in _GENERIC_KEYWORDS))
+    display_kw = tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
+
+    # _desired_field_overlap's view of the keywords (stripped, non-empty).
+    ov_kws = tuple(k.lower().strip() for k in keywords if k and k.strip())
+    ov_canon = frozenset(_canonicalize_skill(k) for k in ov_kws)
+    # Patterns pre-compiled through the corpus-scoped intern dict: keyword
+    # vocabulary cycles far past any per-request LRU, so a bounded cache
+    # thrashed to 100% miss and re-compiling was the top warm-path cost.
+    containment_res = tuple(
+        _kw_word_re(k) for k in ov_kws
+        if len(k) >= 4 and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
+    )
+
+    elig = opp.get("eligibility", {}) or {}
+    course_signals = frozenset(
+        k.lower() for k in keywords if isinstance(k, str)
+    ) | frozenset(
+        s.lower() for s in elig.get("skills_required", []) or [] if isinstance(s, str)
+    )
+
+    brand_score, brand_reason = 60.0, None
+    org = (opp.get("organization") or "").lower()
+    if opp.get("school") in REGISTERED_SCHOOLS:
+        brand_score, brand_reason = 90.0, "Major research university — strong resume builder"
+    elif _PRESTIGE_ORG_RE.search(org):
+        brand_score, brand_reason = 95.0, "Prestigious institution — strong resume builder"
+
+    desc = (opp.get("description_raw") or "").lower()
+    mentor_hits = sum(1 for k in _MENTOR_KEYWORDS if k in desc)
+    pathway_hits = sum(1 for k in _PATHWAY_KEYWORDS if k in desc)
+
+    lab = opp.get("lab_or_program", "")
+    pi_name = opp.get("pi_name", "")
+    clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
+
+    deadline = opp.get("deadline", "")
+    deadline_date = None
+    if deadline and len(deadline) >= 8 and deadline[4] == "-":
+        try:
+            deadline_date = date.fromisoformat(deadline)
+        except ValueError:
+            pass
+
+    return _OppStatic(
+        kw_lower=kw_lower,
+        kw_set=kw_set,
+        specific_kw=specific_kw,
+        display_kw=display_kw,
+        ov_kws=ov_kws,
+        ov_set=frozenset(ov_kws),
+        ov_canon=ov_canon,
+        containment_res=containment_res,
+        course_signals=course_signals,
+        first_exp="freshman" in [y.lower() for y in elig.get("preferred_year", []) or []],
+        brand_score=brand_score,
+        brand_reason=brand_reason,
+        mentor_score=35.0 + min(55.0, mentor_hits * 20.0),
+        pathway_score=40.0 + min(55.0, pathway_hits * 18.0),
+        pathway_reason=pathway_hits >= 2,
+        has_desc=bool(opp.get("description_raw") or opp.get("description_clean") or ""),
+        has_skill_signal=bool(elig.get("skills_required")),
+        lab_label=clean_pi and f"Prof. {clean_pi}" or lab or opp.get("department", ""),
+        signal_text=" ".join(filter(None, [
+            opp.get("title", ""),
+            " ".join(keywords),
+            opp.get("lab_or_program", "") or "",
+        ])).lower(),
+        dept_lower=(opp.get("department") or "").lower(),
+        topic_candidates=tuple(
+            (
+                kw,
+                _canonicalize_skill(kw),
+                frozenset(
+                    _stem_align_token(t) for t in _tokenize(kw)
+                    if t not in _GENERIC_INTEREST_WORDS and t not in _LOW_SIGNAL_ALIGN_TOKENS
+                ),
+            )
+            for kw in kw_lower if kw not in _BROAD_FIELDS
+        ),
+        topic_has_specific=any(
+            k.lower() not in _BROAD_FIELDS for k in _extract_specific_keywords(opp)
+        ),
+        requires_grad=_requires_graduate_standing(opp),
+        research_summary=_summarize_research(opp),
+        deadline_date=deadline_date,
+    )
+
+
+_corpus_ref: list[dict] | None = None
+_corpus_ids: frozenset[int] = frozenset()
+_static_cache: dict[int, _OppStatic] = {}
+_sim_matrix = None
+
+
+def _opp_static(opp: dict) -> _OppStatic:
+    st = _static_cache.get(id(opp))
+    if st is not None:
+        return st
+    st = _build_opp_static(opp)
+    if id(opp) in _corpus_ids:
+        _static_cache[id(opp)] = st
+    return st
+
+
+def register_corpus(opportunities: list[dict]) -> None:
+    """Bind the ranker's per-record precompute to a loaded corpus. Idempotent
+    per list object; call again with the freshly-loaded list on reload. The
+    per-record statics build lazily on first use (no reload-time transient);
+    the TF-IDF row matrix builds eagerly in bounded chunks."""
+    global _corpus_ref, _corpus_ids, _static_cache, _sim_matrix
+    if opportunities is _corpus_ref:
+        return
+    _corpus_ids = frozenset(id(o) for o in opportunities)
+    _static_cache = {}
+    _kw_word_res.clear()
+    _sim_matrix = _build_sim_matrix(opportunities)
+    _corpus_ref = opportunities
+
+
+def _build_sim_matrix(opportunities: list[dict]):
+    try:
+        from scipy.sparse import vstack
+
+        from . import embeddings as _emb
+    except ImportError:
+        return None
+    if not _emb._tfidf_fitted or _emb._tfidf_vectorizer is None or not opportunities:
+        return None
+    chunk = 4096
+    blocks = [
+        _emb._tfidf_vectorizer.transform(
+            [_similarity_corpus(o) for o in opportunities[i:i + chunk]]
+        )
+        for i in range(0, len(opportunities), chunk)
+    ]
+    return vstack(blocks, format="csr")
+
+
+def _corpus_sims_precomputed(research_text: str, opportunities: list[dict]) -> list[float] | None:
+    if _sim_matrix is None or opportunities is not _corpus_ref:
+        return None
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    from . import embeddings as _emb
+    q = _emb._tfidf_vectorizer.transform([research_text])
+    sims = cosine_similarity(q, _sim_matrix)[0]
+    return [float(max(0.0, s)) for s in sims]
+
+
+@lru_cache(maxsize=4096)
+def _word_re(term: str) -> "re.Pattern[str]":
+    """Word-boundary containment pattern for PROFILE-side terms (interest
+    chips). Bounded LRU because the terms are user input."""
+    return re.compile(rf"\b{re.escape(term)}\b")
+
+
+# Corpus-side intern table for keyword containment patterns — bounded by the
+# corpus keyword vocabulary, reset on corpus registration so it can't grow
+# across reloads.
+_kw_word_res: dict[str, "re.Pattern[str]"] = {}
+
+
+def _kw_word_re(term: str) -> "re.Pattern[str]":
+    pat = _kw_word_res.get(term)
+    if pat is None:
+        pat = re.compile(rf"\b{re.escape(term)}\b")
+        _kw_word_res[term] = pat
+    return pat
+
+
+@lru_cache(maxsize=512)
+def _interest_bonus_tokens(interests: str) -> frozenset[str]:
+    return frozenset(t for t in _tokenize(interests) if t not in _GENERIC_INTEREST_WORDS)
+
+
+@lru_cache(maxsize=512)
+def _topic_interest_sets(interest: str) -> tuple[frozenset[str], frozenset[str]]:
+    """(tokens, canonicalized tokens) for _topic_alignment_penalty. Canonicalize
+    the interest tokens too (not just the keyword) so a student who types an
+    acronym ("ml", "nlp", "cv") aligns with a posting keyword stored as the
+    full phrase, and vice-versa — without this the student's best topical
+    match got the MISMATCH penalty (RANK-2)."""
+    tokens = frozenset(t for t in _tokenize(interest) if t not in _GENERIC_INTEREST_WORDS)
+    return tokens, frozenset(_canonicalize_skill(t) for t in tokens)
+
+
+@lru_cache(maxsize=512)
+def _course_sets(courses: tuple[str, ...]) -> tuple[frozenset[str], frozenset[str]]:
+    upper = frozenset(c.upper().strip() for c in courses)
+    tokens: set[str] = set()
+    for c in upper:
+        cl = c.lower()
+        tokens.add(cl)
+        prefix = "".join(ch for ch in cl if ch.isalpha())
+        if prefix:
+            tokens.add(prefix)
+    return upper, frozenset(tokens)
 
 
 def rank_opportunity(
@@ -1450,21 +1772,40 @@ def rank_opportunity(
     precomputed_sim: float | None = None,
     today=None,
     implicit_keywords: set[str] | None = None,
+    responsiveness: dict[str, dict] | None = None,
 ) -> MatchResult:
+    st = _opp_static(opportunity)
+
+    # Defaults derive from the profile exactly as rank_all does, so a
+    # single-opportunity caller (the explain endpoint) scores identically to
+    # the list path: same slider/exploring weights, same major-derived
+    # implicit steer. rank_all still passes both explicitly (hoisted once per
+    # request), so the list path is unchanged.
+    if weights is None:
+        weights = _compute_weights(
+            profile.get("search_weight", 50), exploring=bool(profile.get("exploring"))
+        )
+    if implicit_keywords is None:
+        implicit_keywords = _implicit_steer(profile)
+
+    desired_lc = {f.lower() for f in profile.get("desired_fields", [])}
+    desired_overlap = _desired_field_overlap(
+        desired_lc, opportunity.get("keywords", []), static=st
+    )
+
     if precomputed_eligibility is not None:
         elig_score, elig_fit, elig_gap = precomputed_eligibility
     else:
         elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
     ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
     up_score, up_fit, up_gap = score_upside(
-        profile, opportunity, precomputed_sim=precomputed_sim, implicit_keywords=implicit_keywords
+        profile, opportunity,
+        precomputed_sim=precomputed_sim,
+        implicit_keywords=implicit_keywords,
+        desired_overlap=desired_overlap,
     )
 
-    w = weights or {
-        "eligibility": WEIGHTS_DEFAULT.eligibility,
-        "readiness": WEIGHTS_DEFAULT.readiness,
-        "upside": WEIGHTS_DEFAULT.upside,
-    }
+    w = weights
     raw = (
         w["eligibility"] * elig_score +
         w["readiness"] * ready_score +
@@ -1473,7 +1814,9 @@ def rank_opportunity(
 
     interest_bonus = _interest_bonus(profile, opportunity)
     college_bonus = _college_affinity(profile, opportunity)
-    raw = min(100.0, raw + interest_bonus + college_bonus)
+    home_bonus = _home_school_affinity(profile, opportunity)
+    resp_bonus = _responsiveness_bonus(opportunity, responsiveness)
+    raw = min(100.0, raw + interest_bonus + college_bonus + home_bonus + resp_bonus)
 
     # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
     # eligibility layer). A separate raw multiplier here double-counted the same
@@ -1496,21 +1839,15 @@ def rank_opportunity(
         if topic_penalty <= TOPIC_MISMATCH_PENALTY:
             elig_gap.append("Research area looks different from your stated interests")
 
-    deadline = opportunity.get("deadline", "")
-    if deadline and len(deadline) >= 8 and deadline[4] == "-":
-        try:
-            from datetime import date
-            dl = date.fromisoformat(deadline)
-            days_left = (dl - date.today()).days
-            if days_left < 0:
-                final *= DEADLINE_PASSED_PENALTY
-                elig_gap.append("Deadline has passed — verify if still accepting applications")
-            elif days_left <= 7:
-                elig_fit.append(f"Deadline in {days_left} days — apply soon")
-        except ValueError:
-            pass
+    if st.deadline_date is not None:
+        days_left = (st.deadline_date - date.today()).days
+        if days_left < 0:
+            final *= DEADLINE_PASSED_PENALTY
+            elig_gap.append("Deadline has passed — verify if still accepting applications")
+        elif days_left <= 7:
+            elig_fit.append(f"Deadline in {days_left} days — apply soon")
 
-    if _is_undergrad(profile) and _requires_graduate_standing(opportunity):
+    if _is_undergrad(profile) and st.requires_grad:
         final *= GRAD_LEVEL_PENALTY
         elig_gap.append("Targets graduate / PhD students — a reach for undergraduates")
 
@@ -1531,7 +1868,7 @@ def rank_opportunity(
     all_fit = elig_fit + ready_fit + up_fit
     all_gap = elig_gap + ready_gap + up_gap
 
-    research_summary = _summarize_research(opportunity)
+    research_summary = st.research_summary
     if research_summary:
         pi = opportunity.get("pi_name", "")
         if pi and pi in research_summary:
@@ -1547,11 +1884,9 @@ def rank_opportunity(
     # Field-relevant = the opportunity topically matches the student's stated
     # interests OR their major-derived field. Drives the "N strong matches in
     # your field" count so a thin field isn't padded with generic high-quality opps.
-    opp_kw_set = {k.lower() for k in opportunity.get("keywords", [])}
-    desired_lc = {f.lower() for f in profile.get("desired_fields", [])}
-    field_relevant = bool(_desired_field_overlap(desired_lc, opportunity.get("keywords", [])))
+    field_relevant = bool(desired_overlap)
     if not field_relevant and implicit_keywords:
-        field_relevant = bool(opp_kw_set & implicit_keywords)
+        field_relevant = bool(st.kw_set & implicit_keywords)
     if not field_relevant and precomputed_sim is not None and precomputed_sim > 0.15:
         field_relevant = True
 
@@ -1707,7 +2042,10 @@ def semantic_rerank(
         blended = (1.0 - w) * rule + w * float(sim) * 100.0
         r.final_score = round(max(0.0, min(100.0, blended)), 1)
 
-    results.sort(key=lambda r: r.final_score, reverse=True)
+    # Deterministic tie-break: scores round to 0.1, so equal-score bands
+    # (17-way ties were observed) otherwise reorder whenever corpus file
+    # order shifts between refreshes.
+    results.sort(key=lambda r: (-r.final_score, r.opportunity_id))
     # Buckets were assigned on the pre-blend scores; recompute them so the labels
     # and per-bucket counts match the re-ranked order (semantic=true used to
     # return stale buckets).
@@ -1792,13 +2130,22 @@ def _diversify_explore(
     return out
 
 
-def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
+def rank_all(
+    profile: dict,
+    opportunities: list[dict],
+    responsiveness: dict[str, dict] | None = None,
+) -> list[MatchResult]:
     """Rank all opportunities for a profile. Returns sorted by final_score desc."""
     search_weight = profile.get("search_weight", 50)
     exploring = bool(profile.get("exploring"))
     weights = _compute_weights(search_weight, exploring=exploring)
 
-    home_school = str(profile.get("home_school") or "uiuc").strip().lower()
+    home_school_raw = str(profile.get("home_school") or "").strip().lower()
+    home_school = home_school_raw or "uiuc"
+    # Cross-school resources are opt-in (Eric, 2026-07: 正常肯定还是会优先本学校的科研).
+    # Without a home_school there is no "cross-school" to hide, so such
+    # profiles keep the pre-toggle behavior.
+    hide_cross_school = not profile.get("include_cross_school") and bool(home_school_raw)
     seeking = set(profile.get("seeking_type", []))
     student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
     related_majors_norm: set[str] = set()
@@ -1809,16 +2156,8 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
     # parsing it per opp (inside score_eligibility) was ~12% of rank_all's time.
     profile_skill_map = _parse_skills(profile.get("hard_skills", []))
 
-    # Major-derived field steer, computed once (identical per request). Applied
-    # ONLY when the student gave no explicit interests — with a stated interest,
-    # the implicit major keywords would compete with and dilute it (e.g. a vet
-    # major + "computer vision" interest must still surface CV work, not biology).
-    # So "explicit interests LEAD, major DRIVES the rest" holds by construction.
-    has_explicit_interest = (
-        len((profile.get("research_interests_text") or "").strip()) >= 4
-        or bool(profile.get("desired_fields"))
-    )
-    implicit_kw = _profile_implicit_keywords(profile) if not has_explicit_interest else set()
+    # Major-derived field steer, computed once (identical per request).
+    implicit_kw = _implicit_steer(profile)
 
     # Batch the upside research-interest similarity once for the whole corpus.
     # This pass is TF-IDF only (allow_embeddings=False): embedding the full ~4.4k
@@ -1833,10 +2172,16 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
         try:
             import src.matcher.embeddings as _emb
             if _emb._tfidf_fitted:
-                corpora = [_similarity_corpus(o) for o in opportunities]
-                sims = _emb.semantic_similarity_batch(
-                    research_text, corpora, allow_embeddings=False
-                )
+                # Fast path: the registered corpus's TF-IDF rows are precomputed
+                # (register_corpus), so only the one-row query is vectorized per
+                # request. Bitwise-identical to the batch transform below —
+                # transform and cosine are row-independent.
+                sims = _corpus_sims_precomputed(research_text, opportunities)
+                if sims is None:
+                    corpora = [_similarity_corpus(o) for o in opportunities]
+                    sims = _emb.semantic_similarity_batch(
+                        research_text, corpora, allow_embeddings=False
+                    )
                 sims_by_id = {
                     o["id"]: s for o, s in zip(opportunities, sims, strict=False) if o.get("id")
                 }
@@ -1849,16 +2194,17 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             continue
 
         # Multi-university scope (PR #187 Phase 1): another school's
-        # campus-only posting is not actionable for this user. 'open' and
-        # 'unknown' always pass — hiding 'unknown' would regress e.g. the
-        # UCB faculty cold-email targets UIUC users see today.
+        # campus-only posting is not actionable for this user, so it always
+        # drops. The rest of another school's records ('open'/'unknown') are
+        # opt-in via include_cross_school — except summer programs, which
+        # recruit nationally regardless of host (Eric: 暑期科研肯定是无所谓的).
+        # National records (school=None) never enter this branch.
         opp_school = opp.get("school")
-        if (
-            opp_school is not None
-            and opp_school != home_school
-            and opp.get("audience") == "campus"
-        ):
-            continue
+        if opp_school is not None and opp_school != home_school:
+            if opp.get("audience") == "campus":
+                continue
+            if hide_cross_school and opp.get("opportunity_type") != "summer_program":
+                continue
 
         if profile.get("international_student"):
             elig = opp.get("eligibility", {})
@@ -1890,11 +2236,15 @@ def rank_all(profile: dict, opportunities: list[dict]) -> list[MatchResult]:
             precomputed_eligibility=elig_triple,
             precomputed_sim=sims_by_id.get(opp.get("id")),
             implicit_keywords=implicit_kw,
+            responsiveness=responsiveness,
         )
         if result.final_score >= min_threshold:
             results.append(result)
 
-    results.sort(key=lambda r: r.final_score, reverse=True)
+    # Deterministic tie-break: scores round to 0.1, so equal-score bands
+    # (17-way ties were observed) otherwise reorder whenever corpus file
+    # order shifts between refreshes.
+    results.sort(key=lambda r: (-r.final_score, r.opportunity_id))
     _assign_buckets(results)
 
     if exploring:

@@ -49,13 +49,19 @@ _LADDER = {"require": r"\bprofessor\b", "drop": r"\bemerit"}
 # name (``.field--name-title``), rank (``field-ps-people-position``), and — where
 # published — email (``field-ps-people-email``) use theme-wide field classes.
 # Reached via render mode (headless browser clears the 403). Emails land where the
-# department exposes them (MAE, CBE); the rest ship emailless but ranked.
+# department exposes them (MAE, CBE, PSY, ASTRO); the rest ship emailless but ranked.
+# ``research_items``: several departments file each person under a research
+# subfield via the sitewide-category taxonomy (Physics → "Condensed Matter
+# Theory"/"High Energy Theory", CEE → its research thrusts). Verified present on
+# PHY (47/49) and CEE via headless render; absent on the rest (MAE/PSY/…), where
+# the selector simply matches nothing and the record ships ranked-but-keywordless.
 _SB_SELECTORS = {
     "card": ".content-list-item",
     "name": ".field--name-title",
     "link": "a[href*='/people/']",
     "title": ".field--name-field-ps-people-position",
     "email": ".field--name-field-ps-people-email a[href^='mailto:']",
+    "research_items": ".field--name-field-ps-sitewide-category .field__item",
 }
 
 
@@ -64,11 +70,31 @@ def _drupal(short: str, name: str, majors: list[str], url: str) -> dict:
             "scrape": {"url": url, "selectors": _PERSON_CARD, "ladder_filter": _LADDER}}
 
 
+# Site Builder PROFILE pages sit behind the same Cloudflare wall as the listing
+# (→ render mode) and carry the fields the listing grid omits: a public mailto
+# and, on departments that use it, a research-areas taxonomy. Gated behind
+# OFE_ENRICH_PROFILES (render-per-profile is slow — it runs in the deliberate
+# enrichment pass, not the weekly refresh); the recovered contact_email/keywords
+# then ride the corpus forward via _carry_forward_enrichment. Verified live:
+# ECE/Physics profiles expose ``field-ps-people-email`` (absent from their
+# listing), and ECE lists ``field-research-areas .field__item`` as clean atomic
+# keywords. Only records still missing the field are fetched, so depts that
+# already ship emailed/keyworded (MAE/CBE listing emails, PHY/CEE categories)
+# cost nothing extra.
+_SB_PROFILE_ENRICH = {
+    "render": True,
+    "email_selector": ".field--name-field-ps-people-email a[href^='mailto:']",
+    "research_items_selector": ".field--name-field-research-areas .field__item",
+    "throttle": 0.3,
+}
+
+
 def _sb(short: str, name: str, majors: list[str], url: str) -> dict:
     """A Cloudflare-walled Site Builder department, fetched via render mode."""
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "render": True, "selectors": _SB_SELECTORS,
-                       "ladder_filter": _LADDER}}
+                       "ladder_filter": _LADDER},
+            "profile_enrich": _SB_PROFILE_ENRICH}
 
 
 SCHOOL: dict = {

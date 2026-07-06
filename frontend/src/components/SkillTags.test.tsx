@@ -53,4 +53,62 @@ describe('SkillTags — custom skill input', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onChange).toHaveBeenCalledWith([{ name: 'Rust', level: 'beginner' }]);
   });
+
+  it('Enter on an empty input does nothing', () => {
+    const { onChange, input } = setup();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('Enter on a whitespace-only input does nothing', () => {
+    const { onChange, input } = setup();
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('SkillTags — selected tag labels (i18n)', () => {
+  it('renders the level label and remove button from the dictionary', () => {
+    const { onChange } = setup([{ name: 'Python', level: 'beginner' }]);
+    const levelBtn = screen.getByRole('button', { name: 'Beginner' });
+    expect(levelBtn).toHaveAttribute('title', 'Click to change level (Beginner)');
+    fireEvent.click(levelBtn);
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'experienced' }]);
+    expect(screen.getByRole('button', { name: 'Remove Python' })).toBeInTheDocument();
+  });
+
+  it('has en + zh dictionary labels for every skill level', async () => {
+    const { en, zh } = await import('@/i18n/dictionaries');
+    for (const level of ['beginner', 'experienced', 'expert'] as const) {
+      expect(en.skills.levels[level]).toBeTruthy();
+      expect(zh.skills.levels[level]).toBeTruthy();
+    }
+  });
+});
+
+describe('SkillTags — level cycling', () => {
+  it('cycles experienced → expert', () => {
+    const { onChange } = setup([{ name: 'Python', level: 'experienced' }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Experienced' }));
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'expert' }]);
+  });
+
+  it('wraps expert → beginner', () => {
+    const { onChange } = setup([{ name: 'Python', level: 'expert' }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Expert' }));
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'beginner' }]);
+  });
+
+  it('cycling one chip leaves sibling chips untouched', () => {
+    const { onChange } = setup([
+      { name: 'Python', level: 'expert' },
+      { name: 'Java', level: 'beginner' },
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'Beginner' }));
+    expect(onChange).toHaveBeenCalledWith([
+      { name: 'Python', level: 'expert' },
+      { name: 'Java', level: 'experienced' },
+    ]);
+  });
 });

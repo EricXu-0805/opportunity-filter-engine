@@ -15,6 +15,7 @@ import { SaveCta } from './home/SaveCta';
 import { SearchFocusCard } from './home/SearchFocusCard';
 import { SharedBanner } from './home/SharedBanner';
 import { SubmitRow } from './home/SubmitRow';
+import { WalkthroughSection } from './home/WalkthroughSection';
 import { useProfileForm } from './home/use-profile-form';
 
 export default function HomePage() {
@@ -97,6 +98,8 @@ function HomePageInner() {
       />
 
       <SaveCta t={t} />
+
+      <WalkthroughSection t={t} />
 
       <FeaturedFellowships />
     </div>

@@ -23,6 +23,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from backend.data_loader import load_opportunities
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
+from src.matcher.feedback_learning import analyze_votes
 
 router = APIRouter()
 
@@ -572,3 +573,96 @@ async def trigger_refresh(
 
     detail = resp.text[:300] if resp.text else f"GitHub returned {resp.status_code}"
     raise HTTPException(status_code=resp.status_code, detail=detail)
+
+
+@router.get("/admin/feedback")
+async def feedback_inbox(
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+    limit: int = Query(default=50, ge=1, le=200),
+    since_hours: int | None = Query(default=None, ge=1, le=720),
+):
+    """User feedback inbox + match-feedback (thumbs) summary.
+
+    The feedback / match_feedback tables are INSERT-only under RLS (clients
+    can never read them back) — this endpoint is the operator's read path,
+    via the service-role key. `since_hours` narrows the inbox window so the
+    daily cron can ask "anything new in the last 24h?".
+    """
+    _authenticate(x_admin_token)
+
+    env_result = _required_env(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
+    if isinstance(env_result, tuple):
+        _, missing = env_result
+        return {"status": "skipped", "reason": "supabase env not configured", "missing": missing}
+    env = env_result
+
+    supabase_url = env["SUPABASE_URL"].rstrip("/")
+    headers = {
+        "apikey": env["SUPABASE_SERVICE_ROLE_KEY"],
+        "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE_KEY']}",
+    }
+    params = {
+        "select": "id,created_at,message,email,props",
+        "order": "created_at.desc",
+        "limit": str(limit),
+    }
+    if since_hours is not None:
+        cutoff = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat()
+        params["created_at"] = f"gte.{cutoff}"
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            fb_resp = await client.get(
+                f"{supabase_url}/rest/v1/feedback", params=params, headers=headers
+            )
+            fb_resp.raise_for_status()
+            entries = fb_resp.json()
+
+            mf_resp = await client.get(
+                f"{supabase_url}/rest/v1/match_feedback",
+                # select=* so bucket/final_score feed the analysis block and the
+                # request stays valid whether or not migration 018 (context) has
+                # been applied yet.
+                params={
+                    "select": "*",
+                    "order": "created_at.desc",
+                    "limit": "1000",
+                },
+                headers=headers,
+            )
+            mf_resp.raise_for_status()
+            thumbs = mf_resp.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Supabase unreachable: {e}") from e
+
+    week_ago = datetime.now(UTC) - timedelta(days=7)
+    up = sum(1 for t in thumbs if t.get("verdict") == "up")
+    down = sum(1 for t in thumbs if t.get("verdict") == "down")
+    recent = [t for t in thumbs if (_parse_iso_ts(t.get("created_at")) or week_ago) >= week_ago]
+    titles: dict = {}
+    schools: dict = {}
+    for o in load_opportunities():
+        titles[o.get("id")] = o.get("title")
+        schools[o.get("id")] = o.get("school")
+    down_counts = Counter(
+        t["opportunity_id"] for t in thumbs if t.get("verdict") == "down" and t.get("opportunity_id")
+    )
+    top_downvoted = [
+        {"opportunity_id": oid, "downs": n, "title": titles.get(oid)}
+        for oid, n in down_counts.most_common(10)
+    ]
+
+    return {
+        "status": "ok",
+        "entries": entries,
+        "count": len(entries),
+        "match_feedback": {
+            "up": up,
+            "down": down,
+            "up_7d": sum(1 for t in recent if t.get("verdict") == "up"),
+            "down_7d": sum(1 for t in recent if t.get("verdict") == "down"),
+            "sample_size": len(thumbs),
+            "top_downvoted": top_downvoted,
+            "analysis": analyze_votes(thumbs, schools),
+        },
+    }

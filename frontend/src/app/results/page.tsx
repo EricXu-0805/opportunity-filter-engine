@@ -9,7 +9,11 @@ import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { KeyboardHelpDialog } from '@/components/KeyboardHelpDialog';
 import { useDebounce } from '@/lib/use-debounce';
 import { useLoadingNarrative } from '@/lib/use-loading-narrative';
-import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
+import {
+  useHasLocalStorageKey,
+  useLocalStorageJSON,
+  writeLocalStorageJSON,
+} from '@/lib/use-local-storage-json';
 import { downloadCSV } from '@/lib/csv-export';
 import { matchesToCSV } from '@/lib/match-utils';
 import {
@@ -39,6 +43,7 @@ import {
   getFavorites,
   getInteractions,
   removeInteraction,
+  saveProfile,
   toggleFavorite,
   trackInteraction,
   type InteractionType,
@@ -269,6 +274,21 @@ function ResultsContent() {
     setData(null);
     setPage(1);
   }, [setData]);
+
+  // Cross-school opt-in is a PROFILE field (the backend's scope filter reads
+  // it), not a client-side facet: persist it like other profile edits
+  // (localStorage + Supabase), then drop the data so useResultsData re-ranks
+  // under the new hashProfile key. writeLocalStorageJSON dispatches the
+  // synthetic storage event that updates this page's own profile snapshot.
+  const includeCrossSchool = profile?.include_cross_school ?? false;
+  const toggleCrossSchool = useCallback((next: boolean) => {
+    if (!rawStoredProfile) return;
+    const updated = { ...rawStoredProfile, include_cross_school: next };
+    writeLocalStorageJSON(STORAGE_KEYS.PROFILE, updated);
+    saveProfile(updated as unknown as Record<string, unknown>).catch(() => {});
+    setData(null);
+    setPage(1);
+  }, [rawStoredProfile, setData]);
 
   const { filtered, paginated, totalPages, counts } = useResultsFilters({
     data,
@@ -551,11 +571,14 @@ function ResultsContent() {
             activeFilterCount={activeFilterCount}
             sourceOptions={sourceOptions}
             scopeOptions={scopeOptions}
+            includeCrossSchool={includeCrossSchool}
+            onIncludeCrossSchoolChange={toggleCrossSchool}
             t={t}
           />
           {scopeOptions.length > 0 && (
             <p className="text-[12px] text-gray-500">{scopeIndicator}</p>
           )}
+          <p className="text-[12px] text-gray-500">{t('results.filters.crossSchoolHint')}</p>
         </div>
       )}
 
@@ -603,6 +626,7 @@ function ResultsContent() {
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
               onFeedback={handleFeedback}
+              positionOffset={(page - 1) * PAGE_SIZE}
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}

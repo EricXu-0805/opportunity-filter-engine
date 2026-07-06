@@ -1,26 +1,113 @@
-"""University of Michigan curated faculty config (via the faculty_graph engine).
+"""University of Michigan faculty config (via the faculty_graph engine).
 
 Michigan's department directories are Cloudflare-protected (403 to a stdlib
-scraper), so this is a hand-verified seed set rather than a live scrape: real
-current professors with their research areas and (where reliably confirmable)
-public umich.edu emails. Emails left as None where the uniqname could not be
-confirmed — never guessed.
+scraper), so this began as a hand-verified seed set. It now runs the engine's
+two-layer model: the curated seed is the always-on, offline-safe floor, and a
+best-effort **render-mode scrape** (headless Chromium clears the 403, the same
+trick Princeton uses) discovers the *full* department roster on top of it in
+deep mode. Seed and scrape de-dup by id (dept+name) / email / URL, so the
+hand-verified professors keep their curated keywords and the scrape only adds
+net-new faculty; a failed scrape degrades silently to the seed.
 
-Fourteen departments, ~100 professors (count them, don't trust this line).
+Fourteen departments (~100 curated seeds; the deep scrape lifts the reachable
+ones to their full rosters — e.g. Physics 7→51, Math 8→84, ME 8→106, ECE 8→111).
 One source ("umich_faculty") across all of them (the UIUC model); the
 department rides on each record's `department` field, and ids are namespaced
 by department short-code so they never collide.
 
-Data verified Jun 2026 from lab/personal sites, Google Scholar, dblp, and
-department news (the directory pages themselves block scrapers). Two distinct
-professors named "Wei Lu" (ECE/memristors vs ME/batteries) are intentionally
-kept separate — the engine de-dups on email/URL, not name.
+Scrape coverage (selectors verified live via headless render, Jul 2026):
+  * LSA departments (lsa.umich.edu, "Michigan LSA" AEM theme) — Physics, Math,
+    Chemistry, MCDB, Statistics, EEB, Economics, Psychology. Ship emailed +
+    research-tag-keyworded.
+  * Engineering (*.engin.umich.edu WordPress theme) — Mechanical Engineering
+    (.faculty-row) and ECE (the shared "eecs_person" template, names "Last,
+    First"). Ship emailed; keywords mined from the free-text interests block.
+  * No scrape yet (curated-seed-only): CSE (cse.umich.edu refuses connections),
+    Robotics (data-attribute cards, no listing email), BME & Aerospace (their
+    directory URLs 404 — the seed's directory_url is the human landing page).
+    Coverage grows here as reachable directories are identified.
+
+Seed data verified Jun 2026 from lab/personal sites, Google Scholar, dblp, and
+department news. Emails left as None where the uniqname could not be confirmed —
+never guessed. Two distinct professors named "Wei Lu" (ECE/memristors vs
+ME/batteries) are intentionally kept separate — the engine de-dups on
+email/URL, not name.
 """
 
 from __future__ import annotations
 
 from .. import faculty_graph
 from ..faculty_graph import faculty
+
+# ---- Live-scrape selectors (deep mode; verified via headless render Jul 2026) ---
+# All Michigan directories are Cloudflare-walled, so every scrape runs in render
+# mode. Keep ladder faculty (the PIs an undergraduate would research with); the
+# directories also list lecturers, research scientists, and emeriti.
+_LADDER = {"require": r"\bprofessor\b", "drop": r"\bemerit"}
+
+# lsa.umich.edu "Michigan LSA" AEM theme: a ``.person`` card grid. ``.name`` +
+# ``.title`` carry name/rank, ``.email a`` the public umich address, and
+# ``.fields a`` the research-area tags (clean atomic keywords, one <a> each).
+_LSA_SELECTORS = {
+    "card": ".person",
+    "name": ".name",
+    "link": ".name a",
+    "title": ".title",
+    "email": ".email a[href^='mailto:']",
+    "research_items": ".fields a",
+}
+
+# College of Engineering WordPress theme (*.engin.umich.edu): ``.faculty-row``
+# cards with ``.faculty-name`` / ``.faculty-titles`` / ``.faculty-email`` and a
+# free-text ``.faculty-interests`` ("Research Interests: …") the engine mines
+# for keywords at normalize time.
+_ENGIN_SELECTORS = {
+    "card": ".faculty-row",
+    "name": ".faculty-name",
+    "link": ".faculty-name a",
+    "title": ".faculty-titles",
+    "email": ".faculty-email",
+    "research": ".faculty-interests",
+}
+
+# EECS (ece.engin.umich.edu) shared "eecs_person" template: names are listed
+# "Last, First" (needs name_flip), rank rides ``.person_title_section``, the
+# mailto ``.person_email``, and the research interests the ``.pcs_tall`` block.
+_EECS_SELECTORS = {
+    "card": ".eecs_person_wrapper",
+    "name": ".eecs_person_name",
+    "title": ".person_title_section",
+    "email": ".person_email",
+    "research": ".pcs_tall",
+}
+
+
+# Several LSA people grids (Chemistry, Psychology, Statistics, MCDB) render only
+# 12 cards per page behind a client-side hash router — the rest load as the URL
+# fragment changes to ``#…&page=N``. Physics/Math/Economics/EEB list everyone on
+# one page, so they omit this. Walked in one render session by the engine's
+# hash-paginate path (dedup by name+url).
+_LSA_PAGINATE = {"mode": "hash", "param": "page", "max": 12}
+
+
+def _scrape(url: str, selectors: dict, *, name_flip: bool = False,
+            paginate: dict | None = None) -> dict:
+    """A render-mode scrape block for a Cloudflare-walled Michigan directory."""
+    block = {"url": url, "render": True, "selectors": selectors,
+             "ladder_filter": _LADDER}
+    if name_flip:
+        block["name_flip"] = True
+    if paginate:
+        block["paginate"] = paginate
+    return block
+
+
+def _lsa(short: str, name: str, majors: list[str], slug: str) -> dict:
+    """A scrape-only LSA department (AEM ``.person`` grid, hash-paginated). All
+    LSA people directories share the theme, so a whole department is one line."""
+    url = f"https://lsa.umich.edu/{slug}/people/faculty.html"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": _scrape(url, _LSA_SELECTORS, paginate=_LSA_PAGINATE)}
 
 SCHOOL: dict = {
     "school_slug": "umich",
@@ -95,6 +182,7 @@ SCHOOL: dict = {
             "name": "Electrical & Computer Engineering",
             "majors": ["Electrical Engineering", "Computer Engineering", "Electrical & Computer Engineering"],
             "directory_url": "https://ece.engin.umich.edu/people/faculty/",
+            "scrape": _scrape("https://ece.engin.umich.edu/people/faculty/", _EECS_SELECTORS, name_flip=True),
             "faculty": [
                 faculty(
                     "Alfred O. Hero III", title="Professor",
@@ -151,6 +239,7 @@ SCHOOL: dict = {
             "name": "Mechanical Engineering",
             "majors": ["Mechanical Engineering"],
             "directory_url": "https://me.engin.umich.edu/people/faculty/",
+            "scrape": _scrape("https://me.engin.umich.edu/people/faculty/", _ENGIN_SELECTORS),
             "faculty": [
                 faculty(
                     "Jeff Sakamoto", title="Professor",
@@ -207,6 +296,7 @@ SCHOOL: dict = {
             "name": "Department of Physics",
             "majors": ["Physics", "Applied Physics", "Astrophysics"],
             "directory_url": "https://lsa.umich.edu/physics/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/physics/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Dragan Huterer", title="Professor",
@@ -257,6 +347,7 @@ SCHOOL: dict = {
             "name": "Molecular, Cellular & Developmental Biology",
             "majors": ["Molecular Biology", "Cellular Biology", "Biology", "Biochemistry"],
             "directory_url": "https://lsa.umich.edu/mcdb/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/mcdb/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Kenneth Cadigan", title="Professor",
@@ -313,6 +404,7 @@ SCHOOL: dict = {
             "name": "Department of Statistics",
             "majors": ["Statistics", "Data Science"],
             "directory_url": "https://lsa.umich.edu/stats/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/stats/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Ji Zhu", title="Professor",
@@ -412,6 +504,168 @@ SCHOOL: dict = {
                     research_areas="cartilage tissue engineering, cartilage regeneration, joint mechanobiology, chondrogenesis, mechanically functional tissue replacement",
                     keywords=["tissue engineering", "cartilage regeneration", "mechanobiology", "chondrogenesis"],
                 ),
+                faculty(
+                    "Carlos Aguilar", title="Associate Professor",
+                    url="https://bme.umich.edu/people/carlos-aguilar/", email="caguilar@umich.edu",
+                    research_areas="BioMEMS, microfluidics, bio-micro/nano systems, nanotechnology",
+                    keywords=["BioMEMS", "microfluidics", "bio-micro/nano systems", "nanotechnology"],
+                ),
+                faculty(
+                    "Kelly Arnold", title="Associate Professor",
+                    url="https://bme.umich.edu/people/arnold-kelly/", email="kbarnold@umich.edu",
+                    research_areas="computational modeling, drug delivery, therapeutics",
+                    keywords=["computational modeling", "drug delivery", "therapeutics"],
+                ),
+                faculty(
+                    "Brendon Baker", title="Associate Professor",
+                    url="https://bme.umich.edu/people/baker-brendon/", email="bambren@umich.edu",
+                    research_areas="BioMEMS, microfluidics, bio-micro/nano systems, biomaterials",
+                    keywords=["BioMEMS", "microfluidics", "bio-micro/nano systems", "biomaterials"],
+                ),
+                faculty(
+                    "Susan Brooks", title="Professor",
+                    url="https://bme.umich.edu/people/brooks-susan/", email="svbrooks@umich.edu",
+                    research_areas="biomechanics, immunoengineering, molecular & cellular engineering, orthopaedic engineering",
+                    keywords=["biomechanics", "immunoengineering", "molecular & cellular engineering", "orthopaedic engineering"],
+                ),
+                faculty(
+                    "Tim Bruns", title="Associate Professor",
+                    url="https://bme.umich.edu/people/bruns-tim/", email="bruns@umich.edu",
+                    research_areas="neural engineering, neurological disorders",
+                    keywords=["neural engineering", "neurological disorders"],
+                ),
+                faculty(
+                    "Sriram Chandrasekaran", title="Associate Professor",
+                    url="https://bme.umich.edu/people/chandrasekaran-sriram/", email="csriram@umich.edu",
+                    research_areas="computational modeling, cancer, drug delivery, therapeutics",
+                    keywords=["computational modeling", "cancer", "drug delivery", "therapeutics"],
+                ),
+                faculty(
+                    "Cindy Chestek", title="Professor",
+                    url="https://bme.umich.edu/people/chestek-cindy/", email="cchestek@umich.edu",
+                    research_areas="BioMEMS, microfluidics, bio-micro/nano systems, neural engineering",
+                    keywords=["BioMEMS", "microfluidics", "bio-micro/nano systems", "neural engineering"],
+                ),
+                faculty(
+                    "María Coronel", title="Assistant Professor",
+                    url="https://bme.umich.edu/people/coronel-maria/", email="mcoronel@umich.edu",
+                    research_areas="biomaterials, drug delivery, therapeutics, immunoengineering",
+                    keywords=["biomaterials", "drug delivery", "therapeutics", "immunoengineering"],
+                ),
+                faculty(
+                    "Anne Draelos", title="Assistant Professor",
+                    url="https://bme.umich.edu/people/draelos-anne/", email="adraelos@umich.edu",
+                    research_areas="computational modeling, neural engineering, neurological disorders",
+                    keywords=["computational modeling", "neural engineering", "neurological disorders"],
+                ),
+                faculty(
+                    "Xudong (Sherman) Fan", title="Professor",
+                    url="https://bme.umich.edu/people/fan-xudong/", email="xsfan@umich.edu",
+                    research_areas="BioMEMS, microfluidics, bio-micro/nano systems, biomedical imaging",
+                    keywords=["BioMEMS", "microfluidics", "bio-micro/nano systems", "biomedical imaging"],
+                ),
+                faculty(
+                    "Jonathan Fay", title="Associate Professor",
+                    url="https://bme.umich.edu/people/fay-jonathan/", email="jpfay@umich.edu",
+                    research_areas="biomechanics, biomedical innovation, engineering education",
+                    keywords=["biomechanics", "biomedical innovation", "engineering education"],
+                ),
+                faculty(
+                    "C. Alberto Figueroa", title="Professor",
+                    url="https://bme.umich.edu/people/figueroa-c-alberto/", email="figueroc@med.umich.edu",
+                    research_areas="biofluid mechanics, biomechanics, biomedical AI, computational modeling",
+                    keywords=["biofluid mechanics", "biomechanics", "biomedical AI", "computational modeling"],
+                ),
+                faculty(
+                    "James Grotberg", title="Professor",
+                    url="https://bme.umich.edu/people/grotberg-james/", email="grotberg@umich.edu",
+                    research_areas="artificial organs, biofluid mechanics, biomechanics, computational modeling",
+                    keywords=["artificial organs", "biofluid mechanics", "biomechanics", "computational modeling"],
+                ),
+                faculty(
+                    "Karin Jensen", title="Assistant Professor",
+                    url="https://bme.umich.edu/people/jensen-karin/", email="kjens@umich.edu",
+                    research_areas="engineering education",
+                    keywords=["engineering education"],
+                ),
+                faculty(
+                    "Paul Jensen", title="Associate Professor",
+                    url="https://bme.umich.edu/people/jensen-paul/", email="pjens@umich.edu",
+                    research_areas="BioMEMS, microfluidics, biomedical AI, computational modeling",
+                    keywords=["BioMEMS", "microfluidics", "biomedical AI", "computational modeling"],
+                ),
+                faculty(
+                    "David Kohn", title="Professor",
+                    url="https://bme.umich.edu/people/kohn-david/", email="dhkohn@umich.edu",
+                    research_areas="biomaterials, biomechanics, drug delivery, therapeutics",
+                    keywords=["biomaterials", "biomechanics", "drug delivery", "therapeutics"],
+                ),
+                faculty(
+                    "Scott Lempka", title="Associate Professor",
+                    url="https://bme.umich.edu/people/lempka-scott/", email="lempka@umich.edu",
+                    research_areas="computational modeling, neural engineering",
+                    keywords=["computational modeling", "neural engineering"],
+                ),
+                faculty(
+                    "Jiahe Li", title="Assistant Professor",
+                    url="https://bme.umich.edu/people/li-jiahe/", email="jiaheli@umich.edu",
+                    research_areas="bio-micro/nano systems, cancer, drug delivery, therapeutics",
+                    keywords=["bio-micro/nano systems", "cancer", "drug delivery", "therapeutics"],
+                ),
+                faculty(
+                    "Zhongming Liu", title="Associate Professor",
+                    url="https://bme.umich.edu/people/liu-zhongming/", email="zmliu@umich.edu",
+                    research_areas="computational modeling, biomedical imaging, biophotonics, neural engineering",
+                    keywords=["computational modeling", "biomedical imaging", "biophotonics", "neural engineering"],
+                ),
+                faculty(
+                    "Brian Love", title="Professor",
+                    url="https://bme.umich.edu/people/love-brian/", email="bjlove@umich.edu",
+                    research_areas="biomaterials, biomechanics, cardiovascular engineering, molecular & cellular engineering",
+                    keywords=["biomaterials", "biomechanics", "cardiovascular engineering", "molecular & cellular engineering"],
+                ),
+                faculty(
+                    "Chima Maduka", title="Assistant Professor",
+                    url="https://bme.umich.edu/people/chima-maduka-ph-d/", email="madukach@umich.edu",
+                    research_areas="bio-micro/nano systems, cardiovascular engineering, drug delivery, therapeutics",
+                    keywords=["bio-micro/nano systems", "cardiovascular engineering", "drug delivery", "therapeutics"],
+                ),
+                faculty(
+                    "Geeta Mehta", title="Associate Professor",
+                    url="https://bme.umich.edu/people/mehta-geeta/", email="mehtagee@umich.edu",
+                    research_areas="BioMEMS, microfluidics, bio-micro/nano systems, biomaterials",
+                    keywords=["BioMEMS", "microfluidics", "bio-micro/nano systems", "biomaterials"],
+                ),
+                faculty(
+                    "Aaron Morris", title="Assistant Professor",
+                    url="https://bme.umich.edu/people/aaron-morris/", email="aharmorr@umich.edu",
+                    research_areas="bio-micro/nano systems, biomaterials, computational modeling, cancer",
+                    keywords=["bio-micro/nano systems", "biomaterials", "computational modeling", "cancer"],
+                ),
+                faculty(
+                    "Deepak Nagrath", title="Professor",
+                    url="https://bme.umich.edu/people/nagrath-deepak/", email="dnagrath@umich.edu",
+                    research_areas="computational modeling, tissue engineering, biomaterials, regenerative medicine",
+                    keywords=["computational modeling", "tissue engineering", "biomaterials", "regenerative medicine"],
+                ),
+                faculty(
+                    "Douglas Noll", title="Professor",
+                    url="https://bme.umich.edu/people/noll-douglas/", email="dnoll@umich.edu",
+                    research_areas="biomedical imaging, biophotonics, molecular imaging, neurological disorders",
+                    keywords=["biomedical imaging", "biophotonics", "molecular imaging", "neurological disorders"],
+                ),
+                faculty(
+                    "David Nordsletten", title="Professor",
+                    url="https://bme.umich.edu/people/nordsletten-david/", email="nordslet@umich.edu",
+                    research_areas="biofluid mechanics, biomechanics, computational modeling, biomedical imaging",
+                    keywords=["biofluid mechanics", "biomechanics", "computational modeling", "biomedical imaging"],
+                ),
+                faculty(
+                    "Enrico Opri", title="Assistant Professor",
+                    url="https://bme.umich.edu/people/opri-enrico/", email="eopri@umich.edu",
+                    research_areas="computational modeling, neural engineering",
+                    keywords=["computational modeling", "neural engineering"],
+                ),
             ],
         },
         {
@@ -463,6 +717,7 @@ SCHOOL: dict = {
             "name": "Department of Chemistry",
             "majors": ["Chemistry", "Biochemistry", "Chemical Biology"],
             "directory_url": "https://lsa.umich.edu/chem/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/chem/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Melanie Sanford", title="Professor",
@@ -513,6 +768,7 @@ SCHOOL: dict = {
             "name": "Department of Mathematics",
             "majors": ["Mathematics", "Applied Mathematics"],
             "directory_url": "https://lsa.umich.edu/math/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/math/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Mircea Mustata", title="Professor",
@@ -569,6 +825,7 @@ SCHOOL: dict = {
             "name": "Ecology & Evolutionary Biology",
             "majors": ["Ecology and Evolutionary Biology", "Biology", "Environmental Science"],
             "directory_url": "https://lsa.umich.edu/eeb/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/eeb/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Meghan Duffy", title="Professor",
@@ -619,6 +876,7 @@ SCHOOL: dict = {
             "name": "Department of Economics",
             "majors": ["Economics"],
             "directory_url": "https://lsa.umich.edu/econ/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/econ/people/faculty.html", _LSA_SELECTORS),
             "faculty": [
                 faculty(
                     "Justin Wolfers", title="Professor",
@@ -669,6 +927,7 @@ SCHOOL: dict = {
             "name": "Department of Psychology",
             "majors": ["Psychology", "Cognitive Science", "Neuroscience"],
             "directory_url": "https://lsa.umich.edu/psych/people/faculty.html",
+            "scrape": _scrape("https://lsa.umich.edu/psych/people/faculty.html", _LSA_SELECTORS, paginate=_LSA_PAGINATE),
             "faculty": [
                 faculty(
                     "Ethan Kross", title="Professor",
@@ -762,8 +1021,102 @@ SCHOOL: dict = {
                     research_areas="turbulent reacting flow simulation, combustion modeling, rotating detonation engines, scramjet and hypersonic propulsion, gas turbine modeling",
                     keywords=["combustion", "computational fluid dynamics", "propulsion", "turbulence"],
                 ),
+                faculty(
+                    "Dennis Bernstein", title="Professor",
+                    url="https://aero.engin.umich.edu/people/bernstein-dennis/", email="dsbaero@umich.edu",
+                    research_areas="autonomous systems, control systems, sustainable aviation, resilient autonomy",
+                    keywords=["autonomous systems", "control systems", "sustainable aviation", "resilient autonomy"],
+                ),
+                faculty(
+                    "Gökçin Çınar", title="Assistant Professor",
+                    url="https://aero.engin.umich.edu/people/cinar-gokcin/", email="cinar@umich.edu",
+                    research_areas="advanced air mobility, computational engineering, digital engineering, sustainable aviation",
+                    keywords=["advanced air mobility", "computational engineering", "digital engineering", "sustainable aviation"],
+                ),
+                faculty(
+                    "James W. Cutler", title="Professor",
+                    url="https://aero.engin.umich.edu/people/cutler-james-w/", email="jwcutler@umich.edu",
+                    research_areas="autonomous systems, control systems, commercial space, space systems",
+                    keywords=["autonomous systems", "control systems", "commercial space", "space systems"],
+                ),
+                faculty(
+                    "Giusy Falcone", title="Assistant Professor",
+                    url="https://aero.engin.umich.edu/people/falcone-giusy/", email="falconeg@umich.edu",
+                    research_areas="autonomous systems, control systems, commercial space, resilient autonomy",
+                    keywords=["autonomous systems", "control systems", "commercial space", "resilient autonomy"],
+                ),
+                faculty(
+                    "Mirko Gamba", title="Professor",
+                    url="https://aero.engin.umich.edu/people/gamba-mirko/", email="mirkog@umich.edu",
+                    research_areas="aerodynamics, propulsion, commercial space, sustainable aviation",
+                    keywords=["aerodynamics", "propulsion", "commercial space", "sustainable aviation"],
+                ),
+                faculty(
+                    "Alex Gorodetsky", title="Associate Professor",
+                    url="https://aero.engin.umich.edu/people/gorodetsky-alex/", email="goroda@umich.edu",
+                    research_areas="autonomous systems, control systems, computational engineering, digital engineering",
+                    keywords=["autonomous systems", "control systems", "computational engineering", "digital engineering"],
+                ),
+                faculty(
+                    "Nakhiah Goulbourne", title="Associate Professor",
+                    url="https://aero.engin.umich.edu/people/goulbourne-nakhiah/", email="ngbourne@umich.edu",
+                    research_areas="aerospace structures, materials",
+                    keywords=["aerospace structures", "materials"],
+                ),
+                faculty(
+                    "George F. Halow", title="Professor",
+                    url="https://aero.engin.umich.edu/people/halow-george-f/", email="gfhalow@umich.edu",
+                    research_areas="digital engineering, sustainable aviation",
+                    keywords=["digital engineering", "sustainable aviation"],
+                ),
+                faculty(
+                    "Daniel J. Inman", title="Professor",
+                    url="https://aero.engin.umich.edu/people/inman-daniel-j/", email="daninman@umich.edu",
+                    research_areas="advanced air mobility, aerospace structures, materials",
+                    keywords=["advanced air mobility", "aerospace structures", "materials"],
+                ),
+                faculty(
+                    "Jean-Baptiste Jeannin", title="Associate Professor",
+                    url="https://aero.engin.umich.edu/people/jeannin-jean-baptiste/", email="jeannin@umich.edu",
+                    research_areas="autonomous systems, control systems, computational engineering",
+                    keywords=["autonomous systems", "control systems", "computational engineering"],
+                ),
+                faculty(
+                    "Oliver Jia-Richards", title="Assistant Professor",
+                    url="https://aero.engin.umich.edu/people/jia-richards-oliver/", email="oliverjr@umich.edu",
+                    research_areas="aerodynamics, propulsion, autonomous systems, control systems",
+                    keywords=["aerodynamics", "propulsion", "autonomous systems", "control systems"],
+                ),
+                faculty(
+                    "Aaron W. Johnson", title="Assistant Professor",
+                    url="https://aero.engin.umich.edu/people/johnson-aaron-w/", email="aaronwj@umich.edu",
+                    research_areas="commercial space, space systems",
+                    keywords=["commercial space", "space systems"],
+                ),
             ],
         },
+        _lsa("AMCULT", "Department of American Culture", ['American Culture', 'Ethnic Studies'], "ac"),
+        _lsa("ANTHRO", "Department of Anthropology", ['Anthropology'], "anthro"),
+        _lsa("APHYS", "Applied Physics Program", ['Applied Physics', 'Physics'], "appliedphysics"),
+        _lsa("ALC", "Department of Asian Languages & Cultures", ['Asian Studies', 'Asian Languages'], "asian"),
+        _lsa("COMPLIT", "Department of Comparative Literature", ['Comparative Literature'], "complit"),
+        _lsa("EARTH", "Department of Earth & Environmental Sciences", ['Earth Science', 'Environmental Science', 'Geology'], "earth"),
+        _lsa("ENGLISH", "Department of English Language & Literature", ['English', 'Creative Writing'], "english"),
+        _lsa("FTVM", "Department of Film, Television & Media", ['Film & Media Studies'], "ftvm"),
+        _lsa("GERMAN", "Department of Germanic Languages & Literatures", ['German'], "german"),
+        _lsa("HISTART", "Department of the History of Art", ['History of Art'], "histart"),
+        _lsa("HISTORY", "Department of History", ['History'], "history"),
+        _lsa("JUDAIC", "Frankel Center for Judaic Studies", ['Judaic Studies'], "judaic"),
+        _lsa("LING", "Department of Linguistics", ['Linguistics'], "linguistics"),
+        _lsa("MIDEAST", "Department of Middle East Studies", ['Middle East Studies'], "middleeast"),
+        _lsa("NATIVEAM", "Native American Studies", ['Native American Studies'], "native"),
+        _lsa("NEUROSCI", "Neuroscience Program", ['Neuroscience'], "neurosci"),
+        _lsa("ORGSTUDIES", "Organizational Studies Program", ['Organizational Studies'], "orgstudies"),
+        _lsa("PHIL", "Department of Philosophy", ['Philosophy'], "philosophy"),
+        _lsa("POLISCI", "Department of Political Science", ['Political Science', 'Public Policy'], "polisci"),
+        _lsa("RLL", "Department of Romance Languages & Literatures", ['Spanish', 'French', 'Italian', 'Romance Languages'], "rll"),
+        _lsa("SLAVIC", "Department of Slavic Languages & Literatures", ['Slavic Studies', 'Russian'], "slavic"),
+        _lsa("SOC", "Department of Sociology", ['Sociology'], "soc"),
     ],
 }
 

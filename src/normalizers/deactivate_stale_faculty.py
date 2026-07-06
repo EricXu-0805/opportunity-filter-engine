@@ -98,10 +98,22 @@ FACULTY_SOURCES = frozenset({
     "wisc_faculty",
     # UCLA — WordPress-REST faculty (single source across depts).
     "ucla_faculty",
+    # UChicago — live-scraped + curated-API faculty (single source across depts).
+    "uchicago_faculty",
     # Princeton — live-scraped faculty (central-Drupal person-card grid).
     "princeton_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
+    # Purdue — server-rendered faculty (single source across depts).
+    "purdue_faculty",
+    # Duke — render-mode Pratt engineering faculty (single source across depts).
+    "duke_faculty",
+    # UC Irvine — live-scraped faculty (single source across depts).
+    "uci_faculty",
+    # UC Santa Barbara — live-scraped faculty (single source across depts).
+    "ucsb_faculty",
+    # CU Boulder — live-scraped faculty via CU Experts/VIVO (single source).
+    "boulder_faculty",
 })
 
 GRACE_DAYS = 14

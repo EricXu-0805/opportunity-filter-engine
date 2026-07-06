@@ -93,6 +93,7 @@ export function hashProfile(profile: {
   seeking_types?: string[];
   search_weight?: number;
   home_school?: string;
+  include_cross_school?: boolean;
 }): string {
   const key = JSON.stringify({
     major: profile.major,
@@ -106,6 +107,8 @@ export function hashProfile(profile: {
     // Switching home school changes the backend's candidate pool — the
     // cached match set must miss, not serve the previous school's results.
     home: profile.home_school ?? 'uiuc',
+    // Same reason: flipping the cross-school toggle changes the pool.
+    cross: profile.include_cross_school ?? false,
   });
   let h = 0;
   for (let i = 0; i < key.length; i++) {

@@ -3,8 +3,10 @@ Refresh all opportunity data sources.
 Runs enabled collectors, merges results, and prints a summary.
 
 Usage:
-    python -m src.collectors.refresh_all              # refresh all sources
-    python -m src.collectors.refresh_all --no-deep    # skip deep scraping
+    python -m src.collectors.refresh_all                    # refresh all sources
+    python -m src.collectors.refresh_all --no-deep          # skip deep scraping
+    python -m src.collectors.refresh_all --schools uw,wisc  # only those schools' collectors
+    python -m src.collectors.refresh_all --national         # only school-less sources
 """
 
 import json
@@ -15,7 +17,7 @@ from pathlib import Path
 
 from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate_stale_faculty
-from src.normalizers.school_audience import apply_school_audience
+from src.normalizers.school_audience import SOURCE_DEFAULTS, apply_school_audience
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
 from .campus_graph import fetch_and_normalize as fetch_campus_graph
@@ -24,14 +26,26 @@ from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
+from .schools.boulder_faculty import fetch_and_normalize as fetch_boulder_faculty
+from .schools.boulder_faculty import merge_into_processed as merge_boulder_faculty
+from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
+from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
 from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
+from .schools.purdue_faculty import fetch_and_normalize as fetch_purdue_faculty
+from .schools.purdue_faculty import merge_into_processed as merge_purdue_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
+from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
+from .schools.uchicago_faculty import merge_into_processed as merge_uchicago_faculty
+from .schools.uci_faculty import fetch_and_normalize as fetch_uci_faculty
+from .schools.uci_faculty import merge_into_processed as merge_uci_faculty
 from .schools.ucla_faculty import fetch_and_normalize as fetch_ucla_faculty
 from .schools.ucla_faculty import merge_into_processed as merge_ucla_faculty
+from .schools.ucsb_faculty import fetch_and_normalize as fetch_ucsb_faculty
+from .schools.ucsb_faculty import merge_into_processed as merge_ucsb_faculty
 from .schools.ucsd_faculty import fetch_and_normalize as fetch_ucsd_faculty
 from .schools.ucsd_faculty import merge_into_processed as merge_ucsd_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
@@ -110,7 +124,11 @@ from .ucb_urap_projects import fetch_and_normalize as fetch_ucb_urap_projects
 from .ucb_urap_projects import merge_into_processed as merge_ucb_urap_projects
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
-from .uiuc_faculty import _null_shared_admin_emails
+from .uiuc_faculty import (
+    _null_shared_admin_emails,
+    _null_unit_inbox_emails,
+    _strip_furniture_keywords,
+)
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
 from .uiuc_faculty import missing_departments as faculty_missing_departments
@@ -144,7 +162,7 @@ def _trim_history_to_max(path: Path, max_entries: int) -> None:
     """Drop the oldest entries when the JSONL grows past ``max_entries``.
 
     Cheap line-count + slice rewrite — collector_status_history.jsonl is
-    written ~2x/week so this never crosses 200KB. Idempotent.
+    written 1x/day so this never crosses 200KB. Idempotent.
     """
     try:
         with path.open("r", encoding="utf-8") as f:
@@ -165,9 +183,9 @@ def write_status(summary: dict) -> None:
       * ``collector_status.json`` — overwritten each run, contains the
         latest snapshot. The ``/admin/collector-status`` endpoint reads this.
       * ``collector_status_history.jsonl`` — append-only log capped at
-        ``STATUS_HISTORY_MAX_ENTRIES`` rows (~2 years at Mon/Thu cadence).
-        The ``/admin/collector-status/history`` endpoint reads this for
-        the per-source freshness trend chart.
+        ``STATUS_HISTORY_MAX_ENTRIES`` rows (~6 months at the daily shard
+        cadence). The ``/admin/collector-status/history`` endpoint reads
+        this for the per-source freshness trend chart.
     """
     try:
         STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -202,11 +220,36 @@ def write_status(summary: dict) -> None:
         logger.warning("Failed to append collector status history: %s", e)
 
 
-def refresh_all(deep: bool = True) -> dict:
-    """Run all enabled collectors and merge results.
+def refresh_all(deep: bool = True, schools: set[str] | None = None,
+                national: bool = False) -> dict:
+    """Run enabled collectors and merge results.
+
+    ``schools`` shards the run to collectors belonging to those school slugs;
+    ``national`` selects the school-less sources (SRO catalog, NSF REU,
+    Simplify). Neither flag = full run. Skipped collectors write NOTHING into
+    ``summary["sources"]`` — deactivate_stale_faculty only considers sources
+    reporting "ok" in this run's summary, so a shard run provably cannot
+    deactivate another school's records.
 
     Returns a summary dict with counts per source and totals.
     """
+    if schools is not None:
+        if not schools:
+            raise ValueError("schools shard must name at least one school slug")
+        known = {school for school, _ in SOURCE_DEFAULTS.values() if school}
+        unknown = set(schools) - known
+        if unknown:
+            raise ValueError(
+                f"unknown school slug(s): {sorted(unknown)}; known: {sorted(known)}")
+    sharded = national or schools is not None
+
+    def selected(school: str | None) -> bool:
+        if not sharded:
+            return True
+        if school is None:
+            return national
+        return schools is not None and school in schools
+
     summary = {
         "timestamp": datetime.now(UTC).replace(tzinfo=None).isoformat(),
         "sources": {},
@@ -214,172 +257,181 @@ def refresh_all(deep: bool = True) -> dict:
         "total_updated": 0,
         "total_in_file": 0,
     }
+    if sharded:
+        summary["shard"] = {"schools": sorted(schools or []), "national": national}
 
     # 1. OUR RSS feed
-    logger.info("=" * 50)
-    logger.info("Collecting from UIUC OUR RSS feed...")
-    try:
-        rss_opps = fetch_rss()
-        added, updated = merge_rss(rss_opps)
-        summary["sources"]["uiuc_our_rss"] = {
-            "fetched": len(rss_opps),
-            "new": added,
-            "updated": updated,
-            "status": "ok",
-        }
-        summary["total_new"] += added
-        summary["total_updated"] += updated
-        logger.info(f"RSS: {len(rss_opps)} fetched, {added} new, {updated} updated")
-    except Exception as e:
-        logger.error(f"RSS collection failed: {e}")
-        summary["sources"]["uiuc_our_rss"] = {"status": "error", "error": str(e)}
+    if selected("uiuc"):
+        logger.info("=" * 50)
+        logger.info("Collecting from UIUC OUR RSS feed...")
+        try:
+            rss_opps = fetch_rss()
+            added, updated = merge_rss(rss_opps)
+            summary["sources"]["uiuc_our_rss"] = {
+                "fetched": len(rss_opps),
+                "new": added,
+                "updated": updated,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(f"RSS: {len(rss_opps)} fetched, {added} new, {updated} updated")
+        except Exception as e:
+            logger.error(f"RSS collection failed: {e}")
+            summary["sources"]["uiuc_our_rss"] = {"status": "error", "error": str(e)}
 
-    # 2. SRO database (with optional deep scraping)
-    logger.info("=" * 50)
-    logger.info(f"Collecting from UIUC SRO database (deep={deep})...")
-    try:
-        sro_opps = fetch_sro(deep=deep)
-        added, updated = merge_sro(sro_opps)
-        summary["sources"]["uiuc_sro"] = {
-            "fetched": len(sro_opps),
-            "new": added,
-            "updated": updated,
-            "deep": deep,
-            "status": "ok",
-        }
-        summary["total_new"] += added
-        summary["total_updated"] += updated
-        logger.info(f"SRO: {len(sro_opps)} fetched, {added} new, {updated} updated")
-    except Exception as e:
-        logger.error(f"SRO collection failed: {e}")
-        summary["sources"]["uiuc_sro"] = {"status": "error", "error": str(e)}
+    # 2. SRO database (with optional deep scraping). National: it catalogs
+    # external programs hosted elsewhere (school=None in SOURCE_DEFAULTS).
+    if selected(None):
+        logger.info("=" * 50)
+        logger.info(f"Collecting from UIUC SRO database (deep={deep})...")
+        try:
+            sro_opps = fetch_sro(deep=deep)
+            added, updated = merge_sro(sro_opps)
+            summary["sources"]["uiuc_sro"] = {
+                "fetched": len(sro_opps),
+                "new": added,
+                "updated": updated,
+                "deep": deep,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(f"SRO: {len(sro_opps)} fetched, {added} new, {updated} updated")
+        except Exception as e:
+            logger.error(f"SRO collection failed: {e}")
+            summary["sources"]["uiuc_sro"] = {"status": "error", "error": str(e)}
 
-    # 3. NSF REU database
-    logger.info("=" * 50)
-    logger.info("Collecting from NSF REU Awards API...")
-    try:
-        reu_opps = fetch_reu(max_results=500)
-        added, updated = merge_reu(reu_opps)
-        summary["sources"]["nsf_reu"] = {
-            "fetched": len(reu_opps),
-            "new": added,
-            "updated": updated,
-            "status": "ok",
-        }
-        summary["total_new"] += added
-        summary["total_updated"] += updated
-        logger.info(f"NSF REU: {len(reu_opps)} fetched, {added} new, {updated} updated")
-    except Exception as e:
-        logger.error(f"NSF REU collection failed: {e}")
-        summary["sources"]["nsf_reu"] = {"status": "error", "error": str(e)}
+    # 3. NSF REU database (national)
+    if selected(None):
+        logger.info("=" * 50)
+        logger.info("Collecting from NSF REU Awards API...")
+        try:
+            reu_opps = fetch_reu(max_results=500)
+            added, updated = merge_reu(reu_opps)
+            summary["sources"]["nsf_reu"] = {
+                "fetched": len(reu_opps),
+                "new": added,
+                "updated": updated,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(f"NSF REU: {len(reu_opps)} fetched, {added} new, {updated} updated")
+        except Exception as e:
+            logger.error(f"NSF REU collection failed: {e}")
+            summary["sources"]["nsf_reu"] = {"status": "error", "error": str(e)}
 
     # 4. UIUC Faculty directories
-    logger.info("=" * 50)
-    logger.info("Collecting from UIUC Faculty directories...")
-    try:
-        faculty_opps = fetch_faculty(enrich=deep)
-        # The 4 ACES departments (Animal Sci, Crop Sci, NRES, FSHN) render their
-        # directory via Drupal Views AJAX, so the static scraper misses them;
-        # uiuc_js_faculty drives headless Chromium to recover them. Its records
-        # share source='uiuc_faculty', so they merge into the same source and its
-        # count is folded into the fetched total that gates deactivate_stale_faculty
-        # — otherwise those ~152 professors are retired as "absent from re-scrape".
-        # Browser-backed, so deep mode only; Playwright is imported lazily and
-        # yields [] when Chromium is unavailable — logged as an error so a silent
-        # failure is caught before the grace window retires them.
-        js_opps: list[dict] = []
-        if deep:
-            try:
-                js_opps = fetch_js_faculty()
-                if not js_opps:
-                    logger.error(
-                        "UIUC JS faculty scrape yielded 0 records — Playwright/Chromium "
-                        "missing or directory layout changed; the 4 ACES departments will "
-                        "be deactivated once their last_seen_at passes the grace window"
-                    )
-            except Exception as e:
-                logger.error(f"UIUC JS faculty collection failed: {e}")
-        # AHS, School of Social Work, and Gies publish their directories as
-        # paginated JSON APIs (no per-profile HTML fetch). uiuc_json_faculty
-        # returns ~430 faculty; like js_opps these share source='uiuc_faculty',
-        # so they fold into the same merge + fetched count that gates
-        # deactivate_stale_faculty — otherwise they'd be retired as "absent from
-        # re-scrape". Cheap + reliable but grouped with the deep faculty work.
-        json_opps: list[dict] = []
-        if deep:
-            try:
-                json_opps = fetch_json_faculty()
-                if not json_opps:
-                    logger.error(
-                        "UIUC JSON faculty scrape yielded 0 records — campus directory "
-                        "APIs unreachable or schema changed; AHS/Social Work/Gies faculty "
-                        "will be deactivated once their last_seen_at passes the grace window"
-                    )
-            except Exception as e:
-                logger.error(f"UIUC JSON faculty collection failed: {e}")
-        # Carle Medicine, College of Law, and LER have HTML directories the JSON
-        # APIs don't cover (Law + LER enrich email per profile). Same
-        # source='uiuc_faculty' contract as js/json, so folded into the same
-        # merge + fetched count gating deactivate_stale_faculty.
-        html_opps: list[dict] = []
-        if deep:
-            try:
-                html_opps = fetch_html_faculty()
-                if not html_opps:
-                    logger.error(
-                        "UIUC HTML faculty scrape yielded 0 records — Carle/Law/LER "
-                        "directory layout changed; those faculty will be deactivated "
-                        "once their last_seen_at passes the grace window"
-                    )
-            except Exception as e:
-                logger.error(f"UIUC HTML faculty collection failed: {e}")
-        all_faculty = faculty_opps + js_opps + json_opps + html_opps
-        added, updated = merge_faculty(all_faculty)
-        # Surface the silent-scrape-failure class (a declared department whose
-        # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
-        # bare warning is invisible in the run log, so list empties in the
-        # summary and ERROR-log each so the refresh's audit file flags it.
-        # (Checked against the static DEPARTMENTS only; the JS depts aren't in it.)
-        empty_depts = faculty_missing_departments(faculty_opps)
-        for dept in empty_depts:
-            logger.error(
-                "UIUC faculty department scraped ZERO records — likely URL rot / "
-                f"directory layout change (silent failure): {dept}"
+    if selected("uiuc"):
+        logger.info("=" * 50)
+        logger.info("Collecting from UIUC Faculty directories...")
+        try:
+            faculty_opps = fetch_faculty(enrich=deep)
+            # The 4 ACES departments (Animal Sci, Crop Sci, NRES, FSHN) render their
+            # directory via Drupal Views AJAX, so the static scraper misses them;
+            # uiuc_js_faculty drives headless Chromium to recover them. Its records
+            # share source='uiuc_faculty', so they merge into the same source and its
+            # count is folded into the fetched total that gates deactivate_stale_faculty
+            # — otherwise those ~152 professors are retired as "absent from re-scrape".
+            # Browser-backed, so deep mode only; Playwright is imported lazily and
+            # yields [] when Chromium is unavailable — logged as an error so a silent
+            # failure is caught before the grace window retires them.
+            js_opps: list[dict] = []
+            if deep:
+                try:
+                    js_opps = fetch_js_faculty()
+                    if not js_opps:
+                        logger.error(
+                            "UIUC JS faculty scrape yielded 0 records — Playwright/Chromium "
+                            "missing or directory layout changed; the 4 ACES departments will "
+                            "be deactivated once their last_seen_at passes the grace window"
+                        )
+                except Exception as e:
+                    logger.error(f"UIUC JS faculty collection failed: {e}")
+            # AHS, School of Social Work, and Gies publish their directories as
+            # paginated JSON APIs (no per-profile HTML fetch). uiuc_json_faculty
+            # returns ~430 faculty; like js_opps these share source='uiuc_faculty',
+            # so they fold into the same merge + fetched count that gates
+            # deactivate_stale_faculty — otherwise they'd be retired as "absent from
+            # re-scrape". Cheap + reliable but grouped with the deep faculty work.
+            json_opps: list[dict] = []
+            if deep:
+                try:
+                    json_opps = fetch_json_faculty()
+                    if not json_opps:
+                        logger.error(
+                            "UIUC JSON faculty scrape yielded 0 records — campus directory "
+                            "APIs unreachable or schema changed; AHS/Social Work/Gies faculty "
+                            "will be deactivated once their last_seen_at passes the grace window"
+                        )
+                except Exception as e:
+                    logger.error(f"UIUC JSON faculty collection failed: {e}")
+            # Carle Medicine, College of Law, and LER have HTML directories the JSON
+            # APIs don't cover (Law + LER enrich email per profile). Same
+            # source='uiuc_faculty' contract as js/json, so folded into the same
+            # merge + fetched count gating deactivate_stale_faculty.
+            html_opps: list[dict] = []
+            if deep:
+                try:
+                    html_opps = fetch_html_faculty()
+                    if not html_opps:
+                        logger.error(
+                            "UIUC HTML faculty scrape yielded 0 records — Carle/Law/LER "
+                            "directory layout changed; those faculty will be deactivated "
+                            "once their last_seen_at passes the grace window"
+                        )
+                except Exception as e:
+                    logger.error(f"UIUC HTML faculty collection failed: {e}")
+            all_faculty = faculty_opps + js_opps + json_opps + html_opps
+            added, updated = merge_faculty(all_faculty)
+            # Surface the silent-scrape-failure class (a declared department whose
+            # directory URL rotted and now scrapes 0 — see uiuc_faculty.matse). A
+            # bare warning is invisible in the run log, so list empties in the
+            # summary and ERROR-log each so the refresh's audit file flags it.
+            # (Checked against the static DEPARTMENTS only; the JS depts aren't in it.)
+            empty_depts = faculty_missing_departments(faculty_opps)
+            for dept in empty_depts:
+                logger.error(
+                    "UIUC faculty department scraped ZERO records — likely URL rot / "
+                    f"directory layout change (silent failure): {dept}"
+                )
+            summary["sources"]["uiuc_faculty"] = {
+                "fetched": len(all_faculty),
+                "js_fetched": len(js_opps),
+                "json_fetched": len(json_opps),
+                "html_fetched": len(html_opps),
+                "new": added,
+                "updated": updated,
+                "enriched": deep,
+                "empty_departments": empty_depts,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(
+                f"Faculty: {len(all_faculty)} fetched "
+                f"({len(faculty_opps)} static + {len(js_opps)} JS-rendered "
+                f"+ {len(json_opps)} JSON-API + {len(html_opps)} HTML-dir), "
+                f"{added} new, {updated} updated"
             )
-        summary["sources"]["uiuc_faculty"] = {
-            "fetched": len(all_faculty),
-            "js_fetched": len(js_opps),
-            "json_fetched": len(json_opps),
-            "html_fetched": len(html_opps),
-            "new": added,
-            "updated": updated,
-            "enriched": deep,
-            "empty_departments": empty_depts,
-            "status": "ok",
-        }
-        summary["total_new"] += added
-        summary["total_updated"] += updated
-        logger.info(
-            f"Faculty: {len(all_faculty)} fetched "
-            f"({len(faculty_opps)} static + {len(js_opps)} JS-rendered "
-            f"+ {len(json_opps)} JSON-API + {len(html_opps)} HTML-dir), "
-            f"{added} new, {updated} updated"
-        )
-    except Exception as e:
-        logger.error(f"Faculty collection failed: {e}")
-        summary["sources"]["uiuc_faculty"] = {"status": "error", "error": str(e)}
+        except Exception as e:
+            logger.error(f"Faculty collection failed: {e}")
+            summary["sources"]["uiuc_faculty"] = {"status": "error", "error": str(e)}
 
     # 5. Small-list collectors (URAP, URSA, DRP, Siebel program overviews).
     # ucb_urap emits one static overview record with no network call, so it is
     # safe in quick mode alongside the UIUC small lists.
-    for source_name, fetch_fn, merge_fn in [
-        ("uiuc_urap", fetch_urap, merge_urap),
-        ("uiuc_ursa", fetch_ursa, merge_ursa),
-        ("uiuc_drp", fetch_drp, merge_drp),
-        ("uiuc_siebel", fetch_siebel, merge_siebel),
-        ("uiuc_other", fetch_other, merge_other),
-        ("ucb_urap", fetch_ucb_urap, merge_ucb_urap),
+    for source_name, fetch_fn, merge_fn, school in [
+        ("uiuc_urap", fetch_urap, merge_urap, "uiuc"),
+        ("uiuc_ursa", fetch_ursa, merge_ursa, "uiuc"),
+        ("uiuc_drp", fetch_drp, merge_drp, "uiuc"),
+        ("uiuc_siebel", fetch_siebel, merge_siebel, "uiuc"),
+        ("uiuc_other", fetch_other, merge_other, "uiuc"),
+        ("ucb_urap", fetch_ucb_urap, merge_ucb_urap, "ucb"),
     ]:
+        if not selected(school):
+            continue
         logger.info("=" * 50)
         logger.info(f"Collecting from {source_name}...")
         try:
@@ -402,24 +454,25 @@ def refresh_all(deep: bool = True) -> dict:
     # department pages, career boards, lab recruiting). The curated seed layer
     # runs unconditionally (no network); the keyword-prioritized BFS crawl that
     # refines status and discovers extra postings only runs in deep mode.
-    logger.info("=" * 50)
-    logger.info(f"Collecting from UC Berkeley campus sources (deep={deep})...")
-    try:
-        campus_opps = fetch_ucb_campus(deep=deep)
-        added, updated = merge_ucb_campus(campus_opps)
-        summary["sources"]["ucb_campus"] = {
-            "fetched": len(campus_opps),
-            "new": added,
-            "updated": updated,
-            "deep": deep,
-            "status": "ok",
-        }
-        summary["total_new"] += added
-        summary["total_updated"] += updated
-        logger.info(f"UCB campus: {len(campus_opps)} fetched, {added} new, {updated} updated")
-    except Exception as e:
-        logger.error(f"UCB campus collection failed: {e}")
-        summary["sources"]["ucb_campus"] = {"status": "error", "error": str(e)}
+    if selected("ucb"):
+        logger.info("=" * 50)
+        logger.info(f"Collecting from UC Berkeley campus sources (deep={deep})...")
+        try:
+            campus_opps = fetch_ucb_campus(deep=deep)
+            added, updated = merge_ucb_campus(campus_opps)
+            summary["sources"]["ucb_campus"] = {
+                "fetched": len(campus_opps),
+                "new": added,
+                "updated": updated,
+                "deep": deep,
+                "status": "ok",
+            }
+            summary["total_new"] += added
+            summary["total_updated"] += updated
+            logger.info(f"UCB campus: {len(campus_opps)} fetched, {added} new, {updated} updated")
+        except Exception as e:
+            logger.error(f"UCB campus collection failed: {e}")
+            summary["sources"]["ucb_campus"] = {"status": "error", "error": str(e)}
 
     # 5a-ii. Generic campus-graph schools (US-News Top-50 rollout). Same model
     # as ucb_campus — curated seed layer runs unconditionally (no network), the
@@ -432,6 +485,8 @@ def refresh_all(deep: bool = True) -> dict:
     logger.info(f"Collecting from campus-graph schools (n={len(SCHOOL_CONFIGS)}, deep={deep})...")
     for school_cfg in SCHOOL_CONFIGS:
         slug = school_cfg.get("school_slug", "unknown")
+        if not selected(slug):
+            continue
         try:
             school_opps = fetch_campus_graph(school_cfg, deep=deep)
             added, updated = merge_campus_graph(school_opps)
@@ -560,7 +615,34 @@ def refresh_all(deep: bool = True) -> dict:
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).
             ("ucsd_faculty", fetch_ucsd_faculty, merge_ucsd_faculty),
+            # Purdue faculty (server-rendered via faculty_graph): Computer Science.
+            ("purdue_faculty", fetch_purdue_faculty, merge_purdue_faculty),
+            # Duke faculty (render-mode via faculty_graph): Pratt School of
+            # Engineering (ECE/BME/MEMS/CEE), rich .faculty-overview cards.
+            ("duke_faculty", fetch_duke_faculty, merge_duke_faculty),
+            # UChicago faculty (via faculty_graph): 8 live-scraped directories
+            # (CS/Stat/Math/Physics/Astro/Econ/Psych/PME) + 6 curated API-dump
+            # departments (Chemistry + the five BSD sites, JS-only shells).
+            ("uchicago_faculty", fetch_uchicago_faculty, merge_uchicago_faculty),
+            # UC Irvine faculty (live-scraped via faculty_graph): Samueli
+            # Engineering (shared Drupal-7 selectors), Physical Sciences, the
+            # social-science DataTable, Social Ecology, Economics, and the Bio
+            # WordPress-REST roster (22 departments).
+            ("uci_faculty", fetch_uci_faculty, merge_uci_faculty),
+            # UC Santa Barbara faculty (live-scraped via faculty_graph): all
+            # Drupal (SiteFarm) in five Views card families across Engineering,
+            # the sciences, social sciences, and Bren (18 departments).
+            ("ucsb_faculty", fetch_ucsb_faculty, merge_ucsb_faculty),
+            # CU Boulder faculty (live-scraped via faculty_graph): one VIVO
+            # template (experts.colorado.edu dept pages) across 51 departments;
+            # research chips + emails ride the gated per-profile pass.
+            ("boulder_faculty", fetch_boulder_faculty, merge_boulder_faculty),
         ]:
+            # Direct SOURCE_DEFAULTS index: an unregistered source must fail
+            # loudly here (KeyError) rather than silently run outside the shard
+            # scoping — the registration tests run this loop stubbed.
+            if not selected(SOURCE_DEFAULTS[source_name][0]):
+                continue
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")
             try:
@@ -585,48 +667,52 @@ def refresh_all(deep: bool = True) -> dict:
         # plus the status=Closed archive (~860 past projects, seeded as
         # non-actionable references). The merge leaves the corpus untouched on
         # an empty scrape.
+        if selected("ucb"):
+            logger.info("=" * 50)
+            logger.info("Collecting from UC Berkeley URAP project database...")
+            try:
+                urap_proj = fetch_ucb_urap_projects(status="Open")
+                urap_proj += fetch_ucb_urap_projects(status="Closed")
+                added, updated = merge_ucb_urap_projects(urap_proj)
+                summary["sources"]["ucb_urap_projects"] = {
+                    "fetched": len(urap_proj),
+                    "new": added,
+                    "updated": updated,
+                    "status": "ok",
+                }
+                summary["total_new"] += added
+                summary["total_updated"] += updated
+                logger.info(f"URAP projects: {len(urap_proj)} fetched, {added} new, {updated} updated")
+            except Exception as e:
+                logger.error(f"URAP projects collection failed: {e}")
+                summary["sources"]["ucb_urap_projects"] = {"status": "error", "error": str(e)}
+
+    # 5c. SimplifyJobs internships (autonomous GitHub raw fetch — no auth).
+    # National source; when skipped, simplify_ok stays False so the
+    # deactivate_simplify_stale pass below cannot run on a shard day.
+    simplify_active_ids: set[str] = set()
+    simplify_ok = False
+    if selected(None):
         logger.info("=" * 50)
-        logger.info("Collecting from UC Berkeley URAP project database...")
+        logger.info("Collecting from SimplifyJobs internships...")
         try:
-            urap_proj = fetch_ucb_urap_projects(status="Open")
-            urap_proj += fetch_ucb_urap_projects(status="Closed")
-            added, updated = merge_ucb_urap_projects(urap_proj)
-            summary["sources"]["ucb_urap_projects"] = {
-                "fetched": len(urap_proj),
+            simplify_opps = fetch_simplify()
+            if simplify_opps:
+                simplify_active_ids = {o["id"] for o in simplify_opps}
+                simplify_ok = True
+            added, updated = merge_simplify(simplify_opps)
+            summary["sources"]["simplify_internships"] = {
+                "fetched": len(simplify_opps),
                 "new": added,
                 "updated": updated,
                 "status": "ok",
             }
             summary["total_new"] += added
             summary["total_updated"] += updated
-            logger.info(f"URAP projects: {len(urap_proj)} fetched, {added} new, {updated} updated")
+            logger.info(f"Simplify: {len(simplify_opps)} fetched, {added} new, {updated} updated")
         except Exception as e:
-            logger.error(f"URAP projects collection failed: {e}")
-            summary["sources"]["ucb_urap_projects"] = {"status": "error", "error": str(e)}
-
-    # 5c. SimplifyJobs internships (autonomous GitHub raw fetch — no auth)
-    logger.info("=" * 50)
-    logger.info("Collecting from SimplifyJobs internships...")
-    simplify_active_ids: set[str] = set()
-    simplify_ok = False
-    try:
-        simplify_opps = fetch_simplify()
-        if simplify_opps:
-            simplify_active_ids = {o["id"] for o in simplify_opps}
-            simplify_ok = True
-        added, updated = merge_simplify(simplify_opps)
-        summary["sources"]["simplify_internships"] = {
-            "fetched": len(simplify_opps),
-            "new": added,
-            "updated": updated,
-            "status": "ok",
-        }
-        summary["total_new"] += added
-        summary["total_updated"] += updated
-        logger.info(f"Simplify: {len(simplify_opps)} fetched, {added} new, {updated} updated")
-    except Exception as e:
-        logger.error(f"Simplify internships collection failed: {e}")
-        summary["sources"]["simplify_internships"] = {"status": "error", "error": str(e)}
+            logger.error(f"Simplify internships collection failed: {e}")
+            summary["sources"]["simplify_internships"] = {"status": "error", "error": str(e)}
 
     # 6. PI enrichment pass
     logger.info("=" * 50)
@@ -635,23 +721,56 @@ def refresh_all(deep: bool = True) -> dict:
         with open(PROCESSED_FILE, encoding="utf-8") as f:
             all_opps = json.load(f)
 
-        pi_stats = enrich_pi(all_opps, save=True)
+        # max_scrapes: with the enricher now covering every school's faculty the
+        # missing-email backlog is ~9k profile pages; at DELAY=2s an uncapped run
+        # is ~7h — past the GitHub Actions 6h job limit. 1000 pages ≈ 45 min per
+        # run; successes stop being re-scraped, so the budget window advances
+        # through the backlog run over run.
+        #
+        # Sharded runs scope the pool to the shard's schools (school fallback
+        # mirrors pi_enricher._school_domains: fresh records aren't stamped
+        # until apply_school_audience later in this block) and pass save=False:
+        # enrich_pi(save=True) writes its INPUT list to PROCESSED_FILE, so a
+        # subset would truncate the corpus. The pool holds references into
+        # all_opps, and this block's final write persists the enrichment.
+        if sharded:
+            pi_pool = [
+                o for o in all_opps
+                if selected(o.get("school")
+                            or SOURCE_DEFAULTS.get(o.get("source") or "", (None, ""))[0])
+            ]
+        else:
+            pi_pool = all_opps
+        pi_stats = enrich_pi(pi_pool, save=not sharded, max_scrapes=1000)
         summary["sources"]["pi_enricher"] = {
             "scraped": pi_stats["scraped"],
             "enriched": pi_stats["enriched"],
             "already_had": pi_stats["already_has_email"],
+            "skipped_budget": pi_stats["skipped_budget"],
             "status": "ok",
         }
-        logger.info(f"PI enricher: {pi_stats['enriched']} new emails found")
+        logger.info(
+            f"PI enricher: {pi_stats['enriched']} new emails found "
+            f"({pi_stats['skipped_budget']} left for next run by the scrape budget)")
 
         # The PI enricher re-scrapes profile pages for records still missing a
         # contact email and can re-attach a shared department/advising inbox the
-        # faculty merge already nulled. Re-run the threshold-based null pass so a
-        # shared inbox never reaches the corpus as a cold-email target.
+        # faculty merge already nulled. Re-run the threshold + pattern null
+        # passes so a shared/unit inbox never reaches the corpus as a cold-email
+        # target. These (and the furniture strip) cover every school's faculty;
+        # running them here also cleans the non-UIUC records merged AFTER the
+        # uiuc_faculty merge's corpus-wide DQ pass in this same run.
         renulled = _null_shared_admin_emails(all_opps)
         if renulled:
             logger.info(f"Re-nulled {renulled} shared department/admin inbox(es) re-attached by PI enrichment")
         summary["sources"]["pi_enricher"]["renulled_shared_emails"] = renulled
+        unit_nulled = _null_unit_inbox_emails(all_opps)
+        if unit_nulled:
+            logger.info(f"Nulled {unit_nulled} department/unit mailbox contact email(s)")
+        summary["sources"]["pi_enricher"]["nulled_unit_inboxes"] = unit_nulled
+        furniture = _strip_furniture_keywords(all_opps)
+        if furniture:
+            logger.info(f"Stripped junk keyword(s) from {furniture} faculty record(s)")
 
         # R70-C: deactivate past-deadline records. Previously only run as a
         # separate CI step (.github/workflows/refresh-data.yml) so local
@@ -734,6 +853,32 @@ def refresh_all(deep: bool = True) -> dict:
             unreconciled,
         )
 
+        # Corpus-wide faculty hygiene (idempotent, so it also guards against a
+        # future scrape reintroducing junk/duplicate keywords or a duplicate
+        # person). Keyword hygiene first (edge-strip, comma-fold, junk/prose
+        # drop, order-preserving de-dupe + title-parenthetical rebuild), then
+        # collapse same-school same-person duplicates the joint-appointment
+        # de-dup can't reach (cross-run same-email listings + umbrella rosters).
+        from .faculty_graph import (
+            clean_corpus_faculty_keywords,
+            collapse_same_person_faculty,
+        )
+        kw_cleaned = clean_corpus_faculty_keywords(all_opps)
+        collapse = collapse_same_person_faculty(all_opps)
+        all_opps = collapse["kept"]
+        removed_dupes = sum(collapse["removed_by_school"].values())
+        summary["sources"]["faculty_hygiene"] = {
+            "keywords_cleaned": kw_cleaned,
+            "duplicates_removed": removed_dupes,
+            "removed_by_school": collapse["removed_by_school"],
+            "shared_inbox_nulled": collapse["nulled_by_school"],
+            "status": "ok",
+        }
+        logger.info(
+            "faculty_hygiene: %d keyword list(s) cleaned, %d duplicate person(s) removed",
+            kw_cleaned, removed_dupes,
+        )
+
         with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
             json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
         summary["sources"]["deactivate_past"] = {
@@ -793,11 +938,20 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Refresh all opportunity data sources")
     parser.add_argument("--no-deep", action="store_true", help="Skip deep scraping of SRO detail pages")
+    parser.add_argument("--schools", help="Comma-separated school slugs to shard this run to (e.g. uw,wisc)")
+    parser.add_argument("--national", action="store_true",
+                        help="Run only the national (school-less) sources: SRO catalog, NSF REU, Simplify")
     args = parser.parse_args()
+
+    schools = None
+    if args.schools is not None:
+        schools = {s.strip().lower() for s in args.schools.split(",") if s.strip()}
+        if not schools:
+            parser.error("--schools requires at least one school slug")
 
     start = time.time()
     try:
-        summary = refresh_all(deep=not args.no_deep)
+        summary = refresh_all(deep=not args.no_deep, schools=schools, national=args.national)
     except Exception as e:
         elapsed = time.time() - start
         summary = {

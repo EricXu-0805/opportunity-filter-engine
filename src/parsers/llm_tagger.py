@@ -15,6 +15,8 @@ import os
 import re
 from pathlib import Path
 
+from src.normalizers.enricher import _combined_text, _extract_skills_from_text
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -219,6 +221,15 @@ def rule_based_tag(opp: dict) -> dict:
             for s in domain_skills:
                 if s not in skills_found:
                     skills_found.append(s)
+
+    # Single-letter skills ("R", "C") are junk unless the record's own text
+    # carries the enricher's context gates ("R programming", not a bare "R" /
+    # middle initial / domain inference) — the corpus DQ gate holds every
+    # record to exactly that standard, so emitting them ungated here would
+    # re-poison the corpus on the next refresh's tagging pass.
+    if any(len(s) == 1 for s in skills_found):
+        legit = set(_extract_skills_from_text(_combined_text(opp)))
+        skills_found = [s for s in skills_found if len(s) > 1 or s in legit]
 
     # Faculty are cold-email research contacts, not postings with required
     # skills. Inferring skills from research-topic prose is false-precise (a

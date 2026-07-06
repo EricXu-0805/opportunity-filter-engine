@@ -17,8 +17,11 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "uiuc_our_rss": ("uiuc", "campus"),
     # uiuc_faculty covers all four scrape paths (static + js + json + html
     # variants) — they all emit source="uiuc_faculty", so one entry is the
-    # whole family.
-    "uiuc_faculty": ("uiuc", "campus"),
+    # whole family. Faculty cold-email targets like every other school's
+    # directory: whether a cross-school collaboration is welcome is
+    # professor-specific, so openness stays unconfirmed and visibility is
+    # governed by the matcher's cross-school toggle, not a campus tag.
+    "uiuc_faculty": ("uiuc", "unknown"),
     "uiuc_siebel": ("uiuc", "campus"),
     "uiuc_urap": ("uiuc", "campus"),
     "uiuc_ursa": ("uiuc", "campus"),
@@ -146,6 +149,22 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucsd_research_programs": ("ucsd", "campus"),
     "ucsd_external_research": (None, "open"),
     "ucsd_labs": ("ucsd", "unknown"),
+    # University of Chicago (#10 on the campus_graph engine).
+    "uchicago_research_programs": ("uchicago", "campus"),
+    "uchicago_external_research": (None, "open"),
+    "uchicago_labs": ("uchicago", "unknown"),
+    # University of California, Irvine (#11 on the campus_graph engine).
+    "uci_research_programs": ("uci", "campus"),
+    "uci_external_research": (None, "open"),
+    "uci_labs": ("uci", "unknown"),
+    # University of California, Santa Barbara (#12 on the campus_graph engine).
+    "ucsb_research_programs": ("ucsb", "campus"),
+    "ucsb_external_research": (None, "open"),
+    "ucsb_labs": ("ucsb", "unknown"),
+    # University of Colorado Boulder (#13 on the campus_graph engine).
+    "boulder_research_programs": ("boulder", "campus"),
+    "boulder_external_research": (None, "open"),
+    "boulder_labs": ("boulder", "unknown"),
     # Michigan faculty directory (curated, via the faculty_graph engine). Single
     # source across departments (UIUC model); cold-email targets whose
     # cross-school openness is per-professor, so audience is unknown.
@@ -165,6 +184,25 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucla_faculty": ("ucla", "unknown"),
     # UCSD faculty directory (live-scraped, via the faculty_graph engine).
     "ucsd_faculty": ("ucsd", "unknown"),
+    # Purdue (campus-graph engine) + faculty (server-rendered).
+    "purdue_research_programs": ("purdue", "campus"),
+    "purdue_external_research": (None, "open"),
+    "purdue_labs": ("purdue", "unknown"),
+    "purdue_faculty": ("purdue", "unknown"),
+    # Duke (campus-graph engine) + faculty (render-mode Pratt directories).
+    "duke_research_programs": ("duke", "campus"),
+    "duke_external_research": (None, "open"),
+    "duke_labs": ("duke", "unknown"),
+    "duke_faculty": ("duke", "unknown"),
+    # UChicago faculty directory (live-scraped + curated-API, via faculty_graph).
+    "uchicago_faculty": ("uchicago", "unknown"),
+    # UC Irvine faculty directory (live-scraped, via the faculty_graph engine).
+    "uci_faculty": ("uci", "unknown"),
+    # UC Santa Barbara faculty directory (live-scraped, via the faculty_graph engine).
+    "ucsb_faculty": ("ucsb", "unknown"),
+    # CU Boulder faculty directory (live-scraped from CU Experts/VIVO, via the
+    # faculty_graph engine).
+    "boulder_faculty": ("boulder", "unknown"),
 }
 
 

@@ -4,8 +4,37 @@ import { useEffect, useState } from 'react';
 import { ExternalLink, Loader2, Sparkles, Star, Shield, Mountain } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { getMatchExplanation, type MatchExplanationResponse } from '@/lib/api';
+import { hashProfile } from '@/lib/match-utils';
 import type { CompareBucket, OppScore } from './scores';
 import { useT } from '@/i18n/client';
+
+// Each explain call is a paid LLM completion, and this page fires one per card
+// on every visit — so cache per (opportunity, profile-hash) in sessionStorage.
+// Revisits and re-renders within the hour render instantly and bill nothing;
+// a profile edit changes the hash and misses. Same style as lib/match-cache.
+const EXPLAIN_CACHE_PREFIX = 'ofe_explain_';
+const EXPLAIN_TTL_MS = 60 * 60 * 1000;
+
+function readExplainCache(key: string): MatchExplanationResponse | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const c = JSON.parse(raw) as { savedAt: number; data: MatchExplanationResponse };
+    if (!c || typeof c.savedAt !== 'number' || !c.data) return null;
+    if (Date.now() - c.savedAt >= EXPLAIN_TTL_MS) return null;
+    return c.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeExplainCache(key: string, data: MatchExplanationResponse): void {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data }));
+  } catch {
+    // quota / private mode — skip; the next visit simply re-fetches.
+  }
+}
 
 type BucketRow = {
   opp: Opportunity;
@@ -80,28 +109,32 @@ export default function BucketCards({ rows, profile }: Props) {
 
   useEffect(() => {
     if (!profile) return;
+    const profileHash = hashProfile(profile);
     const ids = rows.map((r) => r.opp.id);
     let cancelled = false;
+    const setOne = (id: string, value: MatchExplanationResponse | 'error') => {
+      if (cancelled) return;
+      setExplanations((prev) => {
+        const next = new Map(prev);
+        next.set(id, value);
+        return next;
+      });
+    };
     (async () => {
       await Promise.all(
         ids.map(async (id) => {
+          const cacheKey = `${EXPLAIN_CACHE_PREFIX}${id}_${profileHash}`;
+          const cached = readExplainCache(cacheKey);
+          if (cached) {
+            setOne(id, cached);
+            return;
+          }
           try {
             const resp = await getMatchExplanation(profile, id);
-            if (!cancelled) {
-              setExplanations((prev) => {
-                const next = new Map(prev);
-                next.set(id, resp);
-                return next;
-              });
-            }
+            writeExplainCache(cacheKey, resp);
+            setOne(id, resp);
           } catch {
-            if (!cancelled) {
-              setExplanations((prev) => {
-                const next = new Map(prev);
-                next.set(id, 'error');
-                return next;
-              });
-            }
+            setOne(id, 'error');
           }
         }),
       );

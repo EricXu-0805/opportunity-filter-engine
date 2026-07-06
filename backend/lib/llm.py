@@ -31,7 +31,10 @@ specific provider instead of the chain's first.
 
 All public functions return ``None`` on any failure (no provider configured,
 SDK missing, network error, model refusal). Callers should fall back to a
-local template — never raise from a chat-completion attempt.
+local template — never raise from a chat-completion attempt. The one
+deliberate exception: ``chat_completion_stream`` propagates mid-iteration
+errors once tokens have been yielded, so the caller can tell partial output
+from total failure (an all-up-front failure still yields nothing, no raise).
 """
 
 from __future__ import annotations
@@ -39,6 +42,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Optional
 
@@ -78,7 +82,7 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # Surfaced ONLY when OPENROUTER_API_KEY is set; otherwise the picker stays hidden
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
-    ("claude-sonnet", "Claude Sonnet 4.6", "anthropic/claude-sonnet-4.6"),
+    ("claude-sonnet", "Claude Sonnet 5", "anthropic/claude-sonnet-5"),
     ("gpt-5.1", "GPT-5.1", "openai/gpt-5.1"),
     ("gemini-flash", "Gemini 3.5 Flash", "google/gemini-3.5-flash"),
 )
@@ -86,6 +90,7 @@ _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
 
 @dataclass(frozen=True)
 class _ResolvedProvider:
+    pid: str
     api_key: str
     base_url: str
     model: str
@@ -99,7 +104,7 @@ def _resolve(provider_id: Optional[str] = None) -> Optional[_ResolvedProvider]:
             continue
         api_key = os.environ.get(env_var)
         if api_key:
-            return _ResolvedProvider(api_key=api_key, base_url=base_url, model=model)
+            return _ResolvedProvider(pid=pid, api_key=api_key, base_url=base_url, model=model)
     return None
 
 
@@ -148,18 +153,17 @@ def strong_model() -> Optional[str]:
 
 # Best-fit model per quality-sensitive task ("right tool for each job"), chosen
 # against the live OpenRouter catalog. Claude leads on natural, persuasive
-# writing, so the user-facing materials are Claude:
-#   * cold_email — highest-stakes personalized writing (lands a research spot) →
-#     the flagship Opus 4.8.
-#   * tailor — constrained, anti-fabrication-validated bullet rewriting →
-#     Sonnet 4.6 (matches Opus on this bounded task, faster).
-#   * extract — background structured parsing → Sonnet 4.6.
+# writing, so the user-facing materials are Claude — all on Sonnet 5, which
+# matches Opus-class writing on these bounded tasks at a fraction of the cost:
+#   * cold_email — highest-stakes personalized writing (lands a research spot).
+#   * tailor — constrained, anti-fabrication-validated bullet rewriting.
+#   * extract — background structured parsing (tailor's bullet extraction).
 # Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
 # — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.5 or google/gemini-3.1-pro-preview.
 _TASK_MODEL_DEFAULTS: dict[str, str] = {
-    "cold_email": "anthropic/claude-opus-4.8",
-    "tailor": "anthropic/claude-sonnet-4.6",
-    "extract": "anthropic/claude-sonnet-4.6",
+    "cold_email": "anthropic/claude-sonnet-5",
+    "tailor": "anthropic/claude-sonnet-5",
+    "extract": "anthropic/claude-sonnet-5",
 }
 
 
@@ -250,6 +254,93 @@ def chat_completion(
         last_error,
     )
     return None
+
+
+def chat_completion_stream(
+    messages: list[dict],
+    *,
+    max_tokens: int = 400,
+    temperature: float = 0.4,
+    reasoning_effort: str = "none",
+    model: Optional[str] = None,
+    provider_id: Optional[str] = None,
+) -> Iterator[str]:
+    """Streaming variant of :func:`chat_completion` — yields content deltas.
+
+    Yields NOTHING (and never raises) when no matching provider is configured,
+    the SDK is missing, or stream creation fails after all retry attempts —
+    callers treat an empty stream as "fall back to local template". Gemini's
+    OpenAI-compat endpoint isn't streamed: the full non-streaming reply is
+    yielded as a single delta. Once the stream is open, a mid-iteration error
+    PROPAGATES — the caller must distinguish partial output (don't restart,
+    don't duplicate) from total failure.
+    """
+    provider = _resolve(provider_id)
+    if provider is None:
+        return
+
+    if provider.pid == "gemini":
+        text = chat_completion(
+            messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            reasoning_effort=reasoning_effort,
+            model=model,
+            provider_id="gemini",
+        )
+        if text is not None:
+            yield text
+        return
+
+    try:
+        import openai
+    except ImportError:
+        return
+
+    effective_model = model or provider.model
+    client_kwargs: dict = {"api_key": provider.api_key, "timeout": _REQUEST_TIMEOUT_SECONDS}
+    if provider.base_url:
+        client_kwargs["base_url"] = provider.base_url
+
+    call_kwargs: dict = {
+        "model": effective_model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "stream": True,
+    }
+    # Same guard as chat_completion: OpenRouter can serve google/gemini slugs.
+    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
+        call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
+
+    stream = None
+    last_error: Optional[Exception] = None
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            client = openai.OpenAI(**client_kwargs)
+            stream = client.chat.completions.create(**call_kwargs)
+            break
+        except Exception as exc:
+            last_error = exc
+            if attempt < _MAX_ATTEMPTS:
+                time.sleep(_RETRY_BASE_DELAY_SECONDS * attempt)
+    if stream is None:
+        logger.warning(
+            "LLM chat_completion_stream failed to open after %d attempt(s) (model=%s): %s",
+            _MAX_ATTEMPTS,
+            effective_model,
+            last_error,
+        )
+        return
+
+    for chunk in stream:
+        # OpenRouter emits keep-alive/usage frames with empty choices, and the
+        # first frame's delta carries only the role (content=None) — skip both.
+        if not chunk.choices:
+            continue
+        content = chunk.choices[0].delta.content
+        if content:
+            yield content
 
 
 def is_configured() -> bool:

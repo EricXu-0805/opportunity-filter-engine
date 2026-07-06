@@ -58,6 +58,11 @@ BACKEND_BASE = (
 
 DIGEST_MAX_ITEMS = 10
 DIGEST_MIN_INTERVAL_DAYS = 7
+# new_match_ids accumulates across nightly refreshes until a digest goes out
+# (the digest is throttled to one per 7 days, so overwriting nightly would
+# silently drop ~6/7 of a week's matches). The cap keeps the row bounded;
+# oldest ids age out first.
+NEW_MATCH_IDS_CAP = 200
 # Unsubscribe must keep working long after the email lands (CAN-SPAM floor
 # is 30 days; a year covers any realistic inbox archaeology) — deliberately
 # much longer than the restore-link TTL.
@@ -132,9 +137,11 @@ def _digest_footer_text(search_name: str, unsubscribe_url: str) -> str:
 
 
 def _render_digest_email(
-    search_name: str, items: list[dict], unsubscribe_url: str,
+    search_name: str, items: list[dict], unsubscribe_url: str, overflow: int = 0,
 ) -> tuple[str, str, str]:
-    count = len(items)
+    # Subject counts the whole batch, not just the rendered rows — a week can
+    # accumulate more matches than the email shows.
+    count = len(items) + overflow
     subject = (
         f"1 new match for \"{search_name}\"" if count == 1
         else f"{count} new matches for \"{search_name}\""
@@ -157,6 +164,12 @@ def _render_digest_email(
         )
         rows_text.append(f"#{i} {title}\n  {org}{dl_str}\n  {detail_url}\n")
 
+    overflow_html = (
+        f'<p style="color:#6b7280;font-size:13px;margin:14px 0 0">+{overflow} more in the app</p>'
+        if overflow > 0 else ""
+    )
+    overflow_text = f"+{overflow} more in the app\n" if overflow > 0 else ""
+
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
   <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
@@ -170,6 +183,7 @@ def _render_digest_email(
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}
     </table>
+    {overflow_html}
     <a href="{FRONTEND_BASE}/favorites" style="display:inline-block;margin-top:24px;padding:11px 22px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">View all in JoinALab</a>
     {_digest_footer_html(search_name, unsubscribe_url)}
   </td></tr>
@@ -179,6 +193,7 @@ def _render_digest_email(
     text = (
         f"{subject}\n\n"
         + "".join(rows_text)
+        + overflow_text
         + f"\nView all: {FRONTEND_BASE}/favorites\n"
         + _digest_footer_text(search_name, unsubscribe_url)
     )
@@ -192,7 +207,8 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
     For each saved_searches row:
       - compute current match IDs (filter + query text search)
       - diff against prior last_result_ids to find new matches
-      - PATCH the row with last_run_at / last_result_ids / new_match_ids
+      - PATCH the row with last_run_at / last_result_ids / new_match_ids,
+        where new_match_ids accumulates until the digest sends (and clears it)
     """
     _verify_cron_secret(authorization)
 
@@ -227,7 +243,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
-                "select": "id,filters_json,query,last_result_ids",
+                "select": "id,filters_json,query,last_result_ids,new_match_ids",
                 "limit": str(SUPABASE_BATCH_LIMIT),
                 "order": "last_run_at.asc.nullsfirst",
             },
@@ -245,15 +261,21 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                 filters = row.get("filters_json") or {}
                 query = row.get("query") or ""
                 prior_ids = set(row.get("last_result_ids") or [])
+                pending_ids = row.get("new_match_ids") or []
 
                 current_ids = matching_ids(opportunities, filters, query)
                 new_ids = [oid for oid in current_ids if oid not in prior_ids]
                 total_new_matches += len(new_ids)
 
+                pending_set = set(pending_ids)
+                accumulated = (
+                    pending_ids + [oid for oid in new_ids if oid not in pending_set]
+                )[-NEW_MATCH_IDS_CAP:]
+
                 patch_body = {
                     "last_run_at": now_iso,
                     "last_result_ids": current_ids,
-                    "new_match_ids": new_ids,
+                    "new_match_ids": accumulated,
                 }
                 patch_resp = await client.patch(
                     f"{supabase_url}/rest/v1/saved_searches",
@@ -349,7 +371,11 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
             sid = str(row.get("id", "?"))
             try:
                 new_ids = row.get("new_match_ids") or []
-                items = [opp_by_id[i] for i in new_ids if i in opp_by_id][:DIGEST_MAX_ITEMS]
+                # new_match_ids accumulates oldest-first (refresh appends);
+                # show the freshest matches and summarize the rest.
+                matched = [opp_by_id[i] for i in reversed(new_ids) if i in opp_by_id]
+                items = matched[:DIGEST_MAX_ITEMS]
+                overflow = len(matched) - len(items)
                 if not items:
                     skipped += 1
                     continue
@@ -380,6 +406,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
 
                 subject, html, text = _render_digest_email(
                     row.get("name") or "Saved search", items, unsubscribe_url,
+                    overflow=overflow,
                 )
                 await _send_via_resend(
                     api_key=api_key, from_addr=from_addr, to=to_email,
@@ -389,7 +416,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     f"{supabase_url}/rest/v1/saved_searches",
                     params={"id": f"eq.{sid}"},
                     headers=headers,
-                    json={"last_digest_sent_at": now.isoformat()},
+                    json={"last_digest_sent_at": now.isoformat(), "new_match_ids": []},
                 )
                 patch_resp.raise_for_status()
                 sent += 1

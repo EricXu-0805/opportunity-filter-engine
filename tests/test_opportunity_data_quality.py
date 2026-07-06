@@ -389,6 +389,49 @@ class TestR70ADataQuality:
             f"fragment). First: {offenders[:5]}"
         )
 
+    def test_faculty_keywords_have_no_duplicates(self):
+        """A keyword list is a set of distinct areas; a repeated keyword (e.g.
+        'genetics, genetics') is scrape noise that also doubles up in the title
+        parenthetical. faculty_graph's keyword hygiene de-dupes order-preserving
+        (case-insensitively), so no faculty record may carry a duplicate."""
+        offenders = []
+        for o in _load_data():
+            if not _is_faculty(o):
+                continue
+            kws = o.get("keywords") or []
+            lowered = [(k or "").strip().lower() for k in kws]
+            if len(lowered) != len(set(lowered)):
+                offenders.append((o.get("id"), kws))
+        assert not offenders, (
+            f"{len(offenders)} faculty records carry duplicate keywords. "
+            f"First: {offenders[:3]}"
+        )
+
+    def test_no_same_school_same_email_faculty_duplicates(self):
+        """A cross-appointed professor listed under two departments shares one
+        personal email; those rows must collapse to a single record (else the
+        person surfaces twice and could be cold-emailed twice). A genuinely
+        shared department/advising inbox is nulled instead. Either way, no two
+        ACTIVE faculty at one school may share a non-null contact_email —
+        collapse_same_person_faculty guarantees this on every refresh."""
+        from collections import defaultdict
+
+        by_key: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for o in _load_data():
+            if not _is_faculty(o):
+                continue
+            if not (o.get("metadata") or {}).get("is_active", True):
+                continue
+            email = (o.get("contact_email") or "").strip().lower()
+            if email:
+                by_key[(o.get("school"), email)].append(o.get("id"))
+        dups = {k: ids for k, ids in by_key.items() if len(ids) > 1}
+        assert not dups, (
+            f"{len(dups)} school+email pairs have >1 active faculty record "
+            f"(uncollapsed joint appointment or shared inbox). First: "
+            f"{list(dups.items())[:3]}"
+        )
+
     def test_no_scraped_title_label_leak_in_descriptions(self):
         """A directory card's rank field is sometimes prefixed with its scraped
         label ("Position title: …" / "Title: …"); it must not leak into the
@@ -452,6 +495,33 @@ class TestR70ADataQuality:
             )
         ]
         assert not offenders, f"{len(offenders)} faculty carry inferred skills: {offenders[:5]}"
+
+    def test_single_letter_skills_only_with_context(self):
+        """Substring skill extraction once matched the bare letters 'C' and 'R'
+        inside ordinary prose, tagging 549 NSF REU abstracts with
+        skills_required=["C", "R"]. The live enricher legitimately emits them
+        only behind context gates ("R programming", not bare "R" — see
+        SKILL_PATTERNS), so a single-letter skill is junk exactly when the
+        enricher itself would NOT extract it from the record's own text."""
+        from src.normalizers.enricher import _combined_text, _extract_skills_from_text
+
+        offenders = []
+        for o in _load_data():
+            elig = o.get("eligibility") or {}
+            singles = {
+                s.strip()
+                for field in ("skills_required", "skills_preferred")
+                for s in elig.get(field) or []
+                if isinstance(s, str) and len(s.strip()) <= 1
+            }
+            if not singles:
+                continue
+            legitimate = set(_extract_skills_from_text(_combined_text(o)))
+            for s in sorted(singles - legitimate):
+                offenders.append((o.get("id"), s))
+        assert not offenders, (
+            f"{len(offenders)} context-less single-letter skill entries: {offenders[:5]}"
+        )
 
     def test_faculty_have_no_bare_research_keyword(self):
         """A bare 'research' (or other nav-junk) single-word keyword is
@@ -602,6 +672,23 @@ class TestSchoolAudience:
         ]
         assert not offenders, (
             f"{len(offenders)} records with missing/invalid audience. "
+            f"First 3: {offenders[:3]}"
+        )
+
+    def test_uiuc_manual_seeds_are_school_tagged(self):
+        """The 17 hand-curated uiuc-* manual records shipped school=None for
+        months, leaking UIUC lab postings into every school's toggle-off view
+        (a UIUC ECE lab ranked #2 for a UCSD CS student — 2026-07 audit).
+        Manual seeds hosted at a school must carry its slug and a real
+        audience so the scope filter can do its job."""
+        offenders = [
+            (o["id"], o.get("school"), o.get("audience"))
+            for o in _load_data()
+            if o.get("source") == "manual" and o["id"].startswith("uiuc-")
+            and not (o.get("school") == "uiuc" and o.get("audience") in ("campus", "open"))
+        ]
+        assert not offenders, (
+            f"{len(offenders)} uiuc manual seeds missing school/audience tags. "
             f"First 3: {offenders[:3]}"
         )
 

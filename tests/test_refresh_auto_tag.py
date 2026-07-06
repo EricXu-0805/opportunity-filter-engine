@@ -70,3 +70,26 @@ def test_rule_based_reconciles_citizenship_when_intl_resolved():
     apply_updates(opp, rule_based_tag(opp))
     if opp["eligibility"]["international_friendly"] == "no":
         assert opp["eligibility"].get("citizenship_required") is True
+
+
+def test_rule_based_gates_context_less_single_letter_skills():
+    # Domain inference (biology → R) and the bare-\bR\b pattern (middle
+    # initials, stray tokens) must not emit "R"/"C" unless the enricher's
+    # context patterns ("R programming") also fire — the corpus DQ gate
+    # (test_single_letter_skills_only_with_context) holds records to exactly
+    # that standard, so an ungated tagger re-poisons the corpus every refresh.
+    opp = _opp(description_clean="Ecology and evolution research led by John R. Smith.")
+    apply_updates(opp, rule_based_tag(opp))
+    skills = opp["eligibility"]["skills_required"] + opp["eligibility"]["skills_preferred"]
+    assert "R" not in skills
+    assert "Python" in skills
+
+
+def test_rule_based_keeps_single_letter_skills_with_context():
+    # No "research"/"review"/"resume" anywhere (the enricher blocklists R on
+    # those tokens) + an explicit "R programming" context → R survives the gate.
+    opp = _opp(title="Data Analyst",
+               description_clean="Statistical modeling using R programming for field data.")
+    apply_updates(opp, rule_based_tag(opp))
+    skills = opp["eligibility"]["skills_required"] + opp["eligibility"]["skills_preferred"]
+    assert "R" in skills

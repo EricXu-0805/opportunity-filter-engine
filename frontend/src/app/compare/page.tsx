@@ -19,11 +19,13 @@ export async function generateMetadata(): Promise<Metadata> {
 function parseIds(raw: string | string[] | undefined): string[] {
   if (!raw) return [];
   const flat = Array.isArray(raw) ? raw.join(',') : raw;
-  return flat
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, MAX_COMPARE);
+  const unique = new Set(
+    flat
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  return [...unique].slice(0, MAX_COMPARE);
 }
 
 export default async function ComparePage({
@@ -63,8 +65,11 @@ export default async function ComparePage({
 
       {ids.length < MIN_COMPARE ? (
         <EmptyState message={t('compare.tooFew')} ctaLabel={t('compare.addMore')} />
-      ) : opps.length === 0 ? (
-        <EmptyState message={t('compare.notFound')} ctaLabel={t('compare.addMore')} />
+      ) : opps.length < MIN_COMPARE ? (
+        <EmptyState
+          message={t(opps.length === 0 ? 'compare.notFound' : 'compare.notEnoughFound')}
+          ctaLabel={t('compare.addMore')}
+        />
       ) : (
         <CompareTable opps={opps} />
       )}

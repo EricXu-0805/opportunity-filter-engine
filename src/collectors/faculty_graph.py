@@ -59,7 +59,7 @@ import hashlib
 import logging
 import os
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
@@ -124,8 +124,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, or json_dir config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, or coa_api config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -146,6 +146,58 @@ _BARE_NAV_WORDS = frozenset({
 })
 
 
+# Prose-fragment lead-ins that scrape into a "research interest" list but are
+# never a standalone topic ("with emphasis on…", "our lab studies…", "my
+# research explores…", "in particular …"). Deliberately narrower than uiuc's
+# _LEADING_NONTOPICAL_RE, which also rejects any "the …"/"in …" lead: a curated
+# taxonomy legitimately holds determiner-led humanities areas ("the
+# Enlightenment", "the Cold War", "in situ microscopy"), so only first-person /
+# possessive / qualifier leads that can never name a research area are dropped.
+_PROSE_FRAGMENT_LEAD_RE = re.compile(
+    r"^(?:with|our|my|we|i|for example|in particular|in turn|in the|in a|in my)\b",
+    re.IGNORECASE,
+)
+
+
+def _hygiene_keyword(k: str) -> str | None:
+    """Clean one keyword (curated or derived): strip wrapping quotes and edge
+    punctuation, fold an internal comma to ' / ' (a comma would fragment the
+    title parenthetical the DQ gate comma-splits), and drop it when it is page
+    furniture, a publication venue, a room/contact residue, or a prose fragment.
+    Returns the cleaned keyword or ``None`` to drop. Reuses uiuc's
+    ``_is_junk_keyword`` as the shared junk gate so curated/taxonomy keywords are
+    held to the same bar the derived fallback already enforces."""
+    c = (k or "").strip().strip("\"'“”‘’").strip(" .,;:").strip()
+    if not c:
+        return None
+    if _PROSE_FRAGMENT_LEAD_RE.match(c):
+        return None
+    try:
+        from .uiuc_faculty import _is_junk_keyword
+    except Exception:  # noqa: BLE001
+        def _is_junk_keyword(_k):  # pragma: no cover
+            return False
+    if _is_junk_keyword(c):
+        return None
+    return re.sub(r"\s*,\s*", " / ", c)
+
+
+def _hygiene_keywords(kws: list[str]) -> list[str]:
+    """Clean + de-dupe a keyword list order-preserving (case-insensitive)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for k in kws or []:
+        c = _hygiene_keyword(k)
+        if c is None:
+            continue
+        low = c.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append(c)
+    return out
+
+
 def _clean_keywords(person: dict) -> list[str]:
     """Curated keywords win; otherwise derive a couple from research areas.
 
@@ -161,12 +213,13 @@ def _clean_keywords(person: dict) -> list[str]:
         # field ("Design", "Theory") is kept, and a multi-word phrase ("water
         # resources") is unaffected — only the standalone junk token is rejected.
         kws = [k for k in kws if " " in k or k.lower() not in _BARE_NAV_WORDS]
-        # A keyword is an atomic term; an internal comma (e.g. the taxonomy term
-        # "Plants, Soil and Algae") would break the title-parenthetical subset
-        # invariant (the DQ gate splits the parenthetical on commas), so fold it.
-        kws = [re.sub(r"\s*,\s*", " / ", k) for k in kws]
-        # de-dupe preserving order
-        return list(dict.fromkeys(kws))[:8]
+        # Hold curated/taxonomy keywords to the same hygiene the derived branch
+        # applies: strip edge punctuation/quotes, fold an internal comma to
+        # " / " (a comma breaks the title-parenthetical subset invariant), drop
+        # page-furniture / venue / room / prose-fragment junk, and de-dupe
+        # order-preserving. Previously only the derived fallback below cleaned,
+        # so a curated list shipped its junk verbatim.
+        return _hygiene_keywords(kws)[:8]
     raw = _strip_nav_furniture(person.get("research_areas", ""))
     # Split on ; | and , — directories delimit a research list with any of them
     # (Stanford Education uses " | " between areas; most use commas/semicolons).
@@ -495,7 +548,18 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             name_el = card.select_one(sel["name"]) if sel.get("name") else None
         if not name_el:
             continue
-        name = name_el.get_text(" ", strip=True)
+        # Collapse internal whitespace runs — a name split across text nodes
+        # by ``<br>``/nbsp (e.g. Purdue Chemistry's "Ryan&#160;\n Altman") comes
+        # back from get_text with embedded newlines/double-spaces that would leak
+        # into pi_name and trip the data-quality name checks.
+        name = re.sub(r"\s+", " ", name_el.get_text(" ", strip=True)).strip()
+        if sel.get("name_last"):
+            # Directories that split the name across two cells (a first-name and
+            # a last-name column, e.g. UCI Chemistry's Drupal table): the ``name``
+            # selector holds the first name, ``name_last`` the surname.
+            last_el = card.select_one(sel["name_last"])
+            if last_el:
+                name = f"{name} {last_el.get_text(' ', strip=True)}".strip()
         if sel.get("name_strip"):
             # Some directories prefix the name link with boilerplate ("Learn more
             # about <Name>"); strip it to recover the clean, properly-cased name.
@@ -582,13 +646,16 @@ def _paginated_url(base: str, page: int, param: str) -> str:
     return f"{paged}{sep}{query}" if query else paged
 
 
-def _render_soup(url: str, timeout_ms: int = 45000):
+def _render_soup(url: str, timeout_ms: int = 60000,
+                 wait_until: str = "domcontentloaded", settle_ms: int = 3500):
     """Fetch a URL through a headless-Chromium browser and return a BeautifulSoup.
 
     The escape hatch for directories a plain ``requests`` GET can't read: pages
     rendered client-side (the cards exist only after JS runs) and sites behind
     Cloudflare's bot wall (a real browser passes the JS challenge that 403s a
-    bare request). Opt-in per department via ``scrape["render"] = True``.
+    bare request). Opt-in per department via ``scrape["render"] = True``; a slow
+    client-rendered roster whose cards land only after its XHRs finish can opt
+    into ``scrape["render_wait"] = "networkidle"`` (UCI cs.ics.uci.edu).
 
     Playwright is imported lazily so the module still imports where Playwright/
     Chromium isn't installed; there it returns ``None`` and the caller degrades
@@ -615,9 +682,9 @@ def _render_soup(url: str, timeout_ms: int = 45000):
                 browser = p.chromium.launch(headless=True)
                 try:
                     page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
-                    page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                    page.goto(url, wait_until=wait_until, timeout=timeout_ms)
                     # Let client-side card grids / Cloudflare interstitials settle.
-                    page.wait_for_timeout(3500)
+                    page.wait_for_timeout(settle_ms)
                     html = page.content()
                 finally:
                     browser.close()
@@ -627,6 +694,57 @@ def _render_soup(url: str, timeout_ms: int = 45000):
             logger.warning("faculty_graph: render fetch failed for %s (attempt %d): %s",
                            url, attempt, e)
     return BeautifulSoup(html, "html.parser") if html else None
+
+
+def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
+                          card_sel: str = "", timeout_ms: int = 60000):
+    """Walk a client-side hash-router directory in ONE render session.
+
+    Some AEM "people" grids (Michigan LSA — Chemistry, Psychology, Statistics,
+    MCDB) render ~12 cards per page and only advance when the URL fragment changes
+    *in-page* (a hashchange event); a fresh load with ``#…page=N`` pre-set never
+    bootstraps past page 1, so the normal fetch-per-URL paginator can't drive them.
+    This loads the base once, then re-navigates the SAME page to ``#…&page=N`` for
+    each page (a same-document navigation that fires the router), accumulating each
+    page's ``card_sel`` outerHTML until a page surfaces nothing new or the cap is
+    hit. Returns a soup of all pages' cards concatenated (parsed by the caller's
+    normal selectors), or ``None`` where Playwright/Chromium is unavailable.
+    """
+    if not card_sel:
+        return None
+    try:
+        from bs4 import BeautifulSoup
+        from playwright.sync_api import sync_playwright
+
+        from .ucb_common import HEADERS
+    except ImportError:
+        return None
+    parts: list[str] = []
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
+                seen: set[str] = set()
+                for pg in range(1, max_pages + 1):
+                    target = url if pg == 1 else f"{url}#q=&alpha=&{param}={pg}"
+                    page.goto(target, wait_until="domcontentloaded", timeout=timeout_ms)
+                    page.wait_for_timeout(3500 if pg == 1 else 2500)
+                    cards = page.eval_on_selector_all(
+                        card_sel, "els => els.map(e => e.outerHTML)")
+                    fresh = [c for c in cards if c not in seen]
+                    if pg > 1 and not fresh:
+                        break
+                    seen.update(fresh)
+                    parts.extend(fresh)
+            finally:
+                browser.close()
+    except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
+        logger.warning("faculty_graph: paginated render failed for %s: %s", url, e)
+        return None
+    if not parts:
+        return None
+    return BeautifulSoup("<div>" + "".join(parts) + "</div>", "html.parser")
 
 
 def _scrape_directory(dept: dict) -> list[dict]:
@@ -652,7 +770,14 @@ def _scrape_directory(dept: dict) -> list[dict]:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001
         return []
-    fetch = _render_soup if cfg.get("render") else fetch_soup
+    if cfg.get("render"):
+        # A slow client-rendered roster can request networkidle (its cards land
+        # only after late XHRs); default stays domcontentloaded for speed.
+        rw = cfg.get("render_wait", "domcontentloaded")
+        def fetch(u, _rw=rw):
+            return _render_soup(u, wait_until=_rw)
+    else:
+        fetch = fetch_soup
     base = cfg["url"]
     sel = cfg.get("selectors", {})
     lf = cfg.get("ladder_filter")
@@ -660,14 +785,23 @@ def _scrape_directory(dept: dict) -> list[dict]:
     link_f = cfg.get("link_filter")
     sf = cfg.get("section_filter")
     ff = cfg.get("field_filter")
-    soup = fetch(base)
+    pag = cfg.get("paginate")
+    if cfg.get("render") and pag and pag.get("mode") == "hash":
+        # Client-side hash-router grids (AEM "Michigan LSA" people pages) render
+        # only ~12 cards per page and advance solely on an in-page hashchange — a
+        # fresh load with the fragment pre-set never bootstraps past page 1. Walk
+        # every page inside one render session (below) instead of the fetch-per-URL
+        # loop, which can't drive a same-document router.
+        soup = _render_paginated_soup(base, pag.get("param", "page"),
+                                      pag.get("max", 12), sel.get("card", ""))
+    else:
+        soup = fetch(base)
     if soup is None:
         logger.info("faculty_graph: directory unreachable for %s (curated only)", dept.get("short"))
         return []
     try:
         people = _parse_cards(soup, sel, base, lf, flip, link_f, sf, ff)
-        pag = cfg.get("paginate")
-        if pag:
+        if pag and pag.get("mode") != "hash":
             param = pag.get("param", "page")
             path_mode = pag.get("mode") == "path"
             seen = {(p["name"], p["url"]) for p in people}
@@ -875,7 +1009,10 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     stored url (roster APIs whose per-person endpoint is keyed by username,
     e.g. UCSD Physics ``/api/profile/<user>/<dept>``). ``ladder_recheck``
     re-gates on rank AFTER titles exist (the listing-time gate saw only the
-    "Professor" default).
+    "Professor" default). ``render: True`` fetches each profile through the
+    headless browser instead of a plain GET — for schools whose profile pages
+    sit behind the same bot wall as the listing (Princeton dept subdomains,
+    umich), where the listing omits the email/research the profile carries.
     """
     if not enr or not (_PROFILE_ENRICH or enr.get("always")):
         return people
@@ -926,11 +1063,18 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
     dm = enrich.get("digitalmeasures")
     if dm:
         return ("", _fetch_digitalmeasures(url, dm), [], None)
-    try:
-        from .ucb_common import fetch_soup
-    except Exception:  # noqa: BLE001
-        return ("", "", [], None)
-    soup = fetch_soup(url)
+    if enrich.get("render"):
+        # Profile pages sit behind the same bot wall as the listing (Princeton
+        # dept subdomains, umich) — a plain GET 403s, so route the per-profile
+        # fetch through the headless browser too. Returns None where Playwright/
+        # Chromium is absent, degrading exactly like an unreachable fetch_soup.
+        soup = _render_soup(url)
+    else:
+        try:
+            from .ucb_common import fetch_soup
+        except Exception:  # noqa: BLE001
+            return ("", "", [], None)
+        soup = fetch_soup(url)
     if soup is None:
         return ("", "", [], None)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
@@ -1359,11 +1503,21 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #
 #     "json_dir": {
 #         "url": "https://www.scheller.gatech.edu/directory/index.json",
-#         "name_fields": ["firstName", "lastName"],   # joined with a space
+#         "name_fields": ["firstName", "lastName"],   # joined + whitespace-collapsed
 #         "filter_field": "academic", "filter_value": "Finance",
 #         "status_field": "status", "status_value": "Faculty",  # optional
 #         "ladder_filter": {"drop": "emerit|lecturer|of the practice"},
 #     }
+#
+# Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
+#     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
+#     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
+#     "filter_value": "Microbiology",
+#     "research_field": "interests[]",                               # list -> keywords
+#     "link_base": "https://chemistry.uchicago.edu",                 # join relative pathAlias
+#     # or, when the microsite host isn't resolvable, pull a stable link from a list:
+#     "link_list": {"field": "websites", "match_key": "name",
+#                   "match_value": "Research Network Profile", "url_key": "url"},
 def _dig(record: dict, path: str):
     """Read a field by name, or by dotted path for nested feeds.
 
@@ -1394,14 +1548,18 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     except Exception:  # noqa: BLE001
         return []
     from .ucb_common import HEADERS
+    # Some feeds gate on a same-origin Referer (UChicago's shared BSD roster
+    # endpoint returns empty to a header-less request); merge any per-source
+    # headers over the browser-like defaults.
+    hdrs = {**HEADERS, **(cfg.get("headers") or {})}
     try:
         if str(cfg.get("method", "get")).lower() == "post":
             # Some campus HR feeds only answer form POSTs (UCSD's EAH directory
             # returns an empty body to a GET of the same URL).
             resp = requests.post(cfg["url"], data=cfg.get("data"),
-                                 headers=HEADERS, timeout=25)
+                                 headers=hdrs, timeout=25)
         else:
-            resp = requests.get(cfg["url"], headers=HEADERS, timeout=25)
+            resp = requests.get(cfg["url"], headers=hdrs, timeout=25)
         resp.raise_for_status()
         recs = resp.json()
     except Exception:  # noqa: BLE001
@@ -1413,6 +1571,7 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     require_re, drop_re = lf.get("require"), lf.get("drop")
     name_fields = cfg.get("name_fields", ["firstName", "lastName"])
     filt_field, filt_value = cfg.get("filter_field"), cfg.get("filter_value")
+    filt_index = cfg.get("filter_index")
     status_field, status_value = cfg.get("status_field"), cfg.get("status_value")
     specs: list[dict] = []
     for x in recs:
@@ -1420,7 +1579,16 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
             continue
         if filt_field is not None:
             fv = _dig(x, filt_field)
-            if filt_value not in (fv if isinstance(fv, list) else [fv]):
+            if filt_index is not None:
+                # Match at a fixed list position instead of membership — a shared
+                # roster feed lists every joint appointment in the record's
+                # department array, so keying on department[0] (the PRIMARY
+                # appointment) keeps a cross-listed professor in one home dept
+                # only, not once per department they touch.
+                fv = fv[filt_index] if isinstance(fv, list) and len(fv) > filt_index else None
+                if fv != filt_value:
+                    continue
+            elif filt_value not in (fv if isinstance(fv, list) else [fv]):
                 continue
         if status_field is not None:
             sv = _dig(x, status_field)
@@ -1435,7 +1603,8 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
             for ff in cfg.get("field_filters", [])
         ):
             continue
-        name = " ".join(str(_dig(x, f) or "").strip() for f in name_fields).strip()
+        name = re.sub(r"\s+", " ",
+                      " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
         if not _is_person_name(name):
             continue
         title = _dig(x, cfg.get("title_field", "title")) or "Professor"
@@ -1452,16 +1621,49 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
         if drop_re and re.search(drop_re, title, re.I):
             continue
         email = str(_dig(x, cfg.get("email_field", "email")) or "").strip() or None
-        url_v = str(_dig(x, cfg.get("link_field", "link")) or "").strip()
+        ll = cfg.get("link_list")
+        if ll:
+            # The profile URL lives in a list of {name,url} objects (a feed's
+            # "websites" array) rather than a scalar field — pick the entry whose
+            # match_key equals match_value (e.g. the stable "Research Network
+            # Profile" link, since the per-dept microsite host isn't resolvable).
+            url_v = ""
+            for item in (_dig(x, ll["field"]) or []):
+                if isinstance(item, dict) and item.get(ll["match_key"]) == ll["match_value"]:
+                    url_v = str(item.get(ll["url_key"], "") or "").strip()
+                    break
+        else:
+            url_v = str(_dig(x, cfg.get("link_field", "link")) or "").strip()
         if url_v.startswith("//"):
             url_v = "https:" + url_v
+        elif url_v.startswith("/") and cfg.get("link_base"):
+            # A feed carrying a relative pathAlias (Chemistry: "/paul-alivisatos")
+            # joins onto the department site host.
+            url_v = cfg["link_base"].rstrip("/") + url_v
         research = ""
-        if cfg.get("research_field"):
-            # Rich feeds (UCSD Biology) carry a per-person research summary —
-            # no profile scrape needed.
-            research = str(_dig(x, cfg["research_field"]) or "").strip()
+        keywords: list[str] = []
+        for rf in ([cfg["research_field"]] if isinstance(cfg.get("research_field"), str)
+                   else cfg.get("research_field") or []):
+            # Rich feeds (UCSD Biology) carry per-person research data — no
+            # profile scrape needed. A "[]" path segment fans out over a list
+            # (profileInfo.sections[].title → one clean area tag per section)
+            # and lands as keywords; a plain path is prose research_areas.
+            # First populated field wins.
+            if "[]" in rf:
+                head, tail = rf.split("[]", 1)
+                lst = _dig(x, head.strip("."))
+                vals = [str(_dig(i, tail.strip(".")) if tail.strip(".") else i or "").strip()
+                        for i in (lst if isinstance(lst, list) else [])
+                        if isinstance(i, dict | str)]
+                keywords = [v for v in vals if v]
+                if keywords:
+                    break
+            else:
+                research = str(_dig(x, rf) or "").strip()
+                if research:
+                    break
         specs.append(faculty(name, title=title, url=url_v, email=email,
-                             research_areas=research))
+                             research_areas=research, keywords=keywords))
     return specs
 
 
@@ -1560,6 +1762,217 @@ def _fetch_faculty180(dept: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Corpus-wide faculty hygiene (one-time cleanup + refresh-safe regression guard)
+# ---------------------------------------------------------------------------
+
+# A faculty title is "Research with Prof. <name> — <SHORT> (kw1, kw2, kw3)"; the
+# parenthetical is a subset of the record's keywords (a DQ invariant). When the
+# keyword list is cleaned/de-duped the parenthetical must be rebuilt from it. The
+# short segment carries no "(", so the lazy group stops at the keyword paren.
+_FAC_TITLE_PAREN_RE = re.compile(r"^(.+ — [^(]+?)(?: \(.+\))$")
+
+
+def _is_active_faculty(o: dict) -> bool:
+    return (o.get("source_type") == "faculty_research"
+            and (o.get("metadata") or {}).get("is_active", True))
+
+
+def clean_corpus_faculty_keywords(opps: list[dict]) -> int:
+    """Apply keyword hygiene (edge-strip, comma-fold, junk/prose drop, order-
+    preserving de-dupe) to every faculty record and rebuild the title
+    parenthetical when the record has one. Idempotent, so it doubles as a
+    refresh-safe guard against a future scrape reintroducing duplicate/junk
+    keywords. Mutates ``opps`` in place; returns the count of records changed."""
+    changed = 0
+    for o in opps:
+        if o.get("source_type") != "faculty_research":
+            continue
+        kws = o.get("keywords") or []
+        new = _hygiene_keywords(kws)
+        touched = False
+        if new != kws:
+            o["keywords"] = new
+            touched = True
+        title = o.get("title") or ""
+        m = _FAC_TITLE_PAREN_RE.match(title)
+        if m:
+            rebuilt = m.group(1) + (f" ({', '.join(new[:3])})" if new else "")
+            if rebuilt != title:
+                o["title"] = rebuilt
+                touched = True
+        if touched:
+            changed += 1
+    return changed
+
+
+# Umbrella rosters that re-list people whose home is a more specific department
+# (Georgia Tech's cc.gatech.edu "College of Computing" page lists everyone in the
+# Schools of Interactive Computing / Computational Science & Engineering / CS).
+# Keyed by school_slug -> the umbrella department names. Used ONLY for the
+# no-email same-name collapse: a record under an umbrella dept that co-occurs
+# with the same person under a specific dept is the redundant one.
+_UMBRELLA_DEPTS: dict[str, frozenset[str]] = {
+    "gatech": frozenset({"College of Computing"}),
+}
+
+
+# "Scott L. Delp, Ph.D." must normalize equal to "Scott L. Delp" — credential
+# suffixes made the same person on the same profile URL survive dedup twice.
+_CREDENTIAL_TOKENS = frozenset({
+    "ph", "phd", "dphil", "md", "dvm", "dds", "jd", "esq", "mba", "msc",
+    "dr", "prof", "jr", "sr", "ii", "iii", "iv",
+})
+
+
+def _name_tokens(name: str) -> set[str]:
+    """Lowercased alphabetic name tokens (length > 1 — drops middle initials;
+    credential/honorific tokens excluded)."""
+    return {
+        t for t in re.findall(r"[a-z]+", (name or "").lower())
+        if len(t) > 1 and t not in _CREDENTIAL_TOKENS
+    }
+
+
+def _norm_person_name(name: str) -> str:
+    """Order-insensitive normalized full name ("Last, First" == "First Last")."""
+    return " ".join(sorted(_name_tokens(name)))
+
+
+def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
+    """Fill the survivor's missing contact fields (email / profile link) from the
+    dropped duplicate, so collapsing never loses a usable address or URL."""
+    if not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip():
+        survivor["contact_email"] = loser["contact_email"]
+    for f in ("url", "source_url"):
+        if not (survivor.get(f) or "").strip() and (loser.get(f) or "").strip():
+            survivor[f] = loser[f]
+    app, lapp = survivor.get("application"), loser.get("application")
+    if isinstance(app, dict) and isinstance(lapp, dict):
+        if not (app.get("application_url") or "").strip() and (lapp.get("application_url") or "").strip():
+            app["application_url"] = lapp["application_url"]
+
+
+def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
+    """Keyword-richest record in a same-person group; on a keyword tie, prefer a
+    specific (non-umbrella) department over the umbrella roster."""
+    from .uiuc_faculty import _faculty_is_richer
+    best = group[0]
+    for o in group[1:]:
+        if _faculty_is_richer(o, best):
+            best = o
+        elif not _faculty_is_richer(best, o) and (
+            best.get("department") in umbrella and o.get("department") not in umbrella
+        ):
+            best = o
+    return best
+
+
+def collapse_same_person_faculty(opps: list[dict]) -> dict:
+    """Collapse duplicate ACTIVE faculty for the same person at one school and
+    prevent recreation on the next merge.
+
+    Two passes, both school-scoped and conservative:
+
+    * **Same contact_email.** A cross-appointed professor listed under two
+      departments (different profile URLs) shares one personal address. When the
+      records also share a name token (the surname), they are one person: keep
+      the keyword-richer record, merge the loser's email/link, delete the loser.
+      When they do NOT share a name (a scraped department/advising inbox on two
+      different people, e.g. two Law professors on one assistant's address), the
+      email is a mis-scraped shared inbox — null it on both rather than merge,
+      so a "Dear Prof. X" cold email can never reach the wrong person.
+
+    * **Same normalized name, both without email.** Only collapsed when one
+      record sits under an umbrella roster of the other (``_UMBRELLA_DEPTS``);
+      genuine joint appointments across two peer departments (Stanford Applied
+      Physics + Physics) are left as two records.
+
+    Mutates ``opps`` in place (nulls shared inboxes) and returns
+    ``{"kept": [...], "removed_by_school": {...}, "nulled_by_school": {...}}``."""
+    active = [o for o in opps if _is_active_faculty(o)]
+    remove: set[int] = set()
+    removed_by_school: Counter = Counter()
+    nulled_by_school: Counter = Counter()
+
+    by_email: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for o in active:
+        em = (o.get("contact_email") or "").strip().lower()
+        if em:
+            by_email[(o.get("school"), em)].append(o)
+    for (school, _em), group in by_email.items():
+        if len(group) < 2:
+            continue
+        common = set.intersection(*(_name_tokens(o.get("pi_name")) for o in group))
+        if common:
+            survivor = _pick_richer(group, frozenset())
+            for o in group:
+                if o is survivor:
+                    continue
+                _merge_faculty_fields(survivor, o)
+                remove.add(id(o))
+                removed_by_school[school] += 1
+        else:
+            for o in group:
+                o["contact_email"] = None
+                nulled_by_school[school] += 1
+
+    by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for o in active:
+        if id(o) in remove or (o.get("contact_email") or "").strip():
+            continue
+        nn = _norm_person_name(o.get("pi_name"))
+        if nn:
+            by_name[(o.get("school"), nn)].append(o)
+    for (school, _nn), group in by_name.items():
+        if len(group) < 2:
+            continue
+        # Same person twice under ONE department with the same profile URL is a
+        # scrape artifact (typically a credential-suffix name variant), not a
+        # joint appointment — collapse it regardless of umbrella config.
+        by_url_dept: dict[tuple[str, str], list[dict]] = defaultdict(list)
+        for o in group:
+            u = (o.get("url") or "").strip().rstrip("/").lower()
+            if u:
+                by_url_dept[(u, o.get("department") or "")].append(o)
+        for dgroup in by_url_dept.values():
+            if len(dgroup) < 2:
+                continue
+            survivor = _pick_richer(dgroup, frozenset())
+            for o in dgroup:
+                if o is survivor:
+                    continue
+                _merge_faculty_fields(survivor, o)
+                remove.add(id(o))
+                removed_by_school[school] += 1
+        group = [o for o in group if id(o) not in remove]
+        if len(group) < 2:
+            continue
+        umbrella = _UMBRELLA_DEPTS.get(school, frozenset())
+        if not umbrella:
+            continue
+        umbrella_recs = [o for o in group if o.get("department") in umbrella]
+        specific_recs = [o for o in group if o.get("department") not in umbrella]
+        # Only the umbrella listing is redundant. Genuine joint appointments
+        # across peer departments (Interactive Computing + City & Regional
+        # Planning) both stay — we merge the umbrella record's fields into the
+        # richer specific home record and delete only the umbrella record.
+        if not umbrella_recs or not specific_recs:
+            continue
+        survivor = _pick_richer(specific_recs, umbrella)
+        for o in umbrella_recs:
+            _merge_faculty_fields(survivor, o)
+            remove.add(id(o))
+            removed_by_school[school] += 1
+
+    kept = [o for o in opps if id(o) not in remove]
+    return {
+        "kept": kept,
+        "removed_by_school": dict(removed_by_school),
+        "nulled_by_school": dict(nulled_by_school),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -1622,10 +2035,14 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
         from .ucb_common import HEADERS
     except Exception:  # noqa: BLE001
         return
-    by_name = cfg.get("key", "slug") == "name"
+    key_kind = cfg.get("key", "slug")
 
     def _norm(raw: str) -> str:
-        if not by_name:
+        if key_kind == "email":
+            # HR/export feeds keyed by work email — the one identifier both
+            # sides carry verbatim (UCSD Math's export feed).
+            return (raw or "").strip().lower()
+        if key_kind != "name":
             return _join_slug(raw)
         # Order-insensitive name key: aggregators often list "Last, First"
         # while the roster spec holds "First Last" — sorting the tokens makes
@@ -1665,9 +2082,99 @@ def _apply_research_join(dept: dict, specs: list[dict]) -> None:
     for sp in specs:
         if sp.get("research_areas") or sp.get("keywords"):
             continue
-        key = _norm(sp.get("name", "")) if by_name else _join_slug(sp.get("url", ""))
+        raw = {"name": sp.get("name", ""), "email": sp.get("email", "")}.get(
+            key_kind, sp.get("url", ""))
+        key = _norm(raw)
         if key and key in mapping:
             sp["research_areas"] = "; ".join(mapping[key])
+
+
+# ---------------------------------------------------------------------------
+# Purdue College of Agriculture directory API (deep mode, lazy HTTP deps)
+# ---------------------------------------------------------------------------
+#
+# Purdue's College of Agriculture serves every department's directory from one
+# React SPA backed by a public POST endpoint that returns the whole college's
+# roster as structured JSON. A department config opts in with a ``coa_api`` block:
+#
+#     "coa_api": {"dept_id": 10}          # department id from the ListDepartment API
+#
+# One POST returns all ~2100 CoA people; the roster is cached per organization
+# (all nine departments share it) and filtered to the department's Faculty-
+# classified members client-side — no server-side department filter exists. Names
+# are pre-split (FirstName/LastName), the public email + rank ride each record, and
+# the per-person profile page is ``ag.purdue.edu/directory/<alias>``. A ladder gate
+# keeps professorial faculty (the "Faculty" classification also carries the odd
+# extension/administrative title).
+
+_COA_BASE = "https://ag.purdue.edu"
+_COA_LADDER = {"require": r"\bprof",
+               "drop": r"\bemerit|\badjunct|\bvisiting|\bcourtesy|\blecturer|\binstructor|\bpostdoc"}
+_COA_ROSTER_CACHE: dict[str, list] = {}
+
+
+def _coa_roster(org: str) -> list:
+    """Fetch (and cache per org) the full College of Agriculture roster."""
+    if org in _COA_ROSTER_CACHE:
+        return _COA_ROSTER_CACHE[org]
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+    except Exception:  # noqa: BLE001
+        return []
+    rows: list = []
+    try:
+        resp = requests.post(
+            f"{_COA_BASE}/api/pi/2021/api/Directory/ListStaffDirectory",
+            # The API 500s on the default Accept: text/html — force JSON.
+            headers={**HEADERS, "Content-Type": "application/x-www-form-urlencoded",
+                     "Accept": "application/json"},
+            data={"organization": org, "page": 1, "pageSize": 5000}, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if isinstance(data, dict) and isinstance(data.get("Data"), list):
+            rows = data["Data"]
+    except Exception as e:  # noqa: BLE001 — degrade to [] like fetch_soup
+        logger.warning("faculty_graph: CoA roster fetch failed for %s: %s", org, e)
+    _COA_ROSTER_CACHE[org] = rows
+    return rows
+
+
+def _fetch_coa_api(dept: dict) -> list[dict]:
+    """Best-effort Purdue College of Agriculture fetch (opt-in via ``coa_api``).
+
+    Filters the cached college roster to this department's Faculty-classified
+    members and lands them name + rank + public email + profile URL.
+    """
+    cfg = dept.get("coa_api")
+    if not cfg:
+        return []
+    org = cfg.get("organization", "CoA")
+    dept_id = cfg.get("dept_id")
+    lf = cfg.get("ladder_filter", _COA_LADDER)
+    specs: list[dict] = []
+    for rec in _coa_roster(org):
+        if not isinstance(rec, dict):
+            continue
+        # Keep only records with a Faculty-classified membership in this dept.
+        if not any(isinstance(d, dict) and d.get("Id") == dept_id
+                   and (d.get("ClassificationId") == 4
+                        or d.get("classification") == "Faculty")
+                   for d in (rec.get("DepartmentList") or [])):
+            continue
+        name = " ".join(p for p in ((rec.get("FirstName") or "").strip(),
+                                     (rec.get("LastName") or "").strip()) if p)
+        if not name:
+            continue
+        title = _wp_text(rec.get("Title") or "") or "Professor"
+        if not _passes_ladder(title, lf):
+            continue
+        alias = (rec.get("stralias") or "").strip()
+        url = f"{_COA_BASE}/directory/{alias}" if alias else ""
+        email = (rec.get("Email") or "").strip() or None
+        specs.append(faculty(name, title=title, url=url, email=email))
+    return specs
 
 
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
@@ -1697,7 +2204,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept)):
+                               + _fetch_json_dir(dept) + _fetch_coa_api(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue

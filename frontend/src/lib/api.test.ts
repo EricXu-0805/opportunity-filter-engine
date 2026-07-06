@@ -9,7 +9,6 @@ import {
   getOpportunitiesByIds,
   generateColdEmail,
   getEmailVariants,
-  uploadResume,
   refineEmail,
   parseGitHubProfile,
   getStats,
@@ -117,6 +116,7 @@ describe('getMatches', () => {
     expect(body.research_interests_text).toBe('machine learning');
     expect(body.hard_skills).toEqual([{ name: 'Python', level: 'experienced' }]);
     expect(body.exploring).toBe(false);
+    expect(body.include_cross_school).toBe(false);
   });
 
   it('sends exploring=true when the profile opts into explore mode', async () => {
@@ -126,6 +126,15 @@ describe('getMatches', () => {
     await getMatches(makeProfile({ exploring: true }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.exploring).toBe(true);
+  });
+
+  it('sends include_cross_school=true when the profile opts in', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile({ include_cross_school: true }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.include_cross_school).toBe(true);
   });
 
   it('defaults home_school to uiuc for profiles that predate the switcher', async () => {
@@ -301,35 +310,7 @@ describe('cold-email endpoints', () => {
   });
 });
 
-describe('resume + github + stats', () => {
-  it('uploadResume POSTs FormData (no Content-Type override) to /resume/upload', async () => {
-    fetchMock.mockResolvedValue(
-      okJson({
-        extracted_skills: [],
-        extracted_coursework: [],
-        experience_level: 'beginner',
-        raw_text: '',
-        success: true,
-        message: 'ok',
-      }),
-    );
-    const file = new File(['hello'], 'resume.pdf', { type: 'application/pdf' });
-    await uploadResume(file);
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/resume/upload');
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
-    expect(init.method).toBe('POST');
-    expect(init.body).toBeInstanceOf(FormData);
-    /* Critical: FormData uploads must NOT have a Content-Type header — the
-       browser/node fetch needs to set the multipart boundary itself. */
-    expect(init.headers).toBeUndefined();
-  });
-
-  it('uploadResume throws on non-2xx with the API error message', async () => {
-    fetchMock.mockResolvedValue(badResponse(413, 'too big'));
-    const file = new File(['x'], 'r.pdf', { type: 'application/pdf' });
-    await expect(uploadResume(file)).rejects.toThrow('API 413: too big');
-  });
-
+describe('github + stats', () => {
   it('parseGitHubProfile URL-encodes the username path segment', async () => {
     fetchMock.mockResolvedValue(
       okJson({ username: 'a/b', extracted_skills: [], topics: [], repo_count: 0, top_repos: [] }),
@@ -461,3 +442,92 @@ describe('deriveDesiredFields', () => {
     expect(deriveDesiredFields('understanding language')).toEqual(['understanding language']);
   });
 })
+
+describe('chatWithOpportunity — SSE streaming (onDelta present)', () => {
+  function sseResponse(frames: string[]): Response {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const frame of frames) controller.enqueue(encoder.encode(frame));
+        controller.close();
+      },
+    });
+    return new Response(stream, {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    });
+  }
+
+  it('accumulates deltas, calls onDelta per chunk, and takes method from the done event', async () => {
+    fetchMock.mockResolvedValue(sseResponse([
+      'data: {"delta":"Hel"}\n\n',
+      'data: {"delta":"lo"}\n\ndata: {"done":true,"method":"llm"}\n\n',
+    ]));
+    const onDelta = vi.fn();
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, onDelta);
+
+    expect(result).toEqual({ reply: 'Hello', method: 'llm', errored: false });
+    expect(onDelta.mock.calls.map((c) => c[0])).toEqual(['Hel', 'lo']);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe('/api/opportunities/opp-1/chat?stream=1');
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((init.headers as Record<string, string>)['Accept']).toBe('text/event-stream');
+  });
+
+  it('falls back to res.json() when the backend answers plain JSON, calling onDelta once', async () => {
+    fetchMock.mockResolvedValue(okJson({ reply: 'plain reply', method: 'llm' }));
+    const onDelta = vi.fn();
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, onDelta);
+
+    expect(result).toEqual({ reply: 'plain reply', method: 'llm' });
+    expect(onDelta).toHaveBeenCalledTimes(1);
+    expect(onDelta).toHaveBeenCalledWith('plain reply');
+  });
+
+  it('marks the result errored when an error event follows partial deltas', async () => {
+    fetchMock.mockResolvedValue(sseResponse([
+      'data: {"delta":"par"}\n\n',
+      'data: {"error":true}\n\n',
+      'data: {"done":true,"method":"llm"}\n\n',
+    ]));
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn());
+    expect(result).toEqual({ reply: 'par', method: 'llm', errored: true });
+  });
+
+  it('surfaces the local-fallback stream with method local', async () => {
+    fetchMock.mockResolvedValue(sseResponse([
+      'data: {"delta":"AI chat is not configured…","method":"local"}\n\n',
+      'data: {"done":true,"method":"local"}\n\n',
+    ]));
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn());
+    expect(result.method).toBe('local');
+    expect(result.reply).toContain('AI chat is not configured');
+  });
+
+  it('throws "API {status}" on a non-2xx streaming response', async () => {
+    fetchMock.mockResolvedValue(badResponse(429, 'slow down'));
+    await expect(
+      chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn()),
+    ).rejects.toThrow('API 429: slow down');
+  });
+
+  it('returns the partial reply as errored when the stream breaks mid-read', async () => {
+    const encoder = new TextEncoder();
+    let pulls = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (pulls++ === 0) {
+          controller.enqueue(encoder.encode('data: {"delta":"cut "}\n\n'));
+        } else {
+          controller.error(new Error('network reset'));
+        }
+      },
+    });
+    fetchMock.mockResolvedValue(new Response(stream, {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    }));
+    const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn());
+    expect(result).toEqual({ reply: 'cut ', method: 'llm', errored: true });
+  });
+});

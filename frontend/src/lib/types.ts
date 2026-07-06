@@ -26,12 +26,22 @@ export interface ProfileData {
   search_weight?: number;
   /** "I'm still exploring" — widens matching for undecided students. */
   exploring?: boolean;
+  /**
+   * Opt-in to other schools' opportunities (default off — home school
+   * first). National records and summer programs always show.
+   */
+  include_cross_school?: boolean;
   linkedin_url?: string;
   github_url?: string;
   seeking_types?: string[];
   format_preference?: string;
   name?: string;
   experience_level?: string;
+  /**
+   * Account tier. 'org' is reserved at the type level only (no org tables
+   * yet); readers default to 'personal' when absent.
+   */
+  account_type?: 'personal' | 'org';
 }
 
 // ── Backend Profile Request ──────────────────────────────────────────
@@ -57,6 +67,7 @@ export interface ProfileRequest {
   github_url: string;
   search_weight: number;  // 0-100: 0=pure interests, 100=pure experience
   exploring: boolean;     // widen matching for undecided students
+  include_cross_school: boolean;  // opt-in to other schools' opportunities
 }
 
 // ── Opportunity (backend shape) ──────────────────────────────────────

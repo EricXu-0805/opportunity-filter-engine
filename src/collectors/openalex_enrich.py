@@ -19,10 +19,19 @@ protects it on refresh -> zero weekly cost.
 
     python -m src.collectors.openalex_enrich harvest uw,ucla,... --out oa.json
     python -m src.collectors.openalex_enrich apply oa.json
+
+A second pass fetches each matched author's most recent publications (title +
+year only) into ``metadata.recent_works`` so cold emails can cite a real,
+current paper. Same institution/surname/field gating; run-once, carried
+forward on re-scrape by ``_carry_forward_enrichment``:
+
+    python -m src.collectors.openalex_enrich works princeton,stanford --out works.json
+    python -m src.collectors.openalex_enrich apply-works works.json
 """
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sys
@@ -32,8 +41,17 @@ import requests
 
 from .ucb_common import PROCESSED_FILE
 
+logger = logging.getLogger(__name__)
+
 _HEADERS = {"User-Agent": "ofe-research/1.0 (mailto:eric.guoyi.xu@gmail.com)"}
 _API = "https://api.openalex.org/authors"
+_WORKS_API = "https://api.openalex.org/works"
+# 86MB corpus in a 2GB-RAM backend: hard-cap what apply may store per faculty.
+_MAX_WORKS = 3
+_TITLE_CAP = 200
+# Over-fetch so the per-work field filter (drops OpenAlex same-name conflation
+# outliers) still leaves _MAX_WORKS survivors in the common case.
+_WORKS_FETCH = 10
 
 # school slug -> OpenAlex institution id (resolved once via /institutions). The
 # id is matched against each candidate author's full affiliation history, so a
@@ -47,6 +65,17 @@ SCHOOL_INST = {
     "stanford": "I97018004",
     "gatech": "I130701444",
     "wisc": "I135310074",
+    # Verified 2026-07-05 via GET /institutions?search=… (display_name + ROR):
+    "ucb": "I95457486",        # University of California, Berkeley (ror 01an7q238)
+    "umich": "I27837315",      # University of Michigan [Ann Arbor] (ror 00jmfr291)
+    "princeton": "I20089843",  # Princeton University (ror 00hx57361)
+    "ucsd": "I36258959",       # University of California San Diego (ror 0168r3w48)
+    "uchicago": "I40347166",   # University of Chicago (ror 024mw5h28)
+    "uci": "I204250578",       # University of California, Irvine (ror 04gyf1771)
+    "ucsb": "I154570441",      # University of California, Santa Barbara (ror 02t274463)
+    "boulder": "I188538660",   # University of Colorado Boulder (ror 02ttsq026)
+    "purdue": "I219193219",    # Purdue University West Lafayette (ror 02dqehb95)
+    "duke": "I170897317",      # Duke University (ror 00py81415)
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)
@@ -147,31 +176,48 @@ def _clean_topic(t: str) -> str:
     return t.lower()
 
 
-def _get(params: dict) -> dict:
+_warned_429 = False
+
+
+def _get(params: dict, url: str = _API) -> dict:
     # OpenAlex metered its API in 2026 (every call costs credits, $0 free/day);
     # the prepaid key authorizes the request via the api_key query param. Absent
     # a key the call returns a 429 budget error (no "results") -> stays broad.
+    global _warned_429
     key = os.environ.get("OPENALEX_API_KEY")
     if key:
         params = {**params, "api_key": key}
     for attempt in range(4):
         try:
-            return requests.get(_API, params=params, headers=_HEADERS, timeout=20).json()
+            resp = requests.get(url, params=params, headers=_HEADERS, timeout=20)
+            if resp.status_code == 429:
+                # Budget exhaustion won't clear within a retry loop; warn once
+                # per process so a 0-match harvest is never mistaken for
+                # "no authors found".
+                if not _warned_429:
+                    _warned_429 = True
+                    logger.warning(
+                        "OpenAlex returned 429 (rate limit / daily budget exhausted) — "
+                        "authors resolve to no results, so the harvest yields 0 topics. "
+                        "Set OPENALEX_API_KEY or retry after the budget resets.")
+                return {}
+            return resp.json()
         except Exception:
             time.sleep(1.2 * (attempt + 1))
     return {}
 
 
-def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) -> list[str]:
-    """Top research topics for the institution-affiliated author named ``name``,
-    or [] when no confident match exists. Requires: surname match, the school's
-    institution id in the author's affiliation history, works_count >= _MIN_WORKS,
-    and — when the department maps to a field family — at least one topic field
+def _match_author(name: str, inst_id: str, dept: str = "") -> dict | None:
+    """The confidently-matched OpenAlex author record for ``name`` at the
+    institution, or None. Requires: surname match, the school's institution id
+    in the author's affiliation history, works_count >= _MIN_WORKS, and — when
+    the department maps to a field family — a majority of top topic fields
     compatible with it (rejects same-name same-institution wrong-field people)."""
     surname = _surname(name)
     if not surname:
-        return []
-    j = _get({"search": name, "per_page": 10, "select": "display_name,works_count,affiliations,topics"})
+        return None
+    j = _get({"search": name, "per_page": 10,
+              "select": "id,display_name,works_count,affiliations,topics"})
     best, best_works = None, -1
     for a in j.get("results", []):
         if surname not in (a.get("display_name") or "").lower():
@@ -185,7 +231,7 @@ def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) 
         if (a.get("works_count") or 0) > best_works:
             best, best_works = a, a.get("works_count") or 0
     if best is None or best_works < _MIN_WORKS:
-        return []
+        return None
     topics = best.get("topics") or []
     allowed = _dept_fields(dept)
     if allowed is not None:
@@ -198,13 +244,58 @@ def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) 
         n = len(consider)
         ok = (comp * 2 >= n) if n >= 3 else (n > 0 and comp == n)
         if not ok:
-            return []
+            return None
+    return best
+
+
+def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) -> list[str]:
+    """Top research topics for the institution-affiliated author named ``name``,
+    or [] when no confident match exists (gating in ``_match_author``)."""
+    best = _match_author(name, inst_id, dept)
+    if best is None:
+        return []
     out: list[str] = []
-    for t in topics:
+    for t in best.get("topics") or []:
         c = _clean_topic(t.get("display_name", ""))
         if c and c not in out and len(c.split()) <= 7:
             out.append(c)
         if len(out) >= max_topics:
+            break
+    return out
+
+
+def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS) -> list[dict]:
+    """Up to ``max_works`` most recent works for a matched author: title + year
+    only, title capped at ``_TITLE_CAP`` chars (corpus lives in a 2GB backend).
+
+    OpenAlex author-name disambiguation conflates distinct same-name people
+    under one author id, and the recency sort surfaces the mis-attributed
+    outliers first (a CS/NLP professor gets a myocardial-cell-injury paper). So
+    when the department maps to a field family, a work whose ``primary_topic``
+    field is incompatible with it is dropped — the same wrong-field guard the
+    author-topics pass applies, at the per-work level. Better to cite no paper
+    than the wrong person's."""
+    allowed = _dept_fields(dept)
+    j = _get({
+        "filter": f"author.id:{author_id}",
+        "sort": "publication_date:desc",
+        "per-page": _WORKS_FETCH,
+        "select": "display_name,publication_year,primary_topic",
+    }, url=_WORKS_API)
+    out: list[dict] = []
+    seen: set[str] = set()
+    for w in j.get("results", []) or []:
+        if allowed is not None:
+            field = ((w.get("primary_topic") or {}).get("field") or {}).get("display_name", "")
+            if field not in allowed:
+                continue
+        title = re.sub(r"\s+", " ", (w.get("display_name") or "")).strip()[:_TITLE_CAP]
+        year = w.get("publication_year")
+        # preprint + published version of one paper share a display_name
+        if title and isinstance(year, int) and title.lower() not in seen:
+            seen.add(title.lower())
+            out.append({"title": title, "year": year})
+        if len(out) >= max_works:
             break
     return out
 
@@ -263,6 +354,71 @@ def apply_openalex(opps: list[dict], mapping: dict[str, list[str]]) -> int:
     return n
 
 
+def _works_targets(opps: list[dict], schools: list[str] | None) -> list[dict]:
+    # Unlike the topics pass, keyworded faculty ARE targets — a recent paper
+    # title gives the cold email substance regardless of keyword source.
+    out = []
+    for o in opps:
+        if not _is_faculty(o):
+            continue
+        s = o.get("school")
+        if s not in SCHOOL_INST or (schools and s not in schools):
+            continue
+        if not (o.get("pi_name") and _record_url(o)):
+            continue
+        if (o.get("metadata") or {}).get("recent_works"):
+            continue
+        out.append(o)
+    return out
+
+
+def harvest_works(
+    opps: list[dict],
+    *,
+    schools: list[str] | None = None,
+    sample: int | None = None,
+    throttle: float = 0.2,
+    progress: bool = False,
+) -> dict[str, list[dict]]:
+    """Pure harvest: ``{url: [{title, year}, ...]}`` for faculty with a confident
+    OpenAlex author match (same institution/surname/field gates as topics)."""
+    targets = _works_targets(opps, schools)
+    if sample is not None:
+        targets = targets[:sample]
+    mapping: dict[str, list[dict]] = {}
+    for i, o in enumerate(targets):
+        dept = o.get("department", "")
+        best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], dept)
+        time.sleep(throttle)
+        if best and best.get("id"):
+            works = author_recent_works(best["id"], dept)
+            time.sleep(throttle)
+            if works:
+                mapping[_record_url(o)] = works
+        if progress and (i + 1) % 100 == 0:
+            print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} matched", flush=True)
+    return mapping
+
+
+def apply_works(opps: list[dict], mapping: dict[str, list[dict]]) -> int:
+    """Updates-only: set ``metadata.recent_works`` on faculty whose URL is in
+    mapping and who don't already carry works. Never touches any other field."""
+    n = 0
+    for o in opps:
+        if not _is_faculty(o) or (o.get("metadata") or {}).get("recent_works"):
+            continue
+        works = mapping.get(_record_url(o)) or []
+        clean = [
+            {"title": str(w.get("title", ""))[:_TITLE_CAP], "year": w["year"]}
+            for w in works[:_MAX_WORKS]
+            if w.get("title") and isinstance(w.get("year"), int)
+        ]
+        if clean:
+            o.setdefault("metadata", {})["recent_works"] = clean
+            n += 1
+    return n
+
+
 def _load_dotenv() -> None:
     """Load backend/.env so ``python -m`` runs pick up OPENALEX_API_KEY; the
     importable functions never touch the environment beyond os.environ.get."""
@@ -280,11 +436,11 @@ def _load_dotenv() -> None:
 
 def _cli(argv: list[str]) -> int:
     _load_dotenv()
-    if not argv or argv[0] not in ("harvest", "apply"):
+    if not argv or argv[0] not in ("harvest", "apply", "works", "apply-works"):
         print(__doc__)
         return 2
     mode, rest = argv[0], argv[1:]
-    if mode == "harvest":
+    if mode in ("harvest", "works"):
         schools = rest[0].split(",") if rest and not rest[0].startswith("-") else None
         out = "openalex.json"
         sample = None
@@ -294,15 +450,16 @@ def _cli(argv: list[str]) -> int:
             elif a == "--sample":
                 sample = int(rest[i + 1])
         opps = json.load(open(PROCESSED_FILE))
-        mapping = harvest_openalex(opps, schools=schools, sample=sample, progress=True)
+        fn = harvest_openalex if mode == "harvest" else harvest_works
+        mapping = fn(opps, schools=schools, sample=sample, progress=True)
         json.dump(mapping, open(out, "w"), indent=2)
         print(f"matched {len(mapping)} faculty -> {out}")
         return 0
     opps = json.load(open(PROCESSED_FILE))
-    merged: dict[str, list[str]] = {}
+    merged: dict = {}
     for f in rest:
         merged.update(json.load(open(f)))
-    n = apply_openalex(opps, merged)
+    n = (apply_openalex if mode == "apply" else apply_works)(opps, merged)
     json.dump(opps, open(PROCESSED_FILE, "w"), ensure_ascii=False, indent=2)
     print(f"applied {n} enrichments from {len(rest)} map(s) -> {PROCESSED_FILE}")
     return 0
