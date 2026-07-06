@@ -19,8 +19,16 @@ Purdue's directories are server-rendered, so they scrape with a plain request
   server-rendered directory fragment (name + rank; its listing email is an
   un-parseable alias). A ladder gate keeps professorial faculty.
 
-More Purdue colleges (Agriculture — a shared JSON API; Health & Human Sciences)
-are added as their markup is identified.
+* **College of Agriculture** — all nine departments come from one JSON roster API
+  (``faculty_graph._fetch_coa_api``), filtered by department id; each record lands
+  name + rank + public email + profile URL.
+
+* **College of Liberal Arts** — one static directory lists every CLA person with
+  the department in the title cell after ``//`` and the email in the fourth cell;
+  each department config filters that shared listing to its department.
+
+More Purdue colleges (Health & Human Sciences, Polytechnic, Daniels Business) are
+added as their markup is identified.
 
 Single source ("purdue_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -74,6 +82,36 @@ _BIO_SEL = {"card": "div.people-item[data-position='faculty']",
 def _sci_bio(short: str, name: str, majors: list[str], url: str) -> dict:
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _BIO_SEL, "ladder_filter": _SCI_LADDER}}
+
+
+# College of Agriculture: all nine departments come from one JSON roster API
+# (faculty_graph._fetch_coa_api), filtered by the department id from the college's
+# ListDepartment endpoint. Name + rank + public email + profile URL on the record.
+def _ag(short: str, name: str, majors: list[str], code: str, dept_id: int) -> dict:
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": f"https://ag.purdue.edu/department/{code}/directory.html",
+            "coa_api": {"dept_id": dept_id}}
+
+
+# College of Liberal Arts: one static directory lists every CLA person with the
+# department encoded in the title cell (``td:2``) after a ``//`` separator and the
+# public email in ``td:4``. Each department config filters that shared listing to
+# its department (``field_filter`` anchored on ``// <Dept>`` so "History" doesn't
+# also catch "Art History") and strips the "// Dept" tail off the rank.
+_CLA_URL = "https://www.cla.purdue.edu/directory/"
+_CLA_SEL = {"card": "table#results-table tr.profile-row",
+            "name": "td:nth-child(1) a", "link": "td:nth-child(1) a",
+            "title": "td:nth-child(2)", "title_strip_after": r"//",
+            "email": "td:nth-child(4)"}
+_CLA_LADDER = {"require": r"\bprofessor\b",
+               "drop": r"\bemerit|\blecturer|\bvisiting|\badjunct|\bgraduate|\bcontinuing"}
+
+
+def _cla(short: str, name: str, majors: list[str], include: str) -> dict:
+    return {"short": short, "name": name, "majors": majors, "directory_url": _CLA_URL,
+            "scrape": {"url": _CLA_URL, "selectors": _CLA_SEL,
+                       "ladder_filter": _CLA_LADDER,
+                       "field_filter": {"selector": "td:nth-child(2)", "include": include}}}
 
 
 SCHOOL: dict = {
@@ -219,6 +257,37 @@ SCHOOL: dict = {
         _engr("ENE", "School of Engineering Education",
               ["Engineering Education"], "/ENE/People/Faculty",
               title=".list-name div:not(.pronouns)"),
+        # --- College of Agriculture (shared JSON roster API) ---
+        _ag("AGEC", "Department of Agricultural Economics",
+            ["Agricultural Economics"], "agecon", 10),
+        _ag("AGRY", "Department of Agronomy",
+            ["Agronomy", "Soil Science", "Plant Science"], "agry", 11),
+        _ag("ANSC", "Department of Animal Sciences",
+            ["Animal Sciences"], "ansc", 12),
+        _ag("BCHM", "Department of Biochemistry",
+            ["Biochemistry"], "biochem", 13),
+        _ag("BTNY", "Department of Botany & Plant Pathology",
+            ["Botany", "Plant Pathology", "Plant Science"], "btny", 14),
+        _ag("ENTM", "Department of Entomology",
+            ["Entomology"], "entm", 15),
+        _ag("FS", "Department of Food Science",
+            ["Food Science"], "foodsci", 16),
+        _ag("FNR", "Department of Forestry & Natural Resources",
+            ["Forestry", "Natural Resources", "Wildlife"], "fnr", 17),
+        _ag("HLA", "Department of Horticulture & Landscape Architecture",
+            ["Horticulture", "Landscape Architecture"], "hla", 18),
+        # --- College of Liberal Arts (shared static directory, dept via td 2) ---
+        _cla("ENGL", "Department of English",
+             ["English", "Literature", "Creative Writing"], r"//\s*English"),
+        _cla("HIST", "Department of History", ["History"], r"//\s*History"),
+        _cla("PHIL", "Department of Philosophy", ["Philosophy"], r"//\s*Philosophy"),
+        _cla("POLS", "Department of Political Science",
+             ["Political Science"], r"//\s*Political Science"),
+        _cla("SOC", "Department of Sociology", ["Sociology"], r"//\s*Sociology"),
+        _cla("ANTH", "Department of Anthropology",
+             ["Anthropology"], r"//\s*Anthropology"),
+        _cla("COMM", "Brian Lamb School of Communication",
+             ["Communication"], r"//\s*Communication"),
     ],
 }
 
