@@ -744,41 +744,6 @@ def _extract_research_keywords(person: dict, dept_config: dict) -> list[str]:
     return found[:8]
 
 
-def _infer_skills_from_research(person: dict) -> list[str]:
-    """Infer likely required skills from research description."""
-    text = " ".join([
-        person.get("research_areas", ""),
-        person.get("research_description", ""),
-    ]).lower()
-
-    SKILL_MAP = {
-        "Python": ["python", "machine learning", "deep learning", "data science",
-                    "natural language", "computational", "bioinformatics"],
-        "C++": ["c++", "systems", "embedded", "robotics", "high performance",
-                "parallel computing", "compilers"],
-        "MATLAB": ["matlab", "signal processing", "control", "power systems",
-                    "circuits", "electromagnetics"],
-        "R": ["statistical", "biostatistics", "epidemiology", "ecology"],
-        "PyTorch": ["deep learning", "neural network", "computer vision",
-                     "reinforcement learning", "nlp"],
-        "TensorFlow": ["deep learning", "machine learning", "neural network"],
-        "SQL": ["database", "data management", "information systems"],
-        "Linux": ["systems", "networking", "security", "cloud"],
-        "Java": ["software engineering", "distributed", "android"],
-        "machine learning": ["machine learning", "artificial intelligence",
-                              "data science", "pattern recognition"],
-        "data analysis": ["data science", "statistics", "computational",
-                           "bioinformatics", "genomics"],
-    }
-
-    skills = set()
-    for skill, triggers in SKILL_MAP.items():
-        if any(t in text for t in triggers):
-            skills.add(skill)
-
-    return sorted(skills)[:5]
-
-
 def normalize_faculty(
     person: dict, dept_config: dict, keywords: list[str] | None = None
 ) -> dict | None:
@@ -811,7 +776,6 @@ def normalize_faculty(
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     if keywords is None:
         keywords = _extract_research_keywords(person, dept_config)
-    skills = _infer_skills_from_research(person)
 
     desc_parts = [
         f"Research opportunity with {title} {name} in the {dept_name} at UIUC.",
@@ -855,8 +819,15 @@ def normalize_faculty(
             "preferred_year": ["sophomore", "junior", "senior"],
             "min_gpa": None,
             "majors": dept_config["majors"],
-            "skills_required": skills[:3],
-            "skills_preferred": skills[3:],
+            # Faculty are cold-email research contacts, not postings — never
+            # infer skills from their research prose (a topology professor whose
+            # page says "finite element" would become FEA-required, defeating
+            # the ranker's neutral skill score). The corpus DQ gate enforces
+            # this; the two downstream skill-writers (llm_tagger / enricher)
+            # already skip source_type=="faculty_research", so the collector
+            # must not seed skills at the source either.
+            "skills_required": [],
+            "skills_preferred": [],
             "citizenship_required": False,
             "international_friendly": "yes",
             "work_auth_notes": "On-campus research — no work authorization required",
