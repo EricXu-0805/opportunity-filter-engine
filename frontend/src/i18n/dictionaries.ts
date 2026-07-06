@@ -257,6 +257,8 @@ export const en = {
     Sophomore: 'Sophomore',
     Junior: 'Junior',
     Senior: 'Senior',
+    Masters: "Master's student",
+    PhD: 'PhD student',
   },
   majors: {
     'Aerospace Engineering Sciences': 'Aerospace Engineering Sciences',
@@ -2905,6 +2907,8 @@ export const zh = {
     Sophomore: '大二',
     Junior: '大三',
     Senior: '大四',
+    Masters: '硕士生',
+    PhD: '博士生',
   },
   majors: {
     'Aerospace Engineering Sciences': '航空航天工程科学',

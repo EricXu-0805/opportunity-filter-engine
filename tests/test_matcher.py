@@ -28,6 +28,7 @@ from src.matcher.ranker import (
     _college_affinity,
     _compute_weights,
     _home_school_affinity,
+    _is_grad_year,
     _is_undergrad,
     _major_match_score,
     _normalize_type_key,
@@ -144,6 +145,30 @@ class TestYearMatching:
     def test_unknown_requirement(self):
         score = _year_match_score("freshman", ["unknown"])
         assert score == 40.0  # Unknown = penalized, not neutral
+
+    def test_grad_student_matches_grad_program(self):
+        # A PhD student fits grad-level openings however they're phrased.
+        assert _year_match_score("PhD", ["PhD"]) == 100.0
+        assert _year_match_score("PhD", ["Graduate", "Doctoral"]) == 100.0
+        assert _year_match_score("Masters", ["graduate students"]) == 100.0
+
+    def test_grad_student_not_penalized_for_year_math(self):
+        # Regression: grad years aren't in the undergrad order — must not crash
+        # to 0 for a grad-friendly program, and must hard-miss undergrad-only ones.
+        assert _year_match_score("PhD", ["undergraduate", "senior"]) == 0.0
+        assert _year_match_score("Masters", ["freshman", "sophomore"]) == 0.0
+
+    def test_undergrad_hard_misses_grad_only_program(self):
+        assert _year_match_score("senior", ["PhD"]) == 0.0
+        assert _year_match_score("junior", ["graduate"]) == 0.0
+
+    def test_undergraduate_term_is_not_grad(self):
+        # "undergraduate" contains "graduate" — the guard must keep it undergrad,
+        # and a generic "undergraduates" program accepts any class year.
+        assert _is_grad_year("undergraduate") is False
+        assert _is_grad_year("undergrad") is False
+        assert _year_match_score("senior", ["undergraduate"]) == 100.0
+        assert _year_match_score("freshman", ["undergraduate students"]) == 100.0
 
 
 class TestSkillOverlap:

@@ -94,12 +94,12 @@ describe('COLLEGES', () => {
 });
 
 describe('GRADES', () => {
-  it('lists the four undergraduate years in academic order', () => {
-    expect(GRADES).toEqual(['Freshman', 'Sophomore', 'Junior', 'Senior']);
+  it('lists the undergraduate years in order, then the graduate levels', () => {
+    expect(GRADES).toEqual(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Masters', 'PhD']);
   });
 
-  it('starts at Freshman and ends at Senior', () => {
+  it('starts at Freshman (undergrad) and ends at PhD (grad)', () => {
     expect(GRADES[0]).toBe('Freshman');
-    expect(GRADES[GRADES.length - 1]).toBe('Senior');
+    expect(GRADES[GRADES.length - 1]).toBe('PhD');
   });
 });
