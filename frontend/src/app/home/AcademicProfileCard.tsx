@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
+import MajorTags from '@/components/MajorTags';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
@@ -223,6 +224,20 @@ export function AcademicProfileCard({
             />
           )}
         </div>
+
+        {profile.major && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('home.form.additionalMajorsLabel')}
+            </label>
+            <MajorTags
+              selected={profile.additional_majors ?? []}
+              options={majors.filter((m) => m !== profile.major)}
+              onChange={(v) => update('additional_majors', v)}
+              translate={(m) => translateKey(t, 'majors', m)}
+            />
+          </div>
+        )}
 
         <div>
           <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
