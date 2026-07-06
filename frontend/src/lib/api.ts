@@ -63,7 +63,8 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     year: profile.grade.toLowerCase(),
     major: profile.major,
     college: profile.college,
-    secondary_interests: [],
+    // Additional majors/minors feed the matcher's secondary-major + keyword signal.
+    secondary_interests: profile.additional_majors ?? [],
     international_student: profile.is_international,
     seeking_type: profile.seeking_types ?? ['research', 'summer_program'],
     desired_fields: deriveDesiredFields(profile.research_interests),
