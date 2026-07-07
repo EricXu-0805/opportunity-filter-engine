@@ -322,6 +322,9 @@ export default function OnboardingIntro() {
   const { t, locale } = useT();
   const [show, setShow] = useState(false);
   const [i, setI] = useState(0);
+  // Nav direction drives the slide-in transition: +1 = forward (enter from the
+  // right), -1 = back (enter from the left).
+  const [dir, setDir] = useState<1 | -1>(1);
   const [schoolSlug, setSchoolSlug] = useState('uiuc');
 
   useEffect(() => {
@@ -331,7 +334,7 @@ export default function OnboardingIntro() {
     } catch { /* storage unavailable */ }
   }, []);
 
-  const gotoSchoolGate = useCallback(() => setI(SLIDES.length - 1), []);
+  const gotoSchoolGate = useCallback(() => { setDir(1); setI(SLIDES.length - 1); }, []);
 
   useEffect(() => {
     if (!show) return;
@@ -354,8 +357,12 @@ export default function OnboardingIntro() {
     try { localStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, '1'); } catch { /* ignore */ }
     setShow(false);
   };
-  const next = () => (isLast ? finish() : setI((n) => n + 1));
-  const back = () => setI((n) => Math.max(0, n - 1));
+  const next = () => {
+    if (isLast) { finish(); return; }
+    setDir(1);
+    setI((n) => n + 1);
+  };
+  const back = () => { setDir(-1); setI((n) => Math.max(0, n - 1)); };
 
   return (
     <div
@@ -389,8 +396,9 @@ export default function OnboardingIntro() {
         </div>
 
         <div className="px-5 sm:px-7 pt-3 pb-5">
-          {/* the stage re-keys on slide change so the .ob-* demo animations replay */}
-          <div key={i}>
+          {/* the stage re-keys on slide change so the .ob-* demo animations replay;
+              the direction class glides the whole step in from the correct side */}
+          <div key={i} className={dir === 1 ? 'ob-slide-next' : 'ob-slide-prev'}>
             {isLast ? (
               <div>
                 <div className="flex items-center gap-2.5">

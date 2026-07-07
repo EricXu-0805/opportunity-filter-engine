@@ -567,11 +567,6 @@ export default function ColdEmailModal({
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                       {t('coldEmail.to')}
-                      {!recipient && (
-                        <span className="ml-2 text-amber-500 normal-case tracking-normal font-normal">
-                          {t('coldEmail.toHint')}
-                        </span>
-                      )}
                     </label>
                     <input
                       type="email"
@@ -580,6 +575,20 @@ export default function ColdEmailModal({
                       placeholder={t('coldEmail.toPlaceholder')}
                       className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
+                    {!recipient ? (
+                      <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                        <p className="text-[12px] font-medium text-amber-800">
+                          {t('coldEmail.emailUnavailableTitle')}
+                        </p>
+                        <p className="mt-0.5 text-[12px] leading-snug text-amber-700">
+                          {t('coldEmail.emailUnavailableBody')}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-1.5 text-[11px] text-gray-400">
+                        {t('coldEmail.verifyBeforeSend')}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('coldEmail.subject')}</label>
