@@ -44,10 +44,13 @@ describe('COLLEGE_MAJORS', () => {
     }
   });
 
-  it('lists Computer Science and ECE under Grainger Engineering', () => {
+  it('lists Computer Science and Electrical Engineering under Grainger Engineering', () => {
     const grainger = COLLEGE_MAJORS['Grainger College of Engineering'];
     expect(grainger).toContain('Computer Science');
-    expect(grainger).toContain('Electrical & Computer Engineering (ECE)');
+    // ECE is the department; the undergraduate majors are Electrical Engineering
+    // and Computer Engineering (both listed separately), not a combined "ECE".
+    expect(grainger).toContain('Electrical Engineering');
+    expect(grainger).toContain('Computer Engineering');
   });
 
   it('lists the cross-listed Statistics & Computer Science under LAS', () => {
