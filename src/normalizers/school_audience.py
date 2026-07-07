@@ -197,6 +197,14 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "duke_external_research": (None, "open"),
     "duke_labs": ("duke", "unknown"),
     "duke_faculty": ("duke", "unknown"),
+    "jhu_research_programs": ("jhu", "campus"),
+    "jhu_external_research": (None, "open"),
+    "jhu_labs": ("jhu", "unknown"),
+    "jhu_faculty": ("jhu", "unknown"),
+    "northwestern_research_programs": ("northwestern", "campus"),
+    "northwestern_external_research": (None, "open"),
+    "northwestern_labs": ("northwestern", "unknown"),
+    "northwestern_faculty": ("northwestern", "unknown"),
     # UChicago faculty directory (live-scraped + curated-API, via faculty_graph).
     "uchicago_faculty": ("uchicago", "unknown"),
     # UC Irvine faculty directory (live-scraped, via the faculty_graph engine).

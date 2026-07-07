@@ -32,6 +32,10 @@ from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
 from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
+from .schools.jhu_faculty import fetch_and_normalize as fetch_jhu_faculty
+from .schools.jhu_faculty import merge_into_processed as merge_jhu_faculty
+from .schools.northwestern_faculty import fetch_and_normalize as fetch_northwestern_faculty
+from .schools.northwestern_faculty import merge_into_processed as merge_northwestern_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
 from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
 from .schools.purdue_faculty import fetch_and_normalize as fetch_purdue_faculty
@@ -622,6 +626,12 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # Duke faculty (render-mode via faculty_graph): Pratt School of
             # Engineering (ECE/BME/MEMS/CEE), rich .faculty-overview cards.
             ("duke_faculty", fetch_duke_faculty, merge_duke_faculty),
+            # JHU faculty (headless Krieger TablePress via faculty_graph): the
+            # entire Krieger School of Arts & Sciences (22 depts) from one table.
+            ("jhu_faculty", fetch_jhu_faculty, merge_jhu_faculty),
+            # Northwestern faculty (shared Weinberg Cascade theme via faculty_graph):
+            # 25 Weinberg College departments, server-rendered listings.
+            ("northwestern_faculty", fetch_northwestern_faculty, merge_northwestern_faculty),
             # UChicago faculty (via faculty_graph): 8 live-scraped directories
             # (CS/Stat/Math/Physics/Astro/Econ/Psych/PME) + 6 curated API-dump
             # departments (Chemistry + the five BSD sites, JS-only shells).

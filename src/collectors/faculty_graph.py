@@ -124,8 +124,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api", "poly_api")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, coa_api, or poly_api config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api", "poly_api", "krieger_table")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, coa_api, poly_api, or krieger_table config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -2302,6 +2302,95 @@ def _fetch_poly_jsonapi(dept: dict) -> list[dict]:
     return specs
 
 
+# ---------------------------------------------------------------------------
+# JHU Krieger central faculty directory (Cloudflare-walled TablePress, deep mode)
+# ---------------------------------------------------------------------------
+#
+# Johns Hopkins' Krieger School serves its entire faculty from ONE TablePress
+# table (``#tablepress-54`` at krieger.jhu.edu/people/faculty-directory/) — four
+# columns: Name ("Last, First"), Department, Title, Email (public mailto), ~836
+# rows all emailed. The page (and every KSAS dept subdomain) sits behind
+# Cloudflare, and DataTables detaches off-page rows from the DOM, so neither a
+# plain request nor the generic render+_parse_cards path can read it. A HEADLESS
+# Chromium session clears the Cloudflare JS challenge (verified) and the
+# DataTables JS API hands back all rows. A department config opts in with:
+#
+#     "krieger_table": {"department": "<exact Department-column string>",
+#                       "ladder_filter": {"require": ..., "drop": ...}}
+#
+# The table is fetched ONCE per refresh (cached) and sliced for every KSAS dept.
+# HEADLESS ONLY — never a visible/headful browser on a user machine.
+
+_KRIEGER_URL = "https://krieger.jhu.edu/people/faculty-directory/"
+_KRIEGER_CACHE: dict = {}
+
+
+def _krieger_rows() -> list:
+    """Fetch (and cache) all Krieger directory rows via headless Chromium + the
+    DataTables JS API. Each row is a list of 4 cell-HTML strings."""
+    if "rows" in _KRIEGER_CACHE:
+        return _KRIEGER_CACHE["rows"]
+    rows: list = []
+    try:
+        from playwright.sync_api import sync_playwright
+
+        from .ucb_common import HEADERS
+    except ImportError:
+        _KRIEGER_CACHE["rows"] = []
+        return []
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)  # headless ONLY
+            try:
+                page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
+                try:
+                    page.goto(_KRIEGER_URL, wait_until="domcontentloaded", timeout=60000)
+                except Exception:  # noqa: BLE001 — CF reload aborts the first goto
+                    pass
+                for _ in range(20):  # poll until the Cloudflare interstitial clears
+                    title = page.title()
+                    if title.strip() and "just a moment" not in title.lower():
+                        break
+                    page.wait_for_timeout(2000)
+                rows = page.evaluate(
+                    "() => (window.jQuery && jQuery('#tablepress-54').length)"
+                    " ? jQuery('#tablepress-54').DataTable().rows().data().toArray() : []")
+            finally:
+                browser.close()
+    except Exception as e:  # noqa: BLE001 — degrade to [] like fetch_soup
+        logger.warning("faculty_graph: Krieger directory fetch failed: %s", e)
+    _KRIEGER_CACHE["rows"] = rows if isinstance(rows, list) else []
+    return _KRIEGER_CACHE["rows"]
+
+
+def _fetch_krieger_table(dept: dict) -> list[dict]:
+    """Best-effort JHU Krieger fetch (opt-in via ``krieger_table``): filter the
+    cached central table to this department and land name + rank + email."""
+    cfg = dept.get("krieger_table")
+    if not cfg:
+        return []
+    import html as _html
+    want = cfg.get("department", "")
+    lf = cfg.get("ladder_filter")
+
+    def cell(h: str) -> str:
+        return _html.unescape(_HTML_TAG_RE.sub(" ", h or "")).strip()
+
+    specs: list[dict] = []
+    for row in _krieger_rows():
+        if not isinstance(row, list | tuple) or len(row) < 4:
+            continue
+        if cell(row[1]) != want:
+            continue
+        name = _flip_name(re.sub(r"\s+", " ", cell(row[0])))
+        title = cell(row[2]) or "Professor"
+        if not _passes_ladder(title, lf):
+            continue
+        email = _clean_email(row[3] or "") or _clean_email(cell(row[3]))
+        specs.append(faculty(name, title=title, url=_KRIEGER_URL, email=email))
+    return specs
+
+
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
@@ -2330,6 +2419,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
                                + _fetch_json_dir(dept) + _fetch_coa_api(dept)
+                               + _fetch_krieger_table(dept)
                                + _fetch_poly_jsonapi(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
