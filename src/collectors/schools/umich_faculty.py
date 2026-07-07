@@ -9,23 +9,31 @@ deep mode. Seed and scrape de-dup by id (dept+name) / email / URL, so the
 hand-verified professors keep their curated keywords and the scrape only adds
 net-new faculty; a failed scrape degrades silently to the seed.
 
-Fourteen departments (~100 curated seeds; the deep scrape lifts the reachable
-ones to their full rosters — e.g. Physics 7→51, Math 8→84, ME 8→106, ECE 8→111).
-One source ("umich_faculty") across all of them (the UIUC model); the
-department rides on each record's `department` field, and ids are namespaced
-by department short-code so they never collide.
+~44 departments (~100 curated seeds across the STEM cores; the deep scrape
+lifts the reachable ones to their full rosters — e.g. Physics 7→51, Math 8→84,
+ME 8→106, ECE 8→111, CSE 8→~90 — and the LSA humanities/social-science and MSE
+departments come entirely from the scrape). One source ("umich_faculty") across
+all of them (the UIUC model); the department rides on each record's `department`
+field, and ids are namespaced by department short-code so they never collide.
 
 Scrape coverage (selectors verified live via headless render, Jul 2026):
-  * LSA departments (lsa.umich.edu, "Michigan LSA" AEM theme) — Physics, Math,
-    Chemistry, MCDB, Statistics, EEB, Economics, Psychology. Ship emailed +
-    research-tag-keyworded.
-  * Engineering (*.engin.umich.edu WordPress theme) — Mechanical Engineering
-    (.faculty-row) and ECE (the shared "eecs_person" template, names "Last,
-    First"). Ship emailed; keywords mined from the free-text interests block.
-  * No scrape yet (curated-seed-only): CSE (cse.umich.edu refuses connections),
-    Robotics (data-attribute cards, no listing email), BME & Aerospace (their
-    directory URLs 404 — the seed's directory_url is the human landing page).
-    Coverage grows here as reachable directories are identified.
+  * LSA departments (lsa.umich.edu, "Michigan LSA" AEM ``.person`` grid) — the
+    STEM cores (Physics, Math, Chemistry, MCDB, Statistics, EEB, Economics,
+    Psychology, Applied Physics) plus ~30 humanities/social-science departments.
+    Most list at ``people/faculty.html``; some publish under a named view
+    (``core-faculty.directory.html`` etc., passed as ``_lsa(..., suffix=)``).
+    Ship emailed + research-tag-keyworded.
+  * Engineering (*.engin.umich.edu) — Mechanical (.faculty-row), ECE & CSE (the
+    shared "eecs_person" template, names "Last, First"), and Materials Science
+    (mse.engin, a Plone ``div.people-details`` directory). Ship emailed;
+    keywords mined from the free-text interests block.
+  * Curated-seed-only (no scrape yet): Robotics (data-attribute cards, no
+    listing email), BME & Aerospace (their /people/faculty/ path 404s — the
+    seed's directory_url is the human landing page). The newer engin
+    "post-people-archive" theme (CEE, ChE, IOE, NAME, NERS, CLaSP; an
+    ``article.type-people`` grid under ``/role/…-faculty/``) and the five
+    professional schools are a tracked follow-up. Coverage grows here as
+    reachable directories are identified.
 
 Seed data verified Jun 2026 from lab/personal sites, Google Scholar, dblp, and
 department news. Emails left as None where the uniqname could not be confirmed —
@@ -70,15 +78,29 @@ _ENGIN_SELECTORS = {
     "research": ".faculty-interests",
 }
 
-# EECS (ece.engin.umich.edu) shared "eecs_person" template: names are listed
-# "Last, First" (needs name_flip), rank rides ``.person_title_section``, the
-# mailto ``.person_email``, and the research interests the ``.pcs_tall`` block.
+# EECS (ece.engin.umich.edu / cse.engin.umich.edu) shared "eecs_person" template:
+# names are listed "Last, First" (needs name_flip), rank rides
+# ``.person_title_section``, the mailto ``.person_email``, and the research
+# interests the ``.pcs_tall`` block.
 _EECS_SELECTORS = {
     "card": ".eecs_person_wrapper",
     "name": ".eecs_person_name",
     "title": ".person_title_section",
     "email": ".person_email",
     "research": ".pcs_tall",
+}
+
+# Materials Science (mse.engin.umich.edu) is not WordPress — it's a Plone
+# "fsdclassification" directory: ``div.people-details`` cards with the name link
+# in ``h4.people-name a``, rank in ``p.people-title``, research blurb in
+# ``p.people-desc``, and the mailto in ``p.people-email a``. Single page.
+_MSE_SELECTORS = {
+    "card": "div.people-details",
+    "name": "h4.people-name a",
+    "link": "h4.people-name a",
+    "title": "p.people-title",
+    "email": "p.people-email a[href^='mailto:']",
+    "research": "p.people-desc",
 }
 
 
@@ -102,10 +124,14 @@ def _scrape(url: str, selectors: dict, *, name_flip: bool = False,
     return block
 
 
-def _lsa(short: str, name: str, majors: list[str], slug: str) -> dict:
+def _lsa(short: str, name: str, majors: list[str], slug: str,
+         suffix: str = "faculty.html") -> dict:
     """A scrape-only LSA department (AEM ``.person`` grid, hash-paginated). All
-    LSA people directories share the theme, so a whole department is one line."""
-    url = f"https://lsa.umich.edu/{slug}/people/faculty.html"
+    LSA people directories share the theme, so a whole department is one line.
+    Most list at ``people/faculty.html``; some publish the roster under a named
+    view instead (``core-faculty.directory.html``, ``regular-faculty…``,
+    ``departmental-faculty…``) — pass that as ``suffix``."""
+    url = f"https://lsa.umich.edu/{slug}/people/{suffix}"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": _scrape(url, _LSA_SELECTORS, paginate=_LSA_PAGINATE)}
 
@@ -125,7 +151,8 @@ SCHOOL: dict = {
             "short": "CSE",
             "name": "Computer Science & Engineering",
             "majors": ["Computer Science", "Computer Engineering", "Data Science"],
-            "directory_url": "https://cse.umich.edu/people/faculty/",
+            "directory_url": "https://cse.engin.umich.edu/people/faculty/",
+            "scrape": _scrape("https://cse.engin.umich.edu/people/faculty/", _EECS_SELECTORS, name_flip=True),
             "faculty": [
                 faculty(
                     "Satinder Singh", title="Professor",
@@ -1095,7 +1122,21 @@ SCHOOL: dict = {
                 ),
             ],
         },
+        {
+            "short": "MSE",
+            "name": "Materials Science & Engineering",
+            "majors": ["Materials Science & Engineering", "Materials Science"],
+            "directory_url": "https://mse.engin.umich.edu/people/faculty/",
+            "scrape": _scrape("https://mse.engin.umich.edu/people/faculty/", _MSE_SELECTORS),
+        },
         _lsa("AMCULT", "Department of American Culture", ['American Culture', 'Ethnic Studies'], "ac"),
+        _lsa("ASTRO", "Department of Astronomy", ['Astronomy', 'Astrophysics'], "astro", "core-faculty.directory.html"),
+        _lsa("BIOPHYS", "Department of Biophysics", ['Biophysics', 'Physics'], "biophysics", "core-faculty.directory.html"),
+        _lsa("CLASSICS", "Department of Classical Studies", ['Classical Studies', 'Classics'], "classics", "departmental-faculty.directory.html"),
+        _lsa("COMM", "Department of Communication & Media", ['Communication', 'Media Studies'], "comm", "regular-faculty.directory.html"),
+        _lsa("CSCS", "Center for the Study of Complex Systems", ['Complex Systems'], "cscs", "core-faculty.directory.html"),
+        _lsa("DAAS", "Department of Afroamerican & African Studies", ['African American Studies', 'African Studies'], "daas", "core-faculty.directory.html"),
+        _lsa("WGS", "Department of Women's & Gender Studies", ["Women's & Gender Studies", "Gender Studies"], "wgs", "core-faculty.directory.html"),
         _lsa("ANTHRO", "Department of Anthropology", ['Anthropology'], "anthro"),
         _lsa("APHYS", "Applied Physics Program", ['Applied Physics', 'Physics'], "appliedphysics"),
         _lsa("ALC", "Department of Asian Languages & Cultures", ['Asian Studies', 'Asian Languages'], "asian"),
