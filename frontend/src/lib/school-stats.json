@@ -1,70 +1,70 @@
 {
   "boulder": {
     "campus": 1595,
-    "national": 2978
+    "national": 2988
   },
   "duke": {
-    "campus": 1085,
-    "national": 2978
+    "campus": 1150,
+    "national": 2988
   },
   "gatech": {
     "campus": 1185,
-    "national": 2978
+    "national": 2988
   },
   "princeton": {
     "campus": 461,
-    "national": 2978
+    "national": 2988
   },
   "purdue": {
-    "campus": 2112,
-    "national": 2978
+    "campus": 2187,
+    "national": 2988
   },
   "stanford": {
     "campus": 1405,
-    "national": 2978
+    "national": 2988
   },
   "ucb": {
     "campus": 2929,
-    "national": 2978
+    "national": 2988
   },
   "uchicago": {
     "campus": 1027,
-    "national": 2978
+    "national": 2988
   },
   "uci": {
     "campus": 1161,
-    "national": 2978
+    "national": 2988
   },
   "ucla": {
     "campus": 1977,
-    "national": 2978
+    "national": 2988
   },
   "ucsb": {
     "campus": 1074,
-    "national": 2978
+    "national": 2988
   },
   "ucsd": {
     "campus": 1385,
-    "national": 2978
+    "national": 2988
   },
   "uiuc": {
     "campus": 3388,
-    "national": 2978
+    "national": 2988
   },
   "umich": {
-    "campus": 1484,
-    "national": 2978
+    "campus": 112,
+    "national": 2988
   },
   "utexas": {
     "campus": 2156,
-    "national": 2978
+    "national": 2988
   },
   "uw": {
     "campus": 2222,
-    "national": 2978
+    "national": 2988
   },
   "wisc": {
     "campus": 1728,
-    "national": 2978
+    "national": 2988
   }
 }
