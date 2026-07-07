@@ -15,6 +15,8 @@ from __future__ import annotations
 from .boulder import SCHOOL as BOULDER
 from .duke import SCHOOL as DUKE
 from .gatech import SCHOOL as GATECH
+from .jhu import SCHOOL as JHU
+from .northwestern import SCHOOL as NORTHWESTERN
 from .princeton import SCHOOL as PRINCETON
 from .purdue import SCHOOL as PURDUE
 from .stanford import SCHOOL as STANFORD
@@ -46,4 +48,6 @@ SCHOOL_CONFIGS: list[dict] = [
     BOULDER,
     PURDUE,
     DUKE,
+    JHU,
+    NORTHWESTERN,
 ]

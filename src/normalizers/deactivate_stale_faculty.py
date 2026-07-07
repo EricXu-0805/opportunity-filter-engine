@@ -108,6 +108,10 @@ FACULTY_SOURCES = frozenset({
     "purdue_faculty",
     # Duke — render-mode Pratt engineering faculty (single source across depts).
     "duke_faculty",
+    # JHU — headless Krieger TablePress directory (single source across depts).
+    "jhu_faculty",
+    # Northwestern — shared Weinberg Cascade theme (single source across depts).
+    "northwestern_faculty",
     # UC Irvine — live-scraped faculty (single source across depts).
     "uci_faculty",
     # UC Santa Barbara — live-scraped faculty (single source across depts).
