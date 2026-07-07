@@ -59,3 +59,8 @@ next-env.d.ts
 
 # Supabase CLI scratch (cli-latest version cache etc.)
 supabase/.temp/
+
+# The corpus work file — assembled from data/processed/shards/ (the committed
+# per-school representation; see scripts/shard_corpus.py). Never commit the
+# monolith: it exceeds GitHub's 100 MB blob limit.
+data/processed/opportunities.json

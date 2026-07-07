@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Per-school corpus sharding — the committed representation of the corpus.
+
+The corpus outgrew GitHub's hard 100 MB blob limit as one file (96 MB minified
+at 17 schools; every new school adds ~3-6 MB). What git stores is therefore a
+directory of per-school shards, each far below the limit and growing
+independently:
+
+    data/processed/shards/<school>.json      (records with school == <school>)
+    data/processed/shards/national.json      (records with school == None)
+
+The PIPELINE is unchanged: collectors, normalizers, the backend, and tests all
+keep reading/writing the single work file ``data/processed/opportunities.json``
+(now gitignored). The two representations meet at exactly two moments:
+
+    assemble  (checkout -> work file)   python scripts/shard_corpus.py assemble
+    split     (work file -> commit)     python scripts/shard_corpus.py split
+
+``split`` reuses minify_corpus's lossless pruning (drop description_raw where it
+equals description_clean) and writes each shard minified; it also removes shard
+files for schools no longer present so a renamed slug can't leave a stale twin.
+``assemble`` is a no-op when the work file already exists unless --force — so a
+straggler run that produced a fresher work file is never clobbered.
+
+Runtime readers that can't rely on an assemble step (the deployed backend,
+frontend prebuild) fall back to reading the shards directory directly.
+"""
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+WORK_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
+SHARDS_DIR = PROJECT_ROOT / "data" / "processed" / "shards"
+NATIONAL = "national"
+
+
+def _slug(record: dict) -> str:
+    s = record.get("school")
+    return s if isinstance(s, str) and s.strip() else NATIONAL
+
+
+def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR) -> dict[str, int]:
+    """Work file -> minified per-school shard files. Returns {shard: count}."""
+    sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+    from minify_corpus import prune_duplicate_raw
+
+    with open(work_file, encoding="utf-8") as f:
+        records = json.load(f)
+    prune_duplicate_raw(records)
+    by_school: dict[str, list] = {}
+    for r in records:
+        by_school.setdefault(_slug(r), []).append(r)
+    shards_dir.mkdir(parents=True, exist_ok=True)
+    # Remove shards for schools no longer present (rename/removal safety).
+    for stale in shards_dir.glob("*.json"):
+        if stale.stem not in by_school:
+            stale.unlink()
+    for slug, recs in sorted(by_school.items()):
+        with open(shards_dir / f"{slug}.json", "w", encoding="utf-8") as f:
+            json.dump(recs, f, ensure_ascii=False, separators=(",", ":"), default=str)
+    return {s: len(r) for s, r in sorted(by_school.items())}
+
+
+def load_shards(shards_dir: Path = SHARDS_DIR) -> list[dict]:
+    """Concatenate all shards (sorted by filename for determinism)."""
+    records: list[dict] = []
+    for shard in sorted(shards_dir.glob("*.json")):
+        with open(shard, encoding="utf-8") as f:
+            records.extend(json.load(f))
+    return records
+
+
+def assemble(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
+             force: bool = False) -> int:
+    """Shards -> work file. Skips when the work file already exists (a fresher
+    in-flight corpus must never be clobbered by a stale checkout) unless force.
+    Returns the record count written (or -1 when skipped)."""
+    if work_file.exists() and not force:
+        return -1
+    records = load_shards(shards_dir)
+    with open(work_file, "w", encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, separators=(",", ":"), default=str)
+    return len(records)
+
+
+def main() -> int:
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if cmd == "split":
+        counts = split()
+        total = sum(counts.values())
+        print(f"split: {total} records -> {len(counts)} shards "
+              f"({', '.join(f'{s}:{n}' for s, n in counts.items())})")
+        return 0
+    if cmd == "assemble":
+        n = assemble(force="--force" in sys.argv)
+        print("assemble: work file already present — skipped (use --force to rebuild)"
+              if n < 0 else f"assemble: {n} records -> {WORK_FILE.name}")
+        return 0
+    print(__doc__)
+    print("usage: shard_corpus.py {split|assemble [--force]}")
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

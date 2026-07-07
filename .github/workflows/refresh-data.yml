@@ -67,6 +67,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Assemble corpus work file from shards
+        # git stores the corpus as per-school shards (100 MB blob limit); the
+        # pipeline reads/writes the single assembled work file. assemble is a
+        # no-op if a work file already exists (never clobber fresher data).
+        run: python scripts/shard_corpus.py assemble
+
       - name: Determine shard
         id: shard
         run: |
@@ -170,12 +176,11 @@ jobs:
 
       - name: Check for changes
         id: changes
-        run: |
-          if git diff --quiet data/processed/opportunities.json data/processed/collector_status.json; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
+        # The work file is untracked (shards are the committed form), so a
+        # tracked-file diff can't answer this. Always proceed; the commit step's
+        # `git diff --cached --quiet` after the split is the authoritative gate
+        # and exits cleanly when the scrape produced nothing new.
+        run: echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Open data-refresh PR and merge once required checks pass
         if: steps.changes.outputs.changed == 'true'
@@ -213,17 +218,14 @@ jobs:
           cp /tmp/refresh-opportunities.json data/processed/opportunities.json
           cp /tmp/refresh-collector_status.json data/processed/collector_status.json
 
-          # The committed corpus sits at GitHub's hard 100 MB file limit (pretty-
-          # printed it just tipped over once Duke Pratt landed, failing the push).
-          # minify_corpus is the single commit-time chokepoint: it drops the ~8 MB
-          # of description_raw values that are byte-identical to description_clean
-          # (lossless — every reader falls back to clean) and minifies. Every
-          # consumer (frontend build, gen-school-stats, tests) reads the file as
-          # JSON regardless of whitespace, so refreshes can keep growing it. The
-          # Python writers stay pretty for local-dev readability.
-          python3 scripts/minify_corpus.py data/processed/opportunities.json
+          # Commit-time chokepoint: split the work file into minified per-school
+          # shards (scripts/shard_corpus.py) — each shard sits far below GitHub's
+          # 100 MB blob limit and grows independently, so onboarding more schools
+          # can't outgrow a single file again. split() also prunes description_raw
+          # duplicates (lossless) and removes shards for schools no longer present.
+          python3 scripts/shard_corpus.py split
 
-          git add data/processed/opportunities.json data/processed/collector_status.json
+          git add data/processed/shards data/processed/collector_status.json
           if git diff --cached --quiet; then
             echo "Latest main already matches this scrape — nothing to ship."
             exit 0
