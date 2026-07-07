@@ -1,32 +1,40 @@
 {
-  "duration_seconds": 161.9,
+  "duration_seconds": 256.7,
   "shard": {
     "national": false,
     "schools": [
-      "umich"
+      "jhu",
+      "northwestern"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 3,
+      "rule_based_tagged": 35,
       "status": "ok"
     },
-    "campus_graph:umich": {
-      "deep": false,
-      "fetched": 12,
-      "new": 0,
+    "campus_graph:jhu": {
+      "deep": true,
+      "fetched": 30,
+      "new": 30,
       "status": "ok",
-      "updated": 11
+      "updated": 0
+    },
+    "campus_graph:northwestern": {
+      "deep": true,
+      "fetched": 28,
+      "new": 28,
+      "status": "ok",
+      "updated": 0
     },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 28604,
+      "skipped_rolling": 29611,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 0,
+      "kept_fresh": 949,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
@@ -42,12 +50,24 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
+    "jhu_faculty": {
+      "fetched": 438,
+      "new": 438,
+      "status": "ok",
+      "updated": 0
+    },
+    "northwestern_faculty": {
+      "fetched": 511,
+      "new": 511,
+      "status": "ok",
+      "updated": 0
+    },
     "pi_enricher": {
-      "already_had": 50,
-      "enriched": 2,
-      "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 0,
-      "scraped": 54,
+      "already_had": 937,
+      "enriched": 35,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 8,
+      "scraped": 66,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -65,7 +85,14 @@
         "gatech_labs": 1,
         "gatech_research_programs": 7,
         "handshake": 71,
+        "jhu_external_research": 1,
+        "jhu_faculty": 438,
+        "jhu_labs": 7,
+        "jhu_research_programs": 22,
         "manual": 33,
+        "northwestern_faculty": 511,
+        "northwestern_labs": 11,
+        "northwestern_research_programs": 17,
         "nsf_reu": 585,
         "princeton_faculty": 452,
         "princeton_labs": 2,
@@ -180,11 +207,11 @@
         "wisc_research_programs": 8
       },
       "status": "ok",
-      "tagged": 30130
+      "tagged": 31137
     }
   },
-  "timestamp": "2026-07-07T12:29:02.075073",
-  "total_in_file": 30130,
-  "total_new": 0,
-  "total_updated": 11
+  "timestamp": "2026-07-07T13:36:49.251234",
+  "total_in_file": 31137,
+  "total_new": 1007,
+  "total_updated": 0
 }
