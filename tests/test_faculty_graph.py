@@ -1841,6 +1841,22 @@ class TestUciConfig:
         assert mer["scrape"]["selectors"].get("title_re")
         assert "emerit" in mer["scrape"]["ladder_filter"]["drop"]
 
+    def test_uci_hard_depts_added(self):
+        """ICS Informatics/Statistics (incomplete-TLS hosts, fetched via the
+        engine's InCommon bundle) + the Humanities WYSIWYG core-faculty pages."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        shorts = {d["short"] for d in UCI["departments"]}
+        for s in ("INFO", "STAT", "ENGL", "COMPLIT", "EALC", "ELS"):
+            assert s in shorts, s
+
+    def test_uci_humanities_wysiwyg_anchors_on_name_paragraph(self):
+        """The T2 pages have no card element — the card must anchor on the name
+        <p> that carries both a <strong> name and a mailto, or it grabs prose."""
+        from src.collectors.schools.uci_faculty import SCHOOL as UCI
+        engl = next(d for d in UCI["departments"] if d["short"] == "ENGL")
+        assert engl["scrape"]["selectors"]["card"] == "p:has(strong):has(a[href^='mailto:'])"
+        assert engl["scrape"]["selectors"]["name"] == "strong"
+
 
 class TestUcsbConfig:
     def test_ucsb_config_valid(self):
