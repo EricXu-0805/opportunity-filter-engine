@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatPrice, PACKAGES, packageById, paymentsEnabled } from './pricing';
+import { formatPrice, PACKAGES, packageById, paymentsEnabled, payQrEnabled } from './pricing';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -35,5 +35,22 @@ describe('paymentsEnabled', () => {
     expect(paymentsEnabled()).toBe(true);
     vi.stubEnv('NEXT_PUBLIC_PAYMENTS', '1');
     expect(paymentsEnabled()).toBe(true);
+  });
+});
+
+describe('payQrEnabled', () => {
+  it('is off by default and gated independently of NEXT_PUBLIC_PAYMENTS', () => {
+    vi.stubEnv('NEXT_PUBLIC_PAY_QR', '');
+    expect(payQrEnabled()).toBe(false);
+    // turning on the order-flow flag must NOT turn on the concierge QR panel
+    vi.stubEnv('NEXT_PUBLIC_PAYMENTS', 'true');
+    expect(payQrEnabled()).toBe(false);
+  });
+
+  it('turns on for "true" and "1"', () => {
+    vi.stubEnv('NEXT_PUBLIC_PAY_QR', 'true');
+    expect(payQrEnabled()).toBe(true);
+    vi.stubEnv('NEXT_PUBLIC_PAY_QR', '1');
+    expect(payQrEnabled()).toBe(true);
   });
 });

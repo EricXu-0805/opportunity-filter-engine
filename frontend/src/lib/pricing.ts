@@ -27,3 +27,12 @@ export function paymentsEnabled(): boolean {
   const v = process.env.NEXT_PUBLIC_PAYMENTS;
   return v === 'true' || v === '1';
 }
+
+// The concierge QR panel (scan WeChat/Alipay → we follow up by hand) is gated
+// separately from the package/order flow: it carries no prices and no order
+// rows, so it can run the willingness-to-pay test before pricing is finalized,
+// without turning on the full payment machinery. Default off.
+export function payQrEnabled(): boolean {
+  const v = process.env.NEXT_PUBLIC_PAY_QR;
+  return v === 'true' || v === '1';
+}
