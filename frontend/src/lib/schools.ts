@@ -84,7 +84,7 @@ export const SCHOOLS: School[] = [
     color: '#E84A27',
     location: 'Urbana-Champaign, IL',
     coverage: campusCoverage('uiuc'),
-    catalog: { colleges: 12, majors: 141 },
+    catalog: { colleges: 12, majors: 142 },
   },
   {
     slug: 'ucb',

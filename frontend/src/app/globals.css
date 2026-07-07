@@ -92,6 +92,21 @@
     to { opacity: 1; transform: scale(1); }
   }
 
+  /* Directional slide between tour steps (openedu-style): the whole step content
+     glides in horizontally — from the right on Next, from the left on Back —
+     while the inner .ob-* elements assemble on top. The stage re-keys per step
+     so this replays each time. Collapsed to a snap by prefers-reduced-motion. */
+  .ob-slide-next { animation: obSlideNext 0.42s both cubic-bezier(0.22, 0.61, 0.36, 1); }
+  @keyframes obSlideNext {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .ob-slide-prev { animation: obSlidePrev 0.42s both cubic-bezier(0.22, 0.61, 0.36, 1); }
+  @keyframes obSlidePrev {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
   /* Apple-style smooth scroll */
   html { scroll-behavior: smooth; }
 
