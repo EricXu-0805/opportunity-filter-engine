@@ -29,6 +29,7 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'English',
     'French and Italian',
     'German',
+    'Linguistics',
     'Music',
     'Near Eastern Studies',
     'Philosophy',

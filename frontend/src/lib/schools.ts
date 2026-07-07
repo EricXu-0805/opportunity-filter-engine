@@ -216,7 +216,7 @@ export const SCHOOLS: School[] = [
     color: '#8C1515',
     location: 'Stanford, CA',
     coverage: campusCoverage('stanford'),
-    catalog: { colleges: 3, majors: 71 },
+    catalog: { colleges: 3, majors: 72 },
   },
   {
     slug: 'princeton',
@@ -227,7 +227,7 @@ export const SCHOOLS: School[] = [
     color: '#E77500',
     location: 'Princeton, NJ',
     coverage: campusCoverage('princeton'),
-    catalog: { colleges: 5, majors: 37 },
+    catalog: { colleges: 5, majors: 38 },
   },
   {
     slug: 'uci',
@@ -260,7 +260,7 @@ export const SCHOOLS: School[] = [
     color: '#CFB87C',
     location: 'Boulder, CO',
     coverage: campusCoverage('boulder'),
-    catalog: { colleges: 6, majors: 78 },
+    catalog: { colleges: 6, majors: 79 },
   },
 ];
 

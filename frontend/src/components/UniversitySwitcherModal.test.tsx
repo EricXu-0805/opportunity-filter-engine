@@ -85,7 +85,7 @@ describe('UniversitySwitcherModal — rendering', () => {
     // Counts come straight from the registry (mock t renders "key:colleges,majors").
     expect(screen.getByText('universitySwitcher.catalogSummary:12,141')).toBeInTheDocument(); // uiuc
     expect(screen.getByText('universitySwitcher.catalogSummary:7,136')).toBeInTheDocument(); // ucb
-    expect(screen.getByText('universitySwitcher.catalogSummary:3,71')).toBeInTheDocument(); // stanford
+    expect(screen.getByText('universitySwitcher.catalogSummary:3,72')).toBeInTheDocument(); // stanford
   });
 });
 
