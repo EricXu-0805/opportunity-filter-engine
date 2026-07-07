@@ -340,7 +340,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # per-person page; point at the directory the person is listed on rather
     # than ship a record with no destination (the integrity gate requires url).
     profile_url = person.get("url", "") or dept.get("directory_url", "")
-    email = person.get("email") or None
+    # Final lowercase guard on every record's email (covers non-scrape sources —
+    # coa_api/poly_api/WP-meta/curated — that don't pass through _clean_email);
+    # a capitalized local part trips the DQ corrupted-email gate.
+    email = ((person.get("email") or "").strip().lower() or None)
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
     # Faculty are cold-email research contacts, not postings with required
@@ -517,7 +520,12 @@ def _clean_email(raw: str) -> str | None:
     """
     addr = unquote(raw or "").replace("mailto:", "").split("?")[0].strip()
     m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
-    return m.group(0) if m else (addr or None)
+    result = m.group(0) if m else (addr or None)
+    # Canonicalize to lowercase: some directories carry a display-cased address
+    # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
+    # part as a corruption pattern. Email local parts are effectively case-
+    # insensitive, so lowercasing is safe and canonical.
+    return result.lower() if result else None
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
@@ -1068,7 +1076,11 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
         # dept subdomains, umich) — a plain GET 403s, so route the per-profile
         # fetch through the headless browser too. Returns None where Playwright/
         # Chromium is absent, degrading exactly like an unreachable fetch_soup.
-        soup = _render_soup(url)
+        # ``render_wait`` mirrors the scrape block's knob: some walls (Duke's
+        # Anubis proof-of-work interstitial on nicholas.duke.edu) only clear once
+        # the challenge JS finishes and reloads, which "networkidle" waits for but
+        # the "domcontentloaded" default fires too early on.
+        soup = _render_soup(url, wait_until=enrich.get("render_wait", "domcontentloaded"))
     else:
         try:
             from .ucb_common import fetch_soup
