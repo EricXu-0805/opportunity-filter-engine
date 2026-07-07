@@ -2297,6 +2297,8 @@ export const en = {
     behindTitle: 'Behind JoinALab',
     behindBody: 'An independent student project — built and maintained in the open. Questions, bugs, or schools you want added? Reach out anytime.',
     photoComing: 'Photo coming soon',
+    contributorsTitle: 'Contributors',
+    collabEmilyRole: 'Multi-school data & infrastructure',
     emailLabel: 'Email',
     stackCategories: {
       frontend: 'Frontend',
@@ -4970,6 +4972,8 @@ export const zh = {
     behindTitle: 'JoinALab 背后',
     behindBody: '一个独立学生项目 —— 公开构建、持续维护。有问题、发现 bug、或想加入某所学校?随时联系。',
     photoComing: '照片待补',
+    contributorsTitle: '贡献者',
+    collabEmilyRole: '多校数据与基础设施',
     emailLabel: '邮箱',
     stackCategories: {
       frontend: '前端',

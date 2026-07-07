@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
-import type { TFunc } from './types';
+import { useT } from '@/i18n/client';
 
 const STEPS = [
   { key: 'profile', image: '/walkthrough/step-profile.webp' },
@@ -28,7 +28,8 @@ function subscribeReducedMotion(onChange: () => void) {
  * each under ~100KB). Autoplay pauses on hover, stops for good once the user
  * picks a step, and never runs under prefers-reduced-motion or off-screen.
  */
-export function WalkthroughSection({ t }: { t: TFunc }) {
+export function WalkthroughSection() {
+  const { t } = useT();
   const [active, setActive] = useState(0);
   const [manual, setManual] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -54,13 +55,11 @@ export function WalkthroughSection({ t }: { t: TFunc }) {
     return () => obs.disconnect();
   }, []);
 
+  // Advance is driven by the progress bar's own animation end (below), not a
+  // separate setInterval — a JS timer and the CSS fill drift apart under tab
+  // throttling, so the bar visibly desynced from the step change. Now the bar
+  // completing IS the advance, so they can never diverge.
   const playing = inView && !manual && !hovered && !reducedMotion;
-
-  useEffect(() => {
-    if (!playing) return;
-    const id = setInterval(() => setActive((a) => (a + 1) % STEPS.length), STEP_MS);
-    return () => clearInterval(id);
-  }, [playing]);
 
   return (
     <section ref={sectionRef} aria-labelledby="walkthrough-heading" className="mt-20">
@@ -116,6 +115,7 @@ export function WalkthroughSection({ t }: { t: TFunc }) {
                     key={active}
                     className="block h-full bg-indigo-500/70"
                     style={{ animation: `ofe-walk-fill ${STEP_MS}ms linear forwards` }}
+                    onAnimationEnd={() => setActive((a) => (a + 1) % STEPS.length)}
                   />
                 </span>
               )}
