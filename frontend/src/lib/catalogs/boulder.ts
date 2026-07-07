@@ -95,6 +95,7 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'Electrical and Computer Engineering',
     'Engineering Physics',
     'Environmental Engineering',
+    'Integrated Design Engineering',
     'Mechanical Engineering',
   ],
   'College of Music': [

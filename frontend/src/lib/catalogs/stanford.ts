@@ -59,6 +59,7 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'Slavic Languages and Literatures',
     'Sociology',
     'Spanish',
+    'Statistics',
     'Symbolic Systems',
     'Theater and Performance Studies',
     'Urban Studies',
