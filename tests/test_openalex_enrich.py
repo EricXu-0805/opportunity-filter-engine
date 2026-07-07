@@ -249,3 +249,27 @@ def test_apply_works_is_updates_only_and_capped():
     assert len(stored[0]["title"]) == oa._TITLE_CAP
     assert opps[1]["metadata"]["recent_works"] == [{"title": "keep me", "year": 2020}]
     assert "metadata" not in opps[2] or not opps[2]["metadata"].get("recent_works")
+
+
+def test_apply_works_upgrades_when_store_is_richer():
+    # Re-applying the fuller works library promotes a 1-paper record to the full
+    # set (the LFS-era 1 -> 3 upgrade), but never downgrades a richer record.
+    opps = [
+        {"pi_name": "A", "school": "uw", "url": "https://x.edu/a",
+         "source_type": "faculty_research",
+         "metadata": {"recent_works": [{"title": "solo", "year": 2024}]}},
+        {"pi_name": "B", "school": "uw", "url": "https://x.edu/b",
+         "source_type": "faculty_research",
+         "metadata": {"recent_works": [{"title": "p1", "year": 2026},
+                                       {"title": "p2", "year": 2025},
+                                       {"title": "p3", "year": 2024}]}},
+    ]
+    mapping = {
+        "https://x.edu/a": [{"title": "n1", "year": 2026}, {"title": "n2", "year": 2025},
+                            {"title": "n3", "year": 2024}],
+        "https://x.edu/b": [{"title": "only one", "year": 2026}],  # fewer -> no downgrade
+    }
+    n = oa.apply_works(opps, mapping)
+    assert n == 1
+    assert len(opps[0]["metadata"]["recent_works"]) == 3  # 1 -> 3 upgrade
+    assert opps[1]["metadata"]["recent_works"][0]["title"] == "p1"  # unchanged
