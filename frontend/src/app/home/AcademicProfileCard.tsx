@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
@@ -10,18 +10,10 @@ import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
 import { GRADES } from '@/lib/colleges';
 import { loadCatalog } from '@/lib/catalogs';
+import { suggestInterests } from '@/lib/interest-suggestions';
 import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
 import { FORMAT_OPTIONS, SEEKING_TYPES, type TFunc } from './types';
-
-// Top research domains in the corpus — clickable chips that seed the interests
-// box (the main matching lever). English on purpose: matched against English
-// corpus keywords. Kept short so the row stays scannable.
-const SUGGESTED_INTERESTS = [
-  'Machine Learning', 'Artificial Intelligence', 'Data Science', 'Computer Vision',
-  'Robotics', 'Embedded Systems', 'Neuroscience', 'Bioinformatics',
-  'Materials Science', 'Chemistry', 'Quantitative Finance', 'Sustainability',
-] as const;
 
 export function AcademicProfileCard({
   profile,
@@ -81,8 +73,9 @@ export function AcademicProfileCard({
     remote: 'home.form.formatRemote',
   } as const;
 
-  // Clickable research-area chips (seeded from the corpus's top domains) — the
-  // free-text interests box is the main matching lever, so make it discoverable.
+  // Clickable research-area chips — the free-text interests box is the main
+  // matching lever, so make it discoverable. Narrowed to the student's field
+  // once a major is chosen (falls back to the corpus's top domains otherwise).
   // Values stay English because they're matched against English corpus keywords.
   const have = new Set(
     (profile.research_interests || '')
@@ -90,7 +83,11 @@ export function AcademicProfileCard({
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean),
   );
-  const remainingInterests = SUGGESTED_INTERESTS.filter((s) => !have.has(s.toLowerCase()));
+  const suggested = useMemo(
+    () => suggestInterests(profile.major, profile.college),
+    [profile.major, profile.college],
+  );
+  const remainingInterests = suggested.filter((s) => !have.has(s.toLowerCase()));
   const addInterest = (term: string) => {
     const base = (profile.research_interests || '').replace(/[,\s]+$/, '');
     update('research_interests', base ? `${base}, ${term}` : term);
