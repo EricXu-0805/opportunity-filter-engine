@@ -8,7 +8,7 @@
     "national": 2978
   },
   "gatech": {
-    "campus": 1214,
+    "campus": 1185,
     "national": 2978
   },
   "princeton": {
@@ -32,15 +32,15 @@
     "national": 2978
   },
   "uci": {
-    "campus": 971,
+    "campus": 1038,
     "national": 2978
   },
   "ucla": {
-    "campus": 2025,
+    "campus": 1977,
     "national": 2978
   },
   "ucsb": {
-    "campus": 831,
+    "campus": 1074,
     "national": 2978
   },
   "ucsd": {
@@ -56,7 +56,7 @@
     "national": 2978
   },
   "utexas": {
-    "campus": 2220,
+    "campus": 2156,
     "national": 2978
   },
   "uw": {
@@ -64,7 +64,7 @@
     "national": 2978
   },
   "wisc": {
-    "campus": 1756,
+    "campus": 1728,
     "national": 2978
   }
 }

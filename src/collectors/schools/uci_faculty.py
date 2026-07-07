@@ -425,6 +425,29 @@ SCHOOL: dict = {
                "https://pharmsci.uci.edu/about/our-faculty/"),
         _cpdir("NURS", "Sue & Bill Gross School of Nursing", ["Nursing"],
                "https://nursing.uci.edu/faculty-research/our-faculty/"),
+        # ==== Depth-2 =========================================================
+        # (Psychology & Social Behavior is already covered via the socsci.uci.edu
+        # shared table above.) Claire Trevor School of the Arts — the /{dept}/people
+        # listings carry
+        # name + /faculty/<slug> link but NO rank or email (staff are mixed in),
+        # so an always-on per-profile pass reads the rank + personal email off
+        # each profile and ladder_recheck drops the staff/lecturers after.
+        *[_dept(short, name, majors, url,
+                {"selectors": {"card": "div.text-md.font-bold",
+                               "name": "a[href^='/faculty/']",
+                               "link": "a[href^='/faculty/']"},
+                 "profile_enrich": {
+                     "always": True, "throttle": 1.0,
+                     "title_selector": ".field--name-field-job-title",
+                     "email_selector": "a[href^='mailto:']",
+                     "ladder_recheck": {"require": r"\bprofessor\b",
+                                        "drop": r"emerit|lecturer|adjunct|visiting|of teaching"}}})
+          for short, name, majors, url in [
+              ("ART", "Department of Art", ["Art", "Studio Art"], "https://www.arts.uci.edu/art/people"),
+              ("MUS", "Department of Music", ["Music"], "https://www.arts.uci.edu/music/people"),
+              ("DRAMA", "Department of Drama", ["Drama"], "https://www.arts.uci.edu/drama/people"),
+              ("DANCE", "Department of Dance", ["Dance"], "https://www.arts.uci.edu/dance/people"),
+          ]],
     ],
 }
 
