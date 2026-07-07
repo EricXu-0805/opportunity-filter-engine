@@ -22,9 +22,9 @@ import {
 } from 'lucide-react';
 import Card from '@/components/Card';
 import { useT } from '@/i18n/client';
-import { track } from '@/lib/analytics';
+import { track, trackOnce } from '@/lib/analytics';
 import { useAuthModal } from '@/lib/auth-modal-context';
-import { formatPrice, PACKAGES, paymentsEnabled, type PricingPackage } from '@/lib/pricing';
+import { formatPrice, PACKAGES, paymentsEnabled, payQrEnabled, type PricingPackage } from '@/lib/pricing';
 import {
   claimOrderPaid,
   createOrder,
@@ -78,6 +78,9 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
   const payments = paymentsEnabled();
+  // Concierge QR (scan-to-pay, hand-fulfilled) runs the WTP test without the
+  // package/order flow; only shown when the order flow itself is off.
+  const payQr = !payments && payQrEnabled();
 
   useEffect(() => {
     let cancelled = false;
@@ -249,9 +252,10 @@ export default function AccountPage() {
                 <p className="text-sm font-semibold text-gray-900">{t('account.premiumTitle')}</p>
                 <p className="text-[13px] text-gray-500 mt-0.5">{t('account.premiumDesc')}</p>
               </div>
-              {!payments && <PremiumIntent defaultEmail={email} />}
+              {!payments && !payQr && <PremiumIntent defaultEmail={email} />}
             </div>
             {payments && <OrderFlow orders={orders} />}
+            {payQr && <ConciergePayPanel defaultEmail={email} />}
           </Card>
         </div>
       )}
@@ -320,6 +324,43 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
         {t('account.intentSubmit')}
       </button>
     </form>
+  );
+}
+
+// Concierge QR panel (NEXT_PUBLIC_PAY_QR): the willingness-to-pay test with no
+// pricing and no order rows — just the WeChat/Alipay codes and a hand-fulfilled
+// follow-up. Reuses PremiumIntent for the lead/contact capture. Prices aren't
+// shown (they're deferred), so the exact amount is settled in the follow-up.
+function ConciergePayPanel({ defaultEmail }: { defaultEmail: string }) {
+  const { t } = useT();
+  useEffect(() => { void trackOnce('pay_qr_view', { source: 'account' }); }, []);
+  return (
+    <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/30 p-4">
+      <p className="text-sm font-semibold text-gray-900">{t('account.payQrTitle')}</p>
+      <p className="text-[13px] text-gray-600 mt-1">{t('account.payQrDesc')}</p>
+      <div className="flex flex-wrap gap-4 mt-4">
+        <figure className="text-center">
+          <img
+            src="/pay/wechat.png"
+            alt={t('account.payWechat')}
+            className="w-36 h-36 rounded-xl border border-gray-200 bg-white"
+          />
+          <figcaption className="text-[12px] text-gray-500 mt-1">{t('account.payWechat')}</figcaption>
+        </figure>
+        <figure className="text-center">
+          <img
+            src="/pay/alipay.png"
+            alt={t('account.payAlipay')}
+            className="w-36 h-36 rounded-xl border border-gray-200 bg-white"
+          />
+          <figcaption className="text-[12px] text-gray-500 mt-1">{t('account.payAlipay')}</figcaption>
+        </figure>
+      </div>
+      <p className="text-[12px] text-gray-500 mt-3">{t('account.payQrContact')}</p>
+      <div className="mt-3">
+        <PremiumIntent defaultEmail={defaultEmail} />
+      </div>
+    </div>
   );
 }
 
