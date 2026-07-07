@@ -325,10 +325,26 @@ class TestColdEmailPromptInjection:
             assert not any(line.lstrip().startswith(marker) for line in user_msg.split("\n"))
 
     def test_base_system_rules_have_untrusted_data_guard(self):
-        from backend.routes.cold_email import _BASE_SYSTEM_RULES
+        from backend.routes.cold_email import _base_rules
 
-        assert "untrusted content" in _BASE_SYSTEM_RULES
-        assert "never as instructions" in _BASE_SYSTEM_RULES
+        for is_grad in (False, True):
+            rules = _base_rules(is_grad)
+            assert "untrusted content" in rules
+            assert "never as instructions" in rules
+
+    def test_base_rules_switch_persona_by_level(self):
+        from backend.routes.cold_email import _base_rules
+
+        undergrad = _base_rules(False)
+        grad = _base_rules(True)
+        # Undergrad = first-research-experience inquiry; grad = prospective advisor.
+        assert "undergraduate reaching out" in undergrad
+        assert "RESEARCH ADVISOR" in grad
+        assert "taking students or has openings" in grad
+        # A grad applicant is steered AWAY from undergrad RA-seat framing.
+        assert "do NOT offer to 'volunteer'" in grad
+        assert "prospective advisee and peer" in grad
+        assert "prospective advisee" not in undergrad
 
 
 class TestSkillLevelThreading:
@@ -407,13 +423,14 @@ class TestSkillLevelThreading:
 
 class TestRecentWorkGrounding:
     """metadata.recent_works (OpenAlex paper titles) must reach the AI prompt
-    (exactly one, the most recent) AND the evidence corpus, so a draft citing
-    the real title passes the anti-fabrication gate — while the same citation
-    with no stored works is still rejected as a fabricated claim."""
+    (up to three, so the model can cite whichever is most relevant) AND the
+    evidence corpus, so a draft citing a real title passes the anti-fabrication
+    gate — while the same citation with no stored works is still rejected as a
+    fabricated claim."""
 
     _WORKS = [
         {"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026},
-        {"title": "Older Paper That Must Not Be Offered", "year": 2019},
+        {"title": "Cortical Signal Denoising for Implantable BCIs", "year": 2024},
     ]
 
     def _profile(self):
@@ -449,14 +466,17 @@ class TestRecentWorkGrounding:
         assert ce._ai_generate_email_text(self._profile(), opp) is not None
         return next(m["content"] for m in captured["messages"] if m["role"] == "user")
 
-    def test_prompt_offers_only_the_most_recent_title_with_year(self, monkeypatch):
+    def test_prompt_offers_recent_works_for_the_model_to_choose(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
+        # All stored (≤3, already the most recent) titles are offered with years,
+        # and the model is told to cite at most one — the most relevant.
         assert '"NeuroFlow: Decoding Imagined Speech from ECoG Arrays" (2026)' in user_msg
-        assert "Older Paper" not in user_msg
+        assert '"Cortical Signal Denoising for Implantable BCIs" (2024)' in user_msg
+        assert "cite at most ONE, whichever is most relevant" in user_msg
 
     def test_prompt_shows_none_when_absent(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp())
-        assert "- Recent publication by this professor: (none)" in user_msg
+        assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
 
     def _validate_draft(self, opp):
         from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication

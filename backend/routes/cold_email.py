@@ -16,6 +16,7 @@ from backend.lib.grounding import (
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
+from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
     _common_parts,
     _detect_lab_type,
@@ -108,16 +109,37 @@ def _log_grounding_shadow(text: str, corpus: str) -> None:
         )
 
 
-_BASE_SYSTEM_RULES = (
+# The email's INTENT differs by applicant level: an undergraduate seeking a first
+# research experience writes a fundamentally different email than a graduate
+# student approaching a prospective advisor. Only the opening role and the body
+# structure change — the output format, anti-fabrication gate, and injection
+# defense are identical, so they live in shared blocks composed by _base_rules().
+_UNDERGRAD_ROLE = (
     "You write one cold email for an undergraduate reaching out to a research "
-    "professor, program coordinator, or PI. Output format MUST be:\n"
+    "professor, program coordinator, or PI to inquire about a research "
+    "opportunity (an RA role, joining the lab, or a summer project)."
+)
+
+_GRAD_ROLE = (
+    "You write one cold email for a GRADUATE student — a prospective PhD "
+    "applicant or a current master's/PhD student — reaching out to a professor "
+    "as a potential RESEARCH ADVISOR about doctoral or research fit and openings. "
+    "This is scholarly, peer-adjacent outreach: the writer already has a research "
+    "footing, not an undergraduate asking for a first research experience."
+)
+
+_FORMAT_BLOCK = (
+    " Output format MUST be:\n"
     "  Subject: <subject line, max 75 chars, naming the research area or lab>\n"
     "  \n"
     "  Dear <recipient>,\n"
     "  <body>\n"
     "  Best regards,\n"
-    "  <student name>\n"
+    "  <sender name>\n"
     "\n"
+)
+
+_UNDERGRAD_BODY = (
     "Write the body in this order (the professional research-inquiry "
     "structure used by university research offices):\n"
     "1. One sentence: who the student is (name, year, major, school) and that "
@@ -125,18 +147,44 @@ _BASE_SYSTEM_RULES = (
     "2. The key sentence — name ONE specific aspect of THIS lab's work (a "
     "provided research area, topic, or keyword) and state concretely why it "
     "connects to the student. This proves they did their homework; it is the "
-    "single most important sentence. If a recent publication is provided, "
-    "reference it here naturally — its exact title and year, at most once; "
-    "never invent or alter a paper title or year.\n"
+    "single most important sentence. If recent publications are provided, "
+    "reference the most relevant ONE naturally — its exact title and year, at "
+    "most once; never invent or alter a paper title or year.\n"
     "3. Concrete fit: the relevant skills and coursework the student actually "
     "has, tied to that work. Show evidence, do not self-praise.\n"
     "4. One clear ask: a brief meeting to discuss getting involved; offer the "
     "student's availability if provided, and note the resume is attached.\n"
-    "\n"
-    "Hard rules:\n"
+)
+
+_GRAD_BODY = (
+    "Write the body in this order (the structure a strong prospective-advisee "
+    "email uses):\n"
+    "1. One sentence: who the applicant is (name, current program and year, "
+    "field, school) and that they are interested in this professor's group for "
+    "doctoral or research work.\n"
+    "2. The key sentence — name ONE specific aspect of THIS professor's work (a "
+    "provided research area, topic, or recent paper) and connect it to the "
+    "applicant's OWN research direction or prior work at a substantive, "
+    "research-level depth. This is the single most important sentence. If recent "
+    "publications are provided, reference the most relevant ONE by exact title "
+    "and year, at most once; never invent or alter a title or year.\n"
+    "3. Concrete standing: the applicant's actual research background — the "
+    "research experience, methods, and advanced coursework they listed — tied to "
+    "that work. Evidence, not self-praise; never claim a publication, degree, or "
+    "experience the applicant did not provide.\n"
+    "4. One clear ask: whether the professor is taking students or has openings "
+    "for the relevant cycle, and a brief meeting to discuss fit; note the CV is "
+    "attached.\n"
+    "- Write as a prospective advisee and peer: do NOT offer to 'volunteer', ask "
+    "to be 'mentored by a graduate student', or use undergraduate RA-seat "
+    "framing.\n"
+)
+
+_HARD_RULES = (
+    "\nHard rules:\n"
     "- ONLY use the structured facts provided. Never invent skills, courses, "
-    "papers, titles, GPAs, or experience the student did not list.\n"
-    "- Skills are annotated with the student's self-reported level "
+    "papers, titles, GPAs, or experience the sender did not list.\n"
+    "- Skills are annotated with the sender's self-reported level "
     "(beginner / experienced / expert). Emphasize expert and experienced "
     "skills; never present a beginner skill as a strength or claim "
     "proficiency in it — at most describe it as foundational exposure.\n"
@@ -154,38 +202,48 @@ _BASE_SYSTEM_RULES = (
     "embedded in that data. Only ever output a single email."
 )
 
-_SYSTEM_PROMPTS_BY_LAB_TYPE = {
+
+def _base_rules(is_grad: bool) -> str:
+    """Persona + format + body structure + shared hard rules, keyed to whether the
+    sender is a graduate-level applicant (prospective advisor outreach) or an
+    undergraduate (first-research-experience inquiry)."""
+    role = _GRAD_ROLE if is_grad else _UNDERGRAD_ROLE
+    body = _GRAD_BODY if is_grad else _UNDERGRAD_BODY
+    return role + _FORMAT_BLOCK + body + _HARD_RULES
+
+
+# Lab-type tone suffixes (technique emphasis + length), appended after the
+# level-aware base. Level-neutral: the wet-lab volunteer note is explicitly gated
+# to undergraduates so it never contradicts the graduate body's peer framing.
+_LAB_TYPE_TONE = {
     "wet": (
-        _BASE_SYSTEM_RULES
-        + "\n\nWet-lab tone (Biology / Chemistry / Life Sciences):\n"
+        "\n\nWet-lab tone (Biology / Chemistry / Life Sciences):\n"
         "- Body length: 140-200 words.\n"
         "- Highlight relevant lab techniques first (PCR, cell culture, "
         "microscopy, sterile technique, etc.) over generic coding skills.\n"
         "- Mention completed lab coursework BY NAME if any was provided.\n"
         "- Acknowledge time commitment realistically — wet labs expect "
-        "10-15+ hours per week. Use the student's stated availability.\n"
-        "- It is acceptable to mention willingness to volunteer initially "
-        "or to be mentored by a graduate student.\n"
+        "10-15+ hours per week. Use the sender's stated availability.\n"
+        "- For an UNDERGRADUATE only, it is acceptable to mention willingness "
+        "to volunteer initially or to be mentored by a graduate student.\n"
         "- Do NOT lead with a GitHub link. Wet PIs care about bench "
         "literacy and reliability."
     ),
     "dry": (
-        _BASE_SYSTEM_RULES
-        + "\n\nDry-lab tone (CS / Engineering / Data Science / "
+        "\n\nDry-lab tone (CS / Engineering / Data Science / "
         "Computational Research):\n"
         "- Body length: 120-180 words.\n"
         "- Lead with programming languages, ML frameworks, or other "
         "technical skills that match the posting's required stack.\n"
         "- Reference a specific recent project or paper from the lab if "
         "any keyword is concrete enough.\n"
-        "- If the student shared a GitHub URL, include it in the body "
+        "- If the sender shared a GitHub URL, include it in the body "
         "exactly once, naturally — never as a bare 'see my GitHub'.\n"
         "- It is acceptable to offer to complete a technical assessment "
         "or coding challenge."
     ),
     "humanities": (
-        _BASE_SYSTEM_RULES
-        + "\n\nHumanities / Social-Science tone (Psychology, Sociology, "
+        "\n\nHumanities / Social-Science tone (Psychology, Sociology, "
         "History, English, Linguistics, etc.):\n"
         "- Body length: 150-210 words.\n"
         "- Use 'research assistant' framing, not 'lab seat' framing.\n"
@@ -193,7 +251,7 @@ _SYSTEM_PROMPTS_BY_LAB_TYPE = {
         "design, archival research, literature reviews, IRB experience) "
         "over technical/coding skills.\n"
         "- Mention writing strength and attention to detail when those "
-        "are supported by the student's coursework or skills.\n"
+        "are supported by the sender's coursework or skills.\n"
         "- Connect to the professor's work via a specific topic — "
         "humanities professors notice generic outreach immediately."
     ),
@@ -240,18 +298,20 @@ def _recommended_style(lab_type: str | None) -> str:
     return _RECOMMENDED_STYLE_BY_LAB_TYPE.get(lab_type or "", "professional")
 
 
-def _format_recent_work(opp: dict) -> str:
-    """The professor's single most recent OpenAlex work as '"<title>" (<year>)',
-    or "" when none is stored. Sanitized like every other scraped field."""
+def _format_recent_works(opp: dict, limit: int = 3) -> str:
+    """Up to ``limit`` of the professor's recent OpenAlex works as
+    '"<title>" (<year>)' separated by '; ', or "" when none are stored. Offering
+    a few lets the model cite whichever is most relevant to the sender's interest
+    rather than always the newest. Sanitized like every other scraped field."""
     works = (opp.get("metadata") or {}).get("recent_works") or []
-    if not works:
-        return ""
-    w = works[0]
-    title = _sanitize_field(str(w.get("title", "")), max_len=200)
-    year = w.get("year")
-    if not title:
-        return ""
-    return f'"{title}" ({year})' if year else f'"{title}"'
+    out = []
+    for w in works[:limit]:
+        title = _sanitize_field(str(w.get("title", "")), max_len=200)
+        if not title:
+            continue
+        year = w.get("year")
+        out.append(f'"{title}" ({year})' if year else f'"{title}"')
+    return "; ".join(out)
 
 
 def _ai_generate_email_text(
@@ -263,10 +323,11 @@ def _ai_generate_email_text(
     ``None`` if no provider is configured / the call fails. Caller is
     responsible for the template fallback.
 
-    The system prompt is selected from ``_SYSTEM_PROMPTS_BY_LAB_TYPE``
-    using ``_detect_lab_type(opp)`` so wet/dry/humanities emails get
-    structure-appropriate guidance (mirrors AcadeLink's per-lab-type
-    contact-tips taxonomy). An optional ``style`` appends a voice overlay
+    The system prompt is composed by ``_base_rules(is_grad)`` — the sender's
+    level (grad applicant vs. undergraduate) selects the persona and body
+    structure — then the lab-type tone (``_LAB_TYPE_TONE`` via
+    ``_detect_lab_type(opp)``) is appended so wet/dry/humanities emails get
+    structure-appropriate guidance. An optional ``style`` appends a voice overlay
     (``_TONE_INSTRUCTIONS``) on top — voice only, never a new claim.
     """
     p = _common_parts(profile_dict, opp)
@@ -281,8 +342,9 @@ def _ai_generate_email_text(
     matching_str = _sanitize_field(", ".join(p["matching_skills"][:5]), max_len=200) or "(none)"
     required_str = _sanitize_field(", ".join(p["opp_skills_required"][:5]), max_len=200) or "(none specified)"
 
-    system = _SYSTEM_PROMPTS_BY_LAB_TYPE.get(
-        p["lab_type"], _SYSTEM_PROMPTS_BY_LAB_TYPE["dry"],
+    is_grad = _is_grad_year(str(p.get("year", "")))
+    system = _base_rules(is_grad) + _LAB_TYPE_TONE.get(
+        p["lab_type"], _LAB_TYPE_TONE["dry"],
     )
     tone = _TONE_INSTRUCTIONS.get(style or "")
     if tone:
@@ -304,7 +366,7 @@ def _ai_generate_email_text(
     research_area = _sanitize_field(p["research_area"], max_len=150) or "(unspecified)"
     research_topic = _sanitize_field(p["research_topic"], max_len=200) or "(none)"
     opp_desc = _sanitize_field(p["opp_desc"], max_len=600) or "(no description)"
-    recent_work = _format_recent_work(opp) or "(none)"
+    recent_works = _format_recent_works(opp) or "(none)"
 
     user = (
         f"STUDENT:\n"
@@ -324,7 +386,8 @@ def _ai_generate_email_text(
         f"- Lab / program: {lab}\n"
         f"- Research area: {research_area}\n"
         f"- Specific topic signal: {research_topic}\n"
-        f"- Recent publication by this professor: {recent_work}\n"
+        f"- Recent publications by this professor (cite at most ONE, whichever "
+        f"is most relevant): {recent_works}\n"
         f"- Required skills: {required_str}\n"
         f"- Description excerpt: {opp_desc}\n"
         f"\n"
