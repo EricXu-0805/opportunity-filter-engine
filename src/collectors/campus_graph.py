@@ -328,8 +328,14 @@ def _is_specific_opportunity(anchor: str) -> bool:
 
 def _same_site(seed: str, candidate: str) -> bool:
     try:
-        sh = (urlsplit(seed).hostname or "").lower()
-        ch = (urlsplit(candidate).hostname or "").lower()
+        s, c = urlsplit(seed), urlsplit(candidate)
+        sh = (s.hostname or "").lower()
+        ch = (c.hostname or "").lower()
+        # Force port parsing here so a malformed netloc — e.g. a phone number
+        # scraped into an href ("host:(949) 824-1947") — is rejected at this gate
+        # (returns False) rather than raising ``ValueError: Port could not be cast``
+        # uncaught deeper in the fetch/normalize path and zeroing the whole source.
+        _ = (s.port, c.port)
     except ValueError:
         return False
     if not ch:
