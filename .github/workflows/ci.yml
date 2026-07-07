@@ -44,6 +44,11 @@ jobs:
         run: pip-audit --requirement requirements.txt --strict --ignore-vuln GHSA-4xh5-x5gv-qwph
         continue-on-error: true
 
+      - name: Assemble corpus work file from shards
+        # The corpus is committed as per-school shards (GitHub's 100 MB blob
+        # limit); tests read the single assembled work file. Stdlib-only.
+        run: python scripts/shard_corpus.py assemble
+
       - name: Run pytest
         run: pytest tests/ -v --tb=short
 

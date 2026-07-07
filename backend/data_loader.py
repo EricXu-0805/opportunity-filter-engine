@@ -82,6 +82,26 @@ def load_opportunities() -> list[dict]:
         _maybe_register_ranker_corpus(_opp_cache)
         return _opp_cache
 
+    # Deployed checkouts carry the corpus as per-school shards (the committed
+    # form under GitHub's 100 MB blob limit; see scripts/shard_corpus.py) with
+    # no assembled work file — concatenate the shard directory directly.
+    shards_dir = DATA_DIR / "shards"
+    if shards_dir.is_dir():
+        shards = sorted(shards_dir.glob("*.json"))
+        if shards:
+            mtime = max(p.stat().st_mtime for p in shards)
+            if mtime != _opp_cache_mtime or not _opp_cache:
+                raw = []
+                for p in shards:
+                    with open(p, encoding="utf-8") as f:
+                        raw.extend(json.load(f))
+                _opp_cache = [_sanitize_opportunity(o) for o in raw]
+                _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
+                _opp_cache_mtime = mtime
+            _maybe_fit_tfidf(_opp_cache, mtime)
+            _maybe_register_ranker_corpus(_opp_cache)
+            return _opp_cache
+
     examples = EXAMPLES_DIR / "sample_opportunities.json"
     if examples.exists():
         with open(examples, encoding="utf-8") as f:

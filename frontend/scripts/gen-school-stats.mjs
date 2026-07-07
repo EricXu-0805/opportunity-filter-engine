@@ -1,32 +1,45 @@
 // Derives the per-school coverage counts shown on the university switcher
 // cards from the shipped corpus. Runs via the `prebuild` npm hook, so
 // `next build` always ships fresh counts; the output JSON is committed so
-// dev/test work without re-running it. The 80MB corpus is only ever read
+// dev/test work without re-running it. The ~100MB corpus is only ever read
 // here at build time — never import it into runtime code.
-import { readFileSync, writeFileSync } from 'node:fs';
+//
+// The corpus is committed as per-school shards (data/processed/shards/*.json —
+// GitHub's 100 MB blob limit; see scripts/shard_corpus.py). An assembled
+// opportunities.json work file exists only in dev/pipeline checkouts, so read
+// it when present and fall back to concatenating the shards otherwise.
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const frontendRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const corpusPath = join(frontendRoot, '..', 'data', 'processed', 'opportunities.json');
+const processedDir = join(frontendRoot, '..', 'data', 'processed');
+const corpusPath = join(processedDir, 'opportunities.json');
+const shardsDir = join(processedDir, 'shards');
 const outPath = join(frontendRoot, 'src', 'lib', 'school-stats.json');
 
-const raw = readFileSync(corpusPath, 'utf8');
-// The corpus is Git LFS-tracked. Vercel's build checkout does NOT pull LFS
-// objects, so here the file is a small pointer ("version https://git-lfs...")
-// rather than JSON — JSON.parse would crash and fail the whole deploy. We also
-// don't WANT Vercel to fetch it (that would burn the free-tier LFS bandwidth on
-// every preview/prod build to read a file we only need aggregate counts from).
-// Keep the committed school-stats.json instead; CI and the weekly refresh (both
-// check out with lfs:true) regenerate it against the real corpus.
-if (raw.startsWith('version https://git-lfs')) {
-  console.log(
-    'school-stats: corpus is an unresolved Git LFS pointer (no LFS in this ' +
-    'checkout) — keeping committed school-stats.json.',
-  );
+let records;
+if (existsSync(corpusPath)) {
+  const raw = readFileSync(corpusPath, 'utf8');
+  // A Git-LFS-pointer work file means this checkout can't see the real corpus —
+  // keep the committed school-stats.json rather than crash the deploy.
+  if (raw.startsWith('version https://git-lfs')) {
+    console.log(
+      'school-stats: corpus is an unresolved Git LFS pointer — keeping committed school-stats.json.',
+    );
+    process.exit(0);
+  }
+  records = JSON.parse(raw);
+} else if (existsSync(shardsDir)) {
+  records = readdirSync(shardsDir)
+    .filter((f) => f.endsWith('.json'))
+    .sort()
+    .flatMap((f) => JSON.parse(readFileSync(join(shardsDir, f), 'utf8')));
+} else {
+  console.log('school-stats: no corpus in this checkout — keeping committed school-stats.json.');
   process.exit(0);
 }
-const records = JSON.parse(raw);
+
 const campusBySlug = new Map();
 let national = 0;
 for (const record of records) {
