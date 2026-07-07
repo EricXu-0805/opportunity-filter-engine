@@ -8,7 +8,7 @@ name: Refresh Opportunity Data
 #   |-----|-----------------------------------|-------------|-----------------|
 #   | Mon | uiuc (+ Experts monthly, +Chromium)| ~90-150 min | ~120-180 min    |
 #   | Tue | ucb                               | ~60-100 min | —               |
-#   | Wed | uw,wisc                           | ~15-30 min  | ~75-130 min     |
+#   | Wed | uw,wisc,purdue,duke               | ~40-70 min  | ~90-150 min     |
 #   | Thu | utexas,ucla,boulder               | ~25-45 min  | ~85-150 min     |
 #   | Fri | stanford,ucsd,princeton           | ~15-30 min  | ~70-120 min     |
 #   | Sat | gatech,uchicago,uci,ucsb,umich    | ~20-35 min  | ~75-130 min     |
@@ -76,7 +76,7 @@ jobs:
             case "$(date -u +%u)" in
               1) SHARD="uiuc" ;;
               2) SHARD="ucb" ;;
-              3) SHARD="uw,wisc" ;;
+              3) SHARD="uw,wisc,purdue,duke" ;;
               4) SHARD="utexas,ucla,boulder" ;;
               5) SHARD="stanford,ucsd,princeton" ;;
               6) SHARD="gatech,uchicago,uci,ucsb,umich" ;;
@@ -107,12 +107,14 @@ jobs:
           fi
           if [[ "${{ steps.mode.outputs.deep }}" == "true" ]]; then
             echo "Running DEEP refresh (shard: ${SHARD:-full})"
-            # The 4 ACES faculty directories render via Drupal Views AJAX, so the
-            # deep run drives headless Chromium (uiuc_js_faculty). Playwright is
-            # not in requirements.txt (the collector lazy-imports it and tests
-            # mock it), so install it + the browser only when the run includes
-            # uiuc — the only shard that needs the browser.
-            if [[ -z "$SHARD" || ",$SHARD," == *",uiuc,"* ]]; then
+            # Several schools render client-side / behind Cloudflare and need a
+            # headless browser: uiuc (ACES Drupal Views AJAX) plus the render-mode
+            # faculty configs for umich, princeton, uchicago, uci, ucsd, and duke
+            # (Pratt). Playwright isn't in requirements.txt (the collectors lazy-
+            # import it; tests mock it), so install it + Chromium whenever the run
+            # is a full refresh OR its shard includes any render-using school —
+            # otherwise those schools' render departments silently collect nothing.
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke), ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi
