@@ -1,60 +1,41 @@
 {
-  "duration_seconds": 3581.8,
+  "duration_seconds": 161.9,
   "shard": {
     "national": false,
     "schools": [
-      "duke",
-      "purdue"
+      "umich"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 94,
+      "rule_based_tagged": 3,
       "status": "ok"
     },
-    "campus_graph:duke": {
-      "deep": true,
-      "fetched": 69,
-      "new": 69,
+    "campus_graph:umich": {
+      "deep": false,
+      "fetched": 12,
+      "new": 0,
       "status": "ok",
-      "updated": 0
-    },
-    "campus_graph:purdue": {
-      "deep": true,
-      "fetched": 81,
-      "new": 81,
-      "status": "ok",
-      "updated": 0
+      "updated": 11
     },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 28639,
+      "skipped_rolling": 28604,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 3232,
+      "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
-    "duke_faculty": {
-      "fetched": 1094,
-      "new": 11,
-      "status": "ok",
-      "updated": 1083
-    },
     "faculty_hygiene": {
-      "duplicates_removed": 35,
-      "keywords_cleaned": 2,
-      "removed_by_school": {
-        "duke": 11,
-        "purdue": 24
-      },
-      "shared_inbox_nulled": {
-        "purdue": 2
-      },
+      "duplicates_removed": 0,
+      "keywords_cleaned": 0,
+      "removed_by_school": {},
+      "shared_inbox_nulled": {},
       "status": "ok"
     },
     "intl_reconciliation": {
@@ -62,19 +43,13 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 3060,
-      "enriched": 128,
+      "already_had": 50,
+      "enriched": 2,
       "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 11,
-      "scraped": 311,
+      "renulled_shared_emails": 0,
+      "scraped": 54,
       "skipped_budget": 0,
       "status": "ok"
-    },
-    "purdue_faculty": {
-      "fetched": 2135,
-      "new": 24,
-      "status": "ok",
-      "updated": 2111
     },
     "school_audience": {
       "by_source": {
@@ -82,7 +57,7 @@
         "boulder_labs": 4,
         "boulder_research_programs": 5,
         "duke_external_research": 4,
-        "duke_faculty": 1096,
+        "duke_faculty": 1085,
         "duke_labs": 9,
         "duke_research_programs": 56,
         "gatech_external_research": 2,
@@ -96,7 +71,7 @@
         "princeton_labs": 2,
         "princeton_research_programs": 7,
         "purdue_external_research": 6,
-        "purdue_faculty": 2136,
+        "purdue_faculty": 2112,
         "purdue_labs": 16,
         "purdue_research_programs": 59,
         "simplify_internships": 2079,
@@ -205,11 +180,11 @@
         "wisc_research_programs": 8
       },
       "status": "ok",
-      "tagged": 30165
+      "tagged": 30130
     }
   },
-  "timestamp": "2026-07-07T08:50:24.741595",
+  "timestamp": "2026-07-07T12:29:02.075073",
   "total_in_file": 30130,
-  "total_new": 185,
-  "total_updated": 3194
+  "total_new": 0,
+  "total_updated": 11
 }
