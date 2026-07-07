@@ -122,6 +122,8 @@ from .ucb_urap import fetch_and_normalize as fetch_ucb_urap
 from .ucb_urap import merge_into_processed as merge_ucb_urap
 from .ucb_urap_projects import fetch_and_normalize as fetch_ucb_urap_projects
 from .ucb_urap_projects import merge_into_processed as merge_ucb_urap_projects
+from .ucsb_urca_projects import fetch_and_normalize as fetch_ucsb_urca_projects
+from .ucsb_urca_projects import merge_into_processed as merge_ucsb_urca_projects
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import (
@@ -686,6 +688,25 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             except Exception as e:
                 logger.error(f"URAP projects collection failed: {e}")
                 summary["sources"]["ucb_urap_projects"] = {"status": "error", "error": str(e)}
+
+        if selected("ucsb"):
+            logger.info("=" * 50)
+            logger.info("Collecting from UC Santa Barbara URCA project directory...")
+            try:
+                urca_proj = fetch_ucsb_urca_projects()
+                added, updated = merge_ucsb_urca_projects(urca_proj)
+                summary["sources"]["ucsb_urca_projects"] = {
+                    "fetched": len(urca_proj),
+                    "new": added,
+                    "updated": updated,
+                    "status": "ok",
+                }
+                summary["total_new"] += added
+                summary["total_updated"] += updated
+                logger.info(f"URCA projects: {len(urca_proj)} fetched, {added} new, {updated} updated")
+            except Exception as e:
+                logger.error(f"URCA projects collection failed: {e}")
+                summary["sources"]["ucsb_urca_projects"] = {"status": "error", "error": str(e)}
 
     # 5c. SimplifyJobs internships (autonomous GitHub raw fetch — no auth).
     # National source; when skipped, simplify_ok stays False so the
