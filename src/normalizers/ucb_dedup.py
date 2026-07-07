@@ -61,10 +61,18 @@ def canonicalize_url(url: str | None) -> str:
     host = (parts.hostname or "").lower()
     if host.startswith("www."):
         host = host[4:]
-    # Drop default ports.
+    # Drop default ports. ``.port`` parses lazily and raises ValueError on a
+    # malformed netloc — e.g. a scraped tel: link ("tel:(949) 824-1947") that the
+    # https:// prefix above turns into "https://tel:(949) 824-1947". One such
+    # record anywhere in the corpus crashes every dedupe_against_existing caller
+    # (it zeroed campus_graph for every school), so treat it as no port.
     netloc = host
-    if parts.port and parts.port not in (80, 443):
-        netloc = f"{host}:{parts.port}"
+    try:
+        port = parts.port
+    except ValueError:
+        port = None
+    if port and port not in (80, 443):
+        netloc = f"{host}:{port}"
 
     # Filter tracking query params; keep meaningful ones (sorted for stability).
     kept = []
