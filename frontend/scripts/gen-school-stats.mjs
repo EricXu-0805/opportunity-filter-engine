@@ -11,7 +11,22 @@ const frontendRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corpusPath = join(frontendRoot, '..', 'data', 'processed', 'opportunities.json');
 const outPath = join(frontendRoot, 'src', 'lib', 'school-stats.json');
 
-const records = JSON.parse(readFileSync(corpusPath, 'utf8'));
+const raw = readFileSync(corpusPath, 'utf8');
+// The corpus is Git LFS-tracked. Vercel's build checkout does NOT pull LFS
+// objects, so here the file is a small pointer ("version https://git-lfs...")
+// rather than JSON — JSON.parse would crash and fail the whole deploy. We also
+// don't WANT Vercel to fetch it (that would burn the free-tier LFS bandwidth on
+// every preview/prod build to read a file we only need aggregate counts from).
+// Keep the committed school-stats.json instead; CI and the weekly refresh (both
+// check out with lfs:true) regenerate it against the real corpus.
+if (raw.startsWith('version https://git-lfs')) {
+  console.log(
+    'school-stats: corpus is an unresolved Git LFS pointer (no LFS in this ' +
+    'checkout) — keeping committed school-stats.json.',
+  );
+  process.exit(0);
+}
+const records = JSON.parse(raw);
 const campusBySlug = new Map();
 let national = 0;
 for (const record of records) {
