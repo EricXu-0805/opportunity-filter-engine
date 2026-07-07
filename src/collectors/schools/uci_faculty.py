@@ -448,6 +448,48 @@ SCHOOL: dict = {
               ("DRAMA", "Department of Drama", ["Drama"], "https://www.arts.uci.edu/drama/people"),
               ("DANCE", "Department of Dance", ["Dance"], "https://www.arts.uci.edu/dance/people"),
           ]],
+        # ---- Bren School of ICS: Informatics + Statistics -------------------
+        # WordPress `item--person` cards (name h3 + job-title + mailto on the
+        # listing). The *.ics.uci.edu hosts ship an incomplete TLS chain, but
+        # fetch_soup's InCommon-intermediate bundle completes it (no verify=False).
+        *[_dept(short, name, majors, url,
+                {"selectors": {"card": "article.item--person",
+                               "name": ".person__person-title",
+                               "link": "a", "title": ".person__job-title",
+                               "email": "a[href^='mailto:']"},
+                 "ladder_filter": {"require": r"\bprofessor\b",
+                                   "drop": r"emerit|lecturer|adjunct|visiting|of teaching|continuing"}})
+          for short, name, majors, url in [
+              ("INFO", "Department of Informatics", ["Informatics", "Software Engineering"],
+               "https://informatics.ics.uci.edu/people/"),
+              ("STAT", "Department of Statistics", ["Statistics", "Data Science"],
+               "https://www.stat.uci.edu/people/"),
+          ]],
+        # ---- School of Humanities: WYSIWYG "T2" core-faculty pages ----------
+        # Hand-authored pages with no card element: each faculty is a <p> holding
+        # <strong>Name</strong> + a mailto + a "View Faculty Profile" link, with
+        # the rank in sibling <p><em> blocks. We anchor the card on that name <p>
+        # (:has(strong):has(mailto)); these are the ladder-only /core-faculty
+        # pages (emeriti/lecturers live on separate pages), so no title filter is
+        # needed and none is reachable from the name <p>. (Religious Studies is
+        # excluded: its page mixes ~50 affiliated cross-listings that would
+        # duplicate their home departments.)
+        *[_dept(short, name, majors, url,
+                {"selectors": {"card": "p:has(strong):has(a[href^='mailto:'])",
+                               "name": "strong",
+                               "link": "a[href*='faculty.uci.edu']",
+                               "email": "a[href^='mailto:']"}})
+          for short, name, majors, url in [
+              ("ENGL", "Department of English", ["English"],
+               "https://www.humanities.uci.edu/english/core-faculty"),
+              ("COMPLIT", "Department of Comparative Literature", ["Comparative Literature"],
+               "https://www.humanities.uci.edu/complit/meet-faculty"),
+              ("EALC", "Department of East Asian Studies", ["East Asian Studies"],
+               "https://www.humanities.uci.edu/eastasian/core-faculty"),
+              ("ELS", "Department of European Languages & Studies",
+               ["European Languages & Studies", "French", "German", "Spanish"],
+               "https://www.humanities.uci.edu/els/faculty"),
+          ]],
     ],
 }
 
