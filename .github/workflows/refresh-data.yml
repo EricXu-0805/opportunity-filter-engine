@@ -59,7 +59,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-          lfs: true
 
       - uses: actions/setup-python@v6
         with:
@@ -216,12 +215,13 @@ jobs:
 
           # The committed corpus sits at GitHub's hard 100 MB file limit (pretty-
           # printed it just tipped over once Duke Pratt landed, failing the push).
-          # Store it minified — every consumer (frontend build, gen-school-stats,
-          # tests) reads it as JSON regardless of whitespace — so refreshes can keep
-          # growing it. The Python writers stay pretty for local-dev readability;
-          # this is the single commit-time chokepoint that guarantees the pushed
-          # file is compact whichever writer ran last.
-          python3 -c "import json; p='data/processed/opportunities.json'; json.dump(json.load(open(p)), open(p,'w'), ensure_ascii=False, separators=(',',':'), default=str)"
+          # minify_corpus is the single commit-time chokepoint: it drops the ~8 MB
+          # of description_raw values that are byte-identical to description_clean
+          # (lossless — every reader falls back to clean) and minifies. Every
+          # consumer (frontend build, gen-school-stats, tests) reads the file as
+          # JSON regardless of whitespace, so refreshes can keep growing it. The
+          # Python writers stay pretty for local-dev readability.
+          python3 scripts/minify_corpus.py data/processed/opportunities.json
 
           git add data/processed/opportunities.json data/processed/collector_status.json
           if git diff --cached --quiet; then

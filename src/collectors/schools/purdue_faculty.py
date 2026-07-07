@@ -31,8 +31,15 @@ Purdue's directories are server-rendered, so they scrape with a plain request
   (``faculty_graph._fetch_poly_jsonapi``), located by directory node title; each
   record lands emailed + titled + keyworded (research-interest taxonomy).
 
-More Purdue colleges (Health & Human Sciences, Daniels Business) are added as their
-markup is identified.
+* **Mitchell E. Daniels Jr. School of Business** — one legacy directory filtered
+  by academic area; **College of Pharmacy** — three ``.faculty-profile-card``
+  department grids; **College of Veterinary Medicine** — one directory split by
+  department id. All carry name + rank + public email on the listing. (Business +
+  Vet sit behind an F5 WAF that intermittently rate-limits rapid crawling; a
+  spaced single fetch per refresh clears it, and a blocked run degrades to zero.)
+
+More Purdue colleges (Health & Human Sciences, Education) are added as their markup
+is identified.
 
 Single source ("purdue_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -124,6 +131,58 @@ def _poly(short: str, name: str, majors: list[str], code: str, node_title: str) 
     return {"short": short, "name": name, "majors": majors,
             "directory_url": f"https://polytechnic.purdue.edu/academic-areas/{code}/directory",
             "poly_api": {"node_title": node_title}}
+
+
+# Mitchell E. Daniels Jr. School of Business: one legacy directory filtered by
+# academic area (view.php?search=FacArea&FacAreaList=<id>); name + rank + public
+# email on the listing. The ladder gate drops staff without a professorial title.
+_DANIELS_SEL = {
+    "card": "tr:has(> td > a[href^='mailto:'])",
+    "name": "strong",
+    "link": "a[href^='bio.php?username=']",
+    "title": "td:has(> strong)",
+    "title_re": (r"\b((?:Clinical |Interim |Senior |Visiting )*"
+                 r"(?:Assistant |Associate |Full )*(?:Professor|Lecturer|Instructor))\b"),
+    "email": "a[href^='mailto:']",
+}
+
+
+def _daniels(short, name, majors, area_id):
+    url = ("https://business.purdue.edu/directory/view.php?search=FacArea"
+           f"&FacAreaList={area_id}")
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _DANIELS_SEL,
+                       "ladder_filter": {"require": r"\bprofessor\b", "drop": r"\bemerit"}}}
+
+
+# College of Pharmacy: three departments share a ``.faculty-profile-card`` grid
+# (name + rank + public email on the listing).
+_PHARM_SEL = {"card": ".faculty-profile-card", "name": "p.faculty-name",
+              "link": "a[href*='/faculty/']", "title": "p.faculty-title",
+              "email": "a[href^='mailto:']"}
+_PHARM_LADDER = {"require": r"\bprofessor\b",
+                 "drop": r"\bemerit|\blecturer|\binstructor|\badjunct|\bvisiting|\bcourtesy"}
+
+
+def _pharm(short, name, majors, host):
+    url = f"https://www.{host}.purdue.edu/faculty"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _PHARM_SEL, "ladder_filter": _PHARM_LADDER}}
+
+
+# College of Veterinary Medicine: three departments share one directory
+# (index.php?department=<id>), ``.profile-entry`` cards, "Last, First" -> flip.
+_VET_SEL = {"card": ".profile-entry", "name": ".col-md-3 a", "link": ".col-md-3 a",
+            "title": ".col-md-5", "email": "a[href^='mailto:']"}
+_VET_LADDER = {"require": r"\bprofessor\b",
+               "drop": r"\bemerit|\blecturer|\badjunct|\bvisiting|\bcourtesy|\bstaff\b|\binstructor"}
+
+
+def _vet(short, name, majors, dept_id):
+    url = f"https://vet.purdue.edu/directory/index.php?department={dept_id}"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _VET_SEL, "name_flip": True,
+                       "ladder_filter": _VET_LADDER}}
 
 
 SCHOOL: dict = {
@@ -317,6 +376,36 @@ SCHOOL: dict = {
         _poly("TLI", "Department of Technology Leadership & Innovation",
               ["Technology Leadership and Innovation"],
               "tli", "TLI Directory"),
+        # --- Mitchell E. Daniels Jr. School of Business (by academic area) ---
+        _daniels("ACCT", "Daniels School of Business - Accounting",
+                 ["Accounting"], 51),
+        _daniels("ECON", "Daniels School of Business - Economics",
+                 ["Economics"], 54),
+        _daniels("FIN", "Daniels School of Business - Finance", ["Finance"], 55),
+        _daniels("MIS", "Daniels School of Business - Management Information Systems",
+                 ["Management Information Systems"], 56),
+        _daniels("MKTG", "Daniels School of Business - Marketing", ["Marketing"], 62),
+        _daniels("OBHR", "Daniels School of Business - Organizational Behavior & HR",
+                 ["Organizational Behavior", "Human Resource Management"], 57),
+        _daniels("QM", "Daniels School of Business - Quantitative Methods",
+                 ["Quantitative Methods", "Business Analytics"], 61),
+        _daniels("STRAT", "Daniels School of Business - Strategic Management",
+                 ["Strategic Management"], 59),
+        _daniels("SCMO", "Daniels School of Business - Supply Chain & Operations Management",
+                 ["Supply Chain Management", "Operations Management"], 58),
+        # --- College of Pharmacy ---
+        _pharm("MCMP", "Borch Department of Medicinal Chemistry & Molecular Pharmacology",
+               ["Medicinal Chemistry", "Molecular Pharmacology"], "mcmp"),
+        _pharm("IMPH", "Department of Industrial & Molecular Pharmaceutics",
+               ["Industrial and Molecular Pharmaceutics"], "imph"),
+        _pharm("PHPR", "Department of Pharmacy Practice", ["Pharmacy Practice"], "phpr"),
+        # --- College of Veterinary Medicine ---
+        _vet("BMS", "Department of Basic Medical Sciences",
+             ["Basic Medical Sciences", "Veterinary Medicine"], 2),
+        _vet("CPB", "Department of Comparative Pathobiology",
+             ["Comparative Pathobiology", "Veterinary Medicine"], 3),
+        _vet("VCS", "Department of Veterinary Clinical Sciences",
+             ["Veterinary Clinical Sciences", "Veterinary Medicine"], 4),
     ],
 }
 

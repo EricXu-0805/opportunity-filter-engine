@@ -24,8 +24,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - uses: actions/setup-python@v6
         with:
@@ -58,8 +56,6 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - uses: actions/setup-node@v6
         with:
@@ -94,8 +90,6 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - name: Ensure PostgreSQL tools on PATH
         run: |
@@ -126,8 +120,6 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - uses: actions/setup-python@v6
         with:

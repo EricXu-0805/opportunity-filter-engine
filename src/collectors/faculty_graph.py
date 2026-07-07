@@ -583,6 +583,12 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
         if link_filter and not re.search(link_filter, href):
             continue
+        # A card whose only anchor is a tel:/mailto:/javascript: link has no real
+        # profile page — fall back to the directory URL rather than ship a phone
+        # number as the record's url (one such tel: URL corrupted a UCI record and
+        # crashed URL canonicalization corpus-wide).
+        if re.match(r"(?i)\s*(tel|mailto|javascript|fax|sms):", href or ""):
+            href = ""
         href = urljoin(base_url, href) if href else base_url
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
