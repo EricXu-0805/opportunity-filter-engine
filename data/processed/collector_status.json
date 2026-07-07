@@ -1,17 +1,22 @@
 {
-  "duration_seconds": 1183.0,
+  "duration_seconds": 3909.2,
   "shard": {
     "national": false,
     "schools": [
-      "duke"
+      "duke",
+      "purdue"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 60,
+      "rule_based_tagged": 16,
       "status": "ok"
     },
     "campus_graph:duke": {
+      "error": "Port could not be cast to integer value as '(949) 824-1947'",
+      "status": "error"
+    },
+    "campus_graph:purdue": {
       "error": "Port could not be cast to integer value as '(949) 824-1947'",
       "status": "error"
     },
@@ -19,28 +24,31 @@
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 27392,
+      "skipped_rolling": 28489,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 480,
+      "kept_fresh": 3232,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "duke_faculty": {
-      "fetched": 467,
-      "new": 134,
+      "fetched": 1094,
+      "new": 629,
       "status": "ok",
-      "updated": 333
+      "updated": 465
     },
     "faculty_hygiene": {
-      "duplicates_removed": 13,
+      "duplicates_removed": 35,
       "keywords_cleaned": 3,
       "removed_by_school": {
-        "duke": 13
+        "duke": 11,
+        "purdue": 24
       },
-      "shared_inbox_nulled": {},
+      "shared_inbox_nulled": {
+        "purdue": 2
+      },
       "status": "ok"
     },
     "intl_reconciliation": {
@@ -48,20 +56,26 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 447,
-      "enriched": 0,
-      "nulled_unit_inboxes": 3,
-      "renulled_shared_emails": 0,
-      "scraped": 33,
+      "already_had": 2998,
+      "enriched": 88,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 11,
+      "scraped": 234,
       "skipped_budget": 0,
       "status": "ok"
+    },
+    "purdue_faculty": {
+      "fetched": 2135,
+      "new": 358,
+      "status": "ok",
+      "updated": 1777
     },
     "school_audience": {
       "by_source": {
         "boulder_faculty": 1586,
         "boulder_labs": 4,
         "boulder_research_programs": 5,
-        "duke_faculty": 480,
+        "duke_faculty": 1096,
         "gatech_external_research": 2,
         "gatech_faculty": 1177,
         "gatech_labs": 1,
@@ -72,7 +86,7 @@
         "princeton_faculty": 452,
         "princeton_labs": 2,
         "princeton_research_programs": 7,
-        "purdue_faculty": 1778,
+        "purdue_faculty": 2136,
         "simplify_internships": 2079,
         "stanford_external_research": 1,
         "stanford_faculty": 1395,
@@ -139,7 +153,7 @@
         "uchicago_faculty": 1017,
         "uchicago_labs": 1,
         "uchicago_research_programs": 9,
-        "uci_faculty": 1023,
+        "uci_faculty": 1146,
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
@@ -179,11 +193,11 @@
         "wisc_research_programs": 8
       },
       "status": "ok",
-      "tagged": 28918
+      "tagged": 30015
     }
   },
-  "timestamp": "2026-07-07T03:47:49.384563",
-  "total_in_file": 28905,
-  "total_new": 134,
-  "total_updated": 333
+  "timestamp": "2026-07-07T06:12:44.597775",
+  "total_in_file": 29980,
+  "total_new": 987,
+  "total_updated": 2242
 }
