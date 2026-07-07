@@ -49,6 +49,13 @@ _WORKS_API = "https://api.openalex.org/works"
 # 86MB corpus in a 2GB-RAM backend: hard-cap what apply may store per faculty.
 _MAX_WORKS = 3
 _TITLE_CAP = 200
+
+# The committed "works library": the durable url -> [{title, year}] master record
+# of every OpenAlex paper we ever paid the metered API to harvest. recent_works is
+# the ONE faculty field no directory scrape reproduces, so this store is how we
+# re-derive it for free after any full corpus rebuild — and where future harvests
+# accumulate. Kept out of the corpus so the metered data survives independently.
+WORKS_STORE = os.path.join(os.path.dirname(PROCESSED_FILE), "faculty_works.json")
 # Over-fetch so the per-work field filter (drops OpenAlex same-name conflation
 # outliers) still leaves _MAX_WORKS survivors in the common case.
 _WORKS_FETCH = 10
@@ -468,11 +475,14 @@ def harvest_works(
 
 
 def apply_works(opps: list[dict], mapping: dict[str, list[dict]]) -> int:
-    """Updates-only: set ``metadata.recent_works`` on faculty whose URL is in
-    mapping and who don't already carry works. Never touches any other field."""
+    """Set ``metadata.recent_works`` on faculty whose URL is in mapping, whenever
+    the mapping carries MORE papers than the record already has. Upgrade-when-
+    richer (not skip-if-present): re-applying the fuller ``WORKS_STORE`` promotes a
+    1-paper record to the full ``_MAX_WORKS`` set, while never downgrading a record
+    that already has more. Idempotent; never touches any other field."""
     n = 0
     for o in opps:
-        if not _is_faculty(o) or (o.get("metadata") or {}).get("recent_works"):
+        if not _is_faculty(o):
             continue
         works = mapping.get(_record_url(o)) or []
         clean = [
@@ -480,7 +490,8 @@ def apply_works(opps: list[dict], mapping: dict[str, list[dict]]) -> int:
             for w in works[:_MAX_WORKS]
             if w.get("title") and isinstance(w.get("year"), int)
         ]
-        if clean:
+        existing = (o.get("metadata") or {}).get("recent_works") or []
+        if clean and len(clean) > len(existing):
             o.setdefault("metadata", {})["recent_works"] = clean
             n += 1
     return n
@@ -531,8 +542,12 @@ def _cli(argv: list[str]) -> int:
         print(f"matched {len(mapping)} faculty -> {out}")
         return 0
     opps = json.load(open(PROCESSED_FILE))
+    # `apply-works` with no map files restores recent_works from the committed
+    # works library — the free, re-runnable path back to full coverage after a
+    # rebuild. `apply` (topics) still requires explicit maps.
+    files = rest or ([WORKS_STORE] if mode == "apply-works" else [])
     merged: dict = {}
-    for f in rest:
+    for f in files:
         merged.update(json.load(open(f)))
     n = (apply_openalex if mode == "apply" else apply_works)(opps, merged)
     json.dump(opps, open(PROCESSED_FILE, "w"), ensure_ascii=False, indent=2)
