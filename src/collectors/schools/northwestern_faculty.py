@@ -8,8 +8,9 @@ browser). Three departments use a different theme (Sociology's HTML table,
 Molecular Biosciences' ``div.directory`` roster, the CIERA astrophysics center's
 WordPress directory) — those carry their variant selectors inline.
 
-McCormick Engineering + Medill/SESP/Communication/Bienen + Feinberg basic
-sciences are a follow-up.
+McCormick School of Engineering (9 depts) uses its own ``.faculty`` card theme
+(``.faculty-info`` name/rank + ``a.mail_link`` mailto). Feinberg basic sciences +
+Medill/SESP/Communication/Bienen are a follow-up.
 
 Single source ("northwestern_faculty"); department rides each record's
 ``department``, ids namespaced by department short-code. Audience "unknown".
@@ -37,6 +38,24 @@ def _nw(short: str, name: str, majors: list[str], url: str,
         scrape["link_filter"] = link_filter
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url, "scrape": scrape}
+
+
+# McCormick School of Engineering: shared theme distinct from Weinberg's — a
+# ``.faculty`` card (name/link in ``.faculty-info h3 a``, rank in the first
+# ``.faculty-info p``, public mailto in ``a.mail_link``) at
+# mccormick.northwestern.edu/<slug>/people/faculty/ (ECE uses /people/faculty.html).
+_MCC_SEL = {"card": ".faculty", "name": ".faculty-info h3 a",
+            "link": ".faculty-info h3 a", "title": ".faculty-info p",
+            "email": "a.mail_link[href^='mailto:']"}
+_MCC_LADDER = {"require": r"\bprofessor\b",
+               "drop": r"\bemerit|\blecturer|\badjunct|\bvisiting|\bcourtesy|instruction|\bstaff\b"}
+
+
+def _mcc(short: str, name: str, majors: list[str], slug: str,
+         path: str = "/people/faculty/index.html") -> dict:
+    url = f"https://www.mccormick.northwestern.edu/{slug}{path}"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _MCC_SEL, "ladder_filter": _MCC_LADDER}}
 
 
 SCHOOL: dict = {
@@ -162,6 +181,26 @@ SCHOOL: dict = {
                 },
             },
         },
+        # --- McCormick School of Engineering (shared .faculty theme) ---
+        _mcc("MCC-BME", "Department of Biomedical Engineering",
+             ["Biomedical Engineering"], "biomedical"),
+        _mcc("MCC-CHBE", "Department of Chemical & Biological Engineering",
+             ["Chemical Engineering", "Biological Engineering"], "chemical-biological"),
+        _mcc("MCC-CEE", "Department of Civil & Environmental Engineering",
+             ["Civil Engineering", "Environmental Engineering"], "civil-environmental"),
+        _mcc("MCC-CS", "Department of Computer Science",
+             ["Computer Science"], "computer-science"),
+        _mcc("MCC-ECE", "Department of Electrical & Computer Engineering",
+             ["Electrical Engineering", "Computer Engineering"], "electrical-computer",
+             path="/people/faculty.html"),
+        _mcc("MCC-ESAM", "Department of Engineering Sciences & Applied Mathematics",
+             ["Applied Mathematics"], "applied-math"),
+        _mcc("MCC-IEMS", "Department of Industrial Engineering & Management Sciences",
+             ["Industrial Engineering"], "industrial"),
+        _mcc("MCC-MSE", "Department of Materials Science & Engineering",
+             ["Materials Science"], "materials-science"),
+        _mcc("MCC-ME", "Department of Mechanical Engineering",
+             ["Mechanical Engineering"], "mechanical"),
     ],
 }
 
