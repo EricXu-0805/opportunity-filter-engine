@@ -10,10 +10,11 @@ WordPress directory) — those carry their variant selectors inline.
 
 McCormick School of Engineering (9 depts) uses its own ``.faculty`` card theme
 (``.faculty-info`` name/rank + ``a.mail_link`` mailto). School of Communication
-(5 depts) serves a JS ``article`` card with no email on the listing, so it pairs
-a rendered scrape with a ``profile_enrich`` email pass (plain GET). Feinberg basic
-sciences + Medill/SESP/Kellogg/Bienen remain a follow-up (JS search-grids whose
-listings omit email and whose backing APIs aren't yet cracked).
+(5 depts) and the School of Education & Social Policy (one directory) serve a JS
+``article`` card with no email on the listing, so they pair a rendered scrape with
+a ``profile_enrich`` email pass (plain GET). Feinberg basic sciences + Kellogg +
+Medill (a Tailwind JS grid) + Bienen (a performance-table roster) remain a
+follow-up (listings omit email / backing APIs not yet cracked).
 
 Single source ("northwestern_faculty"); department rides each record's
 ``department``, ids namespaced by department short-code. Audience "unknown".
@@ -236,6 +237,25 @@ SCHOOL: dict = {
              ["Radio/Television/Film", "Film", "Media Arts"], "radio-television-film"),
         _soc("COMM-THEA", "Department of Theatre",
              ["Theatre", "Drama"], "theatre"),
+        # --- School of Education & Social Policy (one Cascade directory) ---
+        # Same theme as Communication but rank in ``div.title``; all programs
+        # (Human Development & Social Policy, Learning Sciences, Higher Education,
+        # Learning & Organizational Change) share one /people/faculty/ listing, so
+        # it rides as a single school-level entry. Email via profile_enrich (GET).
+        {
+            "short": "SESP", "name": "School of Education and Social Policy",
+            "majors": ["Education", "Social Policy", "Human Development",
+                       "Learning Sciences", "Learning & Organizational Change"],
+            "directory_url": "https://www.sesp.northwestern.edu/people/faculty/index.html",
+            "scrape": {
+                "url": "https://www.sesp.northwestern.edu/people/faculty/index.html",
+                "render": True,
+                "selectors": {"card": "article", "name": "h2", "link": "a",
+                              "title": "div.title"},
+                "ladder_filter": _SOC_LADDER,
+                "profile_enrich": _SOC_ENRICH,
+            },
+        },
     ],
 }
 
