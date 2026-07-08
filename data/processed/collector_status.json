@@ -1,22 +1,22 @@
 {
-  "duration_seconds": 237.9,
+  "duration_seconds": 188.6,
   "shard": {
     "national": false,
     "schools": [
-      "jhu"
+      "northwestern"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 21,
+      "rule_based_tagged": 14,
       "status": "ok"
     },
-    "campus_graph:jhu": {
+    "campus_graph:northwestern": {
       "deep": true,
-      "fetched": 30,
+      "fetched": 28,
       "new": 0,
       "status": "ok",
-      "updated": 30
+      "updated": 28
     },
     "deactivate_past": {
       "already_inactive": 662,
@@ -26,7 +26,7 @@
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 685,
+      "kept_fresh": 675,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
@@ -42,18 +42,18 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "jhu_faculty": {
-      "fetched": 685,
-      "new": 247,
+    "northwestern_faculty": {
+      "fetched": 675,
+      "new": 0,
       "status": "ok",
-      "updated": 438
+      "updated": 675
     },
     "pi_enricher": {
-      "already_had": 681,
-      "enriched": 1,
-      "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 0,
-      "scraped": 31,
+      "already_had": 657,
+      "enriched": 31,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 8,
+      "scraped": 45,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -196,8 +196,8 @@
       "tagged": 31548
     }
   },
-  "timestamp": "2026-07-08T09:00:06.550970",
+  "timestamp": "2026-07-08T14:02:33.182194",
   "total_in_file": 31548,
-  "total_new": 247,
-  "total_updated": 468
+  "total_new": 0,
+  "total_updated": 703
 }
