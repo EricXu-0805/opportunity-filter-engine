@@ -9,8 +9,11 @@ Cloudflare challenge and the DataTables JS API returns all rows; the engine's
 table once and slices it per department. Records land name + rank + email + dept
 (no research keywords on the table — like Duke Trinity / UCSD bare link-lists).
 
-Whiting School of Engineering + School of Medicine basic sciences are NOT in
-this table (separate Cloudflare-walled sites) and are a follow-up.
+Whiting School of Engineering departments are NOT in that table — most run a
+shared Cloudflare-walled WordPress ``.entity`` card theme (name + rank + public
+email on the listing), wired via the ``_wse`` helper below; Biomedical
+Engineering carries its own ``.zn-*`` theme inline. School of Medicine basic
+sciences remain a follow-up.
 
 Single source ("jhu_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -34,6 +37,26 @@ def _kt(short: str, name: str, majors: list[str], department: str) -> dict:
     return {"short": short, "name": name, "majors": majors,
             "directory_url": faculty_graph._KRIEGER_URL,
             "krieger_table": {"department": department, "ladder_filter": _KT_LADDER}}
+
+
+# Whiting School of Engineering department sites run a shared WordPress "entity"
+# card theme: name + profile link in ``.entity_name a``, rank in ``.entity_title``,
+# and a public ``mailto:`` on the listing itself — so a single render pass lands
+# name + title + email (no per-profile enrichment). Each dept lives at
+# engineering.jhu.edu/<slug>/faculty/ (Computer Science on its own cs.jhu.edu
+# subdomain). All are Cloudflare-walled, so ``render`` clears the challenge.
+_WSE_SEL = {"card": ".entity", "name": ".entity_name a", "link": ".entity_name a",
+            "title": ".entity_title", "email": "a[href^='mailto:']"}
+_WSE_LADDER = {"require": r"\bprofessor\b",
+               "drop": (r"\bemerit|\blecturer|\bresearch scientist|\bteaching prof"
+                        r"|\badjunct|\bvisiting|\bstaff\b|\bpostdoc|\bfellow\b")}
+
+
+def _wse(short: str, name: str, majors: list[str], url: str) -> dict:
+    """One Whiting dept, scraped from its ``.entity`` faculty listing (render)."""
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "render": True, "selectors": _WSE_SEL,
+                       "ladder_filter": _WSE_LADDER}}
 
 
 SCHOOL: dict = {
@@ -85,6 +108,47 @@ SCHOOL: dict = {
             ["Creative Writing", "Writing Seminars"], "Writing Seminars"),
         _kt("NEURO", "Solomon H. Snyder Department of Neuroscience",
             ["Neuroscience"], "Neuroscience"),
+        # --- Whiting School of Engineering (shared .entity theme, render) ---
+        _wse("WSE-CS", "Department of Computer Science", ["Computer Science"],
+             "https://www.cs.jhu.edu/faculty/"),
+        _wse("WSE-ECE", "Department of Electrical and Computer Engineering",
+             ["Electrical Engineering", "Computer Engineering"],
+             "https://engineering.jhu.edu/ece/faculty/"),
+        _wse("WSE-MSE", "Department of Materials Science and Engineering",
+             ["Materials Science"], "https://engineering.jhu.edu/materials/faculty/"),
+        _wse("WSE-AMS", "Department of Applied Mathematics and Statistics",
+             ["Applied Mathematics", "Statistics"],
+             "https://engineering.jhu.edu/ams/faculty/"),
+        _wse("WSE-CEE", "Department of Civil and Systems Engineering",
+             ["Civil Engineering", "Systems Engineering"],
+             "https://engineering.jhu.edu/civil/faculty/"),
+        _wse("WSE-EHE", "Department of Environmental Health and Engineering",
+             ["Environmental Engineering", "Environmental Health"],
+             "https://engineering.jhu.edu/ehe/faculty/"),
+        _wse("WSE-CHEMBE", "Department of Chemical and Biomolecular Engineering",
+             ["Chemical Engineering", "Biomolecular Engineering"],
+             "https://engineering.jhu.edu/chembe/faculty/"),
+        _wse("WSE-ME", "Department of Mechanical Engineering",
+             ["Mechanical Engineering"],
+             "https://engineering.jhu.edu/mechanical-engineering/faculty/"),
+        # Biomedical Engineering runs its own ``.zn-*`` theme on a more aggressively
+        # Cloudflare-walled subdomain (bme.jhu.edu) — a longer render settle lets the
+        # challenge clear before the first card check.
+        {
+            "short": "WSE-BME", "name": "Department of Biomedical Engineering",
+            "majors": ["Biomedical Engineering"],
+            "directory_url": "https://www.bme.jhu.edu/faculty/",
+            "scrape": {
+                "url": "https://www.bme.jhu.edu/faculty/",
+                "render": True, "render_settle": 8000,
+                "selectors": {
+                    "card": ".zn-faculty-profile", "name": "a.zn-faculty-link",
+                    "link": "a.zn-faculty-link", "title": ".zn-position",
+                    "email": "a.zn-faculty-email[href^='mailto:']",
+                },
+                "ladder_filter": _WSE_LADDER,
+            },
+        },
     ],
 }
 
