@@ -660,8 +660,25 @@ def _paginated_url(base: str, page: int, param: str) -> str:
     return f"{paged}{sep}{query}" if query else paged
 
 
+def _is_cf_interstitial(soup) -> bool:
+    """True when a rendered page is still Cloudflare's challenge shell, not content.
+
+    Cloudflare returns its interstitial with HTTP 200 and non-empty HTML ("Just a
+    moment…" + a ``/cdn-cgi/challenge-platform/`` script) and only swaps in the real
+    DOM after the JS challenge passes and reloads. Capturing ``page.content()`` too
+    early yields this shell — zero cards, no error — so the render must be retried.
+    """
+    title = (soup.title.get_text() if soup.title else "").strip().lower()
+    if "just a moment" in title or "attention required" in title:
+        return True
+    return bool(soup.select_one(
+        "#challenge-running, #cf-challenge-running, "
+        "script[src*='challenge-platform'], script[src*='/cdn-cgi/challenge']"))
+
+
 def _render_soup(url: str, timeout_ms: int = 60000,
-                 wait_until: str = "domcontentloaded", settle_ms: int = 3500):
+                 wait_until: str = "domcontentloaded", settle_ms: int = 3500,
+                 expect_selector: str | None = None):
     """Fetch a URL through a headless-Chromium browser and return a BeautifulSoup.
 
     The escape hatch for directories a plain ``requests`` GET can't read: pages
@@ -686,11 +703,14 @@ def _render_soup(url: str, timeout_ms: int = 60000,
             "(pip install playwright && python -m playwright install chromium)", url,
         )
         return None
-    # Headless navigation is flaky (transient goto timeouts / slow card grids),
-    # so retry once before giving up — a single retry turns most intermittent
-    # failures into successes without stalling the run.
-    html = None
-    for attempt in (1, 2):
+    # Headless navigation is flaky (transient goto timeouts, slow card grids, and
+    # Cloudflare interstitials that 200 with a challenge shell before reloading the
+    # real DOM), so retry up to three times, backing off the settle each round. A
+    # render "succeeds" only when it yields a non-challenge page that actually has
+    # the caller's ``expect_selector`` cards — capturing the interstitial or an
+    # un-hydrated grid forces another attempt rather than returning empty.
+    soup = None
+    for attempt in (1, 2, 3):
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
@@ -699,15 +719,29 @@ def _render_soup(url: str, timeout_ms: int = 60000,
                     page.goto(url, wait_until=wait_until, timeout=timeout_ms)
                     # Let client-side card grids / Cloudflare interstitials settle.
                     page.wait_for_timeout(settle_ms)
+                    # Block until the expected cards render (CF cleared + JS done);
+                    # a timeout just falls through to the interstitial check below.
+                    if expect_selector:
+                        try:
+                            page.wait_for_selector(expect_selector, timeout=20000)
+                        except Exception:  # noqa: BLE001 — handled by the retry guard
+                            pass
                     html = page.content()
                 finally:
                     browser.close()
-            if html:
+            cand = BeautifulSoup(html, "html.parser") if html else None
+            if cand is not None and not _is_cf_interstitial(cand) and (
+                    not expect_selector or cand.select(expect_selector)):
+                soup = cand
                 break
+            logger.info("faculty_graph: render for %s unresolved (attempt %d: "
+                        "challenge shell or no '%s' cards); retrying",
+                        url, attempt, expect_selector or "?")
+            settle_ms = min(settle_ms + 4000, 14000)
         except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
             logger.warning("faculty_graph: render fetch failed for %s (attempt %d): %s",
                            url, attempt, e)
-    return BeautifulSoup(html, "html.parser") if html else None
+    return soup
 
 
 def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
@@ -808,6 +842,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
         # loop, which can't drive a same-document router.
         soup = _render_paginated_soup(base, pag.get("param", "page"),
                                       pag.get("max", 12), sel.get("card", ""))
+    elif cfg.get("render"):
+        # Wait for the card selector so a Cloudflare-walled dept retries past the
+        # interstitial instead of parsing the challenge shell (empty result). A
+        # slower CF subdomain can request a longer initial settle (``render_settle``)
+        # so its challenge clears before the first card check (JHU BME's bme.jhu.edu).
+        soup = _render_soup(base, wait_until=rw, expect_selector=sel.get("card"),
+                            settle_ms=cfg.get("render_settle", 3500))
     else:
         soup = fetch(base)
     if soup is None:
