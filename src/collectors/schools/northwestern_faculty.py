@@ -9,8 +9,11 @@ Molecular Biosciences' ``div.directory`` roster, the CIERA astrophysics center's
 WordPress directory) — those carry their variant selectors inline.
 
 McCormick School of Engineering (9 depts) uses its own ``.faculty`` card theme
-(``.faculty-info`` name/rank + ``a.mail_link`` mailto). Feinberg basic sciences +
-Medill/SESP/Communication/Bienen are a follow-up.
+(``.faculty-info`` name/rank + ``a.mail_link`` mailto). School of Communication
+(5 depts) serves a JS ``article`` card with no email on the listing, so it pairs
+a rendered scrape with a ``profile_enrich`` email pass (plain GET). Feinberg basic
+sciences + Medill/SESP/Kellogg/Bienen remain a follow-up (JS search-grids whose
+listings omit email and whose backing APIs aren't yet cracked).
 
 Single source ("northwestern_faculty"); department rides each record's
 ``department``, ids namespaced by department short-code. Audience "unknown".
@@ -56,6 +59,26 @@ def _mcc(short: str, name: str, majors: list[str], slug: str,
     url = f"https://www.mccormick.northwestern.edu/{slug}{path}"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _MCC_SEL, "ladder_filter": _MCC_LADDER}}
+
+
+# School of Communication: each department serves a JS-rendered ``article`` card
+# (name in ``h2``, profile link in the first ``a``, rank in ``p.title``) at
+# communication.northwestern.edu/academics/<slug>/faculty.html. The LISTING has
+# no email — but each ``/faculty/<name>.html`` profile carries a public mailto
+# reachable by a plain GET, so a (gate-bypassing) ``profile_enrich`` pass lands
+# the address without a per-profile headless render.
+_SOC_SEL = {"card": "article", "name": "h2", "link": "a", "title": "p.title"}
+_SOC_LADDER = {"require": r"\bprofessor\b",
+               "drop": (r"\bemerit|\blecturer|\bvisiting|\badjunct|instruction"
+                        r"|artist in residence|\bstaff\b|\bfellow\b|\bpostdoc")}
+_SOC_ENRICH = {"always": True, "email_selector": "a[href^='mailto:']", "throttle": 0.15}
+
+
+def _soc(short: str, name: str, majors: list[str], slug: str) -> dict:
+    url = f"https://communication.northwestern.edu/academics/{slug}/faculty.html"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "render": True, "selectors": _SOC_SEL,
+                       "ladder_filter": _SOC_LADDER, "profile_enrich": _SOC_ENRICH}}
 
 
 SCHOOL: dict = {
@@ -201,6 +224,18 @@ SCHOOL: dict = {
              ["Materials Science"], "materials-science"),
         _mcc("MCC-ME", "Department of Mechanical Engineering",
              ["Mechanical Engineering"], "mechanical"),
+        # --- School of Communication (article theme + profile_enrich email) ---
+        _soc("COMM-CSD", "Department of Communication Sciences & Disorders",
+             ["Communication Sciences & Disorders", "Speech-Language Pathology", "Audiology"],
+             "communication-sciences-and-disorders"),
+        _soc("COMM-CS", "Department of Communication Studies",
+             ["Communication Studies", "Communication"], "communication-studies"),
+        _soc("COMM-PS", "Department of Performance Studies",
+             ["Performance Studies"], "performance-studies"),
+        _soc("COMM-RTVF", "Department of Radio/Television/Film",
+             ["Radio/Television/Film", "Film", "Media Arts"], "radio-television-film"),
+        _soc("COMM-THEA", "Department of Theatre",
+             ["Theatre", "Drama"], "theatre"),
     ],
 }
 
