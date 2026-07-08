@@ -1,40 +1,32 @@
 {
-  "duration_seconds": 256.7,
+  "duration_seconds": 191.3,
   "shard": {
     "national": false,
     "schools": [
-      "jhu",
       "northwestern"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 35,
+      "rule_based_tagged": 14,
       "status": "ok"
-    },
-    "campus_graph:jhu": {
-      "deep": true,
-      "fetched": 30,
-      "new": 30,
-      "status": "ok",
-      "updated": 0
     },
     "campus_graph:northwestern": {
       "deep": true,
       "fetched": 28,
-      "new": 28,
+      "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 28
     },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 29611,
+      "skipped_rolling": 29775,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 949,
+      "kept_fresh": 675,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
@@ -50,24 +42,18 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "jhu_faculty": {
-      "fetched": 438,
-      "new": 438,
-      "status": "ok",
-      "updated": 0
-    },
     "northwestern_faculty": {
-      "fetched": 511,
-      "new": 511,
+      "fetched": 675,
+      "new": 164,
       "status": "ok",
-      "updated": 0
+      "updated": 511
     },
     "pi_enricher": {
-      "already_had": 937,
-      "enriched": 35,
+      "already_had": 657,
+      "enriched": 31,
       "nulled_unit_inboxes": 1,
       "renulled_shared_emails": 8,
-      "scraped": 66,
+      "scraped": 45,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -90,7 +76,7 @@
         "jhu_labs": 7,
         "jhu_research_programs": 22,
         "manual": 33,
-        "northwestern_faculty": 511,
+        "northwestern_faculty": 675,
         "northwestern_labs": 11,
         "northwestern_research_programs": 17,
         "nsf_reu": 585,
@@ -207,11 +193,11 @@
         "wisc_research_programs": 8
       },
       "status": "ok",
-      "tagged": 31137
+      "tagged": 31301
     }
   },
-  "timestamp": "2026-07-07T13:36:49.251234",
-  "total_in_file": 31137,
-  "total_new": 1007,
-  "total_updated": 0
+  "timestamp": "2026-07-08T03:19:22.415414",
+  "total_in_file": 31301,
+  "total_new": 164,
+  "total_updated": 539
 }
