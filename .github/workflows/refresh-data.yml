@@ -115,12 +115,13 @@ jobs:
             echo "Running DEEP refresh (shard: ${SHARD:-full})"
             # Several schools render client-side / behind Cloudflare and need a
             # headless browser: uiuc (ACES Drupal Views AJAX) plus the render-mode
-            # faculty configs for umich, princeton, uchicago, uci, ucsd, and duke
-            # (Pratt). Playwright isn't in requirements.txt (the collectors lazy-
-            # import it; tests mock it), so install it + Chromium whenever the run
-            # is a full refresh OR its shard includes any render-using school —
-            # otherwise those schools' render departments silently collect nothing.
-            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu), ]]; then
+            # faculty configs for umich, princeton, uchicago, uci, ucsd, duke
+            # (Pratt), jhu (Whiting .entity/.zn sites), and northwestern (School of
+            # Communication article listings). Playwright isn't in requirements.txt
+            # (the collectors lazy-import it; tests mock it), so install it + Chromium
+            # whenever the run is a full refresh OR its shard includes any render-using
+            # school — otherwise those schools' render departments silently collect nothing.
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern), ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi
