@@ -1606,6 +1606,25 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     cfg = dept.get("json_dir")
     if not cfg:
         return []
+    # A committed local JSON file (``file``) instead of a live endpoint: the
+    # persistence layer for mega-directories that are too large / bot-walled to
+    # re-render every refresh (JHU Bloomberg Public Health, School of Medicine,
+    # NU Feinberg). A one-time local harvest writes the file; the refresh loads
+    # it instantly with the same field-mapping. Path is repo-root-relative.
+    if cfg.get("file"):
+        import json as _json
+        import os as _os
+        here = _os.path.dirname(__file__)
+        root = _os.path.abspath(_os.path.join(here, "..", ".."))
+        fpath = cfg["file"] if _os.path.isabs(cfg["file"]) else _os.path.join(root, cfg["file"])
+        try:
+            with open(fpath, encoding="utf-8") as fh:
+                recs = _json.load(fh)
+        except Exception:  # noqa: BLE001
+            logger.warning("faculty_graph: json_dir file unreadable for %s: %s",
+                           dept.get("short"), cfg["file"])
+            return []
+        return _json_dir_records(dept, cfg, recs)
     try:
         import requests
     except Exception:  # noqa: BLE001
@@ -1627,6 +1646,12 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
         recs = resp.json()
     except Exception:  # noqa: BLE001
         return []
+    return _json_dir_records(dept, cfg, recs)
+
+
+def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
+    """Map a JSON directory payload (from a live endpoint or a committed file)
+    into faculty specs, honouring the field-name / filter / title-map options."""
     if isinstance(recs, dict):
         recs = (recs.get(cfg.get("records_key", "")) if cfg.get("records_key")
                 else next((v for v in recs.values() if isinstance(v, list)), []))

@@ -218,6 +218,25 @@ SCHOOL: dict = {
                 "cap": 300,
             },
         },
+        # --- School of Medicine (harvested academic professoriate, static seed) ---
+        # profiles.hopkinsmedicine.org lists 8601 clinical providers (curl-able, no
+        # Turnstile). A one-time local harvest kept the ~2905 with an academic
+        # "Professor" title (dropping residents/fellows/clinical-instructors/DNPs)
+        # and committed them to a seed JSON. Loaded via json_dir file (no re-render
+        # each refresh). Clinical profiles carry no public email → name+rank only;
+        # specialty rides the title. See scripts/harvest for regeneration.
+        {
+            "short": "SOM", "name": "School of Medicine",
+            "majors": ["Medicine", "Neuroscience", "Cell Biology", "Pharmacology",
+                       "Physiology", "Biological Chemistry", "Immunology",
+                       "Molecular Biology and Genetics", "Oncology", "Public Health"],
+            "directory_url": "https://profiles.hopkinsmedicine.org/",
+            "json_dir": {
+                "file": "data/faculty_seeds/jhu_som.json",
+                "name_fields": ["name"], "title_field": "title",
+                "email_field": "email", "link_field": "url",
+            },
+        },
     ],
 }
 
