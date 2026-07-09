@@ -161,7 +161,7 @@ export const SCHOOLS: School[] = [
     color: '#CEB888',
     location: 'West Lafayette, IN',
     coverage: campusCoverage('purdue'),
-    catalog: { colleges: 9, majors: 58 },
+    catalog: { colleges: 10, majors: 70 },
   },
   {
     slug: 'duke',
