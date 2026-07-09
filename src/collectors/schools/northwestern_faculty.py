@@ -12,9 +12,10 @@ McCormick School of Engineering (9 depts) uses its own ``.faculty`` card theme
 (``.faculty-info`` name/rank + ``a.mail_link`` mailto). School of Communication
 (5 depts) and the School of Education & Social Policy (one directory) serve a JS
 ``article`` card with no email on the listing, so they pair a rendered scrape with
-a ``profile_enrich`` email pass (plain GET). Feinberg basic sciences + Kellogg +
-Medill (a Tailwind JS grid) + Bienen (a performance-table roster) remain a
-follow-up (listings omit email / backing APIs not yet cracked).
+a ``profile_enrich`` email pass (plain GET). Medill and Bienen have no scrapeable
+listing at all (JS grid / performance table), so they use the ``sitemap`` source:
+the site's sitemap enumerates every profile page, which is fetched (curl) for
+name + rank + email. Feinberg basic sciences + Kellogg remain a follow-up.
 
 Single source ("northwestern_faculty"); department rides each record's
 ``department``, ids namespaced by department short-code. Audience "unknown".
@@ -254,6 +255,46 @@ SCHOOL: dict = {
                               "title": "div.title"},
                 "ladder_filter": _SOC_LADDER,
                 "profile_enrich": _SOC_ENRICH,
+            },
+        },
+        # --- Medill School of Journalism (sitemap-enumerated profiles) ---
+        # The directory is a JS grid with no scrapeable listing, but the sitemap
+        # enumerates every /directory/faculty/<slug>.html profile (Cascade CMS,
+        # curl-able: h1 name, a title class, public mailto). No render needed.
+        {
+            "short": "MEDILL",
+            "name": "Medill School of Journalism, Media, Integrated Marketing Communications",
+            "majors": ["Journalism", "Integrated Marketing Communications", "Media"],
+            "directory_url": "https://www.medill.northwestern.edu/directory/faculty/index.html",
+            "sitemap": {
+                "sitemaps": ["https://www.medill.northwestern.edu/sitemap.xml"],
+                "include": r"/directory/faculty/", "exclude": r"/index\.html$",
+                "render": False,
+                "selectors": {"name": "h1", "title": "[class*=title]",
+                              "email": "a[href^='mailto:']"},
+                "ladder_filter": {"require": r"\bprofessor\b",
+                                  "drop": r"\bemerit|\blecturer|\badjunct|\bvisiting|\bstaff\b"},
+                "cap": 200,
+            },
+        },
+        # --- Bienen School of Music (sitemap-enumerated profiles) ---
+        # /faculty/profile/<slug> pages (curl-able: h1 name, p.faculty-title rank,
+        # public mailto). Keeps professorial faculty (incl. performance professors),
+        # drops emeriti / lecturers / adjuncts.
+        {
+            "short": "BIENEN", "name": "Bienen School of Music",
+            "majors": ["Music", "Music Performance", "Composition", "Musicology",
+                       "Music Theory", "Music Education", "Jazz Studies"],
+            "directory_url": "https://www.music.northwestern.edu/faculty",
+            "sitemap": {
+                "sitemaps": ["https://www.music.northwestern.edu/sitemap.xml"],
+                "include": r"/faculty/profile/",
+                "render": False,
+                "selectors": {"name": "h1", "title": "p.faculty-title",
+                              "email": "a[href^='mailto:']"},
+                "ladder_filter": {"require": r"\bprofessor\b",
+                                  "drop": r"\bemerit|\blecturer|\badjunct|\bvisiting|\bstaff\b"},
+                "cap": 200,
             },
         },
     ],

@@ -124,8 +124,8 @@ def validate(school: dict) -> list[str]:
         seen_short.add(short)
         if not dept.get("name"):
             errors.append(f"{short}: missing department name")
-        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api", "poly_api", "krieger_table")):
-            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, coa_api, poly_api, or krieger_table config")
+        if not any(dept.get(k) for k in ("faculty", "scrape", "api", "ajax", "algolia", "faculty180", "cola", "json_dir", "coa_api", "poly_api", "krieger_table", "sitemap")):
+            errors.append(f"{short}: no curated faculty, scrape, api, ajax, algolia, faculty180, cola, json_dir, coa_api, poly_api, krieger_table, or sitemap config")
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
@@ -2432,6 +2432,128 @@ def _fetch_krieger_table(dept: dict) -> list[dict]:
     return specs
 
 
+_SITEMAP_LOC_RE = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>", re.I)
+
+
+def _sitemap_collect(cfg: dict) -> list[str]:
+    """Gather page URLs from a division's sitemap(s), following nested indexes.
+
+    Many modern faculty directories are JS/search grids with no scrapeable
+    listing, but the site's sitemap enumerates every ``/faculty/<slug>`` profile
+    page. This walks the configured sitemap URLs (or a ``sitemap_pages`` template
+    for paginated sitemaps), following nested ``<loc>``-of-sitemaps one level, and
+    returns the page URLs matching ``include`` (minus ``exclude``). Cloudflare-
+    walled sitemaps set ``render: True`` to fetch through the headless browser.
+    """
+    render = cfg.get("render", False)
+
+    def fetch_xml(u: str) -> str:
+        if render:
+            s = _render_soup(u, wait_until="domcontentloaded", settle_ms=2500)
+            return str(s) if s is not None else ""
+        try:
+            from .ucb_common import fetch_soup
+            s = fetch_soup(u)
+            return str(s) if s is not None else ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    maps = list(cfg.get("sitemaps", []))
+    pages = cfg.get("sitemap_pages")
+    if pages:
+        tmpl, start, end = pages
+        maps += [tmpl.format(n=n) for n in range(start, end + 1)]
+    include = re.compile(cfg["include"], re.I) if cfg.get("include") else None
+    exclude = re.compile(cfg["exclude"], re.I) if cfg.get("exclude") else None
+    seen_maps: set[str] = set()
+    urls: list[str] = []
+    queue = list(maps)
+    while queue and len(seen_maps) < 60:
+        m = queue.pop(0)
+        if m in seen_maps:
+            continue
+        seen_maps.add(m)
+        for loc in _SITEMAP_LOC_RE.findall(fetch_xml(m)):
+            if loc.endswith((".xml", ".xml.gz")):
+                # nested sitemap index — follow only obviously-relevant children
+                if include and include.search(loc):
+                    queue.append(loc)
+                continue
+            if include and not include.search(loc):
+                continue
+            if exclude and exclude.search(loc):
+                continue
+            urls.append(loc)
+    # de-dupe, preserve order
+    out, seen = [], set()
+    for u in urls:
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
+def _fetch_sitemap_directory(dept: dict) -> list[dict]:
+    """Best-effort fetch (opt-in via ``sitemap``): enumerate profile URLs from the
+    site's sitemap, then fetch each profile and extract name / rank / email.
+
+    The escape hatch for JS/search-grid directories (Medill, JHU Carey) whose
+    listing exposes no cards but whose sitemap lists every profile page. Each
+    profile is fetched (curl, or headless when ``profile_render``) and parsed with
+    the ``selectors`` block (``name`` / ``title`` / ``email``); ``ladder_filter``
+    gates on the parsed rank. ``cap`` bounds the profile fetches (a safety valve
+    for very large directories); when it truncates, the drop is logged.
+    """
+    cfg = dept.get("sitemap")
+    if not cfg:
+        return []
+    try:
+        from .ucb_common import fetch_soup
+    except Exception:  # noqa: BLE001
+        return []
+    urls = _sitemap_collect(cfg)
+    if not urls:
+        logger.info("faculty_graph: sitemap yielded no profile URLs for %s", dept.get("short"))
+        return []
+    cap = cfg.get("cap")
+    if cap and len(urls) > cap:
+        logger.warning("faculty_graph: %s sitemap capped %d -> %d profiles (dropped %d)",
+                        dept.get("short"), len(urls), cap, len(urls) - cap)
+        urls = urls[:cap]
+    sel = cfg.get("selectors", {})
+    name_sel, title_sel, email_sel = sel.get("name"), sel.get("title"), sel.get("email")
+    lf = cfg.get("ladder_filter")
+    prof_render = cfg.get("profile_render", cfg.get("render", False))
+    import time
+    throttle = cfg.get("throttle", 0.0)
+    specs: list[dict] = []
+    for u in urls:
+        soup = _render_soup(u, expect_selector=name_sel) if prof_render else fetch_soup(u)
+        if soup is None:
+            continue
+        n_el = soup.select_one(name_sel) if name_sel else None
+        name = re.sub(r"\s+", " ", n_el.get_text(" ", strip=True)).strip() if n_el else ""
+        if not name:
+            continue
+        title = "Professor"
+        if title_sel:
+            t_el = soup.select_one(title_sel)
+            if t_el and t_el.get_text(strip=True):
+                title = t_el.get_text(" ", strip=True)
+        if not _passes_ladder(title, lf):
+            continue
+        email = None
+        if email_sel:
+            e_el = soup.select_one(email_sel)
+            if e_el is not None:
+                raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
+                email = _clean_email(raw)
+        specs.append(faculty(name, title=title, url=u, email=email))
+        if throttle:
+            time.sleep(throttle)
+    return specs
+
+
 def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
@@ -2461,7 +2583,8 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
                                + _fetch_json_dir(dept) + _fetch_coa_api(dept)
                                + _fetch_krieger_table(dept)
-                               + _fetch_poly_jsonapi(dept)):
+                               + _fetch_poly_jsonapi(dept)
+                               + _fetch_sitemap_directory(dept)):
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue
