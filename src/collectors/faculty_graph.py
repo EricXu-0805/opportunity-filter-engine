@@ -2014,15 +2014,21 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
     for (school, _nn), group in by_name.items():
         if len(group) < 2:
             continue
-        # Same person twice under ONE department with the same profile URL is a
-        # scrape artifact (typically a credential-suffix name variant), not a
-        # joint appointment — collapse it regardless of umbrella config.
-        by_url_dept: dict[tuple[str, str], list[dict]] = defaultdict(list)
+        # Same person (guaranteed same normalized name by the grouping above)
+        # sharing ONE profile URL is a single profile linked from several
+        # department directories — a UCLA Luskin professor cross-listed under
+        # Public Policy + Urban Planning + Social Welfare, or a credential-suffix
+        # name variant within one department. One profile URL ⟹ one person, so
+        # collapse regardless of department: a genuine joint appointment across
+        # peer departments has a DIFFERENT profile URL per department and is left
+        # to the umbrella pass below. Keying by name+URL (not department) is what
+        # the data-quality gate requires (no two faculty at one URL).
+        by_url: dict[str, list[dict]] = defaultdict(list)
         for o in group:
-            u = (o.get("url") or "").strip().rstrip("/").lower()
+            u = (o.get("url") or o.get("source_url") or "").strip().rstrip("/").lower()
             if u:
-                by_url_dept[(u, o.get("department") or "")].append(o)
-        for dgroup in by_url_dept.values():
+                by_url[u].append(o)
+        for dgroup in by_url.values():
             if len(dgroup) < 2:
                 continue
             survivor = _pick_richer(dgroup, frozenset())
