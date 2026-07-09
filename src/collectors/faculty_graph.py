@@ -2444,6 +2444,11 @@ def _sitemap_collect(cfg: dict) -> list[str]:
     for paginated sitemaps), following nested ``<loc>``-of-sitemaps one level, and
     returns the page URLs matching ``include`` (minus ``exclude``). Cloudflare-
     walled sitemaps set ``render: True`` to fetch through the headless browser.
+
+    Divisions with no XML sitemap but a rendered "all faculty" listing instead set
+    ``list_pages`` (or ``list_pages_template`` for pagination): each HTML page is
+    fetched (``list_render`` toggles headless) and its ``<a href>`` profile links
+    harvested through the same ``include``/``exclude`` filter.
     """
     render = cfg.get("render", False)
 
@@ -2465,8 +2470,37 @@ def _sitemap_collect(cfg: dict) -> list[str]:
         maps += [tmpl.format(n=n) for n in range(start, end + 1)]
     include = re.compile(cfg["include"], re.I) if cfg.get("include") else None
     exclude = re.compile(cfg["exclude"], re.I) if cfg.get("exclude") else None
-    seen_maps: set[str] = set()
     urls: list[str] = []
+    # HTML listing pages: harvest <a href> profile links directly (for divisions
+    # with no XML sitemap but a rendered "all faculty" page — NU Law, JHU Education).
+    list_pages = cfg.get("list_pages", [])
+    lp_pages = cfg.get("list_pages_template")
+    if lp_pages:
+        tmpl, start, end = lp_pages
+        list_pages = list(list_pages) + [tmpl.format(n=n) for n in range(start, end + 1)]
+    if list_pages:
+        from urllib.parse import urljoin
+        lp_render = cfg.get("list_render", render)
+        for lp in list_pages:
+            if lp_render:
+                s = _render_soup(lp, wait_until="domcontentloaded", settle_ms=cfg.get("list_settle", 5000))
+            else:
+                try:
+                    from .ucb_common import fetch_soup
+                    s = fetch_soup(lp)
+                except Exception:  # noqa: BLE001
+                    s = None
+            if s is None:
+                continue
+            for a in s.select("a[href]"):
+                full = urljoin(lp, a.get("href", ""))
+                full = full.split("#")[0]
+                if include and not include.search(full):
+                    continue
+                if exclude and exclude.search(full):
+                    continue
+                urls.append(full)
+    seen_maps: set[str] = set()
     queue = list(maps)
     while queue and len(seen_maps) < 60:
         m = queue.pop(0)
