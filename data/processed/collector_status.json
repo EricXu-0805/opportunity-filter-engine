@@ -1,5 +1,5 @@
 {
-  "duration_seconds": 1301.2,
+  "duration_seconds": 1353.9,
   "shard": {
     "national": false,
     "schools": [
@@ -196,7 +196,7 @@
       "tagged": 32073
     }
   },
-  "timestamp": "2026-07-09T02:46:18.712985",
+  "timestamp": "2026-07-09T04:55:06.512951",
   "total_in_file": 32073,
   "total_new": 0,
   "total_updated": 834
