@@ -1,59 +1,67 @@
 {
-  "duration_seconds": 5116.1,
+  "duration_seconds": 2830.5,
   "shard": {
     "national": false,
     "schools": [
-      "jhu"
+      "ucla",
+      "wisc"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 21,
+      "rule_based_tagged": 26,
       "status": "ok"
     },
-    "campus_graph:jhu": {
+    "campus_graph:ucla": {
       "deep": true,
-      "fetched": 30,
-      "new": 0,
+      "fetched": 28,
+      "new": 17,
       "status": "ok",
-      "updated": 30
+      "updated": 7
+    },
+    "campus_graph:wisc": {
+      "deep": true,
+      "fetched": 33,
+      "new": 23,
+      "status": "ok",
+      "updated": 8
     },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 30760,
+      "skipped_rolling": 31020,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 1017,
+      "kept_fresh": 3906,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 0,
-      "keywords_cleaned": 0,
-      "removed_by_school": {},
-      "shared_inbox_nulled": {},
+      "duplicates_removed": 228,
+      "keywords_cleaned": 1,
+      "removed_by_school": {
+        "ucla": 87,
+        "wisc": 141
+      },
+      "shared_inbox_nulled": {
+        "ucla": 4,
+        "wisc": 2
+      },
       "status": "ok"
     },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "jhu_faculty": {
-      "fetched": 989,
-      "new": 156,
-      "status": "ok",
-      "updated": 833
-    },
     "pi_enricher": {
-      "already_had": 1005,
-      "enriched": 1,
-      "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 0,
-      "scraped": 39,
+      "already_had": 3174,
+      "enriched": 510,
+      "nulled_unit_inboxes": 5,
+      "renulled_shared_emails": 125,
+      "scraped": 789,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -157,9 +165,9 @@
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
-        "ucla_faculty": 1967,
+        "ucla_faculty": 2050,
         "ucla_labs": 1,
-        "ucla_research_programs": 9,
+        "ucla_research_programs": 26,
         "ucsb_external_research": 1,
         "ucsb_faculty": 816,
         "ucsb_labs": 2,
@@ -188,16 +196,28 @@
         "uw_labs": 1,
         "uw_research_programs": 9,
         "wisc_external_research": 1,
-        "wisc_faculty": 1719,
+        "wisc_faculty": 1856,
         "wisc_labs": 1,
-        "wisc_research_programs": 8
+        "wisc_research_programs": 31
       },
       "status": "ok",
-      "tagged": 32286
+      "tagged": 32546
+    },
+    "ucla_faculty": {
+      "fetched": 1966,
+      "new": 83,
+      "status": "ok",
+      "updated": 1883
+    },
+    "wisc_faculty": {
+      "fetched": 1588,
+      "new": 137,
+      "status": "ok",
+      "updated": 1451
     }
   },
-  "timestamp": "2026-07-09T06:32:37.050351",
-  "total_in_file": 32286,
-  "total_new": 156,
-  "total_updated": 863
+  "timestamp": "2026-07-09T17:35:12.784410",
+  "total_in_file": 32318,
+  "total_new": 260,
+  "total_updated": 3349
 }
