@@ -194,6 +194,30 @@ SCHOOL: dict = {
                                    "email_selector": "a[href^='mailto:']"},
             },
         },
+        # --- Bloomberg School of Public Health (sitemap, Turnstile, capped) ---
+        # publichealth.jhu.edu is Cloudflare-Turnstile-walled; its sitemap pages
+        # 6-7 enumerate ~2000 /faculty/<id>/<slug> profiles. Each renders (long
+        # settle clears Turnstile on the CI datacenter IP): h1 name, ``h1 + div``
+        # rank (drops emeriti), public mailto. Capped for refresh-time sanity —
+        # the professorial subset that fits the cap, not the full 2000.
+        {
+            "short": "BSPH", "name": "Bloomberg School of Public Health",
+            "majors": ["Public Health", "Epidemiology", "Biostatistics",
+                       "Environmental Health", "Health Policy", "Mental Health",
+                       "International Health", "Molecular Microbiology"],
+            "directory_url": "https://publichealth.jhu.edu/faculty/directory/list",
+            "sitemap": {
+                "sitemap_pages": ("https://publichealth.jhu.edu/sitemap.xml?page={n}", 6, 7),
+                "include": r"publichealth\.jhu\.edu/faculty/\d+/",
+                "render": True, "render_settle": 9000,
+                "selectors": {"name": "h1", "title": "h1 + div",
+                              "email": "a[href^='mailto:']"},
+                "ladder_filter": {"require": r"\bprofessor\b",
+                                  "drop": (r"\bemerit|\badjunct|\bvisiting|\blecturer"
+                                           r"|scientist|scholar|\bfellow\b")},
+                "cap": 300,
+            },
+        },
     ],
 }
 

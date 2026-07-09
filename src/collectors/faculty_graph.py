@@ -2562,11 +2562,15 @@ def _fetch_sitemap_directory(dept: dict) -> list[dict]:
     name_sel, title_sel, email_sel = sel.get("name"), sel.get("title"), sel.get("email")
     lf = cfg.get("ladder_filter")
     prof_render = cfg.get("profile_render", cfg.get("render", False))
+    # A longer settle clears the tougher Cloudflare/Turnstile walls that a
+    # datacenter IP (CI) hits — required for e.g. publichealth.jhu.edu profiles.
+    settle = cfg.get("render_settle", 3500)
     import time
     throttle = cfg.get("throttle", 0.0)
     specs: list[dict] = []
     for u in urls:
-        soup = _render_soup(u, expect_selector=name_sel) if prof_render else fetch_soup(u)
+        soup = (_render_soup(u, expect_selector=name_sel, settle_ms=settle)
+                if prof_render else fetch_soup(u))
         if soup is None:
             continue
         n_el = soup.select_one(name_sel) if name_sel else None
