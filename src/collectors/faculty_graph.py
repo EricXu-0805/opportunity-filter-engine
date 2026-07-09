@@ -820,10 +820,14 @@ def _scrape_directory(dept: dict) -> list[dict]:
         return []
     if cfg.get("render"):
         # A slow client-rendered roster can request networkidle (its cards land
-        # only after late XHRs); default stays domcontentloaded for speed.
+        # only after late XHRs); default stays domcontentloaded for speed. A
+        # longer ``render_settle`` clears the tougher Cloudflare/Turnstile walls
+        # that a datacenter IP (CI) hits — and it must apply to the paginated
+        # follow-ups too, not just the base page, or pages 2..N collect nothing.
         rw = cfg.get("render_wait", "domcontentloaded")
-        def fetch(u, _rw=rw):
-            return _render_soup(u, wait_until=_rw)
+        _settle = cfg.get("render_settle", 3500)
+        def fetch(u, _rw=rw, _s=_settle):
+            return _render_soup(u, wait_until=_rw, settle_ms=_s)
     else:
         fetch = fetch_soup
     base = cfg["url"]
