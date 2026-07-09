@@ -734,8 +734,9 @@ class TestCollapseSamePersonFaculty:
         assert res["removed_by_school"] == {"stanford": 1}
 
     def test_credential_suffix_across_depts_stays(self):
-        """The same name variants on DIFFERENT departments (cross-appointment)
-        keep both records — only the same-URL-same-dept case collapses."""
+        """The same name variants on DIFFERENT departments AND DIFFERENT URLs
+        (a genuine cross-appointment, one profile page per department) keep both
+        records — only the shared-profile-URL case collapses."""
         a = _fac_rec("a", school="stanford", pi_name="Scott L. Delp, Ph.D.",
                      dept="Department of Mechanical Engineering",
                      url="https://me.stanford.edu/delp")
@@ -744,6 +745,26 @@ class TestCollapseSamePersonFaculty:
                      url="https://bioe.stanford.edu/delp")
         res = fg.collapse_same_person_faculty([a, b])
         assert {o["id"] for o in res["kept"]} == {"a", "b"}
+
+    def test_cross_dept_same_profile_url_collapses(self):
+        """A cross-listed professor whose ONE profile URL is linked from several
+        department directories (UCLA Luskin: Public Policy + Urban Planning +
+        Social Welfare) is scraped once per directory, email-less. Same name +
+        same profile URL ⟹ one person, so collapse regardless of department —
+        exactly what the data-quality gate (no two faculty at one URL) requires.
+        (2026-07-10: 5 such UCLA profs failed every UCLA-shard refresh.)"""
+        recs = [
+            _fac_rec("pp", school="ucla", pi_name="Michael Lens", dept="Public Policy",
+                     url="https://luskin.ucla.edu/person/michael-lens", keywords=["housing"]),
+            _fac_rec("up", school="ucla", pi_name="Michael Lens", dept="Urban Planning",
+                     url="https://luskin.ucla.edu/person/michael-lens",
+                     keywords=["housing", "urban inequality", "transportation"]),
+            _fac_rec("sw", school="ucla", pi_name="Michael Lens", dept="Social Welfare",
+                     url="https://luskin.ucla.edu/person/michael-lens/", keywords=["housing"]),
+        ]
+        res = fg.collapse_same_person_faculty(recs)
+        assert {o["id"] for o in res["kept"]} == {"up"}  # richest record kept
+        assert res["removed_by_school"] == {"ucla": 2}
 
     def test_peer_joint_appointment_without_umbrella_is_left(self):
         """Stanford Applied Physics + Physics (no email, no umbrella) stay two
