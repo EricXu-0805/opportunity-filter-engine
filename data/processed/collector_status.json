@@ -1,5 +1,5 @@
 {
-  "duration_seconds": 1770.4,
+  "duration_seconds": 5116.1,
   "shard": {
     "national": false,
     "schools": [
@@ -22,11 +22,11 @@
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 30604,
+      "skipped_rolling": 30760,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 861,
+      "kept_fresh": 1017,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
@@ -43,17 +43,17 @@
       "status": "ok"
     },
     "jhu_faculty": {
-      "fetched": 861,
-      "new": 57,
+      "fetched": 989,
+      "new": 156,
       "status": "ok",
-      "updated": 804
+      "updated": 833
     },
     "pi_enricher": {
-      "already_had": 852,
+      "already_had": 1005,
       "enriched": 1,
       "nulled_unit_inboxes": 0,
       "renulled_shared_emails": 0,
-      "scraped": 36,
+      "scraped": 39,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -72,7 +72,7 @@
         "gatech_research_programs": 7,
         "handshake": 71,
         "jhu_external_research": 1,
-        "jhu_faculty": 861,
+        "jhu_faculty": 1017,
         "jhu_labs": 7,
         "jhu_research_programs": 22,
         "manual": 33,
@@ -193,11 +193,11 @@
         "wisc_research_programs": 8
       },
       "status": "ok",
-      "tagged": 32130
+      "tagged": 32286
     }
   },
-  "timestamp": "2026-07-09T05:38:29.009331",
-  "total_in_file": 32130,
-  "total_new": 57,
-  "total_updated": 834
+  "timestamp": "2026-07-09T06:32:37.050351",
+  "total_in_file": 32286,
+  "total_new": 156,
+  "total_updated": 863
 }
