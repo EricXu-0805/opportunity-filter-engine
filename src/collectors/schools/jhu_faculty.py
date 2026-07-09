@@ -172,28 +172,6 @@ SCHOOL: dict = {
                 "cap": 320,
             },
         },
-        # --- School of Education (paginated card listing + profile_enrich) ---
-        # /directory/ paginates at /directory/page/N/ (8 pages); each card has
-        # name (h2.card_bio_name) + rank (p.card_bio_title) + profile link, so a
-        # rendered paginated scrape lands name+rank and profile_enrich (render)
-        # recovers the email the listing omits.
-        {
-            "short": "SOE", "name": "School of Education",
-            "majors": ["Education", "Teaching", "Educational Leadership",
-                       "Counseling", "Special Education"],
-            "directory_url": "https://education.jhu.edu/directory/",
-            "scrape": {
-                "url": "https://education.jhu.edu/directory/",
-                "render": True,
-                "selectors": {"card": "div.card_bio_header", "name": "h2.card_bio_name",
-                              "link": "a.card_bio_name_link", "title": "p.card_bio_title"},
-                "paginate": {"mode": "path", "param": "page", "start": 2, "max": 8},
-                "ladder_filter": {"require": r"\bprofessor\b",
-                                  "drop": r"\bemerit|\blecturer|\badjunct|\bvisiting|\bstaff\b"},
-                "profile_enrich": {"always": True, "render": True,
-                                   "email_selector": "a[href^='mailto:']"},
-            },
-        },
     ],
 }
 
