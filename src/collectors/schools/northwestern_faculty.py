@@ -277,6 +277,26 @@ SCHOOL: dict = {
                 "cap": 200,
             },
         },
+        # --- Pritzker School of Law (list-page-harvested profiles) ---
+        # No XML sitemap, but /faculty/fulltime/ renders all full-time faculty as
+        # /faculty/profiles/<slug>/ links; profiles are curl-able (h1 name,
+        # p.mb-0 rank, public mailto). Harvest links from the listing, scrape each.
+        {
+            "short": "LAW", "name": "Pritzker School of Law",
+            "majors": ["Law", "Legal Studies"],
+            "directory_url": "https://www.law.northwestern.edu/faculty/fulltime/",
+            "sitemap": {
+                "list_pages": ["https://www.law.northwestern.edu/faculty/fulltime/"],
+                "list_render": True,
+                "include": r"/faculty/profiles/[^/]+/$",
+                "render": False,
+                "selectors": {"name": "h1", "title": "p.mb-0",
+                              "email": "a[href^='mailto:']"},
+                "ladder_filter": {"require": r"\bprofessor\b",
+                                  "drop": r"\bemerit|\bvisiting|\blecturer\b|\badjunct"},
+                "cap": 200,
+            },
+        },
         # --- Bienen School of Music (sitemap-enumerated profiles) ---
         # /faculty/profile/<slug> pages (curl-able: h1 name, p.faculty-title rank,
         # public mailto). Keeps professorial faculty (incl. performance professors),
