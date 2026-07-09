@@ -183,7 +183,7 @@ export const SCHOOLS: School[] = [
     color: '#002D72',
     location: 'Baltimore, MD',
     coverage: campusCoverage('jhu'),
-    catalog: { colleges: 5, majors: 41 },
+    catalog: { colleges: 7, majors: 52 },
   },
   {
     slug: 'northwestern',
@@ -194,7 +194,7 @@ export const SCHOOLS: School[] = [
     color: '#4E2A84',
     location: 'Evanston, IL',
     coverage: campusCoverage('northwestern'),
-    catalog: { colleges: 6, majors: 46 },
+    catalog: { colleges: 7, majors: 48 },
   },
   {
     slug: 'uchicago',
