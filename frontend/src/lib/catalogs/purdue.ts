@@ -6,19 +6,22 @@
 
 export const COLLEGE_MAJORS: Record<string, string[]> = {
   'College of Engineering': [
-    'Aerospace Engineering',
+    'Aeronautical and Astronautical Engineering',
     'Biomedical Engineering',
     'Chemical Engineering',
     'Civil Engineering',
     'Computer Engineering',
+    'Construction Engineering',
     'Electrical Engineering',
     'Industrial Engineering',
     'Materials Engineering',
     'Mechanical Engineering',
+    'Multidisciplinary Engineering',
     'Nuclear Engineering',
     'Environmental and Ecological Engineering',
   ],
   'College of Science': [
+    'Artificial Intelligence',
     'Computer Science',
     'Data Science',
     'Mathematics',
@@ -32,10 +35,11 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'Earth, Atmospheric, and Planetary Sciences',
   ],
   'College of Agriculture': [
+    'Agribusiness',
     'Agricultural Economics',
-    'Agronomy',
     'Animal Sciences',
     'Biochemistry',
+    'Crop, Soil and Agroecosystem Sciences',
     'Food Science',
     'Plant Science',
     'Natural Resources and Environmental Science',
@@ -44,8 +48,9 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'Accounting',
     'Economics',
     'Finance',
-    'Management',
+    'General Management',
     'Marketing',
+    'Supply Chain and Operations Management',
     'Business Analytics and Information Management',
   ],
   'College of Liberal Arts': [
@@ -53,7 +58,6 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'English',
     'History',
     'Political Science',
-    'Psychology',
     'Sociology',
     'Communication',
     'Philosophy',
@@ -64,14 +68,21 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     'Nutrition Science',
     'Public Health',
     'Psychological Sciences',
-    'Human Development and Family Science',
+    'Kinesiology',
+    'Biomedical Health Sciences',
+    'Hospitality and Tourism Management',
+    'Developmental and Family Science',
     'Speech, Language, and Hearing Sciences',
   ],
   'Purdue Polytechnic Institute': [
-    'Aviation Technology',
+    'Professional Flight',
+    'Aviation Management',
+    'Aeronautical Engineering Technology',
     'Construction Management',
     'Cybersecurity',
+    'Electrical Engineering Technology',
     'Mechanical Engineering Technology',
+    'Robotics Engineering Technology',
     'Computer and Information Technology',
   ],
   'College of Pharmacy': [
@@ -80,5 +91,8 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
   'College of Education': [
     'Elementary Education',
     'Special Education',
+  ],
+  'College of Veterinary Medicine': [
+    'Veterinary Nursing',
   ],
 };
