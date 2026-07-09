@@ -57,4 +57,19 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     "Music",
     "Music Composition",
   ],
+  "Carey Business School": [
+    "Business Administration",
+    "Finance",
+    "Marketing",
+    "Management",
+    "Business Analytics",
+    "Health Care Management",
+  ],
+  "School of Education": [
+    "Education",
+    "Teaching",
+    "Educational Leadership",
+    "Counseling",
+    "Special Education",
+  ],
 };

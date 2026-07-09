@@ -64,4 +64,8 @@ export const COLLEGE_MAJORS: Record<string, string[]> = {
     "Theatre",
     "Radio/Television/Film",
   ],
+  "Pritzker School of Law": [
+    "Law",
+    "Legal Studies",
+  ],
 };
