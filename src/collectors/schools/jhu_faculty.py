@@ -12,8 +12,10 @@ table once and slices it per department. Records land name + rank + email + dept
 Whiting School of Engineering departments are NOT in that table — most run a
 shared Cloudflare-walled WordPress ``.entity`` card theme (name + rank + public
 email on the listing), wired via the ``_wse`` helper below; Biomedical
-Engineering carries its own ``.zn-*`` theme inline. School of Medicine basic
-sciences remain a follow-up.
+Engineering carries its own ``.zn-*`` theme inline. Carey Business School has no
+scrapeable listing (JS grid behind Cloudflare) so it uses the ``sitemap`` source
+(sitemap enumerates every profile; each is rendered for name + rank + email).
+School of Medicine + Bloomberg Public Health remain a follow-up.
 
 Single source ("jhu_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
@@ -147,6 +149,27 @@ SCHOOL: dict = {
                     "email": "a.zn-faculty-email[href^='mailto:']",
                 },
                 "ladder_filter": _WSE_LADDER,
+            },
+        },
+        # --- Carey Business School (sitemap-enumerated profiles) ---
+        # The directory is a JS grid behind Cloudflare with no scrapeable listing,
+        # but the sitemap enumerates every /faculty/faculty-directory/<slug> profile.
+        # Profiles are Cloudflare-walled (render): h1 name, p.fac-subhead rank,
+        # public mailto. Keeps professorial faculty (incl. Professor of Practice).
+        {
+            "short": "CAREY", "name": "Carey Business School",
+            "majors": ["Business Administration", "Finance", "Marketing",
+                       "Management", "Business Analytics", "Health Care Management"],
+            "directory_url": "https://carey.jhu.edu/faculty/faculty-directory",
+            "sitemap": {
+                "sitemaps": ["https://carey.jhu.edu/sitemap.xml"],
+                "include": r"/faculty/faculty-directory/[^/]+$",
+                "render": True,
+                "selectors": {"name": "h1", "title": "p.fac-subhead",
+                              "email": "a[href^='mailto:']"},
+                "ladder_filter": {"require": r"\bprofessor\b",
+                                  "drop": r"\bemerit|\blecturer|\badjunct|\bvisiting|\bstaff\b"},
+                "cap": 320,
             },
         },
     ],
