@@ -1,32 +1,32 @@
 {
-  "duration_seconds": 406.9,
+  "duration_seconds": 1357.4,
   "shard": {
     "national": false,
     "schools": [
-      "northwestern"
+      "jhu"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 14,
+      "rule_based_tagged": 21,
       "status": "ok"
     },
-    "campus_graph:northwestern": {
+    "campus_graph:jhu": {
       "deep": true,
-      "fetched": 28,
+      "fetched": 30,
       "new": 0,
       "status": "ok",
-      "updated": 28
+      "updated": 30
     },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 30292,
+      "skipped_rolling": 30411,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 945,
+      "kept_fresh": 804,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
@@ -42,18 +42,18 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "northwestern_faculty": {
-      "fetched": 945,
-      "new": 86,
+    "jhu_faculty": {
+      "fetched": 804,
+      "new": 119,
       "status": "ok",
-      "updated": 859
+      "updated": 685
     },
     "pi_enricher": {
-      "already_had": 905,
-      "enriched": 31,
-      "nulled_unit_inboxes": 1,
-      "renulled_shared_emails": 8,
-      "scraped": 67,
+      "already_had": 798,
+      "enriched": 2,
+      "nulled_unit_inboxes": 0,
+      "renulled_shared_emails": 0,
+      "scraped": 33,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -72,7 +72,7 @@
         "gatech_research_programs": 7,
         "handshake": 71,
         "jhu_external_research": 1,
-        "jhu_faculty": 685,
+        "jhu_faculty": 804,
         "jhu_labs": 7,
         "jhu_research_programs": 22,
         "manual": 33,
@@ -193,11 +193,11 @@
         "wisc_research_programs": 8
       },
       "status": "ok",
-      "tagged": 31818
+      "tagged": 31937
     }
   },
-  "timestamp": "2026-07-09T01:39:01.889028",
-  "total_in_file": 31818,
-  "total_new": 86,
-  "total_updated": 887
+  "timestamp": "2026-07-09T01:52:52.352435",
+  "total_in_file": 31937,
+  "total_new": 119,
+  "total_updated": 715
 }
