@@ -1097,6 +1097,13 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     email = existing.get("contact_email")
     if email and not incoming.get("contact_email"):
         incoming["contact_email"] = email
+        # The provenance flag travels with the address it describes (a
+        # constructed/wayback-recovered email without its flag would read as
+        # observed). Metadata is replaced wholesale by both merge styles, so
+        # it needs the same unconditional carry as the email itself.
+        src = (existing.get("metadata") or {}).get("email_source")
+        if src:
+            incoming.setdefault("metadata", {})["email_source"] = src
 
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:

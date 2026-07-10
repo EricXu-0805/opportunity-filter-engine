@@ -38,11 +38,12 @@ TIMEOUT = 15
 # Local-parts that are a shared inbox, not a person. Exact matches plus a few
 # substrings ("under-info", "cs-admissions") that vary by school.
 _ADMIN_LOCALPARTS = frozenset({
-    "info", "admin", "webmaster", "web", "help", "helpdesk", "contact", "office",
-    "frontdesk", "reception", "dept", "department", "staff", "hr", "prof",
-    "faculty", "chair", "director", "advising", "advisor", "recruiting", "jobs",
-    "grad", "graduate", "undergrad", "undergraduate", "it", "ithelp", "support",
-    "noreply", "no-reply", "donotreply", "communications", "media",
+    "info", "admin", "webmaster", "web", "www", "help", "helpdesk", "contact",
+    "office", "frontdesk", "reception", "dept", "department", "staff", "hr",
+    "prof", "faculty", "chair", "director", "advising", "advisor", "recruiting",
+    "jobs", "grad", "graduate", "undergrad", "undergraduate", "it", "ithelp",
+    "support", "noreply", "no-reply", "donotreply", "communications", "media",
+    "mail", "postmaster", "listserv",
 })
 _ADMIN_SUBSTR = ("-info", "info-", "frontdesk", "front-desk", "webmaster",
                  "no-reply", "noreply", "do-not-reply", "helpdesk", "admis",
