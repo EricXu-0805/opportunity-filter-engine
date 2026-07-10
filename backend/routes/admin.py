@@ -12,6 +12,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import sys
 import time
 from collections import Counter
 from datetime import UTC, datetime, timedelta
@@ -335,7 +336,32 @@ _HEALTH_THRESHOLDS = {
     "data_age_alert_hours": 192,
     "metric_pct_jump": 50.0,
     "metric_min_delta": 30,
+    # Render instance has 2 GB; the corpus + TF-IDF fit grow with every school,
+    # so surface RSS before the OOM killer does. Warn leaves headroom to plan,
+    # alert means stop expanding and slim.
+    "memory_warn_mb": 1400,
+    "memory_alert_mb": 1700,
 }
+
+
+def _process_rss_mb() -> float | None:
+    """Resident set size of this process in MiB. /proc on Linux (Render);
+    ru_maxrss fallback elsewhere (peak, close enough for alerting)."""
+    try:
+        with open("/proc/self/status", encoding="ascii") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return round(int(line.split()[1]) / 1024, 1)  # kB -> MiB
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        import resource
+
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # ru_maxrss is KiB on Linux, bytes on macOS
+        return round(rss / (1024 * 1024 if sys.platform == "darwin" else 1024), 1)
+    except Exception:
+        return None
 
 
 @router.get("/admin/health-check")
@@ -395,9 +421,25 @@ async def health_check(
                     "message": f"{metric} jumped from {base} to {cur} (+{delta}, +{pct_jump:.0f}%)",
                 })
 
+    memory_mb = _process_rss_mb()
+    if memory_mb is not None:
+        if memory_mb >= _HEALTH_THRESHOLDS["memory_alert_mb"]:
+            alerts.append({
+                "level": "alert",
+                "kind": "memory",
+                "message": f"backend RSS {memory_mb:.0f} MiB — near the 2 GB instance limit; stop expanding the corpus and slim",
+            })
+        elif memory_mb >= _HEALTH_THRESHOLDS["memory_warn_mb"]:
+            alerts.append({
+                "level": "warn",
+                "kind": "memory",
+                "message": f"backend RSS {memory_mb:.0f} MiB — plan memory headroom before onboarding more schools",
+            })
+
     return {
         "ok": not any(a["level"] == "alert" for a in alerts),
         "alerts": alerts,
+        "memory_mb": memory_mb,
         "checked_at": datetime.now(UTC).isoformat(),
     }
 
