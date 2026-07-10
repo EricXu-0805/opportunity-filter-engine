@@ -194,28 +194,28 @@ SCHOOL: dict = {
                                    "email_selector": "a[href^='mailto:']"},
             },
         },
-        # --- Bloomberg School of Public Health (sitemap, Turnstile, capped) ---
-        # publichealth.jhu.edu is Cloudflare-Turnstile-walled; its sitemap pages
-        # 6-7 enumerate ~2000 /faculty/<id>/<slug> profiles. Each renders (long
-        # settle clears Turnstile on the CI datacenter IP): h1 name, ``h1 + div``
-        # rank (drops emeriti), public mailto. Capped for refresh-time sanity —
-        # the professorial subset that fits the cap, not the full 2000.
+        # --- Bloomberg School of Public Health (full harvest, static seed) ---
+        # publichealth.jhu.edu is Cloudflare-Turnstile-walled; a one-time local
+        # render harvest of all 2056 sitemap profiles (long settle clears Turnstile)
+        # captured 1797 with name + rank + public email, committed as a static seed.
+        # Loaded via json_dir file (no re-render each refresh); ladder keeps the
+        # professoriate (drops the ~370 "Associate"-only staff, adjuncts, emeriti,
+        # research associates, scientists) → ~648. Replaces the earlier capped-300
+        # live sitemap source. Regenerate: scratchpad/harvest.py bsph.
         {
             "short": "BSPH", "name": "Bloomberg School of Public Health",
             "majors": ["Public Health", "Epidemiology", "Biostatistics",
                        "Environmental Health", "Health Policy", "Mental Health",
                        "International Health", "Molecular Microbiology"],
             "directory_url": "https://publichealth.jhu.edu/faculty/directory/list",
-            "sitemap": {
-                "sitemap_pages": ("https://publichealth.jhu.edu/sitemap.xml?page={n}", 6, 7),
-                "include": r"publichealth\.jhu\.edu/faculty/\d+/",
-                "render": True, "render_settle": 9000,
-                "selectors": {"name": "h1", "title": "h1 + div",
-                              "email": "a[href^='mailto:']"},
+            "json_dir": {
+                "file": "data/faculty_seeds/jhu_bsph.json",
+                "name_fields": ["name"], "title_field": "title",
+                "email_field": "email", "link_field": "url",
                 "ladder_filter": {"require": r"\bprofessor\b",
-                                  "drop": (r"\bemerit|\badjunct|\bvisiting|\blecturer"
-                                           r"|scientist|scholar|\bfellow\b")},
-                "cap": 300,
+                                  "drop": (r"\bemerit|\badjunct|\bscientist|\bscholar"
+                                           r"|research associate|\binstructor|\blecturer"
+                                           r"|\bfellow\b")},
             },
         },
         # --- School of Medicine (harvested academic professoriate, static seed) ---
