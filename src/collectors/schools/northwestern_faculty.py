@@ -317,6 +317,45 @@ SCHOOL: dict = {
                 "cap": 200,
             },
         },
+        # --- Kellogg School of Management (JSON API harvest, static seed) ---
+        # The faculty directory is an ASP.NET app backed by a clean JSON API
+        # (/api/facultylisting) returning name + title (rank + area) + profile URL
+        # for all ~363 faculty. Harvested once to a static seed; json_dir file +
+        # ladder keeps the professoriate (drops adjuncts/emeriti/lecturers/visiting).
+        # No email on the listing → name + rank + link. Regenerate: kellogg_harvest.py.
+        {
+            "short": "KELLOGG", "name": "Kellogg School of Management",
+            "majors": ["Management", "Finance", "Marketing", "Accounting",
+                       "Managerial Economics", "Operations", "Strategy",
+                       "Management & Organizations"],
+            "directory_url": "https://www.kellogg.northwestern.edu/academics-research/faculty-directory/",
+            "json_dir": {
+                "file": "data/faculty_seeds/nu_kellogg.json",
+                "name_fields": ["name"], "title_field": "title",
+                "email_field": "email", "link_field": "url",
+                "ladder_filter": {"require": r"\bprofessor\b",
+                                  "drop": r"\badjunct|\bemerit|\blecturer|\bvisiting"},
+            },
+        },
+        # --- Feinberg School of Medicine (harvested academic professoriate, seed) ---
+        # feinberg.northwestern.edu/faculty-profiles enumerates 5009 profiles via
+        # its sitemap (az/profile.html?xid=N, curl-able). A one-time harvest kept the
+        # ~1490 with an academic Professor title (dropping instructors/residents/
+        # fellows/lecturers/emeriti), rank + specialty from the .masthead-wrapper.
+        # Loaded via json_dir file; profiles carry only a generic dept contact, so
+        # name + rank + specialty, no personal email. Regenerate: feinberg_harvest.py.
+        {
+            "short": "FEINBERG", "name": "Feinberg School of Medicine",
+            "majors": ["Medicine", "Neuroscience", "Cell & Developmental Biology",
+                       "Pharmacology", "Physiology", "Microbiology-Immunology",
+                       "Biochemistry", "Cancer Biology", "Preventive Medicine"],
+            "directory_url": "https://www.feinberg.northwestern.edu/faculty-profiles/",
+            "json_dir": {
+                "file": "data/faculty_seeds/nu_feinberg.json",
+                "name_fields": ["name"], "title_field": "title",
+                "email_field": "email", "link_field": "url",
+            },
+        },
     ],
 }
 
