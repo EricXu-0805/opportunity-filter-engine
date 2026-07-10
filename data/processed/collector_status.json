@@ -1,26 +1,15 @@
 {
-  "duration_seconds": 5851.5,
+  "duration_seconds": 2650.5,
   "shard": {
     "national": false,
     "schools": [
-      "jhu",
-      "northwestern",
-      "princeton",
-      "stanford",
-      "ucsd"
+      "northwestern"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 82,
+      "rule_based_tagged": 19,
       "status": "ok"
-    },
-    "campus_graph:jhu": {
-      "deep": true,
-      "fetched": 30,
-      "new": 0,
-      "status": "ok",
-      "updated": 30
     },
     "campus_graph:northwestern": {
       "deep": true,
@@ -29,83 +18,46 @@
       "status": "ok",
       "updated": 28
     },
-    "campus_graph:princeton": {
-      "deep": true,
-      "fetched": 11,
-      "new": 2,
-      "status": "ok",
-      "updated": 9
-    },
-    "campus_graph:stanford": {
-      "deep": true,
-      "fetched": 40,
-      "new": 29,
-      "status": "ok",
-      "updated": 10
-    },
-    "campus_graph:ucsd": {
-      "deep": true,
-      "fetched": 32,
-      "new": 19,
-      "status": "ok",
-      "updated": 11
-    },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 34655,
+      "skipped_rolling": 36325,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 9130,
+      "kept_fresh": 2783,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 32,
-      "keywords_cleaned": 7,
+      "duplicates_removed": 19,
+      "keywords_cleaned": 0,
       "removed_by_school": {
-        "jhu": 2,
-        "stanford": 23,
-        "ucsd": 7
+        "northwestern": 19
       },
-      "shared_inbox_nulled": {
-        "stanford": 2
-      },
+      "shared_inbox_nulled": {},
       "status": "ok"
     },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "jhu_faculty": {
-      "fetched": 4443,
-      "new": 2,
-      "status": "ok",
-      "updated": 4441
-    },
     "northwestern_faculty": {
-      "fetched": 1081,
-      "new": 0,
+      "fetched": 2783,
+      "new": 1702,
       "status": "ok",
       "updated": 1081
     },
     "pi_enricher": {
-      "already_had": 3893,
-      "enriched": 129,
+      "already_had": 1035,
+      "enriched": 956,
       "nulled_unit_inboxes": 2,
-      "renulled_shared_emails": 11,
+      "renulled_shared_emails": 723,
       "scraped": 1000,
-      "skipped_budget": 1456,
+      "skipped_budget": 775,
       "status": "ok"
-    },
-    "princeton_faculty": {
-      "fetched": 513,
-      "new": 177,
-      "status": "ok",
-      "updated": 336
     },
     "school_audience": {
       "by_source": {
@@ -122,11 +74,11 @@
         "gatech_research_programs": 7,
         "handshake": 71,
         "jhu_external_research": 1,
-        "jhu_faculty": 4507,
+        "jhu_faculty": 4505,
         "jhu_labs": 7,
         "jhu_research_programs": 22,
         "manual": 33,
-        "northwestern_faculty": 1081,
+        "northwestern_faculty": 2783,
         "northwestern_labs": 11,
         "northwestern_research_programs": 17,
         "nsf_reu": 585,
@@ -139,7 +91,7 @@
         "purdue_research_programs": 59,
         "simplify_internships": 2079,
         "stanford_external_research": 1,
-        "stanford_faculty": 1426,
+        "stanford_faculty": 1403,
         "stanford_labs": 1,
         "stanford_research_programs": 38,
         "ucb_anthro_faculty": 26,
@@ -215,7 +167,7 @@
         "ucsb_labs": 2,
         "ucsb_research_programs": 13,
         "ucsb_urca_projects": 243,
-        "ucsd_faculty": 1487,
+        "ucsd_faculty": 1480,
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
         "uiuc_drp": 2,
@@ -243,23 +195,11 @@
         "wisc_research_programs": 31
       },
       "status": "ok",
-      "tagged": 36181
-    },
-    "stanford_faculty": {
-      "fetched": 1399,
-      "new": 31,
-      "status": "ok",
-      "updated": 1368
-    },
-    "ucsd_faculty": {
-      "fetched": 1440,
-      "new": 115,
-      "status": "ok",
-      "updated": 1325
+      "tagged": 37851
     }
   },
-  "timestamp": "2026-07-10T07:09:23.508438",
-  "total_in_file": 36149,
-  "total_new": 375,
-  "total_updated": 8639
+  "timestamp": "2026-07-10T11:07:51.713165",
+  "total_in_file": 37832,
+  "total_new": 1702,
+  "total_updated": 1109
 }
