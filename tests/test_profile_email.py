@@ -134,3 +134,23 @@ class TestHarvestApply:
 
         harvest_emails(opps, schools=["princeton"], fetch=fetch)
         assert fetched == ["https://p/alon"]
+
+
+def test_decode_cfemail_roundtrip():
+    # Real Foster sample from the recon: this hex decodes to abhinavg@uw.edu.
+    from src.collectors.profile_email import _decode_cfemail
+    assert _decode_cfemail("c6a7a4aeafa8a7b0a186b3b1e8a3a2b3") == "abhinavg@uw.edu"
+    assert _decode_cfemail("zz") is None
+    assert _decode_cfemail("") is None
+
+
+def test_email_for_profile_decodes_cfemail(monkeypatch):
+    from bs4 import BeautifulSoup
+
+    from src.collectors.profile_email import email_for_profile
+    html = ('<div class="contact"><a href="/cdn-cgi/l/email-protection#c6a7a4aeafa8a7b0a186b3b1e8a3a2b3">'
+            '<span class="__cf_email__" data-cfemail="c6a7a4aeafa8a7b0a186b3b1e8a3a2b3">'
+            '[email&#160;protected]</span></a></div>')
+    soup = BeautifulSoup(html, "html.parser")
+    assert email_for_profile("https://foster.uw.edu/x", "Abhinav Gupta",
+                             fetch=lambda u: soup) == "abhinavg@uw.edu"
