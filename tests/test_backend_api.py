@@ -3392,3 +3392,63 @@ class TestRankerCorpusRegistration:
         assert rk._corpus_ref is opps
         assert rk._sim_matrix is not None
         assert rk._sim_matrix.shape[0] == len(opps)
+
+
+class TestMemoryObservability:
+    def test_process_rss_reports_positive(self):
+        from backend.routes.admin import _process_rss_mb
+        rss = _process_rss_mb()
+        assert rss is not None and rss > 0
+
+    def test_health_check_reports_memory(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-mem")
+        r = client.get("/api/admin/health-check", headers={"X-Admin-Token": "secret-mem"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["memory_mb"] is not None and body["memory_mb"] > 0
+
+    def test_health_check_alerts_past_threshold(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-mem")
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "_process_rss_mb", lambda: 1750.0)
+        r = client.get("/api/admin/health-check", headers={"X-Admin-Token": "secret-mem"})
+        body = r.json()
+        mem_alerts = [a for a in body["alerts"] if a["kind"] == "memory"]
+        assert mem_alerts and mem_alerts[0]["level"] == "alert"
+        assert body["ok"] is False
+
+
+class TestInMemoryCorpusSlim:
+    def test_loader_drops_pipeline_only_fields(self):
+        # eligibility_text_raw / metadata.notes / metadata.research_areas_raw
+        # exist for the collectors' own passes; no serving path reads them, so
+        # the loader must not keep 10+ MiB of them resident on a 2 GB instance.
+        opps = data_loader.load_opportunities()
+        for o in opps[:2000]:
+            elig = o.get("eligibility")
+            if isinstance(elig, dict):
+                assert "eligibility_text_raw" not in elig
+            meta = o.get("metadata")
+            if isinstance(meta, dict):
+                assert "notes" not in meta
+                assert "research_areas_raw" not in meta
+
+    def test_sanitize_tolerates_missing_subdicts(self):
+        assert data_loader._sanitize_opportunity({"title": "x"}) == {"title": "x"}
+        out = data_loader._sanitize_opportunity(
+            {"eligibility": None, "metadata": {"notes": "n", "is_active": True}})
+        assert out["metadata"] == {"is_active": True}
+
+
+class TestTfidfGeneratorFit:
+    def test_fit_accepts_generator(self):
+        from src.matcher import embeddings as em
+        em._tfidf_fitted = False
+        em.fit_tfidf_corpus(t for t in ["machine learning robots", "quantum physics lasers", ""])
+        assert em._tfidf_fitted is True
+
+    def test_fit_skips_degenerate_corpus(self):
+        from src.matcher import embeddings as em
+        em._tfidf_fitted = False
+        em.fit_tfidf_corpus(t for t in ["machine learning robots"])
+        assert em._tfidf_fitted is False

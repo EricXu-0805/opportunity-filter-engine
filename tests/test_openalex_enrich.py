@@ -62,6 +62,44 @@ def test_author_topics_majority_field_gate_rejects_wrong_person(monkeypatch):
     assert oa.author_topics("Michael E West", "I130701444", "School of Electrical Engineering") == []
 
 
+def test_match_author_middle_name_fallback(monkeypatch):
+    # Directories that print full legal names ("Iain Douglas Boyd") get ZERO
+    # results from OpenAlex full-text author search (indexed as "Iain D. Boyd"),
+    # which silently zeroed out whole schools (boulder). The first+last retry
+    # must recover the match — and every candidate it returns still passes the
+    # same institution gate (the same-surname humanities professor loses).
+    def _fake_get(p):
+        if p["search"] == "Iain Douglas Boyd":
+            return {"results": []}
+        assert p["search"] == "Iain Boyd"
+        return {"results": [
+            _author("Iain D. Boyd", 500, ["I188538660"], [("hypersonic flows", "Engineering")]),
+            _author("Iain Boyd Whyte", 90, ["I999"], [("architectural history", "Arts and Humanities")]),
+        ]}
+    monkeypatch.setattr(oa, "_get", _fake_get)
+    best = oa._match_author("Iain Douglas Boyd", "I188538660", "Department of Aerospace Engineering Sciences")
+    assert best is not None and best["display_name"] == "Iain D. Boyd"
+
+
+def test_match_author_two_token_name_has_no_fallback(monkeypatch):
+    # A 2-token name has no simplified variant — a miss stays a single query,
+    # so unmatched faculty don't double the API spend.
+    calls = []
+    def _fake_get(p):
+        calls.append(p["search"])
+        return {"results": []}
+    monkeypatch.setattr(oa, "_get", _fake_get)
+    assert oa._match_author("Jane Roe", "I201448701", "Electrical Engineering") is None
+    assert calls == ["Jane Roe"]
+
+
+def test_name_variants():
+    assert oa._name_variants("Iain Douglas Boyd") == ["Iain Douglas Boyd", "Iain Boyd"]
+    assert oa._name_variants("Linda Bushnell") == ["Linda Bushnell"]
+    assert oa._name_variants("Allison Paige Anderson Hayman") == [
+        "Allison Paige Anderson Hayman", "Allison Hayman"]
+
+
 def test_author_topics_min_works(monkeypatch):
     monkeypatch.setattr(oa, "_get", lambda p: {"results": [
         _author("Jane Roe", 3, ["I201448701"], [("topic", "Engineering")])]})

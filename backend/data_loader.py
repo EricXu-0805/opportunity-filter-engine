@@ -28,6 +28,18 @@ def _sanitize_opportunity(opp: dict) -> dict:
     for field in ("description_raw", "description_clean", "title"):
         if field in opp and isinstance(opp[field], str):
             opp[field] = _strip_html(opp[field])
+    # Pipeline-only payloads no serving path reads (verified: zero consumers in
+    # backend/, src/matcher/ and frontend/src): drop them from the in-memory
+    # copy. The on-disk corpus keeps them — the collectors' own passes
+    # (llm_tagger reads eligibility_text_raw, enrichment audits read notes)
+    # open the file directly, never through this loader.
+    elig = opp.get("eligibility")
+    if isinstance(elig, dict):
+        elig.pop("eligibility_text_raw", None)
+    meta = opp.get("metadata")
+    if isinstance(meta, dict):
+        meta.pop("notes", None)
+        meta.pop("research_areas_raw", None)
     return opp
 
 
@@ -47,7 +59,10 @@ def _maybe_fit_tfidf(opportunities: list[dict], mtime: float) -> None:
         return
     try:
         from src.matcher.embeddings import fit_tfidf_corpus
-        fit_tfidf_corpus([_opportunity_corpus_text(o) for o in opportunities])
+        # Generator, not a list: the joined corpus texts are ~90 MiB for 32k
+        # records and the fit only needs one pass — materializing them spikes
+        # startup RSS for nothing on a 2 GB instance.
+        fit_tfidf_corpus(_opportunity_corpus_text(o) for o in opportunities)
         _tfidf_fitted_mtime = mtime
     except Exception as e:
         logger.warning("TF-IDF corpus fit failed: %s", e)

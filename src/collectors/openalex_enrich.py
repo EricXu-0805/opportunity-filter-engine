@@ -216,16 +216,44 @@ def _get(params: dict, url: str = _API) -> dict:
     return {}
 
 
+def _name_variants(name: str) -> list[str]:
+    """Search queries to try in order: the directory name as-is, then a
+    first+last simplification. Directories that print full legal names
+    ("Iain Douglas Boyd") defeat OpenAlex full-text author search — the
+    indexed form is "Iain D. Boyd", and the full form returns zero results —
+    so a miss on the directory form retries without the middle tokens. Every
+    candidate from the looser query still passes the same institution/surname/
+    works/field gates, so it cannot admit a person the strict query would have
+    rejected."""
+    toks = (name or "").split()
+    variants = [name]
+    if len(toks) >= 3:
+        simplified = f"{toks[0]} {toks[-1]}"
+        if simplified.lower() != name.lower():
+            variants.append(simplified)
+    return variants
+
+
 def _match_author(name: str, inst_id: str, dept: str = "") -> dict | None:
     """The confidently-matched OpenAlex author record for ``name`` at the
     institution, or None. Requires: surname match, the school's institution id
     in the author's affiliation history, works_count >= _MIN_WORKS, and — when
     the department maps to a field family — a majority of top topic fields
-    compatible with it (rejects same-name same-institution wrong-field people)."""
+    compatible with it (rejects same-name same-institution wrong-field people).
+    Tries the directory name first, then a first+last fallback (middle names
+    break OpenAlex search); the gates apply identically to both."""
     surname = _surname(name)
     if not surname:
         return None
-    j = _get({"search": name, "per_page": 10,
+    for query in _name_variants(name):
+        best = _match_author_query(query, surname, inst_id, dept)
+        if best is not None:
+            return best
+    return None
+
+
+def _match_author_query(query: str, surname: str, inst_id: str, dept: str) -> dict | None:
+    j = _get({"search": query, "per_page": 10,
               "select": "id,display_name,works_count,affiliations,topics"})
     best, best_works = None, -1
     for a in j.get("results", []):
