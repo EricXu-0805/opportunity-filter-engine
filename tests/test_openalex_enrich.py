@@ -140,11 +140,72 @@ class _Resp429:
 def test_get_warns_once_on_429(monkeypatch, caplog):
     monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp429())
     monkeypatch.setattr(oa, "_warned_429", False)
+    monkeypatch.setattr(oa, "_RETRY_429_WAIT", 0)
     with caplog.at_level("WARNING", logger="src.collectors.openalex_enrich"):
         assert oa._get({"search": "x"}) == {}
         assert oa._get({"search": "y"}) == {}
     warnings = [r for r in caplog.records if "429" in r.getMessage()]
     assert len(warnings) == 1  # surfaced, but not once per author
+    assert oa._warned_429 is True
+
+
+def test_get_transient_429_recovers_without_flag(monkeypatch):
+    # A single burst 429 followed by a 200 is a per-second rate limit, not
+    # budget exhaustion — must NOT set the abort flag.
+    class _Ok:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"results": [{"display_name": "ok"}]}
+
+    responses = [_Resp429(), _Ok()]
+    monkeypatch.setattr(oa.requests, "get", lambda *a, **k: responses.pop(0))
+    monkeypatch.setattr(oa, "_warned_429", False)
+    monkeypatch.setattr(oa, "_RETRY_429_WAIT", 0)
+    out = oa._get({"search": "x"})
+    assert out["results"][0]["display_name"] == "ok"
+    assert oa._warned_429 is False
+
+
+def test_harvest_works_aborts_on_confirmed_429_and_resumes_past_misses(monkeypatch, tmp_path):
+    # Misses go to the .misses sidecar; a resumed run skips BOTH matches and
+    # misses (every miss already cost a metered call); a confirmed 429 aborts
+    # instead of burning through the target list, without recording the
+    # aborted target as a miss.
+    import json as _json
+
+    opps = [
+        {"source_type": "faculty_research", "pi_name": f"P{i} Roe", "school": "uw",
+         "url": f"https://x.edu/p{i}"}
+        for i in range(4)
+    ]
+    ckpt = str(tmp_path / "works.json")
+
+    monkeypatch.setattr(oa, "_warned_429", False)
+    monkeypatch.setattr(oa, "_match_author", lambda *a, **k: None)  # all miss
+    mapping = oa.harvest_works(opps, checkpoint_path=ckpt, throttle=0)
+    assert mapping == {}
+    assert sorted(_json.load(open(ckpt + ".misses"))) == [o["url"] for o in opps]
+
+    # Resume: all four known misses are skipped — zero further lookups.
+    calls = []
+    monkeypatch.setattr(oa, "_match_author", lambda *a, **k: calls.append(1))
+    oa.harvest_works(opps, checkpoint_path=ckpt, resume=True, throttle=0)
+    assert calls == []
+
+    # Confirmed 429 aborts on a fresh target; the aborted target is not a miss.
+    def _flag_and_miss(*a, **k):
+        oa._warned_429 = True
+        return None
+
+    monkeypatch.setattr(oa, "_match_author", _flag_and_miss)
+    fresh = [{"source_type": "faculty_research", "pi_name": "New Person", "school": "uw",
+              "url": "https://x.edu/new"}]
+    ckpt2 = str(tmp_path / "works2.json")
+    oa.harvest_works(fresh, checkpoint_path=ckpt2, throttle=0)
+    assert _json.load(open(ckpt2 + ".misses")) == []
+    monkeypatch.setattr(oa, "_warned_429", False)
 
 
 def test_apply_is_updates_only():
