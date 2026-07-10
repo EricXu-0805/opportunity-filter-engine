@@ -237,6 +237,28 @@ SCHOOL: dict = {
                 "email_field": "email", "link_field": "url",
             },
         },
+        # --- School of Advanced International Studies (SAIS) ---
+        # /faculty-directory is a Drupal Views listing (renders all ~144 in one
+        # page): name + profile link in an ``a[href^=/users/]``, rank in ``dd.role``.
+        # Email lives on the /users/ profile → profile_enrich (render, same CF).
+        {
+            "short": "SAIS", "name": "School of Advanced International Studies",
+            "majors": ["International Relations", "International Economics",
+                       "Strategic Studies", "International Development",
+                       "Global Policy", "International Affairs"],
+            "directory_url": "https://sais.jhu.edu/faculty-directory",
+            "scrape": {
+                "url": "https://sais.jhu.edu/faculty-directory",
+                "render": True, "render_settle": 6000,
+                "selectors": {"card": "li.faculty-info-right",
+                              "name": "a[href^='/users/']",
+                              "link": "a[href^='/users/']", "title": "dd.role"},
+                "ladder_filter": {"require": r"\bprofessor\b",
+                                  "drop": r"\bemerit|\badjunct|\bvisiting"},
+                "profile_enrich": {"always": True, "render": True,
+                                   "email_selector": "a[href^='mailto:']"},
+            },
+        },
     ],
 }
 
