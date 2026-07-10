@@ -323,9 +323,34 @@ SCHOOL: dict = {
                 "https://www.hopkinsmedicine.org/som/pathway/summer-internship-program",
                 "https://csmsip.cellbio.jhmi.edu/",
                 "https://publichealth.jhu.edu/about/inclusion-diversity-anti-racism-and-equity-idare/diversity-summer-internship-program-for-undergraduates",
+                "https://johnshopkinsustar.com/",
             ],
             "crawl": STATIC,
             "programs": [
+                program(
+                    "jhu_ustar",
+                    "Hopkins USTAR — Undergraduate Scholars Training in Aging Research",
+                    "https://johnshopkinsustar.com/",
+                    "A two-summer, mentor-guided research-training experience at the Johns "
+                    "Hopkins Bloomberg School of Public Health focused on aging research — "
+                    "Alzheimer's disease and related dementias — and on addressing health "
+                    "disparities. Builds research competencies and professional skills for "
+                    "undergraduates in MSTEM (medicine, science, technology, engineering, "
+                    "math) fields, especially students underrepresented in aging research.",
+                    organization="Johns Hopkins University",
+                    department="Bloomberg School of Public Health",
+                    lab_or_program="USTAR",
+                    opportunity_type="summer_program",
+                    paid="stipend",
+                    compensation="Stipend (two-summer training program)",
+                    eligibility_majors=["Public Health", "Biology", "Neuroscience",
+                                        "Psychology", "Biostatistics", "Epidemiology"],
+                    preferred_year=["freshman", "sophomore", "junior"],
+                    international_friendly="ask",
+                    deadline_note="Applications due late January (Jan 24 for the 2025 cohort)",
+                    keywords=["aging research", "Alzheimer's", "dementia", "public health",
+                              "health disparities", "two-summer", "USTAR"],
+                ),
                 program(
                     "pura",
                     "Provost's Undergraduate Research Award (PURA) \u2014 Johns Hopkins University",
