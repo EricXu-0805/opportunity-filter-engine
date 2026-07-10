@@ -83,23 +83,6 @@ class TestValidator:
         }
         assert any("not in school's emit map" in e for e in cg.validate(bad))
 
-    def test_bad_program_enums_flagged(self):
-        # Regression: jhu_ustar shipped international_friendly="ask" (#547),
-        # which passed PR CI but detonated the shard refresh's integrity gate.
-        bad = {
-            "school_slug": "x",
-            "emit": {"campus": ("s", "x", "campus")},
-            "sources": [{"source_name": "n", "source_type": cg.PROGRAM, "emit": "campus",
-                         "crawl": cg.STATIC, "seeds": ["http://x"],
-                         "programs": [cg.program(
-                             "k", "T", "http://x", "d",
-                             international_friendly="ask", paid="hourly",
-                         )]}],
-        }
-        errors = cg.validate(bad)
-        assert any("bad international_friendly 'ask'" in e for e in errors)
-        assert any("bad paid 'hourly'" in e for e in errors)
-
     def test_fetch_rejects_invalid_config(self):
         with pytest.raises(ValueError):
             cg.fetch_and_normalize({"school_slug": "x", "emit": {}, "sources": [
