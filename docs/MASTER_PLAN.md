@@ -362,8 +362,8 @@ pgvector/Postgres (JSON+TF-IDF fine at ~5k records); E2E-as-required-check (wait
 ## 8. How to Resume (a future session reads this first)
 
 1. **Check the validation clock before anything.** Is the concierge "帮我投" button live? Is the 30-day window running? Is there validation activity? If the clock is live and stalled → **do §7a, not expansion.** If no paying/retained stranger yet → expansion stays a background bet, never the headline.
-2. **Confirm Wave 0 status.** Does `src/collectors/school_config.py` + `faculty_base.py` exist and is `ucb_common` parameterized? If NOT → Wave 0 (§3) is the only non-Berkeley-clone faculty work allowed. Verify UCB ids are byte-identical and `TestR70ADataQuality` is green before building any peer school.
-3. **Confirm the filter-correctness fixes (§2.5).** Are BUG A (citizenship_required honored in `ranker.py` score + hard-filter) and BUG B (on-campus bonus gated to home_school) fixed, with the §2.4 regression tests present? **These gate the domestic-heavy waves.** Do not ingest many US-only sources until BUG A is fixed.
+2. **Wave 0 status: ✅ SHIPPED, under different names (2026-07 update).** The add-a-school architecture landed as the `faculty_graph` engine + per-school config modules in `src/collectors/schools/` (`<slug>.py` campus-graph config + `<slug>_faculty.py` faculty config; 19 schools as of 2026-07-10) — the planned `school_config.py`/`faculty_base.py` were never created because these subsume them. Adding a school = a config pair + registry entry, exactly the Wave-0 goal. Do NOT re-open Wave 0.
+3. **Filter-correctness fixes (§2.5): ✅ FIXED in #208** (`fix(matcher): honor citizenship_required + gate F-1 on-campus bonus to home school`) — BUG A and BUG B both, with regression tests. Domestic-heavy waves are no longer gated on this.
 4. **Pick the next school from §4.2 by wave + §4.3 first-target.** Catalog-ready (GT/UW/UTexas/Michigan/Stanford) skip frontend catalog work. Use the §5 shape playbook and the §3.4 touchpoint checklist. Land the `SOURCE_DEFAULTS`/registry entry in the SAME PR (§2.4 invariant 1).
 5. **Run the §6 DQ guards** for the new school; `pytest tests/test_opportunity_data_quality.py` must stay green. Register the source deep-only in `refresh_all` (preserve merge order).
 6. **Ship rules (from memory):** PR + CI gate (Backend + Frontend), commit identity, ruff 0.7.4 (`Optional[X]` OK), auto data-refresh ships via PR + auto-merge (needs `REFRESH_PAT`). **Merges to `main` need Eric's explicit consent (no `--admin`).** Don't make E2E a required check until de-flaked. **External sends require Eric's approval, every time.**
@@ -372,7 +372,7 @@ pgvector/Postgres (JSON+TF-IDF fine at ~5k records); E2E-as-required-check (wait
 
 ---
 
-**Plan paths verified present:** `src/collectors/ucb_common.py`, `src/collectors/refresh_all.py`, `src/normalizers/school_audience.py`, `src/normalizers/deactivate_stale_faculty.py`, `src/matcher/ranker.py`, `backend/routes/matches.py`, `tests/test_opportunity_data_quality.py`, `frontend/src/lib/schools.ts` (all confirmed). New modules `src/collectors/school_config.py` and `src/collectors/faculty_base.py` do not yet exist (Wave 0 creates them).
+**Plan paths verified present:** `src/collectors/ucb_common.py`, `src/collectors/refresh_all.py`, `src/normalizers/school_audience.py`, `src/normalizers/deactivate_stale_faculty.py`, `src/matcher/ranker.py`, `backend/routes/matches.py`, `tests/test_opportunity_data_quality.py`, `frontend/src/lib/schools.ts` (all confirmed). The planned `src/collectors/school_config.py` / `faculty_base.py` were superseded before creation by the shipped `src/collectors/schools/` per-school config pattern (see §8.2) — do not create them.
 
 ---
 
