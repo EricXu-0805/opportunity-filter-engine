@@ -1,41 +1,41 @@
 {
-  "duration_seconds": 2650.5,
+  "duration_seconds": 2765.6,
   "shard": {
     "national": false,
     "schools": [
-      "northwestern"
+      "jhu"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 19,
+      "rule_based_tagged": 29,
       "status": "ok"
     },
-    "campus_graph:northwestern": {
+    "campus_graph:jhu": {
       "deep": true,
-      "fetched": 28,
-      "new": 0,
+      "fetched": 31,
+      "new": 1,
       "status": "ok",
-      "updated": 28
+      "updated": 30
     },
     "deactivate_past": {
       "already_inactive": 662,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 36325,
+      "skipped_rolling": 36380,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 2783,
+      "kept_fresh": 4578,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 19,
+      "duplicates_removed": 10,
       "keywords_cleaned": 0,
       "removed_by_school": {
-        "northwestern": 19
+        "jhu": 10
       },
       "shared_inbox_nulled": {},
       "status": "ok"
@@ -44,19 +44,19 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "northwestern_faculty": {
-      "fetched": 2783,
-      "new": 1702,
+    "jhu_faculty": {
+      "fetched": 4080,
+      "new": 73,
       "status": "ok",
-      "updated": 1081
+      "updated": 4007
     },
     "pi_enricher": {
-      "already_had": 1035,
-      "enriched": 956,
-      "nulled_unit_inboxes": 2,
-      "renulled_shared_emails": 723,
-      "scraped": 1000,
-      "skipped_budget": 775,
+      "already_had": 1657,
+      "enriched": 1,
+      "nulled_unit_inboxes": 0,
+      "renulled_shared_emails": 0,
+      "scraped": 43,
+      "skipped_budget": 0,
       "status": "ok"
     },
     "school_audience": {
@@ -74,11 +74,11 @@
         "gatech_research_programs": 7,
         "handshake": 71,
         "jhu_external_research": 1,
-        "jhu_faculty": 4505,
+        "jhu_faculty": 4578,
         "jhu_labs": 7,
-        "jhu_research_programs": 22,
+        "jhu_research_programs": 23,
         "manual": 33,
-        "northwestern_faculty": 2783,
+        "northwestern_faculty": 2764,
         "northwestern_labs": 11,
         "northwestern_research_programs": 17,
         "nsf_reu": 585,
@@ -195,11 +195,11 @@
         "wisc_research_programs": 31
       },
       "status": "ok",
-      "tagged": 37851
+      "tagged": 37906
     }
   },
-  "timestamp": "2026-07-10T11:07:51.713165",
-  "total_in_file": 37832,
-  "total_new": 1702,
-  "total_updated": 1109
+  "timestamp": "2026-07-10T14:08:27.116513",
+  "total_in_file": 37896,
+  "total_new": 74,
+  "total_updated": 4037
 }
