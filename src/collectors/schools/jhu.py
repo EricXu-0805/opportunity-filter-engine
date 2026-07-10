@@ -346,7 +346,7 @@ SCHOOL: dict = {
                     eligibility_majors=["Public Health", "Biology", "Neuroscience",
                                         "Psychology", "Biostatistics", "Epidemiology"],
                     preferred_year=["freshman", "sophomore", "junior"],
-                    international_friendly="ask",
+                    international_friendly="unknown",
                     deadline_note="Applications due late January (Jan 24 for the 2025 cohort)",
                     keywords=["aging research", "Alzheimer's", "dementia", "public health",
                               "health disparities", "two-summer", "USTAR"],

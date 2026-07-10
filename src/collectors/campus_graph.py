@@ -139,6 +139,18 @@ def validate(school: dict) -> list[str]:
             seen_keys.add(p["key"])
             if p.get("opportunity_type") not in {"research", "summer_program", "internship", "fellowship"}:
                 errors.append(f"{p['key']}: bad opportunity_type {p.get('opportunity_type')!r}")
+            # Mirror the corpus integrity tests' enum sets: a curated value
+            # outside them only detonates at refresh time (the DQ gate rejects
+            # the whole shard), so catch it here where PR CI validates configs.
+            if p.get("international_friendly", "unknown") not in {"yes", "no", "unknown"}:
+                errors.append(
+                    f"{p['key']}: bad international_friendly "
+                    f"{p.get('international_friendly')!r} (use yes/no/unknown)"
+                )
+            if p.get("paid", "unknown") not in {"yes", "no", "stipend", "unknown"}:
+                errors.append(
+                    f"{p['key']}: bad paid {p.get('paid')!r} (use yes/no/stipend/unknown)"
+                )
     return errors
 
 
