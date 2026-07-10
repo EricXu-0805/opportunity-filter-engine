@@ -521,7 +521,7 @@ SCHOOL: dict = {
                     eligibility_majors=["Biology", "Biochemistry", "Neuroscience",
                                         "Chemistry", "Cancer Biology", "Molecular Biosciences"],
                     preferred_year=["sophomore", "junior"],
-                    international_friendly="ask",
+                    international_friendly="unknown",
                     deadline_note="Applications typically due late winter/early spring for the summer cohort",
                     keywords=["cancer research", "oncology", "Feinberg", "Lurie", "summer research", "translational"],
                 ),
