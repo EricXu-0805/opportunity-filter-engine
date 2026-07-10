@@ -188,6 +188,12 @@ def _clean_topic(t: str) -> str:
 _warned_429 = False
 
 
+# Seconds to wait before confirming a 429 is budget exhaustion rather than a
+# transient per-second rate limit. One retry after this pause distinguishes
+# the two: a burst clears, an empty budget doesn't.
+_RETRY_429_WAIT = 15.0
+
+
 def _get(params: dict, url: str = _API) -> dict:
     # OpenAlex metered its API in 2026 (every call costs credits, $0 free/day);
     # the prepaid key authorizes the request via the api_key query param. Absent
@@ -196,19 +202,26 @@ def _get(params: dict, url: str = _API) -> dict:
     key = os.environ.get("OPENALEX_API_KEY")
     if key:
         params = {**params, "api_key": key}
+    seen_429 = False
     for attempt in range(4):
         try:
             resp = requests.get(url, params=params, headers=_HEADERS, timeout=20)
             if resp.status_code == 429:
-                # Budget exhaustion won't clear within a retry loop; warn once
-                # per process so a 0-match harvest is never mistaken for
-                # "no authors found".
+                if not seen_429:
+                    # Could be a transient per-second burst limit — pause once
+                    # and retry before declaring the budget dead.
+                    seen_429 = True
+                    time.sleep(_RETRY_429_WAIT)
+                    continue
+                # Second 429 after the pause = budget exhaustion; it won't
+                # clear within a retry loop. Set the flag the harvest loops
+                # abort on, and warn once per process.
                 if not _warned_429:
                     _warned_429 = True
                     logger.warning(
-                        "OpenAlex returned 429 (rate limit / daily budget exhausted) — "
-                        "authors resolve to no results, so the harvest yields 0 topics. "
-                        "Set OPENALEX_API_KEY or retry after the budget resets.")
+                        "OpenAlex returned 429 twice %ss apart (daily budget exhausted) — "
+                        "harvest loops abort on this. Top up the prepaid key or retry "
+                        "after the budget resets.", _RETRY_429_WAIT)
                 return {}
             return resp.json()
         except Exception:
@@ -351,6 +364,39 @@ def _targets(opps: list[dict], schools: list[str] | None) -> list[dict]:
     return out
 
 
+def _miss_path(checkpoint_path: str | None) -> str | None:
+    return checkpoint_path + ".misses" if checkpoint_path else None
+
+
+def _load_resume_state(checkpoint_path: str | None, resume: bool, targets: list[dict]):
+    """(mapping, misses, remaining targets). The sidecar ``.misses`` file makes
+    resume skip previously-*unmatched* faculty too — every miss already cost a
+    metered search call, and re-scanning a long run of genuine misses is also
+    what used to false-trigger the old consecutive-miss "budget exhausted"
+    abort."""
+    mapping: dict = {}
+    misses: set[str] = set()
+    if resume and checkpoint_path and os.path.exists(checkpoint_path):
+        mapping = json.load(open(checkpoint_path))
+    miss_path = _miss_path(checkpoint_path)
+    if resume and miss_path and os.path.exists(miss_path):
+        misses = set(json.load(open(miss_path)))
+    if mapping or misses:
+        done = set(mapping) | misses
+        before = len(targets)
+        targets = [o for o in targets if _record_url(o) not in done]
+        print(f"  resuming: {len(mapping)} matched + {len(misses)} known misses skipped, "
+              f"{len(targets)}/{before} targets remain", flush=True)
+    return mapping, misses, targets
+
+
+def _flush_checkpoint(checkpoint_path: str | None, mapping: dict, misses: set[str]) -> None:
+    if not checkpoint_path:
+        return
+    json.dump(mapping, open(checkpoint_path, "w"), indent=2)
+    json.dump(sorted(misses), open(_miss_path(checkpoint_path), "w"))
+
+
 def harvest_openalex(
     opps: list[dict],
     *,
@@ -360,51 +406,38 @@ def harvest_openalex(
     progress: bool = False,
     checkpoint_path: str | None = None,
     checkpoint_every: int = 50,
-    abort_after_empty: int = 50,
     resume: bool = False,
 ) -> dict[str, list[str]]:
     """Pure harvest: ``{url: topics}`` for fieldless faculty with a confident
     OpenAlex institution match. ``_is_junk_keyword`` gates each topic. Same
-    metered-budget guards as ``harvest_works``: checkpoint the partial mapping
-    every ``checkpoint_every`` matches, and abort after ``abort_after_empty``
-    consecutive misses (budget-exhaustion signature)."""
+    metered-budget guards as ``harvest_works``: matches AND misses checkpoint
+    every ``checkpoint_every`` targets, and the run aborts the moment ``_get``
+    confirms a 429 (the definitive budget signal — a miss streak is not; whole
+    teaching-heavy departments legitimately miss for 50+ people in a row)."""
     from .uiuc_faculty import _is_junk_keyword
 
     targets = _targets(opps, schools)
     if sample is not None:
         targets = targets[:sample]
-    mapping: dict[str, list[str]] = {}
-    if resume and checkpoint_path and os.path.exists(checkpoint_path):
-        mapping = json.load(open(checkpoint_path))
-        done = set(mapping)
-        before = len(targets)
-        targets = [o for o in targets if _record_url(o) not in done]
-        print(f"  resuming: {len(mapping)} already harvested, "
-              f"{len(targets)}/{before} targets remain", flush=True)
-    consecutive_empty = 0
-    since_checkpoint = 0
+    mapping, misses, targets = _load_resume_state(checkpoint_path, resume, targets)
     for i, o in enumerate(targets):
         tops = author_topics(o["pi_name"], SCHOOL_INST[o["school"]], o.get("department", ""))
         time.sleep(throttle)
         tops = [t for t in tops if not _is_junk_keyword(t)]
+        if _warned_429:
+            # Don't record this target as a miss — the lookup never really ran.
+            print(f"  aborting at {i + 1}/{len(targets)} — OpenAlex budget exhausted "
+                  f"(confirmed 429); {len(mapping)} matched", flush=True)
+            break
         if tops:
             mapping[_record_url(o)] = tops
-            consecutive_empty = 0
-            since_checkpoint += 1
-            if checkpoint_path and since_checkpoint >= checkpoint_every:
-                json.dump(mapping, open(checkpoint_path, "w"), indent=2)
-                since_checkpoint = 0
         else:
-            consecutive_empty += 1
-            if consecutive_empty >= abort_after_empty:
-                print(f"  aborting at {i + 1}/{len(targets)} — {abort_after_empty} "
-                      f"consecutive misses (budget likely exhausted); "
-                      f"{len(mapping)} matched", flush=True)
-                break
+            misses.add(_record_url(o))
+        if checkpoint_path and (i + 1) % checkpoint_every == 0:
+            _flush_checkpoint(checkpoint_path, mapping, misses)
         if progress and (i + 1) % 100 == 0:
             print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} matched", flush=True)
-    if checkpoint_path:
-        json.dump(mapping, open(checkpoint_path, "w"), indent=2)
+    _flush_checkpoint(checkpoint_path, mapping, misses)
     return mapping
 
 
@@ -448,34 +481,22 @@ def harvest_works(
     progress: bool = False,
     checkpoint_path: str | None = None,
     checkpoint_every: int = 50,
-    abort_after_empty: int = 50,
     resume: bool = False,
 ) -> dict[str, list[dict]]:
     """Pure harvest: ``{url: [{title, year}, ...]}`` for faculty with a confident
     OpenAlex author match (same institution/surname/field gates as topics).
 
     OpenAlex is metered (paid per call), so two guards protect the budget:
-    with ``checkpoint_path`` set, the partial mapping is flushed there every
-    ``checkpoint_every`` matches, so a crash or 429 never loses paid-for
-    records; and ``abort_after_empty`` consecutive misses stops the run — that
-    many misses in a row is the unmistakable signature of budget exhaustion
-    (match rate ~65%, so even 50 misses running is otherwise ~0 probability),
-    which avoids spinning through thousands of 429'd requests."""
+    with ``checkpoint_path`` set, matches AND misses are flushed every
+    ``checkpoint_every`` targets (a ``.misses`` sidecar), so neither a crash
+    nor a resume ever re-pays for a lookup; and the run aborts the moment
+    ``_get`` confirms a 429 — the definitive budget signal, unlike a miss
+    streak (whole teaching-heavy departments legitimately miss 50+ in a row,
+    which used to false-abort resumed runs)."""
     targets = _works_targets(opps, schools)
     if sample is not None:
         targets = targets[:sample]
-    mapping: dict[str, list[dict]] = {}
-    # Resume a budget-aborted run without re-paying for records already harvested:
-    # load the checkpoint and skip every URL it already covers.
-    if resume and checkpoint_path and os.path.exists(checkpoint_path):
-        mapping = json.load(open(checkpoint_path))
-        done = set(mapping)
-        before = len(targets)
-        targets = [o for o in targets if _record_url(o) not in done]
-        print(f"  resuming: {len(mapping)} already harvested, "
-              f"{len(targets)}/{before} targets remain", flush=True)
-    consecutive_empty = 0
-    since_checkpoint = 0
+    mapping, misses, targets = _load_resume_state(checkpoint_path, resume, targets)
     for i, o in enumerate(targets):
         dept = o.get("department", "")
         best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], dept)
@@ -483,24 +504,20 @@ def harvest_works(
         works = author_recent_works(best["id"], dept) if best and best.get("id") else []
         if best and best.get("id"):
             time.sleep(throttle)
+        if _warned_429:
+            # Don't record this target as a miss — the lookup never really ran.
+            print(f"  aborting at {i + 1}/{len(targets)} — OpenAlex budget exhausted "
+                  f"(confirmed 429); {len(mapping)} matched", flush=True)
+            break
         if works:
             mapping[_record_url(o)] = works
-            consecutive_empty = 0
-            since_checkpoint += 1
-            if checkpoint_path and since_checkpoint >= checkpoint_every:
-                json.dump(mapping, open(checkpoint_path, "w"), indent=2)
-                since_checkpoint = 0
         else:
-            consecutive_empty += 1
-            if consecutive_empty >= abort_after_empty:
-                print(f"  aborting at {i + 1}/{len(targets)} — {abort_after_empty} "
-                      f"consecutive misses (budget likely exhausted); "
-                      f"{len(mapping)} matched", flush=True)
-                break
+            misses.add(_record_url(o))
+        if checkpoint_path and (i + 1) % checkpoint_every == 0:
+            _flush_checkpoint(checkpoint_path, mapping, misses)
         if progress and (i + 1) % 100 == 0:
             print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} matched", flush=True)
-    if checkpoint_path:
-        json.dump(mapping, open(checkpoint_path, "w"), indent=2)
+    _flush_checkpoint(checkpoint_path, mapping, misses)
     return mapping
 
 
