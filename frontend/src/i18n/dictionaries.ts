@@ -2151,6 +2151,7 @@ export const en = {
     emailUnavailableTitle: "We couldn't find a verified email for this professor.",
     emailUnavailableBody:
       "Some universities (Stanford, for example) don't publish faculty emails publicly, so we can't auto-fill one — and we won't guess an address that might bounce. Look it up on their department or faculty page and paste it above.",
+    emailLookupDirectory: 'Look it up yourself in the official {directory} (your campus login works) →',
     verifyBeforeSend: 'Double-check the address on their faculty page before sending — directory emails can be out of date.',
     tryAgain: 'Try again',
     failedGenerate: 'Failed to generate email',
@@ -4877,6 +4878,7 @@ export const zh = {
     emailUnavailableTitle: '没能找到这位教授的可靠邮箱。',
     emailUnavailableBody:
       '有些学校（例如斯坦福）不公开教授邮箱，所以我们无法自动填入——也不会去猜一个可能被退信的地址。请到教授所在院系或个人主页查到后粘贴到上面。',
+    emailLookupDirectory: '用你的校园账号到官方 {directory} 里直接查 →',
     verifyBeforeSend: '发送前请到教授主页再核对一下地址——通讯录里的邮箱可能已经过期。',
     tryAgain: '重试',
     failedGenerate: '生成邮件失败',

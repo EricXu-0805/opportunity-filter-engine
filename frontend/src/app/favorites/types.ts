@@ -12,6 +12,7 @@ export interface Opp {
   location?: string;
   url?: string;
   source?: string;
+  school?: string;
   on_campus?: boolean;
   deadline?: string;
   description_clean?: string;

@@ -786,3 +786,47 @@ describe('ColdEmailModal', () => {
     });
   });
 });
+
+describe('no-email directory self-lookup link', () => {
+  it('links the official campus directory when the school has one and no email resolved', async () => {
+    mockGetVariants.mockResolvedValue({
+      variants: [makeVariant({ recipient_email: '' })],
+    });
+    render(
+      <ColdEmailModal
+        isOpen
+        onClose={vi.fn()}
+        profile={makeProfile()}
+        opportunityId="opp-uw"
+        opportunityTitle="UW Lab"
+        opportunitySchool="uw"
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText('coldEmail.emailUnavailableTitle')).toBeInTheDocument(),
+    );
+    const link = screen.getByText('coldEmail.emailLookupDirectory:UW Directory');
+    expect(link).toHaveAttribute('href', 'https://directory.uw.edu/');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('renders no directory link for schools without a self-lookup directory', async () => {
+    mockGetVariants.mockResolvedValue({
+      variants: [makeVariant({ recipient_email: '' })],
+    });
+    render(
+      <ColdEmailModal
+        isOpen
+        onClose={vi.fn()}
+        profile={makeProfile()}
+        opportunityId="opp-uiuc"
+        opportunityTitle="UIUC Lab"
+        opportunitySchool="uiuc"
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText('coldEmail.emailUnavailableTitle')).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/emailLookupDirectory/)).toBeNull();
+  });
+});
