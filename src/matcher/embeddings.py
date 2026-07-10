@@ -278,31 +278,47 @@ _tfidf_vectorizer = None
 _tfidf_fitted = False
 
 
-def fit_tfidf_corpus(corpus_texts: list[str]) -> None:
+def fit_tfidf_corpus(corpus_texts) -> None:
     """Fit the TF-IDF vectorizer on the opportunity corpus.
 
     Call this once at startup (or when data reloads) so similarity
     queries use real IDF weights learned from the full corpus.
     _tfidf_similarity_batch without a fitted corpus falls back to a
     fresh per-call fit which degrades to token overlap.
+
+    Accepts any iterable of texts (a generator, from data_loader) — the
+    fit makes one pass and never retains the documents, so the caller
+    doesn't have to materialize a ~90 MiB list to fit the corpus.
     """
     global _tfidf_vectorizer, _tfidf_fitted
     try:
         from sklearn.feature_extraction.text import TfidfVectorizer
     except ImportError:
         return
-    valid = [t for t in corpus_texts if t and t.strip()]
-    if len(valid) < 2:
-        return
-    _tfidf_vectorizer = TfidfVectorizer(
+    n_docs = 0
+
+    def _valid_docs():
+        nonlocal n_docs
+        for t in corpus_texts:
+            if t and t.strip():
+                n_docs += 1
+                yield t
+
+    tv = TfidfVectorizer(
         stop_words="english",
         max_features=5000,
         ngram_range=(1, 2),
         sublinear_tf=True,
     )
-    _tfidf_vectorizer.fit(valid)
+    try:
+        tv.fit(_valid_docs())
+    except ValueError:  # empty / all-stopword corpus
+        return
+    if n_docs < 2:  # degenerate corpus, same guard as before
+        return
+    _tfidf_vectorizer = tv
     _tfidf_fitted = True
-    logger.info("Fitted TF-IDF vectorizer on %d corpus docs", len(valid))
+    logger.info("Fitted TF-IDF vectorizer on %d corpus docs", n_docs)
 
 
 def precompute_opportunity_embeddings(opportunities: list[dict],
