@@ -475,9 +475,56 @@ SCHOOL: dict = {
                 "https://www.mccormick.northwestern.edu/biomedical/academics/undergraduate/research-opportunities/summer-research-awards.html",
                 "https://baker.northwestern.edu/grants/summer-grants.html",
                 "https://baker.northwestern.edu/grants/academic-year-grants.html",
+                "https://www.tgs.northwestern.edu/success/recruitment/summer-research-opportunity-program/",
+                "https://www.cancer.northwestern.edu/research/education-training/summer-research/index.html",
             ],
             "crawl": STATIC,
             "programs": [
+                program(
+                    "nu_srop",
+                    "Northwestern Summer Research Opportunity Program (SROP)",
+                    "https://www.tgs.northwestern.edu/success/recruitment/summer-research-opportunity-program/",
+                    "Northwestern's flagship eight-week summer research experience for "
+                    "sophomores and juniors from across the U.S., in ANY field — social "
+                    "sciences, humanities, physical/chemical/biological sciences, math, and "
+                    "engineering. Students are matched to a faculty mentor by research "
+                    "interest, do full-time research, and attend weekly workshops on writing, "
+                    "the GRE, and the graduate-school process. Aimed at students planning a "
+                    "PhD (or MD/PhD, JD/PhD). Includes a stipend, round-trip travel to "
+                    "Chicago, university housing, and a meal subsidy.",
+                    organization="Northwestern University",
+                    department="The Graduate School",
+                    lab_or_program="SROP",
+                    paid="stipend",
+                    compensation="Stipend + round-trip travel + housing + meal subsidy",
+                    eligibility_majors=["all"],
+                    preferred_year=["sophomore", "junior"],
+                    international_friendly="no",
+                    deadline_note="Applications open Nov 1 for the following summer; U.S. citizen/permanent resident, GPA ≥ 3.5, PhD-bound",
+                    keywords=["summer research", "SROP", "PhD pipeline", "faculty mentor", "all fields", "stipend"],
+                ),
+                program(
+                    "nu_feinberg_lurie_summer",
+                    "Feinberg / Lurie Cancer Center Summer Research Program",
+                    "https://www.cancer.northwestern.edu/research/education-training/summer-research/index.html",
+                    "Mentored summer cancer-research experience at Northwestern's Robert H. "
+                    "Lurie Comprehensive Cancer Center (Feinberg School of Medicine), pairing "
+                    "undergraduates with cancer-biology, oncology, and translational-research "
+                    "labs. Full-time bench or clinical/translational research over the summer "
+                    "with professional-development programming for students considering "
+                    "biomedical PhD or MD/PhD paths.",
+                    organization="Northwestern University",
+                    department="Feinberg School of Medicine — Lurie Cancer Center",
+                    lab_or_program="Lurie Cancer Center Summer Research",
+                    paid="stipend",
+                    compensation="Summer stipend",
+                    eligibility_majors=["Biology", "Biochemistry", "Neuroscience",
+                                        "Chemistry", "Cancer Biology", "Molecular Biosciences"],
+                    preferred_year=["sophomore", "junior"],
+                    international_friendly="ask",
+                    deadline_note="Applications typically due late winter/early spring for the summer cohort",
+                    keywords=["cancer research", "oncology", "Feinberg", "Lurie", "summer research", "translational"],
+                ),
                 program(
                     "nu_ayurg",
                     "Northwestern Academic Year Undergraduate Research Grant (AYURG)",
