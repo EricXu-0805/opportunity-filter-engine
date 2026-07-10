@@ -58,8 +58,8 @@ export default function FavoritesPage() {
   } = useCompareSelection();
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string }>({
-    open: false, id: '', title: '',
+  const [emailModal, setEmailModal] = useState<{ open: boolean; id: string; title: string; school: string | null }>({
+    open: false, id: '', title: '', school: null,
   });
   // R71 PR-3: mirror emailModal state. We model open/closed + opp metadata
   // together (rather than separate booleans) so closing the modal doesn't
@@ -82,11 +82,11 @@ export default function FavoritesPage() {
   }, []);
 
   const openEmailModal = useCallback((opp: Opp) => {
-    setEmailModal({ open: true, id: opp.id, title: opp.title });
+    setEmailModal({ open: true, id: opp.id, title: opp.title, school: opp.school ?? null });
   }, []);
 
   const closeEmailModal = useCallback(() => {
-    setEmailModal({ open: false, id: '', title: '' });
+    setEmailModal({ open: false, id: '', title: '', school: null });
   }, []);
 
   const openTailorModal = useCallback((opp: Opp) => {
@@ -189,6 +189,7 @@ export default function FavoritesPage() {
           profile={profile}
           opportunityId={emailModal.id}
           opportunityTitle={emailModal.title}
+          opportunitySchool={emailModal.school}
         />
       )}
 

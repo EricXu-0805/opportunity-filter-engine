@@ -143,6 +143,7 @@ export default function OpportunityDetail({
           profile={profile}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
+          opportunitySchool={opp.school ?? null}
         />
       )}
 

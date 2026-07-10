@@ -33,7 +33,25 @@ interface ColdEmailModalProps {
   profile: ProfileData;
   opportunityId: string;
   opportunityTitle: string;
+  /** Slug of the opportunity's host school — lets the no-email explainer link
+   *  the student to their campus' official self-lookup directory. */
+  opportunitySchool?: string | null;
 }
+
+/*
+ * Schools whose faculty emails we cannot (or may not) harvest, but whose
+ * OFFICIAL directory lets the student look one up themselves — with their own
+ * campus login where required. Individual lookup is exactly the use these
+ * directories permit (UW's directory ToS restricts bulk/commercial use, which
+ * is why we don't harvest it — but the student searching one professor is the
+ * intended use).
+ */
+const SELF_LOOKUP_DIRECTORIES: Record<string, { name: string; url: string }> = {
+  uw: { name: 'UW Directory', url: 'https://directory.uw.edu/' },
+  umich: { name: 'MCommunity', url: 'https://mcommunity.umich.edu/' },
+  princeton: { name: 'Princeton Directory', url: 'https://directory.princeton.edu/' },
+  stanford: { name: 'Stanford Directory', url: 'https://stanfordwho.stanford.edu/' },
+};
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -131,6 +149,7 @@ export default function ColdEmailModal({
   profile,
   opportunityId,
   opportunityTitle,
+  opportunitySchool,
 }: ColdEmailModalProps) {
   const { t } = useT();
   const [loading, setLoading] = useState(true);
@@ -583,6 +602,18 @@ export default function ColdEmailModal({
                         <p className="mt-0.5 text-[12px] leading-snug text-amber-700">
                           {t('coldEmail.emailUnavailableBody')}
                         </p>
+                        {opportunitySchool && SELF_LOOKUP_DIRECTORIES[opportunitySchool] && (
+                          <a
+                            href={SELF_LOOKUP_DIRECTORIES[opportunitySchool].url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-block text-[12px] font-medium text-amber-800 underline underline-offset-2 hover:text-amber-900"
+                          >
+                            {t('coldEmail.emailLookupDirectory', {
+                              directory: SELF_LOOKUP_DIRECTORIES[opportunitySchool].name,
+                            })}
+                          </a>
+                        )}
                       </div>
                     ) : (
                       <p className="mt-1.5 text-[11px] text-gray-400">

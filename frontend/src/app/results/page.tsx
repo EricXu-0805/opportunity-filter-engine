@@ -195,7 +195,8 @@ function ResultsContent() {
     open: boolean;
     opportunityId: string;
     opportunityTitle: string;
-  }>({ open: false, opportunityId: '', opportunityTitle: '' });
+    opportunitySchool: string | null;
+  }>({ open: false, opportunityId: '', opportunityTitle: '', opportunitySchool: null });
 
   const [favs, setFavs] = useState<Set<string>>(new Set());
   // Mirror favs into a ref so handleToggleFav can read the current set without
@@ -367,13 +368,14 @@ function ResultsContent() {
         open: true,
         opportunityId,
         opportunityTitle: match?.opportunity.title ?? t('results.opportunityFallback'),
+        opportunitySchool: match?.opportunity.school ?? null,
       });
     },
     [data, t],
   );
 
   const closeEmailModal = useCallback(() => {
-    setEmailModal({ open: false, opportunityId: '', opportunityTitle: '' });
+    setEmailModal({ open: false, opportunityId: '', opportunityTitle: '', opportunitySchool: null });
   }, []);
 
   const [helpOpen, setHelpOpen] = useState(false);
@@ -661,6 +663,7 @@ function ResultsContent() {
           profile={profile}
           opportunityId={emailModal.opportunityId}
           opportunityTitle={emailModal.opportunityTitle}
+          opportunitySchool={emailModal.opportunitySchool}
         />
       )}
 

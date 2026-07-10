@@ -38,11 +38,12 @@ TIMEOUT = 15
 # Local-parts that are a shared inbox, not a person. Exact matches plus a few
 # substrings ("under-info", "cs-admissions") that vary by school.
 _ADMIN_LOCALPARTS = frozenset({
-    "info", "admin", "webmaster", "web", "help", "helpdesk", "contact", "office",
-    "frontdesk", "reception", "dept", "department", "staff", "hr", "prof",
-    "faculty", "chair", "director", "advising", "advisor", "recruiting", "jobs",
-    "grad", "graduate", "undergrad", "undergraduate", "it", "ithelp", "support",
-    "noreply", "no-reply", "donotreply", "communications", "media",
+    "info", "admin", "webmaster", "web", "www", "help", "helpdesk", "contact",
+    "office", "frontdesk", "reception", "dept", "department", "staff", "hr",
+    "prof", "faculty", "chair", "director", "advising", "advisor", "recruiting",
+    "jobs", "grad", "graduate", "undergrad", "undergraduate", "it", "ithelp",
+    "support", "noreply", "no-reply", "donotreply", "communications", "media",
+    "mail", "postmaster", "listserv",
 })
 _ADMIN_SUBSTR = ("-info", "info-", "frontdesk", "front-desk", "webmaster",
                  "no-reply", "noreply", "do-not-reply", "helpdesk", "admis",
@@ -127,6 +128,22 @@ def _fetch(url: str) -> BeautifulSoup | None:
     return BeautifulSoup(r.text, "html.parser")
 
 
+def _decode_cfemail(hexstr: str) -> str | None:
+    """Decode a Cloudflare email-protection ``data-cfemail`` hex string: the
+    first byte is the XOR key for every following byte. Sites behind
+    Cloudflare's scrape-shield (e.g. UW Foster) render every address this way,
+    so without decoding they read as having no email at all."""
+    try:
+        raw = bytes.fromhex(hexstr)
+    except ValueError:
+        return None
+    if len(raw) < 2:
+        return None
+    key = raw[0]
+    decoded = bytes(b ^ key for b in raw[1:]).decode("utf-8", errors="replace")
+    return decoded if "@" in decoded else None
+
+
 def email_for_profile(url: str, pi_name: str, fetch=None) -> str | None:
     """The professor's own email lifted from their profile page, or None. ``fetch``
     is injectable for tests (returns a BeautifulSoup or None)."""
@@ -136,6 +153,10 @@ def email_for_profile(url: str, pi_name: str, fetch=None) -> str | None:
     emails = [
         e for a in soup.select('a[href^="mailto:"]')
         if (e := _clean_email(a.get("href", "")))
+    ]
+    emails += [
+        d for el in soup.select("[data-cfemail]")
+        if (d := _decode_cfemail(el.get("data-cfemail", "")))
     ]
     if not emails:
         text = soup.get_text(" ", strip=True)

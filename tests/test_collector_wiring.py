@@ -48,6 +48,7 @@ KNOWN_UNWIRED = {
     "handshake",  # per-school login cookies expire in days; manual --school runs only
     "manual_importer",  # CLI import of hand-curated JSON/CSV entries
     "llm_enrich",  # run-once-per-school LLM keyword mining (cost-controlled)
+    "email_backfill",  # run-once Stanford-CAP / Princeton-Wayback email backfill (on-demand)
     "openalex_enrich",  # run-once OpenAlex topic backfill (metered API)
     "profile_email",  # run-once 2-hop profile email backfill (on-demand, not weekly)
     "uiuc_experts",  # monthly Illinois-Experts enrichment, separate CI step
