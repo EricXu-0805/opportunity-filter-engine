@@ -3,14 +3,17 @@
 Fills the L&S humanities/area-studies + Rausser gaps the per-department audit
 found: Italian Studies, African American Studies, Agricultural & Resource
 Economics (Rausser), South & Southeast Asian Studies, Ethnic Studies, Gender &
-Women's Studies, Art Practice, East Asian Languages & Cultures, and Demography.
-All are Open-Berkeley Drupal sites, so the faculty *profile* pages are uniform
-(``field-openberkeley-person-*`` fields); only the *listing* markup varies,
-handled by two modes:
+Women's Studies, Art Practice, East Asian Languages & Cultures, Demography, and
+Middle Eastern Languages & Cultures (the current home of the retired Near
+Eastern Studies dept). All are Open-Berkeley Drupal sites, so the faculty
+*profile* pages are uniform (``field-openberkeley-person-*`` fields); only the
+*listing* markup varies, handled by two modes:
 
-Still uncovered (need the render engine, not urllib): School of Optometry
-(JS-rendered roster), School of Information (403s urllib), Near Eastern Studies
-(domain retired). Tracked for a later render-based pass.
+Still uncovered (need the render engine, not urllib — their rosters render
+client-side or 403 the urllib UA): School of Optometry, School of Information,
+History of Art, Cognitive Science, Global Studies. Tracked for a later
+render-based pass. (Legal Studies is an undergraduate program whose faculty are
+cross-listed from Law/PoliSci and already covered via their home departments.)
 
 - ``card``  : standard ``div.node-openberkeley-person`` teaser cards (name in an
               ``h2``/``h3``, rank in the person-title field), like the English
@@ -148,10 +151,19 @@ DEMOG_CONFIG = _cfg(
     "DEMOG", "Department of Demography",
     "https://www.demog.berkeley.edu/faculty/", "https://www.demog.berkeley.edu",
     ["Demography", "Population Studies"], ["demography", "population studies"], mode="links")
+# Middle Eastern Languages & Cultures — the current home of the retired Near
+# Eastern Studies department (nes.berkeley.edu is dead); melc.berkeley.edu is a
+# standard Open-Berkeley card grid.
+MELC_CONFIG = _cfg(
+    "MELC", "Department of Middle Eastern Languages & Cultures",
+    "https://melc.berkeley.edu/people/faculty", "https://melc.berkeley.edu",
+    ["Middle Eastern Languages & Cultures", "Near Eastern Studies", "Arabic",
+     "Hebrew", "Persian", "Egyptology", "Assyriology"],
+    ["middle eastern studies", "near eastern studies"])
 
 CONFIGS = [
     ITAL_CONFIG, AFRICAM_CONFIG, ARE_CONFIG, SSEAS_CONFIG, ETHSTD_CONFIG,
-    GWS_CONFIG, ARTPRAC_CONFIG, EALC_CONFIG, DEMOG_CONFIG,
+    GWS_CONFIG, ARTPRAC_CONFIG, EALC_CONFIG, DEMOG_CONFIG, MELC_CONFIG,
 ]
 
 
