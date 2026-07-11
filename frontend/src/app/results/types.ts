@@ -149,6 +149,7 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   ucb_soc_faculty: 'results.filters.sourceUcbSocFaculty',
   ucb_education_faculty: 'results.filters.sourceUcbEducationFaculty',
   ucb_english_faculty: 'results.filters.sourceUcbEnglishFaculty',
+  ucb_extra_faculty: 'results.filters.sourceUcbExtraFaculty',
   ucb_geog_faculty: 'results.filters.sourceUcbGeogFaculty',
   ucb_haas_faculty: 'results.filters.sourceUcbHaasFaculty',
   ucb_history_faculty: 'results.filters.sourceUcbHistoryFaculty',

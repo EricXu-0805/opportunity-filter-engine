@@ -76,6 +76,7 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ucb_soc_faculty": ("ucb", "unknown"),
     "ucb_education_faculty": ("ucb", "unknown"),
     "ucb_english_faculty": ("ucb", "unknown"),
+    "ucb_extra_faculty": ("ucb", "unknown"),
     "ucb_geog_faculty": ("ucb", "unknown"),
     "ucb_haas_faculty": ("ucb", "unknown"),
     "ucb_history_faculty": ("ucb", "unknown"),
