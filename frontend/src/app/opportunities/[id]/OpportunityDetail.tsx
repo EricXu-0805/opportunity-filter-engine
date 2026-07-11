@@ -17,6 +17,7 @@ import {
   DescriptionSection,
   EligibilitySection,
   KeywordsSection,
+  RecentWorksSection,
 } from './DetailSections';
 import { InteractionPills } from './InteractionPills';
 import { OpportunityHeader } from './OpportunityHeader';
@@ -106,6 +107,7 @@ export default function OpportunityDetail({
           </div>
 
           <DescriptionSection description={description} t={t} />
+          <RecentWorksSection opp={opp} t={t} />
           <AtAGlanceSection opp={opp} t={t} />
           <EligibilitySection opp={opp} t={t} />
           <ApplicationSection opp={opp} t={t} />
