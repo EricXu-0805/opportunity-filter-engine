@@ -98,6 +98,10 @@ export interface OpportunityApplication {
 export interface OpportunityMetadata {
   is_active: boolean;
   confidence_score: number;
+  // OpenAlex-harvested recent papers on faculty records (title + year only —
+  // the harvest stores no URLs). Absent on non-faculty records and on faculty
+  // without a confident OpenAlex match.
+  recent_works?: { title: string; year?: number | null }[];
 }
 
 // Multi-university discovery scope (PR #187 / #189). `school` is the

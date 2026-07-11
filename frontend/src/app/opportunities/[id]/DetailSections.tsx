@@ -175,6 +175,33 @@ export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   );
 }
 
+export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
+  const works = opp.metadata?.recent_works;
+  if (!works?.length) return null;
+  return (
+    <Section title={t('detail.sections.recentWorks')}>
+      <ul className="space-y-2.5">
+        {works.slice(0, 5).map((w) => (
+          <li key={w.title} className="flex items-baseline gap-2.5 text-[13px] leading-snug">
+            {w.year != null && (
+              <span className="shrink-0 font-mono text-[11px] text-gray-400 tabular-nums">{w.year}</span>
+            )}
+            <a
+              href={`https://scholar.google.com/scholar?q=${encodeURIComponent(`"${w.title}"`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-700 hover:text-indigo-600 hover:underline transition-colors"
+            >
+              {w.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 text-[11px] text-gray-400">{t('detail.recentWorksNote')}</p>
+    </Section>
+  );
+}
+
 export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   if (!opp.keywords?.length) return null;
   return (

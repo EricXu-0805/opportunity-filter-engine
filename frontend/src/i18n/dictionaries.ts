@@ -1873,8 +1873,10 @@ export const en = {
       eligibility: 'Eligibility',
       application: 'Application',
       keywords: 'Keywords',
+      recentWorks: 'Recent publications',
       similar: 'Similar opportunities',
     },
+    recentWorksNote: 'From this professor’s public publication record — skim one before you reach out.',
     fields: {
       deadline: 'Deadline',
       deadlineEstimate: '(estimated)',
@@ -4602,8 +4604,10 @@ export const zh = {
       eligibility: '资格要求',
       application: '申请要求',
       keywords: '关键词',
+      recentWorks: '近期论文',
       similar: '相似机会',
     },
+    recentWorksNote: '来自这位教授的公开发表记录 —— 联系前先翻一篇,套磁信会具体得多。',
     fields: {
       deadline: '截止日期',
       deadlineEstimate: '（估算）',
