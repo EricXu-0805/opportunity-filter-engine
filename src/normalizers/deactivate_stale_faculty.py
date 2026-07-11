@@ -64,6 +64,7 @@ FACULTY_SOURCES = frozenset({
     "ucb_soc_faculty",
     "ucb_education_faculty",
     "ucb_english_faculty",
+    "ucb_extra_faculty",
     "ucb_geog_faculty",
     "ucb_haas_faculty",
     "ucb_history_faculty",

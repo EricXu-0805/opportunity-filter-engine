@@ -87,6 +87,7 @@ from .ucb_eecs_faculty import fetch_and_normalize as fetch_ucb_eecs
 from .ucb_english_faculty import fetch_and_normalize as fetch_ucb_english
 from .ucb_eps_faculty import fetch_and_normalize as fetch_ucb_eps
 from .ucb_espm_faculty import fetch_and_normalize as fetch_ucb_espm
+from .ucb_extra_faculty import fetch_and_normalize as fetch_ucb_extra
 from .ucb_filmmedia_faculty import fetch_and_normalize as fetch_ucb_filmmedia
 from .ucb_french_faculty import fetch_and_normalize as fetch_ucb_french
 from .ucb_geog_faculty import fetch_and_normalize as fetch_ucb_geog
@@ -561,6 +562,7 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("ucb_soc_faculty", fetch_ucb_soc, merge_ucb_faculty),
             ("ucb_education_faculty", fetch_ucb_education, merge_ucb_faculty),
             ("ucb_english_faculty", fetch_ucb_english, merge_ucb_faculty),
+            ("ucb_extra_faculty", fetch_ucb_extra, merge_ucb_faculty),
             ("ucb_geog_faculty", fetch_ucb_geog, merge_ucb_faculty),
             ("ucb_haas_faculty", fetch_ucb_haas, merge_ucb_faculty),
             ("ucb_history_faculty", fetch_ucb_history, merge_ucb_faculty),
