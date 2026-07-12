@@ -87,6 +87,8 @@ SCHOOL_INST = {
     "northwestern": "I111979921",  # Northwestern University (OpenAlex-API verified)
     "upenn": "I79576946",      # University of Pennsylvania (OpenAlex-API verified)
     "caltech": "I122411786",   # California Institute of Technology (OpenAlex-API verified)
+    "cornell": "I205783295",   # Cornell University (ror 05bnh6r87, OpenAlex-API verified)
+    "brown": "I27804330",      # Brown University (ror 05gq02987, OpenAlex-API verified)
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)

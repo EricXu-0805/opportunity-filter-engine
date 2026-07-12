@@ -28,8 +28,12 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
 from .schools.boulder_faculty import fetch_and_normalize as fetch_boulder_faculty
 from .schools.boulder_faculty import merge_into_processed as merge_boulder_faculty
+from .schools.brown_faculty import fetch_and_normalize as fetch_brown_faculty
+from .schools.brown_faculty import merge_into_processed as merge_brown_faculty
 from .schools.caltech_faculty import fetch_and_normalize as fetch_caltech_faculty
 from .schools.caltech_faculty import merge_into_processed as merge_caltech_faculty
+from .schools.cornell_faculty import fetch_and_normalize as fetch_cornell_faculty
+from .schools.cornell_faculty import merge_into_processed as merge_cornell_faculty
 from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
 from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
@@ -623,6 +627,8 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # person-card grid, ladder-filtered). Most Princeton dept subdomains
             # are Cloudflare-walled, so coverage grows as reachable dirs are found.
             ("princeton_faculty", fetch_princeton_faculty, merge_princeton_faculty),
+            ("brown_faculty", fetch_brown_faculty, merge_brown_faculty),
+            ("cornell_faculty", fetch_cornell_faculty, merge_cornell_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).

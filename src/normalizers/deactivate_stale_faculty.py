@@ -103,6 +103,10 @@ FACULTY_SOURCES = frozenset({
     "uchicago_faculty",
     # Princeton — live-scraped faculty (central-Drupal person-card grid).
     "princeton_faculty",
+    # Brown — shared Drupal people-component theme (single source across depts).
+    "brown_faculty",
+    # Cornell — A&S person-card + Engineering ce-block (single source across depts).
+    "cornell_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).
