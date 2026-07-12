@@ -346,15 +346,21 @@ SKILL_MAP = {
 }
 
 
-def fetch_soup(url: str) -> BeautifulSoup | None:
+def fetch_soup(url: str, ua: str | None = None) -> BeautifulSoup | None:
     """Fetch a URL with browser-like headers, retrying transient failures.
 
     Retries connection resets / timeouts / 5xx responses with exponential
     backoff. Returns None (never raises) if every attempt fails, so callers
     degrade to an empty result instead of crashing.
+
+    ``ua`` overrides the browser User-Agent: some WAFs (Penn's Cloudflare/
+    Imperva fronts) 403 a Chrome UA whose TLS fingerprint isn't Chrome's while
+    letting an honest tool UA ("curl/8.7.1") straight through.
     """
     session = requests.Session()
     session.headers.update(HEADERS)
+    if ua:
+        session.headers["User-Agent"] = ua
     session.verify = _ca_bundle()
     last_err: Exception | None = None
     for attempt in range(1, _MAX_RETRIES + 1):

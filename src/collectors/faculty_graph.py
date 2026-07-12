@@ -528,6 +528,43 @@ def _clean_email(raw: str) -> str | None:
     return result.lower() if result else None
 
 
+def _decode_cfemail(el) -> str | None:
+    """Decode a Cloudflare email-protection payload on (or under) ``el``.
+
+    Cloudflare's scrape-shield replaces published addresses with
+    ``<a href="/cdn-cgi/l/email-protection#HEX"><span class="__cf_email__"
+    data-cfemail="HEX">`` — the hex string XORs back to the address with its
+    first byte as key. Shielded sites (all Caltech division sites) publish NO
+    mailto anywhere, so without this decode their email coverage is zero.
+    """
+    payload = el.get("data-cfemail")
+    if not payload:
+        sub = el.select_one("[data-cfemail]") if hasattr(el, "select_one") else None
+        if sub is not None:
+            payload = sub.get("data-cfemail")
+    if not payload and el.has_attr("href"):
+        m = re.search(r"/cdn-cgi/l/email-protection#([0-9a-fA-F]+)", el["href"])
+        if m:
+            payload = m.group(1)
+    if not payload:
+        return None
+    try:
+        data = bytes.fromhex(payload)
+        decoded = bytes(b ^ data[0] for b in data[1:]).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        return None
+    return _clean_email(decoded)
+
+
+def _email_from_el(e_el) -> str | None:
+    """Address from a selected email element — cf-shield decode, then mailto/text."""
+    cf = _decode_cfemail(e_el)
+    if cf:
+        return cf
+    raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
+    return _clean_email(raw)
+
+
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,
@@ -590,6 +627,12 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if re.match(r"(?i)\s*(tel|mailto|javascript|fax|sms):", href or ""):
             href = ""
         href = urljoin(base_url, href) if href else base_url
+        if sel.get("link_strip_query") and "?" in href:
+            # Listing hrefs that append navigation state (Caltech's ?back_url=…)
+            # would make the same profile a distinct URL per listing page —
+            # strip the query so cross-listing dedupe and the profile-enrich
+            # pass see one canonical profile URL.
+            href = href.split("?", 1)[0]
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
         if sel.get("title_re"):
@@ -637,8 +680,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if sel.get("email"):
             e_el = card.select_one(sel["email"])
             if e_el is not None:
-                raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
-                email = _clean_email(raw)
+                email = _email_from_el(e_el)
         if _is_person_name(name):
             people.append(faculty(name, title=title, url=href, email=email,
                                   research_areas=research, keywords=keywords))
@@ -829,7 +871,17 @@ def _scrape_directory(dept: dict) -> list[dict]:
         def fetch(u, _rw=rw, _s=_settle):
             return _render_soup(u, wait_until=_rw, settle_ms=_s)
     else:
-        fetch = fetch_soup
+        # Pass ua only when configured — tests (and older collectors) stub
+        # fetch_soup with single-arg fakes.
+        _cfg_ua = cfg.get("ua")
+        def fetch(u, _ua=_cfg_ua):
+            return fetch_soup(u, ua=_ua) if _ua else fetch_soup(u)
+    if cfg.get("pre_delay"):
+        # Space out listing hits against burst-rate WAFs (Penn Medicine's
+        # Imperva front 403s after ~6 rapid requests) — a terminal 403 here
+        # would silently drop the whole department for the run.
+        import time
+        time.sleep(cfg["pre_delay"])
     base = cfg["url"]
     sel = cfg.get("selectors", {})
     lf = cfg.get("ladder_filter")
@@ -984,25 +1036,28 @@ def _flip_name(name: str) -> str:
     return name
 
 
-def _wp_get_json(url: str):
+def _wp_get_json(url: str, ua: str | None = None):
     try:
         import requests
     except Exception:  # noqa: BLE001
         return None
     from .ucb_common import HEADERS
+    headers = {**HEADERS, "User-Agent": ua} if ua else HEADERS
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp = requests.get(url, headers=headers, timeout=20)
         resp.raise_for_status()
         return resp.json()
     except Exception:  # noqa: BLE001 — degrade to None like fetch_soup
         return None
 
 
-def _wp_term_map(base: str, tax: str) -> dict[int, str]:
+def _wp_term_map(base: str, tax: str, ua: str | None = None) -> dict[int, str]:
     """Resolve a WordPress taxonomy's term ids → display names."""
     out: dict[int, str] = {}
     for pg in range(1, 6):
-        data = _wp_get_json(f"{base}/wp-json/wp/v2/{tax}?per_page=100&page={pg}")
+        url = f"{base}/wp-json/wp/v2/{tax}?per_page=100&page={pg}"
+        # ua only when configured — tests stub _wp_get_json single-arg.
+        data = _wp_get_json(url, ua=ua) if ua else _wp_get_json(url)
         if not isinstance(data, list) or not data:
             break
         for term in data:
@@ -1097,6 +1152,12 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             p["keywords"] = items
         elif research and want_research:
             p["research_areas"] = research
+        if email and enr.get("email_drop") and re.search(enr["email_drop"], email, re.I):
+            # A profile whose first mailto is a shared departmental inbox
+            # (info@english.upenn.edu) must not become anyone's personal
+            # address — one alias on 36 professors would also make the
+            # school-wide email dedupe collapse them into one record.
+            email = None
         if email and want_email:
             p["email"] = email
         if pos and (enr.get("use_position_title") or enr.get("title_selector")):
@@ -1137,7 +1198,8 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
             from .ucb_common import fetch_soup
         except Exception:  # noqa: BLE001
             return ("", "", [], None)
-        soup = fetch_soup(url)
+        _ua = enrich.get("ua")
+        soup = fetch_soup(url, ua=_ua) if _ua else fetch_soup(url)
     if soup is None:
         return ("", "", [], None)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
@@ -1155,13 +1217,22 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
     if enrich.get("email_selector"):
         e_el = soup.select_one(enrich["email_selector"])
         if e_el is not None:
-            raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
-            email = _clean_email(raw)
+            email = _email_from_el(e_el)
     items: list[str] = []
     if enrich.get("research_items_selector"):
         items = _clean_selector_items(soup, enrich["research_items_selector"])
     kw = ""
-    if enrich.get("research_html_re"):
+    if enrich.get("research_selector"):
+        # Profiles that keep research areas as a prose block in a stable
+        # element (Caltech's div.field__research_summary) — a CSS selector
+        # beats a serialized-HTML regex, which nested markup can truncate.
+        r_el = soup.select_one(enrich["research_selector"])
+        if r_el is not None:
+            kw = re.sub(r"\s+", " ", r_el.get_text(" ", strip=True)).strip()
+            # The block often embeds its own heading ("Research Summary
+            # Geochemical investigations…") — strip the label, keep the prose.
+            kw = re.sub(r"^research\s+(summary|interests?|areas?)\s*:?\s*", "", kw, flags=re.I)
+    if not kw and enrich.get("research_html_re"):
         # Sites that keep research areas in a labelled HTML block (e.g. GT's
         # "<strong>Research Areas:</strong> A; B; C</p>") need the markup, not the
         # flattened text, to bound the capture — match on the serialized soup,
@@ -1205,8 +1276,9 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
     if not cfg or cfg.get("type") != "wp":
         return []
     base = cfg["base"].rstrip("/")
+    ua = cfg.get("ua")
     kw_taxes = cfg.get("keyword_tax", [])
-    term_maps = {t: _wp_term_map(base, t) for t in kw_taxes}
+    term_maps = {t: _wp_term_map(base, t, ua=ua) for t in kw_taxes}
     kw_drop = {k.lower() for k in cfg.get("keyword_drop", [])}
     cat_inc = cfg.get("category_include") or {}
     cat_exc = cfg.get("category_exclude") or {}
@@ -1220,10 +1292,10 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
     meta_email_field = cfg.get("meta_email_field")
 
     records: list[dict] = []
+    query = cfg.get("query", "")
     for pg in range(1, 13):
-        data = _wp_get_json(
-            f"{base}/wp-json/wp/v2/{cfg['post_type']}?per_page=100&page={pg}"
-        )
+        page_url = f"{base}/wp-json/wp/v2/{cfg['post_type']}?per_page=100&page={pg}{query}"
+        data = _wp_get_json(page_url, ua=ua) if ua else _wp_get_json(page_url)
         if not isinstance(data, list) or not data:
             break
         records.extend(data)
@@ -1251,6 +1323,10 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
         name = _wp_text(
             title_field.get("rendered", "") if isinstance(title_field, dict) else title_field
         )
+        if cfg.get("name_strip"):
+            # Person post titles that append credentials ("Jane Doe, PhD, RN")
+            # — strip so pi_name stays a clean person name.
+            name = re.sub(cfg["name_strip"], "", name).strip()
         if name_flip:
             name = _flip_name(name)
         if not name:
