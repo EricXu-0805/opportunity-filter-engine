@@ -39,6 +39,8 @@ const CATALOG_LOADERS: Record<string, () => Promise<CatalogModule>> = {
   brown: () => import('./brown'),
   rice: () => import('./rice'),
   vanderbilt: () => import('./vanderbilt'),
+  dartmouth: () => import('./dartmouth'),
+  columbia: () => import('./columbia'),
 };
 
 export async function loadCatalog(slug: string): Promise<Record<string, string[]> | null> {

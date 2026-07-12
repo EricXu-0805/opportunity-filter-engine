@@ -91,6 +91,8 @@ SCHOOL_INST = {
     "rice": "I74775410",       # Rice University (ror 008zs3103, OpenAlex-API verified)
     "vanderbilt": "I200719446",  # Vanderbilt University (ror 02vm5rt34, OpenAlex-API verified)
     "brown": "I27804330",      # Brown University (ror 05gq02987, OpenAlex-API verified)
+    "dartmouth": "I107672454",  # Dartmouth College (ror 049s0rh22, OpenAlex-API verified)
+    "columbia": "I78577930",   # Columbia University (ror 00hj8s172, OpenAlex-API verified)
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)

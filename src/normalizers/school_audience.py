@@ -129,6 +129,10 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "rice_faculty": ("rice", "unknown"),
     "vanderbilt_research_programs": ("vanderbilt", "campus"),
     "vanderbilt_faculty": ("vanderbilt", "unknown"),
+    "dartmouth_research_programs": ("dartmouth", "campus"),
+    "dartmouth_faculty": ("dartmouth", "unknown"),
+    "columbia_research_programs": ("columbia", "campus"),
+    "columbia_faculty": ("columbia", "unknown"),
     # University of Michigan, Ann Arbor (#2 on the campus_graph engine).
     "umich_research_programs": ("umich", "campus"),
     "umich_external_research": (None, "open"),

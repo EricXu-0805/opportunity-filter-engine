@@ -61,6 +61,8 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "rice": ("rice.edu",),
     "vanderbilt": ("vanderbilt.edu",),
     "brown": ("brown.edu",),
+    "dartmouth": ("dartmouth.edu",),
+    "columbia": ("columbia.edu", "cumc.columbia.edu"),
 }
 # National records (school=None: SRO catalog, NSF REU, …) keep the historical
 # UIUC-only recovery scope.

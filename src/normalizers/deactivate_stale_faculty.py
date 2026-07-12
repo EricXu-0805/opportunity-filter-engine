@@ -111,6 +111,10 @@ FACULTY_SOURCES = frozenset({
     "rice_faculty",
     # Vanderbilt — shared A&S striped-table multisite (single source across depts).
     "vanderbilt_faculty",
+    # Dartmouth — A&S/Thayer/Tuck directories (single source across depts).
+    "dartmouth_faculty",
+    # Columbia — A&S + SEAS directories (single source across depts).
+    "columbia_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

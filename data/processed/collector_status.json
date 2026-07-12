@@ -232,6 +232,19 @@
       "new": 485,
       "status": "ok",
       "updated": 0
+    },
+    "campus_graph:dartmouth": {
+      "deep": true,
+      "fetched": 8,
+      "new": 8,
+      "status": "ok",
+      "updated": 0
+    },
+    "dartmouth_faculty": {
+      "fetched": 906,
+      "new": 906,
+      "status": "ok",
+      "updated": 0
     }
   },
   "timestamp": "2026-07-13T02:45:34.879971",
