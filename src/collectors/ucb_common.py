@@ -719,7 +719,13 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
 
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     keywords = extract_research_keywords(person, config)
-    skills = infer_skills_from_research(person)
+    # Faculty are cold-email research contacts, not postings with required
+    # skills — inferring skills from research-topic prose is false-precise (a
+    # Statistics professor whose interests say "statistics"/"probability" gets a
+    # bare skills_required=["R"]) and degrades their match score. Mirrors the
+    # R70A DQ gate and faculty_graph.normalize_person, which already ship []; the
+    # enricher/llm_tagger skill backfills are likewise faculty-gated.
+    skills: list[str] = []
 
     desc_parts = [
         f"Research opportunity with {title} {name} in the {dept_name} "
