@@ -28,6 +28,8 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .schools import SCHOOL_CONFIGS
 from .schools.boulder_faculty import fetch_and_normalize as fetch_boulder_faculty
 from .schools.boulder_faculty import merge_into_processed as merge_boulder_faculty
+from .schools.caltech_faculty import fetch_and_normalize as fetch_caltech_faculty
+from .schools.caltech_faculty import merge_into_processed as merge_caltech_faculty
 from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
 from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
@@ -54,6 +56,8 @@ from .schools.ucsd_faculty import fetch_and_normalize as fetch_ucsd_faculty
 from .schools.ucsd_faculty import merge_into_processed as merge_ucsd_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
+from .schools.upenn_faculty import fetch_and_normalize as fetch_upenn_faculty
+from .schools.upenn_faculty import merge_into_processed as merge_upenn_faculty
 from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
 from .schools.utexas_faculty import merge_into_processed as merge_utexas_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
@@ -651,6 +655,16 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # template (experts.colorado.edu dept pages) across 51 departments;
             # research chips + emails ride the gated per-profile pass.
             ("boulder_faculty", fetch_boulder_faculty, merge_boulder_faculty),
+            # UPenn faculty (live-scraped via faculty_graph): 70 departments
+            # across all 12 schools — SAS Drupal themes, the SEAS directory,
+            # Wharton platform listings, WP REST APIs (SP2/Vet/DBEI), the
+            # Dental sitemap walk, and the Imperva-throttled PSOM templates
+            # (Genetics is render-mode).
+            ("upenn_faculty", fetch_upenn_faculty, merge_upenn_faculty),
+            # Caltech faculty (shared person-teaser CMS via faculty_graph):
+            # all six divisions incl. every EAS/PMA option site; emails are
+            # Cloudflare-shielded on profiles (cf-email decode + gated enrich).
+            ("caltech_faculty", fetch_caltech_faculty, merge_caltech_faculty),
         ]:
             # Direct SOURCE_DEFAULTS index: an unregistered source must fail
             # loudly here (KeyError) rather than silently run outside the shard

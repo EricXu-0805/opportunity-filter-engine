@@ -11,7 +11,7 @@ name: Refresh Opportunity Data
 #   | Wed | uw,wisc,purdue,duke               | ~40-70 min  | ~90-150 min     |
 #   | Thu | utexas,ucla,boulder               | ~25-45 min  | ~85-150 min     |
 #   | Fri | stanford,ucsd,princeton,jhu,northwestern | ~35-60 min | ~90-150 min |
-#   | Sat | gatech,uchicago,uci,ucsb,umich    | ~20-35 min  | ~75-130 min     |
+#   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech | ~30-50 min | ~85-150 min |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
 #
 # First-week column = the monthly per-profile enrichment (OFE_ENRICH_PROFILES)
@@ -85,7 +85,7 @@ jobs:
               3) SHARD="uw,wisc,purdue,duke" ;;
               4) SHARD="utexas,ucla,boulder" ;;
               5) SHARD="stanford,ucsd,princeton,jhu,northwestern" ;;
-              6) SHARD="gatech,uchicago,uci,ucsb,umich" ;;
+              6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech" ;;
               7) SHARD="national" ;;
             esac
             echo "shard=$SHARD" >> $GITHUB_OUTPUT
@@ -121,7 +121,7 @@ jobs:
             # (the collectors lazy-import it; tests mock it), so install it + Chromium
             # whenever the run is a full refresh OR its shard includes any render-using
             # school — otherwise those schools' render departments silently collect nothing.
-            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern), ]]; then
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern|upenn), ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi

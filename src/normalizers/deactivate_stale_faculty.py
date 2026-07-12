@@ -119,6 +119,10 @@ FACULTY_SOURCES = frozenset({
     "ucsb_faculty",
     # CU Boulder — live-scraped faculty via CU Experts/VIVO (single source).
     "boulder_faculty",
+    # UPenn — live-scraped faculty (single source across depts).
+    "upenn_faculty",
+    # Caltech — live-scraped faculty (single source across divisions).
+    "caltech_faculty",
 })
 
 GRACE_DAYS = 14

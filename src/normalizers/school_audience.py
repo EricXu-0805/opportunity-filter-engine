@@ -215,6 +215,16 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     # CU Boulder faculty directory (live-scraped from CU Experts/VIVO, via the
     # faculty_graph engine).
     "boulder_faculty": ("boulder", "unknown"),
+    # UPenn (campus-graph engine) + faculty (live-scraped, via faculty_graph).
+    "upenn_research_programs": ("upenn", "campus"),
+    "upenn_external_research": (None, "open"),
+    "upenn_labs": ("upenn", "unknown"),
+    "upenn_faculty": ("upenn", "unknown"),
+    # Caltech (campus-graph engine) + faculty (live-scraped, via faculty_graph).
+    "caltech_research_programs": ("caltech", "campus"),
+    "caltech_external_research": (None, "open"),
+    "caltech_labs": ("caltech", "unknown"),
+    "caltech_faculty": ("caltech", "unknown"),
 }
 
 
