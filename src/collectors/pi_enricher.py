@@ -249,14 +249,44 @@ def _extract_contact_from_generic_page(soup: BeautifulSoup, domains: tuple[str, 
     return result
 
 
+def _is_ucb_program_record(opp: dict) -> bool:
+    """True for a UC Berkeley program/project/lab posting — a ``ucb_*`` record
+    that is NOT an individual faculty directory profile (``source_type`` other
+    than ``faculty_research``): URAP projects (``ucb_urap_projects``), research
+    programs, external-research links, lab-recruiting pages (``ucb_campus``).
+
+    These apply through a website portal (``contact_method="website"``,
+    ``application_url`` = the portal) and deliberately carry ``pi_name=None`` /
+    ``contact_email=None``: there is no single "Dear Prof. X" cold-email target.
+    Scraping their berkeley.edu page grabs whatever address is on it — the
+    supervising professor's PERSONAL email (which then collides with that same
+    professor's own faculty record) or a shared department admin inbox (surf@,
+    cdssinfo@, mcbuao@, ccinternships@) reused across many postings. Either way
+    it trips the ucb_* no-shared-email data-quality gate
+    (test_no_ucb_joint_appointment_duplicates) and is the wrong contact for a
+    portal application, so the enricher must leave these records untouched."""
+    return (opp.get("source") or "").startswith("ucb_") \
+        and opp.get("source_type") != "faculty_research"
+
+
 def enrich_opportunities(opps: list[dict], save: bool = False,
                          max_scrapes: int | None = None) -> dict:
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
-             "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0}
+             "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0,
+             "skipped_program": 0}
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
             stats["already_has_email"] += 1
+            continue
+        # UC Berkeley program/project/lab postings have no per-person cold-email
+        # target (see _is_ucb_program_record). Leave contact_email/pi_name as the
+        # collector set them (None) instead of scraping an arbitrary berkeley.edu
+        # address off their page — that address collides with the supervising
+        # professor's faculty record / other postings and fails the ucb_* dedup
+        # gate, and is the wrong contact for a portal application anyway.
+        if _is_ucb_program_record(opp):
+            stats["skipped_program"] += 1
             continue
 
         enriched = False
