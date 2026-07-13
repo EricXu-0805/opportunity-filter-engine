@@ -39,12 +39,16 @@
     "campus": 2187,
     "national": 3499
   },
+  "rice": {
+    "campus": 560,
+    "national": 3499
+  },
   "stanford": {
     "campus": 1362,
     "national": 3499
   },
   "ucb": {
-    "campus": 2929,
+    "campus": 3093,
     "national": 3499
   },
   "uchicago": {
@@ -85,6 +89,10 @@
   },
   "uw": {
     "campus": 2211,
+    "national": 3499
+  },
+  "vanderbilt": {
+    "campus": 490,
     "national": 3499
   },
   "wisc": {

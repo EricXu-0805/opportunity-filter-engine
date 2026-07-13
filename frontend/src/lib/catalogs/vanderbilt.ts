@@ -1,0 +1,86 @@
+/*
+ * Vanderbilt University — undergraduate major catalog.
+ * Compiled 2026-07-13 from Vanderbilt's official sources; do not hand-edit.
+ * Verified against:
+ *   https://admissions.vanderbilt.edu/major/
+ *   https://as.vanderbilt.edu/undergraduate-programs/majors-minors/
+ *   https://registrar.vanderbilt.edu/facts-and-figures/degrees.php
+ * Grouped by Vanderbilt's four undergraduate colleges.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'College of Arts and Science': [
+    'African American and Diaspora Studies',
+    'Anthropology',
+    'Architecture and the Built Environment',
+    'Art',
+    'Asian American and Asian Diaspora Studies',
+    'Asian Studies',
+    'Biochemistry and Chemical Biology',
+    'Biological Sciences',
+    'Chemistry',
+    'Cinema and Media Arts',
+    'Classical and Mediterranean Studies',
+    'Climate and Environmental Studies',
+    'Communication of Science and Technology',
+    'Communication Studies',
+    'Culture, Advocacy, and Leadership',
+    'Earth and Environmental Sciences',
+    'Economics',
+    'Economics and History',
+    'English',
+    'European Studies',
+    'French',
+    'Gender and Sexuality Studies',
+    'German Studies',
+    'History',
+    'History of Art',
+    'Integrative Biology',
+    'Jewish Studies',
+    'Latin American, Caribbean, and Latinx Studies',
+    'Law, History, and Society',
+    'Mathematics',
+    'Medicine, Health, and Society',
+    'Molecular and Cellular Biology',
+    'Neuroscience',
+    'Philosophy',
+    'Physics',
+    'Political Science',
+    'Public Policy Studies',
+    'Psychology',
+    'Religious Studies',
+    'Russian Studies',
+    'Sociology',
+    'Spanish',
+    'Spanish and Portuguese',
+    'Theatre',
+  ],
+  'School of Engineering': [
+    'Biomedical Engineering',
+    'Chemical Engineering',
+    'Civil Engineering',
+    'Computer Engineering',
+    'Computer Science',
+    'Electrical Engineering',
+    'Mechanical Engineering',
+    'Engineering Science',
+  ],
+  'Peabody College of Education and Human Development': [
+    'Human and Organizational Development',
+    'Child Development',
+    'Child Studies',
+    'Cognitive Studies',
+    'Language Sciences',
+    'Special Education',
+    'Elementary Education',
+    'Secondary Education',
+  ],
+  'Blair School of Music': [
+    'Performance',
+    'Composition',
+    'Jazz Studies',
+    'Integrated Studies',
+    'Integrated Studies/Teacher Education',
+    'Musical Arts',
+  ],
+};

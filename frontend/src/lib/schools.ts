@@ -328,6 +328,28 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('brown'),
     catalog: { colleges: 7, majors: 88 },
   },
+  {
+    slug: 'rice',
+    domain: 'rice.edu',
+    name: 'Rice University',
+    shortName: 'Rice',
+    nameZh: '莱斯大学',
+    color: '#00205B',
+    location: 'Houston, TX',
+    coverage: campusCoverage('rice'),
+    catalog: { colleges: 7, majors: 62 },
+  },
+  {
+    slug: 'vanderbilt',
+    domain: 'vanderbilt.edu',
+    name: 'Vanderbilt University',
+    shortName: 'Vanderbilt',
+    nameZh: '范德堡大学',
+    color: '#866D4B',
+    location: 'Nashville, TN',
+    coverage: campusCoverage('vanderbilt'),
+    catalog: { colleges: 4, majors: 66 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));
