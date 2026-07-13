@@ -1,43 +1,56 @@
 {
-  "duration_seconds": 3204.3,
+  "duration_seconds": 1415.8,
   "shard": {
     "national": false,
     "schools": [
-      "ucb"
+      "rice",
+      "vanderbilt"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 722,
+      "rule_based_tagged": 4,
       "status": "ok"
+    },
+    "campus_graph:rice": {
+      "deep": true,
+      "fetched": 5,
+      "new": 5,
+      "status": "ok",
+      "updated": 0
+    },
+    "campus_graph:vanderbilt": {
+      "deep": true,
+      "fetched": 5,
+      "new": 5,
+      "status": "ok",
+      "updated": 0
     },
     "deactivate_past": {
       "already_inactive": 717,
       "kept_active": 5,
       "newly_deactivated": 0,
-      "skipped_rolling": 42070,
+      "skipped_rolling": 43300,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 2109,
-      "newly_deactivated": 40,
-      "skipped_partial_scrape": [
-        "ucb_datascience_faculty"
-      ],
+      "kept_fresh": 1040,
+      "newly_deactivated": 0,
+      "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 2,
-      "keywords_cleaned": 152,
-      "removed_by_school": {
-        "ucb": 2
+      "duplicates_removed": 0,
+      "keywords_cleaned": 0,
+      "removed_by_school": {},
+      "shared_inbox_nulled": {
+        "vanderbilt": 4
       },
-      "shared_inbox_nulled": {},
       "status": "ok"
     },
     "faculty_joint_collapse": {
-      "duplicates_removed": 18,
-      "shared_mailbox_nulled": 37,
+      "duplicates_removed": 0,
+      "shared_mailbox_nulled": 0,
       "status": "ok"
     },
     "intl_reconciliation": {
@@ -45,13 +58,19 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 1929,
-      "enriched": 68,
+      "already_had": 464,
+      "enriched": 552,
       "nulled_unit_inboxes": 1,
       "renulled_shared_emails": 0,
-      "scraped": 246,
+      "scraped": 586,
       "skipped_budget": 0,
       "status": "ok"
+    },
+    "rice_faculty": {
+      "fetched": 555,
+      "new": 555,
+      "status": "ok",
+      "updated": 0
     },
     "school_audience": {
       "by_source": {
@@ -91,6 +110,8 @@
         "purdue_faculty": 2112,
         "purdue_labs": 16,
         "purdue_research_programs": 59,
+        "rice_faculty": 555,
+        "rice_research_programs": 5,
         "simplify_internships": 2508,
         "stanford_external_research": 1,
         "stanford_faculty": 1323,
@@ -114,7 +135,7 @@
         "ucb_eps_faculty": 29,
         "ucb_espm_faculty": 66,
         "ucb_external_research": 7,
-        "ucb_extra_faculty": 155,
+        "ucb_extra_faculty": 153,
         "ucb_filmmedia_faculty": 6,
         "ucb_french_faculty": 11,
         "ucb_geog_faculty": 20,
@@ -196,354 +217,25 @@
         "uw_faculty": 2201,
         "uw_labs": 1,
         "uw_research_programs": 9,
+        "vanderbilt_faculty": 485,
+        "vanderbilt_research_programs": 5,
         "wisc_external_research": 1,
         "wisc_faculty": 1715,
         "wisc_labs": 1,
         "wisc_research_programs": 31
       },
       "status": "ok",
-      "tagged": 43835
+      "tagged": 44883
     },
-    "ucb_anthro_faculty": {
-      "fetched": 26,
-      "new": 0,
-      "status": "ok",
-      "updated": 26
-    },
-    "ucb_arch_faculty": {
-      "fetched": 41,
-      "new": 0,
-      "status": "ok",
-      "updated": 40
-    },
-    "ucb_astro_faculty": {
-      "fetched": 19,
-      "new": 0,
-      "status": "ok",
-      "updated": 18
-    },
-    "ucb_bioe_faculty": {
-      "fetched": 35,
-      "new": 0,
-      "status": "ok",
-      "updated": 32
-    },
-    "ucb_campus": {
-      "deep": true,
-      "fetched": 82,
-      "new": 0,
-      "status": "ok",
-      "updated": 81
-    },
-    "ucb_cbe_faculty": {
-      "fetched": 26,
-      "new": 0,
-      "status": "ok",
-      "updated": 18
-    },
-    "ucb_cee_faculty": {
-      "fetched": 64,
-      "new": 0,
-      "status": "ok",
-      "updated": 63
-    },
-    "ucb_chem_faculty": {
-      "fetched": 52,
-      "new": 2,
-      "status": "ok",
-      "updated": 50
-    },
-    "ucb_classics_faculty": {
-      "fetched": 24,
-      "new": 0,
-      "status": "ok",
-      "updated": 14
-    },
-    "ucb_complit_faculty": {
-      "fetched": 20,
-      "new": 0,
-      "status": "ok",
-      "updated": 16
-    },
-    "ucb_datascience_faculty": {
-      "fetched": 0,
-      "new": 0,
+    "vanderbilt_faculty": {
+      "fetched": 485,
+      "new": 485,
       "status": "ok",
       "updated": 0
-    },
-    "ucb_dcrp_faculty": {
-      "fetched": 22,
-      "new": 0,
-      "status": "ok",
-      "updated": 21
-    },
-    "ucb_econ_faculty": {
-      "fetched": 57,
-      "new": 2,
-      "status": "ok",
-      "updated": 55
-    },
-    "ucb_education_faculty": {
-      "fetched": 46,
-      "new": 0,
-      "status": "ok",
-      "updated": 46
-    },
-    "ucb_eecs_faculty": {
-      "fetched": 144,
-      "new": 0,
-      "status": "ok",
-      "updated": 144
-    },
-    "ucb_english_faculty": {
-      "fetched": 52,
-      "new": 0,
-      "status": "ok",
-      "updated": 52
-    },
-    "ucb_eps_faculty": {
-      "fetched": 35,
-      "new": 0,
-      "status": "ok",
-      "updated": 29
-    },
-    "ucb_espm_faculty": {
-      "fetched": 68,
-      "new": 1,
-      "status": "ok",
-      "updated": 64
-    },
-    "ucb_extra_faculty": {
-      "fetched": 190,
-      "new": 157,
-      "status": "ok",
-      "updated": 1
-    },
-    "ucb_filmmedia_faculty": {
-      "fetched": 11,
-      "new": 0,
-      "status": "ok",
-      "updated": 6
-    },
-    "ucb_french_faculty": {
-      "fetched": 14,
-      "new": 0,
-      "status": "ok",
-      "updated": 11
-    },
-    "ucb_geog_faculty": {
-      "fetched": 24,
-      "new": 0,
-      "status": "ok",
-      "updated": 20
-    },
-    "ucb_german_faculty": {
-      "fetched": 9,
-      "new": 0,
-      "status": "ok",
-      "updated": 8
-    },
-    "ucb_haas_faculty": {
-      "fetched": 120,
-      "new": 0,
-      "status": "ok",
-      "updated": 107
-    },
-    "ucb_history_faculty": {
-      "fetched": 62,
-      "new": 0,
-      "status": "ok",
-      "updated": 60
-    },
-    "ucb_ib_faculty": {
-      "fetched": 46,
-      "new": 1,
-      "status": "ok",
-      "updated": 42
-    },
-    "ucb_ieor_faculty": {
-      "fetched": 20,
-      "new": 0,
-      "status": "ok",
-      "updated": 19
-    },
-    "ucb_journalism_faculty": {
-      "fetched": 29,
-      "new": 1,
-      "status": "ok",
-      "updated": 26
-    },
-    "ucb_larch_faculty": {
-      "fetched": 17,
-      "new": 1,
-      "status": "ok",
-      "updated": 15
-    },
-    "ucb_law_faculty": {
-      "fetched": 81,
-      "new": 0,
-      "status": "ok",
-      "updated": 80
-    },
-    "ucb_ling_faculty": {
-      "fetched": 17,
-      "new": 0,
-      "status": "ok",
-      "updated": 17
-    },
-    "ucb_math_faculty": {
-      "fetched": 106,
-      "new": 14,
-      "status": "ok",
-      "updated": 84
-    },
-    "ucb_mcb_faculty": {
-      "fetched": 93,
-      "new": 0,
-      "status": "ok",
-      "updated": 81
-    },
-    "ucb_me_faculty": {
-      "fetched": 72,
-      "new": 1,
-      "status": "ok",
-      "updated": 63
-    },
-    "ucb_mse_faculty": {
-      "fetched": 29,
-      "new": 0,
-      "status": "ok",
-      "updated": 20
-    },
-    "ucb_music_faculty": {
-      "fetched": 18,
-      "new": 1,
-      "status": "ok",
-      "updated": 16
-    },
-    "ucb_ne_faculty": {
-      "fetched": 18,
-      "new": 0,
-      "status": "ok",
-      "updated": 16
-    },
-    "ucb_neuro_faculty": {
-      "fetched": 38,
-      "new": 0,
-      "status": "ok",
-      "updated": 14
-    },
-    "ucb_nst_faculty": {
-      "fetched": 20,
-      "new": 0,
-      "status": "ok",
-      "updated": 17
-    },
-    "ucb_philos_faculty": {
-      "fetched": 47,
-      "new": 0,
-      "status": "ok",
-      "updated": 38
-    },
-    "ucb_physics_faculty": {
-      "fetched": 59,
-      "new": 0,
-      "status": "ok",
-      "updated": 41
-    },
-    "ucb_pmb_faculty": {
-      "fetched": 31,
-      "new": 0,
-      "status": "ok",
-      "updated": 25
-    },
-    "ucb_polisci_faculty": {
-      "fetched": 48,
-      "new": 0,
-      "status": "ok",
-      "updated": 44
-    },
-    "ucb_psych_faculty": {
-      "fetched": 34,
-      "new": 0,
-      "status": "ok",
-      "updated": 33
-    },
-    "ucb_publicpolicy_faculty": {
-      "fetched": 30,
-      "new": 0,
-      "status": "ok",
-      "updated": 21
-    },
-    "ucb_rhetoric_faculty": {
-      "fetched": 32,
-      "new": 0,
-      "status": "ok",
-      "updated": 24
-    },
-    "ucb_scandinavian_faculty": {
-      "fetched": 9,
-      "new": 0,
-      "status": "ok",
-      "updated": 9
-    },
-    "ucb_slavic_faculty": {
-      "fetched": 15,
-      "new": 0,
-      "status": "ok",
-      "updated": 13
-    },
-    "ucb_soc_faculty": {
-      "fetched": 36,
-      "new": 2,
-      "status": "ok",
-      "updated": 34
-    },
-    "ucb_socwel_faculty": {
-      "fetched": 26,
-      "new": 0,
-      "status": "ok",
-      "updated": 24
-    },
-    "ucb_spanish_portuguese_faculty": {
-      "fetched": 22,
-      "new": 0,
-      "status": "ok",
-      "updated": 20
-    },
-    "ucb_sph_faculty": {
-      "fetched": 137,
-      "new": 1,
-      "status": "ok",
-      "updated": 124
-    },
-    "ucb_stat_faculty": {
-      "fetched": 55,
-      "new": 0,
-      "status": "ok",
-      "updated": 45
-    },
-    "ucb_tdps_faculty": {
-      "fetched": 33,
-      "new": 0,
-      "status": "ok",
-      "updated": 33
-    },
-    "ucb_urap": {
-      "fetched": 1,
-      "new": 0,
-      "status": "ok",
-      "updated": 0
-    },
-    "ucb_urap_projects": {
-      "fetched": 861,
-      "new": 0,
-      "status": "ok",
-      "updated": 861
     }
   },
-  "timestamp": "2026-07-13T01:01:32.409037",
-  "total_in_file": 43833,
-  "total_new": 184,
-  "total_updated": 2881
+  "timestamp": "2026-07-13T02:45:34.879971",
+  "total_in_file": 44883,
+  "total_new": 1050,
+  "total_updated": 0
 }
