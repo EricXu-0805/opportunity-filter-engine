@@ -107,6 +107,10 @@ FACULTY_SOURCES = frozenset({
     "brown_faculty",
     # Cornell — A&S person-card + Engineering ce-block (single source across depts).
     "cornell_faculty",
+    # Rice — shared web-api2 profiles JSON API (single source across depts).
+    "rice_faculty",
+    # Vanderbilt — shared A&S striped-table multisite (single source across depts).
+    "vanderbilt_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

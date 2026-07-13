@@ -46,6 +46,8 @@ from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_fa
 from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
 from .schools.purdue_faculty import fetch_and_normalize as fetch_purdue_faculty
 from .schools.purdue_faculty import merge_into_processed as merge_purdue_faculty
+from .schools.rice_faculty import fetch_and_normalize as fetch_rice_faculty
+from .schools.rice_faculty import merge_into_processed as merge_rice_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
@@ -66,6 +68,8 @@ from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
 from .schools.utexas_faculty import merge_into_processed as merge_utexas_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
 from .schools.uw_faculty import merge_into_processed as merge_uw_faculty
+from .schools.vanderbilt_faculty import fetch_and_normalize as fetch_vanderbilt_faculty
+from .schools.vanderbilt_faculty import merge_into_processed as merge_vanderbilt_faculty
 from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
 from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
@@ -633,6 +637,8 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("princeton_faculty", fetch_princeton_faculty, merge_princeton_faculty),
             ("brown_faculty", fetch_brown_faculty, merge_brown_faculty),
             ("cornell_faculty", fetch_cornell_faculty, merge_cornell_faculty),
+            ("rice_faculty", fetch_rice_faculty, merge_rice_faculty),
+            ("vanderbilt_faculty", fetch_vanderbilt_faculty, merge_vanderbilt_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).

@@ -88,6 +88,8 @@ SCHOOL_INST = {
     "upenn": "I79576946",      # University of Pennsylvania (OpenAlex-API verified)
     "caltech": "I122411786",   # California Institute of Technology (OpenAlex-API verified)
     "cornell": "I205783295",   # Cornell University (ror 05bnh6r87, OpenAlex-API verified)
+    "rice": "I74775410",       # Rice University (ror 008zs3103, OpenAlex-API verified)
+    "vanderbilt": "I200719446",  # Vanderbilt University (ror 02vm5rt34, OpenAlex-API verified)
     "brown": "I27804330",      # Brown University (ror 05gq02987, OpenAlex-API verified)
 }
 _MIN_WORKS = 5
