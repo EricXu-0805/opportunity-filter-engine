@@ -349,6 +349,8 @@ export const SCHOOLS: School[] = [
     location: 'Nashville, TN',
     coverage: campusCoverage('vanderbilt'),
     catalog: { colleges: 4, majors: 66 },
+  },
+  {
     slug: 'dartmouth',
     domain: 'dartmouth.edu',
     name: 'Dartmouth College',

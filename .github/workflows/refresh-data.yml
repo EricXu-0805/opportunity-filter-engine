@@ -9,7 +9,7 @@ name: Refresh Opportunity Data
 #   | Mon | uiuc (+ Experts monthly, +Chromium)| ~90-150 min | ~120-180 min    |
 #   | Tue | ucb                               | ~60-100 min | —               |
 #   | Wed | uw,wisc,purdue,duke,dartmouth     | ~45-80 min  | ~95-160 min     |
-#   | Thu | utexas,ucla,boulder,cornell,brown | ~35-60 min  | ~90-160 min     |
+#   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt | ~40-70 min | ~95-160 min |
 #   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia | ~45-75 min | ~95-160 min |
 #   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech | ~30-50 min | ~85-150 min |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
@@ -83,7 +83,7 @@ jobs:
               1) SHARD="uiuc" ;;
               2) SHARD="ucb" ;;
               3) SHARD="uw,wisc,purdue,duke,dartmouth" ;;
-              4) SHARD="utexas,ucla,boulder,cornell,brown" ;;
+              4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt" ;;
               5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia" ;;
               6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech" ;;
               7) SHARD="national" ;;
@@ -121,7 +121,7 @@ jobs:
             # (the collectors lazy-import it; tests mock it), so install it + Chromium
             # whenever the run is a full refresh OR its shard includes any render-using
             # school — otherwise those schools' render departments silently collect nothing.
-            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern|upenn|cornell|columbia), ]]; then
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt), ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi
