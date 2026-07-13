@@ -350,6 +350,28 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('vanderbilt'),
     catalog: { colleges: 4, majors: 66 },
   },
+  {
+    slug: 'dartmouth',
+    domain: 'dartmouth.edu',
+    name: 'Dartmouth College',
+    shortName: 'Dartmouth',
+    nameZh: '达特茅斯学院',
+    color: '#00693E',
+    location: 'Hanover, NH',
+    coverage: campusCoverage('dartmouth'),
+    catalog: { colleges: 5, majors: 41 },
+  },
+  {
+    slug: 'columbia',
+    domain: 'columbia.edu',
+    name: 'Columbia University',
+    shortName: 'Columbia',
+    nameZh: '哥伦比亚大学',
+    color: '#0077C8',
+    location: 'New York, NY',
+    coverage: campusCoverage('columbia'),
+    catalog: { colleges: 3, majors: 65 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));

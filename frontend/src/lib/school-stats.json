@@ -11,8 +11,16 @@
     "campus": 466,
     "national": 3499
   },
+  "columbia": {
+    "campus": 474,
+    "national": 3499
+  },
   "cornell": {
     "campus": 948,
+    "national": 3499
+  },
+  "dartmouth": {
+    "campus": 911,
     "national": 3499
   },
   "duke": {

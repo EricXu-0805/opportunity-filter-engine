@@ -15,7 +15,9 @@ from __future__ import annotations
 from .boulder import SCHOOL as BOULDER
 from .brown import SCHOOL as BROWN
 from .caltech import SCHOOL as CALTECH
+from .columbia import SCHOOL as COLUMBIA
 from .cornell import SCHOOL as CORNELL
+from .dartmouth import SCHOOL as DARTMOUTH
 from .duke import SCHOOL as DUKE
 from .gatech import SCHOOL as GATECH
 from .jhu import SCHOOL as JHU
@@ -62,4 +64,6 @@ SCHOOL_CONFIGS: list[dict] = [
     CORNELL,
     RICE,
     VANDERBILT,
+    DARTMOUTH,
+    COLUMBIA,
 ]
