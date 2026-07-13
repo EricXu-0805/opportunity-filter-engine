@@ -22,6 +22,7 @@ from .jhu import SCHOOL as JHU
 from .northwestern import SCHOOL as NORTHWESTERN
 from .princeton import SCHOOL as PRINCETON
 from .purdue import SCHOOL as PURDUE
+from .rice import SCHOOL as RICE
 from .stanford import SCHOOL as STANFORD
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
@@ -32,6 +33,7 @@ from .umich import SCHOOL as UMICH
 from .upenn import SCHOOL as UPENN
 from .utexas import SCHOOL as UTEXAS
 from .uw import SCHOOL as UW
+from .vanderbilt import SCHOOL as VANDERBILT
 from .wisc import SCHOOL as WISC
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
@@ -58,4 +60,6 @@ SCHOOL_CONFIGS: list[dict] = [
     CALTECH,
     BROWN,
     CORNELL,
+    RICE,
+    VANDERBILT,
 ]
