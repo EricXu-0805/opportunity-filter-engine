@@ -248,6 +248,7 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         "auto_tagger",
         "intl_reconciliation",
         "faculty_hygiene",  # post-processing pass (keyword clean + person dedup), not a source
+        "faculty_joint_collapse",  # post-enrichment ucb joint-appointment collapse pass, not a source
         # Run key, not a record source: ucb_campus records ship as
         # ucb_research_programs / ucb_external_research / ucb_labs, whose
         # SOURCE_DEFAULTS coverage is asserted by test_ucb_campus.TestRegistry.
