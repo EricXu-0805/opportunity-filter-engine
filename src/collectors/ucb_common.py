@@ -936,6 +936,106 @@ def _null_unit_mailbox_emails(opps: list[dict]) -> int:
     return nulled
 
 
+def collapse_ucb_joint_appointments(opps: list[dict]) -> dict:
+    """Deterministically collapse SAME-person joint-appointment duplicates among
+    ucb_* faculty, so no two ``faculty_research`` records share a non-null
+    contact_email or a normalized pi_name — regardless of the order collectors
+    merged or enrichment filled emails.
+
+    A Berkeley professor cross-appointed in two departments (e.g. Tony Keaveny
+    in both ``ucb_me_faculty`` and ``ucb_bioe_faculty``) lists ONE personal
+    address across two directory profiles under slightly different names ("Tony
+    Keaveny" vs "Tony M. Keaveny"). The merge-time
+    ``drop_joint_appointment_duplicates`` and the threshold-2
+    ``_null_shared_contact_emails`` both run DURING each collector's own merge;
+    when a department site is rate-limited (429) its profile emails are absent at
+    merge time and are re-added only afterward — by the corpus-wide pi_enricher
+    pass and by ``_carry_forward_enrichment`` from the committed corpus. The
+    collision therefore reappears *after* every merge-time pass has run, and the
+    corpus-wide ``_null_shared_admin_emails`` pass (threshold 3) does not catch a
+    2-way share. This FINAL pass runs post-enrichment over the whole corpus and
+    is order-independent.
+
+    Two same-person groupings, both conservative — this DROPS the duplicate
+    (keeping the real contact) rather than nulling a real address:
+
+    * **Same normalized name** (order-insensitive; middle initials + credential
+      suffixes dropped, so "Tony Keaveny" == "Tony M. Keaveny") under two
+      different ucb sources — one person cross-listed. Keep the keyword-richer
+      record, merge the loser's email/profile link into it, drop the loser.
+      (``ucb_bioe_faculty`` merges before ``ucb_me_faculty`` and is the richer
+      home record, so Keaveny's bioe row is kept — matching the merge order.)
+    * **Same non-null contact_email** under two different ucb sources — collapse
+      ONLY when the records are the same person: their profile-URL slugs match
+      (their normalized names matching is already handled by the pass above).
+      When names differ AND slugs differ they are two DIFFERENT people sharing a
+      scraped department mailbox; dropping one would delete a real professor, so
+      leave them for ``_null_shared_contact_emails`` to null instead.
+
+    Distinct from ``_null_shared_contact_emails`` (different people on one
+    mailbox -> null) — this handles same-person joint appointments (-> drop).
+    Mutates ``opps`` (merges survivor fields) and returns
+    ``{"kept": [...], "removed": int}``; reassign the caller's list to ``kept``.
+    """
+    from .faculty_graph import (
+        _join_slug,
+        _merge_faculty_fields,
+        _norm_person_name,
+        _pick_richer,
+    )
+
+    fac = [o for o in opps if _is_ucb_faculty(o)]
+    remove: set[int] = set()
+
+    def _collapse(group: list[dict]) -> None:
+        group = [o for o in group if id(o) not in remove]
+        # Require >= 2 records from DIFFERENT sources: a same-source duplicate is
+        # a within-directory listing dup handled at scrape time (dedup_by_profile_url).
+        if len(group) < 2 or len({o.get("source") for o in group}) < 2:
+            return
+        survivor = _pick_richer(group, frozenset())
+        for o in group:
+            if o is survivor:
+                continue
+            _merge_faculty_fields(survivor, o)  # carry email/profile link forward
+            remove.add(id(o))
+            logger.info(
+                f"  Collapsing ucb joint-appointment duplicate {o.get('pi_name')!r} "
+                f"({o.get('source')}) into {survivor.get('source')} — same person"
+            )
+
+    # Pass 1: same normalized name across different ucb sources.
+    by_name: dict[str, list[dict]] = {}
+    for o in fac:
+        nn = _norm_person_name(o.get("pi_name"))
+        if nn:
+            by_name.setdefault(nn, []).append(o)
+    for group in by_name.values():
+        _collapse(group)
+
+    # Pass 2: same non-null email across different ucb sources — collapse only
+    # when the profile-URL slugs match (same person under one profile). Different
+    # slugs + different names = different people on a shared inbox: defer to
+    # _null_shared_contact_emails rather than drop a real professor.
+    by_email: dict[str, list[dict]] = {}
+    for o in fac:
+        if id(o) in remove:
+            continue
+        if em := _dedup_email(o):
+            by_email.setdefault(em, []).append(o)
+    for group in by_email.values():
+        group = [o for o in group if id(o) not in remove]
+        if len(group) < 2 or len({o.get("source") for o in group}) < 2:
+            continue
+        slugs = {_join_slug(o.get("url") or o.get("source_url") or "") for o in group}
+        slugs.discard("")
+        if len(slugs) == 1:
+            _collapse(group)
+
+    kept = [o for o in opps if id(o) not in remove]
+    return {"kept": kept, "removed": len(remove)}
+
+
 _SHARED_PHRASE_NAV_THRESHOLD = 3
 
 

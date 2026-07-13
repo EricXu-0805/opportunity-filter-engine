@@ -81,6 +81,10 @@ from .ucb_cbe_faculty import fetch_and_normalize as fetch_ucb_cbe
 from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
 from .ucb_chem_faculty import fetch_and_normalize as fetch_ucb_chem
 from .ucb_classics_faculty import fetch_and_normalize as fetch_ucb_classics
+from .ucb_common import (
+    _null_shared_contact_emails as _null_ucb_shared_contact_emails,
+)
+from .ucb_common import collapse_ucb_joint_appointments
 from .ucb_common import merge_into_processed as merge_ucb_cee
 from .ucb_common import merge_into_processed as merge_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_eecs
@@ -805,6 +809,35 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
         logger.info(
             f"PI enricher: {pi_stats['enriched']} new emails found "
             f"({pi_stats['skipped_budget']} left for next run by the scrape budget)")
+
+        # Final deterministic collapse of ucb_* joint-appointment duplicates.
+        # pi_enricher above (and _carry_forward_enrichment at merge time) can
+        # re-add a professor's personal email to a department directory that was
+        # rate-limited (429) during its own merge — recreating a same-person
+        # cross-appointment collision (e.g. Tony Keaveny in both ucb_me_faculty
+        # and ucb_bioe_faculty, sharing tonykeaveny@berkeley.edu) AFTER every
+        # merge-time ucb dedup/null pass has run. The corpus-wide
+        # _null_shared_admin_emails below only fires at 3+ distinct names, so a
+        # 2-way share survives it and trips test_no_ucb_joint_appointment_duplicates.
+        # Drop the same-person duplicate here (keeping the real contact on the
+        # richer/earlier-merged home record), then null any remaining ucb mailbox
+        # shared by 2 DIFFERENT people. Order-independent — guarantees the R70A
+        # ucb invariant (no two ucb_* faculty share a non-null email or normalized
+        # name) regardless of merge/enrichment order.
+        ucb_collapse = collapse_ucb_joint_appointments(all_opps)
+        all_opps = ucb_collapse["kept"]
+        ucb_shared_nulled = _null_ucb_shared_contact_emails(all_opps)
+        if ucb_collapse["removed"] or ucb_shared_nulled:
+            logger.info(
+                "UCB joint-appointment collapse: %d same-person duplicate(s) "
+                "dropped, %d shared-mailbox email(s) nulled",
+                ucb_collapse["removed"], ucb_shared_nulled,
+            )
+        summary["sources"]["faculty_joint_collapse"] = {
+            "duplicates_removed": ucb_collapse["removed"],
+            "shared_mailbox_nulled": ucb_shared_nulled,
+            "status": "ok",
+        }
 
         # The PI enricher re-scrapes profile pages for records still missing a
         # contact email and can re-attach a shared department/advising inbox the
