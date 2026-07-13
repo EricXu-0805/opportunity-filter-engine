@@ -245,6 +245,19 @@
       "new": 906,
       "status": "ok",
       "updated": 0
+    },
+    "campus_graph:columbia": {
+      "deep": true,
+      "fetched": 7,
+      "new": 7,
+      "status": "ok",
+      "updated": 0
+    },
+    "columbia_faculty": {
+      "fetched": 467,
+      "new": 467,
+      "status": "ok",
+      "updated": 0
     }
   },
   "timestamp": "2026-07-13T02:45:34.879971",
