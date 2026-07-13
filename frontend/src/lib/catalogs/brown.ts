@@ -1,0 +1,117 @@
+/*
+ * Brown University — undergraduate concentration catalog.
+ * Compiled 2026-07-12 from Brown's official sources; do not hand-edit.
+ * Verified against:
+ *   https://bulletin.brown.edu/the-college/concentrations/
+ *   https://admission.brown.edu/explore/academics
+ * Notes: Brown calls majors "concentrations." Grouped under Brown's academic
+ * divisions (Humanities, Social Sciences, Physical Sciences, Life & Medical
+ * Sciences) plus the professional schools (Engineering, Public Health) so the
+ * switcher renders a college→major tree. Standard concentrations only; the
+ * self-designed route is listed as "Independent Concentration."
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'Humanities': [
+    'Africana Studies',
+    'American Studies',
+    'Archaeology and the Ancient World',
+    'Architecture',
+    'Classics',
+    'Comparative Literature',
+    'Contemplative Studies',
+    'Early Modern World',
+    'East Asian Studies',
+    'Egyptology and Assyriology',
+    'English',
+    'French and Francophone Studies',
+    'Gender and Sexuality Studies',
+    'German Studies',
+    'Hispanic Literatures and Cultures',
+    'History',
+    'History of Art and Architecture',
+    'Italian Studies',
+    'Judaic Studies',
+    'Literary Arts',
+    'Medieval Cultures',
+    'Middle East Studies',
+    'Modern Culture and Media',
+    'Music',
+    'Philosophy',
+    'Portuguese and Brazilian Studies',
+    'Religious Studies',
+    'Slavic Studies',
+    'Theatre Arts and Performance Studies',
+    'Visual Art',
+  ],
+  'Social Sciences': [
+    'Anthropology',
+    'Behavioral Decision Sciences',
+    'Cognitive Science',
+    'Critical Native American and Indigenous Studies',
+    'Economics',
+    'Education Studies',
+    'Ethnic Studies',
+    'International and Public Affairs',
+    'Latin American and Caribbean Studies',
+    'Linguistics',
+    'Political Science',
+    'Psychology',
+    'Science, Technology, and Society',
+    'Social Analysis and Research',
+    'Sociology',
+    'South Asian Studies',
+    'Urban Studies',
+  ],
+  'Physical Sciences': [
+    'Applied Mathematics',
+    'Applied Mathematics-Biology',
+    'Applied Mathematics-Computer Science',
+    'Applied Mathematics-Economics',
+    'Astronomy',
+    'Chemical Physics',
+    'Chemistry',
+    'Computational Chemistry and Chemical Physics',
+    'Computer Science',
+    'Computer Science-Economics',
+    'Earth and Planetary Science',
+    'Earth, Climate, and Biology',
+    'Environmental Sciences and Studies',
+    'Geochemistry and Environmental Chemistry',
+    'Geophysics and Climate Physics',
+    'Mathematics',
+    'Mathematics-Computer Science',
+    'Mathematics-Economics',
+    'Physics',
+    'Physics and Philosophy',
+    'Statistics',
+  ],
+  'Life & Medical Sciences': [
+    'Biochemistry & Molecular Biology',
+    'Biology',
+    'Biophysics',
+    'Cognitive Neuroscience',
+    'Computational Biology',
+    'Computational Neuroscience',
+    'Health & Human Biology',
+    'Neuroscience',
+  ],
+  'School of Engineering': [
+    'Biomedical Engineering',
+    'Chemical Engineering',
+    'Computer Engineering',
+    'Design Engineering',
+    'Electrical Engineering',
+    'Engineering',
+    'Engineering and Physics',
+    'Environmental Engineering',
+    'Materials Engineering',
+    'Mechanical Engineering',
+  ],
+  'School of Public Health': [
+    'Public Health',
+  ],
+  'Independent Concentrations': [
+    'Independent Concentration',
+  ],
+};

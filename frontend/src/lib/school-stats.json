@@ -3,8 +3,16 @@
     "campus": 1595,
     "national": 3499
   },
+  "brown": {
+    "campus": 1106,
+    "national": 3499
+  },
   "caltech": {
     "campus": 466,
+    "national": 3499
+  },
+  "cornell": {
+    "campus": 948,
     "national": 3499
   },
   "duke": {
