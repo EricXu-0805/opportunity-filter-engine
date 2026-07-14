@@ -170,6 +170,12 @@ def _hygiene_keyword(k: str) -> str | None:
     c = (k or "").strip().strip("\"'“”‘’").strip(" .,;:").strip()
     if not c:
         return None
+    # A bare single nav word ("Research", "News") is zero-signal furniture and,
+    # unlike the collector-time _clean_keywords path, can enter here via the
+    # monthly profile-enrichment pass — which the corpus-wide hygiene must catch
+    # so the DQ gate's no-bare-nav-keyword invariant holds on every refresh.
+    if " " not in c and c.lower() in _BARE_NAV_WORDS:
+        return None
     if _PROSE_FRAGMENT_LEAD_RE.match(c):
         return None
     try:
@@ -2083,6 +2089,13 @@ def _norm_person_name(name: str) -> str:
     return " ".join(sorted(_name_tokens(name)))
 
 
+def _norm_faculty_url(o: dict) -> str:
+    """Trailing-slash- and case-insensitive profile URL — the identity a
+    person's profile page carries across the two department directories that
+    both link to it."""
+    return (o.get("url") or o.get("source_url") or "").strip().rstrip("/").lower()
+
+
 def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
     """Fill the survivor's missing contact fields (email / profile link) from the
     dropped duplicate, so collapsing never loses a usable address or URL."""
@@ -2241,6 +2254,35 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         survivor = _pick_richer(specific_recs, umbrella)
         for o in umbrella_recs:
             _merge_faculty_fields(survivor, o)
+            remove.add(id(o))
+            removed_by_school[school] += 1
+
+    # Drop inactive tombstones that duplicate a surviving ACTIVE record. The
+    # passes above only dedupe active faculty, but the DQ gate counts inactive
+    # ones too (a person "shown twice" is judged on the whole corpus). When a
+    # partial re-scrape deactivates one department's listing while the same
+    # professor stays active under another, the stale tombstone and the live
+    # record collide on the gate's (school, email) / (school, url, name) keys.
+    # The tombstone is superseded — the person is live elsewhere — so it is pure
+    # cruft; dropping it never removes a shown record.
+    kept_active = [o for o in active if id(o) not in remove]
+    live_email_keys = {
+        (o.get("school"), (o.get("contact_email") or "").strip().lower())
+        for o in kept_active if (o.get("contact_email") or "").strip()
+    }
+    live_url_name_keys = {
+        (o.get("school"), _norm_faculty_url(o), _norm_person_name(o.get("pi_name")))
+        for o in kept_active if _norm_faculty_url(o) and _norm_person_name(o.get("pi_name"))
+    }
+    for o in opps:
+        if id(o) in remove or _is_active_faculty(o) or o.get("source_type") != "faculty_research":
+            continue
+        school = o.get("school")
+        em = (o.get("contact_email") or "").strip().lower()
+        url, nn = _norm_faculty_url(o), _norm_person_name(o.get("pi_name"))
+        if (em and (school, em) in live_email_keys) or (
+            url and nn and (school, url, nn) in live_url_name_keys
+        ):
             remove.add(id(o))
             removed_by_school[school] += 1
 

@@ -665,10 +665,26 @@ class TestCorpusFacultyHygiene:
         assert rec["keywords"] == ["architecture / design / and social history"]
         assert rec["title"] == "Research with Prof. Ada Lovelace — HIST"
 
+    def test_clean_corpus_strips_bare_nav_keyword(self):
+        """A bare nav word ("Research", "News") entering via the monthly
+        profile-enrichment pass (not the collector's own _clean_keywords) must
+        be stripped by the corpus-wide hygiene — else it fails the DQ gate's
+        no-bare-nav-keyword invariant (2026-07-13: a Gies faculty carried a bare
+        "research"). Multi-word phrases containing the word are kept."""
+        rec = {
+            "source_type": "faculty_research",
+            "title": "Research with Prof. Grace Hopper — BUS",
+            "keywords": ["Research", "supply chain", "News", "health services research"],
+        }
+        fg.clean_corpus_faculty_keywords([rec])
+        assert rec["keywords"] == ["supply chain", "health services research"]
 
-def _fac_rec(id_, *, school, pi_name, dept, email=None, url="", keywords=None):
+
+def _fac_rec(id_, *, school, pi_name, dept, email=None, url="", keywords=None,
+             source=None, is_active=True):
     return {
         "id": id_,
+        "source": source or f"{school}_faculty",
         "source_type": "faculty_research",
         "school": school,
         "pi_name": pi_name,
@@ -677,7 +693,7 @@ def _fac_rec(id_, *, school, pi_name, dept, email=None, url="", keywords=None):
         "url": url,
         "title": f"Research with Prof. {pi_name} — X",
         "keywords": keywords or [],
-        "metadata": {"is_active": True},
+        "metadata": {"is_active": is_active},
     }
 
 
@@ -786,6 +802,35 @@ class TestCollapseSamePersonFaculty:
         assert res["removed_by_school"] == {"cornell": 1}
         # the survivor keeps its email; no duplicate remains at the shared URL
         assert next(o for o in res["kept"] if o["id"] == "phys")["contact_email"] == "kfm61@cornell.edu"
+
+    def test_inactive_tombstone_duplicate_is_dropped(self):
+        """A partial re-scrape can deactivate one department's listing while the
+        same professor stays active under another. Collapse only dedupes active
+        faculty, but the DQ gate counts inactive ones too, so the stale
+        tombstone + live record collide on shared email (2026-07-12: UC Berkeley
+        Tony Keaveny, ME tombstone vs live BioE, every Tuesday). Drop the
+        tombstone; never touch the live record."""
+        live = _fac_rec("bioe", school="ucb", pi_name="Tony Keaveny", dept="Bioengineering",
+                        source="ucb_bioe_faculty", email="tonykeaveny@berkeley.edu",
+                        url="https://bioeng.berkeley.edu/person/tony-keaveny", keywords=["biomechanics"])
+        tomb = _fac_rec("me", school="ucb", pi_name="Tony M. Keaveny", dept="Mechanical Engineering",
+                        source="ucb_me_faculty", email="tonykeaveny@berkeley.edu",
+                        url="https://me.berkeley.edu/people/tony-keaveny", keywords=["orthopaedics"],
+                        is_active=False)
+        res = fg.collapse_same_person_faculty([live, tomb])
+        assert {o["id"] for o in res["kept"]} == {"bioe"}  # live survives, tombstone dropped
+        assert res["removed_by_school"] == {"ucb": 1}
+
+    def test_inactive_tombstone_kept_when_no_active_duplicate(self):
+        """An inactive tombstone with no live duplicate is a real deactivation
+        record — left in place (the drop only removes tombstones a live record
+        supersedes)."""
+        tomb = _fac_rec("gone", school="ucb", pi_name="Departed Prof", dept="Physics",
+                        source="ucb_phys_faculty", email="departed@berkeley.edu",
+                        url="https://physics.berkeley.edu/departed", is_active=False)
+        res = fg.collapse_same_person_faculty([tomb])
+        assert {o["id"] for o in res["kept"]} == {"gone"}
+        assert res["removed_by_school"] == {}
 
     def test_peer_joint_appointment_without_umbrella_is_left(self):
         """Stanford Applied Physics + Physics (no email, no umbrella) stay two
