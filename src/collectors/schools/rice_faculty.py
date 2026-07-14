@@ -29,6 +29,12 @@ Studies ("Asian Studies Faculty" — single tag, no comma), Sport Management
 ("Sport Management, Faculty") — all now wired. Architecture is the one
 static-HTML outlier (``div.faculty-member`` scrape).
 
+Also covered outside the shared platform: Visual & Dramatic Arts (on the
+web-api2 endpoint, tag ``VADA, Faculty``) and the Jones Graduate School of
+Business (its own Sitecore site ``business.rice.edu/faculty`` — static
+``article.cc--profile-card-vertical`` cards, paginated ``?page=N``, ROT13-
+obfuscated emails so title-only, ladder-filtered to drop pure staff/deans).
+
 Still deferred: Shepherd School of Music (bespoke hand-authored "text-columns"
 page — bare ``<a href="/faculty/slug">Name</a>`` under instrument headings, no
 card wrapper / no js-profiles / no title element; needs a self-anchor scrape).
@@ -161,6 +167,25 @@ SCHOOL: dict = {
         _rice("SMGT", "Department of Sport Management",
               ["Sport Management", "Sport Analytics"],
               "https://sport.rice.edu/people", "Sport Management, Faculty"),
+        _rice("VADA", "Department of Visual & Dramatic Arts",
+              ["Art", "Film", "Theatre", "Visual Arts", "Studio Art"],
+              "https://vada.rice.edu/people", "VADA, Faculty"),
+        # Jones Graduate School of Business — its own Sitecore platform (NOT the
+        # shared web-api2), static server-HTML profile cards, paginated ?page=N.
+        # Email is ROT13-obfuscated (no mailto) so ships title-only; ladder-filter
+        # drops pure staff/deans without a professorial rank.
+        {"short": "JGSB", "name": "Jones Graduate School of Business",
+         "majors": ["Business Administration", "Accounting", "Finance", "Marketing",
+                    "Management", "Strategy", "Operations Management",
+                    "Organizational Behavior", "Entrepreneurship"],
+         "directory_url": "https://business.rice.edu/faculty",
+         "scrape": {"url": "https://business.rice.edu/faculty",
+                    "selectors": {"card": "article.cc--profile-card-vertical",
+                                  "name": ".f--cta-title a", "link": ".f--cta-title a",
+                                  "title": ".f--text", "email": "a[href^='mailto:']"},
+                    "paginate": {"param": "page", "max": 8},
+                    "ladder_filter": {"require": r"\bprofessor\b|\blecturer\b|\binstructor\b",
+                                      "drop": r"emerit"}}},
         # School of Architecture — static-HTML outlier (div.faculty-member cards).
         {"short": "ARCH", "name": "Rice School of Architecture",
          "majors": ["Architecture", "Architectural Studies"],
