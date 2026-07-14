@@ -42,8 +42,29 @@ def _slug(record: dict) -> str:
     return s if isinstance(s, str) and s.strip() else NATIONAL
 
 
-def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR) -> dict[str, int]:
-    """Work file -> minified per-school shard files. Returns {shard: count}."""
+# A re-scrape that suddenly yields far fewer records for an established school
+# is almost always a broken/flaked scrape (Cloudflare/AWS-WAF or a headless
+# render failing on CI's datacenter IP, an assemble-skip on a stale work file,
+# etc.) rather than real attrition — a 1000-faculty school never loses 30% of
+# its roster in one weekly cycle. Keep the prior committed shard instead of
+# committing the regression. Guards only established shards (>= floor records);
+# small/volatile shards update freely.
+SHRINK_KEEP_RATIO = 0.7
+SHRINK_GUARD_FLOOR = 100
+
+
+def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
+          keep_ratio: float = SHRINK_KEEP_RATIO,
+          guard_floor: int = SHRINK_GUARD_FLOOR) -> dict[str, int]:
+    """Work file -> minified per-school shard files. Returns {shard: count}.
+
+    Shrink guard: if a school's new shard would be < ``keep_ratio`` of the
+    already-committed shard (and that shard has >= ``guard_floor`` records), the
+    new shard is treated as a flaked scrape and the existing shard is LEFT
+    untouched, so a bad re-scrape can never clobber good faculty data. Kept
+    shards are logged loudly; the returned count reflects what is actually on
+    disk (the retained old count), not the discarded shrunken count.
+    """
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
     from minify_corpus import prune_duplicate_raw
 
@@ -58,10 +79,33 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR) -> dict[st
     for stale in shards_dir.glob("*.json"):
         if stale.stem not in by_school:
             stale.unlink()
+    counts: dict[str, int] = {}
+    kept: list[tuple[str, int, int]] = []
     for slug, recs in sorted(by_school.items()):
-        with open(shards_dir / f"{slug}.json", "w", encoding="utf-8") as f:
+        shard_path = shards_dir / f"{slug}.json"
+        if shard_path.exists():
+            try:
+                with open(shard_path, encoding="utf-8") as f:
+                    old_n = len(json.load(f))
+            except (OSError, ValueError):
+                old_n = 0
+            if old_n >= guard_floor and len(recs) < keep_ratio * old_n:
+                # Leave the committed shard in place; report its real count.
+                kept.append((slug, len(recs), old_n))
+                counts[slug] = old_n
+                continue
+        with open(shard_path, "w", encoding="utf-8") as f:
             json.dump(recs, f, ensure_ascii=False, separators=(",", ":"), default=str)
-    return {s: len(r) for s, r in sorted(by_school.items())}
+        counts[slug] = len(recs)
+    if kept:
+        for slug, new_n, old_n in kept:
+            print(
+                f"shard_corpus: SHRINK GUARD kept prior {slug}.json ({old_n} records) "
+                f"— this run yielded only {new_n} (< {keep_ratio:.0%}); likely a "
+                f"flaked scrape, not committing the regression.",
+                file=sys.stderr,
+            )
+    return counts
 
 
 def load_shards(shards_dir: Path = SHARDS_DIR) -> list[dict]:
