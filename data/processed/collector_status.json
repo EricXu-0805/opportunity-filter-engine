@@ -1,46 +1,43 @@
 {
-  "duration_seconds": 8556.9,
+  "duration_seconds": 3221.7,
   "shard": {
     "national": false,
     "schools": [
-      "uiuc"
+      "ucb"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 14,
+      "rule_based_tagged": 722,
       "status": "ok"
     },
     "deactivate_past": {
       "already_inactive": 717,
       "kept_active": 5,
       "newly_deactivated": 0,
-      "skipped_rolling": 42100,
+      "skipped_rolling": 45664,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 3256,
-      "newly_deactivated": 3,
-      "skipped_partial_scrape": [],
+      "kept_fresh": 2113,
+      "newly_deactivated": 0,
+      "skipped_partial_scrape": [
+        "ucb_datascience_faculty"
+      ],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 23,
-      "keywords_cleaned": 68,
+      "duplicates_removed": 2,
+      "keywords_cleaned": 152,
       "removed_by_school": {
-        "stanford": 2,
-        "uiuc": 19,
-        "utexas": 1,
-        "vanderbilt": 1
+        "ucb": 2
       },
-      "shared_inbox_nulled": {
-        "uiuc": 8
-      },
+      "shared_inbox_nulled": {},
       "status": "ok"
     },
     "faculty_joint_collapse": {
-      "duplicates_removed": 0,
-      "shared_mailbox_nulled": 0,
+      "duplicates_removed": 16,
+      "shared_mailbox_nulled": 39,
       "status": "ok"
     },
     "intl_reconciliation": {
@@ -48,11 +45,11 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 2977,
-      "enriched": 342,
-      "nulled_unit_inboxes": 8,
-      "renulled_shared_emails": 312,
-      "scraped": 364,
+      "already_had": 1950,
+      "enriched": 48,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 0,
+      "scraped": 227,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -69,7 +66,7 @@
         "caltech_research_programs": 8,
         "columbia_faculty": 467,
         "columbia_research_programs": 7,
-        "cornell_faculty": 944,
+        "cornell_faculty": 1222,
         "cornell_research_programs": 4,
         "dartmouth_faculty": 903,
         "dartmouth_research_programs": 8,
@@ -98,11 +95,11 @@
         "purdue_faculty": 2112,
         "purdue_labs": 16,
         "purdue_research_programs": 59,
-        "rice_faculty": 555,
+        "rice_faculty": 620,
         "rice_research_programs": 5,
         "simplify_internships": 2508,
         "stanford_external_research": 1,
-        "stanford_faculty": 1323,
+        "stanford_faculty": 1321,
         "stanford_labs": 1,
         "stanford_research_programs": 38,
         "ucb_anthro_faculty": 26,
@@ -111,8 +108,8 @@
         "ucb_bioe_faculty": 32,
         "ucb_cbe_faculty": 18,
         "ucb_cee_faculty": 63,
-        "ucb_chem_faculty": 54,
-        "ucb_classics_faculty": 14,
+        "ucb_chem_faculty": 55,
+        "ucb_classics_faculty": 16,
         "ucb_complit_faculty": 16,
         "ucb_datascience_faculty": 6,
         "ucb_dcrp_faculty": 22,
@@ -123,7 +120,7 @@
         "ucb_eps_faculty": 29,
         "ucb_espm_faculty": 66,
         "ucb_external_research": 7,
-        "ucb_extra_faculty": 153,
+        "ucb_extra_faculty": 155,
         "ucb_filmmedia_faculty": 6,
         "ucb_french_faculty": 11,
         "ucb_geog_faculty": 20,
@@ -155,7 +152,7 @@
         "ucb_rhetoric_faculty": 23,
         "ucb_scandinavian_faculty": 9,
         "ucb_slavic_faculty": 13,
-        "ucb_soc_faculty": 36,
+        "ucb_soc_faculty": 37,
         "ucb_socwel_faculty": 26,
         "ucb_spanish_portuguese_faculty": 20,
         "ucb_sph_faculty": 126,
@@ -183,7 +180,7 @@
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
         "uiuc_drp": 2,
-        "uiuc_faculty": 3273,
+        "uiuc_faculty": 3249,
         "uiuc_other": 7,
         "uiuc_our_rss": 26,
         "uiuc_siebel": 14,
@@ -199,13 +196,13 @@
         "upenn_labs": 2,
         "upenn_research_programs": 26,
         "utexas_external_research": 1,
-        "utexas_faculty": 2146,
+        "utexas_faculty": 2145,
         "utexas_research_programs": 10,
         "uw_external_research": 1,
         "uw_faculty": 2201,
         "uw_labs": 1,
         "uw_research_programs": 9,
-        "vanderbilt_faculty": 1125,
+        "vanderbilt_faculty": 1124,
         "vanderbilt_research_programs": 5,
         "wisc_external_research": 1,
         "wisc_faculty": 1715,
@@ -213,58 +210,348 @@
         "wisc_research_programs": 31
       },
       "status": "ok",
-      "tagged": 46932
+      "tagged": 47253
     },
-    "uiuc_drp": {
-      "fetched": 2,
+    "ucb_anthro_faculty": {
+      "fetched": 26,
       "new": 0,
+      "status": "ok",
+      "updated": 26
+    },
+    "ucb_arch_faculty": {
+      "fetched": 41,
+      "new": 0,
+      "status": "ok",
+      "updated": 40
+    },
+    "ucb_astro_faculty": {
+      "fetched": 19,
+      "new": 0,
+      "status": "ok",
+      "updated": 18
+    },
+    "ucb_bioe_faculty": {
+      "fetched": 35,
+      "new": 0,
+      "status": "ok",
+      "updated": 32
+    },
+    "ucb_campus": {
+      "deep": true,
+      "fetched": 82,
+      "new": 0,
+      "status": "ok",
+      "updated": 81
+    },
+    "ucb_cbe_faculty": {
+      "fetched": 26,
+      "new": 0,
+      "status": "ok",
+      "updated": 18
+    },
+    "ucb_cee_faculty": {
+      "fetched": 64,
+      "new": 0,
+      "status": "ok",
+      "updated": 63
+    },
+    "ucb_chem_faculty": {
+      "fetched": 52,
+      "new": 1,
+      "status": "ok",
+      "updated": 51
+    },
+    "ucb_classics_faculty": {
+      "fetched": 26,
+      "new": 2,
+      "status": "ok",
+      "updated": 14
+    },
+    "ucb_complit_faculty": {
+      "fetched": 20,
+      "new": 0,
+      "status": "ok",
+      "updated": 16
+    },
+    "ucb_datascience_faculty": {
+      "fetched": 4,
+      "new": 4,
       "status": "ok",
       "updated": 0
     },
-    "uiuc_faculty": {
-      "empty_departments": [],
-      "enriched": true,
-      "fetched": 3820,
-      "html_fetched": 821,
-      "js_fetched": 167,
-      "json_fetched": 563,
-      "new": 421,
-      "status": "ok",
-      "updated": 3399
-    },
-    "uiuc_other": {
-      "fetched": 7,
+    "ucb_dcrp_faculty": {
+      "fetched": 22,
       "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 21
     },
-    "uiuc_our_rss": {
-      "fetched": 25,
+    "ucb_econ_faculty": {
+      "fetched": 57,
+      "new": 0,
+      "status": "ok",
+      "updated": 57
+    },
+    "ucb_education_faculty": {
+      "fetched": 46,
+      "new": 0,
+      "status": "ok",
+      "updated": 46
+    },
+    "ucb_eecs_faculty": {
+      "fetched": 144,
+      "new": 0,
+      "status": "ok",
+      "updated": 144
+    },
+    "ucb_english_faculty": {
+      "fetched": 52,
+      "new": 0,
+      "status": "ok",
+      "updated": 52
+    },
+    "ucb_eps_faculty": {
+      "fetched": 35,
+      "new": 0,
+      "status": "ok",
+      "updated": 29
+    },
+    "ucb_espm_faculty": {
+      "fetched": 68,
+      "new": 0,
+      "status": "ok",
+      "updated": 65
+    },
+    "ucb_extra_faculty": {
+      "fetched": 190,
+      "new": 5,
+      "status": "ok",
+      "updated": 154
+    },
+    "ucb_filmmedia_faculty": {
+      "fetched": 11,
+      "new": 0,
+      "status": "ok",
+      "updated": 6
+    },
+    "ucb_french_faculty": {
+      "fetched": 14,
+      "new": 0,
+      "status": "ok",
+      "updated": 11
+    },
+    "ucb_geog_faculty": {
+      "fetched": 24,
+      "new": 0,
+      "status": "ok",
+      "updated": 20
+    },
+    "ucb_german_faculty": {
+      "fetched": 9,
+      "new": 0,
+      "status": "ok",
+      "updated": 8
+    },
+    "ucb_haas_faculty": {
+      "fetched": 120,
+      "new": 2,
+      "status": "ok",
+      "updated": 104
+    },
+    "ucb_history_faculty": {
+      "fetched": 62,
+      "new": 1,
+      "status": "ok",
+      "updated": 59
+    },
+    "ucb_ib_faculty": {
+      "fetched": 46,
+      "new": 0,
+      "status": "ok",
+      "updated": 43
+    },
+    "ucb_ieor_faculty": {
+      "fetched": 20,
+      "new": 0,
+      "status": "ok",
+      "updated": 18
+    },
+    "ucb_journalism_faculty": {
+      "fetched": 29,
+      "new": 0,
+      "status": "ok",
+      "updated": 27
+    },
+    "ucb_larch_faculty": {
+      "fetched": 17,
+      "new": 0,
+      "status": "ok",
+      "updated": 16
+    },
+    "ucb_law_faculty": {
+      "fetched": 81,
+      "new": 0,
+      "status": "ok",
+      "updated": 80
+    },
+    "ucb_ling_faculty": {
+      "fetched": 17,
+      "new": 0,
+      "status": "ok",
+      "updated": 17
+    },
+    "ucb_math_faculty": {
+      "fetched": 105,
+      "new": 0,
+      "status": "ok",
+      "updated": 97
+    },
+    "ucb_mcb_faculty": {
+      "fetched": 93,
+      "new": 1,
+      "status": "ok",
+      "updated": 80
+    },
+    "ucb_me_faculty": {
+      "fetched": 72,
+      "new": 0,
+      "status": "ok",
+      "updated": 64
+    },
+    "ucb_mse_faculty": {
+      "fetched": 29,
+      "new": 1,
+      "status": "ok",
+      "updated": 19
+    },
+    "ucb_music_faculty": {
+      "fetched": 18,
+      "new": 0,
+      "status": "ok",
+      "updated": 17
+    },
+    "ucb_ne_faculty": {
+      "fetched": 18,
+      "new": 0,
+      "status": "ok",
+      "updated": 16
+    },
+    "ucb_neuro_faculty": {
+      "fetched": 38,
+      "new": 0,
+      "status": "ok",
+      "updated": 14
+    },
+    "ucb_nst_faculty": {
+      "fetched": 20,
+      "new": 0,
+      "status": "ok",
+      "updated": 17
+    },
+    "ucb_philos_faculty": {
+      "fetched": 47,
+      "new": 0,
+      "status": "ok",
+      "updated": 38
+    },
+    "ucb_physics_faculty": {
+      "fetched": 59,
+      "new": 0,
+      "status": "ok",
+      "updated": 41
+    },
+    "ucb_pmb_faculty": {
+      "fetched": 31,
       "new": 0,
       "status": "ok",
       "updated": 25
     },
-    "uiuc_siebel": {
-      "fetched": 14,
+    "ucb_polisci_faculty": {
+      "fetched": 48,
       "new": 0,
       "status": "ok",
-      "updated": 1
+      "updated": 44
     },
-    "uiuc_urap": {
+    "ucb_psych_faculty": {
+      "fetched": 34,
+      "new": 0,
+      "status": "ok",
+      "updated": 33
+    },
+    "ucb_publicpolicy_faculty": {
+      "fetched": 30,
+      "new": 3,
+      "status": "ok",
+      "updated": 18
+    },
+    "ucb_rhetoric_faculty": {
+      "fetched": 32,
+      "new": 1,
+      "status": "ok",
+      "updated": 23
+    },
+    "ucb_scandinavian_faculty": {
+      "fetched": 9,
+      "new": 0,
+      "status": "ok",
+      "updated": 9
+    },
+    "ucb_slavic_faculty": {
+      "fetched": 15,
+      "new": 0,
+      "status": "ok",
+      "updated": 13
+    },
+    "ucb_soc_faculty": {
+      "fetched": 36,
+      "new": 1,
+      "status": "ok",
+      "updated": 35
+    },
+    "ucb_socwel_faculty": {
+      "fetched": 26,
+      "new": 0,
+      "status": "ok",
+      "updated": 24
+    },
+    "ucb_spanish_portuguese_faculty": {
+      "fetched": 22,
+      "new": 0,
+      "status": "ok",
+      "updated": 20
+    },
+    "ucb_sph_faculty": {
+      "fetched": 137,
+      "new": 0,
+      "status": "ok",
+      "updated": 125
+    },
+    "ucb_stat_faculty": {
+      "fetched": 55,
+      "new": 0,
+      "status": "ok",
+      "updated": 45
+    },
+    "ucb_tdps_faculty": {
+      "fetched": 33,
+      "new": 0,
+      "status": "ok",
+      "updated": 33
+    },
+    "ucb_urap": {
       "fetched": 1,
       "new": 0,
       "status": "ok",
       "updated": 0
     },
-    "uiuc_ursa": {
-      "fetched": 1,
+    "ucb_urap_projects": {
+      "fetched": 861,
       "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 861
     }
   },
-  "timestamp": "2026-07-14T03:46:02.274277",
-  "total_in_file": 46909,
-  "total_new": 421,
-  "total_updated": 3425
+  "timestamp": "2026-07-14T06:18:00.515477",
+  "total_in_file": 47251,
+  "total_new": 22,
+  "total_updated": 3047
 }
