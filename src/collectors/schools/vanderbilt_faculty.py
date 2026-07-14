@@ -50,12 +50,12 @@ _LADDER = {"require": r"\bprofessor\b|\blecturer\b|\bartist\b", "drop": r"emerit
 
 
 def _fv(short: str, name: str, majors: list[str], host: str, school: int,
-        department="all", affiliated="primary") -> dict:
+        department="all", affiliated="primary", group="all") -> dict:
     """A school served by Vanderbilt's shared FutureVU peoplemanager JSON API."""
     return {"short": short, "name": name, "majors": majors,
             "directory_url": f"https://{host}/people/",
             "ajax": {"type": "futurevu", "host": host, "school": school,
-                     "department": department, "affiliated": affiliated,
+                     "department": department, "affiliated": affiliated, "group": group,
                      "profile_base": f"https://{host}/bio/", "ladder_filter": _LADDER}}
 
 
@@ -116,6 +116,15 @@ SCHOOL: dict = {
         # ---- Blair School of Music (FutureVU peoplemanager JSON) ---------
         _fv("BLAIR", "Blair School of Music", ["Music", "Performance", "Composition"],
             "blair.vanderbilt.edu", 3, affiliated="all"),
+        # ---- Peabody College of Education & Human Development ------------
+        # Faculty live in group 31 (affiliated=all captures secondary appts too).
+        _fv("PEAB", "Peabody College of Education & Human Development",
+            ["Human & Organizational Development", "Child Development", "Special Education",
+             "Education Policy", "Psychology & Human Development"],
+            "peabody.vanderbilt.edu", 11, affiliated="all", group="31"),
+        # A&S Communication Studies is on the FutureVU widget, not the striped table.
+        _fv("CMST", "Department of Communication Studies", ["Communication Studies"],
+            "as.vanderbilt.edu", 1, department="406"),
     ],
 }
 
