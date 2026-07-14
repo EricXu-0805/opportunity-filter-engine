@@ -1,5 +1,5 @@
 {
-  "duration_seconds": 3221.7,
+  "duration_seconds": 3205.2,
   "shard": {
     "national": false,
     "schools": [
@@ -15,7 +15,7 @@
       "already_inactive": 717,
       "kept_active": 5,
       "newly_deactivated": 0,
-      "skipped_rolling": 45664,
+      "skipped_rolling": 45326,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
@@ -66,7 +66,7 @@
         "caltech_research_programs": 8,
         "columbia_faculty": 467,
         "columbia_research_programs": 7,
-        "cornell_faculty": 1222,
+        "cornell_faculty": 944,
         "cornell_research_programs": 4,
         "dartmouth_faculty": 903,
         "dartmouth_research_programs": 8,
@@ -95,7 +95,7 @@
         "purdue_faculty": 2112,
         "purdue_labs": 16,
         "purdue_research_programs": 59,
-        "rice_faculty": 620,
+        "rice_faculty": 555,
         "rice_research_programs": 5,
         "simplify_internships": 2508,
         "stanford_external_research": 1,
@@ -180,7 +180,7 @@
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
         "uiuc_drp": 2,
-        "uiuc_faculty": 3249,
+        "uiuc_faculty": 3254,
         "uiuc_other": 7,
         "uiuc_our_rss": 26,
         "uiuc_siebel": 14,
@@ -210,7 +210,7 @@
         "wisc_research_programs": 31
       },
       "status": "ok",
-      "tagged": 47253
+      "tagged": 46915
     },
     "ucb_anthro_faculty": {
       "fetched": 26,
@@ -550,8 +550,8 @@
       "updated": 861
     }
   },
-  "timestamp": "2026-07-14T06:18:00.515477",
-  "total_in_file": 47251,
+  "timestamp": "2026-07-14T07:21:16.827822",
+  "total_in_file": 46913,
   "total_new": 22,
   "total_updated": 3047
 }
