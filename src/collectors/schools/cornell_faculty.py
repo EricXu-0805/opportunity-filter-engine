@@ -19,16 +19,22 @@ two largest that serve clean server-rendered cards to a plain request:
   (``.ce-block__people-list-person-title``), and a public ``mailto:`` — so
   Engineering lands fully emailed. Verified live: MAE.
 
+Also covered (added in the coverage-completion pass, all clean server-HTML):
+Bowers CIS — Computer Science + Information Science (paginated ``views-row``);
+ILR School (``cu-person`` theme, single page); and the CALS static cohorts —
+Ecology & Evolutionary Biology + Neurobiology & Behavior (A&S ``person-card``
+theme) and Earth & Atmospheric Sciences (Duffield ``ce-block``).
+
 Whole-roster pages are sliced to ladder faculty by ``_LADDER`` (keep Professor/
 Lecturer, drop emeriti). Single source ("cornell_faculty"); department rides
 each record's ``department``, ids namespaced by department short-code.
 
-Deferred (distinct platforms / pagination / WAF — tracked for a later pass):
-CIS/Bowers (CS + InfoSci, paginated ``views-row``), CALS (mixed subdomains +
-``cals.cornell.edu`` subpaths), Human Ecology (one college-wide
-``profile-directory-card`` grid, filter by dept), ILR (``cu-person`` theme),
-AAP (``people-list__`` theme), SC Johnson Business (aggregate directory), and
-the Brooks School of Public Policy (Cloudflare/WAF — needs headless render).
+Still deferred (need headless render or bespoke handling — a later pass):
+the CALS/Human-Ecology/Computational-Biology directories (AWS-WAF ``expert-card``
+/ ``profile-directory-card`` grids that 403 a plain request — selectors known,
+just gated on render), Statistics & Data Science (JS AJAX), AAP (``people-list__``
+Algolia index), SC Johnson Business (aggregate app, 6 featured only), and the
+Brooks School of Public Policy (host-level WAF; use publicpolicy.cornell.edu wp-json).
 """
 
 from __future__ import annotations
@@ -56,6 +62,33 @@ _CE_SELECTORS = {
 # Keep ladder faculty (Professor / Assistant / Associate / Lecturer / Senior
 # Lecturer); drop emeriti. Faculty-only listing pages pass this unchanged.
 _LADDER = {"require": r"\bprofessor\b|\blecturer\b", "drop": r"emerit"}
+
+# Bowers College of Computing & Information Science — paginated Drupal views-row.
+_CIS_SELECTORS = {
+    "card": "div.views-row",
+    "name": ".name",
+    "link": ".name a",
+    "title": ".position-titles .field__item",
+    "email": ".email a[href^='mailto:']",
+}
+
+# ILR School — distinct Cornell Drupal ``cu-person`` theme (single page).
+_ILR_SELECTORS = {
+    "card": ".cu-person",
+    "name": ".cu-person__name",
+    "link": ".cu-person__name a",
+    "title": ".cu-person__title",
+    "email": "a[href^='mailto:']",
+}
+
+def _cis(short: str, name: str, majors: list[str], subdomain: str, max_pages: int) -> dict:
+    """A Bowers CIS department (paginated ``?page=N`` views-row grid)."""
+    url = f"https://{subdomain}.cornell.edu/people/faculty"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _CIS_SELECTORS, "ladder_filter": _LADDER,
+                       "paginate": {"param": "page", "max": max_pages}}}
+
+
 
 
 def _as(short: str, name: str, majors: list[str], subdomain: str, *, render: bool = False) -> dict:
@@ -132,6 +165,26 @@ SCHOOL: dict = {
              ["Applied Physics", "Engineering Physics"], "aep"),
         _eng("BME", "Meinig School of Biomedical Engineering",
              ["Biomedical Engineering"], "bme"),
+        # ---- Bowers College of Computing & Information Science -----------
+        _cis("CS", "Department of Computer Science", ["Computer Science"], "www.cs", 10),
+        _cis("INFOSCI", "Department of Information Science",
+             ["Information Science"], "infosci", 8),
+        # ---- ILR School --------------------------------------------------
+        {"short": "ILR", "name": "School of Industrial & Labor Relations",
+         "majors": ["Industrial & Labor Relations", "Labor Economics", "Human Resource Studies"],
+         "directory_url": "https://www.ilr.cornell.edu/people/faculty",
+         "scrape": {"url": "https://www.ilr.cornell.edu/people/faculty",
+                    "selectors": _ILR_SELECTORS, "ladder_filter": _LADDER}},
+        # ---- College of Agriculture & Life Sciences (static cohorts) -----
+        _as("EEB", "Department of Ecology & Evolutionary Biology",
+            ["Ecology & Evolutionary Biology"], "ecologyandevolution"),
+        _as("NBB", "Department of Neurobiology & Behavior",
+            ["Neurobiology & Behavior", "Neuroscience"], "nbb"),
+        {"short": "EAS", "name": "Department of Earth & Atmospheric Sciences",
+         "majors": ["Earth & Atmospheric Sciences", "Geological Sciences"],
+         "directory_url": "https://www.duffield.cornell.edu/eas/faculty-staff/",
+         "scrape": {"url": "https://www.duffield.cornell.edu/eas/faculty-staff/",
+                    "selectors": _CE_SELECTORS, "ladder_filter": _LADDER}},
     ],
 }
 

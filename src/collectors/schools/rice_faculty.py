@@ -51,6 +51,16 @@ def _rice(short: str, name: str, majors: list[str], directory_url: str, data_tag
                          "title_field": "title", "link_field": "profile_url"}}
 
 
+# School of Architecture is the one static-HTML outlier (not the js-profiles API).
+_ARCH_SELECTORS = {
+    "card": "div.faculty-member",
+    "name": ".faculty-info h4 a",
+    "link": ".faculty-info h4 a",
+    "title": ".job-title",
+    "email": "a[href^='mailto:']",
+}
+
+
 SCHOOL: dict = {
     "school_slug": "rice",
     "source": "rice_faculty",
@@ -113,8 +123,23 @@ SCHOOL: dict = {
               "https://history.rice.edu/faculty", "History, Core Faculty"),
         _rice("PHIL", "Department of Philosophy", ["Philosophy"],
               "https://philosophy.rice.edu/faculty", "Philosophy, Core Faculty"),
+        _rice("ECEP", "Department of Electrical & Computer Engineering",
+              ["Electrical & Computer Engineering"],
+              "https://eceweb.rice.edu/people/faculty", "ECE - Professor"),
+        _rice("ECEA", "Department of Electrical & Computer Engineering",
+              ["Electrical & Computer Engineering"],
+              "https://eceweb.rice.edu/people/faculty", "ECE - Associate Professor"),
+        _rice("ECEAP", "Department of Electrical & Computer Engineering",
+              ["Electrical & Computer Engineering"],
+              "https://eceweb.rice.edu/people/faculty", "ECE - Assistant Professor"),
         _rice("RELI", "Department of Religion", ["Religion", "Religious Studies"],
               "https://reli.rice.edu/faculty", "Religion, Core Faculty"),
+        # School of Architecture — static-HTML outlier (div.faculty-member cards).
+        {"short": "ARCH", "name": "Rice School of Architecture",
+         "majors": ["Architecture", "Architectural Studies"],
+         "directory_url": "https://arch.rice.edu/people/faculty",
+         "scrape": {"url": "https://arch.rice.edu/people/faculty",
+                    "selectors": _ARCH_SELECTORS}},
     ],
 }
 

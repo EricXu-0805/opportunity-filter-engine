@@ -1499,6 +1499,87 @@ def _fetch_seas_ajax(dept: dict) -> list[dict]:
     return specs
 
 
+_FUTUREVU_PATH = ("/wp-content/themes/anchordown-futurevu/library/remote/"
+                  "peoplemanager-directory-remote-webcomm.php")
+
+
+def _fetch_futurevu_ajax(dept: dict) -> list[dict]:
+    """Vanderbilt FutureVU "People Directory" fetch (opt-in via dept ``ajax``
+    block with ``type: "futurevu"``).
+
+    The shared anchordown-futurevu widget client-side GETs a same-origin JSON
+    endpoint returning ``{"data": [{full_name, titles, email, slug, ...}]}``.
+    ``titles`` is HTML (``<br/>``-joined multi-line + entities); we decode it,
+    take the first non-empty line as the rank, and ladder-filter on the whole
+    thing. Degrades to ``[]`` on any failure so deep mode never breaks.
+    """
+    import html as _html
+
+    cfg = dept.get("ajax")
+    if not cfg or cfg.get("type") != "futurevu":
+        return []
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+    except Exception:  # noqa: BLE001
+        return []
+    host = cfg["host"].rstrip("/")
+    params = {
+        "option": "choose-department", "school": cfg["school"],
+        "department": cfg.get("department", "all"), "group": cfg.get("group", "all"),
+        "affiliated": cfg.get("affiliated", "primary"),
+        "neighborhood": "none", "showdept": "true",
+    }
+    headers = {**HEADERS, "X-Requested-With": "XMLHttpRequest",
+               "Referer": f"https://{host}/people/"}
+    try:
+        resp = requests.get(f"https://{host}{_FUTUREVU_PATH}", headers=headers,
+                            params=params, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:  # noqa: BLE001
+        return []
+    records = data.get("data", []) if isinstance(data, dict) else data
+    if not isinstance(records, list):
+        return []
+
+    lf = cfg.get("ladder_filter") or {}
+    req_re = re.compile(lf["require"], re.I) if lf.get("require") else None
+    drop_re = re.compile(lf["drop"], re.I) if lf.get("drop") else None
+    profile_base = cfg.get("profile_base", f"https://{host}/bio/")
+
+    def _clean_titles(raw: str) -> str:
+        txt = _html.unescape(re.sub(r"<br\s*/?>", "\n", raw or ""))
+        lines = [ln.strip() for ln in re.split(r"[\n\r]+", txt) if ln.strip()]
+        return lines[0] if lines else ""
+
+    specs: list[dict] = []
+    seen: set[str] = set()
+    for rec in records:
+        if not isinstance(rec, dict):
+            continue
+        name = (rec.get("full_name")
+                or f"{rec.get('first_name', '')} {rec.get('last_name', '')}").strip()
+        if not name or not _is_person_name(name):
+            continue
+        raw_titles = f"{rec.get('titles', '')} {rec.get('other_titles', '')}"
+        if req_re and not req_re.search(raw_titles):
+            continue
+        if drop_re and drop_re.search(raw_titles):
+            continue
+        slug = (rec.get("slug") or "").strip()
+        if slug and slug in seen:
+            continue
+        if slug:
+            seen.add(slug)
+        email = (rec.get("email") or "").strip() or None
+        url = f"{profile_base}{slug}" if slug else ""
+        specs.append(faculty(name, title=_clean_titles(rec.get("titles", "")) or "Professor",
+                             url=url, email=email))
+    return specs
+
+
 # ---------------------------------------------------------------------------
 # Algolia directory source (deep mode, lazy HTTP deps)
 # ---------------------------------------------------------------------------
@@ -2728,7 +2809,8 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                if (u := (p.get("url") or "").strip().lower())
                                and u not in listing_urls}
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
-                               + _fetch_seas_ajax(dept) + _fetch_algolia(dept)
+                               + _fetch_seas_ajax(dept) + _fetch_futurevu_ajax(dept)
+                               + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
                                + _fetch_json_dir(dept) + _fetch_coa_api(dept)
                                + _fetch_krieger_table(dept)

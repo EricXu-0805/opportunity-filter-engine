@@ -44,6 +44,21 @@ def _cas(short: str, name: str, majors: list[str], slug: str, path: str) -> dict
             "scrape": {"url": url, "selectors": _CAS_SELECTORS}}
 
 
+# Keep ladder faculty across the FutureVU JSON rosters (Engineering, Blair):
+# titles carry every rank; drop emeriti.
+_LADDER = {"require": r"\bprofessor\b|\blecturer\b|\bartist\b", "drop": r"emerit"}
+
+
+def _fv(short: str, name: str, majors: list[str], host: str, school: int,
+        department="all", affiliated="primary") -> dict:
+    """A school served by Vanderbilt's shared FutureVU peoplemanager JSON API."""
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": f"https://{host}/people/",
+            "ajax": {"type": "futurevu", "host": host, "school": school,
+                     "department": department, "affiliated": affiliated,
+                     "profile_base": f"https://{host}/bio/", "ladder_filter": _LADDER}}
+
+
 SCHOOL: dict = {
     "school_slug": "vanderbilt",
     "source": "vanderbilt_faculty",
@@ -83,6 +98,24 @@ SCHOOL: dict = {
         _cas("JS", "Program in Jewish Studies", ["Jewish Studies"], "jewish-studies", "faculty/"),
         _cas("ART", "Department of Art", ["Art", "Studio Art", "History of Art"], "art", "faculty/"),
         _cas("PPS", "Public Policy Studies", ["Public Policy"], "public-policy-studies", "people/"),
+        # ---- A&S depts on the striped table but at other paths -----------
+        _cas("AADS", "Department of African American & Diaspora Studies",
+             ["African American & Diaspora Studies"], "african-american-diaspora-studies", "faculty/"),
+        _cas("GRES", "Department of German, Russian & East European Studies",
+             ["German Studies", "Russian Studies"], "german-russian-studies", "people/"),
+        _cas("HART", "Department of History of Art & Architecture",
+             ["History of Art", "Architecture"], "history-art-architecture", "faculty/"),
+        _cas("MATH", "Department of Mathematics", ["Mathematics"], "math", "faculty/"),
+        _cas("CMS", "Department of Classical & Mediterranean Studies",
+             ["Classical & Mediterranean Studies"], "classical-mediterranean-studies", "people/"),
+        # ---- School of Engineering (FutureVU peoplemanager JSON) ---------
+        _fv("ENG", "School of Engineering",
+            ["Biomedical Engineering", "Chemical Engineering", "Civil Engineering",
+             "Computer Science", "Electrical Engineering", "Mechanical Engineering",
+             "Engineering Science"], "engineering.vanderbilt.edu", 2),
+        # ---- Blair School of Music (FutureVU peoplemanager JSON) ---------
+        _fv("BLAIR", "Blair School of Music", ["Music", "Performance", "Composition"],
+            "blair.vanderbilt.edu", 3, affiliated="all"),
     ],
 }
 
