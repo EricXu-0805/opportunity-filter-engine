@@ -2139,8 +2139,37 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
     removed_by_school: Counter = Counter()
     nulled_by_school: Counter = Counter()
 
+    # Pass 0 — same school + same profile URL + same name is ONE person,
+    # regardless of email. A cross-listed professor emitted by two department
+    # rosters (Cornell Physics + Applied & Engineering Physics) shares one
+    # ``/<slug>`` profile URL; the email and name passes below both miss the
+    # pair when the two rows carry different (or only one) scraped emails —
+    # the email pass never groups them and the name pass skips any record that
+    # has an email. Keying on the shared canonical URL + name is exactly the
+    # data-quality invariant (no two faculty at one URL) and is conservative: a
+    # genuine joint appointment across peer departments has a DIFFERENT profile
+    # URL per department, so this only ever collapses true duplicates.
+    by_url_name: dict[tuple, list[dict]] = defaultdict(list)
+    for o in active:
+        u = (o.get("url") or o.get("source_url") or "").strip().rstrip("/").lower()
+        nn = _norm_person_name(o.get("pi_name"))
+        if u and nn:
+            by_url_name[(o.get("school"), u, nn)].append(o)
+    for (school, _u, _nn), group in by_url_name.items():
+        if len(group) < 2:
+            continue
+        survivor = _pick_richer(group, frozenset())
+        for o in group:
+            if o is survivor:
+                continue
+            _merge_faculty_fields(survivor, o)
+            remove.add(id(o))
+            removed_by_school[school] += 1
+
     by_email: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:
+        if id(o) in remove:
+            continue
         em = (o.get("contact_email") or "").strip().lower()
         if em:
             by_email[(o.get("school"), em)].append(o)
