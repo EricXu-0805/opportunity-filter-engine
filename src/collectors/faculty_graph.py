@@ -1862,6 +1862,15 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
         if isinstance(title, list):
             title = ", ".join(str(t) for t in title)
         title = str(title).strip() or "Professor"
+        if "<" in title or "&" in title:
+            # Some JSON feeds carry <br>-joined multi-role titles and HTML
+            # entities (Rice MCLC / Art History / Sport Mgmt / EEPS) — flatten
+            # the <br> breaks to "; ", strip any residual tags, unescape
+            # entities, so raw markup never reaches the corpus.
+            import html as _html
+            title = _BR_RE.sub("; ", title)
+            title = re.sub(r"\s+", " ", _html.unescape(_HTML_TAG_RE.sub("", title))).strip()
+            title = re.sub(r"(?:\s*;\s*)+", "; ", title).strip(" ;") or "Professor"
         tm = cfg.get("title_map")
         if tm:
             # Feeds that carry a rank CODE, not a rank (HR job codes) — map it;

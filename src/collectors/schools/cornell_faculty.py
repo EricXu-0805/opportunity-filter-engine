@@ -29,12 +29,23 @@ Whole-roster pages are sliced to ladder faculty by ``_LADDER`` (keep Professor/
 Lecturer, drop emeriti). Single source ("cornell_faculty"); department rides
 each record's ``department``, ids namespaced by department short-code.
 
-Still deferred (need headless render or bespoke handling — a later pass):
-the CALS/Human-Ecology/Computational-Biology directories (AWS-WAF ``expert-card``
-/ ``profile-directory-card`` grids that 403 a plain request — selectors known,
-just gated on render), Statistics & Data Science (JS AJAX), AAP (``people-list__``
-Algolia index), SC Johnson Business (aggregate app, 6 featured only), and the
-Brooks School of Public Policy (host-level WAF; use publicpolicy.cornell.edu wp-json).
+Added in the AWS-WAF render pass (all cornell.edu hosts sit behind an AWS-WAF
+JS challenge that 403s a plain ``requests`` fetch but is cleared by a headless
+render): seven CALS departments (Entomology, Animal Science, Biological &
+Environmental Engineering, SIPS, Food Science, Global Development, Computational
+Biology — shared ``expert-card`` grid), the College of Human Ecology (Drupal
+role-filtered ``profile-directory-card`` directory), Statistics & Data Science,
+and the Jeb E. Brooks School of Public Policy (publicpolicy.cornell.edu, WP
+``paged`` directory — brooks.cornell.edu is mail-only).
+
+Still deferred (bespoke source shape — a later pass): the College of
+Architecture, Art & Planning (``aap.cornell.edu`` client-side Algolia index —
+needs an ``algolia`` source config), and the SC Johnson College of Business /
+Dyson (``business.cornell.edu`` directory paginated by a row ``offset`` step,
+which the engine's ?param=N pager can't walk); plus the remaining CALS
+departments not yet enumerated (Nutritional Sciences, Communication, Natural
+Resources, Landscape Architecture, Public & Ecosystem Health — same expert-card
+platform, just need their listing paths harvested).
 """
 
 from __future__ import annotations
@@ -106,6 +117,30 @@ def _eng(short: str, name: str, majors: list[str], subdomain: str) -> dict:
     url = f"https://www.{subdomain}.cornell.edu/people/faculty"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _CE_SELECTORS, "ladder_filter": _LADDER}}
+
+
+# College of Agriculture & Life Sciences — shared Drupal "expert-card" person
+# nodes on the CANONICAL cals.cornell.edu host (the per-dept alias subdomains,
+# e.g. entomology.cals.cornell.edu, serve a decoy home shell). The whole host is
+# behind an AWS-WAF JS challenge that 403s a plain ``requests`` fetch, so these
+# render (a headless browser clears the challenge). Email is spamspan-obfuscated
+# rather than a mailto, so records ship title-only and emails are recovered by
+# the profile / OpenAlex enrichment pass.
+_CALS_SELECTORS = {
+    "card": ".node--type-person",
+    "name": ".expert-card-front a.link",
+    "link": ".expert-card-front a.link",
+    "title": "p.department",
+    "email": "a[href^='mailto:']",
+}
+
+
+def _cals(short: str, name: str, majors: list[str], path: str) -> dict:
+    """A CALS department (canonical cals.cornell.edu host, render past AWS-WAF)."""
+    url = f"https://cals.cornell.edu{path}"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _CALS_SELECTORS, "render": True,
+                       "ladder_filter": _LADDER}}
 
 
 SCHOOL: dict = {
@@ -185,6 +220,58 @@ SCHOOL: dict = {
          "directory_url": "https://www.duffield.cornell.edu/eas/faculty-staff/",
          "scrape": {"url": "https://www.duffield.cornell.edu/eas/faculty-staff/",
                     "selectors": _CE_SELECTORS, "ladder_filter": _LADDER}},
+        # ---- CALS departments (render past AWS-WAF; expert-card grid) -----
+        _cals("ENTOM", "Department of Entomology", ["Entomology"],
+              "/entomology/about/people/faculty-adjuncts-emeriti"),
+        _cals("ANSCI", "Department of Animal Science", ["Animal Science"],
+              "/animal-science/about/people"),
+        _cals("BEE", "Department of Biological & Environmental Engineering",
+              ["Biological Engineering", "Environmental Engineering"],
+              "/biological-environmental-engineering/about/people/faculty"),
+        _cals("SIPS", "School of Integrative Plant Science",
+              ["Plant Sciences", "Plant Breeding", "Plant Pathology", "Horticulture",
+               "Soil & Crop Sciences"],
+              "/school-integrative-plant-science/about/people/faculty-senior-academics"),
+        _cals("FDSCI", "Department of Food Science", ["Food Science"],
+              "/food-science/about/people"),
+        _cals("GDEV", "Department of Global Development",
+              ["Global Development", "International Agriculture & Rural Development"],
+              "/global-development/about/people/faculty"),
+        _cals("COMPBIO", "Department of Computational Biology",
+              ["Computational Biology", "Bioinformatics"], "/computational-biology/people"),
+        # ---- College of Human Ecology (Drupal role-filtered directory) ---
+        {"short": "HUMECO", "name": "College of Human Ecology",
+         "majors": ["Human Development", "Nutritional Sciences",
+                    "Design & Environmental Analysis", "Policy Analysis & Management",
+                    "Fiber Science & Apparel Design"],
+         "directory_url": "https://human.cornell.edu/people?role%5B%5D=24",
+         "scrape": {"url": "https://human.cornell.edu/people?role%5B%5D=24", "render": True,
+                    "selectors": {"card": "div.profile-directory-card", "name": "a.name",
+                                  "link": "a.name", "title": ".professional-info-name p",
+                                  "email": "a.email[href^='mailto:']"},
+                    "ladder_filter": {"require": r"professor|lecturer|dean|research|extension|instructor|scholar|fellow",
+                                      "drop": r"emerit"}}},
+        # ---- Department of Statistics & Data Science (Drupal directory) --
+        {"short": "STAT", "name": "Department of Statistics & Data Science",
+         "majors": ["Statistics", "Data Science"],
+         "directory_url": "https://stat.cornell.edu/directory",
+         "scrape": {"url": "https://stat.cornell.edu/directory", "render": True,
+                    "selectors": {"card": ".directory-card", "name": ".name a",
+                                  "link": ".name a", "title": ".position-titles .field__item",
+                                  "email": "a[href^='mailto:']"},
+                    "ladder_filter": _LADDER, "paginate": {"param": "page", "max": 4}}},
+        # ---- Jeb E. Brooks School of Public Policy (WP directory) --------
+        # Host is publicpolicy.cornell.edu (brooks.cornell.edu is mail-only);
+        # render past the WAF, WP ``paged`` starts at 2 (base URL is page 1).
+        {"short": "BROOKS", "name": "Jeb E. Brooks School of Public Policy",
+         "majors": ["Public Policy", "Public Administration", "Health Policy"],
+         "directory_url": "https://publicpolicy.cornell.edu/about-us/directory/?roles=full-time-faculty",
+         "scrape": {"url": "https://publicpolicy.cornell.edu/about-us/directory/?roles=full-time-faculty",
+                    "render": True,
+                    "selectors": {"card": ".card.roles-full-time-faculty", "name": ".deco",
+                                  "link": ".group-image a", "title": ".professional-title",
+                                  "email": "a[href^='mailto:']"},
+                    "paginate": {"param": "paged", "start": 2, "max": 8}}},
     ],
 }
 

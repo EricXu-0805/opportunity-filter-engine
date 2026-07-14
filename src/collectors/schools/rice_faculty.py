@@ -20,12 +20,18 @@ recovered later by the profile-enrichment pass.
 Single source ("rice_faculty"); department rides each record's ``department``,
 ids namespaced by short-code. Audience "unknown".
 
-Deferred (same platform, resolve later): ECE / Psychological Sciences / Modern
-& Classical Languages (rate-limited 406 at harvest time), Earth-Environmental-
-Planetary (roster on a sub-path, no js-profiles on landing), Kinesiology / Sport
-Mgmt / Art / Art History / Asian Studies (tag unresolved), Shepherd Music
-(bespoke authored page), Architecture (the one static-HTML outlier — separate
-``scrape`` config, div.faculty-member).
+The prior 406 "deferred" tail was resolved by harvesting the exact ``data-tags``
+(the API bypasses the rate-limited HTML page): Psychological Sciences
+("Psychology, Faculty"), Modern & Classical Languages ("mclc"), Kinesiology
+("kinesiology"), Earth-Environmental-Planetary ("Earth Environmental and
+Planetary Sciences, Faculty"), Art History ("art_history, Faculty"), Asian
+Studies ("Asian Studies Faculty" — single tag, no comma), Sport Management
+("Sport Management, Faculty") — all now wired. Architecture is the one
+static-HTML outlier (``div.faculty-member`` scrape).
+
+Still deferred: Shepherd School of Music (bespoke hand-authored "text-columns"
+page — bare ``<a href="/faculty/slug">Name</a>`` under instrument headings, no
+card wrapper / no js-profiles / no title element; needs a self-anchor scrape).
 """
 
 from __future__ import annotations
@@ -134,6 +140,27 @@ SCHOOL: dict = {
               "https://eceweb.rice.edu/people/faculty", "ECE - Assistant Professor"),
         _rice("RELI", "Department of Religion", ["Religion", "Religious Studies"],
               "https://reli.rice.edu/faculty", "Religion, Core Faculty"),
+        _rice("PSYC", "Department of Psychological Sciences",
+              ["Psychology", "Psychological Sciences"],
+              "https://psychology.rice.edu/people/faculty", "Psychology, Faculty"),
+        _rice("MCLC", "Modern & Classical Languages, Literatures & Cultures",
+              ["Modern Languages", "Classical Studies", "French", "German", "Spanish"],
+              "https://mclc.rice.edu/people", "mclc"),
+        _rice("KINE", "Department of Kinesiology", ["Kinesiology", "Sports Medicine"],
+              "https://kinesiology.rice.edu/people/faculty", "kinesiology"),
+        _rice("EEPS", "Department of Earth, Environmental & Planetary Sciences",
+              ["Earth Science", "Environmental Science", "Planetary Science",
+               "Geology", "Geophysics"],
+              "https://earthscience.rice.edu/people",
+              "Earth Environmental and Planetary Sciences, Faculty"),
+        _rice("ARTH", "Department of Art History", ["Art History"],
+              "https://arthistory.rice.edu/people", "art_history, Faculty"),
+        _rice("ASIA", "Program in Transnational Asian Studies",
+              ["Asian Studies", "Transnational Asian Studies"],
+              "https://asianstudies.rice.edu/people", "Asian Studies Faculty"),
+        _rice("SMGT", "Department of Sport Management",
+              ["Sport Management", "Sport Analytics"],
+              "https://sport.rice.edu/people", "Sport Management, Faculty"),
         # School of Architecture — static-HTML outlier (div.faculty-member cards).
         {"short": "ARCH", "name": "Rice School of Architecture",
          "majors": ["Architecture", "Architectural Studies"],
