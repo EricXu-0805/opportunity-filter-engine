@@ -1,23 +1,15 @@
 {
-  "duration_seconds": 1338.0,
+  "duration_seconds": 614.3,
   "shard": {
     "national": false,
     "schools": [
-      "cornell",
       "rice"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 7,
+      "rule_based_tagged": 6,
       "status": "ok"
-    },
-    "campus_graph:cornell": {
-      "deep": true,
-      "fetched": 4,
-      "new": 0,
-      "status": "ok",
-      "updated": 4
     },
     "campus_graph:rice": {
       "deep": true,
@@ -26,30 +18,24 @@
       "status": "ok",
       "updated": 5
     },
-    "cornell_faculty": {
-      "fetched": 1656,
-      "new": 509,
-      "status": "ok",
-      "updated": 1147
-    },
     "deactivate_past": {
       "already_inactive": 717,
       "kept_active": 5,
       "newly_deactivated": 0,
-      "skipped_rolling": 46324,
+      "skipped_rolling": 46411,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 2498,
+      "kept_fresh": 983,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 129,
+      "duplicates_removed": 4,
       "keywords_cleaned": 0,
       "removed_by_school": {
-        "cornell": 129
+        "rice": 4
       },
       "shared_inbox_nulled": {},
       "status": "ok"
@@ -64,19 +50,19 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 2148,
-      "enriched": 283,
-      "nulled_unit_inboxes": 5,
-      "renulled_shared_emails": 10,
-      "scraped": 359,
+      "already_had": 751,
+      "enriched": 216,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 3,
+      "scraped": 237,
       "skipped_budget": 0,
       "status": "ok"
     },
     "rice_faculty": {
-      "fetched": 767,
-      "new": 147,
+      "fetched": 983,
+      "new": 216,
       "status": "ok",
-      "updated": 620
+      "updated": 767
     },
     "school_audience": {
       "by_source": {
@@ -91,7 +77,7 @@
         "caltech_research_programs": 8,
         "columbia_faculty": 467,
         "columbia_research_programs": 7,
-        "cornell_faculty": 1731,
+        "cornell_faculty": 1602,
         "cornell_research_programs": 4,
         "dartmouth_faculty": 903,
         "dartmouth_research_programs": 8,
@@ -120,7 +106,7 @@
         "purdue_faculty": 2112,
         "purdue_labs": 16,
         "purdue_research_programs": 59,
-        "rice_faculty": 767,
+        "rice_faculty": 983,
         "rice_research_programs": 5,
         "simplify_internships": 2508,
         "stanford_external_research": 1,
@@ -235,11 +221,11 @@
         "wisc_research_programs": 31
       },
       "status": "ok",
-      "tagged": 47907
+      "tagged": 47994
     }
   },
-  "timestamp": "2026-07-14T08:24:35.430448",
-  "total_in_file": 47778,
-  "total_new": 656,
-  "total_updated": 1776
+  "timestamp": "2026-07-14T09:02:23.749088",
+  "total_in_file": 47990,
+  "total_new": 216,
+  "total_updated": 772
 }
