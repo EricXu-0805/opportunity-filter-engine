@@ -766,6 +766,27 @@ class TestCollapseSamePersonFaculty:
         assert {o["id"] for o in res["kept"]} == {"up"}  # richest record kept
         assert res["removed_by_school"] == {"ucla": 2}
 
+    def test_same_url_collapses_when_emails_differ(self):
+        """Same profile URL + same name but the two department rosters scraped
+        DIFFERENT (or only one) emails. The email pass never groups them (keys
+        differ) and the name pass skips them (it only considers email-less
+        records) — so the pair slipped through and failed the data-quality gate
+        (2026-07-14: Cornell's Kin Fai Mak, Physics + Applied & Engineering
+        Physics, at one physics.cornell.edu profile URL). One URL + one name is
+        one person regardless of email: collapse and keep the richer record."""
+        a = _fac_rec("phys", school="cornell", pi_name="Kin Fai Mak", dept="Physics",
+                     email="kfm61@cornell.edu",
+                     url="https://physics.cornell.edu/kin-fai-mak",
+                     keywords=["condensed matter", "2d materials"])
+        b = _fac_rec("aep", school="cornell", pi_name="Kin Fai Mak",
+                     dept="Applied & Engineering Physics", email=None,
+                     url="https://physics.cornell.edu/kin-fai-mak/", keywords=["physics"])
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"phys"}  # keyword-richer + has email
+        assert res["removed_by_school"] == {"cornell": 1}
+        # the survivor keeps its email; no duplicate remains at the shared URL
+        assert next(o for o in res["kept"] if o["id"] == "phys")["contact_email"] == "kfm61@cornell.edu"
+
     def test_peer_joint_appointment_without_umbrella_is_left(self):
         """Stanford Applied Physics + Physics (no email, no umbrella) stay two
         records — the conservative no-email rule only collapses umbrella rosters."""
