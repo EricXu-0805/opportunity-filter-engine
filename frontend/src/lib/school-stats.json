@@ -12,11 +12,11 @@
     "national": 3499
   },
   "columbia": {
-    "campus": 474,
+    "campus": 986,
     "national": 3499
   },
   "cornell": {
-    "campus": 948,
+    "campus": 1606,
     "national": 3499
   },
   "dartmouth": {
@@ -48,15 +48,15 @@
     "national": 3499
   },
   "rice": {
-    "campus": 560,
+    "campus": 984,
     "national": 3499
   },
   "stanford": {
-    "campus": 1362,
+    "campus": 1360,
     "national": 3499
   },
   "ucb": {
-    "campus": 3093,
+    "campus": 3097,
     "national": 3499
   },
   "uchicago": {
@@ -92,7 +92,7 @@
     "national": 3499
   },
   "utexas": {
-    "campus": 2156,
+    "campus": 2155,
     "national": 3499
   },
   "uw": {
@@ -100,7 +100,7 @@
     "national": 3499
   },
   "vanderbilt": {
-    "campus": 490,
+    "campus": 1129,
     "national": 3499
   },
   "wisc": {
