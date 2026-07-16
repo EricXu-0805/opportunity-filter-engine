@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const KNOWN_ID = 'uiuc-ece-cv-lab';
+// uiuc-siebel-ugresearch: hand-curated umbrella seed — survives refreshes, unlike
+// scraped ids (hash of name/url) or the fabricated prototype record this replaced.
+const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 // TrackerPanel autosaves on a 600ms debounce, then flips the aria-live
 // indicator to "Saved" once the write round-trips. Waiting on that state
