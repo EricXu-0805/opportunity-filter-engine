@@ -24,6 +24,7 @@ from src.recommender.cold_email import (
     _student_self,
     _subject,
     generate_cold_email,
+    generate_variants,
 )
 
 
@@ -501,3 +502,40 @@ class TestRecentWorkGrounding:
         passed, fabricated = self._validate_draft(self._opp())
         assert not passed
         assert "neuroflow" in fabricated
+
+
+class TestTemplateRecentWorkCitation:
+    """The template path cites the professor's newest usable paper — the free
+    tier's counterpart to the AI prompt's recent-works block."""
+
+    _profile = {"name": "Eric", "year": "sophomore", "major": "CompE",
+                "hard_skills": ["Python"], "research_interests_text": "machine learning"}
+
+    def _opp(self, works):
+        return {"pi_name": "Ada Lovelace", "title": "Research with Prof. Ada Lovelace — CS",
+                "lab_or_program": "Prof. Ada Lovelace's Research Group",
+                "keywords": ["machine learning"], "source_type": "faculty_research",
+                "metadata": {"recent_works": works}}
+
+    def test_balanced_and_skills_cite_newest_clean_title(self):
+        works = [{"title": "Efficient Sparse Training at Scale", "year": 2026}]
+        for build in (generate_cold_email,):
+            text = build(self._profile, self._opp(works))
+            assert '"Efficient Sparse Training at Scale" (2026) caught my attention' in text
+        variants = {v["id"]: v["text"] for v in generate_variants(self._profile, self._opp(works))}
+        assert "caught my attention" in variants["balanced"]
+        assert "caught my attention" in variants["skills"]
+        assert "caught my attention" not in variants["concise"]  # concise stays lean
+
+    def test_markup_stripped_and_unusable_titles_skipped(self):
+        works = [
+            {"title": "X" * 200, "year": 2026},                       # too long
+            {"title": "Imaging [<sup>18</sup>F]FDG PET/CT of Nicotinic Receptors", "year": 2025},
+        ]
+        text = generate_cold_email(self._profile, self._opp(works))
+        assert "<sup>" not in text
+        assert '"Imaging [18F]FDG PET/CT of Nicotinic Receptors" (2025)' in text
+
+    def test_no_works_no_citation(self):
+        text = generate_cold_email(self._profile, self._opp([]))
+        assert "caught my attention" not in text
