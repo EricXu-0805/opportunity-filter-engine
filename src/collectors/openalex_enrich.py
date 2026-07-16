@@ -180,6 +180,35 @@ def _surname(name: str) -> str:
     return toks[-1] if toks else ""
 
 
+def _title_key(title: str) -> str:
+    """Dedup key for work titles. Journals republish preprints with punctuation
+    and casing drift ("Older-Onset" vs "older onset"), so a lowercase-only key
+    lets the same paper into a record twice; compare on alphanumerics only."""
+    return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+
+
+def _person_key(o: dict) -> str:
+    """Harvest-store key for one faculty member. The URL alone is NOT unique:
+    departments whose directories have no per-person pages give every professor
+    the listing URL (430 JHU Krieger faculty share one), and a url-keyed store
+    stamped a single person's papers onto all of them. Suffix the normalized
+    name so each person keys their own harvest."""
+    name = re.sub(r"[^a-z0-9]+", " ", (o.get("pi_name") or "").lower()).strip()
+    return f"{_record_url(o)}#{name}"
+
+
+def _shared_url_counts(opps: list[dict]) -> dict[str, int]:
+    """How many faculty share each URL — bare-URL store entries (pre-composite-
+    key harvests) are only safe to apply when exactly one faculty owns the URL."""
+    counts: dict[str, int] = {}
+    for o in opps:
+        if _is_faculty(o) and o.get("pi_name"):
+            u = _record_url(o)
+            if u:
+                counts[u] = counts.get(u, 0) + 1
+    return counts
+
+
 def _clean_topic(t: str) -> str:
     t = re.sub(r"\s+", " ", (t or "").strip())
     t = _TRAIL.sub("", t)  # drop a trailing generic noun ("... Research")
@@ -350,8 +379,8 @@ def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WO
         title = re.sub(r"\s+", " ", (w.get("display_name") or "")).strip()[:_TITLE_CAP]
         year = w.get("publication_year")
         # preprint + published version of one paper share a display_name
-        if title and isinstance(year, int) and title.lower() not in seen:
-            seen.add(title.lower())
+        if title and isinstance(year, int) and _title_key(title) not in seen:
+            seen.add(_title_key(title))
             out.append({"title": title, "year": year})
         if len(out) >= max_works:
             break
@@ -376,7 +405,8 @@ def _miss_path(checkpoint_path: str | None) -> str | None:
     return checkpoint_path + ".misses" if checkpoint_path else None
 
 
-def _load_resume_state(checkpoint_path: str | None, resume: bool, targets: list[dict]):
+def _load_resume_state(checkpoint_path: str | None, resume: bool, targets: list[dict],
+                       key=None):
     """(mapping, misses, remaining targets). The sidecar ``.misses`` file makes
     resume skip previously-*unmatched* faculty too — every miss already cost a
     metered search call, and re-scanning a long run of genuine misses is also
@@ -390,9 +420,10 @@ def _load_resume_state(checkpoint_path: str | None, resume: bool, targets: list[
     if resume and miss_path and os.path.exists(miss_path):
         misses = set(json.load(open(miss_path)))
     if mapping or misses:
+        key = key or _record_url
         done = set(mapping) | misses
         before = len(targets)
-        targets = [o for o in targets if _record_url(o) not in done]
+        targets = [o for o in targets if key(o) not in done]
         print(f"  resuming: {len(mapping)} matched + {len(misses)} known misses skipped, "
               f"{len(targets)}/{before} targets remain", flush=True)
     return mapping, misses, targets
@@ -416,7 +447,7 @@ def harvest_openalex(
     checkpoint_every: int = 50,
     resume: bool = False,
 ) -> dict[str, list[str]]:
-    """Pure harvest: ``{url: topics}`` for fieldless faculty with a confident
+    """Pure harvest: ``{url#name: topics}`` for fieldless faculty with a confident
     OpenAlex institution match. ``_is_junk_keyword`` gates each topic. Same
     metered-budget guards as ``harvest_works``: matches AND misses checkpoint
     every ``checkpoint_every`` targets, and the run aborts the moment ``_get``
@@ -427,7 +458,8 @@ def harvest_openalex(
     targets = _targets(opps, schools)
     if sample is not None:
         targets = targets[:sample]
-    mapping, misses, targets = _load_resume_state(checkpoint_path, resume, targets)
+    mapping, misses, targets = _load_resume_state(checkpoint_path, resume, targets,
+                                                   key=_person_key)
     for i, o in enumerate(targets):
         tops = author_topics(o["pi_name"], SCHOOL_INST[o["school"]], o.get("department", ""))
         time.sleep(throttle)
@@ -438,9 +470,9 @@ def harvest_openalex(
                   f"(confirmed 429); {len(mapping)} matched", flush=True)
             break
         if tops:
-            mapping[_record_url(o)] = tops
+            mapping[_person_key(o)] = tops
         else:
-            misses.add(_record_url(o))
+            misses.add(_person_key(o))
         if checkpoint_path and (i + 1) % checkpoint_every == 0:
             _flush_checkpoint(checkpoint_path, mapping, misses)
         if progress and (i + 1) % 100 == 0:
@@ -450,12 +482,18 @@ def harvest_openalex(
 
 
 def apply_openalex(opps: list[dict], mapping: dict[str, list[str]]) -> int:
-    """Updates-only: set keywords on fieldless faculty whose URL is in mapping."""
+    """Updates-only: set keywords on fieldless faculty keyed in mapping.
+    Composite ``url#name`` keys are authoritative; bare-URL keys (pre-2026-07
+    harvests) apply only when exactly one faculty owns the URL — a shared
+    directory URL must never stamp one person's topics onto colleagues."""
+    counts = _shared_url_counts(opps)
     n = 0
     for o in opps:
         if not _is_faculty(o) or o.get("keywords"):
             continue
-        kws = mapping.get(_record_url(o))
+        kws = mapping.get(_person_key(o))
+        if not kws and counts.get(_record_url(o), 0) == 1:
+            kws = mapping.get(_record_url(o))
         if kws:
             o["keywords"] = kws
             n += 1
@@ -491,7 +529,7 @@ def harvest_works(
     checkpoint_every: int = 50,
     resume: bool = False,
 ) -> dict[str, list[dict]]:
-    """Pure harvest: ``{url: [{title, year}, ...]}`` for faculty with a confident
+    """Pure harvest: ``{url#name: [{title, year}, ...]}`` for faculty with a confident
     OpenAlex author match (same institution/surname/field gates as topics).
 
     OpenAlex is metered (paid per call), so two guards protect the budget:
@@ -504,7 +542,8 @@ def harvest_works(
     targets = _works_targets(opps, schools)
     if sample is not None:
         targets = targets[:sample]
-    mapping, misses, targets = _load_resume_state(checkpoint_path, resume, targets)
+    mapping, misses, targets = _load_resume_state(checkpoint_path, resume, targets,
+                                                   key=_person_key)
     for i, o in enumerate(targets):
         dept = o.get("department", "")
         best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], dept)
@@ -518,9 +557,9 @@ def harvest_works(
                   f"(confirmed 429); {len(mapping)} matched", flush=True)
             break
         if works:
-            mapping[_record_url(o)] = works
+            mapping[_person_key(o)] = works
         else:
-            misses.add(_record_url(o))
+            misses.add(_person_key(o))
         if checkpoint_path and (i + 1) % checkpoint_every == 0:
             _flush_checkpoint(checkpoint_path, mapping, misses)
         if progress and (i + 1) % 100 == 0:
@@ -530,21 +569,36 @@ def harvest_works(
 
 
 def apply_works(opps: list[dict], mapping: dict[str, list[dict]]) -> int:
-    """Set ``metadata.recent_works`` on faculty whose URL is in mapping, whenever
+    """Set ``metadata.recent_works`` on faculty keyed in mapping (composite
+    ``url#name`` first; bare-URL fallback only for a URL owned by exactly one
+    faculty — see ``apply_openalex``), whenever
     the mapping carries MORE papers than the record already has. Upgrade-when-
     richer (not skip-if-present): re-applying the fuller ``WORKS_STORE`` promotes a
     1-paper record to the full ``_MAX_WORKS`` set, while never downgrading a record
     that already has more. Idempotent; never touches any other field."""
+    counts = _shared_url_counts(opps)
     n = 0
     for o in opps:
         if not _is_faculty(o):
             continue
-        works = mapping.get(_record_url(o)) or []
-        clean = [
-            {"title": str(w.get("title", ""))[:_TITLE_CAP], "year": w["year"]}
-            for w in works[:_MAX_WORKS]
-            if w.get("title") and isinstance(w.get("year"), int)
-        ]
+        works = mapping.get(_person_key(o))
+        if not works and counts.get(_record_url(o), 0) == 1:
+            works = mapping.get(_record_url(o))
+        works = works or []
+        clean: list[dict] = []
+        seen: set[str] = set()
+        for w in works:
+            title = str(w.get("title", ""))[:_TITLE_CAP]
+            if not title or not isinstance(w.get("year"), int):
+                continue
+            # the committed store predates the _title_key dedup and can carry
+            # punctuation-variant duplicates of one paper
+            if _title_key(title) in seen:
+                continue
+            seen.add(_title_key(title))
+            clean.append({"title": title, "year": w["year"]})
+            if len(clean) >= _MAX_WORKS:
+                break
         existing = (o.get("metadata") or {}).get("recent_works") or []
         if clean and len(clean) > len(existing):
             o.setdefault("metadata", {})["recent_works"] = clean
