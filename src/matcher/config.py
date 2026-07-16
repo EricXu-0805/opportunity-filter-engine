@@ -161,8 +161,9 @@ THIN_INVENTORY_FLOOR = int(_env_float("OFE_THIN_INVENTORY_FLOOR", 8))
 # Internal responsiveness signals (红黑榜 v1, aggregated + anonymous): an
 # opportunity where >= RESPONSIVENESS_MIN_N distinct devices made contact AND
 # at least one reached got-reply/interviewing earns a small additive bonus.
-# Default 0 = OFF — Eric flips the env once the signal has enough volume. The
-# ranker clamps the effective bonus to 3.0 so responsiveness breaks ties but
-# can never outrank topical fit (interests LEAD is the product law).
+# On by default since 2026-07 (Eric's call): the MIN_N gate already suppresses
+# thin data, so the bonus self-activates once real volume arrives. 2.0 sits
+# below college/home affinity (4.0) and the 3.0 clamp, so responsiveness breaks
+# ties but can never outrank topical fit (interests LEAD is the product law).
 RESPONSIVENESS_MIN_N = 3
-RESPONSIVENESS_BONUS = _env_float("OFE_RESPONSIVENESS_BONUS", 0.0)
+RESPONSIVENESS_BONUS = _env_float("OFE_RESPONSIVENESS_BONUS", 2.0)

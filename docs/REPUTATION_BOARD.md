@@ -2,9 +2,10 @@
 
 Status: **deferred**. v1 shipped only *internal* responsiveness signals: the
 service-role aggregation endpoint (`/api/opportunities/responsiveness`), an
-anonymous "students recently heard back" badge gated at N≥3 contacts, and an
-opt-in ranker bonus (`OFE_RESPONSIVENESS_BONUS`, default 0). Nothing public,
-nothing individual-level, no named rankings.
+anonymous "students recently heard back" badge gated at N≥3 contacts, and a
+ranker bonus (`OFE_RESPONSIVENESS_BONUS`, default 2.0 since 2026-07; the N≥3
+gate keeps it inert until real volume arrives). Nothing public, nothing
+individual-level, no named rankings.
 
 ## What the public board would be
 
