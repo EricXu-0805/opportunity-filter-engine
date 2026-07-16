@@ -377,8 +377,8 @@ def _responsiveness_bonus(
 ) -> float:
     """Additive bonus (0..3) when aggregated internal signals show students
     recently got replies here: >= RESPONSIVENESS_MIN_N distinct devices made
-    contact and >= 1 reached got-reply/interviewing. OFF by default
-    (OFE_RESPONSIVENESS_BONUS=0); clamped so it can only break ties."""
+    contact and >= 1 reached got-reply/interviewing. Tunable via
+    OFE_RESPONSIVENESS_BONUS (0 disables); clamped so it can only break ties."""
     if not responsiveness or RESPONSIVENESS_BONUS <= 0:
         return 0.0
     sig = responsiveness.get(opportunity.get("id", ""))

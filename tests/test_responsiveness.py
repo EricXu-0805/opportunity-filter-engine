@@ -8,7 +8,8 @@ no network. Invariants pinned:
   * aggregates with contacted_n < RESPONSIVENESS_MIN_N never leave the endpoint
   * 'dismissed' transitions are not contacts
   * the map is cached in-process (~1h) — one Supabase fetch per TTL
-  * ranker bonus is OFF by default (OFE_RESPONSIVENESS_BONUS=0) and clamped ≤ 3
+  * a failed fetch is cached too (short backoff) — no per-request retry storm
+  * ranker bonus defaults to 2.0 (OFE_RESPONSIVENESS_BONUS=0 disables), clamped ≤ 3
 """
 
 from __future__ import annotations
@@ -157,6 +158,33 @@ class TestAggregationEndpoint:
         client.get("/api/opportunities/responsiveness")
         assert len(calls) == first
 
+    def test_failed_fetch_backs_off_not_per_request(self, monkeypatch):
+        _set_env(monkeypatch)
+        calls: list[str] = []
+
+        class _Client:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+            async def get(self, url, **kwargs):
+                calls.append(url)
+                raise RuntimeError("supabase down")
+
+        import httpx
+
+        monkeypatch.setattr(httpx, "AsyncClient", _Client)
+        first = client.get("/api/opportunities/responsiveness")
+        assert first.status_code == 200
+        assert first.json()["signals"] == {}
+        client.get("/api/opportunities/responsiveness")
+        assert len(calls) == 1
+
 
 _SIGNALS = {"opp-1": {"contacted_n": 3, "replied_n": 2}}
 
@@ -177,7 +205,15 @@ def _profile():
 
 
 class TestRankerBonus:
-    def test_off_by_default(self):
+    def test_on_by_default_at_2(self):
+        assert _responsiveness_bonus(_opp(), _SIGNALS) == 2.0
+        with_map = rank_opportunity(_profile(), _opp(), responsiveness=_SIGNALS)
+        without = rank_opportunity(_profile(), _opp())
+        assert with_map.final_score > without.final_score
+
+    def test_env_zero_disables(self, monkeypatch):
+        monkeypatch.setattr(ranker, "RESPONSIVENESS_BONUS", 0.0)
+        assert _responsiveness_bonus(_opp(), _SIGNALS) == 0.0
         with_map = rank_opportunity(_profile(), _opp(), responsiveness=_SIGNALS)
         without = rank_opportunity(_profile(), _opp())
         assert with_map.final_score == without.final_score

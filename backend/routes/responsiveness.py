@@ -24,6 +24,10 @@ CONTACT_STATUSES = frozenset({"applied", "replied", "interviewing", "rejected"})
 REPLIED_STATUSES = frozenset({"replied", "interviewing"})
 
 _CACHE_TTL = 3600
+# With the bonus on by default, signals_map sits on the match request path.
+# A failed fetch must not retry per-request (worst case 30s httpx timeout each);
+# serve the (possibly empty) cache and retry after this backoff instead.
+_FAILURE_BACKOFF = 120
 _PAGE_SIZE = 1000
 _MAX_PAGES = 50
 
@@ -91,7 +95,9 @@ async def signals_map() -> dict[str, dict[str, int]]:
         rows = await _fetch_status_rows(supabase_url, headers)
     except Exception as exc:
         logger.warning("responsiveness fetch failed: %s", type(exc).__name__)
-        return _cache or {}
+        _cache = _cache or {}
+        _cache_time = now - _CACHE_TTL + _FAILURE_BACKOFF
+        return _cache
 
     _cache = _aggregate(rows)
     _cache_time = now
