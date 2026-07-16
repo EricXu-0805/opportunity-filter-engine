@@ -1,96 +1,117 @@
 {
-  "duration_seconds": 4291.9,
+  "duration_seconds": 3905.4,
   "shard": {
     "national": false,
     "schools": [
-      "dartmouth",
-      "duke",
-      "purdue",
-      "uw",
-      "wisc"
+      "boulder",
+      "brown",
+      "cornell",
+      "rice",
+      "ucla",
+      "utexas",
+      "vanderbilt"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 149,
+      "rule_based_tagged": 69,
       "status": "ok"
     },
-    "campus_graph:dartmouth": {
-      "deep": true,
-      "fetched": 8,
+    "boulder_faculty": {
+      "fetched": 1584,
       "new": 0,
       "status": "ok",
-      "updated": 8
+      "updated": 1584
     },
-    "campus_graph:duke": {
+    "brown_faculty": {
+      "fetched": 1130,
+      "new": 39,
+      "status": "ok",
+      "updated": 1091
+    },
+    "campus_graph:boulder": {
       "deep": true,
-      "fetched": 69,
-      "new": 1,
+      "fetched": 11,
+      "new": 2,
       "status": "ok",
-      "updated": 68
+      "updated": 9
     },
-    "campus_graph:purdue": {
+    "campus_graph:brown": {
       "deep": true,
-      "fetched": 82,
-      "new": 1,
+      "fetched": 4,
+      "new": 0,
       "status": "ok",
-      "updated": 81
+      "updated": 4
     },
-    "campus_graph:uw": {
+    "campus_graph:cornell": {
       "deep": true,
-      "fetched": 34,
-      "new": 23,
+      "fetched": 4,
+      "new": 0,
       "status": "ok",
-      "updated": 10
+      "updated": 4
     },
-    "campus_graph:wisc": {
+    "campus_graph:rice": {
       "deep": true,
-      "fetched": 33,
-      "new": 8,
+      "fetched": 5,
+      "new": 0,
       "status": "ok",
-      "updated": 22
+      "updated": 5
     },
-    "dartmouth_faculty": {
-      "fetched": 953,
-      "new": 53,
+    "campus_graph:ucla": {
+      "deep": true,
+      "fetched": 29,
+      "new": 5,
       "status": "ok",
-      "updated": 900
+      "updated": 20
+    },
+    "campus_graph:utexas": {
+      "deep": true,
+      "fetched": 36,
+      "new": 25,
+      "status": "ok",
+      "updated": 11
+    },
+    "campus_graph:vanderbilt": {
+      "deep": true,
+      "fetched": 5,
+      "new": 0,
+      "status": "ok",
+      "updated": 5
+    },
+    "cornell_faculty": {
+      "fetched": 1655,
+      "new": 116,
+      "status": "ok",
+      "updated": 1539
     },
     "deactivate_past": {
       "already_inactive": 717,
-      "kept_active": 5,
-      "newly_deactivated": 0,
-      "skipped_rolling": 47223,
+      "kept_active": 3,
+      "newly_deactivated": 2,
+      "skipped_rolling": 47485,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 6430,
-      "newly_deactivated": 67,
-      "skipped_partial_scrape": [
-        "wisc_faculty"
-      ],
+      "kept_fresh": 10703,
+      "newly_deactivated": 350,
+      "skipped_partial_scrape": [],
       "status": "ok"
     },
-    "duke_faculty": {
-      "fetched": 1110,
-      "new": 47,
-      "status": "ok",
-      "updated": 1063
-    },
     "faculty_hygiene": {
-      "duplicates_removed": 270,
+      "duplicates_removed": 343,
       "keywords_cleaned": 3,
       "removed_by_school": {
-        "dartmouth": 51,
-        "duke": 40,
-        "purdue": 39,
-        "uw": 48,
-        "wisc": 92
+        "brown": 8,
+        "cornell": 34,
+        "ucla": 34,
+        "utexas": 266,
+        "vanderbilt": 1
       },
       "shared_inbox_nulled": {
-        "dartmouth": 2,
-        "purdue": 2,
-        "uw": 2
+        "brown": 8,
+        "ucla": 4,
+        "utexas": 4,
+        "vanderbilt": 4
       },
       "status": "ok"
     },
@@ -104,26 +125,26 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 7616,
-      "enriched": 540,
-      "nulled_unit_inboxes": 2,
-      "renulled_shared_emails": 45,
-      "scraped": 911,
-      "skipped_budget": 0,
+      "already_had": 9787,
+      "enriched": 319,
+      "nulled_unit_inboxes": 8,
+      "renulled_shared_emails": 160,
+      "scraped": 1000,
+      "skipped_budget": 359,
       "status": "ok"
     },
-    "purdue_faculty": {
-      "fetched": 2155,
-      "new": 49,
+    "rice_faculty": {
+      "fetched": 984,
+      "new": 7,
       "status": "ok",
-      "updated": 2106
+      "updated": 977
     },
     "school_audience": {
       "by_source": {
         "boulder_faculty": 1586,
-        "boulder_labs": 4,
-        "boulder_research_programs": 5,
-        "brown_faculty": 1102,
+        "boulder_labs": 5,
+        "boulder_research_programs": 6,
+        "brown_faculty": 1141,
         "brown_research_programs": 4,
         "caltech_external_research": 14,
         "caltech_faculty": 450,
@@ -131,12 +152,12 @@
         "caltech_research_programs": 8,
         "columbia_faculty": 961,
         "columbia_research_programs": 7,
-        "cornell_faculty": 1602,
+        "cornell_faculty": 1718,
         "cornell_research_programs": 4,
-        "dartmouth_faculty": 956,
+        "dartmouth_faculty": 905,
         "dartmouth_research_programs": 8,
         "duke_external_research": 4,
-        "duke_faculty": 1132,
+        "duke_faculty": 1092,
         "duke_labs": 9,
         "duke_research_programs": 57,
         "gatech_external_research": 2,
@@ -157,10 +178,10 @@
         "princeton_labs": 4,
         "princeton_research_programs": 7,
         "purdue_external_research": 6,
-        "purdue_faculty": 2161,
+        "purdue_faculty": 2122,
         "purdue_labs": 17,
         "purdue_research_programs": 59,
-        "rice_faculty": 979,
+        "rice_faculty": 986,
         "rice_research_programs": 5,
         "simplify_internships": 2508,
         "stanford_external_research": 1,
@@ -233,9 +254,9 @@
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
-        "ucla_faculty": 1963,
+        "ucla_faculty": 2052,
         "ucla_labs": 1,
-        "ucla_research_programs": 26,
+        "ucla_research_programs": 31,
         "ucsb_external_research": 1,
         "ucsb_faculty": 817,
         "ucsb_labs": 2,
@@ -245,7 +266,7 @@
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
         "uiuc_drp": 2,
-        "uiuc_faculty": 3249,
+        "uiuc_faculty": 3197,
         "uiuc_other": 7,
         "uiuc_our_rss": 26,
         "uiuc_siebel": 14,
@@ -261,37 +282,43 @@
         "upenn_labs": 2,
         "upenn_research_programs": 26,
         "utexas_external_research": 1,
-        "utexas_faculty": 2145,
-        "utexas_research_programs": 10,
+        "utexas_faculty": 2445,
+        "utexas_research_programs": 35,
         "uw_external_research": 1,
-        "uw_faculty": 2248,
+        "uw_faculty": 2200,
         "uw_labs": 3,
         "uw_research_programs": 30,
-        "vanderbilt_faculty": 1124,
+        "vanderbilt_faculty": 1125,
         "vanderbilt_research_programs": 5,
         "wisc_external_research": 1,
-        "wisc_faculty": 1808,
+        "wisc_faculty": 1716,
         "wisc_labs": 1,
         "wisc_research_programs": 39
       },
       "status": "ok",
-      "tagged": 48806
+      "tagged": 49068
     },
-    "uw_faculty": {
-      "fetched": 2181,
-      "new": 47,
+    "ucla_faculty": {
+      "fetched": 1969,
+      "new": 89,
       "status": "ok",
-      "updated": 2134
+      "updated": 1880
     },
-    "wisc_faculty": {
-      "fetched": 816,
-      "new": 93,
+    "utexas_faculty": {
+      "fetched": 2171,
+      "new": 300,
       "status": "ok",
-      "updated": 723
+      "updated": 1871
+    },
+    "vanderbilt_faculty": {
+      "fetched": 1123,
+      "new": 1,
+      "status": "ok",
+      "updated": 1122
     }
   },
-  "timestamp": "2026-07-15T06:44:07.730349",
-  "total_in_file": 48536,
-  "total_new": 322,
-  "total_updated": 7115
+  "timestamp": "2026-07-16T06:48:19.110825",
+  "total_in_file": 48725,
+  "total_new": 584,
+  "total_updated": 10122
 }
