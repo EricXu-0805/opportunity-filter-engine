@@ -186,7 +186,7 @@ def test_harvest_works_aborts_on_confirmed_429_and_resumes_past_misses(monkeypat
     monkeypatch.setattr(oa, "_match_author", lambda *a, **k: None)  # all miss
     mapping = oa.harvest_works(opps, checkpoint_path=ckpt, throttle=0)
     assert mapping == {}
-    assert sorted(_json.load(open(ckpt + ".misses"))) == [o["url"] for o in opps]
+    assert sorted(_json.load(open(ckpt + ".misses"))) == [oa._person_key(o) for o in opps]
 
     # Resume: all four known misses are skipped — zero further lookups.
     calls = []
@@ -319,7 +319,7 @@ def test_harvest_works_targets_matched_authors_only(monkeypatch):
                         lambda aid, dept="": [{"title": "Recent Paper", "year": 2026}])
     mapping = oa.harvest_works(opps, throttle=0)
     # keyworded faculty ARE works targets; already-enriched + unmapped schools are not
-    assert mapping == {"https://x.edu/a": [{"title": "Recent Paper", "year": 2026}]}
+    assert mapping == {"https://x.edu/a#a match": [{"title": "Recent Paper", "year": 2026}]}
 
 
 def test_apply_works_is_updates_only_and_capped():
@@ -372,3 +372,80 @@ def test_apply_works_upgrades_when_store_is_richer():
     assert n == 1
     assert len(opps[0]["metadata"]["recent_works"]) == 3  # 1 -> 3 upgrade
     assert opps[1]["metadata"]["recent_works"][0]["title"] == "p1"  # unchanged
+
+
+def test_harvest_works_shared_url_keys_per_person(monkeypatch):
+    # 430 JHU Krieger faculty share one directory URL; a url-keyed mapping let
+    # the last-harvested person's papers overwrite everyone else's slot and
+    # apply_works then stamped one person's works onto the whole department.
+    opps = [
+        {"pi_name": "Erik Andersen", "school": "uw", "url": "https://x.edu/dir",
+         "source_type": "faculty_research"},
+        {"pi_name": "Gira Bhabha", "school": "uw", "url": "https://x.edu/dir",
+         "source_type": "faculty_research"},
+    ]
+    monkeypatch.setattr(oa, "_match_author", lambda name, *a, **k: {"id": name.split()[0]})
+    monkeypatch.setattr(oa, "author_recent_works",
+                        lambda aid, dept="": [{"title": f"{aid} paper", "year": 2026}])
+    mapping = oa.harvest_works(opps, throttle=0)
+    assert mapping == {
+        "https://x.edu/dir#erik andersen": [{"title": "Erik paper", "year": 2026}],
+        "https://x.edu/dir#gira bhabha": [{"title": "Gira paper", "year": 2026}],
+    }
+
+
+def test_apply_works_bare_url_never_applies_to_shared_url():
+    opps = [
+        {"pi_name": "A One", "school": "uw", "url": "https://x.edu/dir",
+         "source_type": "faculty_research"},
+        {"pi_name": "B Two", "school": "uw", "url": "https://x.edu/dir",
+         "source_type": "faculty_research"},
+        {"pi_name": "C Solo", "school": "uw", "url": "https://x.edu/c",
+         "source_type": "faculty_research"},
+    ]
+    mapping = {
+        "https://x.edu/dir": [{"title": "someone's paper", "year": 2026}],  # legacy bare key
+        "https://x.edu/c": [{"title": "c paper", "year": 2026}],
+        "https://x.edu/dir#a one": [{"title": "a's own paper", "year": 2026}],
+    }
+    n = oa.apply_works(opps, mapping)
+    assert n == 2
+    assert opps[0]["metadata"]["recent_works"][0]["title"] == "a's own paper"
+    assert "metadata" not in opps[1] or not (opps[1].get("metadata") or {}).get("recent_works")
+    assert opps[2]["metadata"]["recent_works"][0]["title"] == "c paper"
+
+
+def test_apply_openalex_bare_url_never_applies_to_shared_url():
+    opps = [
+        {"pi_name": "A One", "school": "uw", "url": "https://x.edu/dir",
+         "source_type": "faculty_research"},
+        {"pi_name": "B Two", "school": "uw", "url": "https://x.edu/dir",
+         "source_type": "faculty_research"},
+        {"pi_name": "C Solo", "school": "uw", "url": "https://x.edu/c",
+         "source_type": "faculty_research"},
+    ]
+    mapping = {
+        "https://x.edu/dir": ["someone's topics"],
+        "https://x.edu/c": ["c topics"],
+        "https://x.edu/dir#b two": ["b's own topics"],
+    }
+    n = oa.apply_openalex(opps, mapping)
+    assert n == 2
+    assert not opps[0].get("keywords")
+    assert opps[1]["keywords"] == ["b's own topics"]
+    assert opps[2]["keywords"] == ["c topics"]
+
+
+def test_apply_works_dedups_punctuation_variant_titles():
+    # The committed store predates _title_key: journals republish preprints with
+    # hyphen/case drift ("Older-Onset" vs "older onset") and both got stored.
+    opps = [{"pi_name": "A", "school": "uw", "url": "https://x.edu/a",
+             "source_type": "faculty_research"}]
+    mapping = {"https://x.edu/a": [
+        {"title": "CGM in Older-Onset Diabetes", "year": 2026},
+        {"title": "CGM in older onset diabetes", "year": 2026},
+        {"title": "A Different Paper", "year": 2025},
+    ]}
+    oa.apply_works(opps, mapping)
+    titles = [w["title"] for w in opps[0]["metadata"]["recent_works"]]
+    assert titles == ["CGM in Older-Onset Diabetes", "A Different Paper"]
