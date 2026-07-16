@@ -175,6 +175,7 @@ def princeton_wayback_email_for(pi_name: str, url: str | None) -> dict | None:
 _SCHOOL_FNS = {
     "stanford": lambda o: stanford_email_for(o.get("pi_name") or "", _record_url(o)),
     "princeton": lambda o: princeton_wayback_email_for(o.get("pi_name") or "", _record_url(o)),
+    "utexas": lambda o: utexas_dm_email_for(o),
 }
 
 # UIUC netid construction: the profile URL must live on one of the two
@@ -187,6 +188,57 @@ _UIUC_NETID_RES = (
     re.compile(r"^[a-z][a-z0-9]{1,7}$"),
     re.compile(r"^[a-z]{1,2}-[a-z]+[0-9]?$"),
 )
+
+
+_DM_REPORT = ("https://profiles.digitalmeasures.com/clients/{client}"
+              "?reportId={report}&identifierKey=username&identifierValue={username}")
+# Same public Digital Measures report the research-expertise enrichment reads
+# (source of truth: schools/utexas_faculty.py _MCCOMBS_DM). One report serves
+# the whole McCombs college.
+_MCCOMBS_DM_CLIENT = "33273f60-e36d-5e3d-aef8-1d2311a16a9c"
+_MCCOMBS_DM_REPORT = "f1ba5042-450f-11ef-9a63-33d5f7cc5693"
+_MCCOMBS_URL_RE = re.compile(
+    r"^https?://(?:www\.)?mccombs\.utexas\.edu/.*[?&]username=([A-Za-z0-9._-]+)",
+    re.IGNORECASE,
+)
+_MAILTO_RE = re.compile(r'mailto:([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]*utexas\.edu)', re.IGNORECASE)
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def utexas_dm_email_for(o: dict) -> dict | None:
+    """{email, display_block} from the McCombs Digital Measures profile report,
+    or None. This is the school's own PUBLISHED contact block (name + title +
+    mailto in one record), not a construction: the report is keyed by the
+    campus username carried in the record's own listing URL, and the name-agree
+    gate rejects a block that names someone else."""
+    m = _MCCOMBS_URL_RE.match(_record_url(o) or "")
+    if not m:
+        return None
+    r = _get(_DM_REPORT.format(client=_MCCOMBS_DM_CLIENT, report=_MCCOMBS_DM_REPORT,
+                               username=m.group(1)))
+    if r is None or r.status_code != 200:
+        return None
+    try:
+        items = (r.json() or {}).get("items") or []
+    except ValueError:
+        return None
+    for it in items:
+        blk = it.get("data") if isinstance(it, dict) else None
+        recs = blk.get("records") if isinstance(blk, dict) else None
+        for rec in recs or []:
+            value = rec.get("value") if isinstance(rec, dict) else None
+            if not value or "mailto:" not in value:
+                continue
+            em = _MAILTO_RE.search(value)
+            if not em:
+                continue
+            text = _TAG_RE.sub(" ", value)
+            display = text.split("The University of Texas")[0].strip()
+            if not _names_agree(o.get("pi_name") or "", display):
+                return None
+            return {"email": em.group(1), "display_name": display,
+                    "source": "digitalmeasures_profile"}
+    return None
 
 
 def uiuc_netid_email_for(o: dict) -> dict | None:
