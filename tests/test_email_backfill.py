@@ -94,6 +94,54 @@ def test_princeton_wayback_no_email_in_snapshots(monkeypatch):
                                           "https://phy.princeton.edu/people/dmitry-abanin") is None
 
 
+class TestUiucNetidConstruction:
+    def test_constructs_modern_and_legacy_netids(self):
+        ece = {"pi_name": "Rainer Engelken", "school": "uiuc", "source": "uiuc_faculty",
+               "url": "https://ece.illinois.edu/about/directory/faculty/engelken"}
+        legacy = {"pi_name": "Bruce Hajek", "school": "uiuc", "source": "uiuc_faculty",
+                  "url": "https://ece.illinois.edu/about/directory/faculty/b-hajek"}
+        cee = {"pi_name": "Imad Al-Qadi", "school": "uiuc", "source": "uiuc_faculty",
+               "url": "https://cee.illinois.edu/directory/profile/alqadi"}
+        assert eb.uiuc_netid_email_for(ece)["email"] == "engelken@illinois.edu"
+        assert eb.uiuc_netid_email_for(legacy)["email"] == "b-hajek@illinois.edu"
+        out = eb.uiuc_netid_email_for(cee)
+        assert out == {"email": "alqadi@illinois.edu", "netid": "alqadi",
+                       "source": "constructed_netid"}
+
+    def test_rejects_name_slugs_and_foreign_hosts(self):
+        # firstname-lastname slug (iSchool style) — 65% global accuracy is why
+        # construction is gated to netid shapes; this must never construct.
+        name_slug = {"pi_name": "Masooda Bashir", "school": "uiuc", "source": "uiuc_faculty",
+                     "url": "https://ece.illinois.edu/about/directory/faculty/masooda-bashir"}
+        other_host = {"pi_name": "Jessie Chin", "school": "uiuc", "source": "uiuc_faculty",
+                      "url": "https://ischool.illinois.edu/people/jessie-chin"}
+        long_slug = {"pi_name": "X", "school": "uiuc", "source": "uiuc_faculty",
+                     "url": "https://ece.illinois.edu/about/directory/faculty/verylongslugname"}
+        assert eb.uiuc_netid_email_for(name_slug) is None
+        assert eb.uiuc_netid_email_for(other_host) is None
+        assert eb.uiuc_netid_email_for(long_slug) is None
+
+    def test_construct_uiuc_is_updates_only_and_stamps_provenance(self):
+        opps = [
+            {"pi_name": "Rainer Engelken", "school": "uiuc", "source": "uiuc_faculty",
+             "url": "https://ece.illinois.edu/about/directory/faculty/engelken"},
+            {"pi_name": "Klara Nahrstedt", "school": "uiuc", "source": "uiuc_faculty",
+             "url": "https://ece.illinois.edu/about/directory/faculty/klara",
+             "contact_email": "klara@illinois.edu"},
+            {"pi_name": "Jane Doe", "school": "uw", "source": "uw_faculty",
+             "url": "https://ece.illinois.edu/about/directory/faculty/jdoe"},
+        ]
+        n = eb.construct_uiuc(opps)
+        assert n == 1
+        assert opps[0]["contact_email"] == "engelken@illinois.edu"
+        assert opps[0]["metadata"]["email_source"] == "constructed_netid"
+        # existing email untouched, no provenance stamp added
+        assert opps[1]["contact_email"] == "klara@illinois.edu"
+        assert "email_source" not in (opps[1].get("metadata") or {})
+        # non-uiuc record never constructed even on a matching host
+        assert "contact_email" not in opps[2]
+
+
 def test_apply_stamps_provenance_and_is_updates_only():
     opps = [
         {"pi_name": "A", "school": "stanford", "source": "stanford_faculty",
