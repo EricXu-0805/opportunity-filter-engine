@@ -59,6 +59,20 @@ REGISTERED_SCHOOLS = frozenset(s for s, _ in SOURCE_DEFAULTS.values() if s)
 _PRESTIGE_ORG_RE = re.compile(r"\b(?:caltech|mit|stanford|cmu|berkeley|nasa|doe)\b")
 
 
+def _is_actionable(opportunity: dict) -> bool:
+    """The student can act on this result. An email-outreach posting
+    (contact_method='email' — every faculty record) is actionable only with an
+    actual address: faculty collectors stamp the PROFILE url into
+    application_url, so that field proves nothing for them. For real
+    application flows (website/form) the URL is the action."""
+    if opportunity.get("contact_email") or opportunity.get("pi_email"):
+        return True
+    app = opportunity.get("application") or {}
+    if app.get("contact_method") == "email":
+        return False
+    return bool(app.get("application_url"))
+
+
 @dataclass
 class MatchResult:
     opportunity_id: str
@@ -74,6 +88,11 @@ class MatchResult:
     # interests OR their major-derived field — used for the "N strong matches in
     # your field" count so a thin field isn't padded by generic high-quality opps.
     field_relevant: bool = False
+    # The student can act on this result (a direct email or an application URL).
+    # Scores round to 0.1 and keyword-thin schools produce 8-way tie walls, so
+    # within a tie the actionable result must outrank the dead-end one — the
+    # audit found #1 matches with no email while equal-scored peers had one.
+    actionable: bool = True
 
 
 # --- Field matching utilities ---
@@ -524,7 +543,11 @@ def _interest_bonus(profile: dict, opportunity: dict) -> float:
     if not tokens:
         return 0.0
 
-    hits = sum(1 for t in tokens if t in signal_text)
+    # signal_text is space-padded normalized words; requiring the space before
+    # each token = word-boundary at the hit's start. Prefix matches stay
+    # ("gene" still hits "genetics"), mid-word ones don't ("gene" no longer
+    # hits "eugene" — name-luck put a political scientist in a premed's top-8).
+    hits = sum(1 for t in tokens if f" {t}" in signal_text)
     if hits == 0:
         return 0.0
     return min(INTEREST_BONUS_CAP, hits * INTEREST_BONUS_PER_HIT)
@@ -1628,6 +1651,19 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     pi_name = opp.get("pi_name", "")
     clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
 
+    # Interest-bonus haystack. Two guards against name-luck ranking (a
+    # cancer-immunology student's "gene/genomics" tokens put Gene Fridman and
+    # THREE Eugenes in her top-15): the professor's name is cut out of the
+    # title/lab text, and the text is normalized to space-padded words so the
+    # bonus can require a word boundary at the start of each hit.
+    signal_parts = [opp.get("title", ""), " ".join(keywords), lab or ""]
+    if pi_name:
+        signal_parts = [
+            re.sub(re.escape(pi_name), " ", part, flags=re.IGNORECASE)
+            for part in signal_parts
+        ]
+    signal_joined = re.sub(r"[^a-z0-9]+", " ", " ".join(signal_parts).lower()).strip()
+
     deadline = opp.get("deadline", "")
     deadline_date = None
     if deadline and len(deadline) >= 8 and deadline[4] == "-":
@@ -1655,11 +1691,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         has_desc=bool(opp.get("description_raw") or opp.get("description_clean") or ""),
         has_skill_signal=bool(elig.get("skills_required")),
         lab_label=clean_pi and f"Prof. {clean_pi}" or lab or opp.get("department", ""),
-        signal_text=" ".join(filter(None, [
-            opp.get("title", ""),
-            " ".join(keywords),
-            opp.get("lab_or_program", "") or "",
-        ])).lower(),
+        signal_text=f" {signal_joined} " if signal_joined else "",
         dept_lower=(opp.get("department") or "").lower(),
         topic_candidates=tuple(
             (
@@ -1929,6 +1961,7 @@ def rank_opportunity(
         reasons_gap=all_gap,
         next_steps=next_steps,
         field_relevant=field_relevant,
+        actionable=_is_actionable(opportunity),
     )
 
 
@@ -2072,8 +2105,10 @@ def semantic_rerank(
 
     # Deterministic tie-break: scores round to 0.1, so equal-score bands
     # (17-way ties were observed) otherwise reorder whenever corpus file
-    # order shifts between refreshes.
-    results.sort(key=lambda r: (-r.final_score, r.opportunity_id))
+    # order shifts between refreshes. Within a tie, results the student can
+    # act on (email / application URL) come first — the audit found dead-end
+    # #1 matches while equal-scored contactable peers sat below them.
+    results.sort(key=lambda r: (-r.final_score, not r.actionable, r.opportunity_id))
     # Buckets were assigned on the pre-blend scores; recompute them so the labels
     # and per-bucket counts match the re-ranked order (semantic=true used to
     # return stale buckets).
@@ -2271,8 +2306,10 @@ def rank_all(
 
     # Deterministic tie-break: scores round to 0.1, so equal-score bands
     # (17-way ties were observed) otherwise reorder whenever corpus file
-    # order shifts between refreshes.
-    results.sort(key=lambda r: (-r.final_score, r.opportunity_id))
+    # order shifts between refreshes. Within a tie, results the student can
+    # act on (email / application URL) come first — the audit found dead-end
+    # #1 matches while equal-scored contactable peers sat below them.
+    results.sort(key=lambda r: (-r.final_score, not r.actionable, r.opportunity_id))
     _assign_buckets(results)
 
     if exploring:

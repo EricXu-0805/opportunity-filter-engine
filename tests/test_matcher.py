@@ -2010,3 +2010,82 @@ class TestCorpusPrecomputeEquivalence:
         rk.register_corpus(reloaded)
         assert rk._corpus_ref is reloaded
         assert rk._opp_static(corpus[0]) is not st_first  # old ids no longer cached
+
+
+class TestInterestBonusNameLeakage:
+    """Interest tokens must match research signal, not the professor's name.
+    2026-07 audit: a cancer-immunology student's 'gene/genomics' tokens put
+    Gene Fridman (ENT) at #1 and Eugene Finkel (political science) in her
+    top-8 at JHU — 10/15 of her matches were name-substring luck."""
+
+    def _opp(self, pi, title, kws):
+        return {"id": f"t-{pi.replace(' ', '')}", "opportunity_type": "research",
+                "pi_name": pi, "title": title, "keywords": kws,
+                "eligibility": {}, "application": {}}
+
+    def test_interest_token_ignores_professor_name(self):
+        from src.matcher.ranker import _interest_bonus
+        opp = self._opp("Gene Y. Fridman", "Research with Prof. Gene Y. Fridman — SOM", [])
+        assert _interest_bonus(
+            {"research_interests_text": "cancer immunology, genomics, gene editing"}, opp
+        ) == 0.0
+
+    def test_interest_token_no_midword_hit(self):
+        from src.matcher.ranker import _interest_bonus
+        # even with the name cut out, 'gene' must not hit the middle of a word
+        opp = self._opp("Eugene Finkel", "Research with Prof. Eugene Finkel — SAIS",
+                        ["eugenics history"])
+        assert _interest_bonus({"research_interests_text": "gene editing"}, opp) == 0.0
+
+    def test_interest_token_prefix_still_matches(self):
+        from src.matcher.ranker import _interest_bonus
+        opp = self._opp("A Person", "Research with Prof. A Person — BIO",
+                        ["genetics", "genomic medicine"])
+        assert _interest_bonus({"research_interests_text": "gene editing, genomics"}, opp) > 0.0
+
+    def test_real_topical_keyword_unaffected(self):
+        from src.matcher.ranker import _interest_bonus
+        opp = self._opp("Nicole Baumgarth", "Research with Prof. Nicole Baumgarth — SOM",
+                        ["cancer immunology", "B cells"])
+        assert _interest_bonus({"research_interests_text": "cancer immunology"}, opp) > 0.0
+
+
+class TestActionableTieBreak:
+    """Scores round to 0.1 and keyword-thin schools produce 8-way tie walls
+    ordered by record id — the audit found #1 matches with no email while
+    equal-scored contactable peers sat below. Within a tie, actionable first."""
+
+    def _opp(self, oid, email=None, app_url=None, method="email"):
+        # the faculty shape: contact_method='email' and application_url stamped
+        # with the PROFILE url — that url must not count as actionability
+        return {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
+                "title": f"Research with Prof. P {oid}", "keywords": ["robotics"],
+                "contact_email": email,
+                "eligibility": {},
+                "application": {"contact_method": method,
+                                "application_url": app_url or f"https://x.edu/{oid}"}}
+
+    def test_tied_scores_prefer_actionable(self):
+        from src.matcher.ranker import rank_all
+        profile = {"year": "junior", "major": "Computer Science",
+                   "research_interests_text": "robotics"}
+        opps = [
+            self._opp("a-dead-end"),
+            self._opp("b-email", email="p@x.edu"),
+            self._opp("c-app-url", app_url="https://x.edu/apply", method="website"),
+        ]
+        results = rank_all(profile, opps)
+        scores = {r.final_score for r in results}
+        assert len(scores) == 1  # identical records = a true tie wall
+        assert [r.opportunity_id for r in results] == ["b-email", "c-app-url", "a-dead-end"]
+
+    def test_score_still_dominates_actionability(self):
+        from src.matcher.ranker import rank_all
+        profile = {"year": "junior", "major": "Computer Science",
+                   "research_interests_text": "robotics"}
+        strong = self._opp("z-strong")
+        strong["keywords"] = ["robotics", "robot manipulation", "motion planning"]
+        weak = self._opp("a-weak", email="p@x.edu")
+        weak["keywords"] = ["ceramics"]
+        results = rank_all(profile, [strong, weak])
+        assert results[0].opportunity_id == "z-strong"  # no email, still first
