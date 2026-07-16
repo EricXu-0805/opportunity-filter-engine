@@ -35,10 +35,7 @@ class ProfileRequest(BaseModel):
     coursework: list[str] = Field(default_factory=list)
     experience_level: str = "beginner"
     resume_ready: bool = False
-    linkedin_ready: bool = False
     can_cold_email: bool = True
-    preferred_location: str = "on-campus"
-    time_availability: str = "summer"
     research_interests_text: str = ""
     linkedin_url: str = ""
     github_url: str = ""

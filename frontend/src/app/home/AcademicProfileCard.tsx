@@ -13,7 +13,7 @@ import { loadCatalog } from '@/lib/catalogs';
 import { suggestInterests } from '@/lib/interest-suggestions';
 import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
-import { FORMAT_OPTIONS, SEEKING_TYPES, type TFunc } from './types';
+import { SEEKING_TYPES, type TFunc } from './types';
 
 export function AcademicProfileCard({
   profile,
@@ -58,19 +58,12 @@ export function AcademicProfileCard({
   const colleges = catalog ? Object.keys(catalog) : [];
   const majors = catalog && profile.college ? catalog[profile.college] ?? [] : [];
   const seeking = profile.seeking_types ?? [];
-  const format = profile.format_preference ?? 'any';
 
   const seekingLabel = {
     research: 'home.form.seekingResearch',
     summer_program: 'home.form.seekingSummer',
     internship: 'home.form.seekingInternship',
     fellowship: 'home.form.seekingFellowship',
-  } as const;
-
-  const formatLabel = {
-    any: 'home.form.formatAny',
-    'in-person': 'home.form.formatInPerson',
-    remote: 'home.form.formatRemote',
   } as const;
 
   // Clickable research-area chips — the free-text interests box is the main
@@ -308,28 +301,6 @@ export function AcademicProfileCard({
                 </button>
               );
             })}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('home.form.formatLabel')}
-          </label>
-          <div className="flex gap-2">
-            {FORMAT_OPTIONS.map((fmt) => (
-              <button
-                key={fmt}
-                type="button"
-                onClick={() => update('format_preference', fmt)}
-                className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
-                  format === fmt
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
-                }`}
-              >
-                {t(formatLabel[fmt])}
-              </button>
-            ))}
           </div>
         </div>
 
