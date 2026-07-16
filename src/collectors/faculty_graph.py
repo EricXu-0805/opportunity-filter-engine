@@ -2188,6 +2188,44 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             remove.add(id(o))
             removed_by_school[school] += 1
 
+    # Same profile SLUG syndicated across two department sites (Caltech CMS +
+    # EE both serve /people/<slug> for a cross-listed professor with the same
+    # profile content — 15% of Caltech faculty duplicated this way). Runs over
+    # ALL active records regardless of email state: one department's scrape
+    # often captured the mailto while the other didn't, which is exactly the
+    # pair every email-keyed pass misses. Distinct from a genuine joint
+    # appointment with per-department profiles: those carry department-specific
+    # research blurbs, so the loser's keywords must be a NON-empty subset of
+    # the survivor's (identical, or a syndicated stub) — shared content is the
+    # evidence of syndication; two keyword-less stubs on different hosts carry
+    # no evidence and stay.
+    by_tail: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
+    for o in active:
+        if id(o) in remove:
+            continue
+        tail = _norm_faculty_url(o).rsplit("/", 1)[-1]
+        nn = _norm_person_name(o.get("pi_name"))
+        if tail and nn:
+            by_tail[(o.get("school"), nn, tail)].append(o)
+    for (school, _nn, _tail), tgroup in by_tail.items():
+        if len(tgroup) < 2:
+            continue
+        survivor = _pick_richer(tgroup, frozenset())
+        skw = {k.lower() for k in (survivor.get("keywords") or [])}
+        for o in tgroup:
+            if o is survivor:
+                continue
+            okw = {k.lower() for k in (o.get("keywords") or [])}
+            # Evidence gate: the SURVIVOR must carry content and the loser must
+            # be a subset of it — identical keywords, a syndicated stub, or a
+            # keyword-less stub (nothing department-specific to preserve). Two
+            # keyword-less records on different hosts (Stanford ME + BioE
+            # stubs) carry no evidence either way and stay.
+            if skw and okw <= skw:
+                _merge_faculty_fields(survivor, o)
+                remove.add(id(o))
+                removed_by_school[school] += 1
+
     by_email: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:
         if id(o) in remove:

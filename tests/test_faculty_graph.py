@@ -832,6 +832,71 @@ class TestCollapseSamePersonFaculty:
         assert {o["id"] for o in res["kept"]} == {"gone"}
         assert res["removed_by_school"] == {}
 
+    def test_syndicated_same_slug_profile_collapses(self):
+        """A professor cross-listed on two department sites serving the SAME
+        profile slug with the same (or stub-subset) keywords is one syndicated
+        profile, not a joint appointment (2026-07 dogfood: Caltech Abu-Mostafa
+        appeared twice in Eric's top-100; 15% of Caltech faculty duplicated)."""
+        cms = _fac_rec("cms", school="caltech", pi_name="Yaser S. Abu-Mostafa",
+                       dept="Computing + Mathematical Sciences",
+                       url="https://www.cms.caltech.edu/people/yaser",
+                       keywords=["machine learning", "artificial intelligence"])
+        ee = _fac_rec("ee", school="caltech", pi_name="Yaser S. Abu-Mostafa",
+                      dept="Electrical Engineering",
+                      url="https://www.ee.caltech.edu/people/yaser",
+                      keywords=["machine learning", "artificial intelligence", "neural networks"])
+        res = fg.collapse_same_person_faculty([cms, ee])
+        assert {o["id"] for o in res["kept"]} == {"ee"}  # keyword-richer
+        assert res["removed_by_school"] == {"caltech": 1}
+
+    def test_syndicated_slug_merges_across_email_states_and_keeps_address(self):
+        """The syndication pass must work across email states: one department's
+        scrape captured the mailto, the other didn't — the email-keyed passes
+        all miss that pair, the richer email-less twin outranks the contactable
+        one, and the user sees the person twice (35 such groups measured
+        2026-07-16). The merge keeps the richer record and propagates the
+        loser's address onto it."""
+        rich = _fac_rec("rich", school="gatech", pi_name="Divya Mahajan",
+                        dept="School of Computer Science",
+                        url="https://scs.gatech.edu/people/divya-mahajan",
+                        keywords=["computer architecture", "ML systems", "accelerators"])
+        stub = _fac_rec("stub", school="gatech", pi_name="Divya Mahajan",
+                        dept="School of ECE", email="divya.mahajan@gatech.edu",
+                        url="https://ece.gatech.edu/people/divya-mahajan",
+                        keywords=["computer architecture", "ML systems"])
+        res = fg.collapse_same_person_faculty([rich, stub])
+        kept = res["kept"]
+        assert [o["id"] for o in kept] == ["rich"]
+        assert kept[0]["contact_email"] == "divya.mahajan@gatech.edu"
+
+    def test_syndicated_slug_merges_keywordless_stub_into_rich_record(self):
+        """A keyword-less directory stub sharing the rich record's slug has no
+        department-specific content to preserve — it merges (GT CS listed a
+        keyword-less Divya Mahajan stub next to her rich contactable ECE
+        record). Both-empty pairs still stay (no evidence either way)."""
+        rich = _fac_rec("rich", school="gatech", pi_name="Divya Mahajan",
+                        dept="ECE", email="divya.mahajan@gatech.edu",
+                        url="https://ece.gatech.edu/directory/divya-mahajan",
+                        keywords=["computer architecture"])
+        stub = _fac_rec("stub", school="gatech", pi_name="Divya Mahajan",
+                        dept="College of Computing",
+                        url="https://www.cc.gatech.edu/people/divya-mahajan")
+        res = fg.collapse_same_person_faculty([rich, stub])
+        assert [o["id"] for o in res["kept"]] == ["rich"]
+
+    def test_same_slug_but_department_specific_keywords_stays(self):
+        """Same slug across dept sites but genuinely different research blurbs
+        (neither keyword set contains the other) = per-department curated
+        profiles — both records stay."""
+        a = _fac_rec("a", school="cornell", pi_name="Jo Roe", dept="Physics",
+                     url="https://physics.cornell.edu/jo-roe",
+                     keywords=["quantum optics", "photonics"])
+        b = _fac_rec("b", school="cornell", pi_name="Jo Roe", dept="Applied Physics",
+                     url="https://aep.cornell.edu/jo-roe",
+                     keywords=["superconductivity", "materials"])
+        res = fg.collapse_same_person_faculty([a, b])
+        assert {o["id"] for o in res["kept"]} == {"a", "b"}
+
     def test_peer_joint_appointment_without_umbrella_is_left(self):
         """Stanford Applied Physics + Physics (no email, no umbrella) stay two
         records — the conservative no-email rule only collapses umbrella rosters."""
