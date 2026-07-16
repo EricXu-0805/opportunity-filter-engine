@@ -692,6 +692,29 @@ class TestSchoolAudience:
             f"First 3: {offenders[:3]}"
         )
 
+    def test_no_fabricated_lab_postings(self):
+        """8 prototype-era seed records were hand-written 'typical lab posting'
+        fixtures (metadata.notes 'Based on typical ECE lab posting patterns',
+        no PI, invented pay details) whose contact_email was nslack@illinois.edu
+        — the ECE shared ADVISING inbox, not a lab. A 2026-07 persona audit
+        found one ranked #7 high_priority for a CS junior. Purged from
+        seed_v1.json + corpus; this pins them (and their placeholder inbox)
+        out for good."""
+        fabricated = {
+            "uiuc-ece-cv-lab", "uiuc-ece-photonics", "uiuc-ece-arch",
+            "uiuc-ece-semiconductor", "uiuc-ece-ml-systems",
+            "uiuc-ischool-nlp", "uiuc-stat-data-lab", "uiuc-data-systems-lab",
+        }
+        offenders = [
+            (o["id"], o.get("contact_email"))
+            for o in _load_data()
+            if o["id"] in fabricated or o.get("contact_email") == "nslack@illinois.edu"
+        ]
+        assert not offenders, (
+            f"{len(offenders)} fabricated lab-posting records present. "
+            f"First 3: {offenders[:3]}"
+        )
+
     def test_school_is_none_or_lowercase_slug(self):
         offenders = [
             (o.get("source"), o.get("id"), o.get("school"))
