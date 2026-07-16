@@ -409,7 +409,9 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "start_date": None,
         "duration": "Semester or academic year",
         "eligibility": {
-            "preferred_year": ["sophomore", "junior", "senior"],
+            # Directory scrapes never state year preferences; lock freshmen out
+            # only when a posting explicitly does (Eric 2026-07-16).
+            "preferred_year": ["freshman", "sophomore", "junior", "senior"],
             "min_gpa": None,
             "majors": dept.get("majors", []),
             "skills_required": skills[:3],

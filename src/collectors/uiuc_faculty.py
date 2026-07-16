@@ -816,7 +816,7 @@ def normalize_faculty(
         "start_date": None,
         "duration": "Semester or academic year",
         "eligibility": {
-            "preferred_year": ["sophomore", "junior", "senior"],
+            "preferred_year": ["freshman", "sophomore", "junior", "senior"],
             "min_gpa": None,
             "majors": dept_config["majors"],
             # Faculty are cold-email research contacts, not postings — never

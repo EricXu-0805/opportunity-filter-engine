@@ -773,7 +773,7 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "start_date": None,
         "duration": "Semester or academic year",
         "eligibility": {
-            "preferred_year": ["sophomore", "junior", "senior"],
+            "preferred_year": ["freshman", "sophomore", "junior", "senior"],
             "min_gpa": None,
             "majors": config["majors"],
             "skills_required": skills[:3],

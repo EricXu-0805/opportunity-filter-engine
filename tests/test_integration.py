@@ -546,3 +546,15 @@ class TestAllRecordsIntegrity:
         for opp in data:
             intl = opp.get("eligibility", {}).get("international_friendly", "unknown")
             assert intl in valid_intl, f"Invalid international_friendly in: {opp.get('title')}"
+
+
+def test_extract_years_advanced_undergraduate_excludes_underclassmen():
+    """'advanced undergraduate' is an explicit no-freshman signal — the AAAS
+    Mass Media Fellowship said exactly this yet displayed 'Accepts freshman
+    students' because the phrase fell through to the all-years default."""
+    from src.normalizers.normalizer import _extract_years
+    years = _extract_years(
+        "placing advanced undergraduate, graduate, and post-graduate level "
+        "scientists at media organizations"
+    )
+    assert years == ["junior", "senior"]

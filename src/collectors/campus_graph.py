@@ -108,7 +108,7 @@ def program(
         "lab_or_program": lab_or_program, "opportunity_type": opportunity_type,
         "paid": paid, "compensation": compensation,
         "eligibility_majors": eligibility_majors or [],
-        "preferred_year": preferred_year or ["sophomore", "junior", "senior"],
+        "preferred_year": preferred_year or ["freshman", "sophomore", "junior", "senior"],
         "international_friendly": international_friendly, "deadline_note": deadline_note,
         "keywords": keywords or [],
     }
@@ -202,7 +202,7 @@ def _normalize_program(school: dict, source: dict, program_spec: dict, *,
         "start_date": None,
         "duration": None,
         "eligibility": {
-            "preferred_year": program_spec.get("preferred_year", ["sophomore", "junior", "senior"]),
+            "preferred_year": program_spec.get("preferred_year", ["freshman", "sophomore", "junior", "senior"]),
             "min_gpa": None,
             "majors": program_spec.get("eligibility_majors", []),
             "skills_required": [],
@@ -273,7 +273,7 @@ def _normalize_discovered(school: dict, source: dict, title: str, url: str, snip
         "start_date": None,
         "duration": None,
         "eligibility": {
-            "preferred_year": ["sophomore", "junior", "senior"],
+            "preferred_year": ["freshman", "sophomore", "junior", "senior"],
             "min_gpa": None, "majors": [], "skills_required": [], "skills_preferred": [],
             "citizenship_required": False, "international_friendly": "unknown",
             "work_auth_notes": "", "eligibility_text_raw": desc[:300],

@@ -104,6 +104,10 @@ YEAR_KEYWORDS = {
 
 def _extract_years(text: str) -> list[str]:
     text_lower = text.lower()
+    # "advanced undergraduate" is an explicit no-freshman signal (the AAAS Mass
+    # Media Fellowship said exactly this yet showed "Accepts freshman students").
+    if "advanced undergraduate" in text_lower:
+        return ["junior", "senior"]
     found = []
     for year, keywords in YEAR_KEYWORDS.items():
         if any(kw in text_lower for kw in keywords):
