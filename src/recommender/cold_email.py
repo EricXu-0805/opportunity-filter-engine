@@ -339,6 +339,7 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
         coursework=coursework, lab_type=lab_type,
+        recent_works=(opportunity.get("metadata") or {}).get("recent_works") or [],
     )
 
 
@@ -461,6 +462,7 @@ def _build_balanced(p: dict) -> str:
 
     intro = f"My name is {p['name']}, and I am {_student_self(p, 'studying')}."
     intro += _p1_research_hook(p)
+    intro += _recent_work_cite(p)
 
     skills_para = _p2_skills_applied(p)
     ask = _ask_for_lab_type(p.get("lab_type", "dry"))
@@ -475,6 +477,7 @@ def _build_skills_focus(p: dict) -> str:
 
     intro = f"My name is {p['name']}, and I am {_student_self(p, 'major')}."
     intro += _p1_research_hook(p)
+    intro += _recent_work_cite(p)
 
     skills_para = ""
     skills = p["skills"]
@@ -627,6 +630,26 @@ def _p1_research_hook(p: dict) -> str:
             f" I came across {lab_ref} and am very interested"
             f" in contributing to your research."
         )
+    return ""
+
+
+def _recent_work_cite(p: dict) -> str:
+    """One sentence citing the professor's newest usable paper — the template
+    path's counterpart to the AI prompt's recent-works block, so the free tier
+    also shows the student did their homework. Honest by construction: "caught
+    my attention" claims only that they saw the title (they did — it is on the
+    profile they are emailing from), never that they read the paper. OpenAlex
+    titles can carry markup (``[<sup>18</sup>F]FDG``) and can run to hundreds
+    of characters, so tags are stripped and only a 10-110 char title is cited;
+    none qualifying → no sentence."""
+    for w in p.get("recent_works", [])[:3]:
+        title = re.sub(r"<[^>]+>", "", str(w.get("title") or ""))
+        title = re.sub(r"\s+", " ", title).strip()
+        if not 10 <= len(title) <= 110:
+            continue
+        year = w.get("year")
+        yr = f" ({year})" if year else ""
+        return f' Your recent paper "{title}"{yr} caught my attention.'
     return ""
 
 
