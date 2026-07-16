@@ -2089,3 +2089,38 @@ class TestActionableTieBreak:
         weak["keywords"] = ["ceramics"]
         results = rank_all(profile, [strong, weak])
         assert results[0].opportunity_id == "z-strong"  # no email, still first
+
+
+class TestEmptyInterestMajorBonus:
+    """With no stated interests the major is the only topical signal — the
+    2026-07 audit found a CogSci freshman's own CogSci faculty at #12-15,
+    under a radio-astronomy REU, separated by ~3 points of generic polish."""
+
+    def _fac(self, oid, majors):
+        return {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
+                "title": f"Research with Prof. P {oid}", "keywords": [],
+                "eligibility": {"majors": majors}, "application": {}}
+
+    def test_major_direct_leads_when_interests_empty(self):
+        from src.matcher.ranker import rank_all
+        profile = {"year": "freshman", "major": "Cognitive Science",
+                   "research_interests_text": "", "exploring": True}
+        results = rank_all(profile, [
+            self._fac("a-offfield", ["Astronomy"]),
+            self._fac("b-openmajor", []),
+            self._fac("c-cogsci", ["Cognitive Science"]),
+        ])
+        assert results[0].opportunity_id == "c-cogsci"
+
+    def test_no_bonus_once_interests_present(self):
+        from src.matcher.ranker import _empty_interest_major_bonus
+        opp = self._fac("c-cogsci", ["Cognitive Science"])
+        profile = {"major": "Cognitive Science",
+                   "research_interests_text": "memory and attention"}
+        assert _empty_interest_major_bonus(profile, opp) == 0.0
+
+    def test_no_bonus_for_related_but_not_direct(self):
+        from src.matcher.ranker import _empty_interest_major_bonus
+        opp = self._fac("d-related", ["Psychology"])
+        profile = {"major": "Cognitive Science", "research_interests_text": ""}
+        assert _empty_interest_major_bonus(profile, opp) == 0.0

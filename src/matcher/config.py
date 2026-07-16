@@ -68,6 +68,12 @@ COURSEWORK_MAX_FROM_COUNT = _env_float("OFE_COURSE_MAX_COUNT", 70.0)
 COURSEWORK_RELEVANCE_BONUS = _env_float("OFE_COURSE_RELEVANCE", 30.0)
 
 INTEREST_BONUS_CAP = _env_float("OFE_INTEREST_BONUS_CAP", 8.0)
+# With no stated interests the interest bonus is structurally 0 and the major
+# is the student's only topical signal — yet major-DIRECT matches (a CogSci
+# freshman's own CogSci faculty) trailed off-field national programs by ~3 pts
+# (2026-07 audit). Below INTEREST_BONUS_CAP (interests LEAD when present),
+# above college/home affinity (4.0).
+EMPTY_INTEREST_MAJOR_BONUS = _env_float("OFE_EMPTY_INTEREST_MAJOR_BONUS", 6.0)
 INTEREST_BONUS_PER_HIT = _env_float("OFE_INTEREST_BONUS_PER_HIT", 3.0)
 
 DEADLINE_PASSED_PENALTY = _env_float("OFE_DEADLINE_PENALTY", 0.7)
