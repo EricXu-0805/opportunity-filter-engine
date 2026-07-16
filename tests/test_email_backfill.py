@@ -194,3 +194,46 @@ def test_carry_forward_keeps_email_source():
     _carry_forward_enrichment(existing, incoming2)
     assert incoming2["contact_email"] == "new@stanford.edu"
     assert "email_source" not in incoming2["metadata"]
+
+
+class TestUtexasDigitalMeasuresEmail:
+    def _resp(self, name="Andres Almazan", email="andres.almazan@mccombs.utexas.edu"):
+        class _R:
+            status_code = 200
+            def json(self):
+                return {"items": [
+                    {"data": {"records": [{"value":
+                        f'<span>{name}</span><br />The University of Texas at Austin'
+                        f'<br />Professor<br />Finance<br />'
+                        f'<a href="mailto:{email}">{email}</a><br />CBA 6.322'}]}},
+                    {"heading": {"value": "Research Expertise"}},
+                ]}
+        return _R()
+
+    def _opp(self, name="Andres Almazan",
+             url="https://www.mccombs.utexas.edu/faculty-and-research/faculty-directory/profile/?username=almazana"):
+        return {"pi_name": name, "url": url, "school": "utexas",
+                "source": "utexas_faculty"}
+
+    def test_extracts_published_email(self, monkeypatch):
+        monkeypatch.setattr(eb, "_get", lambda url, **kw: self._resp())
+        found = eb.utexas_dm_email_for(self._opp())
+        assert found["email"] == "andres.almazan@mccombs.utexas.edu"
+        assert found["source"] == "digitalmeasures_profile"
+
+    def test_wrong_person_block_rejected(self, monkeypatch):
+        monkeypatch.setattr(eb, "_get", lambda url, **kw: self._resp(name="Jane Roe"))
+        assert eb.utexas_dm_email_for(self._opp()) is None
+
+    def test_non_mccombs_url_skipped_without_fetch(self, monkeypatch):
+        def _boom(url, **kw):
+            raise AssertionError("must not fetch")
+        monkeypatch.setattr(eb, "_get", _boom)
+        assert eb.utexas_dm_email_for(
+            self._opp(url="https://www.cs.utexas.edu/people/faculty/jane")) is None
+
+    def test_non_utexas_domain_email_rejected(self, monkeypatch):
+        monkeypatch.setattr(
+            eb, "_get",
+            lambda url, **kw: self._resp(email="someone@gmail.com"))
+        assert eb.utexas_dm_email_for(self._opp()) is None
