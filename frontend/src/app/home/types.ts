@@ -20,7 +20,5 @@ export const DEFAULT_PROFILE: ProfileData = {
 export const SEEKING_TYPES = ['research', 'summer_program', 'internship', 'fellowship'] as const;
 export type SeekingType = typeof SEEKING_TYPES[number];
 
-export const FORMAT_OPTIONS = ['any', 'in-person', 'remote'] as const;
-export type FormatOption = typeof FORMAT_OPTIONS[number];
 
 export type SaveStatus = 'idle' | 'saving' | 'saved';

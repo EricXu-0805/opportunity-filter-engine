@@ -41,7 +41,6 @@ export interface ProfileData {
   linkedin_url?: string;
   github_url?: string;
   seeking_types?: string[];
-  format_preference?: string;
   name?: string;
   experience_level?: string;
   /**
