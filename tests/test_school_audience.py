@@ -100,3 +100,50 @@ def test_returns_per_source_counts():
     counts = apply_school_audience(opps)
     assert counts["ucb_eecs_faculty"] == 2
     assert counts["manual"] == 1
+
+
+class TestExplicitCampusOnlyDetection:
+    """A UCSB-only summer internship (audience='unknown') ranked #1 for a
+    Northwestern student — the 'summer programs recruit nationally' rule
+    assumed openness. Only an EXPLICIT own-campus restriction flips the tag."""
+
+    def _opp(self, school, source, desc):
+        return {"source": source, "school": school, "audience": "unknown",
+                "description_raw": desc, "eligibility": {}}
+
+    def test_rise_phrasing_becomes_campus(self):
+        from src.normalizers.school_audience import apply_school_audience
+        opp = self._opp("ucsb", "not-in-defaults",
+                        "RISE research internships for UCSB undergraduates. Science "
+                        "and engineering students from UCSB acquire research experience.")
+        apply_school_audience([opp])
+        assert opp["audience"] == "campus"
+
+    def test_must_be_enrolled_becomes_campus(self):
+        from src.normalizers.school_audience import apply_school_audience
+        opp = self._opp("purdue", "not-in-defaults",
+                        "Applicants must be enrolled at Purdue at time of application.")
+        apply_school_audience([opp])
+        assert opp["audience"] == "campus"
+
+    def test_other_school_mention_stays_unknown(self):
+        from src.normalizers.school_audience import apply_school_audience
+        # a UIUC record mentioning another school's students never self-restricts
+        opp = self._opp("northwestern", "not-in-defaults",
+                        "This program welcomes participants; for UCSB undergraduates "
+                        "a parallel session exists.")
+        apply_school_audience([opp])
+        assert opp["audience"] == "unknown"
+
+    def test_plain_description_stays_unknown(self):
+        from src.normalizers.school_audience import apply_school_audience
+        opp = self._opp("ucsb", "not-in-defaults",
+                        "Summer materials research internship with faculty mentorship.")
+        apply_school_audience([opp])
+        assert opp["audience"] == "unknown"
+
+    def test_source_default_campus_not_downgraded(self):
+        from src.normalizers.school_audience import apply_school_audience
+        opp = self._opp("uiuc", "uiuc_our_rss", "Open position in a lab.")
+        apply_school_audience([opp])
+        assert opp["audience"] == "campus"

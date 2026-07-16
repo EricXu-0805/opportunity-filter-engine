@@ -11,7 +11,87 @@ tagger's job.
 
 from __future__ import annotations
 
+import re
+
 VALID_AUDIENCES = frozenset({"campus", "open", "unknown"})
+
+# Names a record's OWN host school may be called in its description. Used only
+# to detect an EXPLICIT own-campus restriction ("for UCSB undergraduates",
+# "must be enrolled at Purdue") on an audience='unknown' record — a UCSB-only
+# summer internship ranked #1 for a Northwestern student because the
+# "summer programs recruit nationally" rule assumed openness (2026-07 audit).
+# Deliberately conservative: ambiguous shorts that double as common words or
+# state names ("Illinois", "Washington") are omitted.
+_CAMPUS_NAMES: dict[str, tuple[str, ...]] = {
+    "uiuc": ("uiuc", "university of illinois urbana-champaign",
+             "university of illinois at urbana-champaign"),
+    "ucb": ("uc berkeley", "berkeley"),
+    "uw": ("university of washington",),
+    "ucla": ("ucla",),
+    "utexas": ("ut austin", "university of texas at austin"),
+    "stanford": ("stanford",),
+    "gatech": ("georgia tech", "georgia institute of technology"),
+    "wisc": ("uw-madison", "uw madison", "university of wisconsin-madison",
+             "university of wisconsin"),
+    "umich": ("university of michigan", "u-m", "umich"),
+    "princeton": ("princeton",),
+    "ucsd": ("uc san diego", "ucsd"),
+    "uchicago": ("university of chicago", "uchicago"),
+    "uci": ("uc irvine", "uci"),
+    "ucsb": ("ucsb", "uc santa barbara"),
+    "boulder": ("cu boulder", "university of colorado boulder"),
+    "purdue": ("purdue",),
+    "duke": ("duke",),
+    "jhu": ("johns hopkins", "jhu"),
+    "northwestern": ("northwestern",),
+    "upenn": ("penn", "university of pennsylvania", "upenn"),
+    "caltech": ("caltech",),
+    "cornell": ("cornell",),
+    "rice": ("rice",),
+    "vanderbilt": ("vanderbilt",),
+    "brown": ("brown",),
+    "dartmouth": ("dartmouth",),
+    "columbia": ("columbia",),
+}
+
+_CAMPUS_ONLY_TEMPLATES = (
+    # "internships for UCSB undergraduates", "open only to Purdue students"
+    r"(?:for|(?:open\s+)?(?:only\s+)?to)\s+(?:current(?:ly)?[\s-]*enrolled\s+)?{name}\s+(?:undergraduate|student)s?\b",
+    # "UCSB students only"
+    r"{name}\s+(?:undergraduate|student)s?\s+only\b",
+    # "must be enrolled at UCSB" / "must be a UCSB student"
+    r"must\s+be\s+(?:currently\s+)?(?:enrolled\s+(?:at|in)\s+{name}|an?\s+{name}\s+(?:undergraduate|student))",
+    # "students from UCSB acquire research experience" (the RISE phrasing)
+    r"(?:undergraduate|student)s?\s+from\s+{name}\s+(?:acquire|gain|receive|participate)",
+)
+
+
+def _campus_only_res(slug: str) -> tuple[re.Pattern, ...]:
+    names = _CAMPUS_NAMES.get(slug)
+    if not names:
+        return ()
+    alt = "(?:" + "|".join(re.escape(n) for n in names) + ")"
+    return tuple(re.compile(t.format(name=alt), re.IGNORECASE) for t in _CAMPUS_ONLY_TEMPLATES)
+
+
+_CAMPUS_ONLY_CACHE: dict[str, tuple[re.Pattern, ...]] = {}
+
+
+def _explicitly_campus_only(school: str, opp: dict) -> bool:
+    """True only when the record's own text restricts it to its host school's
+    students. Mentions of OTHER schools never match (patterns are built from
+    the host school's names), and absent phrasing leaves audience unchanged."""
+    res = _CAMPUS_ONLY_CACHE.get(school)
+    if res is None:
+        res = _CAMPUS_ONLY_CACHE[school] = _campus_only_res(school)
+    if not res:
+        return False
+    text = " ".join(filter(None, [
+        opp.get("description_raw") or "",
+        opp.get("description_clean") or "",
+        (opp.get("eligibility") or {}).get("eligibility_text_raw") or "",
+    ]))
+    return any(r.search(text) for r in res)
 
 SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "uiuc_our_rss": ("uiuc", "campus"),
@@ -263,6 +343,8 @@ def apply_school_audience(opportunities: list[dict]) -> dict[str, int]:
             audience = opp.get("audience")
             if audience not in VALID_AUDIENCES:
                 audience = "unknown"
+        if audience == "unknown" and school and _explicitly_campus_only(school, opp):
+            audience = "campus"
         opp["school"] = school
         opp["audience"] = audience
         counts[source] = counts.get(source, 0) + 1
