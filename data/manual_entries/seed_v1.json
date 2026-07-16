@@ -1,167 +1,5 @@
 [
   {
-    "id": "uiuc-ece-cv-lab",
-    "source": "manual",
-    "source_url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "source_type": "uiuc_research",
-    "title": "Undergraduate Research Assistant — Computer Vision & Robotics Lab",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "Electrical and Computer Engineering",
-    "lab_or_program": "Computer Vision and Robotics Lab",
-    "pi_name": null,
-    "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "research",
-    "paid": "yes",
-    "compensation_details": "$15/hr, 10-15 hrs/week",
-    "deadline": null,
-    "posted_date": "2026-03-01",
-    "start_date": null,
-    "duration": "Academic year + summer",
-    "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior"],
-      "min_gpa": 3.0,
-      "majors": ["ECE", "CS"],
-      "skills_required": ["Python"],
-      "skills_preferred": ["PyTorch", "OpenCV", "Linux"],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus position, CPT not required",
-      "eligibility_text_raw": "Open to all UIUC undergraduates with Python proficiency. No prior research experience required."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "no",
-      "requires_recommendation": "no",
-      "application_effort": "low",
-      "application_url": null
-    },
-    "description_raw": "Seeking undergraduate research assistant for computer vision lab working on object detection, scene understanding, and robotic perception. Tasks include dataset preparation, model training, and experiment analysis.",
-    "description_clean": "CV research assistant. Object detection, scene understanding. Python required, PyTorch preferred. No prior research experience needed.",
-    "keywords": ["computer vision", "research assistant", "undergraduate", "deep learning", "robotics"],
-    "metadata": {
-      "confidence_score": 0.90,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2026-03-01",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": "Based on typical ECE lab posting patterns"
-    }
-  },
-  {
-    "id": "uiuc-ece-photonics",
-    "source": "manual",
-    "source_url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "source_type": "uiuc_research",
-    "title": "Undergraduate Researcher — Photonic Systems Lab (Nanofabrication)",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "Electrical and Computer Engineering",
-    "lab_or_program": "Photonic Systems Laboratory",
-    "pi_name": null,
-    "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "compensation_details": "Credit or hourly",
-    "deadline": null,
-    "posted_date": "2025-09-01",
-    "start_date": null,
-    "duration": "Academic year",
-    "eligibility": {
-      "preferred_year": ["sophomore", "junior", "senior"],
-      "min_gpa": null,
-      "majors": ["ECE", "Physics", "Engineering"],
-      "skills_required": [],
-      "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus",
-      "eligibility_text_raw": "Student must have taken ECE 444. Will perform micro and nanofabrication in MNTL."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "no",
-      "requires_recommendation": "no",
-      "application_effort": "low",
-      "application_url": null
-    },
-    "description_raw": "Looking for an undergraduate student who has taken ECE 444 to perform micro and nanofabrication in MNTL, assisting with photolithography, etching, deposition, and device characterization.",
-    "description_clean": "Nanofabrication research in MNTL. Photolithography, etching, deposition. ECE 444 required.",
-    "keywords": ["nanofabrication", "photonics", "MNTL", "cleanroom", "ECE 444"],
-    "metadata": {
-      "confidence_score": 0.92,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2025-09-01",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": "Confirmed from ECE undergrad research page"
-    }
-  },
-  {
-    "id": "uiuc-ece-arch",
-    "source": "manual",
-    "source_url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "source_type": "uiuc_research",
-    "title": "Undergraduate Research — Computer Architecture Group",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "Electrical and Computer Engineering",
-    "lab_or_program": "Computer Architecture Group",
-    "pi_name": null,
-    "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "compensation_details": "",
-    "deadline": null,
-    "posted_date": "2026-01-15",
-    "start_date": null,
-    "duration": "Flexible",
-    "eligibility": {
-      "preferred_year": ["sophomore", "junior", "senior"],
-      "min_gpa": null,
-      "majors": ["ECE", "CS"],
-      "skills_required": ["C++"],
-      "skills_preferred": ["Python", "Linux", "Git"],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus",
-      "eligibility_text_raw": "Looking for motivated and exceptional undergraduate students to join the group in computer architecture."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "no",
-      "requires_recommendation": "no",
-      "application_effort": "low",
-      "application_url": null
-    },
-    "description_raw": "Looking for motivated and exceptional undergraduate students to join the computer architecture research group. Work on processor design, memory systems, or hardware accelerators.",
-    "description_clean": "Computer architecture research. Processor design, memory systems, hardware accelerators.",
-    "keywords": ["computer architecture", "hardware", "processor", "research assistant"],
-    "metadata": {
-      "confidence_score": 0.85,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2026-01-15",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": ""
-    }
-  },
-  {
     "id": "uiuc-siebel-srp-2026",
     "source": "manual",
     "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research/srp",
@@ -183,11 +21,23 @@
     "start_date": "2026-05-26",
     "duration": "May 26 - Jul 31, 2026 (10 weeks)",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": null,
-      "majors": ["CS", "Data Science", "ECE", "IS"],
+      "majors": [
+        "CS",
+        "Data Science",
+        "ECE",
+        "IS"
+      ],
       "skills_required": [],
-      "skills_preferred": ["Python", "research methodology"],
+      "skills_preferred": [
+        "Python",
+        "research methodology"
+      ],
       "citizenship_required": false,
       "international_friendly": "unknown",
       "work_auth_notes": "Check with program for international student eligibility",
@@ -204,7 +54,13 @@
     },
     "description_raw": "The SRP will take place from May 26 to July 31, 2026. Hybrid format with both in-person and online offerings. Students work with faculty on computing research.",
     "description_clean": "10-week summer research at Siebel School. Hybrid format. Faculty-mentored computing research.",
-    "keywords": ["summer research", "Siebel School", "CS", "computing", "SRP"],
+    "keywords": [
+      "summer research",
+      "Siebel School",
+      "CS",
+      "computing",
+      "SRP"
+    ],
     "metadata": {
       "confidence_score": 0.95,
       "last_verified": "2026-03-16",
@@ -237,9 +93,21 @@
     "start_date": "2026-05-18",
     "duration": "May 18 - Jul 31, 2026 (10 weeks)",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": null,
-      "majors": ["ECE", "CS", "Physics", "Engineering", "Math", "Biology", "Chemistry"],
+      "majors": [
+        "ECE",
+        "CS",
+        "Physics",
+        "Engineering",
+        "Math",
+        "Biology",
+        "Chemistry"
+      ],
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
@@ -258,7 +126,14 @@
     },
     "description_raw": "NASA's Illinois Space Grant Consortium 23rd Undergraduate Research Opportunity Program. Students participate in research activities for 10 weeks under faculty supervision. Receive $7,000 stipend and present at one-day symposium.",
     "description_clean": "NASA-funded 10-week summer research. $7,000 stipend. Faculty mentorship. UIUC STEM students.",
-    "keywords": ["NASA", "space grant", "UROP", "summer research", "STEM", "paid"],
+    "keywords": [
+      "NASA",
+      "space grant",
+      "UROP",
+      "summer research",
+      "STEM",
+      "paid"
+    ],
     "metadata": {
       "confidence_score": 0.98,
       "last_verified": "2026-03-16",
@@ -291,11 +166,22 @@
     "start_date": "2026-05-26",
     "duration": "May 26 - Jul 31, 2026 (10 weeks)",
     "eligibility": {
-      "preferred_year": ["sophomore", "junior"],
+      "preferred_year": [
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": null,
-      "majors": ["Physics", "ECE", "Engineering", "Math"],
+      "majors": [
+        "Physics",
+        "ECE",
+        "Engineering",
+        "Math"
+      ],
       "skills_required": [],
-      "skills_preferred": ["MATLAB", "Python"],
+      "skills_preferred": [
+        "MATLAB",
+        "Python"
+      ],
       "citizenship_required": true,
       "international_friendly": "no",
       "work_auth_notes": "US citizens and permanent residents only (NSF requirement)",
@@ -312,7 +198,12 @@
     },
     "description_raw": "Students spend 10 weeks on UIUC campus working directly with senior physics faculty on challenging research projects. NSF funded.",
     "description_clean": "10-week physics research with senior faculty. NSF funded. US citizens/PR only.",
-    "keywords": ["physics", "REU", "NSF", "summer research"],
+    "keywords": [
+      "physics",
+      "REU",
+      "NSF",
+      "summer research"
+    ],
     "metadata": {
       "confidence_score": 0.98,
       "last_verified": "2026-03-16",
@@ -345,7 +236,10 @@
     "start_date": "2026-06-01",
     "duration": "8 weeks",
     "eligibility": {
-      "preferred_year": ["sophomore", "junior"],
+      "preferred_year": [
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": 2.7,
       "majors": [],
       "skills_required": [],
@@ -366,7 +260,12 @@
     },
     "description_raw": "Since 1986, the Graduate College has welcomed talented undergraduates from across the US for an intensive introduction to graduate study and research careers.",
     "description_clean": "8-week intensive research program. Introduction to grad school. Stipend + housing + travel. US only.",
-    "keywords": ["summer research", "graduate school", "ISRP", "diversity"],
+    "keywords": [
+      "summer research",
+      "graduate school",
+      "ISRP",
+      "diversity"
+    ],
     "metadata": {
       "confidence_score": 0.98,
       "last_verified": "2026-03-16",
@@ -399,9 +298,17 @@
     "start_date": "2026-06-01",
     "duration": "Summer",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": null,
-      "majors": ["ECE", "CS", "Engineering"],
+      "majors": [
+        "ECE",
+        "CS",
+        "Engineering"
+      ],
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
@@ -420,9 +327,15 @@
     },
     "description_raw": "Summer Undergraduate Research Fellowships for Grainger College students. Work with engineering faculty on research projects.",
     "description_clean": "Summer research fellowships for Grainger Engineering students. Faculty mentorship.",
-    "keywords": ["SURF", "Grainger", "engineering", "summer research", "fellowship"],
+    "keywords": [
+      "SURF",
+      "Grainger",
+      "engineering",
+      "summer research",
+      "fellowship"
+    ],
     "metadata": {
-      "confidence_score": 0.80,
+      "confidence_score": 0.8,
       "last_verified": "2026-03-16",
       "first_seen_at": "2026-01-01",
       "last_seen_at": "2026-03-16",
@@ -453,11 +366,27 @@
     "start_date": null,
     "duration": "Ongoing",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior"
+      ],
       "min_gpa": null,
-      "majors": ["CS", "Data Science", "ECE", "IS", "STAT"],
-      "skills_required": ["Python"],
-      "skills_preferred": ["Git", "Linux"],
+      "majors": [
+        "CS",
+        "Data Science",
+        "ECE",
+        "IS",
+        "STAT"
+      ],
+      "skills_required": [
+        "Python"
+      ],
+      "skills_preferred": [
+        "Git",
+        "Linux"
+      ],
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "On-campus, open to all UIUC students",
@@ -474,7 +403,14 @@
     },
     "description_raw": "The Siebel School encourages undergraduates to participate in research with faculty. Research areas include AI, systems, security, databases, HCI, and more.",
     "description_clean": "Undergrad research with CS faculty. AI, systems, security, databases, HCI. Contact professors directly.",
-    "keywords": ["CS", "research", "undergraduate", "Siebel School", "AI", "systems"],
+    "keywords": [
+      "CS",
+      "research",
+      "undergraduate",
+      "Siebel School",
+      "AI",
+      "systems"
+    ],
     "metadata": {
       "confidence_score": 0.85,
       "last_verified": "2026-03-16",
@@ -483,114 +419,6 @@
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Umbrella listing — cold email individual faculty"
-    }
-  },
-  {
-    "id": "uiuc-ischool-nlp",
-    "source": "manual",
-    "source_url": "https://ischool.illinois.edu/research",
-    "source_type": "uiuc_research",
-    "title": "Research Assistant — iSchool NLP/Data Science Group",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "School of Information Sciences",
-    "lab_or_program": "NLP Research Group",
-    "pi_name": null,
-    "url": "https://ischool.illinois.edu/research",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "hybrid",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "compensation_details": "Credit or hourly pay depending on funding",
-    "deadline": null,
-    "posted_date": "2026-03-01",
-    "start_date": null,
-    "duration": "Ongoing",
-    "eligibility": {
-      "preferred_year": ["sophomore", "junior", "senior"],
-      "min_gpa": 3.5,
-      "majors": ["CS", "IS", "STAT", "Data Science"],
-      "skills_required": ["Python"],
-      "skills_preferred": ["PyTorch", "HuggingFace", "transformers", "NLP"],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "",
-      "eligibility_text_raw": "Looking for motivated students with strong Python skills and interest in NLP. Minimum GPA 3.5."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "yes",
-      "requires_recommendation": "no",
-      "application_effort": "medium",
-      "application_url": null
-    },
-    "description_raw": "Seeking research assistants for NLP projects involving large language models, text classification, and information extraction. Students will contribute to ongoing research papers.",
-    "description_clean": "NLP research assistant. LLM projects, text classification, info extraction. Publication opportunity.",
-    "keywords": ["NLP", "large language models", "text classification", "iSchool", "data science"],
-    "metadata": {
-      "confidence_score": 0.80,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2026-03-01",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": "Typical iSchool NLP lab profile"
-    }
-  },
-  {
-    "id": "uiuc-stat-data-lab",
-    "source": "manual",
-    "source_url": "https://stat.illinois.edu/research",
-    "source_type": "uiuc_research",
-    "title": "Undergraduate Research — Statistics Data Science Lab",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "Statistics",
-    "lab_or_program": "Data Science Lab",
-    "pi_name": null,
-    "url": "https://stat.illinois.edu/research",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "compensation_details": "Course credit or hourly",
-    "deadline": null,
-    "posted_date": "2026-02-01",
-    "start_date": null,
-    "duration": "Semester-based",
-    "eligibility": {
-      "preferred_year": ["sophomore", "junior", "senior"],
-      "min_gpa": 3.0,
-      "majors": ["STAT", "CS", "Data Science", "Math"],
-      "skills_required": ["R", "Python"],
-      "skills_preferred": ["pandas", "scikit-learn", "SQL"],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus",
-      "eligibility_text_raw": "Students with STAT 200+ and programming experience preferred."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "no",
-      "requires_recommendation": "no",
-      "application_effort": "low",
-      "application_url": null
-    },
-    "description_raw": "Undergraduate research positions in statistical data science. Projects in causal inference, high-dimensional statistics, and applied machine learning.",
-    "description_clean": "Statistics research. Causal inference, high-dimensional stats, applied ML.",
-    "keywords": ["statistics", "data science", "causal inference", "machine learning", "research"],
-    "metadata": {
-      "confidence_score": 0.80,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2026-02-01",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": "Contact STAT faculty directly"
     }
   },
   {
@@ -615,11 +443,24 @@
     "start_date": "2026-06-15",
     "duration": "10 weeks",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": null,
-      "majors": ["CS", "ECE", "Physics", "Math", "Engineering"],
+      "majors": [
+        "CS",
+        "ECE",
+        "Physics",
+        "Math",
+        "Engineering"
+      ],
       "skills_required": [],
-      "skills_preferred": ["research methodology", "programming"],
+      "skills_preferred": [
+        "research methodology",
+        "programming"
+      ],
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "Caltech handles J-1 visa sponsorship for international students",
@@ -636,7 +477,14 @@
     },
     "description_raw": "SURF provides undergraduates with the opportunity to conduct research under the guidance of Caltech faculty and JPL researchers. Projects span all STEM disciplines.",
     "description_clean": "10-week summer research at Caltech/JPL. All STEM. Open to freshmen. Stipend + housing. International-friendly.",
-    "keywords": ["Caltech", "SURF", "summer research", "JPL", "STEM", "fellowship"],
+    "keywords": [
+      "Caltech",
+      "SURF",
+      "summer research",
+      "JPL",
+      "STEM",
+      "fellowship"
+    ],
     "metadata": {
       "confidence_score": 0.98,
       "last_verified": "2026-03-16",
@@ -669,11 +517,24 @@
     "start_date": "2026-06-01",
     "duration": "11 weeks",
     "eligibility": {
-      "preferred_year": ["sophomore", "junior"],
+      "preferred_year": [
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": null,
-      "majors": ["CS", "ECE", "Engineering"],
-      "skills_required": ["Python"],
-      "skills_preferred": ["C++", "ROS", "machine learning"],
+      "majors": [
+        "CS",
+        "ECE",
+        "Engineering"
+      ],
+      "skills_required": [
+        "Python"
+      ],
+      "skills_preferred": [
+        "C++",
+        "ROS",
+        "machine learning"
+      ],
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "Open to international students",
@@ -690,7 +551,14 @@
     },
     "description_raw": "Summer scholars program at CMU Robotics Institute. Work with world-class robotics researchers on autonomous systems, perception, manipulation, and AI.",
     "description_clean": "11-week robotics research at CMU. Autonomous systems, perception, manipulation, AI. International-friendly.",
-    "keywords": ["robotics", "CMU", "RISS", "autonomous systems", "AI", "summer research"],
+    "keywords": [
+      "robotics",
+      "CMU",
+      "RISS",
+      "autonomous systems",
+      "AI",
+      "summer research"
+    ],
     "metadata": {
       "confidence_score": 0.95,
       "last_verified": "2026-03-16",
@@ -723,11 +591,23 @@
     "start_date": "2026-06-01",
     "duration": "8-10 weeks",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior"
+      ],
       "min_gpa": null,
-      "majors": ["CS", "ECE", "IS", "Data Science"],
+      "majors": [
+        "CS",
+        "ECE",
+        "IS",
+        "Data Science"
+      ],
       "skills_required": [],
-      "skills_preferred": ["Python", "research experience"],
+      "skills_preferred": [
+        "Python",
+        "research experience"
+      ],
       "citizenship_required": true,
       "international_friendly": "no",
       "work_auth_notes": "NSF requires US citizenship or permanent residency for most REU sites",
@@ -744,9 +624,15 @@
     },
     "description_raw": "NSF REU Sites provide undergraduate students with research experiences at host institutions. Hundreds of active sites across computer science, engineering, and STEM fields.",
     "description_clean": "NSF-funded summer research at universities nationwide. Paid stipend + housing. US citizens/PR primarily.",
-    "keywords": ["NSF", "REU", "summer research", "CS", "funded"],
+    "keywords": [
+      "NSF",
+      "REU",
+      "summer research",
+      "CS",
+      "funded"
+    ],
     "metadata": {
-      "confidence_score": 0.90,
+      "confidence_score": 0.9,
       "last_verified": "2026-03-16",
       "first_seen_at": "2025-10-01",
       "last_seen_at": "2026-03-16",
@@ -777,7 +663,12 @@
     "start_date": null,
     "duration": "Varies",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior"
+      ],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
@@ -798,7 +689,12 @@
     },
     "description_raw": "The Office of Undergraduate Research maintains a portal of available research positions posted by UIUC faculty. Browse by department and field.",
     "description_clean": "UIUC OUR portal. Browse faculty-posted research positions across all departments.",
-    "keywords": ["undergraduate research", "UIUC", "OUR", "portal"],
+    "keywords": [
+      "undergraduate research",
+      "UIUC",
+      "OUR",
+      "portal"
+    ],
     "metadata": {
       "confidence_score": 0.85,
       "last_verified": "2026-03-16",
@@ -831,7 +727,12 @@
     "start_date": null,
     "duration": "Varies (typically 8-10 weeks)",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior"
+      ],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
@@ -852,69 +753,20 @@
     },
     "description_raw": "The SRO Database includes several hundred summer research opportunities for undergraduates. Filter by research area. This is not an exhaustive list.",
     "description_clean": "279+ summer research programs. Browse by research area. UIUC maintained.",
-    "keywords": ["summer research", "database", "SRO", "opportunities"],
+    "keywords": [
+      "summer research",
+      "database",
+      "SRO",
+      "opportunities"
+    ],
     "metadata": {
-      "confidence_score": 0.90,
+      "confidence_score": 0.9,
       "last_verified": "2026-03-16",
       "first_seen_at": "2025-10-01",
       "last_seen_at": "2026-03-16",
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Meta-listing. Individual programs should be scraped and added separately."
-    }
-  },
-  {
-    "id": "uiuc-ece-semiconductor",
-    "source": "manual",
-    "source_url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "source_type": "uiuc_research",
-    "title": "Undergraduate Research — Semiconductor Materials & Devices",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "Electrical and Computer Engineering",
-    "lab_or_program": "Semiconductor Lab",
-    "pi_name": null,
-    "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "compensation_details": "",
-    "deadline": null,
-    "posted_date": "2026-01-01",
-    "start_date": null,
-    "duration": "Ongoing",
-    "eligibility": {
-      "preferred_year": ["sophomore", "junior", "senior"],
-      "min_gpa": null,
-      "majors": ["ECE", "Physics", "Engineering"],
-      "skills_required": [],
-      "skills_preferred": ["MATLAB", "cleanroom experience"],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus",
-      "eligibility_text_raw": "Looking for highly motivated students interested in semiconductor materials, processing, and devices."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "no",
-      "requires_recommendation": "no",
-      "application_effort": "low",
-      "application_url": null
-    },
-    "description_raw": "Research positions in semiconductor materials, processing, and devices for highly motivated undergraduate students.",
-    "description_clean": "Semiconductor research. Materials, processing, devices. ECE/Physics students.",
-    "keywords": ["semiconductor", "materials", "devices", "ECE", "cleanroom"],
-    "metadata": {
-      "confidence_score": 0.85,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2026-01-01",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": "From ECE undergrad research page"
     }
   },
   {
@@ -939,7 +791,12 @@
     "start_date": null,
     "duration": "Varies",
     "eligibility": {
-      "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+      "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior"
+      ],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
@@ -960,7 +817,12 @@
     },
     "description_raw": "The UIUC Career Center provides resources and guidance for finding undergraduate research opportunities. Includes tips on approaching faculty and writing emails.",
     "description_clean": "Career Center resource page. Tips on finding research, approaching faculty, cold emailing.",
-    "keywords": ["career center", "undergraduate research", "cold email", "faculty"],
+    "keywords": [
+      "career center",
+      "undergraduate research",
+      "cold email",
+      "faculty"
+    ],
     "metadata": {
       "confidence_score": 0.75,
       "last_verified": "2026-03-16",
@@ -993,7 +855,9 @@
     "start_date": null,
     "duration": "8-10 weeks",
     "eligibility": {
-      "preferred_year": ["freshman"],
+      "preferred_year": [
+        "freshman"
+      ],
       "min_gpa": null,
       "majors": [],
       "skills_required": [],
@@ -1014,123 +878,20 @@
     },
     "description_raw": "Community-curated list of summer research programs that explicitly accept first-year undergraduates for summer 2026.",
     "description_clean": "Curated list of REU programs accepting freshmen. Community resource.",
-    "keywords": ["REU", "freshman", "first-year", "summer research"],
+    "keywords": [
+      "REU",
+      "freshman",
+      "first-year",
+      "summer research"
+    ],
     "metadata": {
-      "confidence_score": 0.80,
+      "confidence_score": 0.8,
       "last_verified": "2026-03-16",
       "first_seen_at": "2025-10-10",
       "last_seen_at": "2026-03-16",
       "is_active": true,
       "manually_reviewed": true,
       "notes": "Meta-listing. Good for freshmen. Most are US-only."
-    }
-  },
-  {
-    "id": "uiuc-ece-ml-systems",
-    "source": "manual",
-    "source_url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "source_type": "uiuc_research",
-    "title": "Undergraduate Research — ML Systems & Efficient Computing",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "Electrical and Computer Engineering",
-    "lab_or_program": "ML Systems Lab",
-    "pi_name": null,
-    "url": "https://ece.illinois.edu/academics/ugrad/undergrad-research/opportunities",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "research",
-    "paid": "yes",
-    "compensation_details": "$15-18/hr",
-    "deadline": null,
-    "posted_date": "2026-02-15",
-    "start_date": null,
-    "duration": "Semester + summer",
-    "eligibility": {
-      "preferred_year": ["sophomore", "junior"],
-      "min_gpa": 3.2,
-      "majors": ["ECE", "CS"],
-      "skills_required": ["Python", "C++"],
-      "skills_preferred": ["PyTorch", "CUDA", "Linux", "Git"],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus",
-      "eligibility_text_raw": "Strong programming background required. Interest in ML systems, model optimization, or hardware-software co-design."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "yes",
-      "requires_recommendation": "no",
-      "application_effort": "medium",
-      "application_url": null
-    },
-    "description_raw": "Research on ML systems: model compression, efficient inference, hardware-aware neural architecture search, and GPU optimization. Publication opportunities available.",
-    "description_clean": "ML systems research. Model compression, efficient inference, GPU optimization. Publication opportunities.",
-    "keywords": ["ML systems", "model compression", "efficient computing", "GPU", "deep learning"],
-    "metadata": {
-      "confidence_score": 0.85,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2026-02-15",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": ""
-    }
-  },
-  {
-    "id": "uiuc-data-systems-lab",
-    "source": "manual",
-    "source_url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "source_type": "uiuc_research",
-    "title": "Research Assistant — Data Systems & Infrastructure Group",
-    "organization": "University of Illinois at Urbana-Champaign",
-    "department": "Siebel School of Computing and Data Science",
-    "lab_or_program": "Data Systems Group",
-    "pi_name": null,
-    "url": "https://siebelschool.illinois.edu/research/undergraduate-research",
-    "location": "Champaign, IL",
-    "on_campus": true,
-    "remote_option": "no",
-    "opportunity_type": "research",
-    "paid": "unknown",
-    "compensation_details": "Credit or hourly",
-    "deadline": null,
-    "posted_date": "2026-02-01",
-    "start_date": null,
-    "duration": "Ongoing",
-    "eligibility": {
-      "preferred_year": ["sophomore", "junior", "senior"],
-      "min_gpa": null,
-      "majors": ["CS", "ECE", "Data Science"],
-      "skills_required": ["Python", "SQL"],
-      "skills_preferred": ["Java", "distributed systems", "Docker"],
-      "citizenship_required": false,
-      "international_friendly": "yes",
-      "work_auth_notes": "On-campus",
-      "eligibility_text_raw": "Looking for students with strong programming skills interested in databases, distributed systems, and data infrastructure."
-    },
-    "application": {
-      "contact_method": "email",
-      "requires_resume": "yes",
-      "requires_cover_letter": "no",
-      "requires_transcript": "no",
-      "requires_recommendation": "no",
-      "application_effort": "low",
-      "application_url": null
-    },
-    "description_raw": "Research on next-generation data systems including query optimization, distributed databases, and cloud-native data infrastructure.",
-    "description_clean": "Data systems research. Query optimization, distributed databases, cloud-native infrastructure.",
-    "keywords": ["data systems", "databases", "distributed systems", "SQL", "research"],
-    "metadata": {
-      "confidence_score": 0.80,
-      "last_verified": "2026-03-16",
-      "first_seen_at": "2026-02-01",
-      "last_seen_at": "2026-03-16",
-      "is_active": true,
-      "manually_reviewed": true,
-      "notes": ""
     }
   }
 ]

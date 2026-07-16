@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-const KNOWN_ID = 'uiuc-ece-cv-lab';
+// uiuc-siebel-ugresearch: hand-curated umbrella seed — survives refreshes, unlike
+// scraped ids (hash of name/url) or the fabricated prototype record this replaced.
+const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 test.describe('Similar opportunities on detail page', () => {
   test('renders similar section when matches exist', async ({ page }) => {
