@@ -22,6 +22,7 @@ from .config import (
     COURSEWORK_RELEVANCE_BONUS,
     DEADLINE_PASSED_PENALTY,
     ELIG_MAJOR_WEIGHT,
+    EMPTY_INTEREST_MAJOR_BONUS,
     EXPLORE_MAJOR_MISMATCH_FLOOR,
     EXPLORE_READINESS_DROP,
     GRAD_LEVEL_PENALTY,
@@ -520,6 +521,25 @@ def _token_cosine_similarity(text_a: str, text_b: str) -> float:
     if mag_a == 0 or mag_b == 0:
         return 0.0
     return dot / (mag_a * mag_b)
+
+
+def _empty_interest_major_bonus(profile: dict, opportunity: dict) -> float:
+    """With no stated interests, the major is the only topical signal — yet
+    major-DIRECT matches trailed off-field national programs (a CogSci
+    freshman's own CogSci faculty sat at #12-15 under a radio-astronomy REU,
+    2026-07 audit). Additive lift for opportunities that explicitly want the
+    student's major, gated to the empty-interest case: once interests exist,
+    the interest bonus takes over and this stays out of the way."""
+    if len(str(profile.get("research_interests_text") or "").strip()) >= 4:
+        return 0.0
+    student_majors = [profile.get("major", "")] + (profile.get("secondary_interests") or [])
+    student_majors = [m for m in student_majors if m]
+    if not student_majors:
+        return 0.0
+    majors = (opportunity.get("eligibility") or {}).get("majors") or []
+    if _major_match_score(student_majors, majors) >= 100.0:
+        return EMPTY_INTEREST_MAJOR_BONUS
+    return 0.0
 
 
 def _interest_bonus(profile: dict, opportunity: dict) -> float:
@@ -1873,10 +1893,11 @@ def rank_opportunity(
     )
 
     interest_bonus = _interest_bonus(profile, opportunity)
+    major_bonus = _empty_interest_major_bonus(profile, opportunity)
     college_bonus = _college_affinity(profile, opportunity)
     home_bonus = _home_school_affinity(profile, opportunity)
     resp_bonus = _responsiveness_bonus(opportunity, responsiveness)
-    raw = min(100.0, raw + interest_bonus + college_bonus + home_bonus + resp_bonus)
+    raw = min(100.0, raw + interest_bonus + major_bonus + college_bonus + home_bonus + resp_bonus)
 
     # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
     # eligibility layer). A separate raw multiplier here double-counted the same

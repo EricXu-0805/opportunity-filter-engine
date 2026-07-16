@@ -715,6 +715,31 @@ class TestSchoolAudience:
             f"First 3: {offenders[:3]}"
         )
 
+    def test_no_works_list_stamped_across_many_faculty(self):
+        """The url-keyed works store once stamped ONE person's papers onto all
+        430 JHU faculty sharing a directory URL (2026-07 audit). Co-authors can
+        legitimately share papers, so a small overlap is fine — but an identical
+        recent_works list on >3 distinct professors is attribution failure."""
+        from collections import defaultdict
+
+        sig_names = defaultdict(set)
+        for o in _load_data():
+            if o.get("is_active") is False or not o.get("pi_name"):
+                continue
+            works = (o.get("metadata") or {}).get("recent_works") or []
+            if len(works) >= 2:
+                sig = tuple(
+                    re.sub(r"[^a-z0-9]+", " ", str(w.get("title", "")).lower()).strip()
+                    for w in works
+                )
+                sig_names[sig].add(o["pi_name"])
+        offenders = {sig[0][:60]: sorted(names)[:4]
+                     for sig, names in sig_names.items() if len(names) > 3}
+        assert not offenders, (
+            f"{len(offenders)} works lists shared across >3 professors. "
+            f"Sample: {dict(list(offenders.items())[:2])}"
+        )
+
     def test_school_is_none_or_lowercase_slug(self):
         offenders = [
             (o.get("source"), o.get("id"), o.get("school"))
