@@ -21,9 +21,24 @@ Targets are only faculty currently in the corpus (present-day faculty), each
 recovered address must clear the same personal-email picker as the live
 2-hop pass, and apply stamps ``metadata.email_source = "wayback"``.
 
+**UIUC ECE/CEE — constructed netid address (Eric-approved 2026-07-14).** Both
+departments' directory pages expose only shared admin inboxes (nslack@ etc.,
+correctly nulled by the shared-inbox pass), leaving ECE at 3% / CEE at 0%
+email coverage while every other UIUC college sits at 86-100% — and an ECE
+student's top matches are exactly these people. Their profile URLs are
+netid-keyed (``ece.illinois.edu/about/directory/faculty/<netid>``), and the
+UIUC convention is ``<netid>@illinois.edu``. Validated against every record
+with a cross-listed twin carrying a real observed address: 45/45 match, 0
+mismatches (ECE 28, CEE 15, legacy hyphenated 2). Offline — no network.
+Gates: URL host must be ece/cee.illinois.edu AND the slug must look like a
+netid — modern (2-8 alphanumerics) or legacy (``b-hajek``: 1-2 letter initial
+segment + surname); firstname-lastname slugs (``masooda-bashir``) are
+rejected. Stamps ``metadata.email_source = "constructed_netid"``.
+
     python -m src.collectors.email_backfill harvest stanford --out st.json [--sample N] [--resume]
     python -m src.collectors.email_backfill harvest princeton --out pr.json [--sample N] [--resume]
     python -m src.collectors.email_backfill apply st.json pr.json
+    python -m src.collectors.email_backfill construct-uiuc
 """
 from __future__ import annotations
 
@@ -162,6 +177,42 @@ _SCHOOL_FNS = {
     "princeton": lambda o: princeton_wayback_email_for(o.get("pi_name") or "", _record_url(o)),
 }
 
+# UIUC netid construction: the profile URL must live on one of the two
+# netid-keyed department hosts, and its slug must LOOK like a netid. Modern
+# netids are 2-8 alphanumerics starting with a letter; legacy ones are a 1-2
+# letter initial segment + hyphen + surname (+ optional digit), e.g. b-hajek.
+# A dept site whose slugs are firstname-lastname never passes either shape.
+_UIUC_NETID_HOST_RE = re.compile(r"^https?://(?:ece|cee)\.illinois\.edu/", re.IGNORECASE)
+_UIUC_NETID_RES = (
+    re.compile(r"^[a-z][a-z0-9]{1,7}$"),
+    re.compile(r"^[a-z]{1,2}-[a-z]+[0-9]?$"),
+)
+
+
+def uiuc_netid_email_for(o: dict) -> dict | None:
+    """Constructed ``<netid>@illinois.edu`` for one UIUC ECE/CEE faculty record,
+    or None when the URL isn't on a netid-keyed host or the slug doesn't pass
+    the netid shape gates."""
+    url = _record_url(o) or ""
+    if not _UIUC_NETID_HOST_RE.match(url):
+        return None
+    slug = _slug(url)
+    if not slug or not any(rx.fullmatch(slug) for rx in _UIUC_NETID_RES):
+        return None
+    return {"email": f"{slug}@illinois.edu", "netid": slug,
+            "source": "constructed_netid"}
+
+
+def construct_uiuc(opps: list[dict]) -> int:
+    """Apply the netid construction to every email-less UIUC faculty record
+    (updates-only, provenance-stamped via apply_backfill)."""
+    mapping = {
+        _record_url(o): found
+        for o in _targets(opps, "uiuc")
+        if (found := uiuc_netid_email_for(o))
+    }
+    return apply_backfill(opps, mapping)
+
 
 def _targets(opps: list[dict], school: str) -> list[dict]:
     return [
@@ -217,11 +268,16 @@ def apply_backfill(opps: list[dict], mapping: dict[str, dict]) -> int:
 
 
 def _cli(argv: list[str]) -> int:
-    if not argv or argv[0] not in ("harvest", "apply"):
+    if not argv or argv[0] not in ("harvest", "apply", "construct-uiuc"):
         print(__doc__)
         return 2
     mode, rest = argv[0], argv[1:]
     opps = json.load(open(PROCESSED_FILE))
+    if mode == "construct-uiuc":
+        n = construct_uiuc(opps)
+        json.dump(opps, open(PROCESSED_FILE, "w"), ensure_ascii=False, indent=2)
+        print(f"constructed {n} netid emails -> {PROCESSED_FILE}")
+        return 0
     if mode == "harvest":
         school = rest[0]
         if school not in _SCHOOL_FNS:
