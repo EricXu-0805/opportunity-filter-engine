@@ -2196,3 +2196,17 @@ class TestMergePreservesRecentWorks:
         saved = _json.loads(pf.read_text())[0]
         assert saved["keywords"] == ["soft robotics", "grippers", "haptics"]
         assert saved["metadata"]["recent_works"] == works
+
+
+class TestFreshmanNotLockedOut:
+    def test_default_year_stamp_includes_freshman(self):
+        """Directory scrapes never state year preferences, so the blanket
+        [sophomore, junior, senior] stamp structurally locked freshmen out of
+        every faculty match at every school (year score 50 vs 100). Lock out
+        only when a posting explicitly does (Eric 2026-07-16)."""
+        school = {"source": "x_faculty", "organization": "X", "location": "X",
+                  "school_slug": "uw", "work_auth_notes": "", "id_prefix": "x"}
+        rec = fg._normalize(school, {"name": "Dept of Widgets", "short": "WID"},
+                            {"name": "Jane Q. Researcher", "link": "https://x.edu/jane"})
+        assert rec["eligibility"]["preferred_year"] == [
+            "freshman", "sophomore", "junior", "senior"]
