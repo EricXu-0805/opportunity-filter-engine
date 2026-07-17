@@ -513,7 +513,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -529,7 +529,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: "I will not write that email.",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "I will not write that email.",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -553,7 +553,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: ML research fit\n\n"
                 "Dear Professor,\n"
                 "I am an expert in PyTorch and have deployed Kubernetes "
@@ -579,7 +579,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\n"
                 "I have experience with Python and machine learning from CS 124 "
@@ -633,7 +633,7 @@ class TestColdEmailStyle:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module, "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\nI have experience with Python and machine "
                 "learning from CS 124 and would be grateful to contribute.\n"
@@ -856,7 +856,7 @@ class TestColdEmailSubjectParsing:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
         )
         opps = data_loader.load_opportunities()
         payload = {
@@ -3455,3 +3455,124 @@ class TestTfidfGeneratorFit:
         em._tfidf_fitted = False
         em.fit_tfidf_corpus(t for t in ["machine learning robots"])
         assert em._tfidf_fitted is False
+
+
+class TestColdEmailStream:
+    """SSE mirror of /cold-email — stage events while the pipeline runs, then a
+    final done event carrying the full ColdEmailResponse payload. Same never-5xx
+    contract as the blocking route."""
+
+    @pytest.fixture
+    def stream_body(self, sample_profile_req):
+        opps = data_loader.load_opportunities()
+        return {"profile": sample_profile_req, "opportunity_id": opps[0]["id"]}
+
+    @staticmethod
+    def _events(resp) -> list[dict]:
+        events = []
+        for line in resp.iter_lines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[len("data: "):]))
+        return events
+
+    def test_stream_emits_stages_then_done(self, stream_body, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            n = len(calls)
+            if n == 1:  # generic draft -> deterministic + LLM critique both flag it
+                return "Subject: Hi\n\nDear Professor,\nI am interested in your lab.\nBest,\nStudent"
+            if n == 2:
+                return '{"verdict":"revise","generic_sentences":["I am interested in your lab."]}'
+            return ("Subject: Research fit\n\nDear Professor,\nI have experience "
+                    "with Python and machine learning from CS 124 and would be "
+                    "glad to contribute.\nBest,\nStudent")
+
+        monkeypatch.setattr(ce_module, "chat_completion", fake)
+        with client.stream(
+            "POST", "/api/cold-email/stream", json={**stream_body, "engine": "ai"},
+        ) as resp:
+            assert resp.status_code == 200
+            assert "text/event-stream" in resp.headers["content-type"]
+            events = self._events(resp)
+
+        stages = [e["stage"] for e in events]
+        assert stages[:3] == ["drafting", "critiquing", "revising"]
+        done = events[-1]
+        assert done["stage"] == "done"
+        assert done["method"] == "ai"
+        assert "CS 124" in done["body"]
+        assert done["subject"]
+        assert "mailto_link" in done
+
+    def test_stream_template_engine_is_single_done(self, stream_body, monkeypatch):
+        for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        with client.stream("POST", "/api/cold-email/stream", json=stream_body) as resp:
+            assert resp.status_code == 200
+            events = self._events(resp)
+        assert len(events) == 1
+        assert events[0]["stage"] == "done"
+        assert events[0]["method"] == "template"
+        assert events[0]["body"]
+
+    def test_stream_unknown_opportunity_404s(self, sample_profile_req):
+        resp = client.post(
+            "/api/cold-email/stream",
+            json={"profile": sample_profile_req, "opportunity_id": "not-a-real-id"},
+        )
+        assert resp.status_code == 404
+
+    def test_stream_fabricated_draft_degrades_in_done(self, stream_body, monkeypatch):
+        """The gate rejecting the AI text surfaces as a template payload inside
+        the done event — the stream itself never errors."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        import backend.routes.cold_email as ce_module
+
+        fabricated = (
+            "Subject: ML research fit\n\nDear Professor,\nI am an expert in "
+            "PyTorch and have deployed Kubernetes clusters at scale.\nBest,\nStudent"
+        )
+        monkeypatch.setattr(ce_module, "chat_completion", lambda *a, **k: fabricated)
+        with client.stream(
+            "POST", "/api/cold-email/stream", json={**stream_body, "engine": "ai"},
+        ) as resp:
+            events = self._events(resp)
+        done = events[-1]
+        assert done["stage"] == "done"
+        assert done["method"] == "template"
+        assert done["fallback_reason"] == "fabrication"
+        assert "kubernetes" not in done["body"].lower()
+
+    def test_stream_engine_crash_still_emits_template_done(self, stream_body, monkeypatch):
+        """Last-belt coverage: if _run_engine somehow raises inside the stream
+        worker, the finally-sentinel still arrives (no hang) and the except
+        branch serves a template done frame — a stream never truncates without
+        a done event."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+
+        real = ce_module._run_engine
+        calls = {"n": 0}
+
+        def flaky(request, opp, profile_dict, on_stage=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("boom")
+            return real(request, opp, profile_dict, on_stage=on_stage)
+
+        monkeypatch.setattr(ce_module, "_run_engine", flaky)
+        with client.stream(
+            "POST", "/api/cold-email/stream", json={**stream_body, "engine": "ai"},
+        ) as resp:
+            events = self._events(resp)
+        done = events[-1]
+        assert done["stage"] == "done"
+        assert done["method"] == "template"
+        assert done["body"]
+        assert calls["n"] == 2  # crashed engine + template fallback
