@@ -1254,7 +1254,7 @@ class TestChatModelPicker:
         resp = client.get("/api/chat/models")
         assert resp.status_code == 200
         models = resp.json()["models"]
-        assert any(m["id"] == "gemini-flash" for m in models)
+        assert [m["id"] for m in models] == ["auto", "thinking"]
         assert all({"id", "label"} <= set(m) and "slug" not in m for m in models)
 
 
