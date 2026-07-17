@@ -13,7 +13,14 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { generateColdEmail, getEmailVariants, refineEmail, extractResumeBullets } from '@/lib/api';
+import {
+  generateColdEmail,
+  generateColdEmailStream,
+  getEmailVariants,
+  refineEmail,
+  extractResumeBullets,
+  type ColdEmailStage,
+} from '@/lib/api';
 import {
   getInteractionDetail,
   trackInteraction,
@@ -60,6 +67,15 @@ interface ChatMessage {
 
 const QUICK_ACTION_KEYS = ['formal', 'shorter', 'enthusiastic', 'coursework'] as const;
 type QuickActionKey = typeof QUICK_ACTION_KEYS[number];
+
+// Pipeline-stage labels shown inside the AI pill while streaming — the
+// multi-call pipeline takes noticeably longer than the old single call, so
+// the UI says WHICH stage is running instead of one opaque spinner.
+const STAGE_LABEL_KEYS: Record<ColdEmailStage, string> = {
+  drafting: 'coldEmail.stageDrafting',
+  critiquing: 'coldEmail.stageCritiquing',
+  revising: 'coldEmail.stageRevising',
+};
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
@@ -141,6 +157,9 @@ export default function ColdEmailModal({
   const [variants, setVariants] = useState<EmailVariant[]>([]);
   const [aiVariant, setAiVariant] = useState<EmailVariant | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  // Which pipeline stage the streaming generation is in (null = not streaming
+  // or stage unknown); drives the AI pill's progress label.
+  const [aiStage, setAiStage] = useState<ColdEmailStage | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
   const [labType, setLabType] = useState<LabType | null>(null);
   // Voice overlay for the AI draft. `selectedStyle` seeds from the lab-type
@@ -326,11 +345,21 @@ export default function ColdEmailModal({
         }
       }
       const bullets = resumeBulletsRef.current.bullets;
-      const resp = await generateColdEmail(profile, opportunityId, {
-        engine: 'ai',
+      const opts = {
+        engine: 'ai' as const,
         style,
-        ...(bullets && bullets.length > 0 ? { resumeBullets: bullets } : {}),
-      });
+        ...(bullets.length > 0 ? { resumeBullets: bullets } : {}),
+      };
+      let resp;
+      try {
+        // Stream-first: shows which pipeline stage is running. Any transport
+        // failure (old backend, proxy buffering, network hiccup mid-stream)
+        // falls back to the blocking route.
+        resp = await generateColdEmailStream(profile, opportunityId, opts, setAiStage);
+      } catch {
+        setAiStage(null);
+        resp = await generateColdEmail(profile, opportunityId, opts);
+      }
       const v: EmailVariant = {
         id: AI_VARIANT_ID,
         label: t('coldEmail.aiVariantLabel'),
@@ -362,6 +391,7 @@ export default function ColdEmailModal({
       ]);
     } finally {
       setAiLoading(false);
+      setAiStage(null);
     }
   }, [aiLoading, variants.length, profile, opportunityId, labType, t]);
 
@@ -568,7 +598,9 @@ export default function ColdEmailModal({
                     {aiLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
                     ) : null}
-                    {t('coldEmail.aiVariantLabel')}
+                    {aiLoading && aiStage
+                      ? t(STAGE_LABEL_KEYS[aiStage])
+                      : t('coldEmail.aiVariantLabel')}
                   </button>
                 </div>
 

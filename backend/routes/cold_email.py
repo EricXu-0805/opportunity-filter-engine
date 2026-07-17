@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import re
+from collections.abc import Callable
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import load_opportunities_by_id
@@ -618,17 +621,27 @@ def _revise_email(draft: str, findings: dict, prof_brief: str, stu_brief: str, s
 
 
 def _pipeline_generate(
-    profile_dict: dict, opp: dict, style: str | None, resume_bullets: list[str] | None = None
+    profile_dict: dict,
+    opp: dict,
+    style: str | None,
+    resume_bullets: list[str] | None = None,
+    on_stage: Callable[[str], None] | None = None,
 ) -> str | None:
     """Run the multi-stage pipeline. Returns the raw final email
     (``Subject: ...\\n\\n<body>``) or ``None`` if the draft call failed (caller
     falls back to the template). The final output is still validated by the
-    anti-fabrication gate in ``generate_email``."""
+    anti-fabrication gate in ``generate_email``.
+
+    ``on_stage`` (optional) is called with "drafting" / "critiquing" /
+    "revising" immediately before each LLM stage so the streaming route can
+    surface progress; it must be cheap and non-raising."""
     p = _common_parts(profile_dict, opp, resume_bullets=resume_bullets)
     stu_brief = _render_student_brief(p)
     prof_brief = _render_professor_brief(p, opp)
     is_grad = _is_grad_year(str(p.get("year", "")))
 
+    if on_stage:
+        on_stage("drafting")
     draft = _draft_email(prof_brief, stu_brief, is_grad, style, p["lab_type"])
     if not draft:
         return None
@@ -636,11 +649,15 @@ def _pipeline_generate(
     corpus = _build_email_corpus(p, opp)
     findings = _deterministic_findings(draft, corpus, p, opp)
     if _critique_llm_enabled():
+        if on_stage:
+            on_stage("critiquing")
         llm = _llm_critique(draft, prof_brief, stu_brief, style)
         if llm:
             findings["llm"] = llm
 
     if _should_revise(findings):
+        if on_stage:
+            on_stage("revising")
         revised = _revise_email(draft, findings, prof_brief, stu_brief, style)
         if revised:
             # Re-run the zero-cost deterministic checks on the revision — a
@@ -705,6 +722,18 @@ async def generate_email(request: ColdEmailRequest):
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = request.profile.model_dump()
+    return _run_engine(request, opp, profile_dict)
+
+
+def _run_engine(
+    request: ColdEmailRequest,
+    opp: dict,
+    profile_dict: dict,
+    on_stage: Callable[[str], None] | None = None,
+) -> ColdEmailResponse:
+    """The full engine decision + response assembly, shared by the blocking
+    route and the SSE stream. Never raises for LLM/orchestration problems —
+    every failure mode degrades to the template response."""
     method = "template"
     subject = ""
     body = ""
@@ -719,7 +748,8 @@ async def generate_email(request: ColdEmailRequest):
             # degrades to the template — never a 5xx.
             try:
                 ai_text = _pipeline_generate(
-                    profile_dict, opp, request.style, request.resume_bullets
+                    profile_dict, opp, request.style, request.resume_bullets,
+                    on_stage=on_stage,
                 )
             except Exception:
                 logger.exception("cold-email: pipeline crashed; using template")
@@ -768,6 +798,71 @@ async def generate_email(request: ColdEmailRequest):
         style=request.style if method == "ai" else None,
         recommended_style=_recommended_style(lab_type),
         fallback_reason=fallback_reason,
+    )
+
+
+def _sse_frame(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@router.post("/cold-email/stream")
+async def generate_email_stream(request: ColdEmailRequest):
+    """SSE mirror of ``/cold-email``: emits ``{"stage": "drafting" |
+    "critiquing" | "revising"}`` progress events while the pipeline runs, then
+    a final ``{"stage": "done", ...ColdEmailResponse fields...}``. The blocking
+    JSON route is unchanged — old clients keep working; the UI uses this to
+    show which stage the (now multi-call) pipeline is in instead of one long
+    opaque spinner. Same never-5xx contract: engine errors surface as the
+    template payload in the ``done`` event."""
+    opp = load_opportunities_by_id().get(request.opportunity_id)
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    profile_dict = request.profile.model_dump()
+
+    _FINISHED = object()  # queue sentinel — same channel as stages, so ordered
+
+    async def gen():
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def on_stage(stage: str) -> None:
+            # Called from the executor thread — hop back to the loop.
+            loop.call_soon_threadsafe(queue.put_nowait, stage)
+
+        def work() -> ColdEmailResponse:
+            # The sentinel travels through the SAME queue as the stage events,
+            # so the reader can never observe "engine finished" before it has
+            # seen every stage (racing a Future's done-flag against separately
+            # scheduled queue callbacks did exactly that).
+            try:
+                return _run_engine(request, opp, profile_dict, on_stage=on_stage)
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, _FINISHED)
+
+        fut = loop.run_in_executor(None, work)
+        while True:
+            item = await queue.get()
+            if item is _FINISHED:
+                break
+            yield _sse_frame({"stage": item})
+        try:
+            resp = await fut
+        except Exception:
+            # _run_engine is designed never to raise; this is the last belt.
+            logger.exception("cold-email stream: engine crashed; using template")
+            resp = _run_engine(
+                ColdEmailRequest(
+                    profile=request.profile, opportunity_id=request.opportunity_id,
+                    engine="template",
+                ),
+                opp, profile_dict,
+            )
+        yield _sse_frame({"stage": "done", **resp.model_dump()})
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

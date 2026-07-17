@@ -353,6 +353,76 @@ export async function generateColdEmail(
   });
 }
 
+export type ColdEmailStage = 'drafting' | 'critiquing' | 'revising';
+
+/**
+ * SSE variant of `generateColdEmail`: relays `{"stage": ...}` progress events
+ * while the multi-call pipeline runs (draft → critique → revise), then
+ * resolves with the final payload carried by the `done` event. Throws on any
+ * transport/shape problem — callers fall back to the blocking route.
+ */
+export async function generateColdEmailStream(
+  profile: ProfileData,
+  opportunityId: string,
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
+  onStage?: (stage: ColdEmailStage) => void,
+): Promise<ColdEmailResponse> {
+  void track('ai_feature_used', { feature: 'cold_email' });
+  const body: Record<string, unknown> = {
+    profile: toProfileRequest(profile),
+    opportunity_id: opportunityId,
+  };
+  if (options.engine) body.engine = options.engine;
+  if (options.style) body.style = options.style;
+  if (options.resumeBullets && options.resumeBullets.length > 0) {
+    body.resume_bullets = options.resumeBullets;
+  }
+
+  const res = await fetch(`${API_BASE}/cold-email/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => 'Unknown error');
+    throw new Error(`API ${res.status}: ${errBody}`);
+  }
+  if (!res.headers.get('content-type')?.includes('text/event-stream') || !res.body) {
+    throw new Error('API stream: not an event stream');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let final: ColdEmailResponse | null = null;
+
+  const handleFrame = (frame: string) => {
+    for (const line of frame.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const payload = JSON.parse(line.slice(6)) as { stage?: string } & Record<string, unknown>;
+      if (payload.stage === 'done') {
+        final = payload as unknown as ColdEmailResponse;
+      } else if (payload.stage) {
+        onStage?.(payload.stage as ColdEmailStage);
+      }
+    }
+  };
+
+  for (;;) {
+    const { value, done: readerDone } = await reader.read();
+    if (readerDone) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      handleFrame(frame);
+    }
+  }
+  if (!final) throw new Error('API stream: closed before the done event');
+  return final;
+}
+
 export async function getEmailVariants(
   profile: ProfileData,
   opportunityId: string,
