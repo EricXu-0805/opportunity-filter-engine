@@ -1281,3 +1281,112 @@ export async function getAttachmentSignedUrl(
   }
   return data.signedUrl;
 }
+
+// ── Resume renovation persistence ──────────────────────────────────────
+// Mirrors the profiles (mutable upsert) + profile_versions (append-only
+// snapshot) split: `resume_renovations` holds ONE working doc per
+// (device, opportunity) — the per-bullet rollback history lives INSIDE the
+// doc's variant chains — and `resume_renovation_versions` appends a whole-doc
+// snapshot on every save as the coarse recovery net. All failures degrade to
+// console warnings: persistence is sync-across-devices sugar, the modal keeps
+// its in-memory doc regardless. See supabase/migrations/020_resume_renovations.sql.
+
+export async function saveRenovation(
+  opportunityId: string,
+  doc: Record<string, unknown>,
+  baseSnapshot: Record<string, unknown>,
+  method: string,
+  warnings: string[],
+): Promise<void> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return;
+  const now = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('resume_renovations')
+    .upsert(
+      {
+        device_id: deviceId,
+        opportunity_id: opportunityId,
+        doc,
+        base_snapshot: baseSnapshot,
+        method,
+        warnings,
+        updated_at: now,
+      },
+      { onConflict: 'device_id,opportunity_id' },
+    );
+  if (error) console.warn('[ofe] renovation save failed:', error.message);
+
+  supabase
+    .from('resume_renovation_versions')
+    .insert({ device_id: deviceId, opportunity_id: opportunityId, doc })
+    .then(({ error: vErr }) => {
+      if (vErr && !vErr.message.includes('does not exist')) {
+        console.warn('[ofe] renovation version snapshot failed:', vErr.message);
+      }
+    });
+}
+
+export interface StoredRenovation {
+  doc: Record<string, unknown>;
+  base_snapshot: Record<string, unknown>;
+  method: string | null;
+  warnings: string[];
+  updated_at: string;
+}
+
+export async function loadRenovation(
+  opportunityId: string,
+): Promise<StoredRenovation | null> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return null;
+  const { data, error } = await supabase
+    .from('resume_renovations')
+    .select('doc, base_snapshot, method, warnings, updated_at')
+    .eq('device_id', deviceId)
+    .eq('opportunity_id', opportunityId)
+    .maybeSingle();
+  if (error) {
+    console.warn('[ofe] renovation load failed:', error.message);
+    return null;
+  }
+  if (!data || !data.doc || typeof data.doc !== 'object') return null;
+  return {
+    doc: data.doc as Record<string, unknown>,
+    base_snapshot: (data.base_snapshot ?? {}) as Record<string, unknown>,
+    method: (data.method as string | null) ?? null,
+    warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
+    updated_at: String(data.updated_at ?? ''),
+  };
+}
+
+export interface RenovationVersion {
+  id: string;
+  doc: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function listRenovationVersions(
+  opportunityId: string,
+  limit = 10,
+): Promise<RenovationVersion[]> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return [];
+  const { data, error } = await supabase
+    .from('resume_renovation_versions')
+    .select('id, doc, created_at')
+    .eq('device_id', deviceId)
+    .eq('opportunity_id', opportunityId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.warn('[ofe] renovation versions load failed:', error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    id: String(r.id),
+    doc: (r.doc ?? {}) as Record<string, unknown>,
+    created_at: String(r.created_at ?? ''),
+  }));
+}

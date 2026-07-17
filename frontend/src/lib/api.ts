@@ -9,6 +9,10 @@ import type {
   EmailVariantsResponse,
   StatsResponse,
   TailorResponse,
+  StructureResumeResponse,
+  ResumeSectionInput,
+  RenovateResponse,
+  BulletOptimizeResponse,
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
@@ -425,6 +429,76 @@ export interface TailorStatus {
 
 export async function getTailorStatus(): Promise<TailorStatus> {
   return request<TailorStatus>('/tailor/status');
+}
+
+/**
+ * Resume renovation, stage 0: structure the raw résumé text into sections +
+ * bullets (verbatim extraction; the backend degrades to a heuristic split on
+ * any LLM issue and never 5xxes for it).
+ */
+export async function structureResume(
+  resumeText: string,
+  options: { locale?: string } = {},
+): Promise<StructureResumeResponse> {
+  const body: Record<string, unknown> = { resume_text: resumeText };
+  if (options.locale) body.locale = options.locale;
+  return request<StructureResumeResponse>('/tailor/structure', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Resume renovation, stage 1+2: macro plan (reorder + foreground/keep/demote,
+ * ID-only — structurally cannot fabricate) plus grounded rewrites of the
+ * foregrounded bullets. Returns the variant-chain document; rejected rewrites
+ * fall back to base_text with a warning, never a 5xx.
+ */
+export async function renovateResume(
+  profile: ProfileData,
+  opportunityId: string,
+  sections: ResumeSectionInput[],
+  options: { locale?: string } = {},
+): Promise<RenovateResponse> {
+  void track('ai_feature_used', { feature: 'renovate' });
+  const body: Record<string, unknown> = {
+    profile: toProfileRequest(profile),
+    opportunity_id: opportunityId,
+    sections,
+  };
+  if (options.locale) body.locale = options.locale;
+  return request<RenovateResponse>('/tailor/renovate', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Per-bullet re-optimize: one grounded rewrite of `currentText` toward the
+ * opportunity (optionally steered by `instruction`), validated against
+ * base_text + the student's material. A rejected rewrite comes back with
+ * `changed: false` and the original text — never a fabricated claim.
+ */
+export async function optimizeBullet(
+  profile: ProfileData,
+  opportunityId: string,
+  currentText: string,
+  baseText: string,
+  options: { instruction?: string; locale?: string } = {},
+): Promise<BulletOptimizeResponse> {
+  void track('ai_feature_used', { feature: 'bullet_optimize' });
+  const body: Record<string, unknown> = {
+    profile: toProfileRequest(profile),
+    opportunity_id: opportunityId,
+    current_text: currentText,
+    base_text: baseText,
+  };
+  if (options.instruction) body.instruction = options.instruction;
+  if (options.locale) body.locale = options.locale;
+  return request<BulletOptimizeResponse>('/tailor/bullet', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export interface ExtractBulletsResponse {
