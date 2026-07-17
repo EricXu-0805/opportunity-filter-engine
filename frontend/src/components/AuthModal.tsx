@@ -25,7 +25,7 @@
  * Centralising the modal makes that vocabulary discipline enforceable.
  *
  * Visual language mirrors EmailMeButton + KeyboardHelpDialog exactly:
- *   fixed inset-0 z-50 flex items-center justify-center p-4
+ *   fixed inset-0 z-[55] flex items-center justify-center p-4
  *   absolute inset-0 bg-gray-900/60 backdrop-blur-sm
  *   relative w-full max-w-md bg-white rounded-2xl shadow-2xl
  * That's the project's modal vocabulary; we MUST match or it'll feel
