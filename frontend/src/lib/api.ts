@@ -353,7 +353,7 @@ export async function generateColdEmail(
   });
 }
 
-export type ColdEmailStage = 'drafting' | 'critiquing' | 'revising';
+export type ColdEmailStage = 'drafting' | 'judging' | 'critiquing' | 'revising';
 
 /**
  * SSE variant of `generateColdEmail`: relays `{"stage": ...}` progress events

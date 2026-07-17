@@ -643,6 +643,8 @@ class TestColdEmailPipeline:
         returned."""
         import backend.routes.cold_email as ce
 
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+
         calls = []
 
         def fake(messages, **kw):
@@ -664,6 +666,8 @@ class TestColdEmailPipeline:
         'pass', is not revised."""
         import backend.routes.cold_email as ce
 
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+
         calls = []
 
         def fake(messages, **kw):
@@ -680,6 +684,8 @@ class TestColdEmailPipeline:
 
     def test_critique_off_env_skips_critique_call(self, monkeypatch):
         import backend.routes.cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
 
         monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
         calls = []
@@ -780,6 +786,8 @@ class TestColdEmailPipeline:
         the draft wins — a revise can never make the email measurably worse."""
         import backend.routes.cold_email as ce
 
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+
         monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
         draft = ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
                  "work fits my Python background. I am a fast learner.\nBest,\nEric")
@@ -802,6 +810,8 @@ class TestColdEmailPipeline:
         lens alone drives a revision (isolates the findings['llm'] branch)."""
         import backend.routes.cold_email as ce
 
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+
         calls = []
 
         def fake(messages, **kw):
@@ -820,6 +830,124 @@ class TestColdEmailPipeline:
         out = ce._pipeline_generate(self._profile(), self._opp(), None)
         assert len(calls) == 3  # draft + critique + revise
         assert "medical imaging" in out.lower()
+
+
+class TestNDraftJudgeTier:
+    """Stage-2 judge tier: N parallel angled drafts, deterministic checks pick
+    a winner for free, the LLM judge breaks ties only."""
+
+    _profile = TestColdEmailPipeline._profile
+    _opp = TestColdEmailPipeline._opp
+
+    # Both grounded AND professor-referencing → deterministic score 0.
+    _CLEAN_A = ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
+                "work fits my Python background.\nBest,\nEric")
+    _CLEAN_B = ("Subject: Medical imaging\n\nDear Professor,\nYour medical "
+                "imaging research maps to my Python projects.\nBest,\nEric")
+
+    @staticmethod
+    def _role(messages) -> str:
+        """Classify a chat_completion call by its system prompt (draft calls
+        run in parallel threads, so call ORDER is not deterministic)."""
+        system = messages[0]["content"]
+        if "judging candidate cold emails" in system:
+            return "judge"
+        if "strict reviewer" in system:
+            return "critique"
+        if "revising a student's cold email" in system:
+            return "revise"
+        if "Lead with the professor's work" in system:
+            return "draft_angle1"
+        if "Lead with your fit" in system:
+            return "draft_angle2"
+        return "draft"
+
+    def _run(self, monkeypatch, responses: dict, stages: list | None = None):
+        import backend.routes.cold_email as ce
+
+        roles = []
+
+        def fake(messages, **kw):
+            role = self._role(messages)
+            roles.append(role)
+            return responses[role]
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        on_stage = stages.append if stages is not None else None
+        out = ce._pipeline_generate(
+            self._profile(), self._opp(), None, on_stage=on_stage
+        )
+        return out, roles
+
+    def test_tie_invokes_judge_and_winner_is_used(self, monkeypatch):
+        stages = []
+        out, roles = self._run(monkeypatch, {
+            "draft_angle1": self._CLEAN_A,
+            "draft_angle2": self._CLEAN_B,
+            "judge": '{"winner": 2}',
+            "critique": '{"verdict":"pass","references_specific_professor_work":true,"generic_sentences":[]}',
+        }, stages)
+        assert roles.count("draft_angle1") == 1 and roles.count("draft_angle2") == 1
+        assert "judge" in roles
+        assert "medical imaging" in out.lower()  # candidate 2 won
+        assert stages == ["drafting", "judging", "critiquing"]
+
+    def test_deterministic_winner_skips_judge(self, monkeypatch):
+        # Angle-2 draft fabricates ("Kubernetes" is nowhere in the corpus) →
+        # scores worse → angle-1 wins for free, no judge call.
+        dirty = ("Subject: Hi\n\nDear Professor,\nMy Kubernetes clusters fit "
+                 "your computer vision work.\nBest,\nEric")
+        out, roles = self._run(monkeypatch, {
+            "draft_angle1": self._CLEAN_A,
+            "draft_angle2": dirty,
+            "critique": '{"verdict":"pass","references_specific_professor_work":true,"generic_sentences":[]}',
+        })
+        assert "judge" not in roles
+        assert out == self._CLEAN_A
+
+    def test_judge_garbage_keeps_first_finalist(self, monkeypatch):
+        out, roles = self._run(monkeypatch, {
+            "draft_angle1": self._CLEAN_A,
+            "draft_angle2": self._CLEAN_B,
+            "judge": "the second one seems nicer",
+            "critique": '{"verdict":"pass","references_specific_professor_work":true,"generic_sentences":[]}',
+        })
+        assert "judge" in roles
+        assert out == self._CLEAN_A  # unparseable judge → first finalist
+
+    def test_one_failed_draft_leaves_a_sole_survivor(self, monkeypatch):
+        out, roles = self._run(monkeypatch, {
+            "draft_angle1": None,
+            "draft_angle2": self._CLEAN_B,
+            "critique": '{"verdict":"pass","references_specific_professor_work":true,"generic_sentences":[]}',
+        })
+        assert "judge" not in roles  # one candidate is no tie
+        assert out == self._CLEAN_B
+
+    def test_all_drafts_failed_returns_none(self, monkeypatch):
+        out, roles = self._run(monkeypatch, {
+            "draft_angle1": None,
+            "draft_angle2": None,
+        })
+        assert out is None
+
+    def test_judge_winner_bounds_and_types(self, monkeypatch):
+        import backend.routes.cold_email as ce
+        for raw in ('{"winner": 0}', '{"winner": 3}', '{"winner": true}',
+                    '{"winner": "2"}', "[]", None):
+            monkeypatch.setattr(ce, "chat_completion", lambda messages, raw=raw, **kw: raw)
+            assert ce._judge_drafts(["a", "b"], "P", "S", None) is None
+
+    def test_ndraft_count_clamps(self, monkeypatch):
+        import backend.routes.cold_email as ce
+        monkeypatch.delenv("OFE_COLD_EMAIL_NDRAFT", raising=False)
+        assert ce._ndraft_count() == 2  # default: judge tier on
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "99")
+        assert ce._ndraft_count() == len(ce._DRAFT_ANGLES)
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "0")
+        assert ce._ndraft_count() == 1
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "garbage")
+        assert ce._ndraft_count() == 2
 
 
 class TestEmailModesRegistry:

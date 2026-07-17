@@ -524,6 +524,84 @@ describe('ColdEmailModal', () => {
     });
   });
 
+  describe('AI default engine (auto-fire on open)', () => {
+    const AI_RESP = {
+      subject: 'Auto AI Subject',
+      body: 'Auto AI Body',
+      recipient_email: 'p@x.edu',
+      mailto_link: 'mailto:p@x.edu',
+      method: 'ai',
+    };
+
+    it('runs the pipeline once on open and switches to the AI draft, no click needed', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGenerateColdEmailStream.mockReset().mockResolvedValue(AI_RESP);
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-auto" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
+      expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
+      expect(mockGenerateColdEmail).not.toHaveBeenCalled();
+    });
+
+    it('stays silently on the template when the automatic run falls back', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGenerateColdEmail.mockResolvedValue({
+        subject: 'T', body: 'Template Body', recipient_email: 'p@x.edu',
+        mailto_link: 'mailto:p@x.edu', method: 'template', fallback_reason: 'not_configured',
+      });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-silent" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      // the automatic attempt did run (stream rejected → blocking fallback)…
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
+      // …but the user never asked, so nothing is announced or switched.
+      expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument();
+      expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
+      expect(screen.queryByText('coldEmail.aiFallbackNotConfigured')).toBeNull();
+    });
+
+    it('never clobbers a body the user edited while the pipeline was running', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      let release!: (v: typeof AI_RESP) => void;
+      mockGenerateColdEmailStream.mockReset().mockImplementation(
+        () => new Promise((res) => { release = res; }),
+      );
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-edit" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
+      const bodyArea = screen.getByDisplayValue(/Interested/).closest('div')!.parentElement!
+        .querySelector('textarea[id="email-body"], textarea')!;
+      fireEvent.change(bodyArea, { target: { value: 'my hand-tuned draft' } });
+      await act(async () => { release(AI_RESP); });
+      // Draft is available on the AI pill but the user's edit stays put.
+      expect(screen.getByDisplayValue('my hand-tuned draft')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
+    });
+
+    it('reopening the same opportunity serves the cached draft without re-billing', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGenerateColdEmailStream.mockReset().mockResolvedValue(AI_RESP);
+      const profile = makeProfile();
+      const { rerender } = render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-cache" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
+      rerender(
+        <ColdEmailModal isOpen={false} onClose={vi.fn()} profile={profile} opportunityId="opp-cache" opportunityTitle="REU" />,
+      );
+      rerender(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-cache" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
+      expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('send buttons (FE-2)', () => {
     it('disables the deep-link send buttons when no recipient is resolved', async () => {
       mockGetVariants.mockResolvedValue({ variants: [makeVariant({ recipient_email: '' })] });
