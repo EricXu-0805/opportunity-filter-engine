@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 // uiuc-siebel-ugresearch: hand-curated umbrella seed — survives refreshes, unlike
 // scraped ids (hash of name/url) or the fabricated prototype record this replaced.
+// Pinned by test_e2e_detail_fixture_present (backend DQ) so a data PR that drops
+// it fails fast there, not with a 404-cascade here. Update both if this changes.
 const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 test.describe('Opportunity detail page', () => {

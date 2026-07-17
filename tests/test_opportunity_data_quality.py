@@ -715,6 +715,30 @@ class TestSchoolAudience:
             f"First 3: {offenders[:3]}"
         )
 
+    def test_e2e_detail_fixture_present(self):
+        """Four Playwright specs (opportunity-detail / similar-and-og /
+        tracker-notes + the MatchCard-link test) hard-code
+        KNOWN_ID='uiuc-siebel-ugresearch' and GET /opportunities/<id>. If a data
+        PR (purge / dedup / collapse / re-key) drops or renames that one record
+        the by-id route 404s and ~15 E2E tests cascade-fail four minutes into
+        CI with a bare 404 — it happened twice in 2026-07. Pin the fixture so a
+        break surfaces instantly in the backend job with an actionable message
+        instead of deep in E2E. Keep this ID in sync with KNOWN_ID in
+        frontend/e2e/*.spec.ts."""
+        e2e_fixture_id = "uiuc-siebel-ugresearch"
+        by_id = {o.get("id"): o for o in _load_data()}
+        fx = by_id.get(e2e_fixture_id)
+        assert fx is not None, (
+            f"E2E detail fixture {e2e_fixture_id!r} is gone from the corpus — "
+            f"the opportunity-detail / similar-and-og / tracker-notes Playwright "
+            f"specs GET /opportunities/{e2e_fixture_id} and will 404-cascade. "
+            f"Restore the seed or update KNOWN_ID in frontend/e2e/*.spec.ts."
+        )
+        assert (fx.get("title") or "").strip(), (
+            f"E2E detail fixture {e2e_fixture_id!r} has an empty title; the "
+            f"JobPosting JSON-LD spec asserts parsed.title is truthy."
+        )
+
     def test_no_works_list_stamped_across_many_faculty(self):
         """The url-keyed works store once stamped ONE person's papers onto all
         430 JHU faculty sharing a directory URL (2026-07 audit). Co-authors can
