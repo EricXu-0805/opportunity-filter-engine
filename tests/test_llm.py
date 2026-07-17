@@ -150,13 +150,13 @@ class TestChatModelOptions:
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
         monkeypatch.delenv("OFE_CHAT_MODELS", raising=False)
         opts = llm.chat_model_options()
-        ids = {o["id"] for o in opts}
-        assert "gemini-flash" in ids
+        # Intent-labeled tiers, Auto first (the UI defaults to the first entry).
+        assert [o["id"] for o in opts] == ["auto", "thinking"]
         assert all("label" in o and "id" in o for o in opts)
         # slug is resolvable server-side but never leaked in the public list.
         assert all("slug" not in o for o in opts)
-        assert llm.chat_model_slug("gemini-flash") == "google/gemini-3.5-flash"
-        assert llm.chat_model_slug("claude-sonnet") == "anthropic/claude-sonnet-5"
+        assert llm.chat_model_slug("auto") == "anthropic/claude-sonnet-5"
+        assert llm.chat_model_slug("thinking") == "openai/gpt-5.6-terra-pro"
 
     def test_unknown_id_has_no_slug(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
@@ -173,7 +173,7 @@ class TestChatModelOptions:
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
         monkeypatch.setenv("OFE_CHAT_MODELS", "garbage,more-garbage")
         ids = {o["id"] for o in llm.chat_model_options()}
-        assert "gemini-flash" in ids  # default table
+        assert "auto" in ids  # default table
 
     def test_default_models_are_only_disclosed_us_providers(self, monkeypatch):
         # Privacy invariant: the default Ask-AI picker must route only to the

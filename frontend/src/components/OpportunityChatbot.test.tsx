@@ -424,6 +424,28 @@ describe('OpportunityChatbot — model picker', () => {
       expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, 'gpt-4o-mini', expect.any(Function)),
     );
   });
+
+  it('defaults to the first tier and renders i18n labels for auto/thinking', async () => {
+    mockGetChatModels.mockResolvedValue([
+      { id: 'auto', label: 'Auto' },
+      { id: 'thinking', label: 'Thinking' },
+    ]);
+    mockChat.mockResolvedValue({ reply: 'ok', method: 'llm' });
+    render(<OpportunityChatbot opportunity={OPP} profile={null} />);
+
+    const select = (await screen.findByLabelText(/chatbot.modelAria/)) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe('auto'));
+    const labels = Array.from(select.options).map((o) => o.textContent);
+    expect(labels).toEqual(['chatbot.modelAuto', 'chatbot.modelThinking']);
+
+    const textarea = screen.getByPlaceholderText(/chatbot.placeholder/);
+    fireEvent.change(textarea, { target: { value: 'hi' } });
+    fireEvent.submit(textarea.closest('form')!);
+
+    await waitFor(() =>
+      expect(mockChat).toHaveBeenCalledWith(OPP.id, 'hi', [], null, 'auto', expect.any(Function)),
+    );
+  });
 });
 
 describe('OpportunityChatbot — SSE streaming', () => {
