@@ -691,6 +691,130 @@ class TestColdEmailPipeline:
         ce._pipeline_generate(self._profile(), self._opp(), None)
         assert len(calls) == 1  # draft only (critique off, clean draft → no revise)
 
+    def test_fewshot_carries_no_concrete_facts(self):
+        """The few-shot examples must contain NOTHING concrete a model could
+        copy into a student's email: digit-led tokens and lowercase generic
+        phrases slip past the LENIENT gate, so a course number or metric in an
+        example would be a fabrication the gate cannot catch. Checking the
+        example text against an EMPTY corpus proves it has no concrete-signal
+        tokens at all."""
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
+
+        passed, fabricated = validate_no_fabrication(
+            ce._FEWSHOT, "", extra_allow=ce._EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
+        )
+        assert passed, f"few-shot examples leak concrete tokens: {fabricated}"
+
+    def test_critique_bad_types_are_normalized_not_crashed(self, monkeypatch):
+        """A critique that returns legal JSON with wrong-typed fields
+        ({'generic_sentences': 5}) must degrade to field-absent — the old code
+        crashed the whole request in _revision_notes' slice."""
+        import backend.routes.cold_email as ce
+
+        monkeypatch.setattr(
+            ce, "chat_completion",
+            lambda *a, **k: '{"verdict":"revise","generic_sentences":5,"revision_notes":{"x":1}}',
+        )
+        rubric = ce._llm_critique("draft", "prof", "stu", None)
+        assert rubric is not None
+        assert rubric["verdict"] == "revise"
+        assert rubric["generic_sentences"] == []   # wrong type -> dropped
+        assert rubric["revision_notes"] == ""      # wrong type -> dropped
+        # And the notes builder consumes the normalized dict without raising.
+        notes = ce._revision_notes({"llm": rubric})
+        assert isinstance(notes, str)
+
+    def test_pipeline_survives_bad_critique_end_to_end(self, monkeypatch):
+        """Full pipeline with a wrong-typed critique: no exception, revise still
+        runs off the deterministic findings."""
+        import backend.routes.cold_email as ce
+
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            n = len(calls)
+            if n == 1:  # generic draft (no professor reference)
+                return "Subject: Hi\n\nDear Professor,\nI am interested in your lab.\nBest,\nEric"
+            if n == 2:  # critique: legal JSON, illegal types
+                return '{"verdict":"revise","generic_sentences":5}'
+            return ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
+                    "work fits my Python background.\nBest,\nEric")
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        out = ce._pipeline_generate(self._profile(), self._opp(), None)
+        assert out is not None
+        assert "computer vision" in out.lower()
+
+    def test_short_surname_needs_word_boundary(self):
+        """PI surname 'Li' must not match inside 'would like' — a generic draft
+        cannot vacuously pass the references-professor check via substring."""
+        import backend.routes.cold_email as ce
+
+        p = {
+            "research_area": "", "research_topic": "", "research_areas_raw": "",
+            "pi_name": "Jane Li",
+        }
+        opp = {"keywords": [], "metadata": {}}
+        generic = ce._deterministic_findings(
+            "Dear Professor,\nI would like to join your lab.\nBest,\nEric",
+            "would like to join your lab dear professor best eric", p, opp,
+        )
+        assert generic["has_specific_prof_data"] is True
+        assert generic["references_professor"] is False
+        named = ce._deterministic_findings(
+            "Dear Professor Li,\nYour lab's work stood out to me.\nBest,\nEric",
+            "professor li your lab's work stood out best eric", p, opp,
+        )
+        assert named["references_professor"] is True
+
+    def test_revise_that_scores_worse_is_discarded(self, monkeypatch):
+        """The reviser introducing MORE banned filler than the draft had means
+        the draft wins — a revise can never make the email measurably worse."""
+        import backend.routes.cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        draft = ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
+                 "work fits my Python background. I am a fast learner.\nBest,\nEric")
+        worse = ("Subject: Vision fit\n\nDear Professor,\nI am a passionate, "
+                 "dedicated fast learner drawn to your computer vision work."
+                 "\nBest,\nEric")
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            return draft if len(calls) == 1 else worse
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        out = ce._pipeline_generate(self._profile(), self._opp(), None)
+        assert len(calls) == 2  # draft + revise ("fast learner" triggered it)
+        assert out == draft     # worse revision discarded
+
+    def test_llm_verdict_alone_triggers_revise(self, monkeypatch):
+        """Deterministically-clean draft + critique verdict 'revise' → the LLM
+        lens alone drives a revision (isolates the findings['llm'] branch)."""
+        import backend.routes.cold_email as ce
+
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            n = len(calls)
+            if n == 1:  # clean: references professor, no banned words, grounded
+                return ("Subject: Vision fit\n\nDear Professor,\nYour computer "
+                        "vision work fits my Python background.\nBest,\nEric")
+            if n == 2:
+                return ('{"verdict":"revise","references_specific_professor_work":true,'
+                        '"generic_sentences":["Your computer vision work fits my Python background."]}')
+            return ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
+                    "and medical imaging work maps to my Python projects.\nBest,\nEric")
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        out = ce._pipeline_generate(self._profile(), self._opp(), None)
+        assert len(calls) == 3  # draft + critique + revise
+        assert "medical imaging" in out.lower()
+
 
 class TestEmailModesRegistry:
     """The consolidated mode registry backs both the draft voice and the

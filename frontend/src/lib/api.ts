@@ -368,6 +368,7 @@ export async function refineEmail(
   instruction: string,
   profile?: ProfileData,
   opportunityId?: string,
+  options: { resumeBullets?: string[] } = {},
 ): Promise<{ body: string; method: string; fallback_reason?: string }> {
   return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
     method: 'POST',
@@ -376,6 +377,11 @@ export async function refineEmail(
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId ?? null,
+      // The student's real resume bullets keep experience claims grounded when
+      // a refine instruction asks to emphasize them (additive + optional).
+      ...(options.resumeBullets && options.resumeBullets.length > 0
+        ? { resume_bullets: options.resumeBullets }
+        : {}),
     }),
   });
 }
