@@ -2050,6 +2050,89 @@ class TestInterestBonusNameLeakage:
         assert _interest_bonus({"research_interests_text": "cancer immunology"}, opp) > 0.0
 
 
+class TestInterestBonusLowSignalTokens:
+    """A lone broad token from the interests ('AI systems' → 'systems') must not
+    earn the literal-overlap bonus. 2026-07 dogfood: it prefix-hit 'data and
+    information systems' / 'type systems' and put topically-unrelated
+    data-systems faculty in an ML student's top-10 at 96.9."""
+
+    def _opp(self, kws):
+        return {"id": "t-low-signal", "opportunity_type": "research",
+                "pi_name": "A Person", "title": "Research with Prof. A Person",
+                "keywords": kws, "eligibility": {}, "application": {}}
+
+    def test_lone_systems_token_earns_no_bonus(self):
+        from src.matcher.ranker import _interest_bonus
+        opp = self._opp(["data and information systems", "type systems"])
+        assert _interest_bonus(
+            {"research_interests_text": "AI systems, computational neuroscience"}, opp
+        ) == 0.0
+
+    def test_distinctive_token_still_earns_the_bonus(self):
+        from src.matcher.ranker import _interest_bonus
+        opp = self._opp(["computational neuroscience", "neural circuits"])
+        assert _interest_bonus(
+            {"research_interests_text": "AI systems, computational neuroscience"}, opp
+        ) > 0.0
+
+
+class TestReasonOrdering:
+    """Specific-first display: the topical-tie reason leads, the lab headline
+    follows, and boilerplate every card shares ('Accepts …', 'Your major …')
+    sinks to the bottom. 2026-07 dogfood: the old elig+ready+up concatenation
+    made every card's visible top-3 identical."""
+
+    def _profile(self):
+        return {
+            "name": "T", "year": "sophomore", "major": "Computer Science",
+            "home_school": "uiuc", "school": "UIUC",
+            "hard_skills": [{"name": "Python", "level": "experienced"}],
+            "research_interests_text": "machine learning, computer vision",
+            "desired_fields": ["machine learning", "computer vision"],
+            "seeking_type": ["research"], "coursework": [], "search_weight": 50,
+            "preferences": {"min_match_threshold": 25, "show_reach_opportunities": True,
+                            "prioritize_paid": True, "exclude_citizenship_restricted": True},
+        }
+
+    def _opp(self):
+        return {
+            "id": "t-order", "opportunity_type": "research",
+            "title": "Research with Prof. Vision Person",
+            "pi_name": "Vision Person",
+            "lab_or_program": "Prof. Vision Person's Research Group",
+            "keywords": ["computer vision", "machine learning", "medical imaging"],
+            "description_raw": "We research computer vision and machine learning for medical imaging.",
+            "school": "uiuc", "on_campus": True,
+            "eligibility": {"preferred_year": ["sophomore"], "majors": ["Computer Science"]},
+            "application": {},
+        }
+
+    def test_topical_tie_leads_and_boilerplate_sinks(self):
+        from src.matcher.ranker import rank_opportunity
+        result = rank_opportunity(self._profile(), self._opp())
+        fit = result.reasons_fit
+        assert fit, "expected fit reasons"
+        # Lead reason is the student-specific topical tie, not 'Accepts …'.
+        assert fit[0].startswith(("Your interest in", "Matches your interests:",
+                                  "Your research interests align")), fit[0]
+        boiler = [i for i, r in enumerate(fit)
+                  if r.startswith(("Accepts ", "Your major ("))]
+        specific = [i for i, r in enumerate(fit)
+                    if r.startswith(("Your interest in", "Matches your interests:"))]
+        assert boiler and specific
+        assert max(specific) < min(boiler)  # every specific reason above boilerplate
+
+    def test_priority_tiers_are_stable(self):
+        from src.matcher.ranker import _reason_priority
+        assert _reason_priority("Your interest in vision closely matches their work") == 0
+        assert _reason_priority("Matches your interests: machine learning") == 0
+        assert _reason_priority("Strong tech stack fit: Python — 1/1 required") == 2
+        assert _reason_priority("Paid opportunity") == 5
+        assert _reason_priority("Accepts sophomore students") == 6
+        assert _reason_priority("Matches your interest in research") == 6
+        assert _reason_priority("Something novel and unclassified") == 4
+
+
 class TestActionableTieBreak:
     """Scores round to 0.1 and keyword-thin schools produce 8-way tie walls
     ordered by record id — the audit found #1 matches with no email while
