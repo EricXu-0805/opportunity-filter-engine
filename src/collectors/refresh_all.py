@@ -48,14 +48,20 @@ from .schools.jhu_faculty import fetch_and_normalize as fetch_jhu_faculty
 from .schools.jhu_faculty import merge_into_processed as merge_jhu_faculty
 from .schools.mit_faculty import fetch_and_normalize as fetch_mit_faculty
 from .schools.mit_faculty import merge_into_processed as merge_mit_faculty
+from .schools.nd_faculty import fetch_and_normalize as fetch_nd_faculty
+from .schools.nd_faculty import merge_into_processed as merge_nd_faculty
 from .schools.northwestern_faculty import fetch_and_normalize as fetch_northwestern_faculty
 from .schools.northwestern_faculty import merge_into_processed as merge_northwestern_faculty
+from .schools.osu_faculty import fetch_and_normalize as fetch_osu_faculty
+from .schools.osu_faculty import merge_into_processed as merge_osu_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
 from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
 from .schools.purdue_faculty import fetch_and_normalize as fetch_purdue_faculty
 from .schools.purdue_faculty import merge_into_processed as merge_purdue_faculty
 from .schools.rice_faculty import fetch_and_normalize as fetch_rice_faculty
 from .schools.rice_faculty import merge_into_processed as merge_rice_faculty
+from .schools.rochester_faculty import fetch_and_normalize as fetch_rochester_faculty
+from .schools.rochester_faculty import merge_into_processed as merge_rochester_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
@@ -68,10 +74,18 @@ from .schools.ucsb_faculty import fetch_and_normalize as fetch_ucsb_faculty
 from .schools.ucsb_faculty import merge_into_processed as merge_ucsb_faculty
 from .schools.ucsd_faculty import fetch_and_normalize as fetch_ucsd_faculty
 from .schools.ucsd_faculty import merge_into_processed as merge_ucsd_faculty
+from .schools.uf_faculty import fetch_and_normalize as fetch_uf_faculty
+from .schools.uf_faculty import merge_into_processed as merge_uf_faculty
+from .schools.umass_faculty import fetch_and_normalize as fetch_umass_faculty
+from .schools.umass_faculty import merge_into_processed as merge_umass_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
+from .schools.umn_faculty import fetch_and_normalize as fetch_umn_faculty
+from .schools.umn_faculty import merge_into_processed as merge_umn_faculty
 from .schools.upenn_faculty import fetch_and_normalize as fetch_upenn_faculty
 from .schools.upenn_faculty import merge_into_processed as merge_upenn_faculty
+from .schools.usc_faculty import fetch_and_normalize as fetch_usc_faculty
+from .schools.usc_faculty import merge_into_processed as merge_usc_faculty
 from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
 from .schools.utexas_faculty import merge_into_processed as merge_utexas_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
@@ -651,6 +665,14 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("columbia_faculty", fetch_columbia_faculty, merge_columbia_faculty),
             ("mit_faculty", fetch_mit_faculty, merge_mit_faculty),
             ("harvard_faculty", fetch_harvard_faculty, merge_harvard_faculty),
+            # Wave-1 final seven (live-scraped via faculty_graph, 2026-07-17).
+            ("usc_faculty", fetch_usc_faculty, merge_usc_faculty),
+            ("umn_faculty", fetch_umn_faculty, merge_umn_faculty),
+            ("osu_faculty", fetch_osu_faculty, merge_osu_faculty),
+            ("nd_faculty", fetch_nd_faculty, merge_nd_faculty),
+            ("rochester_faculty", fetch_rochester_faculty, merge_rochester_faculty),
+            ("uf_faculty", fetch_uf_faculty, merge_uf_faculty),
+            ("umass_faculty", fetch_umass_faculty, merge_umass_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).

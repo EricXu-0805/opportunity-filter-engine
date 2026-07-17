@@ -158,6 +158,14 @@ _PROSE_FRAGMENT_LEAD_RE = re.compile(
     re.IGNORECASE,
 )
 
+# An academic-unit name is never a research area — some directories fill the
+# expertise field with the person's school/department affiliation instead
+# ("USC Annenberg School for Communication and Journalism").
+_UNIT_NAME_RE = re.compile(
+    r"\b(?:school|college|department|institute|academy)s?\s+(?:of|for)\b",
+    re.IGNORECASE,
+)
+
 
 def _hygiene_keyword(k: str) -> str | None:
     """Clean one keyword (curated or derived): strip wrapping quotes and edge
@@ -185,14 +193,20 @@ def _hygiene_keyword(k: str) -> str | None:
             return False
     if _is_junk_keyword(c):
         return None
+    if _UNIT_NAME_RE.search(c):
+        return None
     return re.sub(r"\s*,\s*", " / ", c)
 
 
 def _hygiene_keywords(kws: list[str]) -> list[str]:
-    """Clean + de-dupe a keyword list order-preserving (case-insensitive)."""
+    """Clean + de-dupe a keyword list order-preserving (case-insensitive).
+
+    A semicolon inside a chip always delimits separate areas ("Classical
+    Guitar; Composition / Theory & Analysis") — split before cleaning.
+    """
     out: list[str] = []
     seen: set[str] = set()
-    for k in kws or []:
+    for k in (part for kw in kws or [] for part in (kw or "").split(";")):
         c = _hygiene_keyword(k)
         if c is None:
             continue
@@ -527,6 +541,11 @@ def _clean_email(raw: str) -> str | None:
     the first address-shaped token after URL-decoding.
     """
     addr = unquote(raw or "").replace("mailto:", "").split("?")[0].strip()
+    # Normalize written-out obfuscation before the address-shape search: both
+    # spamspan text ("x [at] umass [dot] edu") and hand-quoted forms
+    # ('lane "at" cs.rochester.edu') publish a real address behind at/dot words.
+    addr = re.sub(r"\s*[\[(\"']\s*at\s*[\])\"']\s*", "@", addr, flags=re.I)
+    addr = re.sub(r"\s*[\[(\"']\s*dot\s*[\])\"']\s*", ".", addr, flags=re.I)
     m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
     result = m.group(0) if m else (addr or None)
     # Canonicalize to lowercase: some directories carry a display-cased address
@@ -586,14 +605,37 @@ def _decode_b64email(el) -> str | None:
     return _clean_email(decoded) if "@" in decoded else None
 
 
+def _decode_rot13email(el) -> str | None:
+    """Decode a rot13 ``data-mail-to`` payload on (or under) ``el``.
+
+    UMass Amherst's campus Drupal obfuscates every address as
+    ``<a data-mail-to="nyunevev/ng/purz/qbg/hznff/qbg/rqh">`` — rot13 with
+    ``/at/`` and ``/dot/`` separators (decoded client-side). Without this
+    decode the whole campus lands unemailed despite publishing every address.
+    """
+    payload = el.get("data-mail-to")
+    if not payload and hasattr(el, "select_one"):
+        sub = el.select_one("[data-mail-to]")
+        if sub is not None:
+            payload = sub.get("data-mail-to")
+    if not payload:
+        return None
+    import codecs
+    decoded = codecs.decode(payload, "rot13").replace("/at/", "@").replace("/dot/", ".")
+    return _clean_email(decoded) if "@" in decoded else None
+
+
 def _email_from_el(e_el) -> str | None:
-    """Address from a selected email element — cf-shield/base64 decode, then mailto/text."""
+    """Address from a selected email element — cf-shield/base64/rot13 decode, then mailto/text."""
     cf = _decode_cfemail(e_el)
     if cf:
         return cf
     b64 = _decode_b64email(e_el)
     if b64:
         return b64
+    r13 = _decode_rot13email(e_el)
+    if r13:
+        return r13
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
     return _clean_email(raw)
 

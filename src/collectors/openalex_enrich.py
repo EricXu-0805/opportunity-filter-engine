@@ -94,7 +94,15 @@ SCHOOL_INST = {
     "dartmouth": "I107672454",  # Dartmouth College (ror 049s0rh22, OpenAlex-API verified)
     "columbia": "I78577930",
     "mit": "I63966007",        # Massachusetts Institute of Technology (ror 042nb2s44, OpenAlex-API verified)
-    "harvard": "I136199984",   # Harvard University (ror 03vek6s52, OpenAlex-API verified)   # Columbia University (ror 00hj8s172, OpenAlex-API verified)
+    "harvard": "I136199984",   # Harvard University (ror 03vek6s52, OpenAlex-API verified)
+    # Verified 2026-07-17 via GET /institutions?search=… (Wave-1 final seven):
+    "usc": "I1174212",         # University of Southern California
+    "umn": "I130238516",       # University of Minnesota [Twin Cities]
+    "osu": "I52357470",        # The Ohio State University
+    "nd": "I107639228",        # University of Notre Dame
+    "rochester": "I5388228",   # University of Rochester
+    "uf": "I33213144",         # University of Florida
+    "umass": "I24603500",      # University of Massachusetts Amherst
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)
