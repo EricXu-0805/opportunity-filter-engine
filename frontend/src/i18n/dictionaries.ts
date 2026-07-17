@@ -2277,6 +2277,7 @@ export const en = {
     errorRateLimited: 'You are sending messages too quickly. Wait a minute and try again.',
     modelLabel: 'Model',
     modelAuto: 'Auto',
+    modelThinking: 'Thinking',
     modelAria: 'Choose the AI model',
   },
   email: {
@@ -5179,6 +5180,7 @@ export const zh = {
     errorRateLimited: '发送太频繁了，请等一分钟再试。',
     modelLabel: '模型',
     modelAuto: '自动',
+    modelThinking: '深度思考',
     modelAria: '选择 AI 模型',
   },
   email: {

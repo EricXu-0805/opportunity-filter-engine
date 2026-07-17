@@ -23,7 +23,9 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
   const [error, setError] = useState<string | null>(null);
   const [shareProfile, setShareProfile] = useState(true);
   // Ask-AI model picker. `chatModels` is empty unless OpenRouter is configured
-  // server-side, so the picker stays hidden by default; '' = Auto (default chain).
+  // server-side, so the picker stays hidden by default; '' (picker hidden) =
+  // server default chain. When the picker is visible it defaults to the first
+  // server-provided tier ("auto").
   const [chatModels, setChatModels] = useState<ChatModelOption[]>([]);
   const [selectedModel, setSelectedModel] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -38,7 +40,9 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
   useEffect(() => {
     let ignore = false;
     getChatModels().then((m) => {
-      if (!ignore) setChatModels(m);
+      if (ignore) return;
+      setChatModels(m);
+      if (m.length > 0) setSelectedModel(m[0].id);
     });
     return () => { ignore = true; };
   }, []);
@@ -176,9 +180,12 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
             aria-label={t('chatbot.modelAria')}
             className="text-[12px] text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
           >
-            <option value="">{t('chatbot.modelAuto')}</option>
             {chatModels.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
+              <option key={m.id} value={m.id}>
+                {m.id === 'auto' ? t('chatbot.modelAuto')
+                  : m.id === 'thinking' ? t('chatbot.modelThinking')
+                  : m.label}
+              </option>
             ))}
           </select>
         </div>

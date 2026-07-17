@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import re
 from typing import Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SkillItem(BaseModel):
@@ -305,6 +306,198 @@ class ExtractBulletsRequest(BaseModel):
 class ExtractBulletsResponse(BaseModel):
     bullets: list[str]
     method: str = "heuristic"  # "ai" | "heuristic"
+
+
+# --- Résumé renovation (staged: structure → macro renovate → per-bullet) -----
+# The standard résumé is structured once (sections + bullets), then renovated
+# toward one opportunity/professor. Every prose output routes through the same
+# STUDENT-ONLY anti-fabrication corpus as /tailor; the structural stages emit
+# only IDs so they cannot fabricate at all.
+
+
+class ResumeBullet(BaseModel):
+    id: str
+    text: str = ""
+
+    @field_validator("id")
+    @classmethod
+    def cap_id(cls, v: str) -> str:
+        # IDs are structural tokens (s1b2). Strip ALL whitespace so an id can
+        # never smuggle newlines into the renovation-plan prompt, and cap the
+        # length — unbounded ids were an unbounded-prompt cost vector even
+        # under the 100-bullet cap.
+        return re.sub(r"\s+", "", str(v))[:64]
+
+    @field_validator("text")
+    @classmethod
+    def cap_text(cls, v: str) -> str:
+        return str(v)[:600]
+
+
+class ResumeSection(BaseModel):
+    id: str
+    heading: str = ""
+    # "experience" | "projects" | "research" | "education" | "skills" | "other".
+    # Free-form but capped; only used to label the section, never a claim.
+    kind: str = "experience"
+    bullets: list[ResumeBullet] = Field(default_factory=list)
+
+    @field_validator("id")
+    @classmethod
+    def cap_id(cls, v: str) -> str:
+        # Same rules as ResumeBullet.id (prompt-safety + cost bound).
+        return re.sub(r"\s+", "", str(v))[:64]
+
+    @field_validator("heading")
+    @classmethod
+    def cap_heading(cls, v: str) -> str:
+        return str(v)[:120]
+
+    @field_validator("kind")
+    @classmethod
+    def cap_kind(cls, v: str) -> str:
+        # Interpolated into the plan prompt as a bare label — flatten
+        # whitespace and cap so it can't carry payloads or bloat the prompt.
+        return re.sub(r"\s+", " ", str(v)).strip()[:24]
+
+    @field_validator("bullets")
+    @classmethod
+    def cap_bullets(cls, v: list) -> list:
+        return v[:40]
+
+
+class StructureResumeRequest(BaseModel):
+    resume_text: str = Field(default="", max_length=20000)
+    locale: str = "en"
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, v: str) -> str:
+        primary = (v or "").lower().split("-")[0].split("_")[0]
+        return "zh" if primary == "zh" else "en"
+
+
+class StructureResumeResponse(BaseModel):
+    sections: list[ResumeSection]
+    method: str = "heuristic"  # "ai" | "heuristic"
+    warnings: list[str] = Field(default_factory=list)
+
+
+class RenovateRequest(BaseModel):
+    profile: ProfileRequest
+    opportunity_id: str
+    sections: list[ResumeSection] = Field(default_factory=list)
+    locale: str = "en"
+
+    @field_validator("sections")
+    @classmethod
+    def cap_sections(cls, v: list) -> list:
+        return v[:15]
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, v: str) -> str:
+        primary = (v or "").lower().split("-")[0].split("_")[0]
+        return "zh" if primary == "zh" else "en"
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_oversized_payload(cls, data):
+        # Runs on the RAW payload, before the silent per-section/section-count
+        # truncations (cap_bullets 40, cap_sections 15). Without this, a
+        # 2×61-bullet résumé would be quietly cut to 80 and renovated with 42
+        # bullets missing — silent data loss on the user's résumé. A renovation
+        # must see the WHOLE document or refuse loudly; oversize is a client
+        # bug or abuse, so 422 with a clear message.
+        if isinstance(data, dict) and isinstance(data.get("sections"), list):
+            sections = data["sections"]
+            if len(sections) > 15:
+                raise ValueError("too many sections: max 15")
+            total = 0
+            for s in sections:
+                if isinstance(s, dict) and isinstance(s.get("bullets"), list):
+                    n = len(s["bullets"])
+                    if n > 40:
+                        raise ValueError("a section exceeds 40 bullets")
+                    total += n
+            if total > 100:
+                raise ValueError("too many bullets: max 100 across all sections")
+        return data
+
+    @model_validator(mode="after")
+    def validate_section_tree(self) -> RenovateRequest:
+        # Global bullet cap + ID uniqueness. The per-section caps (15×40) still
+        # admit 600 bullets ≈ a ~47K-token plan prompt — an abuse-sized cost
+        # hole; real résumés run 15-60 bullets, so 100 is generous. Duplicate
+        # IDs would attach one rewrite to two places and break the rollback
+        # chain's identity, so reject outright rather than guess.
+        total = 0
+        seen_sections: set[str] = set()
+        seen_bullets: set[str] = set()
+        for s in self.sections:
+            if s.id in seen_sections:
+                raise ValueError(f"duplicate section id: {s.id}")
+            seen_sections.add(s.id)
+            for b in s.bullets:
+                if b.id in seen_bullets:
+                    raise ValueError(f"duplicate bullet id: {b.id}")
+                seen_bullets.add(b.id)
+                total += 1
+        if total > 100:
+            raise ValueError("too many bullets: max 100 across all sections")
+        return self
+
+
+class RenovatedVariant(BaseModel):
+    # "base" is never stored in the chain (base_text is the floor); a variant is
+    # one of the appended reframings.
+    source: str  # "macro" | "ai" | "user"
+    text: str
+    source_evidence: str = ""
+
+
+class RenovatedBullet(BaseModel):
+    id: str
+    base_text: str                                 # rollback floor — the student's own words
+    variants: list[RenovatedVariant] = Field(default_factory=list)
+    # Index into ``variants``; -1 == show base_text. Rollback moves this back.
+    current: int = -1
+    action: str = "keep"                           # "foreground" | "keep" | "demote"
+
+
+class RenovatedSection(BaseModel):
+    id: str
+    heading: str = ""
+    kind: str = "experience"
+    bullets: list[RenovatedBullet] = Field(default_factory=list)
+
+
+class RenovateResponse(BaseModel):
+    sections: list[RenovatedSection]
+    method: str = "fallback"  # "ai" | "fallback"
+    warnings: list[str] = Field(default_factory=list)
+
+
+class BulletOptimizeRequest(BaseModel):
+    profile: ProfileRequest
+    opportunity_id: str
+    current_text: str = Field(default="", max_length=600)
+    base_text: str = Field(default="", max_length=600)
+    instruction: str | None = Field(default=None, max_length=300)
+    locale: str = "en"
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, v: str) -> str:
+        primary = (v or "").lower().split("-")[0].split("_")[0]
+        return "zh" if primary == "zh" else "en"
+
+
+class BulletOptimizeResponse(BaseModel):
+    text: str
+    source_evidence: str = ""
+    changed: bool = False
+    warnings: list[str] = Field(default_factory=list)
 
 
 class OpportunityListResponse(BaseModel):
