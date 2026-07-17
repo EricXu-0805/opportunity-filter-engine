@@ -3477,6 +3477,9 @@ class TestColdEmailStream:
 
     def test_stream_emits_stages_then_done(self, stream_body, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        # Single-draft pipeline: this test pins the stage RELAY order, and the
+        # count-based mock below can't serve parallel angled drafts.
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
         import backend.routes.cold_email as ce_module
 
         calls = []

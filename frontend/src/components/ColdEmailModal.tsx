@@ -26,7 +26,7 @@ import {
   trackInteraction,
   updateInteractionDetails,
 } from '@/lib/supabase';
-import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason } from '@/lib/types';
+import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
@@ -73,6 +73,7 @@ type QuickActionKey = typeof QUICK_ACTION_KEYS[number];
 // the UI says WHICH stage is running instead of one opaque spinner.
 const STAGE_LABEL_KEYS: Record<ColdEmailStage, string> = {
   drafting: 'coldEmail.stageDrafting',
+  judging: 'coldEmail.stageJudging',
   critiquing: 'coldEmail.stageCritiquing',
   revising: 'coldEmail.stageRevising',
 };
@@ -190,6 +191,20 @@ export default function ColdEmailModal({
   // since replaced. null = not yet attempted.
   const resumeBulletsRef = useRef<{ forText: string; bullets: string[] } | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  // AI is the default engine: one automatic pipeline run per open, kicked off
+  // once the template variants land. Reset on close.
+  const autoFiredRef = useRef(false);
+  // Mirrors `body` so async completions can tell whether the user edited or
+  // switched away from the draft that was showing when generation started.
+  const bodyRef = useRef('');
+  // Real AI drafts per (opportunity, style): reopening the same opportunity
+  // reuses the draft instead of re-billing the pipeline. Fallback responses
+  // are never cached (they retry on the next open). Cleared when the profile
+  // prop changes — a draft must not outlive a profile edit.
+  const aiCacheRef = useRef<Map<string, ColdEmailResponse>>(new Map());
+
+  useEffect(() => { bodyRef.current = body; }, [body]);
+  useEffect(() => { aiCacheRef.current.clear(); }, [profile]);
 
   const fetchVariants = useCallback(async () => {
     setLoading(true);
@@ -231,6 +246,7 @@ export default function ColdEmailModal({
        residue from the previous session. */
     if (isOpen) fetchVariants();
     return () => {
+      autoFiredRef.current = false;
       setVariants([]);
       setAiVariant(null);
       setAiLoading(false);
@@ -314,17 +330,55 @@ export default function ColdEmailModal({
     ]);
   }
 
-  // Generate (or re-generate) the AI draft in a given voice. Used by both the
-  // ✨ AI pill (current/recommended tone) and the tone picker (switches voice).
-  const generateAi = useCallback(async (style: EmailStyle) => {
+  // Generate (or re-generate) the AI draft in a given voice. Used by the
+  // automatic run on open (AI is the default engine; `auto: true`), the ✨ AI
+  // pill, and the tone picker. Auto mode differs in three ways: it reports
+  // nothing until it succeeds (a fallback the user never asked for stays
+  // silent), it never clobbers a draft the user has meanwhile edited or
+  // switched away from, and it seeds/serves the per-open cache.
+  const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
     if (aiLoading) return;
+    const auto = opts?.auto ?? false;
     const aiIdx = variants.length;
-    setAiLoading(true);
     setSelectedStyle(style);
-    setChatMessages((prev) => [
-      ...prev,
-      { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
-    ]);
+
+    const applyResponse = (resp: ColdEmailResponse, select: boolean) => {
+      const v: EmailVariant = {
+        id: AI_VARIANT_ID,
+        label: t('coldEmail.aiVariantLabel'),
+        subject: resp.subject,
+        body: resp.body,
+        recipient_email: resp.recipient_email,
+        mailto_link: resp.mailto_link,
+        lab_type: resp.lab_type ?? labType ?? null,
+        method: resp.method,
+        fallback_reason: resp.fallback_reason,
+      };
+      setAiVariant(v);
+      if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
+      if (select) {
+        setActiveVariant(aiIdx);
+        setSubject(v.subject);
+        setBody(v.body);
+        setRecipient(v.recipient_email);
+      }
+    };
+
+    const cached = aiCacheRef.current.get(`${opportunityId}|${style}`);
+    if (cached) {
+      applyResponse(cached, true);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.aiGenerated') }]);
+      return;
+    }
+
+    setAiLoading(true);
+    if (!auto) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
+      ]);
+    }
+    const baselineBody = bodyRef.current;
 
     try {
       // Extract the student's real resume bullets once per résumé text, so the
@@ -360,23 +414,11 @@ export default function ColdEmailModal({
         setAiStage(null);
         resp = await generateColdEmail(profile, opportunityId, opts);
       }
-      const v: EmailVariant = {
-        id: AI_VARIANT_ID,
-        label: t('coldEmail.aiVariantLabel'),
-        subject: resp.subject,
-        body: resp.body,
-        recipient_email: resp.recipient_email,
-        mailto_link: resp.mailto_link,
-        lab_type: resp.lab_type ?? labType ?? null,
-        method: resp.method,
-        fallback_reason: resp.fallback_reason,
-      };
-      setAiVariant(v);
-      setActiveVariant(aiIdx);
-      setSubject(v.subject);
-      setBody(v.body);
-      setRecipient(v.recipient_email);
-      if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
+      if (resp.method === 'ai') {
+        aiCacheRef.current.set(`${opportunityId}|${style}`, resp);
+      }
+      if (auto && resp.method !== 'ai') return; // silent — the user never asked
+      applyResponse(resp, !auto || bodyRef.current === baselineBody);
       setChatMessages((prev) => [
         ...prev,
         {
@@ -385,15 +427,26 @@ export default function ColdEmailModal({
         },
       ]);
     } catch {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: t('coldEmail.aiFailed') },
-      ]);
+      if (!auto) {
+        setChatMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: t('coldEmail.aiFailed') },
+        ]);
+      }
     } finally {
       setAiLoading(false);
       setAiStage(null);
     }
   }, [aiLoading, variants.length, profile, opportunityId, labType, t]);
+
+  // AI is the default engine: once the template variants land, run the
+  // pipeline once automatically. The template is the instant placeholder; the
+  // AI draft takes over on success (unless the user already started editing).
+  useEffect(() => {
+    if (!isOpen || loading || variants.length === 0 || autoFiredRef.current) return;
+    autoFiredRef.current = true;
+    generateAi(selectedStyle, { auto: true });
+  }, [isOpen, loading, variants.length, selectedStyle, generateAi]);
 
   function handleAiPillClick() {
     if (aiLoading) return;
