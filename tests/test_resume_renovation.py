@@ -24,6 +24,7 @@ import asyncio
 import json
 import os
 import sys
+import types
 
 import pytest
 from fastapi.testclient import TestClient
@@ -140,6 +141,40 @@ class TestStructure:
         resp = client.post("/api/tailor/structure", json={"resume_text": resume})
         assert resp.status_code == 200
         assert resp.json()["method"] == "heuristic"
+
+    def test_ai_structure_keeps_cjk_bullets(self, monkeypatch):
+        """A pure-Chinese bullet has zero ASCII tokens; grounding falls back to
+        whitespace-normalized substring containment instead of dropping it."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        resume = "研究经历\n在实验室负责小鼠行为实验的数据分析并撰写实验报告\n"
+        fake = json.dumps({"sections": [{
+            "heading": "研究经历", "kind": "research",
+            "bullets": ["在实验室负责小鼠行为实验的数据分析并撰写实验报告"],
+        }]})
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        resp = client.post("/api/tailor/structure", json={"resume_text": resume})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        texts = [b["text"] for s in body["sections"] for b in s["bullets"]]
+        assert any("小鼠行为实验" in t for t in texts)
+
+    def test_ai_structure_still_drops_invented_cjk_bullet(self, monkeypatch):
+        """The CJK fallback is containment-based, so an invented Chinese bullet
+        (not verbatim in the résumé) is still rejected."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        resume = "研究经历\n在实验室负责小鼠行为实验的数据分析并撰写实验报告\n"
+        fake = json.dumps({"sections": [{
+            "heading": "研究经历", "kind": "research",
+            "bullets": ["主导开发了大规模分布式深度学习训练平台并发表顶会论文"],
+        }]})
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        resp = client.post("/api/tailor/structure", json={"resume_text": resume})
+        assert resp.status_code == 200
+        body = resp.json()
+        # Invented bullet dropped -> no AI sections survive -> heuristic path.
+        joined = json.dumps(body, ensure_ascii=False)
+        assert "分布式深度学习" not in joined
 
 
 # --------------------------------------------------------------------------- #
@@ -271,8 +306,10 @@ class TestRenovate:
         })
         assert resp.status_code == 200
         body = resp.json()
-        # No rewrite accepted -> method fallback, foreground bullet sits at base.
-        assert body["method"] == "fallback"
+        # The AI plan WAS applied (reorder/actions), so method stays "ai"; the
+        # rejected rewrite is reported in warnings and the foreground bullet
+        # sits safely at its base_text.
+        assert body["method"] == "ai"
         assert any("rejected_fabrication" in w for w in body["warnings"])
         fg = next(b for s in body["sections"] for b in s["bullets"] if b["id"] == "s1b1")
         assert fg["current"] == -1 and fg["variants"] == []
@@ -304,6 +341,115 @@ class TestRenovate:
         assert "macro_plan_failed" in body["warnings"]
         # Both original bullets preserved at base despite the ghost plan.
         assert len([b for s in body["sections"] for b in s["bullets"]]) == 2
+
+    def test_zero_foreground_plan_is_still_ai(self, python_profile, real_opp_id, monkeypatch):
+        """A successful plan with no foregrounded bullets (all keep/demote) is
+        an AI result — the reorder was applied — not a fallback."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        plan = json.dumps({"sections": [{"id": "s1", "bullets": [
+            {"id": "s1b2", "action": "keep"},
+            {"id": "s1b1", "action": "demote"},
+        ]}]})
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: plan)
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": _sections_payload(),
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert body["warnings"] == []
+        # Plan's bullet order applied (b2 before b1); everything at base.
+        sec = body["sections"][0]
+        assert [b["id"] for b in sec["bullets"]] == ["s1b2", "s1b1"]
+        assert all(b["current"] == -1 for b in sec["bullets"])
+
+    def test_multi_section_reorder_applies_plan_order(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        sections = [
+            {"id": "s1", "heading": "Projects", "kind": "projects",
+             "bullets": [{"id": "s1b1", "text": "Wrote documentation for a class project"}]},
+            {"id": "s2", "heading": "Research", "kind": "research",
+             "bullets": [{"id": "s2b1", "text": "Implemented machine learning experiments in Python"}]},
+        ]
+        plan = json.dumps({"sections": [
+            {"id": "s2", "bullets": [{"id": "s2b1", "action": "keep"}]},
+            {"id": "s1", "bullets": [{"id": "s1b1", "action": "demote"}]},
+        ]})
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: plan)
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": sections,
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"
+        assert [s["id"] for s in body["sections"]] == ["s2", "s1"]
+
+    def test_rewrite_count_mismatch_drops_batch(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Positional pairing is the only rewrite↔bullet-id link; if the model
+        returns fewer rewrites than foregrounded bullets, the whole batch is
+        dropped (base_text floor) instead of mis-attaching rewrites."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        plan = json.dumps({"sections": [{"id": "s1", "bullets": [
+            {"id": "s1b1", "action": "foreground"},
+            {"id": "s1b2", "action": "foreground"},
+        ]}]})
+        rewrite = json.dumps({"bullets": [{  # ONE rewrite for TWO foregrounded
+            "text": "Built machine learning experiments in Python during CS 225 coursework",
+            "source_evidence": "machine learning experiments in Python",
+        }]})
+        monkeypatch.setattr(
+            tailor_module, "chat_completion",
+            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
+        )
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": _sections_payload(),
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["method"] == "ai"  # plan applied
+        assert "rewrite_count_mismatch" in body["warnings"]
+        bullets = [b for s in body["sections"] for b in s["bullets"]]
+        assert all(b["current"] == -1 and b["variants"] == [] for b in bullets)
+
+    def test_duplicate_bullet_ids_rejected(self, python_profile, real_opp_id):
+        sections = [{"id": "s1", "heading": "A", "kind": "other", "bullets": [
+            {"id": "b1", "text": "Implemented machine learning experiments in Python"},
+            {"id": "b1", "text": "Wrote documentation for a class project"},
+        ]}]
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": sections,
+        })
+        assert resp.status_code == 422
+
+    def test_total_bullet_cap_rejected(self, python_profile, real_opp_id):
+        # 3 sections × 40 bullets = 120 > the 100 global cap -> 422 (the
+        # per-section caps alone would admit a ~47K-token plan prompt).
+        sections = [
+            {"id": f"s{i}", "heading": "X", "kind": "other",
+             "bullets": [
+                 {"id": f"s{i}b{j}", "text": f"Did course project number {i}-{j} for a class"}
+                 for j in range(40)
+             ]}
+            for i in range(3)
+        ]
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": sections,
+        })
+        assert resp.status_code == 422
 
 
 # --------------------------------------------------------------------------- #
@@ -378,6 +524,28 @@ class TestOptimizeBullet:
         assert body["changed"] is False
         assert "llm_failed_or_invalid_json" in body["warnings"]
 
+    def test_base_text_terms_stay_grounded_on_retailored_bullet(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Re-optimizing an already-tailored bullet (current ≠ base) may reuse a
+        concrete term that survives only in base_text — the corpus includes the
+        base floor, so it passes the gate."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        fake = json.dumps({
+            "text": "Analyzed fMRI datasets in Python for the lab's imaging study",
+            "source_evidence": "fMRI data analysis in Python",
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id,
+            current_text="Performed data analysis in Python for an imaging study",
+            base_text="Performed fMRI data analysis in Python",
+        ))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["changed"] is True
+        assert "fMRI" in body["text"]
+
 
 # --------------------------------------------------------------------------- #
 # metering scaffold (OFF by default)
@@ -406,3 +574,103 @@ class TestMetering:
         monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
         wrote = asyncio.run(metering.record_usage("dev-1", "renovation"))
         assert wrote is False
+
+
+class TestMeteringWiring:
+    """The routes actually schedule usage recording (the plan's promise), and
+    the background recorder resolves the caller's uid without ever raising."""
+
+    def test_renovate_schedules_usage(self, python_profile, real_opp_id, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: "not json")
+        calls: list[str] = []
+        monkeypatch.setattr(
+            tailor_module, "_schedule_usage", lambda auth, feature: calls.append(feature),
+        )
+        client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": _sections_payload(),
+        })
+        assert calls == ["renovation"]
+
+    def test_bullet_schedules_usage(self, python_profile, real_opp_id, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: "garbage")
+        calls: list[str] = []
+        monkeypatch.setattr(
+            tailor_module, "_schedule_usage", lambda auth, feature: calls.append(feature),
+        )
+        client.post("/api/tailor/bullet", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "current_text": "Implemented machine learning experiments in Python",
+            "base_text": "",
+        })
+        assert calls == ["bullet_optimize"]
+
+    def test_record_usage_bg_noop_when_disabled(self, monkeypatch):
+        monkeypatch.delenv("OFE_METERING_ENABLED", raising=False)
+        touched: list[int] = []
+
+        class Boom:
+            def __init__(self, **kw):
+                touched.append(1)
+
+        monkeypatch.setattr(
+            tailor_module, "httpx", types.SimpleNamespace(AsyncClient=Boom),
+        )
+        asyncio.run(tailor_module._record_usage_bg("Bearer tok", "renovation"))
+        assert touched == []  # short-circuited before any HTTP client was built
+
+    def test_record_usage_bg_records_resolved_uid(self, monkeypatch):
+        monkeypatch.setenv("OFE_METERING_ENABLED", "1")
+        monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "srk")
+
+        class FakeResp:
+            status_code = 200
+
+            def json(self):
+                return {"id": "uid-1"}
+
+        class FakeClient:
+            def __init__(self, **kw):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get(self, url, headers=None):
+                return FakeResp()
+
+        monkeypatch.setattr(
+            tailor_module, "httpx", types.SimpleNamespace(AsyncClient=FakeClient),
+        )
+        recorded: list[tuple[str, str]] = []
+
+        async def fake_record(uid, feature, **kw):
+            recorded.append((uid, feature))
+            return True
+
+        monkeypatch.setattr(tailor_module, "record_usage", fake_record)
+        asyncio.run(tailor_module._record_usage_bg("Bearer tok", "renovation"))
+        assert recorded == [("uid-1", "renovation")]
+
+    def test_record_usage_bg_swallows_errors(self, monkeypatch):
+        monkeypatch.setenv("OFE_METERING_ENABLED", "1")
+        monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "srk")
+
+        class Boom:
+            def __init__(self, **kw):
+                raise RuntimeError("network down")
+
+        monkeypatch.setattr(
+            tailor_module, "httpx", types.SimpleNamespace(AsyncClient=Boom),
+        )
+        # Must not raise — metering is strictly best-effort.
+        asyncio.run(tailor_module._record_usage_bg("Bearer tok", "renovation"))

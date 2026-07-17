@@ -110,6 +110,8 @@ async def record_usage(
             logger.info("metering: usage_events insert returned %s", resp.status_code)
             return False
         return True
-    except httpx.HTTPError as exc:
+    except Exception as exc:  # noqa: BLE001 — "never raises" is the contract:
+        # a non-serializable meta or any client bug must degrade to a skipped
+        # metering row, never to a broken feature response.
         logger.info("metering: usage_events insert failed: %s", exc)
         return False

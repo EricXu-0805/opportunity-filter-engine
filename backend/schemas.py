@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SkillItem(BaseModel):
@@ -365,6 +365,29 @@ class RenovateRequest(BaseModel):
     def normalize_locale(cls, v: str) -> str:
         primary = (v or "").lower().split("-")[0].split("_")[0]
         return "zh" if primary == "zh" else "en"
+
+    @model_validator(mode="after")
+    def validate_section_tree(self) -> RenovateRequest:
+        # Global bullet cap + ID uniqueness. The per-section caps (15×40) still
+        # admit 600 bullets ≈ a ~47K-token plan prompt — an abuse-sized cost
+        # hole; real résumés run 15-60 bullets, so 100 is generous. Duplicate
+        # IDs would attach one rewrite to two places and break the rollback
+        # chain's identity, so reject outright rather than guess.
+        total = 0
+        seen_sections: set[str] = set()
+        seen_bullets: set[str] = set()
+        for s in self.sections:
+            if s.id in seen_sections:
+                raise ValueError(f"duplicate section id: {s.id}")
+            seen_sections.add(s.id)
+            for b in s.bullets:
+                if b.id in seen_bullets:
+                    raise ValueError(f"duplicate bullet id: {b.id}")
+                seen_bullets.add(b.id)
+                total += 1
+        if total > 100:
+            raise ValueError("too many bullets: max 100 across all sections")
+        return self
 
 
 class RenovatedVariant(BaseModel):

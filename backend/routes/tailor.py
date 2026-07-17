@@ -27,17 +27,21 @@ reframe a student's "built a parser" bullet using the posting's term
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import os
 import re
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+import httpx
+from fastapi import APIRouter, Header, HTTPException
 
 from backend.data_loader import load_opportunities_by_id
 from backend.lib.grounding import LENIENT_PROSE
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured, model_for
+from backend.lib.metering import metering_enabled, record_usage
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import (
     BulletOptimizeRequest,
@@ -411,7 +415,11 @@ def _bullet_grounded(bullet: str, resume_lower: str) -> bool:
     """
     tokens = re.findall(r"[a-z0-9]{4,}", bullet.lower())
     if not tokens:
-        return False
+        # No ASCII tokens ⟹ a CJK (e.g. Chinese) bullet. Verbatim extraction
+        # still holds, so fall back to whitespace-normalized substring
+        # containment instead of dropping every non-ASCII bullet on the floor.
+        squashed = re.sub(r"\s+", "", bullet.lower())
+        return bool(squashed) and squashed in re.sub(r"\s+", "", resume_lower)
     hits = sum(1 for t in tokens if t in resume_lower)
     return hits / len(tokens) >= 0.6
 
@@ -607,6 +615,45 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
 
 _MAX_FOREGROUND = 8
 
+
+async def _record_usage_bg(authorization: str | None, feature: str) -> None:
+    """Resolve the caller's uid from their Supabase JWT (GoTrue, same pattern as
+    orders._caller_uid but non-raising) and append a usage_events row. Strictly
+    best-effort: every failure path returns silently — metering must never
+    affect the feature response. No-op until OFE_METERING_ENABLED."""
+    try:
+        if not metering_enabled():
+            return
+        if not authorization or not authorization.startswith("Bearer "):
+            return
+        token = authorization[len("Bearer "):].strip()
+        url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        if not token or not url or not key:
+            return
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{url}/auth/v1/user",
+                headers={"apikey": key, "Authorization": f"Bearer {token}"},
+            )
+        if resp.status_code != 200:
+            return
+        uid = str((resp.json() or {}).get("id") or "")
+        if uid:
+            await record_usage(uid, feature)
+    except Exception:  # noqa: BLE001 — metering is strictly best-effort
+        logger.info("metering: usage record for %s failed", feature, exc_info=True)
+
+
+def _schedule_usage(authorization: str | None, feature: str) -> None:
+    """Fire-and-forget usage recording ("first renovation free, then metered" —
+    the ledger side; check_quota never blocks in this phase). Gated here too so
+    the disabled default costs zero task churn."""
+    if not metering_enabled():
+        return
+    asyncio.create_task(_record_usage_bg(authorization, feature))
+
+
 _STRUCTURE_SYSTEM_PROMPT = (
     "You organize a student's raw résumé text into sections, each with its "
     "accomplishment/experience/project/research bullets.\n"
@@ -759,7 +806,7 @@ async def structure_resume(request: StructureResumeRequest) -> StructureResumeRe
 
 
 def _ai_renovation_plan(
-    sections: list[ResumeSection], opp: dict, profile_dict: dict, *, locale: str = "en",
+    sections: list[ResumeSection], opp: dict, *, locale: str = "en",
 ) -> dict | None:
     """Ask the model for an ID-only reorder+action plan. Returns a mapping
     ``{section_id: [(bullet_id, action)]}`` restricted to input IDs, or None."""
@@ -769,7 +816,7 @@ def _ai_renovation_plan(
     for s in sections:
         sec_lines.append(f"[section {s.id}] {_sanitize_field(s.heading, max_len=80)} ({s.kind})")
         for b in s.bullets:
-            sec_lines.append(f"  - [{b.id}] {_sanitize_field(b.text, max_len=300)}")
+            sec_lines.append(f"  - [{b.id}] {_sanitize_field(b.text, max_len=200)}")
     resume_block = "\n".join(sec_lines) or "(no sections)"
 
     eligibility = opp.get("eligibility") or {}
@@ -780,6 +827,11 @@ def _ai_renovation_plan(
         ", ".join(str(k) for k in (opp.get("keywords") or [])[:10]), max_len=300
     ) or "(none)"
     pi = _sanitize_field(opp.get("pi_name", ""), max_len=100) or "(unspecified)"
+    # The plan decides WHAT to foreground, so it needs at least the same
+    # opportunity context the rewrite stage sees — not a thinner slice.
+    opp_desc = _sanitize_field(
+        opp.get("description_clean") or opp.get("description_raw") or "", max_len=800,
+    )
 
     user_prompt = (
         f"OPPORTUNITY:\n"
@@ -787,6 +839,7 @@ def _ai_renovation_plan(
         f"- Professor / lab: {pi}\n"
         f"- Required skills: {required}\n"
         f"- Keywords: {keywords}\n"
+        f"- Description excerpt: {opp_desc or '(no description)'}\n"
         f"\n"
         f"STUDENT RÉSUMÉ (IDs are authoritative — use only these):\n"
         f"{resume_block}\n"
@@ -798,7 +851,10 @@ def _ai_renovation_plan(
             {"role": "system", "content": _MACRO_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
-        max_tokens=1200,
+        # 2000 tokens covers a full 100-bullet plan (~40 chars/entry); at 1200 a
+        # large résumé's plan JSON truncated → parse fail → guaranteed fallback
+        # after paying the full input cost.
+        max_tokens=2000,
         temperature=0.2,
         reasoning_effort="low",
         **model_for("tailor"),
@@ -885,7 +941,9 @@ def _assemble_renovation(
 
 
 @router.post("/tailor/renovate", response_model=RenovateResponse)
-async def renovate_resume(request: RenovateRequest) -> RenovateResponse:
+async def renovate_resume(
+    request: RenovateRequest, authorization: str | None = Header(default=None),
+) -> RenovateResponse:
     """Macro-renovate a structured résumé toward one opportunity.
 
     Reorders sections/bullets (ID-only plan) and rewrites the foregrounded
@@ -913,7 +971,8 @@ async def renovate_resume(request: RenovateRequest) -> RenovateResponse:
     if not is_configured():
         return _passthrough(["llm_not_configured"])
 
-    plan = _ai_renovation_plan(sections, opp, profile_dict, locale=request.locale)
+    _schedule_usage(authorization, "renovation")
+    plan = _ai_renovation_plan(sections, opp, locale=request.locale)
     if not plan:
         return _passthrough(["macro_plan_failed"])
 
@@ -939,9 +998,17 @@ async def renovate_resume(request: RenovateRequest) -> RenovateResponse:
         raw_rewrites = _ai_tailor_bullets(
             profile_dict, opp, [t for _, t in fg], locale=request.locale,
         )
-        if raw_rewrites:
+        if not raw_rewrites:
+            warnings.append("rewrite_failed_or_invalid")
+        elif len(raw_rewrites) != len(fg):
+            # Positional pairing is the ONLY link between a rewrite and its
+            # bullet id. A short/long return would mis-attach rewrites to the
+            # wrong bullets and persist that into the rollback chain — drop the
+            # whole batch instead (every foreground bullet stays at base_text).
+            warnings.append("rewrite_count_mismatch")
+        else:
             corpus = _build_evidence_corpus(profile_dict, all_base)
-            for (bid, _base), item in zip(fg, raw_rewrites, strict=False):
+            for (bid, _base), item in zip(fg, raw_rewrites, strict=True):
                 passed, fabricated = _validate_no_fabrication(
                     item["text"], corpus, policy=LENIENT_PROSE,
                 )
@@ -949,12 +1016,14 @@ async def renovate_resume(request: RenovateRequest) -> RenovateResponse:
                     rewrites[bid] = item
                 else:
                     warnings.append(f"bullet_{bid}_rejected_fabrication: " + ",".join(fabricated[:5]))
-        else:
-            warnings.append("rewrite_failed_or_invalid")
 
     return RenovateResponse(
         sections=_assemble_renovation(sections, plan, rewrites),
-        method="ai" if rewrites else "fallback",
+        # The AI plan was applied (reorder + actions), so this is an AI result
+        # even when zero bullets were foregrounded or every rewrite was
+        # rejected — the warnings array carries those details. "fallback" is
+        # reserved for docs with no AI effect at all (passthrough paths above).
+        method="ai",
         warnings=warnings,
     )
 
@@ -1028,7 +1097,9 @@ def _ai_optimize_bullet(
 
 
 @router.post("/tailor/bullet", response_model=BulletOptimizeResponse)
-async def optimize_bullet(request: BulletOptimizeRequest) -> BulletOptimizeResponse:
+async def optimize_bullet(
+    request: BulletOptimizeRequest, authorization: str | None = Header(default=None),
+) -> BulletOptimizeResponse:
     """Re-optimize a single résumé bullet (the per-point AI channel).
 
     Grounds the rewrite against the STUDENT-only corpus (profile + this bullet's
@@ -1046,6 +1117,7 @@ async def optimize_bullet(request: BulletOptimizeRequest) -> BulletOptimizeRespo
     if not is_configured():
         return BulletOptimizeResponse(text=current, changed=False, warnings=["llm_not_configured"])
 
+    _schedule_usage(authorization, "bullet_optimize")
     profile_dict = request.profile.model_dump()
     result = _ai_optimize_bullet(
         profile_dict, opp, current, request.instruction, locale=request.locale,
