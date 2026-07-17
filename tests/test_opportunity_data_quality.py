@@ -758,8 +758,16 @@ class TestSchoolAudience:
         """Pin every non-manual record's (school, audience) to SOURCE_DEFAULTS
         — manual records may carry per-record overrides, everything else is
         source-determined in Phase 1. Also fails when a new source ships
-        without an entry in the mapping."""
-        from src.normalizers.school_audience import SOURCE_DEFAULTS
+        without an entry in the mapping.
+
+        The one sanctioned deviation: apply_school_audience flips a record whose
+        own text restricts it to its host school from the default (school,
+        "unknown") to (school, "campus"). Only that exact flip is tolerated — a
+        record claiming "campus" whose text does NOT restrict it is still drift."""
+        from src.normalizers.school_audience import (
+            SOURCE_DEFAULTS,
+            _explicitly_campus_only,
+        )
 
         data = _load_data()
         unmapped = {
@@ -771,11 +779,19 @@ class TestSchoolAudience:
             f"them to src/normalizers/school_audience.py"
         )
 
+        def _is_sanctioned_campus_flip(o: dict) -> bool:
+            return (
+                o.get("audience") == "campus"
+                and SOURCE_DEFAULTS[o["source"]] == (o.get("school"), "unknown")
+                and _explicitly_campus_only(o.get("school"), o)
+            )
+
         offenders = [
             (o.get("source"), o.get("id"), o.get("school"), o.get("audience"))
             for o in data
             if o.get("source") != "manual"
             and (o.get("school"), o.get("audience")) != SOURCE_DEFAULTS[o["source"]]
+            and not _is_sanctioned_campus_flip(o)
         ]
         assert not offenders, (
             f"{len(offenders)} records whose (school, audience) drifted from "
