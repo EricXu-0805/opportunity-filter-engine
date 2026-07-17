@@ -564,11 +564,36 @@ def _decode_cfemail(el) -> str | None:
     return _clean_email(decoded)
 
 
+def _decode_b64email(el) -> str | None:
+    """Decode a base64 ``data-email`` payload on (or under) ``el``.
+
+    MIT Math's directory hides addresses as ``<a class="email-hidden"
+    data-email="BASE64">`` (decoded client-side); without this decode the
+    whole department lands unemailed despite publishing every address.
+    """
+    payload = el.get("data-email")
+    if not payload and hasattr(el, "select_one"):
+        sub = el.select_one("[data-email]")
+        if sub is not None:
+            payload = sub.get("data-email")
+    if not payload:
+        return None
+    import base64
+    try:
+        decoded = base64.b64decode(payload, validate=True).decode("utf-8")
+    except Exception:  # noqa: BLE001
+        return None
+    return _clean_email(decoded) if "@" in decoded else None
+
+
 def _email_from_el(e_el) -> str | None:
-    """Address from a selected email element — cf-shield decode, then mailto/text."""
+    """Address from a selected email element — cf-shield/base64 decode, then mailto/text."""
     cf = _decode_cfemail(e_el)
     if cf:
         return cf
+    b64 = _decode_b64email(e_el)
+    if b64:
+        return b64
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
     return _clean_email(raw)
 
@@ -642,6 +667,11 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # pass see one canonical profile URL.
             href = href.split("?", 1)[0]
         title_el = card.select_one(sel["title"]) if sel.get("title") else None
+        if title_el is None and sel.get("title_sibling"):
+            # Definition-list directories (MIT Sloan's A-Z <dl>) keep the rank
+            # in the card's FOLLOWING sibling (<dt>name</dt><dd>title</dd>) —
+            # unreachable by a descendant selector from the card.
+            title_el = card.find_next_sibling(sel["title_sibling"])
         title = title_el.get_text(" ", strip=True) if title_el else "Professor"
         if sel.get("title_re"):
             # Hand-edited CMS cards sometimes keep the rank as loose text with no
@@ -868,6 +898,32 @@ def _scrape_directory(dept: dict) -> list[dict]:
         from .ucb_common import fetch_soup
     except Exception:  # noqa: BLE001
         return []
+    if cfg.get("ajax_html"):
+        # Drupal "Show more" tabs cap the static HTML at one page; the tab's
+        # /ajax/show-more endpoint returns [{"data": "<cards html>"}] in one
+        # call (Harvard HWP requires XHR headers + a Referer or Akamai 403s).
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            from .ucb_common import HEADERS
+            hdrs = {**HEADERS, "X-Requested-With": "XMLHttpRequest",
+                    **cfg.get("ajax_headers", {})}
+            resp = requests.get(cfg["url"], headers=hdrs, timeout=30)
+            resp.raise_for_status()
+            payload = resp.json()
+            html = "".join(part.get("data", "") for part in payload
+                           if isinstance(part, dict))
+            soup = BeautifulSoup(html, "html.parser")
+            people = _parse_cards(soup, cfg.get("selectors", {}),
+                                  dept.get("directory_url") or cfg["url"],
+                                  cfg.get("ladder_filter"), cfg.get("name_flip", False),
+                                  cfg.get("link_filter"), cfg.get("section_filter"),
+                                  cfg.get("field_filter"))
+            return _apply_profile_enrich(people, cfg.get("profile_enrich"))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("faculty_graph: ajax_html fetch failed for %s: %s",
+                           dept.get("short"), e)
+            return []
     if cfg.get("render"):
         # A slow client-rendered roster can request networkidle (its cards land
         # only after late XHRs); default stays domcontentloaded for speed. A
@@ -879,10 +935,13 @@ def _scrape_directory(dept: dict) -> list[dict]:
         def fetch(u, _rw=rw, _s=_settle):
             return _render_soup(u, wait_until=_rw, settle_ms=_s)
     else:
-        # Pass ua only when configured — tests (and older collectors) stub
-        # fetch_soup with single-arg fakes.
+        # Pass ua/insecure only when configured — tests (and older collectors)
+        # stub fetch_soup with single-arg fakes.
         _cfg_ua = cfg.get("ua")
-        def fetch(u, _ua=_cfg_ua):
+        _cfg_insecure = cfg.get("insecure", False)
+        def fetch(u, _ua=_cfg_ua, _ins=_cfg_insecure):
+            if _ins:
+                return fetch_soup(u, ua=_ua, insecure=True)
             return fetch_soup(u, ua=_ua) if _ua else fetch_soup(u)
     if cfg.get("pre_delay"):
         # Space out listing hits against burst-rate WAFs (Penn Medicine's
@@ -924,9 +983,12 @@ def _scrape_directory(dept: dict) -> list[dict]:
             param = pag.get("param", "page")
             path_mode = pag.get("mode") == "path"
             seen = {(p["name"], p["url"]) for p in people}
+            # Drupal multi-view pagers prefix the page value ("?page=%2C3" —
+            # SEAS's faculty view is the second view on the page).
+            vpre = pag.get("value_prefix", "")
             for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
                 next_url = _paginated_url(base, pg, param) if path_mode else (
-                    f"{base}{'&' if '?' in base else '?'}{param}={pg}")
+                    f"{base}{'&' if '?' in base else '?'}{param}={vpre}{pg}")
                 s2 = fetch(next_url)
                 if s2 is None:
                     break

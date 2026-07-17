@@ -346,7 +346,7 @@ SKILL_MAP = {
 }
 
 
-def fetch_soup(url: str, ua: str | None = None) -> BeautifulSoup | None:
+def fetch_soup(url: str, ua: str | None = None, insecure: bool = False) -> BeautifulSoup | None:
     """Fetch a URL with browser-like headers, retrying transient failures.
 
     Retries connection resets / timeouts / 5xx responses with exponential
@@ -356,12 +356,19 @@ def fetch_soup(url: str, ua: str | None = None) -> BeautifulSoup | None:
     ``ua`` overrides the browser User-Agent: some WAFs (Penn's Cloudflare/
     Imperva fronts) 403 a Chrome UA whose TLS fingerprint isn't Chrome's while
     letting an honest tool UA ("curl/8.7.1") straight through.
+
+    ``insecure`` skips TLS verification for hosts serving an incomplete
+    certificate chain (cmsw.mit.edu omits its intermediate — browsers repair
+    it via AIA fetching, requests cannot). Scrape-only, opt-in per source.
     """
     session = requests.Session()
     session.headers.update(HEADERS)
     if ua:
         session.headers["User-Agent"] = ua
-    session.verify = _ca_bundle()
+    session.verify = False if insecure else _ca_bundle()
+    if insecure:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     last_err: Exception | None = None
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
