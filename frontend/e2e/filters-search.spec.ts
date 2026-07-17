@@ -65,7 +65,7 @@ test.describe('Filters, search, sort', () => {
   test('clear filters button restores state', async ({ page }) => {
     await goToResults(page);
     await page.locator('select').first().selectOption({ label: 'Paid only' });
-    await page.getByRole('button', { name: /Clear.*filter/i }).click();
+    await page.getByRole('button', { name: /^Clear \d+ filters?$/i }).click();
     await expect(page).not.toHaveURL(/paid=yes/);
   });
 
@@ -78,7 +78,7 @@ test.describe('Filters, search, sort', () => {
     await page.getByRole('button', { name: /Save preset/i }).click();
     await expect(page.getByText('My Paid Preset')).toBeVisible();
 
-    await page.getByRole('button', { name: /Clear.*filter/i }).click();
+    await page.getByRole('button', { name: /^Clear \d+ filters?$/i }).click();
     await expect(page).not.toHaveURL(/paid=yes/);
 
     await page.getByRole('button', { name: /Apply preset My Paid Preset/ }).click();
