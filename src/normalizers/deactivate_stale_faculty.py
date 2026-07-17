@@ -115,6 +115,10 @@ FACULTY_SOURCES = frozenset({
     "dartmouth_faculty",
     # Columbia — A&S + SEAS directories (single source across depts).
     "columbia_faculty",
+    # MIT — per-dept subdomain directories (single source across depts).
+    "mit_faculty",
+    # Harvard — FAS HWP Drupal + WP one-offs + SEAS (single source across depts).
+    "harvard_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

@@ -20,7 +20,9 @@ from .cornell import SCHOOL as CORNELL
 from .dartmouth import SCHOOL as DARTMOUTH
 from .duke import SCHOOL as DUKE
 from .gatech import SCHOOL as GATECH
+from .harvard import SCHOOL as HARVARD
 from .jhu import SCHOOL as JHU
+from .mit import SCHOOL as MIT
 from .northwestern import SCHOOL as NORTHWESTERN
 from .princeton import SCHOOL as PRINCETON
 from .purdue import SCHOOL as PURDUE
@@ -66,4 +68,6 @@ SCHOOL_CONFIGS: list[dict] = [
     VANDERBILT,
     DARTMOUTH,
     COLUMBIA,
+    MIT,
+    HARVARD,
 ]

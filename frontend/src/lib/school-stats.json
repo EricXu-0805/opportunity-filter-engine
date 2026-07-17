@@ -1,38 +1,46 @@
 {
   "boulder": {
-    "campus": 1595,
+    "campus": 1597,
     "national": 3499
   },
   "brown": {
-    "campus": 1106,
+    "campus": 1137,
     "national": 3499
   },
   "caltech": {
-    "campus": 466,
+    "campus": 431,
     "national": 3499
   },
   "columbia": {
-    "campus": 968,
+    "campus": 966,
     "national": 3499
   },
   "cornell": {
-    "campus": 1606,
+    "campus": 1688,
     "national": 3499
   },
   "dartmouth": {
-    "campus": 911,
+    "campus": 912,
     "national": 3499
   },
   "duke": {
-    "campus": 1150,
+    "campus": 1156,
     "national": 3499
   },
   "gatech": {
-    "campus": 1220,
+    "campus": 1215,
+    "national": 3499
+  },
+  "harvard": {
+    "campus": 458,
     "national": 3499
   },
   "jhu": {
     "campus": 4598,
+    "national": 3499
+  },
+  "mit": {
+    "campus": 1358,
     "national": 3499
   },
   "northwestern": {
@@ -40,19 +48,19 @@
     "national": 3499
   },
   "princeton": {
-    "campus": 633,
+    "campus": 609,
     "national": 3499
   },
   "purdue": {
-    "campus": 2187,
+    "campus": 2197,
     "national": 3499
   },
   "rice": {
-    "campus": 984,
+    "campus": 991,
     "national": 3499
   },
   "stanford": {
-    "campus": 1360,
+    "campus": 1349,
     "national": 3499
   },
   "ucb": {
@@ -60,7 +68,7 @@
     "national": 3499
   },
   "uchicago": {
-    "campus": 1157,
+    "campus": 1154,
     "national": 3499
   },
   "uci": {
@@ -68,19 +76,19 @@
     "national": 3499
   },
   "ucla": {
-    "campus": 1990,
+    "campus": 2035,
     "national": 3499
   },
   "ucsb": {
-    "campus": 1077,
+    "campus": 1071,
     "national": 3499
   },
   "ucsd": {
-    "campus": 1512,
+    "campus": 1508,
     "national": 3499
   },
   "uiuc": {
-    "campus": 3388,
+    "campus": 3327,
     "national": 3499
   },
   "umich": {
@@ -88,15 +96,15 @@
     "national": 3499
   },
   "upenn": {
-    "campus": 1912,
+    "campus": 1909,
     "national": 3499
   },
   "utexas": {
-    "campus": 2155,
+    "campus": 2194,
     "national": 3499
   },
   "uw": {
-    "campus": 2211,
+    "campus": 2232,
     "national": 3499
   },
   "vanderbilt": {
@@ -104,7 +112,7 @@
     "national": 3499
   },
   "wisc": {
-    "campus": 1747,
+    "campus": 1756,
     "national": 3499
   }
 }
