@@ -905,6 +905,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
         try:
             import requests
             from bs4 import BeautifulSoup
+
             from .ucb_common import HEADERS
             hdrs = {**HEADERS, "X-Requested-With": "XMLHttpRequest",
                     **cfg.get("ajax_headers", {})}

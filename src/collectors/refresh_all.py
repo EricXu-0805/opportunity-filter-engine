@@ -41,13 +41,13 @@ from .schools.dartmouth_faculty import merge_into_processed as merge_dartmouth_f
 from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
 from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
+from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
 from .schools.harvard_faculty import fetch_and_normalize as fetch_harvard_faculty
 from .schools.harvard_faculty import merge_into_processed as merge_harvard_faculty
-from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
-from .schools.mit_faculty import fetch_and_normalize as fetch_mit_faculty
-from .schools.mit_faculty import merge_into_processed as merge_mit_faculty
 from .schools.jhu_faculty import fetch_and_normalize as fetch_jhu_faculty
 from .schools.jhu_faculty import merge_into_processed as merge_jhu_faculty
+from .schools.mit_faculty import fetch_and_normalize as fetch_mit_faculty
+from .schools.mit_faculty import merge_into_processed as merge_mit_faculty
 from .schools.northwestern_faculty import fetch_and_normalize as fetch_northwestern_faculty
 from .schools.northwestern_faculty import merge_into_processed as merge_northwestern_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
