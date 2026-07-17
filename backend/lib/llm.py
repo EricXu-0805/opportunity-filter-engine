@@ -83,7 +83,7 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
     ("claude-sonnet", "Claude Sonnet 5", "anthropic/claude-sonnet-5"),
-    ("gpt-5.1", "GPT-5.1", "openai/gpt-5.1"),
+    ("gpt-5.6", "GPT-5.6", "openai/gpt-5.6-terra-pro"),
     ("gemini-flash", "Gemini 3.5 Flash", "google/gemini-3.5-flash"),
 )
 
