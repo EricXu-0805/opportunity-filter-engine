@@ -13,6 +13,8 @@ pin the three defects found in review:
 
 from __future__ import annotations
 
+import re
+
 from src.recommender.cold_email import (
     _build_concise,
     _common_parts,
@@ -705,6 +707,10 @@ class TestColdEmailPipeline:
             ce._FEWSHOT, "", extra_allow=ce._EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
         )
         assert passed, f"few-shot examples leak concrete tokens: {fabricated}"
+        # The gate's own blind spot: digit-led tokens ("CS 447", "12%") never
+        # tokenize, so the check above can't see them. Pin the digit class
+        # directly — the examples must contain NO numbers at all.
+        assert not re.search(r"\d", ce._FEWSHOT), "few-shot examples must carry no numbers"
 
     def test_critique_bad_types_are_normalized_not_crashed(self, monkeypatch):
         """A critique that returns legal JSON with wrong-typed fields

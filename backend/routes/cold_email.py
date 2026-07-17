@@ -529,7 +529,11 @@ def _llm_critique(draft: str, prof_brief: str, stu_brief: str, style: str | None
         "reads_human_not_templated": bool(parsed.get("reads_human_not_templated", True)),
         "mode_adherence": str(parsed.get("mode_adherence", "ok")),
         "evidence_backed_fit": bool(parsed.get("evidence_backed_fit", True)),
-        "generic_sentences": [str(s) for s in gs[:5]] if isinstance(gs, list) else [],
+        # Keep only genuine strings — a stringified null/object would land in
+        # the reviser prompt as a nonsense rewrite target ("Rewrite: None").
+        "generic_sentences": (
+            [s for s in gs[:5] if isinstance(s, str)] if isinstance(gs, list) else []
+        ),
         "verdict": str(parsed.get("verdict", "pass")),
         "revision_notes": str(notes) if isinstance(notes, str | int | float) else "",
     }
@@ -547,7 +551,15 @@ def _should_revise(findings: dict) -> bool:
 def _findings_score(findings: dict) -> int:
     """Objective badness of a draft per the deterministic checks — lower is
     better. Used to compare draft vs revision so a revise can never make the
-    email measurably worse."""
+    email measurably worse.
+
+    Deliberate asymmetry (a decision, not an accident): banned filler and
+    ungrounded tokens weigh equally here, while the FINAL gate only treats
+    ungrounded tokens as fatal. So an equal-score trade (revision removes the
+    ungrounded token but picks up one filler phrase) serves the revised email
+    — a grounded, specific email with one filler beat falling back to the
+    generic template. The <= tie-break is also load-bearing for the
+    critique-only revise path (0 == 0 must keep the revision)."""
     return (
         len(findings.get("banned_filler") or [])
         + len(findings.get("unsupported") or [])
