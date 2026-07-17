@@ -3548,3 +3548,31 @@ class TestColdEmailStream:
         assert done["method"] == "template"
         assert done["fallback_reason"] == "fabrication"
         assert "kubernetes" not in done["body"].lower()
+
+    def test_stream_engine_crash_still_emits_template_done(self, stream_body, monkeypatch):
+        """Last-belt coverage: if _run_engine somehow raises inside the stream
+        worker, the finally-sentinel still arrives (no hang) and the except
+        branch serves a template done frame — a stream never truncates without
+        a done event."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+
+        real = ce_module._run_engine
+        calls = {"n": 0}
+
+        def flaky(request, opp, profile_dict, on_stage=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("boom")
+            return real(request, opp, profile_dict, on_stage=on_stage)
+
+        monkeypatch.setattr(ce_module, "_run_engine", flaky)
+        with client.stream(
+            "POST", "/api/cold-email/stream", json={**stream_body, "engine": "ai"},
+        ) as resp:
+            events = self._events(resp)
+        done = events[-1]
+        assert done["stage"] == "done"
+        assert done["method"] == "template"
+        assert done["body"]
+        assert calls["n"] == 2  # crashed engine + template fallback

@@ -367,7 +367,9 @@ export async function generateColdEmailStream(
   options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
   onStage?: (stage: ColdEmailStage) => void,
 ): Promise<ColdEmailResponse> {
-  void track('ai_feature_used', { feature: 'cold_email' });
+  // NOTE: the funnel event fires only after a successful done event (bottom of
+  // this function) — a failed stream falls back to generateColdEmail, which
+  // tracks itself, so one user click never double-counts ai_feature_used.
   const body: Record<string, unknown> = {
     profile: toProfileRequest(profile),
     opportunity_id: opportunityId,
@@ -408,19 +410,35 @@ export async function generateColdEmailStream(
     }
   };
 
-  for (;;) {
-    const { value, done: readerDone } = await reader.read();
-    if (readerDone) break;
-    buffer += decoder.decode(value, { stream: true });
-    let idx;
-    while ((idx = buffer.indexOf('\n\n')) !== -1) {
-      const frame = buffer.slice(0, idx);
-      buffer = buffer.slice(idx + 2);
-      handleFrame(frame);
+  try {
+    for (;;) {
+      const { value, done: readerDone } = await reader.read();
+      if (readerDone) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        handleFrame(frame);
+      }
     }
+  } finally {
+    // Release the connection even when a parse error throws mid-stream —
+    // otherwise the fallback path opens a second connection while this one
+    // lingers until GC.
+    void reader.cancel().catch(() => {});
   }
-  if (!final) throw new Error('API stream: closed before the done event');
-  return final;
+  // TS doesn't reset a closed-over let's narrowing on function calls, so it
+  // still believes `final` is null here despite handleFrame's assignment.
+  const f = final as unknown as (ColdEmailResponse & { stage?: string }) | null;
+  if (!f) throw new Error('API stream: closed before the done event');
+  // Version-skew guard: a done event missing the core fields must trigger the
+  // blocking fallback, not flow undefined into the compose UI / mailto link.
+  if (typeof f.subject !== 'string' || typeof f.body !== 'string') {
+    throw new Error('API stream: malformed done payload');
+  }
+  void track('ai_feature_used', { feature: 'cold_email' });
+  return f;
 }
 
 export async function getEmailVariants(
