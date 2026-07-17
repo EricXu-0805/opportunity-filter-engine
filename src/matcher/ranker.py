@@ -94,6 +94,10 @@ class MatchResult:
     # within a tie the actionable result must outrank the dead-end one — the
     # audit found #1 matches with no email while equal-scored peers had one.
     actionable: bool = True
+    # One concrete, student-specific sentence from the LLM rerank pass (the
+    # card's lead line for top-K results). None outside the reranked window or
+    # when the rerank is unavailable — the rule reasons are always the floor.
+    ai_reason: str | None = None
 
 
 # --- Field matching utilities ---
@@ -1817,7 +1821,25 @@ def _kw_word_re(term: str) -> "re.Pattern[str]":
 
 @lru_cache(maxsize=512)
 def _interest_bonus_tokens(interests: str) -> frozenset[str]:
-    return frozenset(t for t in _tokenize(interests) if t not in _GENERIC_INTEREST_WORDS)
+    """Tokens from the free-text interests that may earn the literal-overlap
+    bonus. Filters the low-signal align set as well as generic words: a lone
+    "systems"/"data"/"computational" token ("AI systems" → "systems") otherwise
+    prefix-hits half the corpus ("type systems", "data and information
+    systems") and inflated topically-unrelated faculty into an ML student's
+    top-10 (2026-07 dogfood: a data-systems-only professor at 96.9). The
+    canonical desired-field path still credits real multi-word areas.
+
+    Fallback (adversarial-review HIGH): when EVERY token is low-signal
+    ("data science", "information theory"), the broad tokens ARE that
+    student's topic — wiping the bonus dropped all on-topic results out of a
+    data-science persona's top-25 on the real corpus, below the LLM-rerank
+    window. The filter applies only when a distinctive token survives to
+    carry the signal."""
+    tokens = frozenset(
+        t for t in _tokenize(interests) if t not in _GENERIC_INTEREST_WORDS
+    )
+    specific = frozenset(t for t in tokens if t not in _LOW_SIGNAL_ALIGN_TOKENS)
+    return specific or tokens
 
 
 @lru_cache(maxsize=512)
@@ -1842,6 +1864,40 @@ def _course_sets(courses: tuple[str, ...]) -> tuple[frozenset[str], frozenset[st
         if prefix:
             tokens.add(prefix)
     return upper, frozenset(tokens)
+
+
+# Fixed phrasings all come from this module, so prefix matching is stable; an
+# unrecognized reason lands mid-pack (tier 4) rather than misfiling.
+_REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
+    # 0 — student-specific topical tie: the reason that answers "why THIS one".
+    (0, ("Your interest in ", "Your research interests align",
+         "Your research background aligns", "Matches your interests:")),
+    # 2 — concrete skill fit.
+    (2, ("Strong tech stack fit", "Tech stack overlap", "Partial skill match")),
+    # 3 — genuine differentiators of the posting itself.
+    (3, ("Explicitly welcomes first-time researchers",
+         "Potential for publication", "Deadline in ", "Summer research — in season")),
+    # 5 — nice-to-know attributes.
+    (5, ("Paid opportunity", "Includes stipend", "On-campus — ")),
+    # 6 — boilerplate that is true of half the results page. The brand lines
+    # are school-constant (every registered-school result gets one), so they
+    # must not occupy a top-3 card slot when specific reasons are scarce.
+    (6, ("Accepts ", "Your major (", "Open to international students",
+         "Your experience level is competitive",
+         "You're comfortable with direct outreach", "Low application effort",
+         "Matches your interest in ", "Major research university",
+         "Prestigious institution")),
+)
+
+
+def _reason_priority(reason: str) -> int:
+    """Display tier for a fit reason — lower shows first. See _REASON_TIERS;
+    tier 1 is reserved for the research-summary headline rank_opportunity
+    inserts positionally."""
+    for tier, prefixes in _REASON_TIERS:
+        if reason.startswith(prefixes):
+            return tier
+    return 4
 
 
 def rank_opportunity(
@@ -1946,16 +2002,25 @@ def rank_opportunity(
             bucket = label
             break
 
-    all_fit = elig_fit + ready_fit + up_fit
+    # Specific-first ordering: the old elig+ready+up concatenation buried the
+    # reasons that actually differentiate THIS opportunity (topical ties, skill
+    # fit — generated last, in the upside layer) beneath boilerplate every card
+    # shares ("Accepts sophomore students", "major is a direct match"), so the
+    # visible top-3 were near-identical across the whole results page
+    # (2026-07 dogfood). Stable sort: within a tier, original order holds.
+    all_fit = sorted(elig_fit + ready_fit + up_fit, key=_reason_priority)
     all_gap = elig_gap + ready_gap + up_gap
 
     research_summary = st.research_summary
     if research_summary:
         pi = opportunity.get("pi_name", "")
+        # The lab's focus-areas headline reads as context, not personal fit —
+        # it slots AFTER a student-specific topical tie when one exists.
+        at = 1 if all_fit and _reason_priority(all_fit[0]) == 0 else 0
         if pi and pi in research_summary:
-            all_fit.insert(0, research_summary)
+            all_fit.insert(at, research_summary)
         elif opportunity.get("opportunity_type") == "research":
-            all_fit.insert(0, f"This lab focuses on {research_summary}")
+            all_fit.insert(at, f"This lab focuses on {research_summary}")
         # Non-research postings (internships, summer programs) have no "lab" —
         # the "This lab focuses on …" framing is a category error there, and the
         # keyword/interest reasons already convey relevance, so skip it.

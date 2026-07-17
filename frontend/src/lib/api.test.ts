@@ -175,12 +175,17 @@ describe('getMatches', () => {
     expect(body.school).toBe('UC Berkeley');
   });
 
-  it('appends ?llm=true when options.llm is set (AI smart match)', async () => {
-    fetchMock.mockResolvedValue(
+  it('AI smart match is the server default: llm=true sends no param, llm=false opts out', async () => {
+    // Fresh Response per call — this test fetches twice, and a shared
+    // mockResolvedValue Response throws "Body has already been read" on the
+    // second res.json() (CI Node enforces single-use bodies).
+    fetchMock.mockImplementation(async () =>
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile(), { llm: true });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=true');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches');
+    await getMatches(makeProfile(), { llm: false });
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/matches?llm=false');
   });
 });
 

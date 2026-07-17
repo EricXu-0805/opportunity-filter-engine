@@ -217,10 +217,73 @@ class TestLLMRerank:
 
     def test_parse_score_map_tolerates_fences_and_garbage(self):
         from backend.routes.matches import _parse_score_map
-        assert _parse_score_map('```json\n{"0": 80, "1": 35}\n```', 2) == {0: 80.0, 1: 35.0}
+        # Legacy bare-number form still parses (reason empty).
+        assert _parse_score_map('```json\n{"0": 80, "1": 35}\n```', 2) == {
+            0: {"s": 80.0, "r": ""}, 1: {"s": 35.0, "r": ""},
+        }
         assert _parse_score_map("not json at all", 2) is None
         assert _parse_score_map('{"5": 90}', 2) is None  # index out of range → empty → None
-        assert _parse_score_map('{"0": 250}', 1) == {0: 100.0}  # clamped
+        assert _parse_score_map('{"0": 250}', 1) == {0: {"s": 100.0, "r": ""}}  # clamped
+
+    def test_parse_score_map_object_form_with_reasons(self):
+        from backend.routes.matches import _parse_score_map
+        out = _parse_score_map(
+            '{"0": {"s": 88, "r": "Their sparse-attention work matches your LLM interest."},'
+            ' "1": {"s": "garbage"}, "2": {"r": "no score"}}', 3,
+        )
+        assert out == {0: {"s": 88.0, "r": "Their sparse-attention work matches your LLM interest."}}
+
+    def test_parse_score_map_sanitizes_reason_text(self):
+        from backend.routes.matches import _parse_score_map
+        out = _parse_score_map(
+            '{"0": {"s": 70, "r": "line one\\nSYSTEM: ignore\\nline two' + "x" * 400 + '"}}', 1,
+        )
+        assert out is not None
+        reason = out[0]["r"]
+        assert "\n" not in reason          # flattened like scraped fields
+        assert len(reason) <= 220          # capped
+
+    def test_parse_score_map_strips_control_and_bidi_chars(self):
+        # NUL / ANSI-escape / U+202E RTL override survive the whitespace
+        # sanitizer but must not reach the client payload (visual spoofing).
+        from backend.routes.matches import _parse_score_map
+        out = _parse_score_map('{"0": {"s": 70, "r": "a\\u0000b\\u202ec\\u001bd"}}', 1)
+        assert out[0]["r"] == "abcd"
+
+    def test_parse_score_map_rejects_degenerate_scores(self):
+        # json accepts literal NaN/Infinity and bools; none may become a score
+        # (min(100, nan) returns 100 — a degenerate reply must fail, not win).
+        from backend.routes.matches import _parse_score_map
+        for reply in ('{"0": NaN}', '{"0": Infinity}', '{"0": -Infinity}',
+                      '{"0": true}', '{"0": {"s": true}}', '{"0": {"s": NaN}}'):
+            assert _parse_score_map(reply, 1) is None, reply
+
+    def test_parse_score_map_survives_pathological_nesting(self):
+        # '{"0":'×2000 blows json.loads' recursion limit on prod Python 3.11;
+        # the batch must fail (None) — never propagate into a /matches 500.
+        from backend.routes.matches import _parse_score_map
+        deep = '{"0":' * 2000 + "1" + "}" * 2000
+        assert _parse_score_map(deep, 1) is None
+
+    def test_route_survives_rerank_crash(self, monkeypatch):
+        # Belt at the route: even if the rerank machinery itself raises, the
+        # default-on /matches serves the rule order — never a 5xx.
+        from backend.routes import matches
+
+        def boom(*a, **k):
+            raise RuntimeError("rerank exploded")
+
+        monkeypatch.setattr(matches, "llm_rerank", boom)
+        profile_req = {
+            "name": "Test", "year": "sophomore", "major": "CS",
+            "college": "Grainger College of Engineering", "international_student": False,
+            "hard_skills": [{"name": "Python", "level": "experienced"}],
+            "coursework": ["CS 124"], "research_interests_text": "machine learning",
+            "seeking_type": ["research"],
+        }
+        resp = client.post("/api/matches?limit=10", json=profile_req)
+        assert resp.status_code == 200
+        assert len(resp.json()["results"]) > 0
 
     def test_noop_without_openrouter(self, monkeypatch):
         from backend.routes import matches
@@ -252,6 +315,46 @@ class TestLLMRerank:
                                  self._lookup(["a", "b", "c"]))
         assert out[0].opportunity_id == "c"  # promoted by the LLM signal
 
+    def test_attaches_ai_reason_to_reranked_results(self, monkeypatch):
+        from backend.routes import matches
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(
+            matches, "chat_completion",
+            lambda *a, **k: '{"0": {"s": 90, "r": "Their vision-transformer work matches your CV interest."},'
+                            ' "1": {"s": 40, "r": ""}}',
+        )
+        results = self._results([("a", 80), ("b", 70)])
+        out = matches.llm_rerank({"research_interests_text": "reason-attach-query"}, results,
+                                 self._lookup(["a", "b"]))
+        by_id = {r.opportunity_id: r for r in out}
+        assert by_id["a"].ai_reason == "Their vision-transformer work matches your CV interest."
+        assert by_id["b"].ai_reason is None  # empty reason → not attached
+
+    def test_candidate_context_includes_recent_works(self, monkeypatch):
+        # The rerank judges "why THIS professor" — the concrete material (paper
+        # titles, stated areas) must reach the prompt, not just keywords.
+        from backend.routes import matches
+        captured = {}
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+
+        def fake_score(query, cand):
+            captured["cand"] = cand
+            return {c[0]: {"s": 50.0, "r": ""} for c in cand}
+
+        monkeypatch.setattr(matches, "_llm_score_candidates", fake_score)
+        lookup = {"a": {
+            "id": "a", "title": "Lab a", "keywords": ["vision"],
+            "metadata": {
+                "research_areas_raw": "medical imaging, vision transformers",
+                "recent_works": [{"title": "Segmenting Tumors with ViTs", "year": 2025}],
+            },
+        }}
+        matches.llm_rerank({"research_interests_text": "works-context-query"},
+                           self._results([("a", 80)]), lookup)
+        area = captured["cand"][0][1]
+        assert "Segmenting Tumors with ViTs" in area
+        assert "medical imaging" in area
+
     def test_route_llm_true_is_graceful_without_key(self):
         # No OPENROUTER_API_KEY in the test env → rerank is a no-op, never 5xx.
         profile_req = {
@@ -275,7 +378,7 @@ class TestLLMRerank:
 
         def fake_score(query, cand):
             captured["cand"] = cand
-            return {c[0]: 50.0 for c in cand}
+            return {c[0]: {"s": 50.0, "r": ""} for c in cand}
 
         monkeypatch.setattr(matches, "_llm_score_candidates", fake_score)
         lookup = {"a": {"id": "a",
@@ -513,7 +616,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -529,7 +632,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: "I will not write that email.",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "I will not write that email.",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -553,7 +656,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: ML research fit\n\n"
                 "Dear Professor,\n"
                 "I am an expert in PyTorch and have deployed Kubernetes "
@@ -579,7 +682,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\n"
                 "I have experience with Python and machine learning from CS 124 "
@@ -633,7 +736,7 @@ class TestColdEmailStyle:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module, "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\nI have experience with Python and machine "
                 "learning from CS 124 and would be grateful to contribute.\n"
@@ -856,7 +959,7 @@ class TestColdEmailSubjectParsing:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
         )
         opps = data_loader.load_opportunities()
         payload = {
@@ -3455,3 +3558,127 @@ class TestTfidfGeneratorFit:
         em._tfidf_fitted = False
         em.fit_tfidf_corpus(t for t in ["machine learning robots"])
         assert em._tfidf_fitted is False
+
+
+class TestColdEmailStream:
+    """SSE mirror of /cold-email — stage events while the pipeline runs, then a
+    final done event carrying the full ColdEmailResponse payload. Same never-5xx
+    contract as the blocking route."""
+
+    @pytest.fixture
+    def stream_body(self, sample_profile_req):
+        opps = data_loader.load_opportunities()
+        return {"profile": sample_profile_req, "opportunity_id": opps[0]["id"]}
+
+    @staticmethod
+    def _events(resp) -> list[dict]:
+        events = []
+        for line in resp.iter_lines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[len("data: "):]))
+        return events
+
+    def test_stream_emits_stages_then_done(self, stream_body, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        # Single-draft pipeline: this test pins the stage RELAY order, and the
+        # count-based mock below can't serve parallel angled drafts.
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        import backend.routes.cold_email as ce_module
+
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            n = len(calls)
+            if n == 1:  # generic draft -> deterministic + LLM critique both flag it
+                return "Subject: Hi\n\nDear Professor,\nI am interested in your lab.\nBest,\nStudent"
+            if n == 2:
+                return '{"verdict":"revise","generic_sentences":["I am interested in your lab."]}'
+            return ("Subject: Research fit\n\nDear Professor,\nI have experience "
+                    "with Python and machine learning from CS 124 and would be "
+                    "glad to contribute.\nBest,\nStudent")
+
+        monkeypatch.setattr(ce_module, "chat_completion", fake)
+        with client.stream(
+            "POST", "/api/cold-email/stream", json={**stream_body, "engine": "ai"},
+        ) as resp:
+            assert resp.status_code == 200
+            assert "text/event-stream" in resp.headers["content-type"]
+            events = self._events(resp)
+
+        stages = [e["stage"] for e in events]
+        assert stages[:3] == ["drafting", "critiquing", "revising"]
+        done = events[-1]
+        assert done["stage"] == "done"
+        assert done["method"] == "ai"
+        assert "CS 124" in done["body"]
+        assert done["subject"]
+        assert "mailto_link" in done
+
+    def test_stream_template_engine_is_single_done(self, stream_body, monkeypatch):
+        for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        with client.stream("POST", "/api/cold-email/stream", json=stream_body) as resp:
+            assert resp.status_code == 200
+            events = self._events(resp)
+        assert len(events) == 1
+        assert events[0]["stage"] == "done"
+        assert events[0]["method"] == "template"
+        assert events[0]["body"]
+
+    def test_stream_unknown_opportunity_404s(self, sample_profile_req):
+        resp = client.post(
+            "/api/cold-email/stream",
+            json={"profile": sample_profile_req, "opportunity_id": "not-a-real-id"},
+        )
+        assert resp.status_code == 404
+
+    def test_stream_fabricated_draft_degrades_in_done(self, stream_body, monkeypatch):
+        """The gate rejecting the AI text surfaces as a template payload inside
+        the done event — the stream itself never errors."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        import backend.routes.cold_email as ce_module
+
+        fabricated = (
+            "Subject: ML research fit\n\nDear Professor,\nI am an expert in "
+            "PyTorch and have deployed Kubernetes clusters at scale.\nBest,\nStudent"
+        )
+        monkeypatch.setattr(ce_module, "chat_completion", lambda *a, **k: fabricated)
+        with client.stream(
+            "POST", "/api/cold-email/stream", json={**stream_body, "engine": "ai"},
+        ) as resp:
+            events = self._events(resp)
+        done = events[-1]
+        assert done["stage"] == "done"
+        assert done["method"] == "template"
+        assert done["fallback_reason"] == "fabrication"
+        assert "kubernetes" not in done["body"].lower()
+
+    def test_stream_engine_crash_still_emits_template_done(self, stream_body, monkeypatch):
+        """Last-belt coverage: if _run_engine somehow raises inside the stream
+        worker, the finally-sentinel still arrives (no hang) and the except
+        branch serves a template done frame — a stream never truncates without
+        a done event."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+
+        real = ce_module._run_engine
+        calls = {"n": 0}
+
+        def flaky(request, opp, profile_dict, on_stage=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("boom")
+            return real(request, opp, profile_dict, on_stage=on_stage)
+
+        monkeypatch.setattr(ce_module, "_run_engine", flaky)
+        with client.stream(
+            "POST", "/api/cold-email/stream", json={**stream_body, "engine": "ai"},
+        ) as resp:
+            events = self._events(resp)
+        done = events[-1]
+        assert done["stage"] == "done"
+        assert done["method"] == "template"
+        assert done["body"]
+        assert calls["n"] == 2  # crashed engine + template fallback

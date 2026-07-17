@@ -85,6 +85,43 @@ describe('MatchCard', () => {
     });
   });
 
+  describe('AI reason + recent work on the card face', () => {
+    it('renders the ai_reason lead line when present', () => {
+      render(
+        <MatchCard
+          match={makeMatch({}, { ai_reason: 'Their sparse-attention work matches your LLM interest.' })}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(
+        screen.getByText('Their sparse-attention work matches your LLM interest.'),
+      ).toBeInTheDocument();
+    });
+
+    it('renders nothing extra when ai_reason is absent', () => {
+      render(<MatchCard match={makeMatch()} onDraftEmail={() => {}} />);
+      expect(screen.queryByText(/card.recentWork/)).toBeNull();
+    });
+
+    it('renders the first recent-work title with year', () => {
+      render(
+        <MatchCard
+          match={makeMatch({
+            recent_works: [
+              { title: 'Segmenting Tumors with Vision Transformers', year: 2025 },
+              { title: 'Second Paper', year: 2024 },
+            ],
+          })}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(
+        screen.getByText(/Segmenting Tumors with Vision Transformers \(2025\)/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Second Paper/)).toBeNull();
+    });
+  });
+
   describe('international-friendly badge', () => {
     it('renders badges.intlOk key (green) for yes', () => {
       const match = makeMatch({ eligibility: { ...makeOpp().eligibility, international_friendly: 'yes' } });

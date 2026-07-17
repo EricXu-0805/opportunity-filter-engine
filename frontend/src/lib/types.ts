@@ -140,6 +140,10 @@ export interface Opportunity {
   eligibility: OpportunityEligibility;
   application: OpportunityApplication;
   metadata: OpportunityMetadata;
+  // Match-card projection of metadata.recent_works (title/year only) — the
+  // /matches card payload carries it top-level; the full record keeps the
+  // complete list under metadata.
+  recent_works?: { title: string; year?: number | string | null }[];
 }
 
 // ── Match Results ────────────────────────────────────────────────────
@@ -155,6 +159,9 @@ export interface MatchResult {
   reasons_fit: string[];
   reasons_gap: string[];
   next_steps: string[];
+  // One concrete, student-specific sentence from the LLM rerank — the card's
+  // lead line for top-K results; absent outside the reranked window.
+  ai_reason?: string | null;
   opportunity: Opportunity;
 }
 

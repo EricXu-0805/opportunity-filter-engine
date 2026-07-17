@@ -233,6 +233,23 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           })()}
         </div>
 
+        {match.ai_reason && (
+          <p className="flex items-start gap-2 mb-3 text-[13px] leading-relaxed text-indigo-900/80 bg-indigo-50/60 rounded-xl px-3 py-2">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 mt-0.5 shrink-0" />
+            <span>{match.ai_reason}</span>
+          </p>
+        )}
+
+        {opp.recent_works?.[0]?.title && (
+          <p className="flex items-center gap-1.5 mb-4 text-[12px] text-gray-400 min-w-0">
+            <FileText className="w-3 h-3 shrink-0 text-gray-300" />
+            <span className="truncate">
+              {t('card.recentWork')}: {opp.recent_works[0].title}
+              {opp.recent_works[0].year ? ` (${opp.recent_works[0].year})` : ''}
+            </span>
+          </p>
+        )}
+
         {(compensation || opp.duration || opp.application?.requires_resume === 'yes' || opp.application?.requires_recommendation === 'yes') && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-gray-400 mb-4">
             {compensation && (

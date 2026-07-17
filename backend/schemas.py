@@ -140,6 +140,9 @@ class MatchResultResponse(BaseModel):
     reasons_fit: list[str]
     reasons_gap: list[str]
     next_steps: list[str]
+    # One concrete, student-specific sentence from the LLM rerank pass — the
+    # card's lead line for top-K results; None outside the reranked window.
+    ai_reason: str | None = None
     opportunity: dict
 
 
