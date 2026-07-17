@@ -81,8 +81,8 @@ describe('readInitialSemanticRerank', () => {
     expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(false);
   });
 
-  it('defaults to false when neither URL nor localStorage present', () => {
-    expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(false);
+  it('defaults ON when neither URL nor localStorage present (2026-07: AI smart match is the default)', () => {
+    expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(true);
   });
 });
 

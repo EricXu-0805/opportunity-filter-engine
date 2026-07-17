@@ -87,10 +87,11 @@ export async function getMatches(
   profile: ProfileData,
   options: { llm?: boolean } = {},
 ): Promise<MatchesResponse> {
-  // The "AI smart match" toggle routes to the LLM reranker (?llm=true), which
-  // scores the top results' topical fit via OpenRouter. The older embedding
-  // ?semantic path is retired — it regressed the ranking; this replaces it.
-  const qs = options.llm ? '?llm=true' : '';
+  // The LLM reranker is the server default (scores topical fit + writes each
+  // card's concrete lead reason via OpenRouter); the "AI smart match" toggle
+  // only opts OUT (?llm=false). The older embedding ?semantic path is retired
+  // — it regressed the ranking; this replaces it.
+  const qs = options.llm === false ? '?llm=false' : '';
   return request<MatchesResponse>(`/matches${qs}`, {
     method: 'POST',
     body: JSON.stringify(toProfileRequest(profile)),

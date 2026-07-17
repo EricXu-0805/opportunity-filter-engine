@@ -2002,6 +2002,7 @@ export const en = {
     hideDetails: 'Hide details',
     resumeRequired: 'Resume required',
     recLetterNeeded: 'Rec. letter needed',
+    recentWork: 'Recent work',
     heardBack: 'Students recently heard back',
     feedback: {
       prompt: 'Accurate?',
@@ -4906,6 +4907,7 @@ export const zh = {
     hideDetails: '收起详情',
     resumeRequired: '需要简历',
     recLetterNeeded: '需要推荐信',
+    recentWork: '近作',
     heardBack: '近期有学生收到回复',
     feedback: {
       prompt: '推荐准吗？',
