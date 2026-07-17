@@ -24,6 +24,7 @@ vi.mock('@/lib/api', () => ({
   getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
   generateColdEmail: (...args: unknown[]) => mockGenerateColdEmail(...args),
   refineEmail: (...args: unknown[]) => mockRefineEmail(...args),
+  extractResumeBullets: async () => ({ bullets: [], method: 'heuristic' }),
 }));
 
 import ColdEmailModal from './ColdEmailModal';

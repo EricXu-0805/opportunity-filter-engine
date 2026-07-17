@@ -13,7 +13,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { generateColdEmail, getEmailVariants, refineEmail } from '@/lib/api';
+import { generateColdEmail, getEmailVariants, refineEmail, extractResumeBullets } from '@/lib/api';
 import {
   getInteractionDetail,
   trackInteraction,
@@ -180,6 +180,10 @@ export default function ColdEmailModal({
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  // Cache the resume experience bullets extracted from the profile's resume
+  // text so every AI (re)generation reuses one extraction. null = not yet
+  // attempted; [] = attempted, none found (or no resume).
+  const resumeBulletsRef = useRef<string[] | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   const fetchVariants = useCallback(async () => {
@@ -318,7 +322,24 @@ export default function ColdEmailModal({
     ]);
 
     try {
-      const resp = await generateColdEmail(profile, opportunityId, { engine: 'ai', style });
+      // Extract the student's real resume bullets once, so the AI draft can
+      // cite their actual experience (the backend grounds them). Best-effort:
+      // a failure just falls back to skills/coursework-only grounding.
+      if (resumeBulletsRef.current === null) {
+        try {
+          resumeBulletsRef.current = profile.resume_text
+            ? (await extractResumeBullets(profile.resume_text)).bullets ?? []
+            : [];
+        } catch {
+          resumeBulletsRef.current = [];
+        }
+      }
+      const bullets = resumeBulletsRef.current;
+      const resp = await generateColdEmail(profile, opportunityId, {
+        engine: 'ai',
+        style,
+        ...(bullets && bullets.length > 0 ? { resumeBullets: bullets } : {}),
+      });
       const v: EmailVariant = {
         id: AI_VARIANT_ID,
         label: t('coldEmail.aiVariantLabel'),

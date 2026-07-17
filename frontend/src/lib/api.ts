@@ -333,7 +333,7 @@ export async function getOpportunitiesByIds(ids: string[]): Promise<Record<strin
 export async function generateColdEmail(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
 ): Promise<ColdEmailResponse> {
   void track('ai_feature_used', { feature: 'cold_email' });
   const body: Record<string, unknown> = {
@@ -342,6 +342,11 @@ export async function generateColdEmail(
   };
   if (options.engine) body.engine = options.engine;
   if (options.style) body.style = options.style;
+  // The student's real resume experience bullets, so the AI draft can cite
+  // their actual work. Additive + optional; the backend grounds them.
+  if (options.resumeBullets && options.resumeBullets.length > 0) {
+    body.resume_bullets = options.resumeBullets;
+  }
   return request<ColdEmailResponse>('/cold-email', {
     method: 'POST',
     body: JSON.stringify(body),

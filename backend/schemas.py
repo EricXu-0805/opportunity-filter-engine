@@ -162,6 +162,17 @@ class ColdEmailRequest(BaseModel):
     engine: str = "template"
     # Voice overlay for the AI engine. None = no overlay (lab-type default).
     style: str | None = None
+    # The student's real resume experience bullets (from /tailor/extract-
+    # bullets). Optional + defaulted so existing clients that omit it are
+    # unaffected. Only the AI engine uses them; they are added to the
+    # anti-fabrication corpus so a draft may cite the student's own experience.
+    resume_bullets: list[str] = Field(default_factory=list)
+
+    @field_validator("resume_bullets")
+    @classmethod
+    def cap_bullets(cls, v: list) -> list:
+        # Mirror TailorRequest.cap_bullets: 12 × 500 chars caps the LLM budget.
+        return [str(b)[:500] for b in v[:12] if str(b).strip()]
 
     @field_validator("engine")
     @classmethod

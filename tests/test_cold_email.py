@@ -290,7 +290,9 @@ class TestColdEmailPromptInjection:
         captured = {}
 
         def _fake_chat(messages, **kwargs):
-            captured["messages"] = messages
+            # The draft is the first pipeline call; keep it (critique/revise
+            # calls follow but we assert on the draft prompt).
+            captured.setdefault("messages", messages)
             return "Subject: Hi\n\nBody."
 
         monkeypatch.setattr(ce, "chat_completion", _fake_chat)
@@ -314,7 +316,7 @@ class TestColdEmailPromptInjection:
             "eligibility": {"skills_required": ["Python"]},
         }
 
-        out = ce._ai_generate_email_text(profile, opp)
+        out = ce._pipeline_generate(profile, opp, None)
         assert out is not None
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
 
@@ -359,7 +361,9 @@ class TestSkillLevelThreading:
         captured = {}
 
         def _fake_chat(messages, **kwargs):
-            captured["messages"] = messages
+            # The draft is the first pipeline call; keep it (critique/revise
+            # calls follow but we assert on the draft prompt).
+            captured.setdefault("messages", messages)
             return "Subject: Hi\n\nBody."
 
         monkeypatch.setattr(ce, "chat_completion", _fake_chat)
@@ -383,7 +387,7 @@ class TestSkillLevelThreading:
             "eligibility": {"skills_required": ["Python"]},
         }
 
-        out = ce._ai_generate_email_text(profile, opp)
+        out = ce._pipeline_generate(profile, opp, None)
         assert out is not None
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
         system_msg = next(m["content"] for m in captured["messages"] if m["role"] == "system")
@@ -399,7 +403,9 @@ class TestSkillLevelThreading:
         captured = {}
 
         def _fake_chat(messages, **kwargs):
-            captured["messages"] = messages
+            # The draft is the first pipeline call; keep it (critique/revise
+            # calls follow but we assert on the draft prompt).
+            captured.setdefault("messages", messages)
             return "Subject: Hi\n\nBody."
 
         monkeypatch.setattr(ce, "chat_completion", _fake_chat)
@@ -416,7 +422,7 @@ class TestSkillLevelThreading:
             "eligibility": {},
         }
 
-        out = ce._ai_generate_email_text(profile, opp)
+        out = ce._pipeline_generate(profile, opp, None)
         assert out is not None
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
         assert "MATLAB (beginner)" in user_msg
@@ -460,11 +466,13 @@ class TestRecentWorkGrounding:
         captured = {}
 
         def _fake_chat(messages, **kwargs):
-            captured["messages"] = messages
+            # The draft is the first pipeline call; keep it (critique/revise
+            # calls follow but we assert on the draft prompt).
+            captured.setdefault("messages", messages)
             return "Subject: Hi\n\nBody."
 
         monkeypatch.setattr(ce, "chat_completion", _fake_chat)
-        assert ce._ai_generate_email_text(self._profile(), opp) is not None
+        assert ce._pipeline_generate(self._profile(), opp, None) is not None
         return next(m["content"] for m in captured["messages"] if m["role"] == "user")
 
     def test_prompt_offers_recent_works_for_the_model_to_choose(self, monkeypatch):
@@ -539,3 +547,169 @@ class TestTemplateRecentWorkCitation:
     def test_no_works_no_citation(self):
         text = generate_cold_email(self._profile, self._opp([]))
         assert "caught my attention" not in text
+
+
+class TestColdEmailPipeline:
+    """The multi-stage AI pipeline: deterministic briefs, resume-bullet
+    grounding, and the draft→critique→revise orchestration."""
+
+    def _profile(self):
+        return {
+            "name": "Eric", "year": "junior", "major": "Computer Engineering",
+            "school": "UIUC", "hard_skills": [{"name": "Python", "level": "expert"}],
+            "research_interests_text": "computer vision",
+        }
+
+    def _opp(self):
+        return {
+            "opportunity_type": "research", "title": "Vision Research",
+            "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Group",
+            "department": "Computer Science", "keywords": ["computer vision"],
+            "description_raw": "Computer vision lab.",
+            "eligibility": {"skills_required": ["Python"]},
+            "metadata": {
+                "faculty_title": "Associate Professor",
+                "research_areas_raw": "computer vision, medical imaging",
+                "recent_works": [
+                    {"title": "Segmenting Tumors with Vision Transformers", "year": 2025}
+                ],
+            },
+        }
+
+    def test_professor_brief_includes_real_data(self):
+        from backend.routes.cold_email import _render_professor_brief
+        opp = self._opp()
+        p = _common_parts(self._profile(), opp)
+        brief = _render_professor_brief(p, opp)
+        assert "Associate Professor" in brief          # faculty_title
+        assert "medical imaging" in brief               # research_areas_raw
+        assert "Segmenting Tumors with Vision Transformers" in brief  # recent work
+
+    def test_student_brief_includes_resume_bullets(self):
+        from backend.routes.cold_email import _render_student_brief
+        p = _common_parts(
+            self._profile(), self._opp(),
+            resume_bullets=["Built a FAISS retrieval pipeline for 2M documents"],
+        )
+        brief = _render_student_brief(p)
+        assert "FAISS retrieval pipeline" in brief
+        assert "Python (expert)" in brief
+
+    def test_resume_bullet_term_is_grounded(self):
+        """A concrete term present ONLY in a resume bullet is in the corpus, so a
+        draft citing the student's real experience is not falsely rejected."""
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
+
+        p = ce._common_parts(self._profile(), self._opp(),
+                             resume_bullets=["Built a FAISS retrieval pipeline"])
+        corpus = ce._build_email_corpus(p, self._opp())
+        assert "faiss" in corpus
+        passed, _ = validate_no_fabrication(
+            "I built a FAISS retrieval system.", corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
+        )
+        assert passed
+
+    def test_same_term_without_bullet_is_rejected(self):
+        """Without the bullet, the identical FAISS claim is ungrounded → the gate
+        rejects it. Proves the corpus addition didn't open a fabrication hole."""
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
+
+        p = ce._common_parts(self._profile(), self._opp())  # no bullets
+        corpus = ce._build_email_corpus(p, self._opp())
+        assert "faiss" not in corpus
+        passed, fabricated = validate_no_fabrication(
+            "I built a FAISS retrieval system.", corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
+        )
+        assert not passed
+        assert any("faiss" in str(f).lower() for f in fabricated)
+
+    def test_research_areas_raw_phrase_is_grounded(self):
+        """A phrase named only in the professor's stated research areas is in the
+        corpus (it is fed to the model via the professor brief)."""
+        import backend.routes.cold_email as ce
+        opp = self._opp()
+        corpus = ce._build_email_corpus(ce._common_parts(self._profile(), opp), opp)
+        assert "medical imaging" in corpus
+
+    def test_pipeline_revises_a_generic_draft(self, monkeypatch):
+        """draft → critique → revise: a first draft that names nothing specific
+        about the professor triggers a revise call, and the revised text is
+        returned."""
+        import backend.routes.cold_email as ce
+
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            n = len(calls)
+            if n == 1:  # generic draft
+                return "Subject: Hi\n\nDear Professor,\nI am interested in your lab.\nBest,\nEric"
+            if n == 2:  # critique JSON
+                return '{"verdict":"revise","references_specific_professor_work":false,"generic_sentences":["I am interested in your lab."]}'
+            return "Subject: Vision fit\n\nDear Professor,\nYour computer vision work is a strong fit for my Python background.\nBest,\nEric"
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        out = ce._pipeline_generate(self._profile(), self._opp(), None)
+        assert len(calls) == 3  # draft + critique + revise
+        assert "computer vision" in out.lower()
+
+    def test_pipeline_skips_revise_on_clean_pass(self, monkeypatch):
+        """A grounded draft that references the professor, with critique verdict
+        'pass', is not revised."""
+        import backend.routes.cold_email as ce
+
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            if len(calls) == 1:
+                return ("Subject: Vision fit\n\nDear Professor,\nYour computer "
+                        "vision work aligns with my Python experience.\nBest,\nEric")
+            return '{"verdict":"pass","references_specific_professor_work":true,"generic_sentences":[]}'
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        out = ce._pipeline_generate(self._profile(), self._opp(), None)
+        assert len(calls) == 2  # draft + critique, no revise
+        assert "computer vision" in out.lower()
+
+    def test_critique_off_env_skips_critique_call(self, monkeypatch):
+        import backend.routes.cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        calls = []
+
+        def fake(messages, **kw):
+            calls.append(messages)
+            return ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
+                    "work aligns with my Python experience.\nBest,\nEric")
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        ce._pipeline_generate(self._profile(), self._opp(), None)
+        assert len(calls) == 1  # draft only (critique off, clean draft → no revise)
+
+
+class TestEmailModesRegistry:
+    """The consolidated mode registry backs both the draft voice and the
+    deterministic /refine edit ops."""
+
+    def test_draft_voices_are_the_four_styles(self):
+        from backend.lib.email_modes import DRAFT_VOICES
+        assert set(DRAFT_VOICES) == {"professional", "warm", "friendly", "lively"}
+
+    def test_local_refine_applies_formal_edit_ops(self):
+        from backend.routes.cold_email import _local_refine
+        out = _local_refine("I would love to help.\nBest regards", "make it more formal")
+        assert "I would greatly appreciate" in out["body"]
+        assert "Respectfully" in out["body"]
+        assert "formal" in out["applied"]
+
+    def test_local_refine_concise_drops_filler_lines(self):
+        from backend.routes.cold_email import _local_refine
+        out = _local_refine("I am a fast learner\nI have Python experience", "make it shorter")
+        assert "fast learner" not in out["body"]
+        assert "Python experience" in out["body"]
+        assert "concise" in out["applied"]
