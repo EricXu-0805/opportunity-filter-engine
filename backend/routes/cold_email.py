@@ -159,7 +159,8 @@ _UNDERGRAD_BODY = (
     "3. Concrete fit: the relevant skills and coursework the student actually "
     "has, tied to that work. Show evidence, do not self-praise.\n"
     "4. One clear ask: a brief meeting to discuss getting involved; offer the "
-    "student's availability if provided, and note the resume is attached.\n"
+    "student's availability if provided, and offer to share a resume or other "
+    "materials on request (never claim anything is attached).\n"
 )
 
 _GRAD_BODY = (
