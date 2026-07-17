@@ -5,7 +5,7 @@
  * (design/university-switcher branch, decision in PR #187).
  *
  * Visual language mirrors AuthModal / SaveSearchDialog:
- *   fixed inset-0 z-50 flex items-center justify-center p-4
+ *   fixed inset-0 z-[55] flex items-center justify-center p-4
  *   absolute inset-0 bg-gray-900/60 backdrop-blur-sm
  *   relative w-full bg-white rounded-2xl shadow-2xl animate-in
  * Mounted conditionally by the parent (same pattern as SaveSearchDialog)
@@ -94,7 +94,7 @@ export default function UniversitySwitcherModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[55] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="university-switcher-title"
