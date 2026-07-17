@@ -24,6 +24,7 @@ vi.mock('@/lib/api', () => ({
   getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
   generateColdEmail: (...args: unknown[]) => mockGenerateColdEmail(...args),
   refineEmail: (...args: unknown[]) => mockRefineEmail(...args),
+  extractResumeBullets: async () => ({ bullets: [], method: 'heuristic' }),
 }));
 
 import ColdEmailModal from './ColdEmailModal';
@@ -536,10 +537,14 @@ describe('ColdEmailModal', () => {
     });
   });
 
-  describe('quick actions (local body transforms)', () => {
-    it('"formal" replaces "I would love" with "I would greatly appreciate"', async () => {
+  describe('quick actions', () => {
+    it('"formal" routes through the backend refine with a canned instruction', async () => {
       mockGetVariants.mockResolvedValue({
         variants: [makeVariant({ body: 'I would love to chat.\n\nBest regards,\nAlex' })],
+      });
+      mockRefineEmail.mockResolvedValue({
+        body: 'I would greatly appreciate to chat.\n\nRespectfully,\nAlex',
+        method: 'llm',
       });
       render(
         <ColdEmailModal
@@ -552,19 +557,31 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/I would love/)).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.quickActions.formal'));
+      await waitFor(() => expect(mockRefineEmail).toHaveBeenCalledTimes(1));
+      expect(mockRefineEmail).toHaveBeenCalledWith(
+        'I would love to chat.\n\nBest regards,\nAlex',
+        'Make it more formal and professional',
+        makeProfile(),
+        'opp',
+        expect.any(Object),
+      );
       await waitFor(() =>
         expect(screen.getByDisplayValue(/I would greatly appreciate to chat/)).toBeInTheDocument(),
       );
     });
 
-    it('"shorter" drops "fast learner" / "always eager" lines', async () => {
+    it('"shorter" routes through the backend refine (deterministic fallback shown)', async () => {
       mockGetVariants.mockResolvedValue({
         variants: [
           makeVariant({
             body:
-              'Line one.\nI am a fast learner and want to help.\nLine three.\nI am always eager to learn.\nLine five.',
+              'Line one.\nI am a fast learner and want to help.\nLine three.',
           }),
         ],
+      });
+      mockRefineEmail.mockResolvedValue({
+        body: 'Line one.\nLine three.',
+        method: 'local',
       });
       render(
         <ColdEmailModal
@@ -577,11 +594,12 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Line one/)).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.quickActions.shorter'));
-      const textarea = screen.getByDisplayValue(/Line one/) as HTMLTextAreaElement;
-      expect(textarea.value).not.toMatch(/fast learner/);
-      expect(textarea.value).not.toMatch(/always eager/);
-      expect(textarea.value).toMatch(/Line one/);
-      expect(textarea.value).toMatch(/Line five/);
+      await waitFor(() => expect(mockRefineEmail).toHaveBeenCalledTimes(1));
+      expect(mockRefineEmail.mock.calls[0][1]).toBe('Make it shorter and more concise');
+      await waitFor(() => {
+        const textarea = screen.getByDisplayValue(/Line one/) as HTMLTextAreaElement;
+        expect(textarea.value).not.toMatch(/fast learner/);
+      });
     });
 
     it('"coursework" inserts the profile\'s coursework when present', async () => {
@@ -678,6 +696,7 @@ describe('ColdEmailModal', () => {
         'Make it warmer',
         makeProfile(),
         'opp',
+        expect.any(Object), // options (resumeBullets when extracted)
       );
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
     });

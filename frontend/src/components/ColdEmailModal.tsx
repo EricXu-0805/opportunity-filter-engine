@@ -13,7 +13,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { generateColdEmail, getEmailVariants, refineEmail } from '@/lib/api';
+import { generateColdEmail, getEmailVariants, refineEmail, extractResumeBullets } from '@/lib/api';
 import {
   getInteractionDetail,
   trackInteraction,
@@ -75,6 +75,20 @@ function aiFallbackMessage(
   return t('coldEmail.aiFallbackGeneric');
 }
 
+// Tone quick-actions (formal / shorter / enthusiastic) are canned refine
+// instructions routed through POST /cold-email/refine — the backend's
+// email_modes.EDIT_OPS registry is the single source of tone truth (LLM when
+// configured, its deterministic edit ops otherwise). Keeping a client-side
+// tone table here was the third copy of those semantics and had already
+// drifted from the backend's.
+const QUICK_ACTION_INSTRUCTIONS: Record<Exclude<QuickActionKey, 'coursework'>, string> = {
+  formal: 'Make it more formal and professional',
+  shorter: 'Make it shorter and more concise',
+  enthusiastic: 'Make it more enthusiastic',
+};
+
+// Coursework stays client-side: it inserts the student's own courses verbatim
+// (naturally grounded), so a network round-trip buys nothing.
 function applyQuickEdit(
   body: string,
   action: QuickActionKey,
@@ -82,36 +96,6 @@ function applyQuickEdit(
   t: Replier,
 ): { body: string; reply: string } {
   switch (action) {
-    case 'formal': {
-      let updated = body
-        .replace(/I would love/g, 'I would greatly appreciate')
-        .replace(/I am a fast learner/g, 'I am committed to continuous professional development')
-        .replace(/Would you be open to/g, 'Would it be possible to arrange')
-        .replace(/a short meeting/g, 'a brief meeting at your convenience')
-        .replace(/a brief conversation/g, 'a brief meeting at your convenience')
-        .replace(/Best regards/g, 'Respectfully')
-        .replace(/Best,/g, 'Respectfully,');
-      if (updated === body) updated = body.replace(/I really enjoyed/g, 'I was greatly impressed by');
-      return { body: updated, reply: t('coldEmail.replies.formal') };
-    }
-    case 'shorter': {
-      const lines = body.split('\n').filter((l) => l.trim());
-      const filtered = lines.filter(
-        (l) =>
-          !l.includes('I am a fast learner') &&
-          !l.includes('I am confident I can') &&
-          !l.includes('always eager'),
-      );
-      return { body: filtered.join('\n'), reply: t('coldEmail.replies.shorter') };
-    }
-    case 'enthusiastic': {
-      const updated = body
-        .replace(/I am very interested in/g, 'I am truly excited about')
-        .replace(/I really enjoyed learning/g, 'I was fascinated by')
-        .replace(/I would love the chance/g, 'I would be thrilled at the opportunity')
-        .replace(/I would greatly appreciate the chance/g, 'I would be thrilled at the opportunity');
-      return { body: updated, reply: t('coldEmail.replies.enthusiastic') };
-    }
     case 'coursework': {
       const courses = profile.coursework ?? [];
       if (courses.length === 0) {
@@ -180,6 +164,12 @@ export default function ColdEmailModal({
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  // Cache the resume experience bullets extracted from the profile's resume
+  // text so every AI (re)generation reuses one extraction. Keyed by the text
+  // it was extracted from — the modal stays mounted across open/close cycles,
+  // so an unkeyed cache would keep serving bullets from a résumé the user has
+  // since replaced. null = not yet attempted.
+  const resumeBulletsRef = useRef<{ forText: string; bullets: string[] } | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   const fetchVariants = useCallback(async () => {
@@ -318,7 +308,29 @@ export default function ColdEmailModal({
     ]);
 
     try {
-      const resp = await generateColdEmail(profile, opportunityId, { engine: 'ai', style });
+      // Extract the student's real resume bullets once per résumé text, so the
+      // AI draft can cite their actual experience (the backend grounds them).
+      // Best-effort: a failure just falls back to skills/coursework-only
+      // grounding. Re-extracts when the résumé text changes (stale-cache fix).
+      const resumeText = profile.resume_text ?? '';
+      if (resumeBulletsRef.current === null || resumeBulletsRef.current.forText !== resumeText) {
+        try {
+          resumeBulletsRef.current = {
+            forText: resumeText,
+            bullets: resumeText
+              ? (await extractResumeBullets(resumeText)).bullets ?? []
+              : [],
+          };
+        } catch {
+          resumeBulletsRef.current = { forText: resumeText, bullets: [] };
+        }
+      }
+      const bullets = resumeBulletsRef.current.bullets;
+      const resp = await generateColdEmail(profile, opportunityId, {
+        engine: 'ai',
+        style,
+        ...(bullets && bullets.length > 0 ? { resumeBullets: bullets } : {}),
+      });
       const v: EmailVariant = {
         id: AI_VARIANT_ID,
         label: t('coldEmail.aiVariantLabel'),
@@ -367,23 +379,16 @@ export default function ColdEmailModal({
     generateAi(style);
   }
 
-  function handleQuickAction(key: QuickActionKey) {
-    const label = t(`coldEmail.quickActions.${key}`);
-    setChatMessages((prev) => [...prev, { role: 'user', content: label }]);
-    const { body: newBody, reply } = applyQuickEdit(body, key, profile, t);
-    setBody(newBody);
-    setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-  }
-
-  async function handleChatSubmit() {
-    const msg = chatInput.trim();
-    if (!msg) return;
-    setChatInput('');
-    setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
+  // Shared grounded-refine runner for typed chat instructions AND the tone
+  // quick-actions. Appends the "editing…" assistant message, calls the backend
+  // (which grounds the result and degrades to its deterministic EDIT_OPS when
+  // no LLM is configured), then replaces the placeholder with the outcome.
+  async function runRefine(instruction: string) {
     setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.editing') }]);
-
     try {
-      const result = await refineEmail(body, msg, profile, opportunityId);
+      const result = await refineEmail(body, instruction, profile, opportunityId, {
+        resumeBullets: resumeBulletsRef.current?.bullets,
+      });
       setBody(result.body);
       setChatMessages((prev) => {
         const updated = [...prev];
@@ -408,6 +413,27 @@ export default function ColdEmailModal({
         return updated;
       });
     }
+  }
+
+  function handleQuickAction(key: QuickActionKey) {
+    const label = t(`coldEmail.quickActions.${key}`);
+    setChatMessages((prev) => [...prev, { role: 'user', content: label }]);
+    if (key === 'coursework') {
+      // Client-side: inserts the student's own courses verbatim.
+      const { body: newBody, reply } = applyQuickEdit(body, key, profile, t);
+      setBody(newBody);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      return;
+    }
+    void runRefine(QUICK_ACTION_INSTRUCTIONS[key]);
+  }
+
+  async function handleChatSubmit() {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    setChatInput('');
+    setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    await runRefine(msg);
   }
 
   // Record the contact without clobbering an existing status: create an

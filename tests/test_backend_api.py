@@ -512,8 +512,8 @@ class TestColdEmailEngine:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module,
-            "_ai_generate_email_text",
-            lambda profile, opp, style=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
+            "_pipeline_generate",
+            lambda profile, opp, style=None, resume_bullets=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -528,8 +528,8 @@ class TestColdEmailEngine:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module,
-            "_ai_generate_email_text",
-            lambda profile, opp, style=None: "I will not write that email.",
+            "_pipeline_generate",
+            lambda profile, opp, style=None, resume_bullets=None: "I will not write that email.",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -552,8 +552,8 @@ class TestColdEmailEngine:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module,
-            "_ai_generate_email_text",
-            lambda profile, opp, style=None: (
+            "_pipeline_generate",
+            lambda profile, opp, style=None, resume_bullets=None: (
                 "Subject: ML research fit\n\n"
                 "Dear Professor,\n"
                 "I am an expert in PyTorch and have deployed Kubernetes "
@@ -578,8 +578,8 @@ class TestColdEmailEngine:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module,
-            "_ai_generate_email_text",
-            lambda profile, opp, style=None: (
+            "_pipeline_generate",
+            lambda profile, opp, style=None, resume_bullets=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\n"
                 "I have experience with Python and machine learning from CS 124 "
@@ -632,8 +632,8 @@ class TestColdEmailStyle:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
-            ce_module, "_ai_generate_email_text",
-            lambda profile, opp, style=None: (
+            ce_module, "_pipeline_generate",
+            lambda profile, opp, style=None, resume_bullets=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\nI have experience with Python and machine "
                 "learning from CS 124 and would be grateful to contribute.\n"
@@ -656,9 +656,12 @@ class TestColdEmailStyle:
         assert _recommended_style(None) == "professional"  # safe default
 
     def test_tone_overlay_in_system_prompt(self, sample_profile_req, monkeypatch):
-        """The selected tone appends a voice overlay onto the lab-type system
-        prompt; style=None leaves the prompt unchanged (no overlay marker)."""
+        """The selected voice appends a VOICE section onto the draft system
+        prompt; style=None leaves the prompt without it. The draft is the first
+        LLM call, so returning None from fake_chat stops the pipeline there and
+        captures exactly the draft system prompt."""
         import backend.routes.cold_email as ce_module
+        from backend.lib.email_modes import DRAFT_VOICES
         from backend.schemas import ProfileRequest
 
         captured: dict = {}
@@ -671,12 +674,12 @@ class TestColdEmailStyle:
         profile_dict = ProfileRequest(**sample_profile_req).model_dump()
         opp = data_loader.load_opportunities()[0]
 
-        ce_module._ai_generate_email_text(profile_dict, opp, style="lively")
-        assert "TONE OVERLAY" in captured["system"]
-        assert ce_module._TONE_INSTRUCTIONS["lively"] in captured["system"]
+        ce_module._pipeline_generate(profile_dict, opp, style="lively")
+        assert "VOICE" in captured["system"]
+        assert DRAFT_VOICES["lively"] in captured["system"]
 
-        ce_module._ai_generate_email_text(profile_dict, opp, style=None)
-        assert "TONE OVERLAY" not in captured["system"]
+        ce_module._pipeline_generate(profile_dict, opp, style=None)
+        assert "VOICE" not in captured["system"]
 
 
 class TestGroundingShadowTelemetry:
@@ -852,8 +855,8 @@ class TestColdEmailSubjectParsing:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module,
-            "_ai_generate_email_text",
-            lambda profile, opp, style=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
+            "_pipeline_generate",
+            lambda profile, opp, style=None, resume_bullets=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
         )
         opps = data_loader.load_opportunities()
         payload = {
