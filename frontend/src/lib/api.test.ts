@@ -176,7 +176,10 @@ describe('getMatches', () => {
   });
 
   it('AI smart match is the server default: llm=true sends no param, llm=false opts out', async () => {
-    fetchMock.mockResolvedValue(
+    // Fresh Response per call — this test fetches twice, and a shared
+    // mockResolvedValue Response throws "Body has already been read" on the
+    // second res.json() (CI Node enforces single-use bodies).
+    fetchMock.mockImplementation(async () =>
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile(), { llm: true });
