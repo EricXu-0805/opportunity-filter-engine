@@ -96,7 +96,7 @@ describe('scopeChipFor — chip rendering rules', () => {
   });
 
   it('falls back to the raw slug for a host school not in the registry', () => {
-    expect(scopeChipFor({ school: 'mit', audience: 'open' }, 'uiuc'))
-      .toEqual({ kind: 'open', host: 'mit' });
+    expect(scopeChipFor({ school: 'yale', audience: 'open' }, 'uiuc'))
+      .toEqual({ kind: 'open', host: 'yale' });
   });
 });

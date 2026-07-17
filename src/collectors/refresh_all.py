@@ -42,8 +42,12 @@ from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
 from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
+from .schools.harvard_faculty import fetch_and_normalize as fetch_harvard_faculty
+from .schools.harvard_faculty import merge_into_processed as merge_harvard_faculty
 from .schools.jhu_faculty import fetch_and_normalize as fetch_jhu_faculty
 from .schools.jhu_faculty import merge_into_processed as merge_jhu_faculty
+from .schools.mit_faculty import fetch_and_normalize as fetch_mit_faculty
+from .schools.mit_faculty import merge_into_processed as merge_mit_faculty
 from .schools.northwestern_faculty import fetch_and_normalize as fetch_northwestern_faculty
 from .schools.northwestern_faculty import merge_into_processed as merge_northwestern_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
@@ -645,6 +649,8 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("vanderbilt_faculty", fetch_vanderbilt_faculty, merge_vanderbilt_faculty),
             ("dartmouth_faculty", fetch_dartmouth_faculty, merge_dartmouth_faculty),
             ("columbia_faculty", fetch_columbia_faculty, merge_columbia_faculty),
+            ("mit_faculty", fetch_mit_faculty, merge_mit_faculty),
+            ("harvard_faculty", fetch_harvard_faculty, merge_harvard_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).

@@ -82,7 +82,7 @@ describe('registry — switcher metadata', () => {
     for (const school of SCHOOLS) {
       expect(bySlug(school.slug)).toBe(school);
     }
-    expect(bySlug('mit')).toBeUndefined();
+    expect(bySlug('yale')).toBeUndefined();
     expect(bySlug('')).toBeUndefined();
   });
 
@@ -120,7 +120,7 @@ describe('registry — switcher metadata', () => {
 
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending).toEqual([]);
-    expect(SCHOOLS.length).toBe(27);
+    expect(SCHOOLS.length).toBe(29);
   });
 
   it('slugs are unique', () => {
