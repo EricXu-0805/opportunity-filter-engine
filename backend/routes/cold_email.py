@@ -533,7 +533,7 @@ def _llm_critique(draft: str, prof_brief: str, stu_brief: str, style: str | None
         "evidence_backed_fit": bool(parsed.get("evidence_backed_fit", True)),
         "generic_sentences": [str(s) for s in gs[:5]] if isinstance(gs, list) else [],
         "verdict": str(parsed.get("verdict", "pass")),
-        "revision_notes": str(notes) if isinstance(notes, (str, int, float)) else "",
+        "revision_notes": str(notes) if isinstance(notes, str | int | float) else "",
     }
 
 
