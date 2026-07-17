@@ -43,8 +43,16 @@
     "campus": 1358,
     "national": 3499
   },
+  "nd": {
+    "campus": 1253,
+    "national": 3499
+  },
   "northwestern": {
     "campus": 2792,
+    "national": 3499
+  },
+  "osu": {
+    "campus": 2248,
     "national": 3499
   },
   "princeton": {
@@ -57,6 +65,10 @@
   },
   "rice": {
     "campus": 991,
+    "national": 3499
+  },
+  "rochester": {
+    "campus": 847,
     "national": 3499
   },
   "stanford": {
@@ -87,16 +99,32 @@
     "campus": 1508,
     "national": 3499
   },
+  "uf": {
+    "campus": 1965,
+    "national": 3499
+  },
   "uiuc": {
     "campus": 3327,
+    "national": 3499
+  },
+  "umass": {
+    "campus": 1517,
     "national": 3499
   },
   "umich": {
     "campus": 858,
     "national": 3499
   },
+  "umn": {
+    "campus": 1431,
+    "national": 3499
+  },
   "upenn": {
     "campus": 1909,
+    "national": 3499
+  },
+  "usc": {
+    "campus": 1512,
     "national": 3499
   },
   "utexas": {
