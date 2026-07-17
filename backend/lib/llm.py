@@ -70,9 +70,11 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
     ),
 )
 
-# Ask-AI chat lets the user pick among a few OpenRouter models (the formal
-# flows — résumé tailoring, cold email — route via model_for()). The default set
-# is deliberately restricted to vetted, US-operated providers (OpenAI, Google,
+# Ask-AI chat exposes intent-labeled tiers, not vendor model names (the formal
+# flows — résumé tailoring, cold email — route via model_for()). Students don't
+# know model SKUs, and a vendor generation bump (5.1→5.6) shouldn't require a
+# UI change — only this table (or OFE_CHAT_MODELS) moves. The set is
+# deliberately restricted to vetted, US-operated providers (OpenAI, Google,
 # Anthropic) that the privacy policy names as subprocessors — the chat prompt
 # embeds profile PII incl. the international-student flag, so we do NOT
 # default-route F-1 users' data to undisclosed / non-US operators (e.g. DeepSeek
@@ -82,9 +84,8 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # Surfaced ONLY when OPENROUTER_API_KEY is set; otherwise the picker stays hidden
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
-    ("claude-sonnet", "Claude Sonnet 5", "anthropic/claude-sonnet-5"),
-    ("gpt-5.1", "GPT-5.1", "openai/gpt-5.1"),
-    ("gemini-flash", "Gemini 3.5 Flash", "google/gemini-3.5-flash"),
+    ("auto", "Auto", "anthropic/claude-sonnet-5"),
+    ("thinking", "Thinking", "openai/gpt-5.6-terra-pro"),
 )
 
 
