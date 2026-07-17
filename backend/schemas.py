@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -307,6 +308,15 @@ class ResumeBullet(BaseModel):
     id: str
     text: str = ""
 
+    @field_validator("id")
+    @classmethod
+    def cap_id(cls, v: str) -> str:
+        # IDs are structural tokens (s1b2). Strip ALL whitespace so an id can
+        # never smuggle newlines into the renovation-plan prompt, and cap the
+        # length — unbounded ids were an unbounded-prompt cost vector even
+        # under the 100-bullet cap.
+        return re.sub(r"\s+", "", str(v))[:64]
+
     @field_validator("text")
     @classmethod
     def cap_text(cls, v: str) -> str:
@@ -321,10 +331,23 @@ class ResumeSection(BaseModel):
     kind: str = "experience"
     bullets: list[ResumeBullet] = Field(default_factory=list)
 
+    @field_validator("id")
+    @classmethod
+    def cap_id(cls, v: str) -> str:
+        # Same rules as ResumeBullet.id (prompt-safety + cost bound).
+        return re.sub(r"\s+", "", str(v))[:64]
+
     @field_validator("heading")
     @classmethod
     def cap_heading(cls, v: str) -> str:
         return str(v)[:120]
+
+    @field_validator("kind")
+    @classmethod
+    def cap_kind(cls, v: str) -> str:
+        # Interpolated into the plan prompt as a bare label — flatten
+        # whitespace and cap so it can't carry payloads or bloat the prompt.
+        return re.sub(r"\s+", " ", str(v)).strip()[:24]
 
     @field_validator("bullets")
     @classmethod
@@ -365,6 +388,30 @@ class RenovateRequest(BaseModel):
     def normalize_locale(cls, v: str) -> str:
         primary = (v or "").lower().split("-")[0].split("_")[0]
         return "zh" if primary == "zh" else "en"
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_oversized_payload(cls, data):
+        # Runs on the RAW payload, before the silent per-section/section-count
+        # truncations (cap_bullets 40, cap_sections 15). Without this, a
+        # 2×61-bullet résumé would be quietly cut to 80 and renovated with 42
+        # bullets missing — silent data loss on the user's résumé. A renovation
+        # must see the WHOLE document or refuse loudly; oversize is a client
+        # bug or abuse, so 422 with a clear message.
+        if isinstance(data, dict) and isinstance(data.get("sections"), list):
+            sections = data["sections"]
+            if len(sections) > 15:
+                raise ValueError("too many sections: max 15")
+            total = 0
+            for s in sections:
+                if isinstance(s, dict) and isinstance(s.get("bullets"), list):
+                    n = len(s["bullets"])
+                    if n > 40:
+                        raise ValueError("a section exceeds 40 bullets")
+                    total += n
+            if total > 100:
+                raise ValueError("too many bullets: max 100 across all sections")
+        return data
 
     @model_validator(mode="after")
     def validate_section_tree(self) -> RenovateRequest:

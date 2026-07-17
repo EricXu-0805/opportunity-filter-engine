@@ -451,6 +451,101 @@ class TestRenovate:
         })
         assert resp.status_code == 422
 
+    def test_oversized_section_rejected_not_silently_truncated(
+        self, python_profile, real_opp_id,
+    ):
+        """2 sections × 61 bullets: the per-section cap would silently trim to
+        80 and renovate a résumé with 42 bullets missing. The raw-payload
+        validator rejects loudly instead — a renovation must see the whole
+        document or refuse."""
+        sections = [
+            {"id": f"s{i}", "heading": "X", "kind": "other",
+             "bullets": [
+                 {"id": f"s{i}b{j}", "text": f"Did course project number {i}-{j} for a class"}
+                 for j in range(61)
+             ]}
+            for i in range(2)
+        ]
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": sections,
+        })
+        assert resp.status_code == 422
+
+    def test_ids_are_stripped_and_capped(self):
+        """IDs can't smuggle newlines into the plan prompt or blow the prompt
+        budget — whitespace is stripped and length capped at the schema."""
+        from backend.schemas import ResumeBullet, ResumeSection
+
+        b = ResumeBullet(id="s1\nSYSTEM OVERRIDE\tb2" + "x" * 200, text="hi")
+        assert "\n" not in b.id and "\t" not in b.id and " " not in b.id
+        assert len(b.id) <= 64
+        s = ResumeSection(id="  s 1  ", heading="H", kind="a\nb" + "k" * 50)
+        assert s.id == "s1"
+        assert "\n" not in s.kind and len(s.kind) <= 24
+
+    def test_empty_item_padding_cannot_shift_rewrites(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """A model response padded with an empty item (3 items for 2 foreground
+        bullets) must trip the count guard — with slots preserved, the raw item
+        count is compared, so padding can't sneak a shifted pairing through."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        plan = json.dumps({"sections": [{"id": "s1", "bullets": [
+            {"id": "s1b1", "action": "foreground"},
+            {"id": "s1b2", "action": "foreground"},
+        ]}]})
+        rewrite = json.dumps({"bullets": [
+            {"text": "", "source_evidence": ""},  # padding
+            {"text": "Wrote clear documentation for a class project", "source_evidence": "x"},
+            {"text": "Built machine learning experiments in Python", "source_evidence": "y"},
+        ]})
+        monkeypatch.setattr(
+            tailor_module, "chat_completion",
+            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
+        )
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": _sections_payload(),
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "rewrite_count_mismatch" in body["warnings"]
+        bullets = [b for s in body["sections"] for b in s["bullets"]]
+        assert all(b["current"] == -1 and b["variants"] == [] for b in bullets)
+
+    def test_empty_slot_keeps_its_own_bullet_at_base(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """Matching count with one empty slot: that bullet stays at base while
+        the OTHER bullet gets its own (not a shifted) rewrite."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        plan = json.dumps({"sections": [{"id": "s1", "bullets": [
+            {"id": "s1b1", "action": "foreground"},
+            {"id": "s1b2", "action": "foreground"},
+        ]}]})
+        rewrite = json.dumps({"bullets": [
+            {"text": "", "source_evidence": ""},  # slot for s1b1: no rewrite
+            {"text": "Wrote clear documentation for a class project", "source_evidence": "x"},
+        ]})
+        monkeypatch.setattr(
+            tailor_module, "chat_completion",
+            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
+        )
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": _sections_payload(),
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        by_id = {b["id"]: b for b in body["sections"][0]["bullets"]}
+        assert by_id["s1b1"]["current"] == -1 and by_id["s1b1"]["variants"] == []
+        assert by_id["s1b2"]["current"] == 0
+        assert "documentation" in by_id["s1b2"]["variants"][0]["text"].lower()
+
 
 # --------------------------------------------------------------------------- #
 # /tailor/bullet

@@ -223,7 +223,8 @@ def _ai_tailor_bullets(
     original_bullets: list[str],
     *,
     locale: str = "en",
-) -> list[dict] | None:
+    preserve_slots: bool = False,
+) -> list[dict | None] | None:
     """Call the shared LLM and return the parsed bullets list, or None.
 
     ``locale`` selects the system prompt (EN vs ZH). The anti-fabrication
@@ -331,18 +332,25 @@ def _ai_tailor_bullets(
     if not isinstance(bullets, list):
         return None
 
-    result: list[dict] = []
+    result: list[dict | None] = []
     for item in bullets:
-        if not isinstance(item, dict):
-            continue
-        text = str(item.get("text", "")).strip()
-        evidence = str(item.get("source_evidence", "")).strip()
+        text = str(item.get("text", "")).strip() if isinstance(item, dict) else ""
+        evidence = str(item.get("source_evidence", "")).strip() if isinstance(item, dict) else ""
         if not text:
+            # preserve_slots keeps invalid/empty items as positional None
+            # placeholders. Callers that pair rewrites to inputs by position
+            # (renovate's bullet-id attachment) NEED the slot preserved —
+            # silently dropping it shifts every later rewrite one slot left
+            # and lets empty-item padding defeat a bare length check.
+            if preserve_slots:
+                result.append(None)
             continue
         # Cap to keep response payload reasonable + avoid the model
         # smuggling long fabricated paragraphs past the validator.
         result.append({"text": text[:600], "source_evidence": evidence[:300]})
 
+    if preserve_slots:
+        return result if any(r is not None for r in result) else None
     return result or None
 
 
@@ -814,7 +822,12 @@ def _ai_renovation_plan(
 
     sec_lines: list[str] = []
     for s in sections:
-        sec_lines.append(f"[section {s.id}] {_sanitize_field(s.heading, max_len=80)} ({s.kind})")
+        # ids are schema-guaranteed whitespace-free ≤64 chars; kind is capped
+        # too but still goes through _sanitize_field for defense in depth.
+        sec_lines.append(
+            f"[section {s.id}] {_sanitize_field(s.heading, max_len=80)} "
+            f"({_sanitize_field(s.kind, max_len=24)})"
+        )
         for b in s.bullets:
             sec_lines.append(f"  - [{b.id}] {_sanitize_field(b.text, max_len=200)}")
     resume_block = "\n".join(sec_lines) or "(no sections)"
@@ -995,8 +1008,13 @@ async def renovate_resume(
 
     rewrites: dict[str, dict] = {}
     if fg:
+        # preserve_slots: invalid/empty model items stay as positional Nones,
+        # so the length check below compares the model's RAW item count — a
+        # response padded with empty items can't sneak past as "matching" and
+        # shift rewrites onto the wrong bullet ids.
         raw_rewrites = _ai_tailor_bullets(
             profile_dict, opp, [t for _, t in fg], locale=request.locale,
+            preserve_slots=True,
         )
         if not raw_rewrites:
             warnings.append("rewrite_failed_or_invalid")
@@ -1009,6 +1027,10 @@ async def renovate_resume(
         else:
             corpus = _build_evidence_corpus(profile_dict, all_base)
             for (bid, _base), item in zip(fg, raw_rewrites, strict=True):
+                if item is None:
+                    # Model returned an empty/invalid item for this slot — the
+                    # bullet simply stays at base_text.
+                    continue
                 passed, fabricated = _validate_no_fabrication(
                     item["text"], corpus, policy=LENIENT_PROSE,
                 )
