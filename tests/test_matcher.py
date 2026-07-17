@@ -2075,6 +2075,16 @@ class TestInterestBonusLowSignalTokens:
             {"research_interests_text": "AI systems, computational neuroscience"}, opp
         ) > 0.0
 
+    def test_all_broad_interest_keeps_its_bonus(self):
+        # Adversarial-review HIGH: interests made ENTIRELY of low-signal tokens
+        # ("data science") are that student's real topic — wiping the bonus
+        # dropped every on-topic result out of the top-25 on the real corpus.
+        from src.matcher.ranker import _interest_bonus
+        opp = self._opp(["data science", "statistical learning"])
+        assert _interest_bonus({"research_interests_text": "data science"}, opp) > 0.0
+        opp2 = self._opp(["information theory", "coding theory"])
+        assert _interest_bonus({"research_interests_text": "information theory"}, opp2) > 0.0
+
 
 class TestReasonOrdering:
     """Specific-first display: the topical-tie reason leads, the lab headline
@@ -2130,6 +2140,9 @@ class TestReasonOrdering:
         assert _reason_priority("Paid opportunity") == 5
         assert _reason_priority("Accepts sophomore students") == 6
         assert _reason_priority("Matches your interest in research") == 6
+        # School-constant brand lines are boilerplate, not differentiators.
+        assert _reason_priority("Major research university — strong resume builder") == 6
+        assert _reason_priority("Prestigious institution — strong resume builder") == 6
         assert _reason_priority("Something novel and unclassified") == 4
 
 

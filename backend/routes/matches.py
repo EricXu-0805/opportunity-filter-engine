@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
+import math
 import os
 import re
 import time
@@ -105,6 +107,16 @@ _LLM_RERANK_CACHE_MAX = int(os.environ.get("OFE_LLM_RERANK_CACHE_MAX", "1000"))
 _LLM_REASON_MAX_CHARS = 220
 _llm_rerank_cache: dict[str, dict[str, dict]] = {}
 
+logger = logging.getLogger("ofe.matches")
+
+# Model-authored display text: strip control chars + bidi/zero-width overrides
+# that survive the whitespace-flattening sanitizer (a U+202E RTL override can
+# visually spoof the card's lead line; NUL/ANSI escapes have no business in a
+# JSON payload).
+_CONTROL_CHARS_RE = re.compile(
+    r"[\x00-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2066-\u2069]"
+)
+
 
 def _parse_score_map(reply: str | None, n: int) -> dict[int, dict] | None:
     """Parse the model's reply into ``{idx: {"s": score, "r": reason}}``.
@@ -121,7 +133,10 @@ def _parse_score_map(reply: str | None, n: int) -> dict[int, dict] | None:
         return None
     try:
         raw = json.loads(m.group(0))
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, RecursionError):
+        # RecursionError: a pathologically nested reply ('{"0":' × 2000) blows
+        # the interpreter depth limit inside json.loads on Python 3.11 (prod
+        # pin) — it must fail the batch, never 500 the default-on route.
         return None
     if not isinstance(raw, dict):
         return None
@@ -140,12 +155,20 @@ def _parse_score_map(reply: str | None, n: int) -> dict[int, dict] | None:
             if isinstance(reason_raw, str):
                 # Model output is untrusted display text: flatten whitespace /
                 # control chars the same way scraped fields are, and cap it.
-                reason = _sanitize_field(reason_raw, max_len=_LLM_REASON_MAX_CHARS)
+                reason = _CONTROL_CHARS_RE.sub(
+                    "", _sanitize_field(reason_raw, max_len=_LLM_REASON_MAX_CHARS)
+                )
         else:
             score_raw = v
+        if isinstance(score_raw, bool):
+            continue
         try:
             score = float(score_raw)
         except (ValueError, TypeError):
+            continue
+        if not math.isfinite(score):
+            # json accepts literal NaN/Infinity, and min(100.0, nan) returns
+            # 100.0 — a degenerate reply must not become a perfect score.
             continue
         out[idx] = {"s": max(0.0, min(100.0, score)), "r": reason}
     return out or None
@@ -320,21 +343,26 @@ async def get_matches(
 
     opp_lookup = load_opportunities_by_id()
 
-    # LLM rerank (opt-in, OpenRouter). Runs after the rule rank; a strict no-op
-    # when OpenRouter is unconfigured or any call fails, so the rule order holds.
+    # LLM rerank (default-on, OpenRouter). Runs after the rule rank; a strict
+    # no-op when OpenRouter is unconfigured or any call fails, so the rule
+    # order holds. The belt honors the same contract: rerank machinery must
+    # never turn the default /matches route into a 5xx.
     if llm:
-        results = await asyncio.to_thread(
-            llm_rerank,
-            profile_dict,
-            results,
-            opp_lookup,
-        )
-        # llm_rerank re-sorts and re-buckets, which discards the explore-mode
-        # diversity ordering rank_all applied. Re-interleave the top bands so an
-        # exploring student keeps breadth across areas/types after the rerank.
-        # Within-bucket only — bucket membership / quality floor unchanged.
-        if profile_dict.get("exploring"):
-            results = await asyncio.to_thread(_diversify_explore, results, opp_lookup)
+        try:
+            results = await asyncio.to_thread(
+                llm_rerank,
+                profile_dict,
+                results,
+                opp_lookup,
+            )
+            # llm_rerank re-sorts and re-buckets, which discards the explore-mode
+            # diversity ordering rank_all applied. Re-interleave the top bands so an
+            # exploring student keeps breadth across areas/types after the rerank.
+            # Within-bucket only — bucket membership / quality floor unchanged.
+            if profile_dict.get("exploring"):
+                results = await asyncio.to_thread(_diversify_explore, results, opp_lookup)
+        except Exception:
+            logger.exception("LLM rerank failed; serving the rule order")
 
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
     visible_results = []

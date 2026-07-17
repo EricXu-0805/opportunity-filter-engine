@@ -243,6 +243,48 @@ class TestLLMRerank:
         assert "\n" not in reason          # flattened like scraped fields
         assert len(reason) <= 220          # capped
 
+    def test_parse_score_map_strips_control_and_bidi_chars(self):
+        # NUL / ANSI-escape / U+202E RTL override survive the whitespace
+        # sanitizer but must not reach the client payload (visual spoofing).
+        from backend.routes.matches import _parse_score_map
+        out = _parse_score_map('{"0": {"s": 70, "r": "a\\u0000b\\u202ec\\u001bd"}}', 1)
+        assert out[0]["r"] == "abcd"
+
+    def test_parse_score_map_rejects_degenerate_scores(self):
+        # json accepts literal NaN/Infinity and bools; none may become a score
+        # (min(100, nan) returns 100 — a degenerate reply must fail, not win).
+        from backend.routes.matches import _parse_score_map
+        for reply in ('{"0": NaN}', '{"0": Infinity}', '{"0": -Infinity}',
+                      '{"0": true}', '{"0": {"s": true}}', '{"0": {"s": NaN}}'):
+            assert _parse_score_map(reply, 1) is None, reply
+
+    def test_parse_score_map_survives_pathological_nesting(self):
+        # '{"0":'×2000 blows json.loads' recursion limit on prod Python 3.11;
+        # the batch must fail (None) — never propagate into a /matches 500.
+        from backend.routes.matches import _parse_score_map
+        deep = '{"0":' * 2000 + "1" + "}" * 2000
+        assert _parse_score_map(deep, 1) is None
+
+    def test_route_survives_rerank_crash(self, monkeypatch):
+        # Belt at the route: even if the rerank machinery itself raises, the
+        # default-on /matches serves the rule order — never a 5xx.
+        from backend.routes import matches
+
+        def boom(*a, **k):
+            raise RuntimeError("rerank exploded")
+
+        monkeypatch.setattr(matches, "llm_rerank", boom)
+        profile_req = {
+            "name": "Test", "year": "sophomore", "major": "CS",
+            "college": "Grainger College of Engineering", "international_student": False,
+            "hard_skills": [{"name": "Python", "level": "experienced"}],
+            "coursework": ["CS 124"], "research_interests_text": "machine learning",
+            "seeking_type": ["research"],
+        }
+        resp = client.post("/api/matches?limit=10", json=profile_req)
+        assert resp.status_code == 200
+        assert len(resp.json()["results"]) > 0
+
     def test_noop_without_openrouter(self, monkeypatch):
         from backend.routes import matches
         monkeypatch.setattr(matches, "_resolve", lambda *a, **k: None)

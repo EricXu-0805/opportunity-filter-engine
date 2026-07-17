@@ -1827,11 +1827,19 @@ def _interest_bonus_tokens(interests: str) -> frozenset[str]:
     prefix-hits half the corpus ("type systems", "data and information
     systems") and inflated topically-unrelated faculty into an ML student's
     top-10 (2026-07 dogfood: a data-systems-only professor at 96.9). The
-    canonical desired-field path still credits real multi-word areas."""
-    return frozenset(
-        t for t in _tokenize(interests)
-        if t not in _GENERIC_INTEREST_WORDS and t not in _LOW_SIGNAL_ALIGN_TOKENS
+    canonical desired-field path still credits real multi-word areas.
+
+    Fallback (adversarial-review HIGH): when EVERY token is low-signal
+    ("data science", "information theory"), the broad tokens ARE that
+    student's topic — wiping the bonus dropped all on-topic results out of a
+    data-science persona's top-25 on the real corpus, below the LLM-rerank
+    window. The filter applies only when a distinctive token survives to
+    carry the signal."""
+    tokens = frozenset(
+        t for t in _tokenize(interests) if t not in _GENERIC_INTEREST_WORDS
     )
+    specific = frozenset(t for t in tokens if t not in _LOW_SIGNAL_ALIGN_TOKENS)
+    return specific or tokens
 
 
 @lru_cache(maxsize=512)
@@ -1871,11 +1879,14 @@ _REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
          "Potential for publication", "Deadline in ", "Summer research — in season")),
     # 5 — nice-to-know attributes.
     (5, ("Paid opportunity", "Includes stipend", "On-campus — ")),
-    # 6 — boilerplate that is true of half the results page.
+    # 6 — boilerplate that is true of half the results page. The brand lines
+    # are school-constant (every registered-school result gets one), so they
+    # must not occupy a top-3 card slot when specific reasons are scarce.
     (6, ("Accepts ", "Your major (", "Open to international students",
          "Your experience level is competitive",
          "You're comfortable with direct outreach", "Low application effort",
-         "Matches your interest in ")),
+         "Matches your interest in ", "Major research university",
+         "Prestigious institution")),
 )
 
 
