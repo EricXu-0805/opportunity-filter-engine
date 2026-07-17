@@ -296,6 +296,129 @@ class ExtractBulletsResponse(BaseModel):
     method: str = "heuristic"  # "ai" | "heuristic"
 
 
+# --- Résumé renovation (staged: structure → macro renovate → per-bullet) -----
+# The standard résumé is structured once (sections + bullets), then renovated
+# toward one opportunity/professor. Every prose output routes through the same
+# STUDENT-ONLY anti-fabrication corpus as /tailor; the structural stages emit
+# only IDs so they cannot fabricate at all.
+
+
+class ResumeBullet(BaseModel):
+    id: str
+    text: str = ""
+
+    @field_validator("text")
+    @classmethod
+    def cap_text(cls, v: str) -> str:
+        return str(v)[:600]
+
+
+class ResumeSection(BaseModel):
+    id: str
+    heading: str = ""
+    # "experience" | "projects" | "research" | "education" | "skills" | "other".
+    # Free-form but capped; only used to label the section, never a claim.
+    kind: str = "experience"
+    bullets: list[ResumeBullet] = Field(default_factory=list)
+
+    @field_validator("heading")
+    @classmethod
+    def cap_heading(cls, v: str) -> str:
+        return str(v)[:120]
+
+    @field_validator("bullets")
+    @classmethod
+    def cap_bullets(cls, v: list) -> list:
+        return v[:40]
+
+
+class StructureResumeRequest(BaseModel):
+    resume_text: str = Field(default="", max_length=20000)
+    locale: str = "en"
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, v: str) -> str:
+        primary = (v or "").lower().split("-")[0].split("_")[0]
+        return "zh" if primary == "zh" else "en"
+
+
+class StructureResumeResponse(BaseModel):
+    sections: list[ResumeSection]
+    method: str = "heuristic"  # "ai" | "heuristic"
+    warnings: list[str] = Field(default_factory=list)
+
+
+class RenovateRequest(BaseModel):
+    profile: ProfileRequest
+    opportunity_id: str
+    sections: list[ResumeSection] = Field(default_factory=list)
+    locale: str = "en"
+
+    @field_validator("sections")
+    @classmethod
+    def cap_sections(cls, v: list) -> list:
+        return v[:15]
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, v: str) -> str:
+        primary = (v or "").lower().split("-")[0].split("_")[0]
+        return "zh" if primary == "zh" else "en"
+
+
+class RenovatedVariant(BaseModel):
+    # "base" is never stored in the chain (base_text is the floor); a variant is
+    # one of the appended reframings.
+    source: str  # "macro" | "ai" | "user"
+    text: str
+    source_evidence: str = ""
+
+
+class RenovatedBullet(BaseModel):
+    id: str
+    base_text: str                                 # rollback floor — the student's own words
+    variants: list[RenovatedVariant] = Field(default_factory=list)
+    # Index into ``variants``; -1 == show base_text. Rollback moves this back.
+    current: int = -1
+    action: str = "keep"                           # "foreground" | "keep" | "demote"
+
+
+class RenovatedSection(BaseModel):
+    id: str
+    heading: str = ""
+    kind: str = "experience"
+    bullets: list[RenovatedBullet] = Field(default_factory=list)
+
+
+class RenovateResponse(BaseModel):
+    sections: list[RenovatedSection]
+    method: str = "fallback"  # "ai" | "fallback"
+    warnings: list[str] = Field(default_factory=list)
+
+
+class BulletOptimizeRequest(BaseModel):
+    profile: ProfileRequest
+    opportunity_id: str
+    current_text: str = Field(default="", max_length=600)
+    base_text: str = Field(default="", max_length=600)
+    instruction: str | None = Field(default=None, max_length=300)
+    locale: str = "en"
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, v: str) -> str:
+        primary = (v or "").lower().split("-")[0].split("_")[0]
+        return "zh" if primary == "zh" else "en"
+
+
+class BulletOptimizeResponse(BaseModel):
+    text: str
+    source_evidence: str = ""
+    changed: bool = False
+    warnings: list[str] = Field(default_factory=list)
+
+
 class OpportunityListResponse(BaseModel):
     total: int
     opportunities: list[dict]
