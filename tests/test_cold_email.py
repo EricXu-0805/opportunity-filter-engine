@@ -938,6 +938,31 @@ class TestNDraftJudgeTier:
             monkeypatch.setattr(ce, "chat_completion", lambda messages, raw=raw, **kw: raw)
             assert ce._judge_drafts(["a", "b"], "P", "S", None) is None
 
+    def test_judge_and_critique_use_the_review_model_tier(self, monkeypatch):
+        """2026-07 writing evals: Sonnet 5 wins prose outright (draft/revise
+        stay), Opus 4.8 leads editorial judgment — the critique rubric and the
+        N-draft judge ride the cold_email_review task tier."""
+        import backend.routes.cold_email as ce
+
+        monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+        seen = []
+
+        def fake(messages, **kw):
+            seen.append((self._role(messages), kw.get("model")))
+            role = self._role(messages)
+            if role in ("draft_angle1", "draft_angle2"):
+                return self._CLEAN_A if role == "draft_angle1" else self._CLEAN_B
+            if role == "judge":
+                return '{"winner": 1}'
+            return '{"verdict":"pass","references_specific_professor_work":true,"generic_sentences":[]}'
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        ce._pipeline_generate(self._profile(), self._opp(), None)
+        models = dict(seen)
+        assert models["judge"] == "anthropic/claude-opus-4-8"
+        assert models["critique"] == "anthropic/claude-opus-4-8"
+        assert models["draft_angle1"] == "anthropic/claude-sonnet-5"
+
     def test_ndraft_count_clamps(self, monkeypatch):
         import backend.routes.cold_email as ce
         monkeypatch.delenv("OFE_COLD_EMAIL_NDRAFT", raising=False)

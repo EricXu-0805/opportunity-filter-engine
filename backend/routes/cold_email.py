@@ -487,7 +487,7 @@ def _judge_drafts(
         max_tokens=100,
         temperature=0.0,
         reasoning_effort="low",
-        **model_for("cold_email"),
+        **model_for("cold_email_review"),
     )
     if not raw:
         return None
@@ -591,7 +591,7 @@ def _llm_critique(draft: str, prof_brief: str, stu_brief: str, style: str | None
         max_tokens=350,
         temperature=0.0,
         reasoning_effort="low",
-        **model_for("cold_email"),
+        **model_for("cold_email_review"),
     )
     if not raw:
         return None
