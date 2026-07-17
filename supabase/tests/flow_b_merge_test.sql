@@ -464,4 +464,80 @@ BEGIN
   RAISE WARNING 'PASS scenario 6 (OAuth secret binding: possession redeems, stolen/wrong secret refused, exactly-one binding, email path intact)';
 END $$;
 
+-- =====================================================================
+-- Scenario 7: résumé-renovation + usage-event merge (migration 021)
+--   - resume_renovations: union on (device_id, opportunity_id), target kept on
+--     conflict, source dupes dropped, non-conflicting moved.
+--   - resume_renovation_versions + usage_events: append-only, move all.
+--   - source fully drained across all three 021 tables.
+-- =====================================================================
+DO $$
+DECLARE
+  u text := '77777777-7777-4777-8777-777777777777';  -- anon source
+  v text := '10101010-1010-4010-8010-101010101010';  -- permanent target
+  tok uuid;
+  res jsonb;
+  c int;
+BEGIN
+  -- ---- seed TARGET (V) ----
+  INSERT INTO resume_renovations (device_id, opportunity_id, doc)
+    VALUES (v, 'oppR', '{"who":"V"}');                 -- conflict with U's oppR
+  INSERT INTO resume_renovation_versions (device_id, opportunity_id, doc)
+    VALUES (v, 'oppR', '{"snap":"V1"}');
+  INSERT INTO usage_events (device_id, feature) VALUES (v, 'renovation');
+
+  -- ---- seed SOURCE (U) ----
+  INSERT INTO resume_renovations (device_id, opportunity_id, doc)
+    VALUES (u, 'oppR', '{"who":"U"}'),                  -- dup -> target kept
+           (u, 'oppS', '{"who":"U"}');                  -- new -> moves
+  INSERT INTO resume_renovation_versions (device_id, opportunity_id, doc)
+    VALUES (u, 'oppR', '{"snap":"U1"}');                -- append -> moves
+  INSERT INTO usage_events (device_id, feature)
+    VALUES (u, 'renovation'), (u, 'bullet_optimize');   -- append -> both move
+
+  -- ---- mint as anon U (bound to V's email), redeem as V ----
+  PERFORM set_config('test.uid', u, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
+  tok := mint_merge_grant('accountV@ex.com');
+
+  PERFORM set_config('test.uid', v, false);
+  PERFORM set_config('test.jwt', '{"email":"accountv@ex.com"}', false);
+  res := redeem_merge_grant(tok);
+
+  IF (res->>'merged')::boolean IS NOT TRUE THEN
+    RAISE EXCEPTION 'TEST FAIL s7: expected merged=true, got %', res;
+  END IF;
+
+  -- resume_renovations: 2 under V (oppR kept target + oppS moved).
+  SELECT count(*) INTO c FROM resume_renovations WHERE device_id = v;
+  IF c <> 2 THEN RAISE EXCEPTION 'TEST FAIL s7 renovations: want 2 got %', c; END IF;
+  PERFORM 1 FROM resume_renovations
+    WHERE device_id = v AND opportunity_id = 'oppR' AND doc->>'who' = 'V';
+  IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s7: oppR should keep target doc (V)'; END IF;
+  PERFORM 1 FROM resume_renovations
+    WHERE device_id = v AND opportunity_id = 'oppS' AND doc->>'who' = 'U';
+  IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s7: oppS should have moved from source'; END IF;
+  IF (res#>>'{summary,resume_renovations}')::int <> 1 THEN
+    RAISE EXCEPTION 'TEST FAIL s7: renovations summary want 1 got %',
+      res#>>'{summary,resume_renovations}';
+  END IF;
+
+  -- resume_renovation_versions: append-only -> both survive under V.
+  SELECT count(*) INTO c FROM resume_renovation_versions WHERE device_id = v;
+  IF c <> 2 THEN RAISE EXCEPTION 'TEST FAIL s7 renovation_versions: want 2 got %', c; END IF;
+
+  -- usage_events: append-only -> all three under V.
+  SELECT count(*) INTO c FROM usage_events WHERE device_id = v;
+  IF c <> 3 THEN RAISE EXCEPTION 'TEST FAIL s7 usage_events: want 3 got %', c; END IF;
+
+  -- source U fully drained across all three 021 tables.
+  SELECT (SELECT count(*) FROM resume_renovations WHERE device_id = u)
+       + (SELECT count(*) FROM resume_renovation_versions WHERE device_id = u)
+       + (SELECT count(*) FROM usage_events WHERE device_id = u)
+    INTO c;
+  IF c <> 0 THEN RAISE EXCEPTION 'TEST FAIL s7: source U not drained, % rows remain', c; END IF;
+
+  RAISE WARNING 'PASS scenario 7 (renovation + usage merge: union/dedup/drain)';
+END $$;
+
 SELECT 'ALL FLOW B TESTS PASSED' AS result;
