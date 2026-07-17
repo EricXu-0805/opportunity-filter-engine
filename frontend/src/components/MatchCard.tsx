@@ -40,6 +40,7 @@ import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
 // to keep this card a server-cheap leaf until the user opens the panel).
 const TailorModal = dynamic(() => import('./TailorModal'), { ssr: false });
+const ResumeRenovationModal = dynamic(() => import('./ResumeRenovationModal'), { ssr: false });
 
 export interface MatchCardProps {
   match: MatchResult;
@@ -126,6 +127,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   // would still work without one, but the tailor UX without a profile
   // is empty).
   const [tailorOpen, setTailorOpen] = useState(false);
+  const [renovationOpen, setRenovationOpen] = useState(false);
   const { t } = useT();
 
   const { opportunity: opp } = match;
@@ -345,6 +347,16 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.tailorResume')}
             </button>
           )}
+          {profile && (
+            <button
+              type="button"
+              onClick={() => setRenovationOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-fuchsia-600 bg-fuchsia-50 rounded-xl hover:bg-fuchsia-100 transition-colors duration-200"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {t('card.renovateResume')}
+            </button>
+          )}
           {/* Faculty: the directory page is a secondary "Faculty Page", not the
               primary CTA. Non-faculty with no apply portal: source "Details". */}
           {isFaculty && facultyPageUrl ? (
@@ -552,6 +564,15 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
       <TailorModal
         isOpen={tailorOpen}
         onClose={() => setTailorOpen(false)}
+        profile={profile}
+        opportunityId={opp.id}
+        opportunityTitle={opp.title}
+      />
+    )}
+    {profile && (
+      <ResumeRenovationModal
+        isOpen={renovationOpen}
+        onClose={() => setRenovationOpen(false)}
         profile={profile}
         opportunityId={opp.id}
         opportunityTitle={opp.title}

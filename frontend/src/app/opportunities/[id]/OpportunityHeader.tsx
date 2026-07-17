@@ -8,6 +8,7 @@ import {
   Clock,
   DollarSign,
   ExternalLink,
+  FileText,
   Globe,
   Mail,
   MapPin,
@@ -30,6 +31,7 @@ export function OpportunityHeader({
   onStar,
   onOpenEmailModal,
   onOpenTailorModal,
+  onOpenRenovationModal,
   onShare,
   t,
 }: {
@@ -46,6 +48,8 @@ export function OpportunityHeader({
    * breaking when this header is reused.
    */
   onOpenTailorModal?: () => void;
+  /** Optional — when omitted the "Renovate Resume" CTA is hidden. */
+  onOpenRenovationModal?: () => void;
   onShare: () => void;
   t: TFunc;
 }) {
@@ -145,6 +149,16 @@ export function OpportunityHeader({
           >
             <Sparkles className="w-4 h-4" aria-hidden="true" />
             {t('card.tailorResume')}
+          </button>
+        )}
+        {profile && onOpenRenovationModal && (
+          <button
+            type="button"
+            onClick={onOpenRenovationModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-fuchsia-50 text-fuchsia-700 text-[14px] font-medium hover:bg-fuchsia-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500"
+          >
+            <FileText className="w-4 h-4" aria-hidden="true" />
+            {t('card.renovateResume')}
           </button>
         )}
         <button

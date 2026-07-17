@@ -30,6 +30,7 @@ const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ss
 // Keeping the same dynamic-ssr-off pattern so this leaf doesn't pull the
 // modal bundle into the server render.
 const TailorModal = dynamic(() => import('@/components/TailorModal'), { ssr: false });
+const ResumeRenovationModal = dynamic(() => import('@/components/ResumeRenovationModal'), { ssr: false });
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
 
 export default function OpportunityDetail({
@@ -45,6 +46,7 @@ export default function OpportunityDetail({
   // outside OpportunityDetail, so we keep state here rather than bloat
   // useOpportunityDetail. Matches PR-2's MatchCard-local pattern.
   const [tailorOpen, setTailorOpen] = useState(false);
+  const [renovationOpen, setRenovationOpen] = useState(false);
   const {
     isFavorited,
     interactionDetail,
@@ -86,6 +88,7 @@ export default function OpportunityDetail({
               onStar={handleStar}
               onOpenEmailModal={() => setEmailModalOpen(true)}
               onOpenTailorModal={() => setTailorOpen(true)}
+              onOpenRenovationModal={() => setRenovationOpen(true)}
               onShare={handleShare}
               t={t}
             />
@@ -153,6 +156,16 @@ export default function OpportunityDetail({
         <TailorModal
           isOpen={tailorOpen}
           onClose={() => setTailorOpen(false)}
+          profile={profile}
+          opportunityId={opp.id}
+          opportunityTitle={opp.title}
+        />
+      )}
+
+      {profile && (
+        <ResumeRenovationModal
+          isOpen={renovationOpen}
+          onClose={() => setRenovationOpen(false)}
           profile={profile}
           opportunityId={opp.id}
           opportunityTitle={opp.title}

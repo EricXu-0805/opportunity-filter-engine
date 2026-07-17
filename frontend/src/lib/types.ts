@@ -280,6 +280,78 @@ export interface TailorResponse {
   warnings: string[];
 }
 
+// ── Resume renovation (per-opportunity whole-résumé rework) ──────────
+// Mirrors backend.schemas: /tailor/structure emits ResumeSection[]
+// (structural ids + verbatim bullet text); /tailor/renovate emits
+// RenovatedSection[] whose bullets carry a VARIANT CHAIN:
+//   base_text  — the student's own words, the rollback floor;
+//   variants   — appended reframings (macro plan / ai re-optimize / user
+//                edit), each with its provenance;
+//   current    — index into variants, -1 == show base_text. Rollback is a
+//                pure pointer move client-side (no LLM → cannot fabricate).
+export interface ResumeBulletInput {
+  id: string;
+  text: string;
+}
+
+export interface ResumeSectionInput {
+  id: string;
+  heading: string;
+  kind: string;
+  bullets: ResumeBulletInput[];
+}
+
+export interface StructureResumeResponse {
+  sections: ResumeSectionInput[];
+  method: 'ai' | 'heuristic';
+  warnings: string[];
+}
+
+export type RenovatedVariantSource = 'macro' | 'ai' | 'user';
+
+export interface RenovatedVariant {
+  source: RenovatedVariantSource;
+  text: string;
+  source_evidence: string;
+}
+
+export type RenovationAction = 'foreground' | 'keep' | 'demote';
+
+export interface RenovatedBullet {
+  id: string;
+  base_text: string;
+  variants: RenovatedVariant[];
+  current: number;
+  action: RenovationAction | string;
+}
+
+export interface RenovatedSection {
+  id: string;
+  heading: string;
+  kind: string;
+  bullets: RenovatedBullet[];
+}
+
+export interface RenovateResponse {
+  sections: RenovatedSection[];
+  method: 'ai' | 'fallback';
+  warnings: string[];
+}
+
+export interface BulletOptimizeResponse {
+  text: string;
+  source_evidence: string;
+  changed: boolean;
+  warnings: string[];
+}
+
+/** The working document the modal edits and supabase persists (doc jsonb). */
+export interface RenovationDoc {
+  sections: RenovatedSection[];
+  method: 'ai' | 'fallback';
+  warnings: string[];
+}
+
 // ── Resume ───────────────────────────────────────────────────────────
 export interface ResumeParseResponse {
   extracted_skills: string[];
