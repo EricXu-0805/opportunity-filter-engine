@@ -93,6 +93,24 @@ describe('match-cache', () => {
     expect(b.audience).toBe('open');
   });
 
+  it('ai_reason and recent_works survive the cache round-trip', () => {
+    // Both back the card's new lead line / recent-work line; dropping them on
+    // a cache-hit return would silently strip the personalization.
+    const resp = makeResponse(1);
+    (resp.results[0] as unknown as Record<string, unknown>).ai_reason =
+      'Their vision work matches your CV interest.';
+    (resp.results[0].opportunity as unknown as Record<string, unknown>).recent_works = [
+      { title: 'Paper A', year: 2025 },
+    ];
+    writeMatchCache('h1', false, resp);
+    const out = readMatchCache('h1', false)!;
+    const r = out.results[0] as unknown as Record<string, unknown>;
+    expect(r.ai_reason).toBe('Their vision work matches your CV interest.');
+    expect((r.opportunity as Record<string, unknown>).recent_works).toEqual([
+      { title: 'Paper A', year: 2025 },
+    ]);
+  });
+
   it('hasMatchCache reflects presence', () => {
     expect(hasMatchCache()).toBe(false);
     writeMatchCache('h1', false, makeResponse());

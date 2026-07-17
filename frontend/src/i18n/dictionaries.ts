@@ -2028,6 +2028,7 @@ export const en = {
     hideDetails: 'Hide details',
     resumeRequired: 'Resume required',
     recLetterNeeded: 'Rec. letter needed',
+    recentWork: 'Recent work',
     heardBack: 'Students recently heard back',
     feedback: {
       prompt: 'Accurate?',
@@ -2303,6 +2304,7 @@ export const en = {
     errorRateLimited: 'You are sending messages too quickly. Wait a minute and try again.',
     modelLabel: 'Model',
     modelAuto: 'Auto',
+    modelThinking: 'Thinking',
     modelAria: 'Choose the AI model',
   },
   email: {
@@ -2371,6 +2373,10 @@ export const en = {
     aiVariantLabel: '✨ AI',
     aiVariantTitle: 'Personalize with AI',
     aiGenerating: 'Generating an AI-personalized version...',
+    stageDrafting: 'Drafting…',
+    stageJudging: 'Comparing drafts…',
+    stageCritiquing: 'Self-reviewing…',
+    stageRevising: 'Revising details…',
     aiGenerated: 'AI-personalized version ready. Switch back to a template variant anytime.',
     aiFallback: 'No AI provider configured — fell back to the template version. Set OPENAI_API_KEY (or Gemini / OpenRouter) to unlock AI.',
     aiFallbackFabrication: 'The AI draft added details we couldn\'t verify in your profile, so we kept the safe template version instead.',
@@ -4953,6 +4959,7 @@ export const zh = {
     hideDetails: '收起详情',
     resumeRequired: '需要简历',
     recLetterNeeded: '需要推荐信',
+    recentWork: '近作',
     heardBack: '近期有学生收到回复',
     feedback: {
       prompt: '推荐准吗？',
@@ -5228,6 +5235,7 @@ export const zh = {
     errorRateLimited: '发送太频繁了，请等一分钟再试。',
     modelLabel: '模型',
     modelAuto: '自动',
+    modelThinking: '深度思考',
     modelAria: '选择 AI 模型',
   },
   email: {
@@ -5294,6 +5302,10 @@ export const zh = {
     aiVariantLabel: '✨ AI',
     aiVariantTitle: '使用 AI 个性化',
     aiGenerating: '正在生成 AI 个性化版本...',
+    stageDrafting: '起草中…',
+    stageJudging: '对比评审草稿中…',
+    stageCritiquing: '自检草稿中…',
+    stageRevising: '按发现精修中…',
     aiGenerated: 'AI 个性化版本已就绪。随时可切回模板版本。',
     aiFallback: '未配置 AI 提供者 —— 已退回模板版本。设置 OPENAI_API_KEY(或 Gemini / OpenRouter)以启用 AI。',
     aiFallbackFabrication: 'AI 草稿写出了你资料中无法验证的内容,因此保留了更安全的模板版本。',

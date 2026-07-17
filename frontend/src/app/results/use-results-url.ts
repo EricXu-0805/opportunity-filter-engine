@@ -57,11 +57,13 @@ export function readInitialSemanticRerank(
   const p = searchParams.get('ai');
   if (p === '1') return true;
   if (p === '0') return false;
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return true;
   const stored = localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK);
   if (stored === '0') return false;
   if (stored === '1') return true;
-  return false;
+  // AI smart match is the default (2026-07): it fixes the rule ranking's tie
+  // walls and writes each card's concrete lead reason. '0' still opts out.
+  return true;
 }
 
 // URL writer. Uses history.replaceState (not router.replace) to avoid

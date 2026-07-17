@@ -13,13 +13,20 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { generateColdEmail, getEmailVariants, refineEmail } from '@/lib/api';
+import {
+  generateColdEmail,
+  generateColdEmailStream,
+  getEmailVariants,
+  refineEmail,
+  extractResumeBullets,
+  type ColdEmailStage,
+} from '@/lib/api';
 import {
   getInteractionDetail,
   trackInteraction,
   updateInteractionDetails,
 } from '@/lib/supabase';
-import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason } from '@/lib/types';
+import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
@@ -61,6 +68,16 @@ interface ChatMessage {
 const QUICK_ACTION_KEYS = ['formal', 'shorter', 'enthusiastic', 'coursework'] as const;
 type QuickActionKey = typeof QUICK_ACTION_KEYS[number];
 
+// Pipeline-stage labels shown inside the AI pill while streaming — the
+// multi-call pipeline takes noticeably longer than the old single call, so
+// the UI says WHICH stage is running instead of one opaque spinner.
+const STAGE_LABEL_KEYS: Record<ColdEmailStage, string> = {
+  drafting: 'coldEmail.stageDrafting',
+  judging: 'coldEmail.stageJudging',
+  critiquing: 'coldEmail.stageCritiquing',
+  revising: 'coldEmail.stageRevising',
+};
+
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
 // R72-A: pick the right fallback hint. 'fabrication' (the AI invented an
@@ -75,6 +92,20 @@ function aiFallbackMessage(
   return t('coldEmail.aiFallbackGeneric');
 }
 
+// Tone quick-actions (formal / shorter / enthusiastic) are canned refine
+// instructions routed through POST /cold-email/refine — the backend's
+// email_modes.EDIT_OPS registry is the single source of tone truth (LLM when
+// configured, its deterministic edit ops otherwise). Keeping a client-side
+// tone table here was the third copy of those semantics and had already
+// drifted from the backend's.
+const QUICK_ACTION_INSTRUCTIONS: Record<Exclude<QuickActionKey, 'coursework'>, string> = {
+  formal: 'Make it more formal and professional',
+  shorter: 'Make it shorter and more concise',
+  enthusiastic: 'Make it more enthusiastic',
+};
+
+// Coursework stays client-side: it inserts the student's own courses verbatim
+// (naturally grounded), so a network round-trip buys nothing.
 function applyQuickEdit(
   body: string,
   action: QuickActionKey,
@@ -82,36 +113,6 @@ function applyQuickEdit(
   t: Replier,
 ): { body: string; reply: string } {
   switch (action) {
-    case 'formal': {
-      let updated = body
-        .replace(/I would love/g, 'I would greatly appreciate')
-        .replace(/I am a fast learner/g, 'I am committed to continuous professional development')
-        .replace(/Would you be open to/g, 'Would it be possible to arrange')
-        .replace(/a short meeting/g, 'a brief meeting at your convenience')
-        .replace(/a brief conversation/g, 'a brief meeting at your convenience')
-        .replace(/Best regards/g, 'Respectfully')
-        .replace(/Best,/g, 'Respectfully,');
-      if (updated === body) updated = body.replace(/I really enjoyed/g, 'I was greatly impressed by');
-      return { body: updated, reply: t('coldEmail.replies.formal') };
-    }
-    case 'shorter': {
-      const lines = body.split('\n').filter((l) => l.trim());
-      const filtered = lines.filter(
-        (l) =>
-          !l.includes('I am a fast learner') &&
-          !l.includes('I am confident I can') &&
-          !l.includes('always eager'),
-      );
-      return { body: filtered.join('\n'), reply: t('coldEmail.replies.shorter') };
-    }
-    case 'enthusiastic': {
-      const updated = body
-        .replace(/I am very interested in/g, 'I am truly excited about')
-        .replace(/I really enjoyed learning/g, 'I was fascinated by')
-        .replace(/I would love the chance/g, 'I would be thrilled at the opportunity')
-        .replace(/I would greatly appreciate the chance/g, 'I would be thrilled at the opportunity');
-      return { body: updated, reply: t('coldEmail.replies.enthusiastic') };
-    }
     case 'coursework': {
       const courses = profile.coursework ?? [];
       if (courses.length === 0) {
@@ -157,6 +158,9 @@ export default function ColdEmailModal({
   const [variants, setVariants] = useState<EmailVariant[]>([]);
   const [aiVariant, setAiVariant] = useState<EmailVariant | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  // Which pipeline stage the streaming generation is in (null = not streaming
+  // or stage unknown); drives the AI pill's progress label.
+  const [aiStage, setAiStage] = useState<ColdEmailStage | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
   const [labType, setLabType] = useState<LabType | null>(null);
   // Voice overlay for the AI draft. `selectedStyle` seeds from the lab-type
@@ -180,7 +184,27 @@ export default function ColdEmailModal({
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  // Cache the resume experience bullets extracted from the profile's resume
+  // text so every AI (re)generation reuses one extraction. Keyed by the text
+  // it was extracted from — the modal stays mounted across open/close cycles,
+  // so an unkeyed cache would keep serving bullets from a résumé the user has
+  // since replaced. null = not yet attempted.
+  const resumeBulletsRef = useRef<{ forText: string; bullets: string[] } | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  // AI is the default engine: one automatic pipeline run per open, kicked off
+  // once the template variants land. Reset on close.
+  const autoFiredRef = useRef(false);
+  // Mirrors `body` so async completions can tell whether the user edited or
+  // switched away from the draft that was showing when generation started.
+  const bodyRef = useRef('');
+  // Real AI drafts per (opportunity, style): reopening the same opportunity
+  // reuses the draft instead of re-billing the pipeline. Fallback responses
+  // are never cached (they retry on the next open). Cleared when the profile
+  // prop changes — a draft must not outlive a profile edit.
+  const aiCacheRef = useRef<Map<string, ColdEmailResponse>>(new Map());
+
+  useEffect(() => { bodyRef.current = body; }, [body]);
+  useEffect(() => { aiCacheRef.current.clear(); }, [profile]);
 
   const fetchVariants = useCallback(async () => {
     setLoading(true);
@@ -222,6 +246,7 @@ export default function ColdEmailModal({
        residue from the previous session. */
     if (isOpen) fetchVariants();
     return () => {
+      autoFiredRef.current = false;
       setVariants([]);
       setAiVariant(null);
       setAiLoading(false);
@@ -305,20 +330,19 @@ export default function ColdEmailModal({
     ]);
   }
 
-  // Generate (or re-generate) the AI draft in a given voice. Used by both the
-  // ✨ AI pill (current/recommended tone) and the tone picker (switches voice).
-  const generateAi = useCallback(async (style: EmailStyle) => {
+  // Generate (or re-generate) the AI draft in a given voice. Used by the
+  // automatic run on open (AI is the default engine; `auto: true`), the ✨ AI
+  // pill, and the tone picker. Auto mode differs in three ways: it reports
+  // nothing until it succeeds (a fallback the user never asked for stays
+  // silent), it never clobbers a draft the user has meanwhile edited or
+  // switched away from, and it seeds/serves the per-open cache.
+  const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
     if (aiLoading) return;
+    const auto = opts?.auto ?? false;
     const aiIdx = variants.length;
-    setAiLoading(true);
     setSelectedStyle(style);
-    setChatMessages((prev) => [
-      ...prev,
-      { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
-    ]);
 
-    try {
-      const resp = await generateColdEmail(profile, opportunityId, { engine: 'ai', style });
+    const applyResponse = (resp: ColdEmailResponse, select: boolean) => {
       const v: EmailVariant = {
         id: AI_VARIANT_ID,
         label: t('coldEmail.aiVariantLabel'),
@@ -331,11 +355,70 @@ export default function ColdEmailModal({
         fallback_reason: resp.fallback_reason,
       };
       setAiVariant(v);
-      setActiveVariant(aiIdx);
-      setSubject(v.subject);
-      setBody(v.body);
-      setRecipient(v.recipient_email);
       if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
+      if (select) {
+        setActiveVariant(aiIdx);
+        setSubject(v.subject);
+        setBody(v.body);
+        setRecipient(v.recipient_email);
+      }
+    };
+
+    const cached = aiCacheRef.current.get(`${opportunityId}|${style}`);
+    if (cached) {
+      applyResponse(cached, true);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.aiGenerated') }]);
+      return;
+    }
+
+    setAiLoading(true);
+    if (!auto) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
+      ]);
+    }
+    const baselineBody = bodyRef.current;
+
+    try {
+      // Extract the student's real resume bullets once per résumé text, so the
+      // AI draft can cite their actual experience (the backend grounds them).
+      // Best-effort: a failure just falls back to skills/coursework-only
+      // grounding. Re-extracts when the résumé text changes (stale-cache fix).
+      const resumeText = profile.resume_text ?? '';
+      if (resumeBulletsRef.current === null || resumeBulletsRef.current.forText !== resumeText) {
+        try {
+          resumeBulletsRef.current = {
+            forText: resumeText,
+            bullets: resumeText
+              ? (await extractResumeBullets(resumeText)).bullets ?? []
+              : [],
+          };
+        } catch {
+          resumeBulletsRef.current = { forText: resumeText, bullets: [] };
+        }
+      }
+      const bullets = resumeBulletsRef.current.bullets;
+      const opts = {
+        engine: 'ai' as const,
+        style,
+        ...(bullets.length > 0 ? { resumeBullets: bullets } : {}),
+      };
+      let resp;
+      try {
+        // Stream-first: shows which pipeline stage is running. Any transport
+        // failure (old backend, proxy buffering, network hiccup mid-stream)
+        // falls back to the blocking route.
+        resp = await generateColdEmailStream(profile, opportunityId, opts, setAiStage);
+      } catch {
+        setAiStage(null);
+        resp = await generateColdEmail(profile, opportunityId, opts);
+      }
+      if (resp.method === 'ai') {
+        aiCacheRef.current.set(`${opportunityId}|${style}`, resp);
+      }
+      if (auto && resp.method !== 'ai') return; // silent — the user never asked
+      applyResponse(resp, !auto || bodyRef.current === baselineBody);
       setChatMessages((prev) => [
         ...prev,
         {
@@ -344,14 +427,26 @@ export default function ColdEmailModal({
         },
       ]);
     } catch {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: t('coldEmail.aiFailed') },
-      ]);
+      if (!auto) {
+        setChatMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: t('coldEmail.aiFailed') },
+        ]);
+      }
     } finally {
       setAiLoading(false);
+      setAiStage(null);
     }
   }, [aiLoading, variants.length, profile, opportunityId, labType, t]);
+
+  // AI is the default engine: once the template variants land, run the
+  // pipeline once automatically. The template is the instant placeholder; the
+  // AI draft takes over on success (unless the user already started editing).
+  useEffect(() => {
+    if (!isOpen || loading || variants.length === 0 || autoFiredRef.current) return;
+    autoFiredRef.current = true;
+    generateAi(selectedStyle, { auto: true });
+  }, [isOpen, loading, variants.length, selectedStyle, generateAi]);
 
   function handleAiPillClick() {
     if (aiLoading) return;
@@ -367,23 +462,16 @@ export default function ColdEmailModal({
     generateAi(style);
   }
 
-  function handleQuickAction(key: QuickActionKey) {
-    const label = t(`coldEmail.quickActions.${key}`);
-    setChatMessages((prev) => [...prev, { role: 'user', content: label }]);
-    const { body: newBody, reply } = applyQuickEdit(body, key, profile, t);
-    setBody(newBody);
-    setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-  }
-
-  async function handleChatSubmit() {
-    const msg = chatInput.trim();
-    if (!msg) return;
-    setChatInput('');
-    setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
+  // Shared grounded-refine runner for typed chat instructions AND the tone
+  // quick-actions. Appends the "editing…" assistant message, calls the backend
+  // (which grounds the result and degrades to its deterministic EDIT_OPS when
+  // no LLM is configured), then replaces the placeholder with the outcome.
+  async function runRefine(instruction: string) {
     setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.editing') }]);
-
     try {
-      const result = await refineEmail(body, msg, profile, opportunityId);
+      const result = await refineEmail(body, instruction, profile, opportunityId, {
+        resumeBullets: resumeBulletsRef.current?.bullets,
+      });
       setBody(result.body);
       setChatMessages((prev) => {
         const updated = [...prev];
@@ -408,6 +496,27 @@ export default function ColdEmailModal({
         return updated;
       });
     }
+  }
+
+  function handleQuickAction(key: QuickActionKey) {
+    const label = t(`coldEmail.quickActions.${key}`);
+    setChatMessages((prev) => [...prev, { role: 'user', content: label }]);
+    if (key === 'coursework') {
+      // Client-side: inserts the student's own courses verbatim.
+      const { body: newBody, reply } = applyQuickEdit(body, key, profile, t);
+      setBody(newBody);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      return;
+    }
+    void runRefine(QUICK_ACTION_INSTRUCTIONS[key]);
+  }
+
+  async function handleChatSubmit() {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    setChatInput('');
+    setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    await runRefine(msg);
   }
 
   // Record the contact without clobbering an existing status: create an
@@ -457,7 +566,7 @@ export default function ColdEmailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex sm:items-center sm:justify-center"
+      className="fixed inset-0 z-[55] flex sm:items-center sm:justify-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="email-modal-title"
@@ -542,7 +651,9 @@ export default function ColdEmailModal({
                     {aiLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
                     ) : null}
-                    {t('coldEmail.aiVariantLabel')}
+                    {aiLoading && aiStage
+                      ? t(STAGE_LABEL_KEYS[aiStage])
+                      : t('coldEmail.aiVariantLabel')}
                   </button>
                 </div>
 

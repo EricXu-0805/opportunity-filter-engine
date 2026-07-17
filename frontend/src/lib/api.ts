@@ -87,10 +87,11 @@ export async function getMatches(
   profile: ProfileData,
   options: { llm?: boolean } = {},
 ): Promise<MatchesResponse> {
-  // The "AI smart match" toggle routes to the LLM reranker (?llm=true), which
-  // scores the top results' topical fit via OpenRouter. The older embedding
-  // ?semantic path is retired — it regressed the ranking; this replaces it.
-  const qs = options.llm ? '?llm=true' : '';
+  // The LLM reranker is the server default (scores topical fit + writes each
+  // card's concrete lead reason via OpenRouter); the "AI smart match" toggle
+  // only opts OUT (?llm=false). The older embedding ?semantic path is retired
+  // — it regressed the ranking; this replaces it.
+  const qs = options.llm === false ? '?llm=false' : '';
   return request<MatchesResponse>(`/matches${qs}`, {
     method: 'POST',
     body: JSON.stringify(toProfileRequest(profile)),
@@ -333,7 +334,7 @@ export async function getOpportunitiesByIds(ids: string[]): Promise<Record<strin
 export async function generateColdEmail(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
 ): Promise<ColdEmailResponse> {
   void track('ai_feature_used', { feature: 'cold_email' });
   const body: Record<string, unknown> = {
@@ -342,10 +343,103 @@ export async function generateColdEmail(
   };
   if (options.engine) body.engine = options.engine;
   if (options.style) body.style = options.style;
+  // The student's real resume experience bullets, so the AI draft can cite
+  // their actual work. Additive + optional; the backend grounds them.
+  if (options.resumeBullets && options.resumeBullets.length > 0) {
+    body.resume_bullets = options.resumeBullets;
+  }
   return request<ColdEmailResponse>('/cold-email', {
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+export type ColdEmailStage = 'drafting' | 'judging' | 'critiquing' | 'revising';
+
+/**
+ * SSE variant of `generateColdEmail`: relays `{"stage": ...}` progress events
+ * while the multi-call pipeline runs (draft → critique → revise), then
+ * resolves with the final payload carried by the `done` event. Throws on any
+ * transport/shape problem — callers fall back to the blocking route.
+ */
+export async function generateColdEmailStream(
+  profile: ProfileData,
+  opportunityId: string,
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
+  onStage?: (stage: ColdEmailStage) => void,
+): Promise<ColdEmailResponse> {
+  // NOTE: the funnel event fires only after a successful done event (bottom of
+  // this function) — a failed stream falls back to generateColdEmail, which
+  // tracks itself, so one user click never double-counts ai_feature_used.
+  const body: Record<string, unknown> = {
+    profile: toProfileRequest(profile),
+    opportunity_id: opportunityId,
+  };
+  if (options.engine) body.engine = options.engine;
+  if (options.style) body.style = options.style;
+  if (options.resumeBullets && options.resumeBullets.length > 0) {
+    body.resume_bullets = options.resumeBullets;
+  }
+
+  const res = await fetch(`${API_BASE}/cold-email/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => 'Unknown error');
+    throw new Error(`API ${res.status}: ${errBody}`);
+  }
+  if (!res.headers.get('content-type')?.includes('text/event-stream') || !res.body) {
+    throw new Error('API stream: not an event stream');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let final: ColdEmailResponse | null = null;
+
+  const handleFrame = (frame: string) => {
+    for (const line of frame.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const payload = JSON.parse(line.slice(6)) as { stage?: string } & Record<string, unknown>;
+      if (payload.stage === 'done') {
+        final = payload as unknown as ColdEmailResponse;
+      } else if (payload.stage) {
+        onStage?.(payload.stage as ColdEmailStage);
+      }
+    }
+  };
+
+  try {
+    for (;;) {
+      const { value, done: readerDone } = await reader.read();
+      if (readerDone) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        handleFrame(frame);
+      }
+    }
+  } finally {
+    // Release the connection even when a parse error throws mid-stream —
+    // otherwise the fallback path opens a second connection while this one
+    // lingers until GC.
+    void reader.cancel().catch(() => {});
+  }
+  // TS doesn't reset a closed-over let's narrowing on function calls, so it
+  // still believes `final` is null here despite handleFrame's assignment.
+  const f = final as unknown as (ColdEmailResponse & { stage?: string }) | null;
+  if (!f) throw new Error('API stream: closed before the done event');
+  // Version-skew guard: a done event missing the core fields must trigger the
+  // blocking fallback, not flow undefined into the compose UI / mailto link.
+  if (typeof f.subject !== 'string' || typeof f.body !== 'string') {
+    throw new Error('API stream: malformed done payload');
+  }
+  void track('ai_feature_used', { feature: 'cold_email' });
+  return f;
 }
 
 export async function getEmailVariants(
@@ -363,6 +457,7 @@ export async function refineEmail(
   instruction: string,
   profile?: ProfileData,
   opportunityId?: string,
+  options: { resumeBullets?: string[] } = {},
 ): Promise<{ body: string; method: string; fallback_reason?: string }> {
   return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
     method: 'POST',
@@ -371,6 +466,11 @@ export async function refineEmail(
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId ?? null,
+      // The student's real resume bullets keep experience claims grounded when
+      // a refine instruction asks to emphasize them (additive + optional).
+      ...(options.resumeBullets && options.resumeBullets.length > 0
+        ? { resume_bullets: options.resumeBullets }
+        : {}),
     }),
   });
 }

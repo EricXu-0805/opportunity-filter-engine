@@ -293,7 +293,9 @@ def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
     return matched
 
 
-def _common_parts(profile: dict, opportunity: dict) -> dict:
+def _common_parts(
+    profile: dict, opportunity: dict, resume_bullets: list[str] | None = None
+) -> dict:
     name = profile.get("name") or "Student"
     year = profile.get("year", "undergraduate")
     major = profile.get("major", "")
@@ -329,6 +331,13 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
     coursework = profile.get("coursework", [])
     lab_type = _detect_lab_type(opportunity)
 
+    meta = opportunity.get("metadata") or {}
+    # The professor's own free-text research areas (the substantive signal) and
+    # academic title — real data, surfaced for the multi-stage AI pipeline's
+    # professor brief. Both may be empty; callers must tolerate that.
+    faculty_title = meta.get("faculty_title") or ""
+    research_areas_raw = meta.get("research_areas_raw") or ""
+
     return dict(
         name=name, year=year, major=major, school=school,
         skills=skills, skill_levels=skill_levels,
@@ -339,7 +348,12 @@ def _common_parts(profile: dict, opportunity: dict) -> dict:
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
         coursework=coursework, lab_type=lab_type,
-        recent_works=(opportunity.get("metadata") or {}).get("recent_works") or [],
+        recent_works=meta.get("recent_works") or [],
+        faculty_title=faculty_title, research_areas_raw=research_areas_raw,
+        # The student's real resume experience bullets (from /tailor/extract-
+        # bullets, already grounded). Only the AI pipeline supplies these; the
+        # deterministic template path leaves it empty.
+        resume_bullets=[str(b) for b in (resume_bullets or []) if str(b).strip()],
     )
 
 

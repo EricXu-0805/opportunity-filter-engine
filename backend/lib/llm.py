@@ -70,9 +70,11 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
     ),
 )
 
-# Ask-AI chat lets the user pick among a few OpenRouter models (the formal
-# flows — résumé tailoring, cold email — route via model_for()). The default set
-# is deliberately restricted to vetted, US-operated providers (OpenAI, Google,
+# Ask-AI chat exposes intent-labeled tiers, not vendor model names (the formal
+# flows — résumé tailoring, cold email — route via model_for()). Students don't
+# know model SKUs, and a vendor generation bump (5.1→5.6) shouldn't require a
+# UI change — only this table (or OFE_CHAT_MODELS) moves. The set is
+# deliberately restricted to vetted, US-operated providers (OpenAI, Google,
 # Anthropic) that the privacy policy names as subprocessors — the chat prompt
 # embeds profile PII incl. the international-student flag, so we do NOT
 # default-route F-1 users' data to undisclosed / non-US operators (e.g. DeepSeek
@@ -82,9 +84,8 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # Surfaced ONLY when OPENROUTER_API_KEY is set; otherwise the picker stays hidden
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
-    ("claude-sonnet", "Claude Sonnet 5", "anthropic/claude-sonnet-5"),
-    ("gpt-5.1", "GPT-5.1", "openai/gpt-5.1"),
-    ("gemini-flash", "Gemini 3.5 Flash", "google/gemini-3.5-flash"),
+    ("auto", "Auto", "anthropic/claude-sonnet-5"),
+    ("thinking", "Thinking", "openai/gpt-5.6-terra-pro"),
 )
 
 
@@ -152,16 +153,23 @@ def strong_model() -> Optional[str]:
 
 
 # Best-fit model per quality-sensitive task ("right tool for each job"), chosen
-# against the live OpenRouter catalog. Claude leads on natural, persuasive
-# writing, so the user-facing materials are Claude — all on Sonnet 5, which
-# matches Opus-class writing on these bounded tasks at a fraction of the cost:
-#   * cold_email — highest-stakes personalized writing (lands a research spot).
+# against 2026-07 writing evaluations: Sonnet 5 WINS the writing-quality and
+# instruction-following categories outright ("sounds the most human, needs the
+# least cleanup" — EQ-Bench-adjacent leaderboards put the Claude family a full
+# tier above GPT-5.5 on writing Elo), so the PROSE tasks stay on it — an
+# "upgrade" there would be a downgrade. Opus 4.8 leads deliberate editorial
+# REASONING, which is exactly the judge/critique lens, so that one task rides
+# the premium tier:
+#   * cold_email — highest-stakes personalized writing (draft + revise).
+#   * cold_email_review — the critique rubric + N-draft judge (judgment, not
+#     prose: which email would a professor answer, what reads templated).
 #   * tailor — constrained, anti-fabrication-validated bullet rewriting.
 #   * extract — background structured parsing (tailor's bullet extraction).
 # Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
-# — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.5 or google/gemini-3.1-pro-preview.
+# — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.6-terra or google/gemini-3.1-pro.
 _TASK_MODEL_DEFAULTS: dict[str, str] = {
     "cold_email": "anthropic/claude-sonnet-5",
+    "cold_email_review": "anthropic/claude-opus-4-8",
     "tailor": "anthropic/claude-sonnet-5",
     "extract": "anthropic/claude-sonnet-5",
 }
