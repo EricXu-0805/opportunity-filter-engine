@@ -363,6 +363,15 @@ pgvector/Postgres (JSON+TF-IDF fine at ~5k records); E2E-as-required-check (wait
 
 1. **Check the validation clock before anything.** Is the concierge "帮我投" button live? Is the 30-day window running? Is there validation activity? If the clock is live and stalled → **do §7a, not expansion.** If no paying/retained stranger yet → expansion stays a background bet, never the headline.
 2. **Wave 0 status: ✅ SHIPPED, under different names (2026-07 update).** The add-a-school architecture landed as the `faculty_graph` engine + per-school config modules in `src/collectors/schools/` (`<slug>.py` campus-graph config + `<slug>_faculty.py` faculty config; 19 schools as of 2026-07-10) — the planned `school_config.py`/`faculty_base.py` were never created because these subsume them. Adding a school = a config pair + registry entry, exactly the Wave-0 goal. Do NOT re-open Wave 0.
+2b. **Wave 1 status: ✅ COMPLETE (2026-07-17).** The last seven Wave-1 schools
+   (USC, Minnesota, Ohio State, Notre Dame, Rochester, Florida, UMass Amherst)
+   shipped as one batch — 259 departments live-verified, ~10.6k faculty +
+   56 campus programs, all §3.4 touchpoints in the same PR. Engine gained
+   rot13/spamspan email decoding (UMass campus-wide), an academic-unit-name
+   keyword gate, and semicolon chip-splitting. Remaining §4 targets are Wave 2
+   (VT, Texas A&M, Maryland, Northeastern, Stony Brook, BU, WashU, Rutgers,
+   NC State, Penn State), Wave 3 (NYU, Yale-A&S, CMU-MCS halves), and the
+   deferred headless bucket (UC Davis, ASU).
 3. **Filter-correctness fixes (§2.5): ✅ FIXED in #208** (`fix(matcher): honor citizenship_required + gate F-1 on-campus bonus to home school`) — BUG A and BUG B both, with regression tests. Domestic-heavy waves are no longer gated on this.
 4. **Pick the next school from §4.2 by wave + §4.3 first-target.** Catalog-ready (GT/UW/UTexas/Michigan/Stanford) skip frontend catalog work. Use the §5 shape playbook and the §3.4 touchpoint checklist. Land the `SOURCE_DEFAULTS`/registry entry in the SAME PR (§2.4 invariant 1).
 5. **Run the §6 DQ guards** for the new school; `pytest tests/test_opportunity_data_quality.py` must stay green. Register the source deep-only in `refresh_all` (preserve merge order).

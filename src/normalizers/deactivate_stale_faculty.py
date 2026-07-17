@@ -119,6 +119,20 @@ FACULTY_SOURCES = frozenset({
     "mit_faculty",
     # Harvard — FAS HWP Drupal + WP one-offs + SEAS (single source across depts).
     "harvard_faculty",
+    # USC — Viterbi/Dornsife + professional-school directories (single source).
+    "usc_faculty",
+    # Minnesota — CSE/CLA/CBS + professional-college directories (single source).
+    "umn_faculty",
+    # Ohio State — Engineering/ASC + professional-college directories (single source).
+    "osu_faculty",
+    # Notre Dame — Engineering/Science/A&L + Mendoza directories (single source).
+    "nd_faculty",
+    # Rochester — Hajim/SAS + Simon/Warner directories (single source).
+    "rochester_faculty",
+    # Florida — Wertheim/CLAS + professional-college directories (single source).
+    "uf_faculty",
+    # UMass Amherst — CICS/Engineering + campus Drupal directories (single source).
+    "umass_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

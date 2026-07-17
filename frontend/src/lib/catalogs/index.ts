@@ -43,6 +43,13 @@ const CATALOG_LOADERS: Record<string, () => Promise<CatalogModule>> = {
   columbia: () => import('./columbia'),
   mit: () => import('./mit'),
   harvard: () => import('./harvard'),
+  usc: () => import('./usc'),
+  umn: () => import('./umn'),
+  osu: () => import('./osu'),
+  nd: () => import('./nd'),
+  rochester: () => import('./rochester'),
+  uf: () => import('./uf'),
+  umass: () => import('./umass'),
 };
 
 export async function loadCatalog(slug: string): Promise<Record<string, string[]> | null> {

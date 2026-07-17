@@ -643,6 +643,45 @@ class TestCuratedKeywordHygiene:
         person = {"keywords": ["Plants, Soil and Algae"]}
         assert fg._clean_keywords(person) == ["Plants / Soil and Algae"]
 
+    def test_curated_splits_semicolon_chip(self):
+        """A semicolon inside one taxonomy chip always delimits separate areas
+        (regression: USC Thornton shipped 'Classical Guitar; Composition')."""
+        person = {"keywords": ["Classical Guitar; Composition", "jazz"]}
+        assert fg._clean_keywords(person) == ["Classical Guitar", "Composition", "jazz"]
+
+    def test_curated_drops_academic_unit_name(self):
+        """An academic-unit name is never a research area (regression: USC
+        Annenberg profiles fill the expertise field with the school name)."""
+        person = {"keywords": [
+            "USC Annenberg School for Communication and Journalism",
+            "Department of Chemistry", "media studies"]}
+        assert fg._clean_keywords(person) == ["media studies"]
+
+
+class TestEmailObfuscationDecoding:
+    """UMass-style obfuscation: rot13 ``data-mail-to`` on teaser profiles,
+    spamspan "[at]/[dot]" text on person-theme profiles, and hand-quoted
+    '"at"' text (Rochester CS) — all decode to the published address."""
+
+    def test_clean_email_normalizes_written_out_at_dot(self):
+        assert fg._clean_email("anderson [at] ecs [dot] umass [dot] edu") == "anderson@ecs.umass.edu"
+        assert fg._clean_email('lane "at" cs.rochester.edu') == "lane@cs.rochester.edu"
+        assert fg._clean_email("plain@umass.edu") == "plain@umass.edu"
+
+    def test_decode_rot13_data_mail_to(self):
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup(
+            '<a data-mail-to="nyunevev/ng/purz/qbg/hznff/qbg/rqh">Email</a>',
+            "html.parser").a
+        assert fg._decode_rot13email(el) == "alhariri@chem.umass.edu"
+        assert fg._email_from_el(el) == "alhariri@chem.umass.edu"
+
+    def test_rot13_ignores_plain_anchor(self):
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup('<a href="mailto:x@y.edu">x</a>', "html.parser").a
+        assert fg._decode_rot13email(el) is None
+        assert fg._email_from_el(el) == "x@y.edu"
+
 
 class TestCorpusFacultyHygiene:
     def test_clean_corpus_rebuilds_title_parenthetical(self):

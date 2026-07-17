@@ -23,18 +23,25 @@ from .gatech import SCHOOL as GATECH
 from .harvard import SCHOOL as HARVARD
 from .jhu import SCHOOL as JHU
 from .mit import SCHOOL as MIT
+from .nd import SCHOOL as ND
 from .northwestern import SCHOOL as NORTHWESTERN
+from .osu import SCHOOL as OSU
 from .princeton import SCHOOL as PRINCETON
 from .purdue import SCHOOL as PURDUE
 from .rice import SCHOOL as RICE
+from .rochester import SCHOOL as ROCHESTER
 from .stanford import SCHOOL as STANFORD
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
 from .ucla import SCHOOL as UCLA
 from .ucsb import SCHOOL as UCSB
 from .ucsd import SCHOOL as UCSD
+from .uf import SCHOOL as UF
+from .umass import SCHOOL as UMASS
 from .umich import SCHOOL as UMICH
+from .umn import SCHOOL as UMN
 from .upenn import SCHOOL as UPENN
+from .usc import SCHOOL as USC
 from .utexas import SCHOOL as UTEXAS
 from .uw import SCHOOL as UW
 from .vanderbilt import SCHOOL as VANDERBILT
@@ -70,4 +77,11 @@ SCHOOL_CONFIGS: list[dict] = [
     COLUMBIA,
     MIT,
     HARVARD,
+    USC,
+    UMN,
+    OSU,
+    ND,
+    ROCHESTER,
+    UF,
+    UMASS,
 ]
