@@ -37,6 +37,7 @@ from .ucla import SCHOOL as UCLA
 from .ucsb import SCHOOL as UCSB
 from .ucsd import SCHOOL as UCSD
 from .uf import SCHOOL as UF
+from .uga import SCHOOL as UGA
 from .umass import SCHOOL as UMASS
 from .umich import SCHOOL as UMICH
 from .umn import SCHOOL as UMN
@@ -84,4 +85,5 @@ SCHOOL_CONFIGS: list[dict] = [
     ROCHESTER,
     UF,
     UMASS,
+    UGA,
 ]

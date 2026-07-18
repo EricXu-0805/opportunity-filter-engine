@@ -133,6 +133,8 @@ FACULTY_SOURCES = frozenset({
     "uf_faculty",
     # UMass Amherst — CICS/Engineering + campus Drupal directories (single source).
     "umass_faculty",
+    # Georgia — statewide-Drupal views-row directories (single source).
+    "uga_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

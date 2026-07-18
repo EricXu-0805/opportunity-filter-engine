@@ -625,8 +625,25 @@ def _decode_rot13email(el) -> str | None:
     return _clean_email(decoded) if "@" in decoded else None
 
 
+def _decode_reversed_email(el) -> str | None:
+    """Decode a reversed ``data-user``/``data-domain`` cloak on (or under) ``el``.
+
+    UGA's College of Education profile pages (people.coe.uga.edu) cloak every
+    address as ``<span class="cloaked-e-mail" data-user="maharba.anna"
+    data-domain="ude.agu">`` — both strings simply reversed and joined
+    client-side. Without this decode the whole college lands unemailed.
+    """
+    sub = el
+    if not el.get("data-user") and hasattr(el, "select_one"):
+        sub = el.select_one("[data-user][data-domain]") or el
+    user, domain = sub.get("data-user"), sub.get("data-domain")
+    if not (user and domain):
+        return None
+    return _clean_email(f"{user[::-1]}@{domain[::-1]}")
+
+
 def _email_from_el(e_el) -> str | None:
-    """Address from a selected email element — cf-shield/base64/rot13 decode, then mailto/text."""
+    """Address from a selected email element — cf-shield/base64/rot13/reversed decode, then mailto/text."""
     cf = _decode_cfemail(e_el)
     if cf:
         return cf
@@ -636,6 +653,9 @@ def _email_from_el(e_el) -> str | None:
     r13 = _decode_rot13email(e_el)
     if r13:
         return r13
+    rev = _decode_reversed_email(e_el)
+    if rev:
+        return rev
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
     return _clean_email(raw)
 
@@ -684,6 +704,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # Some directories prefix the name link with boilerplate ("Learn more
             # about <Name>"); strip it to recover the clean, properly-cased name.
             name = re.sub(sel["name_strip"], "", name).strip()
+        if sel.get("name_title_case") and name.isupper():
+            # SHOUTING rosters (UGA Pharmacy's "MICHAEL BARTLETT") — retitle only
+            # all-caps names so mixed-case ones (McLean, DiMaggio) stay untouched.
+            name = name.title()
         if name_flip:
             name = _flip_name(name)
         if sel.get("link") == ":self":
@@ -727,6 +751,17 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # Some directories cram rank + office + phone into one cell; keep only
             # the text before the first contact marker (e.g. "Office"/"Phone").
             title = re.split(sel["title_strip_after"], title)[0].strip() or "Professor"
+        if sel.get("title_html_re"):
+            # Ranks that live as bare text between markup with no element of
+            # their own (UGA Law's "<a>Name</a><br>Title<br><a mailto>") need
+            # the serialized card, like research_re — capture group 1, strip
+            # tags, and unescape ("&amp;" would otherwise land in the title).
+            m = re.search(sel["title_html_re"], str(card), re.I | re.S)
+            if m:
+                import html as _html
+                t = re.sub(r"\s+", " ",
+                           _html.unescape(_HTML_TAG_RE.sub(" ", m.group(1)))).strip()
+                title = t or title
         if not _passes_ladder(title, ladder_filter):
             continue
         research = ""
@@ -1127,6 +1162,26 @@ def _wp_text(raw: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(_HTML_TAG_RE.sub("", raw or ""))).strip()
 
 
+def _acf_path(rec: dict, path: str):
+    """Walk a dotted path into a WP record's ``acf`` block ("job_titles.0.position.title").
+
+    Numeric segments index lists; any miss returns "" so a person whose ACF
+    omits the field degrades to the config default instead of raising.
+    """
+    cur = rec.get("acf")
+    for part in path.split("."):
+        if isinstance(cur, list):
+            try:
+                cur = cur[int(part)]
+            except (ValueError, IndexError):
+                return ""
+        elif isinstance(cur, dict):
+            cur = cur.get(part)
+        else:
+            return ""
+    return cur if isinstance(cur, (str, int, float)) else ""
+
+
 _NAME_SUFFIX_RE = re.compile(r"^(jr|sr|ii|iii|iv|v)\.?$", re.I)
 
 
@@ -1403,6 +1458,10 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
     # rather than in taxonomies — read them so faculty land titled + emailed.
     meta_title_field = cfg.get("meta_title_field")
     meta_email_field = cfg.get("meta_email_field")
+    # Others keep them on the ACF block instead (UGA Terry's `directory` type:
+    # acf.email plus acf.job_titles[0].position.title) — ``acf_fields`` maps
+    # {"title"|"email": dotted path} into that nested structure.
+    acf_fields = cfg.get("acf_fields") or {}
 
     records: list[dict] = []
     query = cfg.get("query", "")
@@ -1461,6 +1520,16 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
                 title = mt
         if meta_email_field:
             email = (str(meta.get(meta_email_field, "") or "").strip() or None)
+        if acf_fields.get("title"):
+            at = _wp_text(str(_acf_path(rec, acf_fields["title"]) or ""))
+            if at:
+                title = at
+        if acf_fields.get("email") and not email:
+            email = (str(_acf_path(rec, acf_fields["email"]) or "").strip() or None)
+        if not _passes_ladder(title, cfg.get("ladder_filter")):
+            # Same title gate as the scrape path — REST role taxonomies are often
+            # too coarse (UGA Terry tags lecturers `faculty` too).
+            continue
         if enrich:
             pos, extra_kw, extra_items, extra_email = _enrich_profile(url, enrich)
             if pos:

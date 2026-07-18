@@ -471,6 +471,17 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('umass'),
     catalog: { colleges: 10, majors: 79 },
   },
+  {
+    slug: 'uga',
+    domain: 'uga.edu',
+    name: 'University of Georgia',
+    shortName: 'UGA',
+    nameZh: '佐治亚大学',
+    color: '#BA0C2F',
+    location: 'Athens, GA',
+    coverage: campusCoverage('uga'),
+    catalog: { colleges: 14, majors: 97 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));

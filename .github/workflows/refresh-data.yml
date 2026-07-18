@@ -7,7 +7,7 @@ name: Refresh Opportunity Data
 #   | Day | Shard                             | Weekly est. | First-week est. |
 #   |-----|-----------------------------------|-------------|-----------------|
 #   | Mon | uiuc (+ Experts monthly, +Chromium)| ~90-150 min | ~120-180 min    |
-#   | Tue | ucb,mit,usc,umn                   | ~75-120 min | ~110-170 min    |
+#   | Tue | ucb,mit,usc,umn,uga               | ~85-135 min | ~120-185 min    |
 #   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester | ~50-90 min | ~100-170 min |
 #   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd | ~45-80 min | ~100-170 min |
 #   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf | ~55-90 min | ~105-175 min |
@@ -81,7 +81,7 @@ jobs:
           else
             case "$(date -u +%u)" in
               1) SHARD="uiuc" ;;
-              2) SHARD="ucb,mit,usc,umn" ;;
+              2) SHARD="ucb,mit,usc,umn,uga" ;;
               3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester" ;;
               4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd" ;;
               5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf" ;;
