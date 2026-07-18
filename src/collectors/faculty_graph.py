@@ -527,6 +527,11 @@ def _passes_field(card, ff: dict | None) -> bool:
     if not ff:
         return True
     el = card.select_one(ff["selector"]) if ff.get("selector") else None
+    if ff.get("require_present") and (el is None or not el.get_text(strip=True)):
+        # Mixed listings where only role-carrying cards are wanted: the lenient
+        # absent-field-passes default would ship a role-less card (a student)
+        # as a "Professor" — require the field to exist before gating on it.
+        return False
     text = el.get_text(" ", strip=True) if el else ""
     if ff.get("include") and text and not re.search(ff["include"], text, re.I):
         return False
@@ -1690,6 +1695,76 @@ def _fetch_futurevu_ajax(dept: dict) -> list[dict]:
         url = f"{profile_base}{slug}" if slug else ""
         specs.append(faculty(name, title=_clean_titles(rec.get("titles", "")) or "Professor",
                              url=url, email=email))
+    return specs
+
+
+def _fetch_worx_ajax(dept: dict) -> list[dict]:
+    """Yale SEAS "Worx" faculty-directory fetch (opt-in via dept ``ajax`` block
+    with ``type: "worx"``).
+
+    seas.yale.edu (concrete5, Worx theme) renders its faculty directory with a
+    Vue block that POSTs form data to a ``load_faculty`` endpoint and paints the
+    returned JSON — ``{"pages": {"letters": {"A": [{name, title, fullTitle,
+    url}, ...], ...}}}``. Hitting the endpoint directly (department term id from
+    the page's inline ``departmentsList``) is exact and complete, and one
+    endpoint serves every SEAS department. Degrades to ``[]`` on any failure so
+    deep mode never breaks the curated layer.
+    """
+    cfg = dept.get("ajax")
+    if not cfg or cfg.get("type") != "worx":
+        return []
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+    except Exception:  # noqa: BLE001
+        return []
+    endpoint = cfg["endpoint"]
+    try:
+        resp = requests.post(
+            endpoint,
+            data={"action": endpoint, "template": "full", "maxpages": "0",
+                  "department": str(cfg.get("department", "")), "query": ""},
+            headers={**HEADERS, "X-Requested-With": "XMLHttpRequest",
+                     "Referer": cfg.get("referer", endpoint)},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:  # noqa: BLE001
+        return []
+    pages = data.get("pages") if isinstance(data, dict) else None
+    if not isinstance(pages, dict):
+        return []
+    letters = pages.get("letters")
+    groups = letters.values() if isinstance(letters, dict) else [pages.get("fullPages") or []]
+
+    lf = cfg.get("ladder_filter") or {}
+    req_re = re.compile(lf["require"], re.I) if lf.get("require") else None
+    drop_re = re.compile(lf["drop"], re.I) if lf.get("drop") else None
+
+    specs: list[dict] = []
+    seen: set[str] = set()
+    for group in groups:
+        if not isinstance(group, list):
+            continue
+        for rec in group:
+            if not isinstance(rec, dict):
+                continue
+            name = (rec.get("name") or "").strip()
+            if not name or not _is_person_name(name):
+                continue
+            title = (rec.get("fullTitle") or rec.get("title") or "").strip() or "Professor"
+            if req_re and not req_re.search(title):
+                continue
+            if drop_re and drop_re.search(title):
+                continue
+            url = (rec.get("url") or "").strip()
+            key = url.lower() or name.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            specs.append(faculty(name, title=title, url=url))
     return specs
 
 
@@ -3035,6 +3110,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                and u not in listing_urls}
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_futurevu_ajax(dept)
+                               + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
                                + _fetch_json_dir(dept) + _fetch_coa_api(dept)

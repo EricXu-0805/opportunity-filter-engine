@@ -46,6 +46,7 @@ from .utexas import SCHOOL as UTEXAS
 from .uw import SCHOOL as UW
 from .vanderbilt import SCHOOL as VANDERBILT
 from .wisc import SCHOOL as WISC
+from .yale import SCHOOL as YALE
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
 # order; new schools (Top-50 rollout) append here.
@@ -84,4 +85,5 @@ SCHOOL_CONFIGS: list[dict] = [
     ROCHESTER,
     UF,
     UMASS,
+    YALE,
 ]
