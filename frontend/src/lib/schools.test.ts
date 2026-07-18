@@ -82,7 +82,7 @@ describe('registry — switcher metadata', () => {
     for (const school of SCHOOLS) {
       expect(bySlug(school.slug)).toBe(school);
     }
-    expect(bySlug('cmu')).toBeUndefined();
+    expect(bySlug('hogwarts')).toBeUndefined();
     expect(bySlug('')).toBeUndefined();
   });
 
