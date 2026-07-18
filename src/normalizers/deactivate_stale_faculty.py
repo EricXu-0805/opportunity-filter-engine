@@ -135,6 +135,26 @@ FACULTY_SOURCES = frozenset({
     "uf_faculty",
     # UMass Amherst — CICS/Engineering + campus Drupal directories (single source).
     "umass_faculty",
+    # Virginia Tech — Wave-2 batch (single source across depts).
+    "vt_faculty",
+    # Texas A&M — Wave-2 batch (single source across depts).
+    "tamu_faculty",
+    # Maryland — Wave-2 batch (single source across depts).
+    "umd_faculty",
+    # Northeastern — Wave-2 batch (single source across depts).
+    "neu_faculty",
+    # Stony Brook — Wave-2 batch (single source across depts).
+    "sbu_faculty",
+    # Boston University — Wave-2 batch (single source across depts).
+    "bu_faculty",
+    # WashU — Wave-2 batch (single source across depts).
+    "washu_faculty",
+    # Rutgers — Wave-2 batch (single source across depts).
+    "rutgers_faculty",
+    # NC State — Wave-2 batch (single source across depts).
+    "ncsu_faculty",
+    # Penn State — Wave-2 batch (single source across depts).
+    "psu_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

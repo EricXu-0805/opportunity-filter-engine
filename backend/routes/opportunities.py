@@ -88,6 +88,7 @@ _SCHOOL_SLUGS = frozenset({
     "cornell", "brown", "dartmouth", "columbia", "mit", "harvard", "rice", "vanderbilt",
     "yale",
     "usc", "umn", "osu", "nd", "rochester", "uf", "umass",
+    "vt", "tamu", "umd", "neu", "sbu", "bu", "washu", "rutgers", "ncsu", "psu",
 })
 
 

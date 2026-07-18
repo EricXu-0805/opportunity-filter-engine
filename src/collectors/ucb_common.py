@@ -441,6 +441,12 @@ def _is_person_name(name: str) -> bool:
     name = (name or "").strip()
     if len(name) < 3:
         return False
+    if len(name) > 70:  # a legend/footer/abbreviations row, never a person name
+        return False
+    if "@" in name:  # an email address grabbed as the name (mailto-only card)
+        return False
+    if "%" in name:  # a Drupal token leaked unrendered ("%AutoEntityLabel: <uuid>%")
+        return False
     if _INSTITUTION_PREFIX_RE.match(name):
         return False
     tokens = re.findall(r"[a-z]+", name.lower())
