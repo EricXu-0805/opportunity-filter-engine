@@ -1,95 +1,123 @@
 {
-  "duration_seconds": 13335.5,
+  "duration_seconds": 8970.1,
   "shard": {
     "national": false,
     "schools": [
-      "nd",
+      "caltech",
+      "gatech",
       "osu",
-      "rochester",
-      "uf",
+      "uchicago",
+      "uci",
+      "ucsb",
       "umass",
-      "umn",
-      "usc"
+      "umich",
+      "upenn"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 1020,
+      "rule_based_tagged": 608,
       "status": "ok"
     },
-    "campus_graph:nd": {
-      "deep": true,
-      "fetched": 8,
-      "new": 8,
+    "caltech_faculty": {
+      "fetched": 470,
+      "new": 57,
       "status": "ok",
-      "updated": 0
+      "updated": 413
+    },
+    "campus_graph:caltech": {
+      "deep": true,
+      "fetched": 31,
+      "new": 0,
+      "status": "ok",
+      "updated": 30
+    },
+    "campus_graph:gatech": {
+      "deep": true,
+      "fetched": 23,
+      "new": 0,
+      "status": "ok",
+      "updated": 23
     },
     "campus_graph:osu": {
       "deep": true,
       "fetched": 8,
-      "new": 8,
+      "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 8
     },
-    "campus_graph:rochester": {
+    "campus_graph:uchicago": {
       "deep": true,
-      "fetched": 8,
-      "new": 8,
+      "fetched": 17,
+      "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 16
     },
-    "campus_graph:uf": {
+    "campus_graph:uci": {
       "deep": true,
-      "fetched": 8,
-      "new": 8,
+      "fetched": 15,
+      "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 15
+    },
+    "campus_graph:ucsb": {
+      "deep": true,
+      "fetched": 16,
+      "new": 0,
+      "status": "ok",
+      "updated": 16
     },
     "campus_graph:umass": {
       "deep": true,
       "fetched": 9,
-      "new": 9,
+      "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 9
     },
-    "campus_graph:umn": {
+    "campus_graph:umich": {
       "deep": true,
-      "fetched": 7,
-      "new": 7,
+      "fetched": 12,
+      "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 11
     },
-    "campus_graph:usc": {
+    "campus_graph:upenn": {
       "deep": true,
-      "fetched": 8,
-      "new": 8,
+      "fetched": 38,
+      "new": 0,
       "status": "ok",
-      "updated": 0
+      "updated": 37
     },
     "deactivate_past": {
       "already_inactive": 719,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 59609,
+      "skipped_rolling": 60640,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 10737,
-      "newly_deactivated": 0,
+      "kept_fresh": 12043,
+      "newly_deactivated": 32,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 20,
-      "keywords_cleaned": 29,
+      "duplicates_removed": 344,
+      "keywords_cleaned": 36,
       "removed_by_school": {
-        "nd": 4,
-        "uf": 1,
-        "umass": 1,
-        "usc": 14
+        "caltech": 43,
+        "gatech": 124,
+        "osu": 21,
+        "uchicago": 43,
+        "uci": 8,
+        "ucsb": 24,
+        "umass": 9,
+        "umich": 49,
+        "upenn": 23
       },
       "shared_inbox_nulled": {
-        "usc": 2
+        "uchicago": 2,
+        "upenn": 2
       },
       "status": "ok"
     },
@@ -98,36 +126,30 @@
       "shared_mailbox_nulled": 0,
       "status": "ok"
     },
+    "gatech_faculty": {
+      "fetched": 1284,
+      "new": 155,
+      "status": "ok",
+      "updated": 1129
+    },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "nd_faculty": {
-      "fetched": 1249,
-      "new": 1249,
-      "status": "ok",
-      "updated": 0
-    },
     "osu_faculty": {
-      "fetched": 2240,
-      "new": 2240,
+      "fetched": 2036,
+      "new": 28,
       "status": "ok",
-      "updated": 0
+      "updated": 2008
     },
     "pi_enricher": {
-      "already_had": 10034,
-      "enriched": 567,
-      "nulled_unit_inboxes": 3,
-      "renulled_shared_emails": 103,
-      "scraped": 756,
-      "skipped_budget": 0,
+      "already_had": 10364,
+      "enriched": 163,
+      "nulled_unit_inboxes": 7,
+      "renulled_shared_emails": 44,
+      "scraped": 1000,
+      "skipped_budget": 678,
       "status": "ok"
-    },
-    "rochester_faculty": {
-      "fetched": 839,
-      "new": 839,
-      "status": "ok",
-      "updated": 0
     },
     "school_audience": {
       "by_source": {
@@ -137,10 +159,10 @@
         "brown_faculty": 1133,
         "brown_research_programs": 4,
         "caltech_external_research": 14,
-        "caltech_faculty": 415,
+        "caltech_faculty": 472,
         "caltech_labs": 8,
         "caltech_research_programs": 8,
-        "columbia_faculty": 959,
+        "columbia_faculty": 1066,
         "columbia_research_programs": 7,
         "cornell_faculty": 1684,
         "cornell_research_programs": 4,
@@ -151,7 +173,7 @@
         "duke_labs": 9,
         "duke_research_programs": 57,
         "gatech_external_research": 2,
-        "gatech_faculty": 1194,
+        "gatech_faculty": 1349,
         "gatech_labs": 1,
         "gatech_research_programs": 20,
         "handshake": 71,
@@ -164,15 +186,15 @@
         "manual": 25,
         "mit_faculty": 1351,
         "mit_research_programs": 7,
-        "nd_faculty": 1249,
+        "nd_faculty": 1245,
         "nd_research_programs": 8,
-        "northwestern_faculty": 2764,
+        "northwestern_faculty": 2769,
         "northwestern_labs": 11,
-        "northwestern_research_programs": 17,
+        "northwestern_research_programs": 18,
         "nsf_reu": 642,
-        "osu_faculty": 2240,
+        "osu_faculty": 2268,
         "osu_research_programs": 8,
-        "princeton_faculty": 598,
+        "princeton_faculty": 611,
         "princeton_labs": 4,
         "princeton_research_programs": 7,
         "purdue_external_research": 6,
@@ -185,7 +207,7 @@
         "rochester_research_programs": 8,
         "simplify_internships": 2508,
         "stanford_external_research": 1,
-        "stanford_faculty": 1310,
+        "stanford_faculty": 1357,
         "stanford_labs": 1,
         "stanford_research_programs": 38,
         "ucb_anthro_faculty": 26,
@@ -247,10 +269,10 @@
         "ucb_urap": 1,
         "ucb_urap_projects": 861,
         "uchicago_external_research": 3,
-        "uchicago_faculty": 1140,
+        "uchicago_faculty": 1206,
         "uchicago_labs": 1,
         "uchicago_research_programs": 13,
-        "uci_faculty": 1161,
+        "uci_faculty": 1180,
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
@@ -258,14 +280,14 @@
         "ucla_labs": 1,
         "ucla_research_programs": 31,
         "ucsb_external_research": 1,
-        "ucsb_faculty": 811,
+        "ucsb_faculty": 864,
         "ucsb_labs": 2,
         "ucsb_research_programs": 13,
         "ucsb_urca_projects": 245,
-        "ucsd_faculty": 1476,
+        "ucsd_faculty": 1478,
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
-        "uf_faculty": 1958,
+        "uf_faculty": 1957,
         "uf_research_programs": 8,
         "uiuc_drp": 2,
         "uiuc_faculty": 3196,
@@ -275,19 +297,19 @@
         "uiuc_sro": 279,
         "uiuc_urap": 1,
         "uiuc_ursa": 1,
-        "umass_faculty": 1509,
+        "umass_faculty": 1584,
         "umass_research_programs": 9,
         "umich_external_research": 2,
-        "umich_faculty": 849,
+        "umich_faculty": 1235,
         "umich_labs": 3,
         "umich_research_programs": 6,
         "umn_faculty": 1424,
         "umn_research_programs": 7,
         "upenn_external_research": 9,
-        "upenn_faculty": 1881,
+        "upenn_faculty": 1917,
         "upenn_labs": 2,
         "upenn_research_programs": 26,
-        "usc_faculty": 1518,
+        "usc_faculty": 1504,
         "usc_research_programs": 8,
         "utexas_external_research": 1,
         "utexas_faculty": 2159,
@@ -304,35 +326,53 @@
         "wisc_research_programs": 39
       },
       "status": "ok",
-      "tagged": 61192
+      "tagged": 62223
     },
-    "uf_faculty": {
-      "fetched": 1958,
-      "new": 1958,
+    "uchicago_faculty": {
+      "fetched": 929,
+      "new": 66,
       "status": "ok",
-      "updated": 0
+      "updated": 863
+    },
+    "uci_faculty": {
+      "fetched": 1173,
+      "new": 19,
+      "status": "ok",
+      "updated": 1154
+    },
+    "ucsb_faculty": {
+      "fetched": 847,
+      "new": 53,
+      "status": "ok",
+      "updated": 794
+    },
+    "ucsb_urca_projects": {
+      "fetched": 245,
+      "new": 0,
+      "status": "ok",
+      "updated": 245
     },
     "umass_faculty": {
-      "fetched": 1509,
-      "new": 1509,
+      "fetched": 1584,
+      "new": 76,
       "status": "ok",
-      "updated": 0
+      "updated": 1508
     },
-    "umn_faculty": {
-      "fetched": 1424,
-      "new": 1424,
+    "umich_faculty": {
+      "fetched": 947,
+      "new": 386,
       "status": "ok",
-      "updated": 0
+      "updated": 561
     },
-    "usc_faculty": {
-      "fetched": 1518,
-      "new": 1518,
+    "upenn_faculty": {
+      "fetched": 1830,
+      "new": 36,
       "status": "ok",
-      "updated": 0
+      "updated": 1794
     }
   },
-  "timestamp": "2026-07-17T12:12:47.637917",
-  "total_in_file": 61172,
-  "total_new": 10793,
-  "total_updated": 0
+  "timestamp": "2026-07-18T06:38:34.239793",
+  "total_in_file": 61879,
+  "total_new": 876,
+  "total_updated": 10634
 }
