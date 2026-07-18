@@ -65,6 +65,7 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "columbia": ("columbia.edu", "cumc.columbia.edu"),
     "mit": ("mit.edu",),
     "harvard": ("harvard.edu", "fas.harvard.edu", "seas.harvard.edu"),
+    "yale": ("yale.edu",),
     "usc": ("usc.edu", "marshall.usc.edu", "cinema.usc.edu"),
     "umn": ("umn.edu",),
     "osu": ("osu.edu",),

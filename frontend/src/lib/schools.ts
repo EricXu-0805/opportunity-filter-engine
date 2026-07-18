@@ -471,6 +471,17 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('umass'),
     catalog: { colleges: 10, majors: 79 },
   },
+  {
+    slug: 'yale',
+    domain: 'yale.edu',
+    name: 'Yale University',
+    shortName: 'Yale',
+    nameZh: '耶鲁大学',
+    color: '#00356B',
+    location: 'New Haven, CT',
+    coverage: campusCoverage('yale'),
+    catalog: { colleges: 4, majors: 62 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));

@@ -52,6 +52,7 @@ _CAMPUS_NAMES: dict[str, tuple[str, ...]] = {
     "brown": ("brown",),
     "dartmouth": ("dartmouth",),
     "columbia": ("columbia",),
+    "yale": ("yale",),
 }
 
 _CAMPUS_ONLY_TEMPLATES = (
@@ -213,6 +214,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "mit_faculty": ("mit", "unknown"),
     "harvard_research_programs": ("harvard", "campus"),
     "harvard_faculty": ("harvard", "unknown"),
+    "yale_research_programs": ("yale", "campus"),
+    "yale_faculty": ("yale", "unknown"),
     "dartmouth_research_programs": ("dartmouth", "campus"),
     "dartmouth_faculty": ("dartmouth", "unknown"),
     "columbia_research_programs": ("columbia", "campus"),

@@ -94,6 +94,8 @@ from .schools.vanderbilt_faculty import fetch_and_normalize as fetch_vanderbilt_
 from .schools.vanderbilt_faculty import merge_into_processed as merge_vanderbilt_faculty
 from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
 from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
+from .schools.yale_faculty import fetch_and_normalize as fetch_yale_faculty
+from .schools.yale_faculty import merge_into_processed as merge_yale_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -673,6 +675,11 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("rochester_faculty", fetch_rochester_faculty, merge_rochester_faculty),
             ("uf_faculty", fetch_uf_faculty, merge_uf_faculty),
             ("umass_faculty", fetch_umass_faculty, merge_umass_faculty),
+            # Yale faculty (live-scraped via faculty_graph): 42 departments
+            # across three YaleSites generations (Drupal-7 people tables with
+            # inline emails, node-teaser cards, directory-listing cards) plus
+            # the SEAS Worx JSON endpoint and SOM/School of Music.
+            ("yale_faculty", fetch_yale_faculty, merge_yale_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).
