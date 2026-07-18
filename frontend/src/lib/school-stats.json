@@ -7,6 +7,10 @@
     "campus": 1137,
     "national": 3499
   },
+  "bu": {
+    "campus": 1813,
+    "national": 3499
+  },
   "caltech": {
     "campus": 431,
     "national": 3499
@@ -43,8 +47,16 @@
     "campus": 1358,
     "national": 3499
   },
+  "ncsu": {
+    "campus": 2102,
+    "national": 3499
+  },
   "nd": {
     "campus": 1253,
+    "national": 3499
+  },
+  "neu": {
+    "campus": 1780,
     "national": 3499
   },
   "northwestern": {
@@ -59,6 +71,10 @@
     "campus": 622,
     "national": 3499
   },
+  "psu": {
+    "campus": 2713,
+    "national": 3499
+  },
   "purdue": {
     "campus": 2197,
     "national": 3499
@@ -71,8 +87,20 @@
     "campus": 847,
     "national": 3499
   },
+  "rutgers": {
+    "campus": 1897,
+    "national": 3499
+  },
+  "sbu": {
+    "campus": 872,
+    "national": 3499
+  },
   "stanford": {
     "campus": 1396,
+    "national": 3499
+  },
+  "tamu": {
+    "campus": 3006,
     "national": 3499
   },
   "ucb": {
@@ -111,6 +139,10 @@
     "campus": 1517,
     "national": 3499
   },
+  "umd": {
+    "campus": 1282,
+    "national": 3499
+  },
   "umich": {
     "campus": 858,
     "national": 3499
@@ -137,6 +169,14 @@
   },
   "vanderbilt": {
     "campus": 1129,
+    "national": 3499
+  },
+  "vt": {
+    "campus": 1716,
+    "national": 3499
+  },
+  "washu": {
+    "campus": 1096,
     "national": 3499
   },
   "wisc": {
