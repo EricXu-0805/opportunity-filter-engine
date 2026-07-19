@@ -1,31 +1,48 @@
 {
-  "duration_seconds": 167.0,
+  "duration_seconds": 9167.7,
   "shard": {
-    "national": true,
-    "schools": []
+    "national": false,
+    "schools": [
+      "cmu"
+    ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 1217,
+      "rule_based_tagged": 8,
       "status": "ok"
     },
+    "campus_graph:cmu": {
+      "deep": true,
+      "fetched": 6,
+      "new": 6,
+      "status": "ok",
+      "updated": 0
+    },
+    "cmu_faculty": {
+      "fetched": 965,
+      "new": 965,
+      "status": "ok",
+      "updated": 0
+    },
     "deactivate_past": {
-      "already_inactive": 332,
+      "already_inactive": 719,
       "kept_active": 3,
-      "newly_deactivated": 416,
-      "skipped_rolling": 79955,
+      "newly_deactivated": 0,
+      "skipped_rolling": 79544,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 0,
+      "kept_fresh": 965,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 0,
+      "duplicates_removed": 54,
       "keywords_cleaned": 0,
-      "removed_by_school": {},
+      "removed_by_school": {
+        "cmu": 54
+      },
       "shared_inbox_nulled": {},
       "status": "ok"
     },
@@ -38,18 +55,12 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "nsf_reu": {
-      "fetched": 418,
-      "new": 29,
-      "status": "ok",
-      "updated": 389
-    },
     "pi_enricher": {
-      "already_had": 947,
-      "enriched": 2,
+      "already_had": 359,
+      "enriched": 337,
       "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 0,
-      "scraped": 6,
+      "renulled_shared_emails": 128,
+      "scraped": 612,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -66,6 +77,8 @@
         "caltech_faculty": 429,
         "caltech_labs": 8,
         "caltech_research_programs": 8,
+        "cmu_faculty": 965,
+        "cmu_research_programs": 6,
         "columbia_faculty": 1066,
         "columbia_research_programs": 7,
         "cornell_faculty": 1684,
@@ -99,7 +112,7 @@
         "northwestern_faculty": 2769,
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
-        "nsf_reu": 671,
+        "nsf_reu": 642,
         "osu_faculty": 2247,
         "osu_research_programs": 8,
         "princeton_faculty": 611,
@@ -119,7 +132,7 @@
         "rutgers_research_programs": 8,
         "sbu_faculty": 867,
         "sbu_research_programs": 5,
-        "simplify_internships": 2666,
+        "simplify_internships": 2508,
         "stanford_external_research": 1,
         "stanford_faculty": 1357,
         "stanford_labs": 1,
@@ -245,30 +258,14 @@
         "wisc_external_research": 1,
         "wisc_faculty": 1716,
         "wisc_labs": 1,
-        "wisc_research_programs": 39,
-        "yale_faculty": 1219,
-        "yale_research_programs": 5
+        "wisc_research_programs": 39
       },
       "status": "ok",
-      "tagged": 81567
-    },
-    "simplify_internships": {
-      "deactivated_stale": 206,
-      "fetched": 1207,
-      "new": 158,
-      "status": "ok",
-      "updated": 1049
-    },
-    "uiuc_sro": {
-      "deep": true,
-      "fetched": 0,
-      "new": 0,
-      "status": "ok",
-      "updated": 0
+      "tagged": 81127
     }
   },
-  "timestamp": "2026-07-19T06:50:22.196358",
-  "total_in_file": 81567,
-  "total_new": 187,
-  "total_updated": 1438
+  "timestamp": "2026-07-19T02:41:21.722263",
+  "total_in_file": 81073,
+  "total_new": 971,
+  "total_updated": 0
 }

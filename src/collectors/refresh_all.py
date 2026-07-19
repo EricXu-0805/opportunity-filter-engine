@@ -118,6 +118,8 @@ from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
 from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
 from .schools.yale_faculty import fetch_and_normalize as fetch_yale_faculty
 from .schools.yale_faculty import merge_into_processed as merge_yale_faculty
+from .schools.cmu_faculty import fetch_and_normalize as fetch_cmu_faculty
+from .schools.cmu_faculty import merge_into_processed as merge_cmu_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -702,6 +704,10 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # inline emails, node-teaser cards, directory-listing cards) plus
             # the SEAS Worx JSON endpoint and SOM/School of Music.
             ("yale_faculty", fetch_yale_faculty, merge_yale_faculty),
+            # CMU faculty (live-scraped via faculty_graph): 18 departments —
+            # central-CMS filterable cards + MCS profile blocks + the
+            # engineering bio grid + SCS Drupal (CSD table, HCII teasers).
+            ("cmu_faculty", fetch_cmu_faculty, merge_cmu_faculty),
             # Wave-2 batch 1 (live-scraped via faculty_graph, 2026-07-18).
             ("vt_faculty", fetch_vt_faculty, merge_vt_faculty),
             ("tamu_faculty", fetch_tamu_faculty, merge_tamu_faculty),

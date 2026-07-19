@@ -578,6 +578,16 @@ def _clean_email(raw: str) -> str | None:
     # ('lane "at" cs.rochester.edu') publish a real address behind at/dot words.
     addr = re.sub(r"\s*[\[(\"']\s*at\s*[\])\"']\s*", "@", addr, flags=re.I)
     addr = re.sub(r"\s*[\[(\"']\s*dot\s*[\])\"']\s*", ".", addr, flags=re.I)
+    if "@" not in addr and re.search(r"\bat\b", addr, re.I) and re.search(r"\bdot\b", addr, re.I):
+        # Bare prose obfuscation without brackets ("jcumming at andrew dot cmu
+        # dot edu", sometimes letter-spaced) — CMU Math publishes these inside
+        # mailto: hrefs. Collapse to an address only when the result is
+        # exactly address-shaped, so real prose never converts.
+        cand = re.sub(r"\s+at\s+", "@", addr, count=1, flags=re.I)
+        cand = re.sub(r"\s+dot\s+", ".", cand, flags=re.I)
+        cand = re.sub(r"\s+", "", cand)
+        if re.fullmatch(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", cand):
+            addr = cand
     m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
     # An email MUST contain an @: a directory that puts a phone number
     # ("(301) 405-5935") in the email column, or leaves an empty ``mailto:``

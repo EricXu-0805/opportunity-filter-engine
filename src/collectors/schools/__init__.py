@@ -59,6 +59,7 @@ from .vt import SCHOOL as VT
 from .washu import SCHOOL as WASHU
 from .wisc import SCHOOL as WISC
 from .yale import SCHOOL as YALE
+from .cmu import SCHOOL as CMU
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
 # order; new schools (Top-50 rollout) append here.
@@ -108,4 +109,5 @@ SCHOOL_CONFIGS: list[dict] = [
     RUTGERS,
     NCSU,
     PSU,
+    CMU,
 ]
