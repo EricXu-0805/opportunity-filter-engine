@@ -51,6 +51,7 @@ from .ucsb import SCHOOL as UCSB
 from .ucsc import SCHOOL as UCSC
 from .ucsd import SCHOOL as UCSD
 from .uf import SCHOOL as UF
+from .uga import SCHOOL as UGA
 from .umass import SCHOOL as UMASS
 from .umd import SCHOOL as UMD
 from .umich import SCHOOL as UMICH
@@ -122,4 +123,5 @@ SCHOOL_CONFIGS: list[dict] = [
     PITT,
     MSU,
     CMU,
+    UGA,
 ]

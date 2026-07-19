@@ -270,6 +270,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "pitt_faculty": ("pitt", "unknown"),
     "msu_research_programs": ("msu", "campus"),
     "msu_faculty": ("msu", "unknown"),
+    "uga_research_programs": ("uga", "campus"),
+    "uga_faculty": ("uga", "unknown"),
     # University of Michigan, Ann Arbor (#2 on the campus_graph engine).
     "umich_research_programs": ("umich", "campus"),
     "umich_external_research": (None, "open"),

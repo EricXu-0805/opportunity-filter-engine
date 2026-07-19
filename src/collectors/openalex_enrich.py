@@ -122,6 +122,8 @@ SCHOOL_INST = {
     "asu": "I55732556",        # Arizona State University
     "pitt": "I170201317",      # University of Pittsburgh
     "msu": "I87216513",        # Michigan State University
+    # Verified 2026-07-18 via GET /institutions?search=University of Georgia:
+    "uga": "I165733156",       # University of Georgia (US, ~141k works)
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)

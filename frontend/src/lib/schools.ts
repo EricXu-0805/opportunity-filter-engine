@@ -593,6 +593,17 @@ export const SCHOOLS: School[] = [
     catalog: { colleges: 12, majors: 73 },
   },
   {
+    slug: 'uga',
+    domain: 'uga.edu',
+    name: 'University of Georgia',
+    shortName: 'UGA',
+    nameZh: '佐治亚大学',
+    color: '#BA0C2F',
+    location: 'Athens, GA',
+    coverage: campusCoverage('uga'),
+    catalog: { colleges: 14, majors: 97 },
+  },
+  {
     slug: 'ucsc',
     domain: 'ucsc.edu',
     name: 'University of California, Santa Cruz',
