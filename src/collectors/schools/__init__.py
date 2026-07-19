@@ -60,6 +60,14 @@ from .washu import SCHOOL as WASHU
 from .wisc import SCHOOL as WISC
 from .yale import SCHOOL as YALE
 
+# Wave-3 batch 1 (2026-07-19).
+from .emory import SCHOOL as EMORY
+from .georgetown import SCHOOL as GEORGETOWN
+from .nyu import SCHOOL as NYU
+from .tufts import SCHOOL as TUFTS
+from .unc import SCHOOL as UNC
+from .uva import SCHOOL as UVA
+
 # Ordered registry of every campus-graph school. refresh_all collects these in
 # order; new schools (Top-50 rollout) append here.
 SCHOOL_CONFIGS: list[dict] = [
@@ -108,4 +116,10 @@ SCHOOL_CONFIGS: list[dict] = [
     RUTGERS,
     NCSU,
     PSU,
+    EMORY,
+    GEORGETOWN,
+    NYU,
+    TUFTS,
+    UNC,
+    UVA,
 ]

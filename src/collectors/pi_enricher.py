@@ -91,6 +91,14 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     # The joint UNC/NC State BME department legitimately carries unc.edu addresses.
     "ncsu": ("ncsu.edu", "unc.edu"),
     "psu": ("psu.edu",),
+    # Wave-3 batch 1 (2026-07-19). Subdomain mail hosts included; student/AD
+    # domains (live.unc.edu, ad.unc.edu) deliberately excluded from recovery.
+    "emory": ("emory.edu",),
+    "georgetown": ("georgetown.edu", "cs.georgetown.edu", "ir.cs.georgetown.edu"),
+    "nyu": ("nyu.edu", "cns.nyu.edu"),
+    "tufts": ("tufts.edu",),
+    "unc": ("unc.edu", "email.unc.edu", "med.unc.edu", "bio.unc.edu", "cs.unc.edu"),
+    "uva": ("virginia.edu",),
 }
 # National records (school=None: SRO catalog, NSF REU, …) keep the historical
 # UIUC-only recovery scope.

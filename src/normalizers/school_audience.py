@@ -53,6 +53,12 @@ _CAMPUS_NAMES: dict[str, tuple[str, ...]] = {
     "dartmouth": ("dartmouth",),
     "columbia": ("columbia",),
     "yale": ("yale",),
+    "emory": ("emory",),
+    "georgetown": ("georgetown",),
+    "nyu": ("nyu", "new york university"),
+    "tufts": ("tufts",),
+    "unc": ("unc", "unc chapel hill", "university of north carolina"),
+    "uva": ("uva", "university of virginia"),
 }
 
 _CAMPUS_ONLY_TEMPLATES = (
@@ -254,6 +260,19 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "ncsu_faculty": ("ncsu", "unknown"),
     "psu_research_programs": ("psu", "campus"),
     "psu_faculty": ("psu", "unknown"),
+    # Wave-3 batch 1 (2026-07-19).
+    "emory_research_programs": ("emory", "campus"),
+    "emory_faculty": ("emory", "unknown"),
+    "georgetown_research_programs": ("georgetown", "campus"),
+    "georgetown_faculty": ("georgetown", "unknown"),
+    "nyu_research_programs": ("nyu", "campus"),
+    "nyu_faculty": ("nyu", "unknown"),
+    "tufts_research_programs": ("tufts", "campus"),
+    "tufts_faculty": ("tufts", "unknown"),
+    "unc_research_programs": ("unc", "campus"),
+    "unc_faculty": ("unc", "unknown"),
+    "uva_research_programs": ("uva", "campus"),
+    "uva_faculty": ("uva", "unknown"),
     # University of Michigan, Ann Arbor (#2 on the campus_graph engine).
     "umich_research_programs": ("umich", "campus"),
     "umich_external_research": (None, "open"),

@@ -118,6 +118,20 @@ from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
 from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
 from .schools.yale_faculty import fetch_and_normalize as fetch_yale_faculty
 from .schools.yale_faculty import merge_into_processed as merge_yale_faculty
+
+# Wave-3 batch 1 (2026-07-19).
+from .schools.emory_faculty import fetch_and_normalize as fetch_emory_faculty
+from .schools.emory_faculty import merge_into_processed as merge_emory_faculty
+from .schools.georgetown_faculty import fetch_and_normalize as fetch_georgetown_faculty
+from .schools.georgetown_faculty import merge_into_processed as merge_georgetown_faculty
+from .schools.nyu_faculty import fetch_and_normalize as fetch_nyu_faculty
+from .schools.nyu_faculty import merge_into_processed as merge_nyu_faculty
+from .schools.tufts_faculty import fetch_and_normalize as fetch_tufts_faculty
+from .schools.tufts_faculty import merge_into_processed as merge_tufts_faculty
+from .schools.unc_faculty import fetch_and_normalize as fetch_unc_faculty
+from .schools.unc_faculty import merge_into_processed as merge_unc_faculty
+from .schools.uva_faculty import fetch_and_normalize as fetch_uva_faculty
+from .schools.uva_faculty import merge_into_processed as merge_uva_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -713,6 +727,14 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("rutgers_faculty", fetch_rutgers_faculty, merge_rutgers_faculty),
             ("ncsu_faculty", fetch_ncsu_faculty, merge_ncsu_faculty),
             ("psu_faculty", fetch_psu_faculty, merge_psu_faculty),
+            # Wave-3 batch 1 (live-scraped via faculty_graph, 2026-07-19). UVA
+            # SEAS rides a Playwright render family; the rest are static HTTP.
+            ("emory_faculty", fetch_emory_faculty, merge_emory_faculty),
+            ("georgetown_faculty", fetch_georgetown_faculty, merge_georgetown_faculty),
+            ("nyu_faculty", fetch_nyu_faculty, merge_nyu_faculty),
+            ("tufts_faculty", fetch_tufts_faculty, merge_tufts_faculty),
+            ("unc_faculty", fetch_unc_faculty, merge_unc_faculty),
+            ("uva_faculty", fetch_uva_faculty, merge_uva_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).

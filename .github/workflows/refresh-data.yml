@@ -7,10 +7,10 @@ name: Refresh Opportunity Data
 #   | Day | Shard                             | Weekly est. | First-week est. |
 #   |-----|-----------------------------------|-------------|-----------------|
 #   | Mon | uiuc,rutgers,ncsu (+ Experts monthly, +Chromium) | ~100-165 min | ~130-200 min |
-#   | Tue | ucb,mit,usc,umn,tamu,psu          | ~90-140 min | ~125-190 min    |
+#   | Tue | ucb,mit,usc,umn,tamu,psu,emory,georgetown | ~90-140 min | ~125-190 min    |
 #   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu | ~60-105 min | ~110-185 min |
-#   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt | ~50-90 min | ~105-180 min |
-#   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu | ~60-95 min | ~110-180 min |
+#   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,nyu,uva (+Chromium) | ~50-90 min | ~105-180 min |
+#   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,unc,tufts | ~60-95 min | ~110-180 min |
 #   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu | ~50-85 min | ~105-180 min |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
 #
@@ -81,10 +81,10 @@ jobs:
           else
             case "$(date -u +%u)" in
               1) SHARD="uiuc,rutgers,ncsu" ;;
-              2) SHARD="ucb,mit,usc,umn,tamu,psu" ;;
+              2) SHARD="ucb,mit,usc,umn,tamu,psu,emory,georgetown" ;;
               3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu" ;;
-              4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt" ;;
-              5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu" ;;
+              4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,nyu,uva" ;;
+              5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,unc,tufts" ;;
               6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu" ;;
               7) SHARD="national" ;;
             esac
@@ -121,7 +121,7 @@ jobs:
             # (the collectors lazy-import it; tests mock it), so install it + Chromium
             # whenever the run is a full refresh OR its shard includes any render-using
             # school — otherwise those schools' render departments silently collect nothing.
-            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt), ]]; then
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt|uva), ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi

@@ -155,6 +155,13 @@ FACULTY_SOURCES = frozenset({
     "ncsu_faculty",
     # Penn State — Wave-2 batch (single source across depts).
     "psu_faculty",
+    # Wave-3 batch 1 (2026-07-19) — single source across depts each.
+    "emory_faculty",
+    "georgetown_faculty",
+    "nyu_faculty",
+    "tufts_faculty",
+    "unc_faculty",
+    "uva_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

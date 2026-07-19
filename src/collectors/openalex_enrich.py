@@ -115,6 +115,13 @@ SCHOOL_INST = {
     "rutgers": "I102322142",   # Rutgers, The State University of New Jersey
     "ncsu": "I137902535",      # North Carolina State University
     "psu": "I130769515",       # Pennsylvania State University
+    # Wave-3 batch 1 (2026-07-19, OpenAlex-API verified).
+    "emory": "I150468666",       # Emory University
+    "georgetown": "I184565670",  # Georgetown University
+    "nyu": "I57206974",          # New York University
+    "tufts": "I121934306",       # Tufts University
+    "unc": "I114027177",         # University of North Carolina at Chapel Hill
+    "uva": "I51556381",          # University of Virginia
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)
