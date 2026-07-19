@@ -121,6 +121,8 @@ FACULTY_SOURCES = frozenset({
     "harvard_faculty",
     # Yale — three YaleSites generations + SEAS Worx API (single source across depts).
     "yale_faculty",
+    # CMU — central-CMS filterable/profile templates (single source across depts).
+    "cmu_faculty",
     # USC — Viterbi/Dornsife + professional-school directories (single source).
     "usc_faculty",
     # Minnesota — CSE/CLA/CBS + professional-college directories (single source).
