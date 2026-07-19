@@ -155,6 +155,13 @@ FACULTY_SOURCES = frozenset({
     "ncsu_faculty",
     # Penn State — Wave-2 batch (single source across depts).
     "psu_faculty",
+    # Wave-2 batch 2 (single source across depts each).
+    "ucsc_faculty",
+    "arizona_faculty",
+    "ucr_faculty",
+    "asu_faculty",
+    "pitt_faculty",
+    "msu_faculty",
     # Georgia — statewide-Drupal views-row directories (single source).
     "uga_faculty",
     # UCSD — live-scraped faculty (single source across depts).

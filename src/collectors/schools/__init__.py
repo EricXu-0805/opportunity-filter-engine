@@ -12,6 +12,8 @@ touches the refresh wiring again — only this list grows.
 
 from __future__ import annotations
 
+from .arizona import SCHOOL as ARIZONA
+from .asu import SCHOOL as ASU
 from .boulder import SCHOOL as BOULDER
 from .brown import SCHOOL as BROWN
 from .bu import SCHOOL as BU
@@ -24,11 +26,13 @@ from .gatech import SCHOOL as GATECH
 from .harvard import SCHOOL as HARVARD
 from .jhu import SCHOOL as JHU
 from .mit import SCHOOL as MIT
+from .msu import SCHOOL as MSU
 from .ncsu import SCHOOL as NCSU
 from .nd import SCHOOL as ND
 from .neu import SCHOOL as NEU
 from .northwestern import SCHOOL as NORTHWESTERN
 from .osu import SCHOOL as OSU
+from .pitt import SCHOOL as PITT
 from .princeton import SCHOOL as PRINCETON
 from .psu import SCHOOL as PSU
 from .purdue import SCHOOL as PURDUE
@@ -41,7 +45,9 @@ from .tamu import SCHOOL as TAMU
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
 from .ucla import SCHOOL as UCLA
+from .ucr import SCHOOL as UCR
 from .ucsb import SCHOOL as UCSB
+from .ucsc import SCHOOL as UCSC
 from .ucsd import SCHOOL as UCSD
 from .uf import SCHOOL as UF
 from .uga import SCHOOL as UGA
@@ -109,5 +115,11 @@ SCHOOL_CONFIGS: list[dict] = [
     RUTGERS,
     NCSU,
     PSU,
+    UCSC,
+    ARIZONA,
+    UCR,
+    ASU,
+    PITT,
+    MSU,
     UGA,
 ]

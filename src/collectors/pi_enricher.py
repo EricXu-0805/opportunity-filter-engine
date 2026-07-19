@@ -91,6 +91,13 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     # The joint UNC/NC State BME department legitimately carries unc.edu addresses.
     "ncsu": ("ncsu.edu", "unc.edu"),
     "psu": ("psu.edu",),
+    # Wave-2 batch 2.
+    "ucsc": ("ucsc.edu",),
+    "arizona": ("arizona.edu", "cs.arizona.edu"),
+    "ucr": ("ucr.edu",),
+    "asu": ("asu.edu",),
+    "pitt": ("pitt.edu",),
+    "msu": ("msu.edu",),
     "uga": ("uga.edu",),
 }
 # National records (school=None: SRO catalog, NSF REU, …) keep the historical

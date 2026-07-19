@@ -115,6 +115,12 @@ SCHOOL_INST = {
     "rutgers": "I102322142",   # Rutgers, The State University of New Jersey
     "ncsu": "I137902535",      # North Carolina State University
     "psu": "I130769515",       # Pennsylvania State University
+    "ucsc": "I185103710",      # University of California, Santa Cruz
+    "arizona": "I138006243",   # University of Arizona
+    "ucr": "I103635307",       # University of California, Riverside
+    "asu": "I55732556",        # Arizona State University
+    "pitt": "I170201317",      # University of Pittsburgh
+    "msu": "I87216513",        # Michigan State University
     # Verified 2026-07-18 via GET /institutions?search=University of Georgia:
     "uga": "I165733156",       # University of Georgia (US, ~141k works)
 }
