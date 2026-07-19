@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from .boulder import SCHOOL as BOULDER
 from .brown import SCHOOL as BROWN
+from .bu import SCHOOL as BU
 from .caltech import SCHOOL as CALTECH
 from .columbia import SCHOOL as COLUMBIA
 from .cornell import SCHOOL as CORNELL
@@ -23,14 +24,20 @@ from .gatech import SCHOOL as GATECH
 from .harvard import SCHOOL as HARVARD
 from .jhu import SCHOOL as JHU
 from .mit import SCHOOL as MIT
+from .ncsu import SCHOOL as NCSU
 from .nd import SCHOOL as ND
+from .neu import SCHOOL as NEU
 from .northwestern import SCHOOL as NORTHWESTERN
 from .osu import SCHOOL as OSU
 from .princeton import SCHOOL as PRINCETON
+from .psu import SCHOOL as PSU
 from .purdue import SCHOOL as PURDUE
 from .rice import SCHOOL as RICE
 from .rochester import SCHOOL as ROCHESTER
+from .rutgers import SCHOOL as RUTGERS
+from .sbu import SCHOOL as SBU
 from .stanford import SCHOOL as STANFORD
+from .tamu import SCHOOL as TAMU
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
 from .ucla import SCHOOL as UCLA
@@ -38,6 +45,7 @@ from .ucsb import SCHOOL as UCSB
 from .ucsd import SCHOOL as UCSD
 from .uf import SCHOOL as UF
 from .umass import SCHOOL as UMASS
+from .umd import SCHOOL as UMD
 from .umich import SCHOOL as UMICH
 from .umn import SCHOOL as UMN
 from .upenn import SCHOOL as UPENN
@@ -45,6 +53,10 @@ from .usc import SCHOOL as USC
 from .utexas import SCHOOL as UTEXAS
 from .uw import SCHOOL as UW
 from .vanderbilt import SCHOOL as VANDERBILT
+
+# Wave-2 batch 1 (2026-07-18).
+from .vt import SCHOOL as VT
+from .washu import SCHOOL as WASHU
 from .wisc import SCHOOL as WISC
 from .yale import SCHOOL as YALE
 
@@ -86,4 +98,14 @@ SCHOOL_CONFIGS: list[dict] = [
     UF,
     UMASS,
     YALE,
+    VT,
+    TAMU,
+    UMD,
+    NEU,
+    SBU,
+    BU,
+    WASHU,
+    RUTGERS,
+    NCSU,
+    PSU,
 ]

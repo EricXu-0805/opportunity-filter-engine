@@ -104,6 +104,17 @@ SCHOOL_INST = {
     "rochester": "I5388228",   # University of Rochester
     "uf": "I33213144",         # University of Florida
     "umass": "I24603500",      # University of Massachusetts Amherst
+    # Verified 2026-07-18 via GET /institutions?search=… (Wave-2 batch 1):
+    "vt": "I859038795",        # Virginia Tech
+    "tamu": "I91045830",       # Texas A&M University
+    "umd": "I66946132",        # University of Maryland, College Park
+    "neu": "I12912129",        # Northeastern University (US — NOT the CN homonym I9224756)
+    "sbu": "I59553526",        # Stony Brook University
+    "bu": "I111088046",        # Boston University
+    "washu": "I204465549",     # Washington University in St. Louis
+    "rutgers": "I102322142",   # Rutgers, The State University of New Jersey
+    "ncsu": "I137902535",      # North Carolina State University
+    "psu": "I130769515",       # Pennsylvania State University
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)
