@@ -18,6 +18,9 @@ from .boulder import SCHOOL as BOULDER
 from .brown import SCHOOL as BROWN
 from .bu import SCHOOL as BU
 from .caltech import SCHOOL as CALTECH
+
+# Wave-3 batch 1 (2026-07-19)
+from .casewestern import SCHOOL as CASEWESTERN
 from .cmu import SCHOOL as CMU
 from .columbia import SCHOOL as COLUMBIA
 from .cornell import SCHOOL as CORNELL
@@ -25,7 +28,11 @@ from .dartmouth import SCHOOL as DARTMOUTH
 from .duke import SCHOOL as DUKE
 from .gatech import SCHOOL as GATECH
 from .harvard import SCHOOL as HARVARD
+from .houston import SCHOOL as HOUSTON
+from .iastate import SCHOOL as IASTATE
+from .indiana import SCHOOL as INDIANA
 from .jhu import SCHOOL as JHU
+from .miami import SCHOOL as MIAMI
 from .mit import SCHOOL as MIT
 from .msu import SCHOOL as MSU
 from .ncsu import SCHOOL as NCSU
@@ -39,25 +46,31 @@ from .psu import SCHOOL as PSU
 from .purdue import SCHOOL as PURDUE
 from .rice import SCHOOL as RICE
 from .rochester import SCHOOL as ROCHESTER
+from .rpi import SCHOOL as RPI
 from .rutgers import SCHOOL as RUTGERS
 from .sbu import SCHOOL as SBU
 from .stanford import SCHOOL as STANFORD
 from .tamu import SCHOOL as TAMU
+from .ucf import SCHOOL as UCF
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
 from .ucla import SCHOOL as UCLA
+from .uconn import SCHOOL as UCONN
 from .ucr import SCHOOL as UCR
 from .ucsb import SCHOOL as UCSB
 from .ucsc import SCHOOL as UCSC
 from .ucsd import SCHOOL as UCSD
+from .udel import SCHOOL as UDEL
 from .uf import SCHOOL as UF
 from .uga import SCHOOL as UGA
+from .uiowa import SCHOOL as UIOWA
 from .umass import SCHOOL as UMASS
 from .umd import SCHOOL as UMD
 from .umich import SCHOOL as UMICH
 from .umn import SCHOOL as UMN
 from .upenn import SCHOOL as UPENN
 from .usc import SCHOOL as USC
+from .utah import SCHOOL as UTAH
 from .utexas import SCHOOL as UTEXAS
 from .uw import SCHOOL as UW
 from .vanderbilt import SCHOOL as VANDERBILT
@@ -122,6 +135,18 @@ SCHOOL_CONFIGS: list[dict] = [
     ASU,
     PITT,
     MSU,
+    # Wave-3 batch 1 (2026-07-19)
+    CASEWESTERN,
+    HOUSTON,
+    IASTATE,
+    INDIANA,
+    MIAMI,
+    RPI,
+    UCF,
+    UCONN,
+    UDEL,
+    UIOWA,
+    UTAH,
     CMU,
     UGA,
 ]

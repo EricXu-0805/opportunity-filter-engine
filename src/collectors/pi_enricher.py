@@ -99,6 +99,18 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "asu": ("asu.edu",),
     "pitt": ("pitt.edu",),
     "msu": ("msu.edu",),
+    # Wave-3 batch 1.
+    "casewestern": ("case.edu",),
+    "houston": ("uh.edu", "cs.uh.edu", "central.uh.edu"),
+    "iastate": ("iastate.edu",),
+    "indiana": ("indiana.edu", "iu.edu"),
+    "miami": ("miami.edu",),
+    "rpi": ("rpi.edu",),
+    "ucf": ("ucf.edu",),
+    "uconn": ("uconn.edu",),
+    "udel": ("udel.edu",),
+    "uiowa": ("uiowa.edu",),
+    "utah": ("utah.edu", "cs.utah.edu", "math.utah.edu"),
     "uga": ("uga.edu",),
 }
 # National records (school=None: SRO catalog, NSF REU, …) keep the historical
