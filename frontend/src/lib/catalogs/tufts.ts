@@ -1,0 +1,56 @@
+/*
+ * Tufts University — undergraduate college/major catalog.
+ * Generated from live recon; majors are official undergraduate programs.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'School of Arts and Sciences': [
+    'Biology',
+    'Chemistry',
+    'Physics',
+    'Mathematics',
+    'Psychology',
+    'Economics',
+    'Political Science',
+    'Sociology',
+    'Anthropology',
+    'English',
+    'History',
+    'Philosophy',
+    'Religion',
+    'Classical Studies',
+    'History of Art and Architecture',
+    'Music',
+    'Film and Media Studies',
+    'Cognitive Science',
+    'Environmental Studies',
+    'Earth and Climate Sciences',
+    'Child Study and Human Development',
+    'International Relations',
+    'French',
+    'Spanish',
+    'German',
+    "Women's, Gender, and Sexuality Studies",
+    'Community Health',
+  ],
+  'School of Engineering': [
+    'Computer Science',
+    'Electrical Engineering',
+    'Computer Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering',
+    'Environmental Engineering',
+    'Chemical Engineering',
+    'Biomedical Engineering',
+    'Data Science',
+    'Engineering Physics',
+    'Human Factors Engineering',
+    'Biotechnology',
+  ],
+  'School of the Museum of Fine Arts': [
+    'Studio Art',
+    'Art History',
+    'Art Education',
+    'Fine Arts',
+  ],
+};
