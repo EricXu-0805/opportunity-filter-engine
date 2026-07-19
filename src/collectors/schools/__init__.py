@@ -18,6 +18,7 @@ from .boulder import SCHOOL as BOULDER
 from .brown import SCHOOL as BROWN
 from .bu import SCHOOL as BU
 from .caltech import SCHOOL as CALTECH
+from .cmu import SCHOOL as CMU
 from .columbia import SCHOOL as COLUMBIA
 from .cornell import SCHOOL as CORNELL
 from .dartmouth import SCHOOL as DARTMOUTH
@@ -120,4 +121,5 @@ SCHOOL_CONFIGS: list[dict] = [
     ASU,
     PITT,
     MSU,
+    CMU,
 ]
