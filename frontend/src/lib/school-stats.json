@@ -23,6 +23,10 @@
     "campus": 445,
     "national": 3686
   },
+  "casewestern": {
+    "campus": 160,
+    "national": 3686
+  },
   "cmu": {
     "campus": 917,
     "national": 3686
@@ -51,8 +55,24 @@
     "campus": 458,
     "national": 3686
   },
+  "houston": {
+    "campus": 192,
+    "national": 3686
+  },
+  "iastate": {
+    "campus": 126,
+    "national": 3686
+  },
+  "indiana": {
+    "campus": 143,
+    "national": 3686
+  },
   "jhu": {
     "campus": 4598,
+    "national": 3686
+  },
+  "miami": {
+    "campus": 160,
     "national": 3686
   },
   "mit": {
@@ -107,6 +127,10 @@
     "campus": 847,
     "national": 3686
   },
+  "rpi": {
+    "campus": 186,
+    "national": 3686
+  },
   "rutgers": {
     "campus": 1897,
     "national": 3686
@@ -127,6 +151,10 @@
     "campus": 3097,
     "national": 3686
   },
+  "ucf": {
+    "campus": 344,
+    "national": 3686
+  },
   "uchicago": {
     "campus": 1177,
     "national": 3686
@@ -137,6 +165,10 @@
   },
   "ucla": {
     "campus": 2035,
+    "national": 3686
+  },
+  "uconn": {
+    "campus": 284,
     "national": 3686
   },
   "ucr": {
@@ -155,8 +187,16 @@
     "campus": 1510,
     "national": 3686
   },
+  "udel": {
+    "campus": 221,
+    "national": 3686
+  },
   "uf": {
     "campus": 1965,
+    "national": 3686
+  },
+  "uiowa": {
+    "campus": 156,
     "national": 3686
   },
   "uiuc": {
@@ -185,6 +225,10 @@
   },
   "usc": {
     "campus": 1512,
+    "national": 3686
+  },
+  "utah": {
+    "campus": 284,
     "national": 3686
   },
   "utexas": {

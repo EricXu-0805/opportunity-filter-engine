@@ -122,6 +122,17 @@ SCHOOL_INST = {
     "asu": "I55732556",        # Arizona State University
     "pitt": "I170201317",      # University of Pittsburgh
     "msu": "I87216513",        # Michigan State University
+    "casewestern": "I58956616",
+    "houston": "I44461941",
+    "iastate": "I173911158",
+    "indiana": "I4210119109",
+    "miami": "I145608581",
+    "rpi": "I165799507",
+    "ucf": "I106165777",
+    "uconn": "I140172145",
+    "udel": "I86501945",
+    "uiowa": "I126307644",
+    "utah": "I223532165",
 }
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)

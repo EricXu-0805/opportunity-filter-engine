@@ -164,6 +164,18 @@ FACULTY_SOURCES = frozenset({
     "asu_faculty",
     "pitt_faculty",
     "msu_faculty",
+    # Wave-3 batch 1 (single source across depts each).
+    "casewestern_faculty",
+    "houston_faculty",
+    "iastate_faculty",
+    "indiana_faculty",
+    "miami_faculty",
+    "rpi_faculty",
+    "ucf_faculty",
+    "uconn_faculty",
+    "udel_faculty",
+    "uiowa_faculty",
+    "utah_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

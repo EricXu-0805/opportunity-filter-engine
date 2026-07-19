@@ -572,7 +572,13 @@ def _clean_email(raw: str) -> str | None:
     .edu%3E"), trailing whitespace/nbsp, and "Name <addr>" text by extracting
     the first address-shaped token after URL-decoding.
     """
-    addr = unquote(raw or "").replace("mailto:", "").split("?")[0].strip()
+    # Strip zero-width / invisible formatting chars first: some CMSes (Utah's
+    # Kahlert/CS people pages) splice a zero-width space into the mailto so a
+    # scraper stops at the break — the address-shape regex would then bail and
+    # leak the raw obfuscated string. These code points never appear in real
+    # addresses, so dropping them is safe and canonicalizing.
+    raw = re.sub("[\u200b\u200c\u200d\u2060\ufeff]", "", raw or "")
+    addr = unquote(raw).replace("mailto:", "").split("?")[0].strip()
     # Normalize written-out obfuscation before the address-shape search: both
     # spamspan text ("x [at] umass [dot] edu") and hand-quoted forms
     # ('lane "at" cs.rochester.edu') publish a real address behind at/dot words.
@@ -671,6 +677,33 @@ def _decode_rot13email(el) -> str | None:
     return _clean_email(decoded) if "@" in decoded else None
 
 
+def _decode_datacode_email(el) -> str | None:
+    """Decode a hex-UTF16 ``data-code`` payload on (or under) ``el``.
+
+    University of Miami's Cascade CMS renders every address as
+    ``<a class="email-decode" data-code="HEX">`` where HEX is the address's
+    UTF-16 big-endian code units (``00760078...`` -> "vx..."), decoded
+    client-side. Without this decode Miami's A&S + Engineering department sites
+    (a template shared campus-wide) land unemailed despite publishing every
+    address.
+    """
+    payload = el.get("data-code")
+    if not payload and hasattr(el, "select_one"):
+        sub = el.select_one("[data-code]")
+        if sub is not None:
+            payload = sub.get("data-code")
+    if not payload:
+        return None
+    hexstr = re.sub(r"[^0-9a-fA-F]", "", payload)
+    if len(hexstr) < 8 or len(hexstr) % 4:
+        return None
+    try:
+        decoded = bytes.fromhex(hexstr).decode("utf-16-be")
+    except Exception:  # noqa: BLE001
+        return None
+    return _clean_email(decoded) if "@" in decoded else None
+
+
 def _email_from_el(e_el) -> str | None:
     """Address from a selected email element — cf-shield/base64/rot13 decode, then mailto/text."""
     cf = _decode_cfemail(e_el)
@@ -682,6 +715,9 @@ def _email_from_el(e_el) -> str | None:
     r13 = _decode_rot13email(e_el)
     if r13:
         return r13
+    dc = _decode_datacode_email(e_el)
+    if dc:
+        return dc
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
     return _clean_email(raw)
 

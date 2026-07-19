@@ -120,7 +120,7 @@ describe('registry — switcher metadata', () => {
 
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending).toEqual([]);
-    expect(SCHOOLS.length).toBe(54);
+    expect(SCHOOLS.length).toBe(65);
   });
 
   it('slugs are unique', () => {
