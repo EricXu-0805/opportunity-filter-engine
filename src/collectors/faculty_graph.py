@@ -187,6 +187,14 @@ def _hygiene_keyword(k: str) -> str | None:
         return None
     if _PROSE_FRAGMENT_LEAD_RE.match(c):
         return None
+    # A comma-split of a prose "Research Interests" paragraph (UGA English's
+    # narrative bios) strands continuation clauses led by a qualifier connective
+    # ("especially as these areas intersect"). The derived-keyword path already
+    # drops these; the hygiene path (curated/taxonomy/profile-enrich + the
+    # corpus-wide re-clean) must enforce the SAME rule the DQ gate does, or a
+    # fragment that entered via keywords survives the gate.
+    if _FRAGMENT_LEADIN_RE.match(c):
+        return None
     try:
         from .uiuc_faculty import _is_junk_keyword
     except Exception:  # noqa: BLE001

@@ -12,7 +12,7 @@
     "national": 3499
   },
   "caltech": {
-    "campus": 431,
+    "campus": 445,
     "national": 3499
   },
   "columbia": {
@@ -32,7 +32,7 @@
     "national": 3499
   },
   "gatech": {
-    "campus": 1215,
+    "campus": 1246,
     "national": 3499
   },
   "harvard": {
@@ -64,7 +64,7 @@
     "national": 3499
   },
   "osu": {
-    "campus": 2248,
+    "campus": 2255,
     "national": 3499
   },
   "princeton": {
@@ -108,11 +108,11 @@
     "national": 3499
   },
   "uchicago": {
-    "campus": 1154,
+    "campus": 1177,
     "national": 3499
   },
   "uci": {
-    "campus": 1176,
+    "campus": 1187,
     "national": 3499
   },
   "ucla": {
@@ -120,7 +120,7 @@
     "national": 3499
   },
   "ucsb": {
-    "campus": 1071,
+    "campus": 1100,
     "national": 3499
   },
   "ucsd": {
@@ -131,12 +131,16 @@
     "campus": 1965,
     "national": 3499
   },
+  "uga": {
+    "campus": 2058,
+    "national": 3499
+  },
   "uiuc": {
     "campus": 3327,
     "national": 3499
   },
   "umass": {
-    "campus": 1517,
+    "campus": 1584,
     "national": 3499
   },
   "umd": {
@@ -144,7 +148,7 @@
     "national": 3499
   },
   "umich": {
-    "campus": 858,
+    "campus": 1195,
     "national": 3499
   },
   "umn": {
@@ -152,7 +156,7 @@
     "national": 3499
   },
   "upenn": {
-    "campus": 1909,
+    "campus": 1922,
     "national": 3499
   },
   "usc": {
