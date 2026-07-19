@@ -1233,7 +1233,7 @@ def _acf_path(rec: dict, path: str):
             cur = cur.get(part)
         else:
             return ""
-    return cur if isinstance(cur, (str, int, float)) else ""
+    return cur if isinstance(cur, str | int | float) else ""
 
 
 _NAME_SUFFIX_RE = re.compile(r"^(jr|sr|ii|iii|iv|v)\.?$", re.I)
