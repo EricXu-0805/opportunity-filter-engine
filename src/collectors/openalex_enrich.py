@@ -96,6 +96,7 @@ SCHOOL_INST = {
     "mit": "I63966007",        # Massachusetts Institute of Technology (ror 042nb2s44, OpenAlex-API verified)
     "harvard": "I136199984",   # Harvard University (ror 03vek6s52, OpenAlex-API verified)
     "yale": "I32971472",       # Yale University (ror 03v76x132, OpenAlex-API verified)
+    "cmu": "I74973139",        # Carnegie Mellon University (ror 05x2bcf33, OpenAlex-API verified)
     # Verified 2026-07-17 via GET /institutions?search=… (Wave-1 final seven):
     "usc": "I1174212",         # University of Southern California
     "umn": "I130238516",       # University of Minnesota [Twin Cities]

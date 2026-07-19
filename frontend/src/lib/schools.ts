@@ -667,6 +667,17 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('msu'),
     catalog: { colleges: 10, majors: 78 },
   },
+  {
+    slug: 'cmu',
+    domain: 'cmu.edu',
+    name: 'Carnegie Mellon University',
+    shortName: 'CMU',
+    nameZh: '卡内基梅隆大学',
+    color: '#C41230',
+    location: 'Pittsburgh, PA',
+    coverage: campusCoverage('cmu'),
+    catalog: { colleges: 6, majors: 37 },
+  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));
