@@ -116,6 +116,8 @@ SCHOOL_INST = {
     "ncsu": "I137902535",      # North Carolina State University
     "psu": "I130769515",       # Pennsylvania State University
     # Wave-3 batch 1 (2026-07-19, OpenAlex-API verified).
+    "bc": "I103531236",          # Boston College
+    "uga": "I165733156",         # University of Georgia
     "emory": "I150468666",       # Emory University
     "georgetown": "I184565670",  # Georgetown University
     "nyu": "I57206974",          # New York University

@@ -59,6 +59,8 @@ _CAMPUS_NAMES: dict[str, tuple[str, ...]] = {
     "tufts": ("tufts",),
     "unc": ("unc", "unc chapel hill", "university of north carolina"),
     "uva": ("uva", "university of virginia"),
+    "bc": ("bc", "boston college"),
+    "uga": ("uga", "university of georgia"),
 }
 
 _CAMPUS_ONLY_TEMPLATES = (
@@ -261,6 +263,10 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "psu_research_programs": ("psu", "campus"),
     "psu_faculty": ("psu", "unknown"),
     # Wave-3 batch 1 (2026-07-19).
+    "bc_research_programs": ("bc", "campus"),
+    "bc_faculty": ("bc", "unknown"),
+    "uga_research_programs": ("uga", "campus"),
+    "uga_faculty": ("uga", "unknown"),
     "emory_research_programs": ("emory", "campus"),
     "emory_faculty": ("emory", "unknown"),
     "georgetown_research_programs": ("georgetown", "campus"),

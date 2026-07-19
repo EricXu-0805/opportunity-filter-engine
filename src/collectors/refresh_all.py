@@ -120,6 +120,8 @@ from .schools.yale_faculty import fetch_and_normalize as fetch_yale_faculty
 from .schools.yale_faculty import merge_into_processed as merge_yale_faculty
 
 # Wave-3 batch 1 (2026-07-19).
+from .schools.bc_faculty import fetch_and_normalize as fetch_bc_faculty
+from .schools.bc_faculty import merge_into_processed as merge_bc_faculty
 from .schools.emory_faculty import fetch_and_normalize as fetch_emory_faculty
 from .schools.emory_faculty import merge_into_processed as merge_emory_faculty
 from .schools.georgetown_faculty import fetch_and_normalize as fetch_georgetown_faculty
@@ -132,6 +134,8 @@ from .schools.unc_faculty import fetch_and_normalize as fetch_unc_faculty
 from .schools.unc_faculty import merge_into_processed as merge_unc_faculty
 from .schools.uva_faculty import fetch_and_normalize as fetch_uva_faculty
 from .schools.uva_faculty import merge_into_processed as merge_uva_faculty
+from .schools.uga_faculty import fetch_and_normalize as fetch_uga_faculty
+from .schools.uga_faculty import merge_into_processed as merge_uga_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -729,10 +733,12 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("psu_faculty", fetch_psu_faculty, merge_psu_faculty),
             # Wave-3 batch 1 (live-scraped via faculty_graph, 2026-07-19). UVA
             # SEAS rides a Playwright render family; the rest are static HTTP.
+            ("bc_faculty", fetch_bc_faculty, merge_bc_faculty),
             ("emory_faculty", fetch_emory_faculty, merge_emory_faculty),
             ("georgetown_faculty", fetch_georgetown_faculty, merge_georgetown_faculty),
             ("nyu_faculty", fetch_nyu_faculty, merge_nyu_faculty),
             ("tufts_faculty", fetch_tufts_faculty, merge_tufts_faculty),
+            ("uga_faculty", fetch_uga_faculty, merge_uga_faculty),
             ("unc_faculty", fetch_unc_faculty, merge_unc_faculty),
             ("uva_faculty", fetch_uva_faculty, merge_uva_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +

@@ -61,10 +61,12 @@ from .wisc import SCHOOL as WISC
 from .yale import SCHOOL as YALE
 
 # Wave-3 batch 1 (2026-07-19).
+from .bc import SCHOOL as BC
 from .emory import SCHOOL as EMORY
 from .georgetown import SCHOOL as GEORGETOWN
 from .nyu import SCHOOL as NYU
 from .tufts import SCHOOL as TUFTS
+from .uga import SCHOOL as UGA
 from .unc import SCHOOL as UNC
 from .uva import SCHOOL as UVA
 
@@ -122,4 +124,6 @@ SCHOOL_CONFIGS: list[dict] = [
     TUFTS,
     UNC,
     UVA,
+    BC,
+    UGA,
 ]

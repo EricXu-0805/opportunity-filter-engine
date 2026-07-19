@@ -93,6 +93,9 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "psu": ("psu.edu",),
     # Wave-3 batch 1 (2026-07-19). Subdomain mail hosts included; student/AD
     # domains (live.unc.edu, ad.unc.edu) deliberately excluded from recovery.
+    "bc": ("bc.edu",),
+    "uga": ("uga.edu", "math.uga.edu", "stat.uga.edu", "cs.uga.edu",
+            "warnell.uga.edu", "srel.uga.edu", "skio.uga.edu"),
     "emory": ("emory.edu",),
     "georgetown": ("georgetown.edu", "cs.georgetown.edu", "ir.cs.georgetown.edu"),
     "nyu": ("nyu.edu", "cns.nyu.edu"),

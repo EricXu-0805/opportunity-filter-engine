@@ -156,6 +156,8 @@ FACULTY_SOURCES = frozenset({
     # Penn State — Wave-2 batch (single source across depts).
     "psu_faculty",
     # Wave-3 batch 1 (2026-07-19) — single source across depts each.
+    "bc_faculty",
+    "uga_faculty",
     "emory_faculty",
     "georgetown_faculty",
     "nyu_faculty",
