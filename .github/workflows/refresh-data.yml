@@ -9,7 +9,7 @@ name: Refresh Opportunity Data
 #   | Mon | uiuc,rutgers,ncsu,asu,ucr,uiowa,iastate (+ Experts monthly, +Chromium) | ~120-190 min | ~150-230 min |
 #   | Tue | ucb,mit,usc,umn,tamu,psu,msu,utah,uconn | ~110-165 min | ~145-215 min |
 #   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana | ~60-105 min | ~110-185 min |
-#   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel | ~65-115 min | ~120-200 min |
+#   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga | ~65-115 min | ~120-200 min |
 #   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami | ~80-125 min | ~130-205 min |
 #   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern | ~50-85 min | ~105-180 min |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
@@ -83,7 +83,7 @@ jobs:
               1) SHARD="uiuc,rutgers,ncsu,asu,ucr,uiowa,iastate" ;;
               2) SHARD="ucb,mit,usc,umn,tamu,psu,msu,utah,uconn" ;;
               3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana" ;;
-              4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel" ;;
+              4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga" ;;
               5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami" ;;
               6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern" ;;
               7) SHARD="national" ;;

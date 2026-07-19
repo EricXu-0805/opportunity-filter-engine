@@ -122,6 +122,8 @@ from .schools.udel_faculty import fetch_and_normalize as fetch_udel_faculty
 from .schools.udel_faculty import merge_into_processed as merge_udel_faculty
 from .schools.uf_faculty import fetch_and_normalize as fetch_uf_faculty
 from .schools.uf_faculty import merge_into_processed as merge_uf_faculty
+from .schools.uga_faculty import fetch_and_normalize as fetch_uga_faculty
+from .schools.uga_faculty import merge_into_processed as merge_uga_faculty
 from .schools.uiowa_faculty import fetch_and_normalize as fetch_uiowa_faculty
 from .schools.uiowa_faculty import merge_into_processed as merge_uiowa_faculty
 from .schools.umass_faculty import fetch_and_normalize as fetch_umass_faculty
@@ -772,6 +774,9 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("udel_faculty", fetch_udel_faculty, merge_udel_faculty),
             ("uiowa_faculty", fetch_uiowa_faculty, merge_uiowa_faculty),
             ("utah_faculty", fetch_utah_faculty, merge_utah_faculty),
+            # Georgia faculty (statewide-Drupal views-row directories via
+            # faculty_graph): Franklin + professional colleges, live 2026-07-18.
+            ("uga_faculty", fetch_uga_faculty, merge_uga_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup
             # families; Physics via its public JSON profile API).

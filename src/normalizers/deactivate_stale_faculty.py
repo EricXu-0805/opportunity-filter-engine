@@ -176,6 +176,8 @@ FACULTY_SOURCES = frozenset({
     "udel_faculty",
     "uiowa_faculty",
     "utah_faculty",
+    # Georgia — statewide-Drupal views-row directories (single source).
+    "uga_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",
     # Purdue — server-rendered faculty (single source across depts).

@@ -62,6 +62,7 @@ from .ucsc import SCHOOL as UCSC
 from .ucsd import SCHOOL as UCSD
 from .udel import SCHOOL as UDEL
 from .uf import SCHOOL as UF
+from .uga import SCHOOL as UGA
 from .uiowa import SCHOOL as UIOWA
 from .umass import SCHOOL as UMASS
 from .umd import SCHOOL as UMD
@@ -147,4 +148,5 @@ SCHOOL_CONFIGS: list[dict] = [
     UIOWA,
     UTAH,
     CMU,
+    UGA,
 ]

@@ -682,6 +682,26 @@ class TestEmailObfuscationDecoding:
         assert fg._decode_rot13email(el) is None
         assert fg._email_from_el(el) == "x@y.edu"
 
+    def test_decode_reversed_data_user_domain(self):
+        # UGA College of Education (people.coe.uga.edu) cloak: both attribute
+        # strings are simply reversed and joined client-side.
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup(
+            '<span class="cloaked-e-mail" data-user="maharba.anna"'
+            ' data-domain="ude.agu">E-mail</span>', "html.parser").span
+        assert fg._decode_reversed_email(el) == "anna.abraham@uga.edu"
+        assert fg._email_from_el(el) == "anna.abraham@uga.edu"
+        # ...also when the attrs sit on a descendant of the selected element.
+        wrap = BeautifulSoup(
+            '<p><span data-user="eod.nhoj" data-domain="ude.agu">E-mail</span></p>',
+            "html.parser").p
+        assert fg._decode_reversed_email(wrap) == "john.doe@uga.edu"
+
+    def test_reversed_ignores_plain_anchor(self):
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup('<a href="mailto:x@y.edu">x</a>', "html.parser").a
+        assert fg._decode_reversed_email(el) is None
+
 
 class TestCorpusFacultyHygiene:
     def test_clean_corpus_rebuilds_title_parenthetical(self):
@@ -1138,6 +1158,52 @@ class TestScrapeLadderFilter:
             "name_flip": True,
         }}
         assert fg._scrape_directory(dept)[0]["name"] == "Wei Zhang"
+
+    def test_scrape_name_title_case_only_when_all_caps(self, monkeypatch):
+        """SHOUTING rosters (UGA Pharmacy) retitle; mixed-case names (McLean)
+        pass through untouched so their internal caps survive."""
+        from bs4 import BeautifulSoup
+        html = """
+        <div class="c"><a class="n" href="/p/a">J. WARREN BEACH</a><p>Professor</p></div>
+        <div class="c"><a class="n" href="/p/b">Sarah McLean</a><p>Professor</p></div>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": "p",
+                          "name_title_case": True},
+        }}
+        assert [p["name"] for p in fg._scrape_directory(dept)] == [
+            "J. Warren Beach", "Sarah McLean"]
+
+    def test_scrape_title_html_re_captures_bare_text_rank(self, monkeypatch):
+        """A rank that lives as bare text between markup with no element of its
+        own (UGA Law's ``<a>Name</a><br>Title<br><a mailto>``) comes out of the
+        serialized card, and still drives the ladder gate."""
+        from bs4 import BeautifulSoup
+        html = """
+        <table>
+        <tr><td class="t"><a href="/profile/ada">Ada Real</a><br/>Associate Professor of Law<br/>
+            <a href="mailto:ada@x.edu">ada@x.edu</a></td></tr>
+        <tr><td class="t"><a href="/profile/em">Em Past</a><br/>Professor Emerita<br/>
+            <a href="mailto:em@x.edu">em@x.edu</a></td></tr>
+        </table>
+        """
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url: BeautifulSoup(html, "html.parser"))
+        dept = {"short": "LAW", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "tr:has(td.t)", "name": "td.t > a[href^='/profile/']",
+                          "link": "td.t > a[href^='/profile/']",
+                          "title_html_re": r"</a>\s*<br\s*/?>\s*(.*?)<br",
+                          "email": "a[href^='mailto:']"},
+            "ladder_filter": {"require": r"professor", "drop": r"emerit"},
+        }}
+        people = fg._scrape_directory(dept)
+        assert [p["name"] for p in people] == ["Ada Real"]
+        assert people[0]["title"] == "Associate Professor of Law"
+        assert people[0]["email"] == "ada@x.edu"
 
     def test_scrape_name_strip_and_self_link_list(self, monkeypatch):
         """A link-list directory (each faculty is a bare <a> whose text is
@@ -1720,6 +1786,39 @@ class TestFullCoverageEngineAdditions:
         assert [p["name"] for p in people] == ["Pat Active"]  # emeritus excluded
         assert people[0]["title"] == "Teaching Professor"
         assert people[0]["email"] == "pat@x.edu"
+
+    def test_wp_api_acf_fields_and_ladder_filter(self, monkeypatch):
+        """acf_fields walks a dotted path into the ACF block (UGA Terry keeps
+        rank at job_titles[0].position.title and a plain acf.email); the same
+        ladder gate as the scrape path then drops non-ladder ranks — Terry
+        tags lecturers `faculty` too, so the taxonomy alone can't."""
+        records = [
+            {"title": {"rendered": "Amin Shiri"}, "link": "https://x.edu/d/amin/",
+             "employee-type": [4],
+             "acf": {"email": "amin@x.edu", "job_titles": [
+                 {"position": {"title": "Assistant Professor"}}]}},
+            {"title": {"rendered": "Lex Lecturer"}, "link": "https://x.edu/d/lex/",
+             "employee-type": [4],
+             "acf": {"email": "lex@x.edu", "job_titles": [
+                 {"position": {"title": "Senior Lecturer"}}]}},
+            {"title": {"rendered": "No Acf"}, "link": "https://x.edu/d/na/",
+             "employee-type": [4], "acf": {"email": "", "job_titles": []}},
+        ]
+        monkeypatch.setattr(fg, "_wp_get_json",
+                            lambda url: records if "page=1" in url else [])
+        dept = {"short": "TERRY", "api": {
+            "type": "wp", "base": "https://x.edu", "post_type": "directory",
+            "category_include": {"employee-type": [4]},
+            "acf_fields": {"title": "job_titles.0.position.title", "email": "email"},
+            "ladder_filter": {"drop": r"lecturer|emerit|adjunct"},
+        }}
+        people = fg._fetch_wp_api(dept)
+        assert [p["name"] for p in people] == ["Amin Shiri", "No Acf"]
+        assert people[0]["title"] == "Assistant Professor"
+        assert people[0]["email"] == "amin@x.edu"
+        # ACF miss degrades to the engine default, never raises.
+        assert people[1]["title"] == "Professor"
+        assert people[1]["email"] is None
 
     def test_faculty180_paginates_filters_and_keeps_ladder(self, monkeypatch):
         """faculty180 reads the admin-ajax users feed, drops non-ladder by rank,
