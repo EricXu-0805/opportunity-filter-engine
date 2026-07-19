@@ -591,6 +591,8 @@ export const SCHOOLS: School[] = [
     location: 'University Park, PA',
     coverage: campusCoverage('psu'),
     catalog: { colleges: 12, majors: 73 },
+  },
+  {
     slug: 'uga',
     domain: 'uga.edu',
     name: 'University of Georgia',
