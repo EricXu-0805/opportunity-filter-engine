@@ -119,6 +119,8 @@ FACULTY_SOURCES = frozenset({
     "mit_faculty",
     # Harvard — FAS HWP Drupal + WP one-offs + SEAS (single source across depts).
     "harvard_faculty",
+    # Yale — three YaleSites generations + SEAS Worx API (single source across depts).
+    "yale_faculty",
     # USC — Viterbi/Dornsife + professional-school directories (single source).
     "usc_faculty",
     # Minnesota — CSE/CLA/CBS + professional-college directories (single source).
@@ -133,6 +135,26 @@ FACULTY_SOURCES = frozenset({
     "uf_faculty",
     # UMass Amherst — CICS/Engineering + campus Drupal directories (single source).
     "umass_faculty",
+    # Virginia Tech — Wave-2 batch (single source across depts).
+    "vt_faculty",
+    # Texas A&M — Wave-2 batch (single source across depts).
+    "tamu_faculty",
+    # Maryland — Wave-2 batch (single source across depts).
+    "umd_faculty",
+    # Northeastern — Wave-2 batch (single source across depts).
+    "neu_faculty",
+    # Stony Brook — Wave-2 batch (single source across depts).
+    "sbu_faculty",
+    # Boston University — Wave-2 batch (single source across depts).
+    "bu_faculty",
+    # WashU — Wave-2 batch (single source across depts).
+    "washu_faculty",
+    # Rutgers — Wave-2 batch (single source across depts).
+    "rutgers_faculty",
+    # NC State — Wave-2 batch (single source across depts).
+    "ncsu_faculty",
+    # Penn State — Wave-2 batch (single source across depts).
+    "psu_faculty",
     # Georgia — statewide-Drupal views-row directories (single source).
     "uga_faculty",
     # UCSD — live-scraped faculty (single source across depts).

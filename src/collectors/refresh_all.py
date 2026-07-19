@@ -30,6 +30,8 @@ from .schools.boulder_faculty import fetch_and_normalize as fetch_boulder_facult
 from .schools.boulder_faculty import merge_into_processed as merge_boulder_faculty
 from .schools.brown_faculty import fetch_and_normalize as fetch_brown_faculty
 from .schools.brown_faculty import merge_into_processed as merge_brown_faculty
+from .schools.bu_faculty import fetch_and_normalize as fetch_bu_faculty
+from .schools.bu_faculty import merge_into_processed as merge_bu_faculty
 from .schools.caltech_faculty import fetch_and_normalize as fetch_caltech_faculty
 from .schools.caltech_faculty import merge_into_processed as merge_caltech_faculty
 from .schools.columbia_faculty import fetch_and_normalize as fetch_columbia_faculty
@@ -48,22 +50,34 @@ from .schools.jhu_faculty import fetch_and_normalize as fetch_jhu_faculty
 from .schools.jhu_faculty import merge_into_processed as merge_jhu_faculty
 from .schools.mit_faculty import fetch_and_normalize as fetch_mit_faculty
 from .schools.mit_faculty import merge_into_processed as merge_mit_faculty
+from .schools.ncsu_faculty import fetch_and_normalize as fetch_ncsu_faculty
+from .schools.ncsu_faculty import merge_into_processed as merge_ncsu_faculty
 from .schools.nd_faculty import fetch_and_normalize as fetch_nd_faculty
 from .schools.nd_faculty import merge_into_processed as merge_nd_faculty
+from .schools.neu_faculty import fetch_and_normalize as fetch_neu_faculty
+from .schools.neu_faculty import merge_into_processed as merge_neu_faculty
 from .schools.northwestern_faculty import fetch_and_normalize as fetch_northwestern_faculty
 from .schools.northwestern_faculty import merge_into_processed as merge_northwestern_faculty
 from .schools.osu_faculty import fetch_and_normalize as fetch_osu_faculty
 from .schools.osu_faculty import merge_into_processed as merge_osu_faculty
 from .schools.princeton_faculty import fetch_and_normalize as fetch_princeton_faculty
 from .schools.princeton_faculty import merge_into_processed as merge_princeton_faculty
+from .schools.psu_faculty import fetch_and_normalize as fetch_psu_faculty
+from .schools.psu_faculty import merge_into_processed as merge_psu_faculty
 from .schools.purdue_faculty import fetch_and_normalize as fetch_purdue_faculty
 from .schools.purdue_faculty import merge_into_processed as merge_purdue_faculty
 from .schools.rice_faculty import fetch_and_normalize as fetch_rice_faculty
 from .schools.rice_faculty import merge_into_processed as merge_rice_faculty
 from .schools.rochester_faculty import fetch_and_normalize as fetch_rochester_faculty
 from .schools.rochester_faculty import merge_into_processed as merge_rochester_faculty
+from .schools.rutgers_faculty import fetch_and_normalize as fetch_rutgers_faculty
+from .schools.rutgers_faculty import merge_into_processed as merge_rutgers_faculty
+from .schools.sbu_faculty import fetch_and_normalize as fetch_sbu_faculty
+from .schools.sbu_faculty import merge_into_processed as merge_sbu_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
+from .schools.tamu_faculty import fetch_and_normalize as fetch_tamu_faculty
+from .schools.tamu_faculty import merge_into_processed as merge_tamu_faculty
 from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
 from .schools.uchicago_faculty import merge_into_processed as merge_uchicago_faculty
 from .schools.uci_faculty import fetch_and_normalize as fetch_uci_faculty
@@ -80,6 +94,8 @@ from .schools.uga_faculty import fetch_and_normalize as fetch_uga_faculty
 from .schools.uga_faculty import merge_into_processed as merge_uga_faculty
 from .schools.umass_faculty import fetch_and_normalize as fetch_umass_faculty
 from .schools.umass_faculty import merge_into_processed as merge_umass_faculty
+from .schools.umd_faculty import fetch_and_normalize as fetch_umd_faculty
+from .schools.umd_faculty import merge_into_processed as merge_umd_faculty
 from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
 from .schools.umn_faculty import fetch_and_normalize as fetch_umn_faculty
@@ -94,8 +110,16 @@ from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
 from .schools.uw_faculty import merge_into_processed as merge_uw_faculty
 from .schools.vanderbilt_faculty import fetch_and_normalize as fetch_vanderbilt_faculty
 from .schools.vanderbilt_faculty import merge_into_processed as merge_vanderbilt_faculty
+
+# Wave-2 batch 1 (2026-07-18).
+from .schools.vt_faculty import fetch_and_normalize as fetch_vt_faculty
+from .schools.vt_faculty import merge_into_processed as merge_vt_faculty
+from .schools.washu_faculty import fetch_and_normalize as fetch_washu_faculty
+from .schools.washu_faculty import merge_into_processed as merge_washu_faculty
 from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
 from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
+from .schools.yale_faculty import fetch_and_normalize as fetch_yale_faculty
+from .schools.yale_faculty import merge_into_processed as merge_yale_faculty
 from .simplify_internships import deactivate_stale as deactivate_simplify_stale
 from .simplify_internships import fetch_and_normalize as fetch_simplify
 from .simplify_internships import merge_into_processed as merge_simplify
@@ -675,6 +699,22 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("rochester_faculty", fetch_rochester_faculty, merge_rochester_faculty),
             ("uf_faculty", fetch_uf_faculty, merge_uf_faculty),
             ("umass_faculty", fetch_umass_faculty, merge_umass_faculty),
+            # Yale faculty (live-scraped via faculty_graph): 42 departments
+            # across three YaleSites generations (Drupal-7 people tables with
+            # inline emails, node-teaser cards, directory-listing cards) plus
+            # the SEAS Worx JSON endpoint and SOM/School of Music.
+            ("yale_faculty", fetch_yale_faculty, merge_yale_faculty),
+            # Wave-2 batch 1 (live-scraped via faculty_graph, 2026-07-18).
+            ("vt_faculty", fetch_vt_faculty, merge_vt_faculty),
+            ("tamu_faculty", fetch_tamu_faculty, merge_tamu_faculty),
+            ("umd_faculty", fetch_umd_faculty, merge_umd_faculty),
+            ("neu_faculty", fetch_neu_faculty, merge_neu_faculty),
+            ("sbu_faculty", fetch_sbu_faculty, merge_sbu_faculty),
+            ("bu_faculty", fetch_bu_faculty, merge_bu_faculty),
+            ("washu_faculty", fetch_washu_faculty, merge_washu_faculty),
+            ("rutgers_faculty", fetch_rutgers_faculty, merge_rutgers_faculty),
+            ("ncsu_faculty", fetch_ncsu_faculty, merge_ncsu_faculty),
+            ("psu_faculty", fetch_psu_faculty, merge_psu_faculty),
             # Georgia faculty (statewide-Drupal views-row directories via
             # faculty_graph): Franklin + professional colleges, live 2026-07-18.
             ("uga_faculty", fetch_uga_faculty, merge_uga_faculty),

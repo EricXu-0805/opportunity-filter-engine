@@ -4,7 +4,7 @@ import { COLLEGE_MAJORS as UIUC_COLLEGE_MAJORS } from '@/lib/colleges';
 import { SCHOOLS } from '@/lib/schools';
 import { en, zh } from '@/i18n/dictionaries';
 
-const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford', 'ucsd', 'uchicago', 'uci', 'ucsb', 'boulder', 'jhu', 'northwestern', 'upenn', 'caltech', 'cornell', 'brown', 'rice', 'vanderbilt', 'dartmouth', 'columbia', 'mit', 'harvard', 'usc', 'umn', 'osu', 'nd', 'rochester', 'uf', 'umass', 'uga'];
+const NEW_CATALOG_SLUGS = ['ucb', 'umich', 'gatech', 'utexas', 'ucla', 'uw', 'wisc', 'stanford', 'ucsd', 'uchicago', 'uci', 'ucsb', 'boulder', 'jhu', 'northwestern', 'upenn', 'caltech', 'cornell', 'brown', 'rice', 'vanderbilt', 'dartmouth', 'columbia', 'mit', 'harvard', 'usc', 'umn', 'osu', 'nd', 'rochester', 'uf', 'umass', 'yale', 'vt', 'tamu', 'umd', 'neu', 'sbu', 'bu', 'washu', 'rutgers', 'ncsu', 'psu', 'uga'];
 
 // Anything html.unescape would have missed in the generated data files.
 const HTML_ENTITY = /&[a-zA-Z]+\d*;|&#\d+;/;

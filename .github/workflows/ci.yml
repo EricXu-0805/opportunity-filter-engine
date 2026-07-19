@@ -21,7 +21,12 @@ jobs:
   backend:
     name: Backend (lint + pytest)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Corpus-bound: pytest assembles + validates the full multi-school corpus,
+    # which grows with each onboarding wave (61k→80k at Wave-2). The serial
+    # suite now runs ~12-14 min on CI and was tripping the old 10-min cap
+    # (both this branch and restore-yale-shard hit it). Durable follow-up:
+    # parallelize with pytest-xdist or sample the corpus in the heavy tests.
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v6
 

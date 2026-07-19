@@ -7,12 +7,16 @@
     "campus": 1137,
     "national": 3499
   },
+  "bu": {
+    "campus": 1813,
+    "national": 3499
+  },
   "caltech": {
     "campus": 431,
     "national": 3499
   },
   "columbia": {
-    "campus": 966,
+    "campus": 1073,
     "national": 3499
   },
   "cornell": {
@@ -43,12 +47,20 @@
     "campus": 1358,
     "national": 3499
   },
+  "ncsu": {
+    "campus": 2102,
+    "national": 3499
+  },
   "nd": {
     "campus": 1253,
     "national": 3499
   },
+  "neu": {
+    "campus": 1780,
+    "national": 3499
+  },
   "northwestern": {
-    "campus": 2792,
+    "campus": 2798,
     "national": 3499
   },
   "osu": {
@@ -56,7 +68,11 @@
     "national": 3499
   },
   "princeton": {
-    "campus": 609,
+    "campus": 622,
+    "national": 3499
+  },
+  "psu": {
+    "campus": 2713,
     "national": 3499
   },
   "purdue": {
@@ -71,8 +87,20 @@
     "campus": 847,
     "national": 3499
   },
+  "rutgers": {
+    "campus": 1897,
+    "national": 3499
+  },
+  "sbu": {
+    "campus": 872,
+    "national": 3499
+  },
   "stanford": {
-    "campus": 1349,
+    "campus": 1396,
+    "national": 3499
+  },
+  "tamu": {
+    "campus": 3006,
     "national": 3499
   },
   "ucb": {
@@ -96,7 +124,7 @@
     "national": 3499
   },
   "ucsd": {
-    "campus": 1508,
+    "campus": 1510,
     "national": 3499
   },
   "uf": {
@@ -109,6 +137,10 @@
   },
   "umass": {
     "campus": 1517,
+    "national": 3499
+  },
+  "umd": {
+    "campus": 1282,
     "national": 3499
   },
   "umich": {
@@ -139,8 +171,20 @@
     "campus": 1129,
     "national": 3499
   },
+  "vt": {
+    "campus": 1716,
+    "national": 3499
+  },
+  "washu": {
+    "campus": 1096,
+    "national": 3499
+  },
   "wisc": {
     "campus": 1756,
+    "national": 3499
+  },
+  "yale": {
+    "campus": 1224,
     "national": 3499
   }
 }

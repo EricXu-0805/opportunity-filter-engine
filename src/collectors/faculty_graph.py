@@ -56,6 +56,7 @@ A school config (see ``schools/umich_faculty.py``) is a dict:
 from __future__ import annotations
 
 import hashlib
+import html
 import logging
 import os
 import re
@@ -311,19 +312,37 @@ def _strip_pronouns(name: str) -> str:
 # Post-nominal degree/credential suffixes some directories append (medical and
 # professional schools especially): "Frank Alber, PhD" / "Jane Doe, MD, MPH".
 _CREDENTIAL = (r"Ph\.?\s?D|M\.?\s?D|M\.?\s?S|M\.?\s?A|M\.?\s?P\.?H|D\.?\s?M\.?A"
+               r"|M\.?\s?Eng|D\.?\s?M\.?\s?Sc|P\.?\s?E|P\.?\s?Eng"
                r"|Pharm\.?\s?D|Dr\.?\s?P\.?H|Sc\.?\s?D|D\.?\s?V\.?M|J\.?\s?D"
                r"|Ed\.?\s?D|D\.?\s?O|R\.?\s?N|D\.?\s?D\.?S|D\.?Phil|Psy\.?\s?D|FAIA")
 # A trailing comma-run of post-nominals: each item is a known degree
 # (case-insensitively) OR an all-caps professional fellowship/licensure acronym
-# (FAACP, FAPhA, FAASLD, BCPS, LMSW, FAAN, …). The acronym branch is
-# case-SENSITIVE (≥2 leading capitals) so it never eats an ordinary name word.
+# (FAACP, FAPhA, FAASLD, BCPS, LMSW, FAAN, …), optionally with a space-separated
+# qualifier ("LEED AP", "LEED AP BD+C"). The acronym branch is case-SENSITIVE
+# (≥2 leading capitals) so it never eats an ordinary name word.
 _CREDENTIAL_RE = re.compile(
-    r"(?:\s*,\s*(?:(?i:" + _CREDENTIAL + r")|[A-Z]{2,}[A-Za-z.()-]*)\.?)+\s*$")
+    r"(?:\s*,\s*(?:(?i:" + _CREDENTIAL + r")|[A-Z]{2,}[A-Za-z.()-]*"
+    r"(?:\s+[A-Z0-9][A-Za-z0-9.+()-]*)*)\.?)+\s*$")
+
+# Leading honorific some directories prepend ("Dr. Jane Doe", "Prof. John Roe").
+_HONORIFIC_RE = re.compile(r"^(?:Dr|Prof|Professor|Mr|Ms|Mrs)\.?\s+", re.IGNORECASE)
+
+# A trailing status parenthetical ("(on leave AY 26-27)", "(sabbatical)") is not
+# part of the name — but a single-word nickname parenthetical ("(Steve)") IS a
+# legitimate name form, so key strictly off status keywords, never all parens.
+_STATUS_PAREN_RE = re.compile(
+    r"\s*\((?=[^)]*\b(?:on leave|leave|sabbatical|retir|emerit|interim|acting|"
+    r"deceased|visiting|adjunct)\b)[^)]*\)\s*$", re.IGNORECASE)
 
 
 def _strip_credentials(name: str) -> str:
     """Drop trailing post-nominal degree/credential suffixes
-    ("Jane Doe, PhD, MPH" / "Jamie Barner, Ph.D., FAACP, FAPhA")."""
+    ("Jane Doe, PhD, MPH" / "Jamie Barner, Ph.D., FAACP, FAPhA"), a leading
+    honorific ("Dr. Jane Doe"), and a trailing status parenthetical
+    ("Åsa Rennermalm (on leave AY 26-27)"). A nickname parenthetical
+    ("Xun (Steve) Jian") is a legitimate name form and is preserved."""
+    name = _HONORIFIC_RE.sub("", name)
+    name = _STATUS_PAREN_RE.sub("", name)
     return _CREDENTIAL_RE.sub("", name).strip()
 
 
@@ -336,7 +355,12 @@ _IN_MEMORIAM_RE = re.compile(r"\(\s*\d{4}\s*[-–—]\s*\d{4}\s*\)")
 
 def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     """Convert one faculty spec into the normalized opportunity schema."""
-    name = _strip_credentials(_strip_pronouns((person.get("name") or "").strip()))
+    # JSON/API feeds (e.g. Texas A&M) deliver HTML-entity-encoded names
+    # ("Daniel A. Jim&eacute;nez", "Anxiao &quot;Andrew&quot; Jiang"); card
+    # names are already unescaped upstream, but unescaping here is idempotent
+    # and covers every ingest path.
+    name = _strip_credentials(_strip_pronouns(
+        html.unescape((person.get("name") or "").strip())))
     # Directory footnote markers ("David Barner*", "Jane Doe†" — accepting-
     # students / area-head legends) ride the name anchor on some listings; a
     # marked and unmarked crawl of the same person must hash to the same id.
@@ -361,9 +385,12 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # than ship a record with no destination (the integrity gate requires url).
     profile_url = person.get("url", "") or dept.get("directory_url", "")
     # Final lowercase guard on every record's email (covers non-scrape sources —
-    # coa_api/poly_api/WP-meta/curated — that don't pass through _clean_email);
-    # a capitalized local part trips the DQ corrupted-email gate.
+    # coa_api/poly_api/WP-meta/curated/json_dir — that don't pass through
+    # _clean_email); a capitalized local part trips the DQ corrupted-email gate,
+    # and a truncated feed value ("timo.sprekeler", no @) is not an address.
     email = ((person.get("email") or "").strip().lower() or None)
+    if email and "@" not in email:
+        email = None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
     # Faculty are cold-email research contacts, not postings with required
@@ -527,6 +554,11 @@ def _passes_field(card, ff: dict | None) -> bool:
     if not ff:
         return True
     el = card.select_one(ff["selector"]) if ff.get("selector") else None
+    if ff.get("require_present") and (el is None or not el.get_text(strip=True)):
+        # Mixed listings where only role-carrying cards are wanted: the lenient
+        # absent-field-passes default would ship a role-less card (a student)
+        # as a "Professor" — require the field to exist before gating on it.
+        return False
     text = el.get_text(" ", strip=True) if el else ""
     if ff.get("include") and text and not re.search(ff["include"], text, re.I):
         return False
@@ -547,7 +579,11 @@ def _clean_email(raw: str) -> str | None:
     addr = re.sub(r"\s*[\[(\"']\s*at\s*[\])\"']\s*", "@", addr, flags=re.I)
     addr = re.sub(r"\s*[\[(\"']\s*dot\s*[\])\"']\s*", ".", addr, flags=re.I)
     m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
-    result = m.group(0) if m else (addr or None)
+    # An email MUST contain an @: a directory that puts a phone number
+    # ("(301) 405-5935") in the email column, or leaves an empty ``mailto:``
+    # anchor with the phone as visible text, must yield None — never the raw
+    # non-address string.
+    result = m.group(0) if m else (addr if "@" in addr else None)
     # Canonicalize to lowercase: some directories carry a display-cased address
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-
@@ -1759,6 +1795,76 @@ def _fetch_futurevu_ajax(dept: dict) -> list[dict]:
         url = f"{profile_base}{slug}" if slug else ""
         specs.append(faculty(name, title=_clean_titles(rec.get("titles", "")) or "Professor",
                              url=url, email=email))
+    return specs
+
+
+def _fetch_worx_ajax(dept: dict) -> list[dict]:
+    """Yale SEAS "Worx" faculty-directory fetch (opt-in via dept ``ajax`` block
+    with ``type: "worx"``).
+
+    seas.yale.edu (concrete5, Worx theme) renders its faculty directory with a
+    Vue block that POSTs form data to a ``load_faculty`` endpoint and paints the
+    returned JSON — ``{"pages": {"letters": {"A": [{name, title, fullTitle,
+    url}, ...], ...}}}``. Hitting the endpoint directly (department term id from
+    the page's inline ``departmentsList``) is exact and complete, and one
+    endpoint serves every SEAS department. Degrades to ``[]`` on any failure so
+    deep mode never breaks the curated layer.
+    """
+    cfg = dept.get("ajax")
+    if not cfg or cfg.get("type") != "worx":
+        return []
+    try:
+        import requests
+
+        from .ucb_common import HEADERS
+    except Exception:  # noqa: BLE001
+        return []
+    endpoint = cfg["endpoint"]
+    try:
+        resp = requests.post(
+            endpoint,
+            data={"action": endpoint, "template": "full", "maxpages": "0",
+                  "department": str(cfg.get("department", "")), "query": ""},
+            headers={**HEADERS, "X-Requested-With": "XMLHttpRequest",
+                     "Referer": cfg.get("referer", endpoint)},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:  # noqa: BLE001
+        return []
+    pages = data.get("pages") if isinstance(data, dict) else None
+    if not isinstance(pages, dict):
+        return []
+    letters = pages.get("letters")
+    groups = letters.values() if isinstance(letters, dict) else [pages.get("fullPages") or []]
+
+    lf = cfg.get("ladder_filter") or {}
+    req_re = re.compile(lf["require"], re.I) if lf.get("require") else None
+    drop_re = re.compile(lf["drop"], re.I) if lf.get("drop") else None
+
+    specs: list[dict] = []
+    seen: set[str] = set()
+    for group in groups:
+        if not isinstance(group, list):
+            continue
+        for rec in group:
+            if not isinstance(rec, dict):
+                continue
+            name = (rec.get("name") or "").strip()
+            if not name or not _is_person_name(name):
+                continue
+            title = (rec.get("fullTitle") or rec.get("title") or "").strip() or "Professor"
+            if req_re and not req_re.search(title):
+                continue
+            if drop_re and drop_re.search(title):
+                continue
+            url = (rec.get("url") or "").strip()
+            key = url.lower() or name.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            specs.append(faculty(name, title=title, url=url))
     return specs
 
 
@@ -3104,6 +3210,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                and u not in listing_urls}
             for discovered in (_scrape_directory(dept) + _fetch_wp_api(dept)
                                + _fetch_seas_ajax(dept) + _fetch_futurevu_ajax(dept)
+                               + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
                                + _fetch_json_dir(dept) + _fetch_coa_api(dept)

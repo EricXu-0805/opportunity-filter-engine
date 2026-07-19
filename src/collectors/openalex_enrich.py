@@ -95,6 +95,7 @@ SCHOOL_INST = {
     "columbia": "I78577930",
     "mit": "I63966007",        # Massachusetts Institute of Technology (ror 042nb2s44, OpenAlex-API verified)
     "harvard": "I136199984",   # Harvard University (ror 03vek6s52, OpenAlex-API verified)
+    "yale": "I32971472",       # Yale University (ror 03v76x132, OpenAlex-API verified)
     # Verified 2026-07-17 via GET /institutions?search=… (Wave-1 final seven):
     "usc": "I1174212",         # University of Southern California
     "umn": "I130238516",       # University of Minnesota [Twin Cities]
@@ -103,6 +104,17 @@ SCHOOL_INST = {
     "rochester": "I5388228",   # University of Rochester
     "uf": "I33213144",         # University of Florida
     "umass": "I24603500",      # University of Massachusetts Amherst
+    # Verified 2026-07-18 via GET /institutions?search=… (Wave-2 batch 1):
+    "vt": "I859038795",        # Virginia Tech
+    "tamu": "I91045830",       # Texas A&M University
+    "umd": "I66946132",        # University of Maryland, College Park
+    "neu": "I12912129",        # Northeastern University (US — NOT the CN homonym I9224756)
+    "sbu": "I59553526",        # Stony Brook University
+    "bu": "I111088046",        # Boston University
+    "washu": "I204465549",     # Washington University in St. Louis
+    "rutgers": "I102322142",   # Rutgers, The State University of New Jersey
+    "ncsu": "I137902535",      # North Carolina State University
+    "psu": "I130769515",       # Pennsylvania State University
     # Verified 2026-07-18 via GET /institutions?search=University of Georgia:
     "uga": "I165733156",       # University of Georgia (US, ~141k works)
 }
