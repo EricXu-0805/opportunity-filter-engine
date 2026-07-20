@@ -19,6 +19,10 @@
     "campus": 1813,
     "national": 3686
   },
+  "buffalo": {
+    "campus": 232,
+    "national": 3686
+  },
   "caltech": {
     "campus": 445,
     "national": 3686
@@ -27,8 +31,16 @@
     "campus": 160,
     "national": 3686
   },
+  "clemson": {
+    "campus": 334,
+    "national": 3686
+  },
   "cmu": {
     "campus": 917,
+    "national": 3686
+  },
+  "colostate": {
+    "campus": 166,
     "national": 3686
   },
   "columbia": {
@@ -43,8 +55,16 @@
     "campus": 912,
     "national": 3686
   },
+  "drexel": {
+    "campus": 51,
+    "national": 3686
+  },
   "duke": {
     "campus": 1156,
+    "national": 3686
+  },
+  "fsu": {
+    "campus": 216,
     "national": 3686
   },
   "gatech": {
@@ -97,6 +117,10 @@
   },
   "northwestern": {
     "campus": 2798,
+    "national": 3686
+  },
+  "oregonstate": {
+    "campus": 198,
     "national": 3686
   },
   "osu": {
@@ -231,12 +255,20 @@
     "campus": 1512,
     "national": 3686
   },
+  "usf": {
+    "campus": 266,
+    "national": 3686
+  },
   "utah": {
     "campus": 284,
     "national": 3686
   },
   "utexas": {
     "campus": 2194,
+    "national": 3686
+  },
+  "utk": {
+    "campus": 304,
     "national": 3686
   },
   "uw": {

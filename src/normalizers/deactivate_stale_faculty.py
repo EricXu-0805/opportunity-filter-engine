@@ -164,6 +164,15 @@ FACULTY_SOURCES = frozenset({
     "asu_faculty",
     "pitt_faculty",
     "msu_faculty",
+    # Wave-4 batch 1 (single source across depts each).
+    "buffalo_faculty",
+    "fsu_faculty",
+    "usf_faculty",
+    "utk_faculty",
+    "clemson_faculty",
+    "colostate_faculty",
+    "oregonstate_faculty",
+    "drexel_faculty",
     # Wave-3 batch 1 (single source across depts each).
     "casewestern_faculty",
     "houston_faculty",

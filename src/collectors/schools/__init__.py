@@ -17,15 +17,22 @@ from .asu import SCHOOL as ASU
 from .boulder import SCHOOL as BOULDER
 from .brown import SCHOOL as BROWN
 from .bu import SCHOOL as BU
+
+# Wave-4 batch 1 (2026-07-20)
+from .buffalo import SCHOOL as BUFFALO
 from .caltech import SCHOOL as CALTECH
 
 # Wave-3 batch 1 (2026-07-19)
 from .casewestern import SCHOOL as CASEWESTERN
+from .clemson import SCHOOL as CLEMSON
 from .cmu import SCHOOL as CMU
+from .colostate import SCHOOL as COLOSTATE
 from .columbia import SCHOOL as COLUMBIA
 from .cornell import SCHOOL as CORNELL
 from .dartmouth import SCHOOL as DARTMOUTH
+from .drexel import SCHOOL as DREXEL
 from .duke import SCHOOL as DUKE
+from .fsu import SCHOOL as FSU
 from .gatech import SCHOOL as GATECH
 from .harvard import SCHOOL as HARVARD
 from .houston import SCHOOL as HOUSTON
@@ -39,6 +46,7 @@ from .ncsu import SCHOOL as NCSU
 from .nd import SCHOOL as ND
 from .neu import SCHOOL as NEU
 from .northwestern import SCHOOL as NORTHWESTERN
+from .oregonstate import SCHOOL as OREGONSTATE
 from .osu import SCHOOL as OSU
 from .pitt import SCHOOL as PITT
 from .princeton import SCHOOL as PRINCETON
@@ -70,8 +78,10 @@ from .umich import SCHOOL as UMICH
 from .umn import SCHOOL as UMN
 from .upenn import SCHOOL as UPENN
 from .usc import SCHOOL as USC
+from .usf import SCHOOL as USF
 from .utah import SCHOOL as UTAH
 from .utexas import SCHOOL as UTEXAS
+from .utk import SCHOOL as UTK
 from .uw import SCHOOL as UW
 from .vanderbilt import SCHOOL as VANDERBILT
 
@@ -135,6 +145,15 @@ SCHOOL_CONFIGS: list[dict] = [
     ASU,
     PITT,
     MSU,
+    # Wave-4 batch 1 (2026-07-20)
+    BUFFALO,
+    FSU,
+    USF,
+    UTK,
+    CLEMSON,
+    COLOSTATE,
+    OREGONSTATE,
+    DREXEL,
     # Wave-3 batch 1 (2026-07-19)
     CASEWESTERN,
     HOUSTON,
