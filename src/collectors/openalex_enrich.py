@@ -122,6 +122,14 @@ SCHOOL_INST = {
     "asu": "I55732556",        # Arizona State University
     "pitt": "I170201317",      # University of Pittsburgh
     "msu": "I87216513",        # Michigan State University
+    "buffalo": "I63190737",
+    "fsu": "I103163165",
+    "usf": "I2613432",
+    "utk": "I75027704",
+    "clemson": "I8078737",
+    "colostate": "I92446798",
+    "oregonstate": "I131249849",
+    "drexel": "I72816309",
     "casewestern": "I58956616",
     "houston": "I44461941",
     "iastate": "I173911158",
