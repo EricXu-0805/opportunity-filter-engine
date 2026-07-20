@@ -31,6 +31,10 @@
     "campus": 160,
     "national": 3686
   },
+  "cincinnati": {
+    "campus": 329,
+    "national": 3686
+  },
   "clemson": {
     "campus": 334,
     "national": 3686
@@ -91,6 +95,14 @@
     "campus": 4598,
     "national": 3686
   },
+  "lehigh": {
+    "campus": 229,
+    "national": 3686
+  },
+  "lsu": {
+    "campus": 374,
+    "national": 3686
+  },
   "miami": {
     "campus": 160,
     "national": 3686
@@ -113,6 +125,10 @@
   },
   "neu": {
     "campus": 1780,
+    "national": 3686
+  },
+  "njit": {
+    "campus": 322,
     "national": 3686
   },
   "northwestern": {
@@ -165,6 +181,14 @@
   },
   "stanford": {
     "campus": 1396,
+    "national": 3686
+  },
+  "stevens": {
+    "campus": 227,
+    "national": 3686
+  },
+  "syracuse": {
+    "campus": 267,
     "national": 3686
   },
   "tamu": {
@@ -231,6 +255,10 @@
     "campus": 3327,
     "national": 3686
   },
+  "uky": {
+    "campus": 320,
+    "national": 3686
+  },
   "umass": {
     "campus": 1584,
     "national": 3686
@@ -247,6 +275,10 @@
     "campus": 1431,
     "national": 3686
   },
+  "unl": {
+    "campus": 317,
+    "national": 3686
+  },
   "upenn": {
     "campus": 1922,
     "national": 3686
@@ -261,6 +293,10 @@
   },
   "utah": {
     "campus": 284,
+    "national": 3686
+  },
+  "utdallas": {
+    "campus": 234,
     "national": 3686
   },
   "utexas": {
@@ -289,6 +325,10 @@
   },
   "wisc": {
     "campus": 1756,
+    "national": 3686
+  },
+  "wpi": {
+    "campus": 264,
     "national": 3686
   },
   "yale": {
