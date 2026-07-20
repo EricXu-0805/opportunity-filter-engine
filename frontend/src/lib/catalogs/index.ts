@@ -87,6 +87,16 @@ const CATALOG_LOADERS: Record<string, () => Promise<CatalogModule>> = {
   colostate: () => import('./colostate'),
   oregonstate: () => import('./oregonstate'),
   drexel: () => import('./drexel'),
+  stevens: () => import('./stevens'),
+  njit: () => import('./njit'),
+  wpi: () => import('./wpi'),
+  uky: () => import('./uky'),
+  lehigh: () => import('./lehigh'),
+  syracuse: () => import('./syracuse'),
+  cincinnati: () => import('./cincinnati'),
+  unl: () => import('./unl'),
+  lsu: () => import('./lsu'),
+  utdallas: () => import('./utdallas'),
   cmu: () => import('./cmu'),
 };
 

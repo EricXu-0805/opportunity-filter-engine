@@ -130,6 +130,17 @@ SCHOOL_INST = {
     "colostate": "I92446798",
     "oregonstate": "I131249849",
     "drexel": "I72816309",
+    # Wave-5 batch 1 (2026-07-20)
+    "stevens": "I108468826",  # Stevens Institute of Technology
+    "njit": "I118118575",  # New Jersey Institute of Technology
+    "wpi": "I107077323",  # Worcester Polytechnic Institute
+    "uky": "I143302722",  # University of Kentucky
+    "lehigh": "I186143895",  # Lehigh University
+    "syracuse": "I70983195",  # Syracuse University
+    "cincinnati": "I63135867",  # University of Cincinnati
+    "unl": "I114395901",  # University of Nebraska-Lincoln
+    "lsu": "I121820613",  # Louisiana State University
+    "utdallas": "I162577319",  # University of Texas at Dallas
     "casewestern": "I58956616",
     "houston": "I44461941",
     "iastate": "I173911158",
