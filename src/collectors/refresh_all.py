@@ -40,6 +40,20 @@ from .schools.buffalo_faculty import fetch_and_normalize as fetch_buffalo_facult
 from .schools.buffalo_faculty import merge_into_processed as merge_buffalo_faculty
 from .schools.caltech_faculty import fetch_and_normalize as fetch_caltech_faculty
 from .schools.caltech_faculty import merge_into_processed as merge_caltech_faculty
+
+# Wave-3 batch 1 (2026-07-20)
+from .schools.bc_faculty import fetch_and_normalize as fetch_bc_faculty
+from .schools.bc_faculty import merge_into_processed as merge_bc_faculty
+from .schools.emory_faculty import fetch_and_normalize as fetch_emory_faculty
+from .schools.emory_faculty import merge_into_processed as merge_emory_faculty
+from .schools.georgetown_faculty import fetch_and_normalize as fetch_georgetown_faculty
+from .schools.georgetown_faculty import merge_into_processed as merge_georgetown_faculty
+from .schools.nyu_faculty import fetch_and_normalize as fetch_nyu_faculty
+from .schools.nyu_faculty import merge_into_processed as merge_nyu_faculty
+from .schools.tufts_faculty import fetch_and_normalize as fetch_tufts_faculty
+from .schools.tufts_faculty import merge_into_processed as merge_tufts_faculty
+from .schools.uva_faculty import fetch_and_normalize as fetch_uva_faculty
+from .schools.uva_faculty import merge_into_processed as merge_uva_faculty
 from .schools.casewestern_faculty import fetch_and_normalize as fetch_casewestern_faculty
 from .schools.casewestern_faculty import merge_into_processed as merge_casewestern_faculty
 from .schools.clemson_faculty import fetch_and_normalize as fetch_clemson_faculty
@@ -844,6 +858,12 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # all six divisions incl. every EAS/PMA option site; emails are
             # Cloudflare-shielded on profiles (cf-email decode + gated enrich).
             ("caltech_faculty", fetch_caltech_faculty, merge_caltech_faculty),
+            ("bc_faculty", fetch_bc_faculty, merge_bc_faculty),
+            ("emory_faculty", fetch_emory_faculty, merge_emory_faculty),
+            ("georgetown_faculty", fetch_georgetown_faculty, merge_georgetown_faculty),
+            ("nyu_faculty", fetch_nyu_faculty, merge_nyu_faculty),
+            ("tufts_faculty", fetch_tufts_faculty, merge_tufts_faculty),
+            ("uva_faculty", fetch_uva_faculty, merge_uva_faculty),
         ]:
             # Direct SOURCE_DEFAULTS index: an unregistered source must fail
             # loudly here (KeyError) rather than silently run outside the shard

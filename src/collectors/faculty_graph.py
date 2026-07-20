@@ -580,6 +580,17 @@ def _clean_email(raw: str) -> str | None:
     .edu%3E"), trailing whitespace/nbsp, and "Name <addr>" text by extracting
     the first address-shaped token after URL-decoding.
     """
+    raw = raw or ""
+    # JS charcode obfuscation (legacy ASP directories, e.g. UVA Physics):
+    # href="javascript:...String.fromCharCode(109,97,105,...)" encodes the real
+    # "mailto:addr". Decode the code points first so the address-shape search
+    # sees a clean string instead of the surrounding <a> markup.
+    m_cc = re.search(r"fromCharCode\(([\d,\s]+)\)", raw)
+    if m_cc:
+        try:
+            raw = "".join(chr(int(n)) for n in m_cc.group(1).split(",") if n.strip())
+        except ValueError:
+            pass
     # Strip zero-width / invisible formatting chars first: some CMSes (Utah's
     # Kahlert/CS people pages) splice a zero-width space into the mailto so a
     # scraper stops at the break — the address-shape regex would then bail and
@@ -607,7 +618,15 @@ def _clean_email(raw: str) -> str | None:
     # ("(301) 405-5935") in the email column, or leaves an empty ``mailto:``
     # anchor with the phone as visible text, must yield None — never the raw
     # non-address string.
-    result = m.group(0) if m else (addr if "@" in addr else None)
+    if m:
+        result = m.group(0)
+    elif ("@" in addr and "<" not in addr and ">" not in addr
+          and re.search(r"@[\w-]+\.[\w]", addr)):
+        result = addr
+    else:
+        # Residual JS/HTML blob or a TLD-less truncation ("user@virginia") —
+        # never leak the raw non-address string.
+        result = None
     # Canonicalize to lowercase: some directories carry a display-cased address
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-

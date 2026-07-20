@@ -53,6 +53,12 @@ _CAMPUS_NAMES: dict[str, tuple[str, ...]] = {
     "dartmouth": ("dartmouth",),
     "columbia": ("columbia",),
     "yale": ("yale",),
+    "bc": ("bc", "boston college"),
+    "emory": ("emory",),
+    "georgetown": ("georgetown",),
+    "nyu": ("nyu", "new york university"),
+    "tufts": ("tufts",),
+    "uva": ("uva", "university of virginia"),
     "cmu": ("cmu", "carnegie mellon"),
 }
 
@@ -416,6 +422,19 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "caltech_external_research": (None, "open"),
     "caltech_labs": ("caltech", "unknown"),
     "caltech_faculty": ("caltech", "unknown"),
+    # Wave-3 batch 1 (2026-07-20)
+    "bc_research_programs": ("bc", "campus"),
+    "bc_faculty": ("bc", "unknown"),
+    "emory_research_programs": ("emory", "campus"),
+    "emory_faculty": ("emory", "unknown"),
+    "georgetown_research_programs": ("georgetown", "campus"),
+    "georgetown_faculty": ("georgetown", "unknown"),
+    "nyu_research_programs": ("nyu", "campus"),
+    "nyu_faculty": ("nyu", "unknown"),
+    "tufts_research_programs": ("tufts", "campus"),
+    "tufts_faculty": ("tufts", "unknown"),
+    "uva_research_programs": ("uva", "campus"),
+    "uva_faculty": ("uva", "unknown"),
 }
 
 

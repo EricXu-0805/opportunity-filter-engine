@@ -87,6 +87,13 @@ SCHOOL_INST = {
     "northwestern": "I111979921",  # Northwestern University (OpenAlex-API verified)
     "upenn": "I79576946",      # University of Pennsylvania (OpenAlex-API verified)
     "caltech": "I122411786",   # California Institute of Technology (OpenAlex-API verified)
+    # Wave-3 batch 1 (2026-07-20)
+    "bc": "I103531236",  # Boston College
+    "emory": "I150468666",  # Emory University
+    "georgetown": "I184565670",  # Georgetown University
+    "nyu": "I57206974",  # New York University
+    "tufts": "I121934306",  # Tufts University
+    "uva": "I51556381",  # University of Virginia
     "cornell": "I205783295",   # Cornell University (ror 05bnh6r87, OpenAlex-API verified)
     "rice": "I74775410",       # Rice University (ror 008zs3103, OpenAlex-API verified)
     "vanderbilt": "I200719446",  # Vanderbilt University (ror 02vm5rt34, OpenAlex-API verified)

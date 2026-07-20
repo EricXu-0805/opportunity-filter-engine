@@ -93,6 +93,14 @@ from .yale import SCHOOL as YALE
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
 # order; new schools (Top-50 rollout) append here.
+# Wave-3 batch 1 (2026-07-20)
+from .bc import SCHOOL as BC
+from .emory import SCHOOL as EMORY
+from .georgetown import SCHOOL as GEORGETOWN
+from .nyu import SCHOOL as NYU
+from .tufts import SCHOOL as TUFTS
+from .uva import SCHOOL as UVA
+
 SCHOOL_CONFIGS: list[dict] = [
     PRINCETON,
     UMICH,
@@ -168,4 +176,10 @@ SCHOOL_CONFIGS: list[dict] = [
     UTAH,
     CMU,
     UGA,
+    BC,
+    EMORY,
+    GEORGETOWN,
+    NYU,
+    TUFTS,
+    UVA,
 ]
