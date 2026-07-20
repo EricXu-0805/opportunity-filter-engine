@@ -572,18 +572,36 @@ def _clean_email(raw: str) -> str | None:
     .edu%3E"), trailing whitespace/nbsp, and "Name <addr>" text by extracting
     the first address-shaped token after URL-decoding.
     """
-    addr = unquote(raw or "").replace("mailto:", "").split("?")[0].strip()
+    raw = raw or ""
+    # JS charcode obfuscation (legacy ASP directories, e.g. UVA Physics):
+    # href="javascript:...String.fromCharCode(109,97,105,...)" encodes the real
+    # "mailto:addr". Decode the code points first so the address-shape search
+    # below sees a clean string instead of the surrounding <a> markup.
+    m_cc = re.search(r"fromCharCode\(([\d,\s]+)\)", raw)
+    if m_cc:
+        try:
+            raw = "".join(chr(int(n)) for n in m_cc.group(1).split(",") if n.strip())
+        except ValueError:
+            pass
+    addr = unquote(raw).replace("mailto:", "").split("?")[0].strip()
     # Normalize written-out obfuscation before the address-shape search: both
     # spamspan text ("x [at] umass [dot] edu") and hand-quoted forms
     # ('lane "at" cs.rochester.edu') publish a real address behind at/dot words.
     addr = re.sub(r"\s*[\[(\"']\s*at\s*[\])\"']\s*", "@", addr, flags=re.I)
     addr = re.sub(r"\s*[\[(\"']\s*dot\s*[\])\"']\s*", ".", addr, flags=re.I)
     m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
-    # An email MUST contain an @: a directory that puts a phone number
-    # ("(301) 405-5935") in the email column, or leaves an empty ``mailto:``
-    # anchor with the phone as visible text, must yield None — never the raw
-    # non-address string.
-    result = m.group(0) if m else (addr if "@" in addr else None)
+    # An email MUST contain an @ AND a dotted TLD: a directory that puts a phone
+    # number ("(301) 405-5935") in the email column, leaves an empty ``mailto:``
+    # with the phone as visible text, or emits an undecodable JS/HTML blob or a
+    # truncated "user@virginia" must yield None — never the raw non-address
+    # string. The fallback additionally rejects any residual markup.
+    if m:
+        result = m.group(0)
+    elif ("@" in addr and "<" not in addr and ">" not in addr
+          and re.search(r"@[\w-]+\.[\w]", addr)):
+        result = addr
+    else:
+        result = None
     # Canonicalize to lowercase: some directories carry a display-cased address
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-
