@@ -587,27 +587,34 @@ def _clean_email(raw: str) -> str | None:
     # addresses, so dropping them is safe and canonicalizing.
     raw = re.sub("[\u200b\u200c\u200d\u2060\ufeff]", "", raw or "")
     addr = unquote(raw).replace("mailto:", "").split("?")[0].strip()
-    # Normalize written-out obfuscation before the address-shape search: both
-    # spamspan text ("x [at] umass [dot] edu") and hand-quoted forms
-    # ('lane "at" cs.rochester.edu') publish a real address behind at/dot words.
-    addr = re.sub(r"\s*[\[(\"']\s*at\s*[\])\"']\s*", "@", addr, flags=re.I)
-    addr = re.sub(r"\s*[\[(\"']\s*dot\s*[\])\"']\s*", ".", addr, flags=re.I)
-    if "@" not in addr and re.search(r"\bat\b", addr, re.I) and re.search(r"\bdot\b", addr, re.I):
-        # Bare prose obfuscation without brackets ("jcumming at andrew dot cmu
-        # dot edu", sometimes letter-spaced) — CMU Math publishes these inside
-        # mailto: hrefs. Collapse to an address only when the result is
-        # exactly address-shaped, so real prose never converts.
-        cand = re.sub(r"\s+at\s+", "@", addr, count=1, flags=re.I)
-        cand = re.sub(r"\s+dot\s+", ".", cand, flags=re.I)
-        cand = re.sub(r"\s+", "", cand)
-        if re.fullmatch(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", cand):
-            addr = cand
+    if "@" not in addr:
+        # Normalize written-out obfuscation ONLY when there's no literal @: a real
+        # address never needs it, and the hyphen delimiter below would otherwise
+        # split a hyphenated local part that contains "at". Handles spamspan
+        # ("x [at] umass [dot] edu"), hand-quoted ('lane "at" cs.rochester.edu'),
+        # and hyphen-wrapped ("aclassen-at-umich.edu") forms.
+        addr = re.sub(r"\s*[\[(\"'-]\s*at\s*[\])\"'-]\s*", "@", addr, flags=re.I)
+        addr = re.sub(r"\s*[\[(\"'-]\s*dot\s*[\])\"'-]\s*", ".", addr, flags=re.I)
+        if "@" not in addr and re.search(r"\bat\b", addr, re.I) and re.search(r"\bdot\b", addr, re.I):
+            # Bare prose obfuscation without brackets ("jcumming at andrew dot cmu
+            # dot edu", sometimes letter-spaced) — CMU Math publishes these inside
+            # mailto: hrefs. Collapse to an address only when the result is
+            # exactly address-shaped, so real prose never converts.
+            cand = re.sub(r"\s+at\s+", "@", addr, count=1, flags=re.I)
+            cand = re.sub(r"\s+dot\s+", ".", cand, flags=re.I)
+            cand = re.sub(r"\s+", "", cand)
+            if re.fullmatch(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", cand):
+                addr = cand
     m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
-    # An email MUST contain an @: a directory that puts a phone number
-    # ("(301) 405-5935") in the email column, or leaves an empty ``mailto:``
-    # anchor with the phone as visible text, must yield None — never the raw
-    # non-address string.
-    result = m.group(0) if m else (addr if "@" in addr else None)
+    # An email MUST be address-shaped with a real dotted domain: a phone number
+    # in the email column, an empty ``mailto:``, or a domain-less token
+    # ("mtcraig@umich") must yield None — never a non-address string.
+    result = m.group(0) if m else None
+    # Repair a clipped .edu TLD: no legitimate US academic address ends in a bare
+    # ".ed" final label ("premg@arizona.ed" is a source-side display truncation),
+    # so restore the trailing 'u'. ".edu" never matches (it ends in 'u').
+    if result:
+        result = re.sub(r"\.ed$", ".edu", result, flags=re.I)
     # Canonicalize to lowercase: some directories carry a display-cased address
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-

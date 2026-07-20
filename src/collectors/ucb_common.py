@@ -447,6 +447,14 @@ def _is_person_name(name: str) -> bool:
         return False
     if "%" in name:  # a Drupal token leaked unrendered ("%AutoEntityLabel: <uuid>%")
         return False
+    # An HTTP error/placeholder page parsed as a person ("403 - Page Not
+    # Available", "n/a"): no real name leads with a 3-digit status code or is a
+    # bare placeholder token.
+    low = name.lower().strip()
+    if re.match(r"\s*[45]0[0-9]\b", name) or "page not " in low or low in {
+        "n/a", "na", "null", "none", "undefined", "unknown", "not available",
+    }:
+        return False
     if _INSTITUTION_PREFIX_RE.match(name):
         return False
     tokens = re.findall(r"[a-z]+", name.lower())
