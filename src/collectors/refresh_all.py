@@ -130,8 +130,6 @@ from .schools.nyu_faculty import fetch_and_normalize as fetch_nyu_faculty
 from .schools.nyu_faculty import merge_into_processed as merge_nyu_faculty
 from .schools.tufts_faculty import fetch_and_normalize as fetch_tufts_faculty
 from .schools.tufts_faculty import merge_into_processed as merge_tufts_faculty
-from .schools.unc_faculty import fetch_and_normalize as fetch_unc_faculty
-from .schools.unc_faculty import merge_into_processed as merge_unc_faculty
 from .schools.uva_faculty import fetch_and_normalize as fetch_uva_faculty
 from .schools.uva_faculty import merge_into_processed as merge_uva_faculty
 from .schools.uga_faculty import fetch_and_normalize as fetch_uga_faculty
@@ -739,7 +737,6 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("nyu_faculty", fetch_nyu_faculty, merge_nyu_faculty),
             ("tufts_faculty", fetch_tufts_faculty, merge_tufts_faculty),
             ("uga_faculty", fetch_uga_faculty, merge_uga_faculty),
-            ("unc_faculty", fetch_unc_faculty, merge_unc_faculty),
             ("uva_faculty", fetch_uva_faculty, merge_uva_faculty),
             # UCSD faculty (live-scraped via faculty_graph): Jacobs School +
             # Physical/Social Sciences + HDSI (13 departments, three markup

@@ -67,7 +67,6 @@ from .georgetown import SCHOOL as GEORGETOWN
 from .nyu import SCHOOL as NYU
 from .tufts import SCHOOL as TUFTS
 from .uga import SCHOOL as UGA
-from .unc import SCHOOL as UNC
 from .uva import SCHOOL as UVA
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
@@ -122,7 +121,6 @@ SCHOOL_CONFIGS: list[dict] = [
     GEORGETOWN,
     NYU,
     TUFTS,
-    UNC,
     UVA,
     BC,
     UGA,

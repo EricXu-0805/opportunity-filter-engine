@@ -57,7 +57,6 @@ _CAMPUS_NAMES: dict[str, tuple[str, ...]] = {
     "georgetown": ("georgetown",),
     "nyu": ("nyu", "new york university"),
     "tufts": ("tufts",),
-    "unc": ("unc", "unc chapel hill", "university of north carolina"),
     "uva": ("uva", "university of virginia"),
     "bc": ("bc", "boston college"),
     "uga": ("uga", "university of georgia"),
@@ -275,8 +274,6 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "nyu_faculty": ("nyu", "unknown"),
     "tufts_research_programs": ("tufts", "campus"),
     "tufts_faculty": ("tufts", "unknown"),
-    "unc_research_programs": ("unc", "campus"),
-    "unc_faculty": ("unc", "unknown"),
     "uva_research_programs": ("uva", "campus"),
     "uva_faculty": ("uva", "unknown"),
     # University of Michigan, Ann Arbor (#2 on the campus_graph engine).

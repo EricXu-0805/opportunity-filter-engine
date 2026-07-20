@@ -122,7 +122,6 @@ SCHOOL_INST = {
     "georgetown": "I184565670",  # Georgetown University
     "nyu": "I57206974",          # New York University
     "tufts": "I121934306",       # Tufts University
-    "unc": "I114027177",         # University of North Carolina at Chapel Hill
     "uva": "I51556381",          # University of Virginia
 }
 _MIN_WORKS = 5

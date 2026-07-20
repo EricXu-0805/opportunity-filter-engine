@@ -637,17 +637,6 @@ export const SCHOOLS: School[] = [
     catalog: { colleges: 6, majors: 39 },
   },
   {
-    slug: 'unc',
-    domain: 'unc.edu',
-    name: 'University of North Carolina at Chapel Hill',
-    shortName: 'UNC',
-    nameZh: '北卡罗来纳大学教堂山分校',
-    color: '#4B9CD3',
-    location: 'Chapel Hill, NC',
-    coverage: campusCoverage('unc'),
-    catalog: { colleges: 6, majors: 31 },
-  },
-  {
     slug: 'tufts',
     domain: 'tufts.edu',
     name: 'Tufts University',

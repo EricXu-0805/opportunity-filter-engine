@@ -162,7 +162,6 @@ FACULTY_SOURCES = frozenset({
     "georgetown_faculty",
     "nyu_faculty",
     "tufts_faculty",
-    "unc_faculty",
     "uva_faculty",
     # UCSD — live-scraped faculty (single source across depts).
     "ucsd_faculty",

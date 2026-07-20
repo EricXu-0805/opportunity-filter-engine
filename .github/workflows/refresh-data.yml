@@ -10,7 +10,7 @@ name: Refresh Opportunity Data
 #   | Tue | ucb,mit,usc,umn,tamu,psu,emory,georgetown | ~90-140 min | ~125-190 min    |
 #   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu | ~60-105 min | ~110-185 min |
 #   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,nyu,uva (+Chromium) | ~50-90 min | ~105-180 min |
-#   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,unc,tufts | ~60-95 min | ~110-180 min |
+#   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,tufts | ~60-95 min | ~110-180 min |
 #   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu | ~50-85 min | ~105-180 min |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
 #
@@ -84,7 +84,7 @@ jobs:
               2) SHARD="ucb,mit,usc,umn,tamu,psu,emory,georgetown" ;;
               3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu" ;;
               4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,nyu,uva" ;;
-              5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,unc,tufts" ;;
+              5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,tufts" ;;
               6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu" ;;
               7) SHARD="national" ;;
             esac

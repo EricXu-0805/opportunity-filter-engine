@@ -127,11 +127,15 @@ _ENG_SEL = {
     "link": ".contact_block_name_link",
     "title": ".people_list_item_title",
 }
+# SEAS profiles sit behind the same Cloudflare Turnstile as the listing, so a
+# per-profile RENDER enrich would headless-render ~200 pages at up to 60s each
+# (pathologically slow, and Turnstile fails most). Keep a cheap plain-HTTP email
+# probe (fails fast on the challenge shell); SEAS ships title-only when it does
+# not resolve. The dept LISTING render (one page per dept) still runs.
 _ENG_ENRICH = {
-    "render": True,
     "email_selector": "a[href^='mailto:']",
     "email_drop": _EMAIL_DROP,
-    "throttle": 0.3,
+    "throttle": 0.2,
 }
 
 

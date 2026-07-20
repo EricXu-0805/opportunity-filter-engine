@@ -65,7 +65,6 @@ const CATALOG_LOADERS: Record<string, () => Promise<CatalogModule>> = {
   georgetown: () => import('./georgetown'),
   emory: () => import('./emory'),
   uva: () => import('./uva'),
-  unc: () => import('./unc'),
   tufts: () => import('./tufts'),
   uga: () => import('./uga'),
   bc: () => import('./bc'),

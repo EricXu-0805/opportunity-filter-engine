@@ -100,7 +100,6 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "georgetown": ("georgetown.edu", "cs.georgetown.edu", "ir.cs.georgetown.edu"),
     "nyu": ("nyu.edu", "cns.nyu.edu"),
     "tufts": ("tufts.edu",),
-    "unc": ("unc.edu", "email.unc.edu", "med.unc.edu", "bio.unc.edu", "cs.unc.edu"),
     "uva": ("virginia.edu",),
 }
 # National records (school=None: SRO catalog, NSF REU, …) keep the historical
