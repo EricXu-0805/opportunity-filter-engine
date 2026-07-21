@@ -218,6 +218,17 @@ FACULTY_SOURCES = frozenset({
     "upenn_faculty",
     # Caltech — live-scraped faculty (single source across divisions).
     "caltech_faculty",
+    # Top-10 liberal arts colleges (2026-07-21)
+    "williams_faculty",
+    "amherst_faculty",
+    "swarthmore_faculty",
+    "pomona_faculty",
+    "wellesley_faculty",
+    "bowdoin_faculty",
+    "carleton_faculty",
+    "cmc_faculty",
+    "middlebury_faculty",
+    "davidson_faculty",
     # Wave-3 batch 1 (2026-07-20)
     "bc_faculty",
     "emory_faculty",

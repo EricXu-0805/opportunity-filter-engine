@@ -1,0 +1,61 @@
+/*
+ * Middlebury College — undergraduate college/major catalog.
+ * Generated from live recon; majors are official undergraduate programs.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'Sciences': [
+    'Biology',
+    'Chemistry and Biochemistry',
+    'Computer Science',
+    'Earth and Climate Sciences',
+    'Mathematics',
+    'Molecular Biology and Biochemistry',
+    'Neuroscience',
+    'Physics',
+    'Environmental Studies',
+  ],
+  'Social Sciences': [
+    'Anthropology',
+    'Economics',
+    'Education Studies',
+    'Geography',
+    'Global Health',
+    'International and Global Studies',
+    'International Politics and Economics',
+    'Political Science',
+    'Psychology',
+    'Sociology',
+  ],
+  'Humanities': [
+    'American Studies',
+    'Arabic',
+    'Black Studies',
+    'Chinese',
+    'Classics',
+    'Comparative Literature',
+    'English and American Literatures',
+    'Food Studies',
+    'French',
+    'Gender, Sexuality, and Feminist Studies',
+    'German',
+    'Hebrew',
+    'History',
+    'Italian',
+    'Japanese',
+    'Jewish Studies',
+    'Linguistics',
+    'Luso-Hispanic Studies',
+    'Philosophy',
+    'Religion',
+    'Russian',
+  ],
+  'Arts': [
+    'Dance',
+    'Film and Media Culture',
+    'History of Art and Architecture',
+    'Music',
+    'Studio Art',
+    'Theatre',
+  ],
+};
