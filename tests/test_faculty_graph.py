@@ -149,7 +149,7 @@ class TestScrapeLayer:
         from bs4 import BeautifulSoup
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
-            lambda url: BeautifulSoup(SAMPLE_HTML, "html.parser"),
+            lambda url, **_kw: BeautifulSoup(SAMPLE_HTML, "html.parser"),
         )
         dept = {
             "short": "WID",
@@ -165,7 +165,7 @@ class TestScrapeLayer:
         assert "Department of Widgets" not in names
 
     def test_scrape_failure_degrades_to_empty(self, monkeypatch):
-        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", lambda url: None)
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", lambda url, **_kw: None)
         dept = {"short": "WID", "scrape": {"url": "https://example.edu/x", "selectors": {"card": "div"}}}
         assert fg._scrape_directory(dept) == []
 
@@ -183,7 +183,7 @@ class TestScrapeLayer:
         </div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "ECE", "scrape": {
             "url": "https://www.ece.uw.edu/faculty/",
             "selectors": {"card": "div.entry", "name": ".nm a", "link": ".nm a",
@@ -219,7 +219,7 @@ class TestScrapeLayer:
         <div class="hb-card"><span class="hb-card__title"><a href="/publications/the-wayfinder">The Wayfinder</a></span></div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "ENGLISH", "scrape": {
             "url": "https://english.stanford.edu/people/faculty",
             "link_filter": "/people/",
@@ -240,7 +240,7 @@ class TestScrapeLayer:
         }
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
-            lambda url: BeautifulSoup(pages[url], "html.parser") if url in pages else None,
+            lambda url, **_kw: BeautifulSoup(pages[url], "html.parser") if url in pages else None,
         )
         dept = {"short": "X", "scrape": {
             "url": "https://x.edu/f",
@@ -261,7 +261,7 @@ class TestScrapeLayer:
                    'Machine Learning; Computer Vision; Robotics</p>')
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
-            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+            lambda url, **_kw: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
                                       "html.parser"),
         )
         monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
@@ -282,7 +282,7 @@ class TestScrapeLayer:
         from bs4 import BeautifulSoup
         calls = []
 
-        def fake_soup(url):
+        def fake_soup(url, **_kw):
             calls.append(url)
             return BeautifulSoup('<div class="c"><a class="n" href="/people/ada">'
                                  'Ada Q. Lovelace</a></div>', "html.parser")
@@ -313,7 +313,7 @@ class TestScrapeLayer:
         monkeypatch.setattr(fg, "_render_soup",
                             lambda url, **kw: BeautifulSoup(profile, "html.parser"))
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: (_ for _ in ()).throw(
+                            lambda url, **_kw: (_ for _ in ()).throw(
                                 AssertionError("plain fetch_soup used for a render profile")))
         monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
         enr = {"render": True,
@@ -444,7 +444,7 @@ class TestScrapeLayer:
                    '<nav class="menu"><a href="/people/faculty">All Faculty</a></nav>')  # out of scope
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
-            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+            lambda url, **_kw: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
                                       "html.parser"),
         )
         monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
@@ -492,7 +492,7 @@ class TestScrapeLayer:
                    'Robotics and Intelligent Systems<br>Thermal Fluids</p>')
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
-            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+            lambda url, **_kw: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
                                       "html.parser"))
         monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
         dept = {"short": "ME", "scrape": {
@@ -514,7 +514,7 @@ class TestScrapeLayer:
                 'High Energy, Astroparticle, Neurophysics<br>Office: 1-234<br>'
                 'Phone: 5</p></td></tr></tbody></table>')
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "PHYS", "scrape": {
             "url": "https://pa.ucla.edu/faculty.html",
             "selectors": {"card": "tbody tr", "name": "h5", "link": "a",
@@ -536,9 +536,9 @@ class TestScrapeLayer:
                    'Stanford Profile</a><p>prose bio only here</p>')
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
-            lambda url: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
+            lambda url, **_kw: BeautifulSoup(profile if url.endswith("/people/ada") else listing,
                                       "html.parser"))
-        monkeypatch.setattr(fg, "_wp_get_json", lambda url: {"data": {"keywords": [
+        monkeypatch.setattr(fg, "_wp_get_json", lambda url, **_kw: {"data": {"keywords": [
             "Oceanography, Biogeochemistry, Climate Change"]}} if "41654" in url else None)
         monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
         dept = {"short": "ESYS", "scrape": {
@@ -1012,7 +1012,7 @@ class TestWordPressApiSource:
             {"title": {"rendered": "Lee Lecturer"}, "link": "https://x.edu/f/lee/"},
         ]
         monkeypatch.setattr(fg, "_wp_get_json",
-                            lambda url: records if "page=1" in url else [])
+                            lambda url, **_kw: records if "page=1" in url else [])
         monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
                             ("Associate Professor", "Cognitive Psychology", [], None)
                             if "ada" in url else ("Lecturer", "", [], None))
@@ -1064,7 +1064,7 @@ class TestSeasAjaxSource:
 
         monkeypatch.setattr("requests.post", lambda *a, **k: _Resp())
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(self._PROFILE_HTML, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(self._PROFILE_HTML, "html.parser"))
         dept = {"short": "CS", "ajax": {"type": "seas", "department": "cs",
                                         "research_enrich": True}}
         people = fg._fetch_seas_ajax(dept)
@@ -1090,7 +1090,7 @@ class TestScrapeLadderFilter:
         <div class="c"><a class="n" href="/p/d">Di Teach</a><span class="t">Teaching Professor</span></div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "X", "scrape": {
             "url": "https://x.edu/f",
             "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": ".t"},
@@ -1117,7 +1117,7 @@ class TestScrapeLadderFilter:
         <div class="c"><a class="n" href="/p/e">Ed Old</a></div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "X", "scrape": {
             "url": "https://x.edu/f",
             "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
@@ -1136,7 +1136,7 @@ class TestScrapeLadderFilter:
         <div class="c"><h5>Bob Old</h5><p>Professor Emeritus Astro Office: PAB 2 Phone: 310-111</p></div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "X", "scrape": {
             "url": "https://x.edu/f",
             "selectors": {"card": "div.c", "name": "h5", "link": "h5", "title": "p",
@@ -1151,7 +1151,7 @@ class TestScrapeLadderFilter:
         from bs4 import BeautifulSoup
         html = '<div class="c"><a class="n" href="/p/a">Zhang, Wei</a></div>'
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "X", "scrape": {
             "url": "https://x.edu/f",
             "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
@@ -1168,7 +1168,7 @@ class TestScrapeLadderFilter:
         <div class="c"><a class="n" href="/p/b">Sarah McLean</a><p>Professor</p></div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "X", "scrape": {
             "url": "https://x.edu/f",
             "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": "p",
@@ -1191,7 +1191,7 @@ class TestScrapeLadderFilter:
         </table>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "LAW", "scrape": {
             "url": "https://x.edu/f",
             "selectors": {"card": "tr:has(td.t)", "name": "td.t > a[href^='/profile/']",
@@ -1217,7 +1217,7 @@ class TestScrapeLadderFilter:
         </div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "X", "scrape": {
             "url": "https://x.edu/dir",
             "selectors": {"card": "a[href*='/directory/']", "name": ":self",
@@ -1244,7 +1244,7 @@ class TestScrapeLadderFilter:
         </div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "STATS", "scrape": {
             "url": "https://statistics.stanford.edu/people/faculty",
             "selectors": {"card": "div.hb-card", "name": ".views-field-title a",
@@ -1612,7 +1612,7 @@ class TestLinklessDirectoryDedup:
         <div class="card"><div class="nm">Grace Hopper</div><div class="rk">Professor</div></div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         listing = "https://stat.example.edu/faculty/"
         school = {
             "school_slug": "ex", "source": "ex_faculty", "id_prefix": "ex",
@@ -1755,7 +1755,7 @@ class TestFullCoverageEngineAdditions:
         <div class="c"><a class="n" href="/p/c">Home Three</a><span class="dept"></span></div>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         dept = {"short": "MICRO", "scrape": {
             "url": "https://micro.x.edu/faculty",
             "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
@@ -1775,7 +1775,7 @@ class TestFullCoverageEngineAdditions:
              "people-group": [84, 99], "meta_box": {"job_title": "Professor"}},
         ]
         monkeypatch.setattr(fg, "_wp_get_json",
-                            lambda url: records if "page=1" in url else [])
+                            lambda url, **_kw: records if "page=1" in url else [])
         dept = {"short": "COM", "api": {
             "type": "wp", "base": "https://x.edu", "post_type": "person",
             "category_include": {"people-group": [84]},
@@ -1805,7 +1805,7 @@ class TestFullCoverageEngineAdditions:
              "employee-type": [4], "acf": {"email": "", "job_titles": []}},
         ]
         monkeypatch.setattr(fg, "_wp_get_json",
-                            lambda url: records if "page=1" in url else [])
+                            lambda url, **_kw: records if "page=1" in url else [])
         dept = {"short": "TERRY", "api": {
             "type": "wp", "base": "https://x.edu", "post_type": "directory",
             "category_include": {"employee-type": [4]},
@@ -2003,7 +2003,7 @@ class TestUchicagoConfig:
         </ul>
         """
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
-                            lambda url: BeautifulSoup(html, "html.parser"))
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
         from src.collectors.schools.uchicago_faculty import SCHOOL as UC
         stat = next(d for d in UC["departments"] if d["short"] == "STAT")
         people = fg._scrape_directory(stat)
