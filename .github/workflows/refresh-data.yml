@@ -11,7 +11,7 @@ name: Refresh Opportunity Data
 #   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh | ~60-105 min | ~110-185 min |
 #   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse | ~65-115 min | ~120-200 min |
 #   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl | ~80-125 min | ~130-205 min |
-#   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas | ~50-85 min | ~105-180 min |
+#   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas,ucd | ~60-105 min | ~115-200 min |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
 #
 # First-week column = the monthly per-profile enrichment (OFE_ENRICH_PROFILES)
@@ -85,7 +85,7 @@ jobs:
               3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh" ;;
               4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse" ;;
               5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl" ;;
-              6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas" ;;
+              6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas,ucd" ;;
               7) SHARD="national" ;;
             esac
             echo "shard=$SHARD" >> $GITHUB_OUTPUT
@@ -121,7 +121,7 @@ jobs:
             # (the collectors lazy-import it; tests mock it), so install it + Chromium
             # whenever the run is a full refresh OR its shard includes any render-using
             # school — otherwise those schools' render departments silently collect nothing.
-            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt|uva), ]]; then
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucd|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt|uva), ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi

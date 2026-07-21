@@ -327,6 +327,8 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "miami_faculty": ("miami", "unknown"),
     "rpi_research_programs": ("rpi", "campus"),
     "rpi_faculty": ("rpi", "unknown"),
+    "ucd_research_programs": ("ucd", "campus"),
+    "ucd_faculty": ("ucd", "unknown"),
     "ucf_research_programs": ("ucf", "campus"),
     "ucf_faculty": ("ucf", "unknown"),
     "uconn_research_programs": ("uconn", "campus"),

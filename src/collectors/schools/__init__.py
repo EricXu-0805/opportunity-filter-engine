@@ -76,6 +76,7 @@ from .stevens import SCHOOL as STEVENS
 from .syracuse import SCHOOL as SYRACUSE
 from .tamu import SCHOOL as TAMU
 from .tufts import SCHOOL as TUFTS
+from .ucd import SCHOOL as UCD
 from .ucf import SCHOOL as UCF
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
@@ -205,4 +206,5 @@ SCHOOL_CONFIGS: list[dict] = [
     UNL,
     LSU,
     UTDALLAS,
+    UCD,
 ]
