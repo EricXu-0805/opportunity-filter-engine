@@ -1474,7 +1474,14 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
         except Exception:  # noqa: BLE001
             return ("", "", [], None)
         _ua = enrich.get("ua")
-        soup = fetch_soup(url, ua=_ua) if _ua else fetch_soup(url)
+        # Optional per-profile enrichment fetches one page PER faculty member —
+        # thousands across an expanded multi-department school. Fail fast on
+        # slow/dead hosts (8s, 1 retry) so a long tail of unreachable profiles
+        # can't balloon the pass into hours; a missed email just ships "lite".
+        _t = enrich.get("timeout", 8)
+        _r = enrich.get("max_retries", 1)
+        soup = (fetch_soup(url, ua=_ua, timeout=_t, max_retries=_r) if _ua
+                else fetch_soup(url, timeout=_t, max_retries=_r))
     if soup is None:
         return ("", "", [], None)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
