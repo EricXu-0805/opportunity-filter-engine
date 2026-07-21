@@ -51,7 +51,7 @@ PROCESSED_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     ),
     "Accept": (
         "text/html,application/xhtml+xml,application/xml;q=0.9,"
@@ -346,7 +346,8 @@ SKILL_MAP = {
 }
 
 
-def fetch_soup(url: str, ua: str | None = None, insecure: bool = False) -> BeautifulSoup | None:
+def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
+               timeout: int | None = None, max_retries: int | None = None) -> BeautifulSoup | None:
     """Fetch a URL with browser-like headers, retrying transient failures.
 
     Retries connection resets / timeouts / 5xx responses with exponential
@@ -369,10 +370,17 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False) -> Beaut
     if insecure:
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    # The optional per-call overrides let a caller that fetches THOUSANDS of
+    # optional pages (the per-profile enrichment pass) fail fast on slow/dead
+    # hosts — a 30s read-timeout x 3 retries per bad profile otherwise balloons
+    # a multi-department scrape into many hours. Listing scrapes keep the robust
+    # module defaults.
+    eff_timeout = timeout if timeout is not None else _TIMEOUT
+    eff_retries = max_retries if max_retries is not None else _MAX_RETRIES
     last_err: Exception | None = None
-    for attempt in range(1, _MAX_RETRIES + 1):
+    for attempt in range(1, eff_retries + 1):
         try:
-            resp = session.get(url, timeout=_TIMEOUT)
+            resp = session.get(url, timeout=eff_timeout)
             resp.raise_for_status()
             # Parse bytes, not resp.text: the EECS server omits a charset
             # header, so requests falls back to ISO-8859-1 and mangles UTF-8
@@ -394,16 +402,16 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False) -> Beaut
             logger.warning(f"Failed to fetch {url}: {e}")
             return None
 
-        if attempt < _MAX_RETRIES:
+        if attempt < eff_retries:
             delay = _RETRY_BACKOFF * (2 ** (attempt - 1))
             logger.warning(
-                f"Fetch attempt {attempt}/{_MAX_RETRIES} for {url} failed "
+                f"Fetch attempt {attempt}/{eff_retries} for {url} failed "
                 f"({last_err}); retrying in {delay:.0f}s"
             )
             time.sleep(delay)
 
     logger.warning(
-        f"Failed to fetch {url} after {_MAX_RETRIES} attempts: {last_err}"
+        f"Failed to fetch {url} after {eff_retries} attempts: {last_err}"
     )
     return None
 

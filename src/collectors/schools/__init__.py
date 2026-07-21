@@ -14,6 +14,11 @@ from __future__ import annotations
 
 from .arizona import SCHOOL as ARIZONA
 from .asu import SCHOOL as ASU
+
+# Ordered registry of every campus-graph school. refresh_all collects these in
+# order; new schools (Top-50 rollout) append here.
+# Wave-3 batch 1 (2026-07-20)
+from .bc import SCHOOL as BC
 from .boulder import SCHOOL as BOULDER
 from .brown import SCHOOL as BROWN
 from .bu import SCHOOL as BU
@@ -33,8 +38,10 @@ from .cornell import SCHOOL as CORNELL
 from .dartmouth import SCHOOL as DARTMOUTH
 from .drexel import SCHOOL as DREXEL
 from .duke import SCHOOL as DUKE
+from .emory import SCHOOL as EMORY
 from .fsu import SCHOOL as FSU
 from .gatech import SCHOOL as GATECH
+from .georgetown import SCHOOL as GEORGETOWN
 from .harvard import SCHOOL as HARVARD
 from .houston import SCHOOL as HOUSTON
 from .iastate import SCHOOL as IASTATE
@@ -50,6 +57,7 @@ from .nd import SCHOOL as ND
 from .neu import SCHOOL as NEU
 from .njit import SCHOOL as NJIT
 from .northwestern import SCHOOL as NORTHWESTERN
+from .nyu import SCHOOL as NYU
 from .oregonstate import SCHOOL as OREGONSTATE
 from .osu import SCHOOL as OSU
 from .pitt import SCHOOL as PITT
@@ -67,6 +75,7 @@ from .stanford import SCHOOL as STANFORD
 from .stevens import SCHOOL as STEVENS
 from .syracuse import SCHOOL as SYRACUSE
 from .tamu import SCHOOL as TAMU
+from .tufts import SCHOOL as TUFTS
 from .ucf import SCHOOL as UCF
 from .uchicago import SCHOOL as UCHICAGO
 from .uci import SCHOOL as UCI
@@ -93,6 +102,7 @@ from .utah import SCHOOL as UTAH
 from .utdallas import SCHOOL as UTDALLAS
 from .utexas import SCHOOL as UTEXAS
 from .utk import SCHOOL as UTK
+from .uva import SCHOOL as UVA
 from .uw import SCHOOL as UW
 from .vanderbilt import SCHOOL as VANDERBILT
 
@@ -103,8 +113,6 @@ from .wisc import SCHOOL as WISC
 from .wpi import SCHOOL as WPI
 from .yale import SCHOOL as YALE
 
-# Ordered registry of every campus-graph school. refresh_all collects these in
-# order; new schools (Top-50 rollout) append here.
 SCHOOL_CONFIGS: list[dict] = [
     PRINCETON,
     UMICH,
@@ -180,6 +188,12 @@ SCHOOL_CONFIGS: list[dict] = [
     UTAH,
     CMU,
     UGA,
+    BC,
+    EMORY,
+    GEORGETOWN,
+    NYU,
+    TUFTS,
+    UVA,
     # Wave-5 batch 1 (2026-07-20)
     STEVENS,
     NJIT,

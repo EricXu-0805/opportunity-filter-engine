@@ -218,6 +218,13 @@ FACULTY_SOURCES = frozenset({
     "upenn_faculty",
     # Caltech — live-scraped faculty (single source across divisions).
     "caltech_faculty",
+    # Wave-3 batch 1 (2026-07-20)
+    "bc_faculty",
+    "emory_faculty",
+    "georgetown_faculty",
+    "nyu_faculty",
+    "tufts_faculty",
+    "uva_faculty",
 })
 
 GRACE_DAYS = 14

@@ -57,6 +57,13 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "northwestern": ("northwestern.edu", "u.northwestern.edu"),
     "upenn": ("upenn.edu",),
     "caltech": ("caltech.edu",),
+    # Wave-3 batch 1 (2026-07-20)
+    "bc": ("bc.edu",),
+    "emory": ("emory.edu",),
+    "georgetown": ("georgetown.edu", "cs.georgetown.edu", "ir.cs.georgetown.edu"),
+    "nyu": ("nyu.edu", "cns.nyu.edu"),
+    "tufts": ("tufts.edu",),
+    "uva": ("virginia.edu",),
     "cornell": ("cornell.edu",),
     "rice": ("rice.edu",),
     "vanderbilt": ("vanderbilt.edu",),

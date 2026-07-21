@@ -30,6 +30,10 @@ from .schools.arizona_faculty import fetch_and_normalize as fetch_arizona_facult
 from .schools.arizona_faculty import merge_into_processed as merge_arizona_faculty
 from .schools.asu_faculty import fetch_and_normalize as fetch_asu_faculty
 from .schools.asu_faculty import merge_into_processed as merge_asu_faculty
+
+# Wave-3 batch 1 (2026-07-20)
+from .schools.bc_faculty import fetch_and_normalize as fetch_bc_faculty
+from .schools.bc_faculty import merge_into_processed as merge_bc_faculty
 from .schools.boulder_faculty import fetch_and_normalize as fetch_boulder_faculty
 from .schools.boulder_faculty import merge_into_processed as merge_boulder_faculty
 from .schools.brown_faculty import fetch_and_normalize as fetch_brown_faculty
@@ -60,10 +64,14 @@ from .schools.drexel_faculty import fetch_and_normalize as fetch_drexel_faculty
 from .schools.drexel_faculty import merge_into_processed as merge_drexel_faculty
 from .schools.duke_faculty import fetch_and_normalize as fetch_duke_faculty
 from .schools.duke_faculty import merge_into_processed as merge_duke_faculty
+from .schools.emory_faculty import fetch_and_normalize as fetch_emory_faculty
+from .schools.emory_faculty import merge_into_processed as merge_emory_faculty
 from .schools.fsu_faculty import fetch_and_normalize as fetch_fsu_faculty
 from .schools.fsu_faculty import merge_into_processed as merge_fsu_faculty
 from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
+from .schools.georgetown_faculty import fetch_and_normalize as fetch_georgetown_faculty
+from .schools.georgetown_faculty import merge_into_processed as merge_georgetown_faculty
 from .schools.harvard_faculty import fetch_and_normalize as fetch_harvard_faculty
 from .schools.harvard_faculty import merge_into_processed as merge_harvard_faculty
 from .schools.houston_faculty import fetch_and_normalize as fetch_houston_faculty
@@ -94,6 +102,8 @@ from .schools.njit_faculty import fetch_and_normalize as fetch_njit_faculty
 from .schools.njit_faculty import merge_into_processed as merge_njit_faculty
 from .schools.northwestern_faculty import fetch_and_normalize as fetch_northwestern_faculty
 from .schools.northwestern_faculty import merge_into_processed as merge_northwestern_faculty
+from .schools.nyu_faculty import fetch_and_normalize as fetch_nyu_faculty
+from .schools.nyu_faculty import merge_into_processed as merge_nyu_faculty
 from .schools.oregonstate_faculty import fetch_and_normalize as fetch_oregonstate_faculty
 from .schools.oregonstate_faculty import merge_into_processed as merge_oregonstate_faculty
 from .schools.osu_faculty import fetch_and_normalize as fetch_osu_faculty
@@ -126,6 +136,8 @@ from .schools.syracuse_faculty import fetch_and_normalize as fetch_syracuse_facu
 from .schools.syracuse_faculty import merge_into_processed as merge_syracuse_faculty
 from .schools.tamu_faculty import fetch_and_normalize as fetch_tamu_faculty
 from .schools.tamu_faculty import merge_into_processed as merge_tamu_faculty
+from .schools.tufts_faculty import fetch_and_normalize as fetch_tufts_faculty
+from .schools.tufts_faculty import merge_into_processed as merge_tufts_faculty
 from .schools.ucf_faculty import fetch_and_normalize as fetch_ucf_faculty
 from .schools.ucf_faculty import merge_into_processed as merge_ucf_faculty
 from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
@@ -178,6 +190,8 @@ from .schools.utexas_faculty import fetch_and_normalize as fetch_utexas_faculty
 from .schools.utexas_faculty import merge_into_processed as merge_utexas_faculty
 from .schools.utk_faculty import fetch_and_normalize as fetch_utk_faculty
 from .schools.utk_faculty import merge_into_processed as merge_utk_faculty
+from .schools.uva_faculty import fetch_and_normalize as fetch_uva_faculty
+from .schools.uva_faculty import merge_into_processed as merge_uva_faculty
 from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
 from .schools.uw_faculty import merge_into_processed as merge_uw_faculty
 from .schools.vanderbilt_faculty import fetch_and_normalize as fetch_vanderbilt_faculty
@@ -877,6 +891,12 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # all six divisions incl. every EAS/PMA option site; emails are
             # Cloudflare-shielded on profiles (cf-email decode + gated enrich).
             ("caltech_faculty", fetch_caltech_faculty, merge_caltech_faculty),
+            ("bc_faculty", fetch_bc_faculty, merge_bc_faculty),
+            ("emory_faculty", fetch_emory_faculty, merge_emory_faculty),
+            ("georgetown_faculty", fetch_georgetown_faculty, merge_georgetown_faculty),
+            ("nyu_faculty", fetch_nyu_faculty, merge_nyu_faculty),
+            ("tufts_faculty", fetch_tufts_faculty, merge_tufts_faculty),
+            ("uva_faculty", fetch_uva_faculty, merge_uva_faculty),
         ]:
             # Direct SOURCE_DEFAULTS index: an unregistered source must fail
             # loudly here (KeyError) rather than silently run outside the shard

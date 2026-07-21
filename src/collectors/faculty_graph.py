@@ -580,6 +580,17 @@ def _clean_email(raw: str) -> str | None:
     .edu%3E"), trailing whitespace/nbsp, and "Name <addr>" text by extracting
     the first address-shaped token after URL-decoding.
     """
+    raw = raw or ""
+    # JS charcode obfuscation (legacy ASP directories, e.g. UVA Physics):
+    # href="javascript:...String.fromCharCode(109,97,105,...)" encodes the real
+    # "mailto:addr". Decode the code points first so the address-shape search
+    # sees a clean string instead of the surrounding <a> markup.
+    m_cc = re.search(r"fromCharCode\(([\d,\s]+)\)", raw)
+    if m_cc:
+        try:
+            raw = "".join(chr(int(n)) for n in m_cc.group(1).split(",") if n.strip())
+        except ValueError:
+            pass
     # Strip zero-width / invisible formatting chars first: some CMSes (Utah's
     # Kahlert/CS people pages) splice a zero-width space into the mailto so a
     # scraper stops at the break — the address-shape regex would then bail and
@@ -607,8 +618,10 @@ def _clean_email(raw: str) -> str | None:
                 addr = cand
     m = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", addr)
     # An email MUST be address-shaped with a real dotted domain: a phone number
-    # in the email column, an empty ``mailto:``, or a domain-less token
-    # ("mtcraig@umich") must yield None — never a non-address string.
+    # in the email column, an empty ``mailto:``, a residual JS/HTML blob, or a
+    # domain-less token ("mtcraig@umich", "sy5jx@virginia") must yield None —
+    # never a non-address string. (The charcode decode above turns UVA Physics'
+    # JS-obfuscated mailto into a real address before this shape check.)
     result = m.group(0) if m else None
     # Repair a clipped .edu TLD: no legitimate US academic address ends in a bare
     # ".ed" final label ("premg@arizona.ed" is a source-side display truncation),
@@ -1462,7 +1475,14 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
         except Exception:  # noqa: BLE001
             return ("", "", [], None)
         _ua = enrich.get("ua")
-        soup = fetch_soup(url, ua=_ua) if _ua else fetch_soup(url)
+        # Optional per-profile enrichment fetches one page PER faculty member —
+        # thousands across an expanded multi-department school. Fail fast on
+        # slow/dead hosts (8s, 1 retry) so a long tail of unreachable profiles
+        # can't balloon the pass into hours; a missed email just ships "lite".
+        _t = enrich.get("timeout", 8)
+        _r = enrich.get("max_retries", 1)
+        soup = (fetch_soup(url, ua=_ua, timeout=_t, max_retries=_r) if _ua
+                else fetch_soup(url, timeout=_t, max_retries=_r))
     if soup is None:
         return ("", "", [], None)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
