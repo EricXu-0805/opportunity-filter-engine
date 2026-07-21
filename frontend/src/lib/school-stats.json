@@ -7,6 +7,10 @@
     "campus": 590,
     "national": 3686
   },
+  "bc": {
+    "campus": 827,
+    "national": 3686
+  },
   "boulder": {
     "campus": 1597,
     "national": 3686
@@ -63,12 +67,20 @@
     "campus": 1156,
     "national": 3686
   },
+  "emory": {
+    "campus": 1441,
+    "national": 3686
+  },
   "fsu": {
     "campus": 216,
     "national": 3686
   },
   "gatech": {
     "campus": 1246,
+    "national": 3686
+  },
+  "georgetown": {
+    "campus": 849,
     "national": 3686
   },
   "harvard": {
@@ -117,6 +129,10 @@
   },
   "northwestern": {
     "campus": 2798,
+    "national": 3686
+  },
+  "nyu": {
+    "campus": 1822,
     "national": 3686
   },
   "oregonstate": {
@@ -169,6 +185,10 @@
   },
   "tamu": {
     "campus": 3006,
+    "national": 3686
+  },
+  "tufts": {
+    "campus": 2056,
     "national": 3686
   },
   "ucb": {
@@ -269,6 +289,10 @@
   },
   "utk": {
     "campus": 304,
+    "national": 3686
+  },
+  "uva": {
+    "campus": 1244,
     "national": 3686
   },
   "uw": {
