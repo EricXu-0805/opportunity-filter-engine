@@ -58,12 +58,11 @@ _UCD_LADDER = {
             r"postdoc|affiliat|by courtesy|\bstaff\b",
 }
 
-# Research areas are profile-only; the monthly enrich pass follows each teaser
-# link and reads the SiteFarm "Research"/"Research Interests" field block.
-_UCD_PROFILE = {
-    "research_selector": "div.field--name-field-sf-research-areas, div.field--name-body",
-    "throttle": 0.25,
-}
+# NOTE: no profile-enrich pass. The teaser already carries name/rank/email;
+# research areas live on the profile page, but every profile is CF-walled to a
+# plain fetch (403) and rendering each one would multiply the challenge traffic
+# ~50x per department for a nice-to-have field. Listing-only is the right call
+# for this WAF — the record ships with rank + email from the teaser.
 
 
 def _ucd(short: str, name: str, majors: list[str], sub: str,
@@ -77,8 +76,7 @@ def _ucd(short: str, name: str, majors: list[str], sub: str,
                        # the 3.5s default before the real DOM replaces the shell.
                        "render_settle": 9000,
                        "selectors": _UCD_SELECTORS,
-                       "ladder_filter": _UCD_LADDER,
-                       "profile_enrich": _UCD_PROFILE}}
+                       "ladder_filter": _UCD_LADDER}}
 
 
 def _eng(short: str, name: str, majors: list[str], sub: str) -> dict:

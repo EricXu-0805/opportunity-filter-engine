@@ -1065,17 +1065,6 @@ export const SCHOOLS: School[] = [
     coverage: campusCoverage('bc'),
     catalog: { colleges: 4, majors: 38 },
   },
-  {
-    slug: 'ucd',
-    domain: 'ucdavis.edu',
-    name: 'University of California, Davis',
-    shortName: 'UC Davis',
-    nameZh: '加州大学戴维斯分校',
-    color: '#022851',
-    location: 'Davis, CA',
-    coverage: campusCoverage('ucd'),
-    catalog: { colleges: 4, majors: 35 },
-  },
 ];
 
 const BY_SLUG = new Map(SCHOOLS.map((s) => [s.slug, s]));
