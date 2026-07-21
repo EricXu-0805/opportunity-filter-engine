@@ -668,6 +668,34 @@ class TestEmailObfuscationDecoding:
         assert fg._clean_email('lane "at" cs.rochester.edu') == "lane@cs.rochester.edu"
         assert fg._clean_email("plain@umass.edu") == "plain@umass.edu"
 
+    def test_clean_email_hyphen_wrapped_at(self):
+        # "-at-" / " -at- " obfuscation (umich, utexas directories)
+        assert fg._clean_email("aclassen-at-umich.edu") == "aclassen@umich.edu"
+        assert fg._clean_email("eckirk -at- austin.utexas.edu") == "eckirk@austin.utexas.edu"
+        # a real hyphenated local part containing "at" must NOT be split
+        assert fg._clean_email("jane.at-large@stanford.edu") == "jane.at-large@stanford.edu"
+
+    def test_clean_email_repairs_clipped_edu_tld(self):
+        assert fg._clean_email("premg@arizona.ed") == "premg@arizona.edu"
+        assert fg._clean_email("jnisbet@uci.ed") == "jnisbet@uci.edu"
+        # a well-formed .edu is untouched
+        assert fg._clean_email("x@duke.edu") == "x@duke.edu"
+
+    def test_clean_email_rejects_domainless_and_junk(self):
+        assert fg._clean_email("mtcraig@umich") is None  # no TLD
+        assert fg._clean_email("n/a") is None
+        assert fg._clean_email("(301) 405-5935") is None
+
+    def test_is_person_name_rejects_error_pages(self):
+        from src.collectors.ucb_common import _is_person_name
+        assert not _is_person_name("403 - Page Not Available")
+        assert not _is_person_name("404 Not Found")
+        assert not _is_person_name("500 Internal Server Error")
+        assert not _is_person_name("n/a")
+        # real names that merely contain "null"/one-word must still pass
+        assert _is_person_name("Susan Cohen Pannullo")
+        assert _is_person_name("Haroon Burhanullah")
+
     def test_decode_rot13_data_mail_to(self):
         from bs4 import BeautifulSoup
         el = BeautifulSoup(

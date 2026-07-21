@@ -114,6 +114,17 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "clemson": ("clemson.edu", "g.clemson.edu"),
     "colostate": ("colostate.edu",),
     "oregonstate": ("oregonstate.edu",),
+    # Wave-5 batch 1.
+    "stevens": ("stevens.edu",),
+    "njit": ("njit.edu",),
+    "wpi": ("wpi.edu",),
+    "uky": ("uky.edu",),
+    "lehigh": ("lehigh.edu",),
+    "syracuse": ("syr.edu", "syracuse.edu"),
+    "cincinnati": ("uc.edu",),
+    "unl": ("unl.edu",),
+    "lsu": ("lsu.edu",),
+    "utdallas": ("utdallas.edu",),
     "drexel": ("drexel.edu",),
     # Wave-3 batch 1.
     "casewestern": ("case.edu",),
