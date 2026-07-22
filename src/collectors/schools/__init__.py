@@ -12,6 +12,7 @@ touches the refresh wiring again — only this list grows.
 
 from __future__ import annotations
 
+from .amherst import SCHOOL as AMHERST
 from .arizona import SCHOOL as ARIZONA
 from .asu import SCHOOL as ASU
 
@@ -20,22 +21,26 @@ from .asu import SCHOOL as ASU
 # Wave-3 batch 1 (2026-07-20)
 from .bc import SCHOOL as BC
 from .boulder import SCHOOL as BOULDER
+from .bowdoin import SCHOOL as BOWDOIN
 from .brown import SCHOOL as BROWN
 from .bu import SCHOOL as BU
 
 # Wave-4 batch 1 (2026-07-20)
 from .buffalo import SCHOOL as BUFFALO
 from .caltech import SCHOOL as CALTECH
+from .carleton import SCHOOL as CARLETON
 
 # Wave-3 batch 1 (2026-07-19)
 from .casewestern import SCHOOL as CASEWESTERN
 from .cincinnati import SCHOOL as CINCINNATI
 from .clemson import SCHOOL as CLEMSON
+from .cmc import SCHOOL as CMC
 from .cmu import SCHOOL as CMU
 from .colostate import SCHOOL as COLOSTATE
 from .columbia import SCHOOL as COLUMBIA
 from .cornell import SCHOOL as CORNELL
 from .dartmouth import SCHOOL as DARTMOUTH
+from .davidson import SCHOOL as DAVIDSON
 from .drexel import SCHOOL as DREXEL
 from .duke import SCHOOL as DUKE
 from .emory import SCHOOL as EMORY
@@ -50,6 +55,7 @@ from .jhu import SCHOOL as JHU
 from .lehigh import SCHOOL as LEHIGH
 from .lsu import SCHOOL as LSU
 from .miami import SCHOOL as MIAMI
+from .middlebury import SCHOOL as MIDDLEBURY
 from .mit import SCHOOL as MIT
 from .msu import SCHOOL as MSU
 from .ncsu import SCHOOL as NCSU
@@ -61,6 +67,7 @@ from .nyu import SCHOOL as NYU
 from .oregonstate import SCHOOL as OREGONSTATE
 from .osu import SCHOOL as OSU
 from .pitt import SCHOOL as PITT
+from .pomona import SCHOOL as POMONA
 from .princeton import SCHOOL as PRINCETON
 from .psu import SCHOOL as PSU
 from .purdue import SCHOOL as PURDUE
@@ -73,6 +80,7 @@ from .stanford import SCHOOL as STANFORD
 
 # Wave-5 batch 1 (2026-07-20)
 from .stevens import SCHOOL as STEVENS
+from .swarthmore import SCHOOL as SWARTHMORE
 from .syracuse import SCHOOL as SYRACUSE
 from .tamu import SCHOOL as TAMU
 from .tufts import SCHOOL as TUFTS
@@ -110,6 +118,9 @@ from .vanderbilt import SCHOOL as VANDERBILT
 # Wave-2 batch 1 (2026-07-18).
 from .vt import SCHOOL as VT
 from .washu import SCHOOL as WASHU
+from .wellesley import SCHOOL as WELLESLEY
+
+# Top-10 liberal arts colleges (2026-07-21)
 from .wisc import SCHOOL as WISC
 from .wpi import SCHOOL as WPI
 from .yale import SCHOOL as YALE
@@ -134,6 +145,16 @@ SCHOOL_CONFIGS: list[dict] = [
     NORTHWESTERN,
     UPENN,
     CALTECH,
+    # Top-10 liberal arts colleges (2026-07-21)
+    AMHERST,
+    SWARTHMORE,
+    POMONA,
+    WELLESLEY,
+    BOWDOIN,
+    CARLETON,
+    CMC,
+    MIDDLEBURY,
+    DAVIDSON,
     BROWN,
     CORNELL,
     RICE,

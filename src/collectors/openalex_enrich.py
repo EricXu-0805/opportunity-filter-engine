@@ -88,6 +88,16 @@ SCHOOL_INST = {
     "northwestern": "I111979921",  # Northwestern University (OpenAlex-API verified)
     "upenn": "I79576946",      # University of Pennsylvania (OpenAlex-API verified)
     "caltech": "I122411786",   # California Institute of Technology (OpenAlex-API verified)
+    # Top-10 liberal arts colleges (2026-07-21)
+    "amherst": "I177605424",  # Amherst College
+    "swarthmore": "I118020396",  # Swarthmore College
+    "pomona": "I177881444",  # Pomona College
+    "wellesley": "I189731429",  # Wellesley College
+    "bowdoin": "I135474949",  # Bowdoin College
+    "carleton": "I188497080",  # Carleton College
+    "cmc": "I106107269",  # Claremont McKenna College
+    "middlebury": "I195575238",  # Middlebury College
+    "davidson": "I141720752",  # Davidson College
     # Wave-3 batch 1 (2026-07-20)
     "bc": "I103531236",  # Boston College
     "emory": "I150468666",  # Emory University

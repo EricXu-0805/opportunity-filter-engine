@@ -1,4 +1,8 @@
 {
+  "amherst": {
+    "campus": 274,
+    "national": 3686
+  },
   "arizona": {
     "campus": 322,
     "national": 3686
@@ -13,6 +17,10 @@
   },
   "boulder": {
     "campus": 1597,
+    "national": 3686
+  },
+  "bowdoin": {
+    "campus": 242,
     "national": 3686
   },
   "brown": {
@@ -31,6 +39,10 @@
     "campus": 445,
     "national": 3686
   },
+  "carleton": {
+    "campus": 304,
+    "national": 3686
+  },
   "casewestern": {
     "campus": 160,
     "national": 3686
@@ -41,6 +53,10 @@
   },
   "clemson": {
     "campus": 334,
+    "national": 3686
+  },
+  "cmc": {
+    "campus": 164,
     "national": 3686
   },
   "cmu": {
@@ -61,6 +77,10 @@
   },
   "dartmouth": {
     "campus": 912,
+    "national": 3686
+  },
+  "davidson": {
+    "campus": 229,
     "national": 3686
   },
   "drexel": {
@@ -119,8 +139,12 @@
     "campus": 160,
     "national": 3686
   },
+  "middlebury": {
+    "campus": 321,
+    "national": 3686
+  },
   "mit": {
-    "campus": 1358,
+    "campus": 1392,
     "national": 3686
   },
   "msu": {
@@ -163,12 +187,16 @@
     "campus": 257,
     "national": 3686
   },
+  "pomona": {
+    "campus": 263,
+    "national": 3686
+  },
   "princeton": {
     "campus": 622,
     "national": 3686
   },
   "psu": {
-    "campus": 2713,
+    "campus": 2714,
     "national": 3686
   },
   "purdue": {
@@ -203,12 +231,16 @@
     "campus": 227,
     "national": 3686
   },
+  "swarthmore": {
+    "campus": 237,
+    "national": 3686
+  },
   "syracuse": {
     "campus": 267,
     "national": 3686
   },
   "tamu": {
-    "campus": 3006,
+    "campus": 3190,
     "national": 3686
   },
   "tufts": {
@@ -216,7 +248,7 @@
     "national": 3686
   },
   "ucb": {
-    "campus": 3097,
+    "campus": 3106,
     "national": 3686
   },
   "ucf": {
@@ -236,7 +268,7 @@
     "national": 3686
   },
   "uconn": {
-    "campus": 284,
+    "campus": 288,
     "national": 3686
   },
   "ucr": {
@@ -292,7 +324,7 @@
     "national": 3686
   },
   "umn": {
-    "campus": 1431,
+    "campus": 1432,
     "national": 3686
   },
   "unl": {
@@ -304,7 +336,7 @@
     "national": 3686
   },
   "usc": {
-    "campus": 1512,
+    "campus": 1561,
     "national": 3686
   },
   "usf": {
@@ -345,6 +377,10 @@
   },
   "washu": {
     "campus": 1096,
+    "national": 3686
+  },
+  "wellesley": {
+    "campus": 287,
     "national": 3686
   },
   "wisc": {

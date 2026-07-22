@@ -1,0 +1,57 @@
+/*
+ * Wellesley College — undergraduate college/major catalog.
+ * Generated from live recon; majors are official undergraduate programs.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'Division of Arts and Humanities': [
+    'Africana Studies',
+    'American Studies',
+    'Art History',
+    'Studio Art',
+    'Classical Civilization',
+    'Comparative Literary Studies',
+    'English',
+    'Creative Writing',
+    'French Cultural Studies',
+    'German Studies',
+    'Italian Studies',
+    'East Asian Languages and Cultures',
+    'History',
+    'Music',
+    'Philosophy',
+    'Religion',
+    'Russian',
+    'Spanish',
+    'Cinema and Media Studies',
+    'Theatre Studies',
+  ],
+  'Division of Social Sciences': [
+    'Anthropology',
+    'Economics',
+    'Education',
+    'Political Science',
+    'Psychology',
+    'Sociology',
+    "Women's and Gender Studies",
+    'Peace and Justice Studies',
+  ],
+  'Division of Natural Sciences and Mathematics': [
+    'Astronomy',
+    'Astrophysics',
+    'Biological Sciences',
+    'Biochemistry',
+    'Chemistry',
+    'Chemical Physics',
+    'Computer Science',
+    'Data Science',
+    'Environmental Studies',
+    'Geosciences',
+    'Mathematics',
+    'Statistics',
+    'Neuroscience',
+    'Physics',
+    'Cognitive and Linguistic Sciences',
+    'Media Arts and Sciences',
+  ],
+};
