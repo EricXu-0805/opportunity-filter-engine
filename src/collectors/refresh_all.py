@@ -154,6 +154,8 @@ from .schools.tamu_faculty import fetch_and_normalize as fetch_tamu_faculty
 from .schools.tamu_faculty import merge_into_processed as merge_tamu_faculty
 from .schools.tufts_faculty import fetch_and_normalize as fetch_tufts_faculty
 from .schools.tufts_faculty import merge_into_processed as merge_tufts_faculty
+from .schools.ucd_faculty import fetch_and_normalize as fetch_ucd_faculty
+from .schools.ucd_faculty import merge_into_processed as merge_ucd_faculty
 from .schools.ucf_faculty import fetch_and_normalize as fetch_ucf_faculty
 from .schools.ucf_faculty import merge_into_processed as merge_ucf_faculty
 from .schools.uchicago_faculty import fetch_and_normalize as fetch_uchicago_faculty
@@ -926,6 +928,8 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("nyu_faculty", fetch_nyu_faculty, merge_nyu_faculty),
             ("tufts_faculty", fetch_tufts_faculty, merge_tufts_faculty),
             ("uva_faculty", fetch_uva_faculty, merge_uva_faculty),
+            # UC Davis (render-mode SiteFarm via faculty_graph; WAF best-effort).
+            ("ucd_faculty", fetch_ucd_faculty, merge_ucd_faculty),
         ]:
             # Direct SOURCE_DEFAULTS index: an unregistered source must fail
             # loudly here (KeyError) rather than silently run outside the shard

@@ -191,6 +191,7 @@ FACULTY_SOURCES = frozenset({
     "indiana_faculty",
     "miami_faculty",
     "rpi_faculty",
+    "ucd_faculty",
     "ucf_faculty",
     "uconn_faculty",
     "udel_faculty",

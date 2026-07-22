@@ -78,6 +78,7 @@ SCHOOL_INST = {
     "princeton": "I20089843",  # Princeton University (ror 00hx57361)
     "ucsd": "I36258959",       # University of California San Diego (ror 0168r3w48)
     "uchicago": "I40347166",   # University of Chicago (ror 024mw5h28)
+    "ucd": "I84218800",        # University of California, Davis (API-verified 2026-07-21)
     "uci": "I204250578",       # University of California, Irvine (ror 04gyf1771)
     "ucsb": "I154570441",      # University of California, Santa Barbara (ror 02t274463)
     "boulder": "I188538660",   # University of Colorado Boulder (ror 02ttsq026)

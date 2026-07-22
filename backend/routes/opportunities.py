@@ -92,7 +92,7 @@ _SCHOOL_SLUGS = frozenset({
     "usc", "umn", "osu", "nd", "rochester", "uf", "umass",
     "vt", "tamu", "umd", "neu", "sbu", "bu", "washu", "rutgers", "ncsu", "psu",
     "ucsc", "arizona", "ucr", "asu", "pitt", "msu",
-    "casewestern", "houston", "iastate", "indiana", "miami", "rpi", "ucf", "uconn", "udel", "uiowa", "utah",
+    "casewestern", "houston", "iastate", "indiana", "miami", "rpi", "ucd", "ucf", "uconn", "udel", "uiowa", "utah",
     "buffalo", "fsu", "usf", "utk", "clemson", "colostate", "oregonstate", "drexel",
     "stevens", "njit", "wpi", "uky", "lehigh", "syracuse", "cincinnati", "unl", "lsu", "utdallas",
     "uga",
