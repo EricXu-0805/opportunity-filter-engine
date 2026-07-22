@@ -222,8 +222,14 @@ jobs:
           # Commit-time chokepoint: split the work file into minified per-school
           # shards (scripts/shard_corpus.py) — each shard sits far below GitHub's
           # 100 MB blob limit and grows independently, so onboarding more schools
-          # can't outgrow a single file again. split() also prunes description_raw
-          # duplicates (lossless) and removes shards for schools no longer present.
+          # can't outgrow a single file again. split() prunes description_raw
+          # duplicates (lossless). It is UPSERT-ONLY (no --prune): this run's work
+          # file is assembled from its run-start checkout and omits any school
+          # onboarded to main after the run began, so pruning "absent" shards here
+          # would delete freshly-landed schools (how #614 wiped Yale, #630 the
+          # Wave-3 six). Upsert-only writes only the schools we actually scraped
+          # and leaves every other on-disk shard (from the FETCH_HEAD rebase onto
+          # latest main) untouched.
           python3 scripts/shard_corpus.py split
 
           git add data/processed/shards data/processed/collector_status.json

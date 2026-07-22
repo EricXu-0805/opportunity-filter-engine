@@ -17,8 +17,12 @@ keep reading/writing the single work file ``data/processed/opportunities.json``
     split     (work file -> commit)     python scripts/shard_corpus.py split
 
 ``split`` reuses minify_corpus's lossless pruning (drop description_raw where it
-equals description_clean) and writes each shard minified; it also removes shard
-files for schools no longer present so a renamed slug can't leave a stale twin.
+equals description_clean) and writes each shard minified. It is UPSERT-ONLY:
+it touches only schools present in the work file and never deletes an absent
+school's shard unless run with ``--prune`` (a deliberate full rebuild). The
+scheduled refresh omits ``--prune`` so a partial run can't delete a school it
+simply didn't scrape — the failure mode that wiped Yale (#614) and the Wave-3
+six (#630) off main.
 ``assemble`` is a no-op when the work file already exists unless --force — so a
 straggler run that produced a fresher work file is never clobbered.
 
@@ -55,8 +59,18 @@ SHRINK_GUARD_FLOOR = 100
 
 def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
           keep_ratio: float = SHRINK_KEEP_RATIO,
-          guard_floor: int = SHRINK_GUARD_FLOOR) -> dict[str, int]:
+          guard_floor: int = SHRINK_GUARD_FLOOR,
+          prune: bool = False) -> dict[str, int]:
     """Work file -> minified per-school shard files. Returns {shard: count}.
+
+    Upsert-only by default: writes/updates a shard for every school PRESENT in
+    the work file and LEAVES every other on-disk shard untouched. This is the
+    safe mode for the weekly refresh, whose work file is assembled from its
+    run-start checkout and therefore omits any school onboarded to main *after*
+    the run began — deleting those "absent" shards is exactly how auto-refresh
+    #614/#630 wiped freshly-landed schools (Yale, then the Wave-3 six). A shard
+    is removed ONLY when ``prune=True`` (a deliberate full rebuild), never on a
+    partial/scheduled run.
 
     Shrink guard: if a school's new shard would be < ``keep_ratio`` of the
     already-committed shard (and that shard has >= ``guard_floor`` records), the
@@ -75,10 +89,14 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
     for r in records:
         by_school.setdefault(_slug(r), []).append(r)
     shards_dir.mkdir(parents=True, exist_ok=True)
-    # Remove shards for schools no longer present (rename/removal safety).
-    for stale in shards_dir.glob("*.json"):
-        if stale.stem not in by_school:
-            stale.unlink()
+    # Only a deliberate full rebuild (prune=True) removes shards for schools
+    # absent from the work file. A partial/scheduled split leaves them alone so
+    # it can never delete a school it simply didn't scrape this run.
+    if prune:
+        for stale in shards_dir.glob("*.json"):
+            if stale.stem not in by_school:
+                stale.unlink()
+                print(f"shard_corpus: pruned absent shard {stale.name}", file=sys.stderr)
     counts: dict[str, int] = {}
     kept: list[tuple[str, int, int]] = []
     for slug, recs in sorted(by_school.items()):
@@ -133,9 +151,10 @@ def assemble(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
 def main() -> int:
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "split":
-        counts = split()
+        prune = "--prune" in sys.argv
+        counts = split(prune=prune)
         total = sum(counts.values())
-        print(f"split: {total} records -> {len(counts)} shards "
+        print(f"split{' --prune' if prune else ''}: {total} records -> {len(counts)} shards "
               f"({', '.join(f'{s}:{n}' for s, n in counts.items())})")
         return 0
     if cmd == "assemble":
@@ -144,7 +163,7 @@ def main() -> int:
               if n < 0 else f"assemble: {n} records -> {WORK_FILE.name}")
         return 0
     print(__doc__)
-    print("usage: shard_corpus.py {split|assemble [--force]}")
+    print("usage: shard_corpus.py {split [--prune]|assemble [--force]}")
     return 2
 
 

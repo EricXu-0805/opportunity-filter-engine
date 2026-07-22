@@ -87,3 +87,34 @@ def test_new_school_writes_without_guard(tmp_path):
     counts = split(wf, sd)
     assert counts["newschool"] == 300
     assert _shard_count(sd, "newschool") == 300
+
+
+def test_split_is_upsert_only_and_preserves_absent_shards(tmp_path):
+    """A partial run must NOT delete a school it simply didn't scrape.
+
+    Regression for the auto-refresh clobber (#614 wiped Yale, #630 the Wave-3
+    six): the scheduled split's work file omits schools onboarded to main after
+    the run began, and deleting those 'absent' shards removed live data.
+    """
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    # yale landed on main after this run started — its shard is on disk but NOT
+    # in this partial run's work file.
+    (sd / "yale.json").write_text(json.dumps(_recs("yale", 1224)), encoding="utf-8")
+    _write(wf, _recs("ucb", 100) + _recs("mit", 80))  # only the scraped schools
+    counts = split(wf, sd)  # default: upsert-only
+    assert counts == {"ucb": 100, "mit": 80}
+    assert (sd / "yale.json").exists(), "absent school's shard must be preserved"
+    assert _shard_count(sd, "yale") == 1224
+    assert _shard_count(sd, "ucb") == 100
+
+
+def test_split_prune_removes_absent_shards(tmp_path):
+    """A deliberate full rebuild (--prune / prune=True) still cleans stale shards."""
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    (sd / "oldname.json").write_text(json.dumps(_recs("oldname", 50)), encoding="utf-8")
+    _write(wf, _recs("ucb", 100))
+    counts = split(wf, sd, prune=True)
+    assert counts == {"ucb": 100}
+    assert not (sd / "oldname.json").exists(), "prune=True removes absent shards"
