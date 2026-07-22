@@ -222,8 +222,6 @@ from .schools.wellesley_faculty import fetch_and_normalize as fetch_wellesley_fa
 from .schools.wellesley_faculty import merge_into_processed as merge_wellesley_faculty
 
 # Top-10 liberal arts colleges (2026-07-21)
-from .schools.williams_faculty import fetch_and_normalize as fetch_williams_faculty
-from .schools.williams_faculty import merge_into_processed as merge_williams_faculty
 from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
 from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
 from .schools.wpi_faculty import fetch_and_normalize as fetch_wpi_faculty
@@ -913,7 +911,6 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # all six divisions incl. every EAS/PMA option site; emails are
             # Cloudflare-shielded on profiles (cf-email decode + gated enrich).
             ("caltech_faculty", fetch_caltech_faculty, merge_caltech_faculty),
-            ("williams_faculty", fetch_williams_faculty, merge_williams_faculty),
             ("amherst_faculty", fetch_amherst_faculty, merge_amherst_faculty),
             ("swarthmore_faculty", fetch_swarthmore_faculty, merge_swarthmore_faculty),
             ("pomona_faculty", fetch_pomona_faculty, merge_pomona_faculty),

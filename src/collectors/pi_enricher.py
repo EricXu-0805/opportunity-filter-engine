@@ -58,7 +58,6 @@ SCHOOL_EMAIL_DOMAINS: dict[str, tuple[str, ...]] = {
     "upenn": ("upenn.edu",),
     "caltech": ("caltech.edu",),
     # Top-10 liberal arts colleges (2026-07-21)
-    "williams": ("williams.edu",),
     "amherst": ("amherst.edu",),
     "swarthmore": ("swarthmore.edu",),
     "pomona": ("pomona.edu",),

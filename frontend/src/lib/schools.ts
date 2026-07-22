@@ -1066,17 +1066,6 @@ export const SCHOOLS: School[] = [
     catalog: { colleges: 4, majors: 38 },
   },
   {
-    slug: 'williams',
-    domain: 'williams.edu',
-    name: 'Williams College',
-    shortName: 'Williams',
-    nameZh: '威廉姆斯学院',
-    color: '#512698',
-    location: 'Williamstown, MA',
-    coverage: campusCoverage('williams'),
-    catalog: { colleges: 4, majors: 38 },
-  },
-  {
     slug: 'amherst',
     domain: 'amherst.edu',
     name: 'Amherst College',

@@ -88,7 +88,6 @@ SCHOOL_INST = {
     "upenn": "I79576946",      # University of Pennsylvania (OpenAlex-API verified)
     "caltech": "I122411786",   # California Institute of Technology (OpenAlex-API verified)
     # Top-10 liberal arts colleges (2026-07-21)
-    "williams": "I22675022",  # Williams College
     "amherst": "I177605424",  # Amherst College
     "swarthmore": "I118020396",  # Swarthmore College
     "pomona": "I177881444",  # Pomona College

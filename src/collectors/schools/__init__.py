@@ -120,7 +120,6 @@ from .washu import SCHOOL as WASHU
 from .wellesley import SCHOOL as WELLESLEY
 
 # Top-10 liberal arts colleges (2026-07-21)
-from .williams import SCHOOL as WILLIAMS
 from .wisc import SCHOOL as WISC
 from .wpi import SCHOOL as WPI
 from .yale import SCHOOL as YALE
@@ -146,7 +145,6 @@ SCHOOL_CONFIGS: list[dict] = [
     UPENN,
     CALTECH,
     # Top-10 liberal arts colleges (2026-07-21)
-    WILLIAMS,
     AMHERST,
     SWARTHMORE,
     POMONA,

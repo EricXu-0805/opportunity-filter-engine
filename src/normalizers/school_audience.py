@@ -53,7 +53,6 @@ _CAMPUS_NAMES: dict[str, tuple[str, ...]] = {
     "dartmouth": ("dartmouth",),
     "columbia": ("columbia",),
     "yale": ("yale",),
-    "williams": ("williams",),
     "amherst": ("amherst",),
     "swarthmore": ("swarthmore",),
     "pomona": ("pomona",),
@@ -454,8 +453,6 @@ SOURCE_DEFAULTS: dict[str, tuple[str | None, str]] = {
     "caltech_labs": ("caltech", "unknown"),
     "caltech_faculty": ("caltech", "unknown"),
     # Top-10 liberal arts colleges (2026-07-21)
-    "williams_research_programs": ("williams", "campus"),
-    "williams_faculty": ("williams", "unknown"),
     "amherst_research_programs": ("amherst", "campus"),
     "amherst_faculty": ("amherst", "unknown"),
     "swarthmore_research_programs": ("swarthmore", "campus"),
