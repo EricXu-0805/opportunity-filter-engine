@@ -88,6 +88,22 @@ SCHOOL_INST = {
     "northwestern": "I111979921",  # Northwestern University (OpenAlex-API verified)
     "upenn": "I79576946",      # University of Pennsylvania (OpenAlex-API verified)
     "caltech": "I122411786",   # California Institute of Technology (OpenAlex-API verified)
+    # LAC ranks 11-25 (2026-07-23)
+    "grinnell": "I173288447",  # Grinnell College
+    "colby": "I27504731",  # Colby College
+    "hamilton": "I188592606",  # Hamilton College
+    "vassar": "I126820664",  # Vassar College
+    "smith": "I202524275",  # Smith College
+    "wlu": "I184889055",  # Washington and Lee University
+    "colgate": "I39660569",  # Colgate University
+    "wesleyan": "I100538780",  # Wesleyan University
+    "haverford": "I155707491",  # Haverford College
+    "bates": "I37415318",  # Bates College
+    "barnard": "I98540497",  # Barnard College
+    "coloradocollege": "I189774192",  # Colorado College
+    "macalester": "I5444425",  # Macalester College
+    "kenyon": "I166972335",  # Kenyon College
+    "brynmawr": "I102373834",  # Bryn Mawr College
     # Top-10 liberal arts colleges (2026-07-21)
     "amherst": "I177605424",  # Amherst College
     "swarthmore": "I118020396",  # Swarthmore College

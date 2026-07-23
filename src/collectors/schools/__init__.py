@@ -15,6 +15,8 @@ from __future__ import annotations
 from .amherst import SCHOOL as AMHERST
 from .arizona import SCHOOL as ARIZONA
 from .asu import SCHOOL as ASU
+from .barnard import SCHOOL as BARNARD
+from .bates import SCHOOL as BATES
 
 # Ordered registry of every campus-graph school. refresh_all collects these in
 # order; new schools (Top-50 rollout) append here.
@@ -23,6 +25,7 @@ from .bc import SCHOOL as BC
 from .boulder import SCHOOL as BOULDER
 from .bowdoin import SCHOOL as BOWDOIN
 from .brown import SCHOOL as BROWN
+from .brynmawr import SCHOOL as BRYNMAWR
 from .bu import SCHOOL as BU
 
 # Wave-4 batch 1 (2026-07-20)
@@ -36,6 +39,9 @@ from .cincinnati import SCHOOL as CINCINNATI
 from .clemson import SCHOOL as CLEMSON
 from .cmc import SCHOOL as CMC
 from .cmu import SCHOOL as CMU
+from .colby import SCHOOL as COLBY
+from .colgate import SCHOOL as COLGATE
+from .coloradocollege import SCHOOL as COLORADOCOLLEGE
 from .colostate import SCHOOL as COLOSTATE
 from .columbia import SCHOOL as COLUMBIA
 from .cornell import SCHOOL as CORNELL
@@ -47,13 +53,20 @@ from .emory import SCHOOL as EMORY
 from .fsu import SCHOOL as FSU
 from .gatech import SCHOOL as GATECH
 from .georgetown import SCHOOL as GEORGETOWN
+
+# LAC ranks 11-25 (2026-07-23)
+from .grinnell import SCHOOL as GRINNELL
+from .hamilton import SCHOOL as HAMILTON
 from .harvard import SCHOOL as HARVARD
+from .haverford import SCHOOL as HAVERFORD
 from .houston import SCHOOL as HOUSTON
 from .iastate import SCHOOL as IASTATE
 from .indiana import SCHOOL as INDIANA
 from .jhu import SCHOOL as JHU
+from .kenyon import SCHOOL as KENYON
 from .lehigh import SCHOOL as LEHIGH
 from .lsu import SCHOOL as LSU
+from .macalester import SCHOOL as MACALESTER
 from .miami import SCHOOL as MIAMI
 from .middlebury import SCHOOL as MIDDLEBURY
 from .mit import SCHOOL as MIT
@@ -76,6 +89,7 @@ from .rochester import SCHOOL as ROCHESTER
 from .rpi import SCHOOL as RPI
 from .rutgers import SCHOOL as RUTGERS
 from .sbu import SCHOOL as SBU
+from .smith import SCHOOL as SMITH
 from .stanford import SCHOOL as STANFORD
 
 # Wave-5 batch 1 (2026-07-20)
@@ -114,14 +128,17 @@ from .utk import SCHOOL as UTK
 from .uva import SCHOOL as UVA
 from .uw import SCHOOL as UW
 from .vanderbilt import SCHOOL as VANDERBILT
+from .vassar import SCHOOL as VASSAR
 
 # Wave-2 batch 1 (2026-07-18).
 from .vt import SCHOOL as VT
 from .washu import SCHOOL as WASHU
 from .wellesley import SCHOOL as WELLESLEY
+from .wesleyan import SCHOOL as WESLEYAN
 
 # Top-10 liberal arts colleges (2026-07-21)
 from .wisc import SCHOOL as WISC
+from .wlu import SCHOOL as WLU
 from .wpi import SCHOOL as WPI
 from .yale import SCHOOL as YALE
 
@@ -145,6 +162,22 @@ SCHOOL_CONFIGS: list[dict] = [
     NORTHWESTERN,
     UPENN,
     CALTECH,
+    # LAC ranks 11-25 (2026-07-23)
+    GRINNELL,
+    COLBY,
+    HAMILTON,
+    VASSAR,
+    SMITH,
+    WLU,
+    COLGATE,
+    WESLEYAN,
+    HAVERFORD,
+    BATES,
+    BARNARD,
+    COLORADOCOLLEGE,
+    MACALESTER,
+    KENYON,
+    BRYNMAWR,
     # Top-10 liberal arts colleges (2026-07-21)
     AMHERST,
     SWARTHMORE,

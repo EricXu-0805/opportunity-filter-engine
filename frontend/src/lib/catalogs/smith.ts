@@ -1,0 +1,61 @@
+/*
+ * Smith College — undergraduate college/major catalog.
+ * Generated from live recon; majors are official undergraduate programs.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'Sciences and Mathematics': [
+    'Biological Sciences',
+    'Biochemistry',
+    'Chemistry',
+    'Computer Science',
+    'Engineering',
+    'Mathematics',
+    'Statistical and Data Sciences',
+    'Physics',
+    'Astronomy',
+    'Geosciences',
+    'Neuroscience',
+    'Psychology',
+    'Environmental Science and Policy',
+    'Exercise and Sport Studies',
+  ],
+  'Social Sciences': [
+    'Economics',
+    'Government',
+    'Sociology',
+    'Anthropology',
+    'Education and Child Study',
+    'Public Policy',
+    'Urban Studies',
+    'Landscape Studies',
+  ],
+  'Humanities': [
+    'History',
+    'Philosophy',
+    'Religion',
+    'English',
+    'Classics',
+    'Comparative Literature',
+    'Linguistics',
+    'East Asian Languages and Cultures',
+    'French Studies',
+    'German Studies',
+    'Italian Studies',
+    'Spanish',
+    'Africana Studies',
+    'American Studies',
+    'Study of Women and Gender',
+    'Jewish Studies',
+    'Middle East Studies',
+  ],
+  'Arts': [
+    'Art History',
+    'Studio Art',
+    'Music',
+    'Dance',
+    'Theatre',
+    'Film and Media Studies',
+    'Arts and Technology',
+  ],
+};

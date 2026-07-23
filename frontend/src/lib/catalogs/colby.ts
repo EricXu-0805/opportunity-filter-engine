@@ -1,0 +1,63 @@
+/*
+ * Colby College — undergraduate college/major catalog.
+ * Generated from live recon; majors are official undergraduate programs.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'Natural Sciences & Mathematics': [
+    'Biology',
+    'Neuroscience',
+    'Chemistry',
+    'Biochemistry',
+    'Physics',
+    'Astronomy',
+    'Mathematics',
+    'Statistics',
+    'Computer Science',
+    'Geology',
+    'Environmental Science',
+    'Environmental Studies',
+    'Environmental Policy',
+    'Psychology',
+    'Science, Technology and Society',
+  ],
+  'Social Sciences': [
+    'Economics',
+    'Government',
+    'Anthropology',
+    'Sociology',
+    'Education',
+    'Global Studies',
+    'American Studies',
+    'African American Studies',
+    "Women's, Gender, and Sexuality Studies",
+  ],
+  'Humanities': [
+    'English',
+    'Creative Writing',
+    'History',
+    'Philosophy',
+    'Classics',
+    'Religious Studies',
+    'French',
+    'Italian',
+    'Spanish',
+    'German',
+    'Russian',
+    'Chinese',
+    'Japanese',
+    'East Asian Studies',
+    'Latin American Studies',
+    'Jewish Studies',
+    'Writing',
+  ],
+  'Arts': [
+    'Music',
+    'Art',
+    'Art History',
+    'Studio Art',
+    'Theater and Dance',
+    'Performance',
+    'Cinema Studies',
+  ],
+};
