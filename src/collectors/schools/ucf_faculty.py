@@ -1,61 +1,78 @@
 """University of Central Florida faculty config (via the faculty_graph engine).
 
-Two server-rendered markup families cover the six STEM departments — no WAF, no
-JS render (every recon fetch returns a clean static 200 to a plain request).
-Live-verified 2026-07-19.
+University-wide coverage across the colleges whose department directories
+server-render their roster over plain HTTP (the engine already sends a browser
+User-Agent; no host WAF-gates a plain request). Four markup families, all clean
+static 200s, live-verified 2026-07-24:
 
-* **College of Engineering & Computer Science — Elementor "filterable gallery".**
-  ``www.cs.ucf.edu`` / ``www.ece.ucf.edu`` / ``mae.ucf.edu`` all run the same
+* **CECS Elementor "filterable gallery".** ``www.cs.ucf.edu`` / ``www.ece.ucf.edu``
+  / ``mae.ucf.edu`` / ``www.cece.ucf.edu`` / ``mse.ucf.edu`` all run the same
   WordPress + Essential-Addons filterable gallery: one person is a
   ``div.eael-filterable-gallery-item-wrap`` whose category is a body class
   (``eael-cf-faculty`` vs ``eael-cf-affiliated`` / ``eael-cf-emeritus`` /
-  ``eael-cf-staff``). Name sits in ``.fg-item-title`` (an ``<h1>`` on ECE, an
-  ``<h2>`` on CS/MAE — so the selector is class-only), the profile link in the
-  card's ``/person/<slug>/`` anchor, and rank + email in a single
+  ``eael-cf-staff`` / sub-discipline tags). Name in ``.fg-item-title``, profile
+  link in the card's ``/person/<slug>/`` anchor, rank + email in one
   ``.fg-item-content > p`` ("Associate Lecturer<br>name@ucf.edu"). ``email`` and
-  ``title`` therefore point at the same ``<p>``: ``title_strip_after`` cuts the
-  address off the rank, and ``_clean_email`` extracts it (CS/ECE publish it as a
-  ``mailto:`` anchor, MAE as plain text — both land via the ``<p>`` text).
+  ``title`` point at the same ``<p>``: ``title_strip_after`` cuts the address off
+  the rank, ``_clean_email`` extracts it (a ``mailto:`` anchor on CS/ECE, plain
+  text on MAE/CECE/MSE — both land via the ``<p>`` text).
 
-  - **CS / ECE** carry a clean ``eael-cf-faculty`` category, so the card selector
-    is ``[class*='eael-cf-faculty']`` — it also catches a trailing-dash
-    data-entry variant (``eael-cf-faculty-`` on the last-added professors,
-    including CS's department chair Damla Turgut) while still excluding the
-    ``affiliated`` / ``emeritus`` / ``staff`` buckets. ECE's "UCF President"
-    entry (President Cartwright, listed with no professor rank) is dropped by the
-    ladder gate.
+  - **CS / ECE / CECE / MSE** carry a clean ``eael-cf-faculty`` category, so the
+    card selector is ``[class*='eael-cf-faculty']`` — it also catches the
+    trailing-dash data-entry variant (``eael-cf-faculty-``) while excluding the
+    ``affiliated`` / ``emeritus`` / ``staff`` / sub-discipline-only buckets. The
+    ladder gate drops any role-only rider (ECE's UCF-President entry).
   - **MAE** has no ``faculty`` category — its cards are tagged by sub-discipline
-    (``aerospace`` / ``mechanical`` / ``biomedical``) plus an untagged bucket
-    that mixes ~9 real professors with lab managers, program coordinators, and an
-    administrative assistant. So MAE selects ALL wraps and leans on the ladder
-    gate (drops the coordinators/manager/assistant) + the engine's retired-title
-    gate (drops the emeriti); one cross-listed College-of-Medicine surgery
-    professor (a biomedical affiliate) rides along.
+    (``aerospace`` / ``mechanical`` / ``biomedical``) plus an untagged bucket that
+    mixes ~9 professors with lab managers and coordinators. So MAE selects ALL
+    wraps and leans on the ladder gate + the engine's retired-title gate.
 
-* **College of Sciences — the shared "Colleges" people theme.**
-  ``sciences.ucf.edu/<dept>/people/`` renders one person as
-  ``a.person-link`` wrapping ``h3.person-name`` + ``.person-job-title`` (no
-  per-card email — topic keywords come from downstream OpenAlex enrichment).
-  Physics and Chemistry group people into ``<section class="ucf-section-*">``
-  blocks (faculty / research-personnel / emeritus / staff / adjunct / courtesy /
-  joint), so the card selector scopes to ``section.ucf-section-faculty`` to keep
-  home-department ladder faculty and exclude the courtesy/joint/staff sections;
-  the ladder gate then drops the instrument specialists / instrumentation staff
-  the Chemistry faculty section mixes in. Math renders its people flat (no
-  section wrapper), so it selects ``a.person-link`` directly and the ladder gate
-  drops the STEM/teaching postdocs, the lone adjunct, and an office assistant.
+* **``ucfwp-post-list-people`` theme (listing carries email).** IEMS
+  (``iems.ucf.edu/people/``), the Business department pages
+  (``business.ucf.edu/departments-schools/<slug>/``) and Rosen
+  (``hospitality.ucf.edu/about/our-people/faculty-directory/``) render one person
+  as ``li.ucf-post-list-item`` → ``a.person-link`` (profile link) wrapping
+  ``.person-name`` + ``.person-job-title``, with a sibling ``.person-email``
+  mailto. IEMS and Rosen publish that email inline; the Business department pages
+  omit it from the listing, so those recover it via the ``profile_enrich`` pass
+  (each ``/person/<slug>/`` profile carries ``a.person-email``). The ladder gate
+  reads ``.person-job-title``.
+
+* **College of Sciences shared "Colleges" people theme.**
+  ``sciences.ucf.edu/<dept>/people/`` renders one person as ``a.person-link``
+  wrapping ``.person-name`` + ``.person-job-title`` (no per-card email). Physics,
+  Chemistry, Biology, Psychology and Sociology group people into
+  ``section.ucf-section-*`` blocks, so the card selector scopes to
+  ``section.ucf-section-faculty a.person-link`` (drops the courtesy / joint /
+  emeritus / staff sections); Math, Political Science, Anthropology and Statistics
+  render people flat, so they select ``a.person-link`` and the ladder gate drops
+  the postdocs / adjuncts / office staff. Every CoS record's email comes from the
+  ``profile_enrich`` pass (each profile carries ``a.person-email``; the shared
+  ``<dept>@ucf.edu`` inbox is dropped).
 
 Title gate (ladder ``require: professor|lecturer|instructor``): keeps ladder,
-teaching, research, and endowed-chair professors plus lecturers and instructors,
-and drops titleless/role-only staff, postdocs, coordinators, advisors, and
+teaching, research, and endowed-chair professors plus lecturers and instructors;
+drops titleless/role-only staff, postdocs, coordinators, advisors, and
 administrators. Emeriti are dropped by the engine's own ``_RETIRED_TITLE_RE``.
 
 Single source ("ucf_faculty"); department rides each record, ids namespaced by
 department short-code.
 
-Live-verified 2026-07-19 (kept after title + retired gate / email coverage):
-CS 67/67 email, ECE 55/55 email, MAE 68/67 email, Physics 60 (no card email),
-Chemistry 44 (no card email), Math 48 (no card email).
+Dropped / phase-2 (needs a headless render, a new adapter, or a real email
+source — all out of scope for this config-only pass):
+* **College of Arts & Humanities** (English/History/Philosophy/Performing Arts/
+  Visual Arts & Design/Writing & Rhetoric) — same ``ucfwp`` theme but the LISTING
+  carries NO ``.person-job-title``, so the ladder gate can't separate the ~280
+  adjuncts/staff on a performing-arts roster from ladder faculty without a
+  per-profile title+email enrich (heavy, low precision). Phase-2.
+* **College of Health Professions & Sciences** — ``healthprofessions.ucf.edu/
+  directory/`` is a paginated WP-Views search (10 cards/page, inline email + a
+  ``.profiledepartments`` field) with no reachable per-department taxonomy param,
+  so it can't be split into departments config-only. Phase-2 (needs the Views
+  filter endpoint).
+* **College of Medicine (Burnett Biomedical Sciences)** — ``med.ucf.edu/
+  directory/`` is client-rendered and its ``wp-json`` REST route is disabled
+  (403/empty). Needs a headless render pass. Phase-2.
 """
 
 from __future__ import annotations
@@ -65,13 +82,22 @@ from .. import faculty_graph
 # ---- CECS Elementor filterable gallery -------------------------------------
 # Rank + email share one <p>; title_strip_after cuts the address off the rank,
 # and the email selector re-reads the same <p> (_clean_email pulls the address —
-# a mailto anchor on CS/ECE, plain text on MAE).
+# a mailto anchor on CS/ECE, plain text on MAE/CECE/MSE).
 _ELEM_SEL = {
     "name": ".fg-item-title",
     "link": "a[href*='/person/']",
     "title": ".fg-item-content p",
     "title_strip_after": r"\s+[\w.+-]+@",
     "email": ".fg-item-content p",
+}
+
+# ---- ucfwp-post-list-people theme (li card, sibling .person-email) ---------
+_UCFWP_CARD = "li.ucf-post-list-item"
+_UCFWP_SEL = {
+    "name": ".person-name",
+    "link": "a.person-link",
+    "title": ".person-job-title",
+    "email": ".person-email a[href^='mailto:']",
 }
 
 # ---- College of Sciences shared "Colleges" people theme --------------------
@@ -86,6 +112,27 @@ _COS_SEL = {
 # retired-title gate.)
 _LADDER = {"require": r"professor|lecturer|instructor"}
 
+# Per-profile email recovery for the rosters whose LISTING omits it (all of
+# College of Sciences + the Business department pages). Each UCF profile carries
+# an ``a.person-email`` mailto; ``always`` runs it even without the env gate
+# because the email IS the record's contact value, not optional depth. The drop
+# regex keeps a shared department/office inbox from becoming a professor's
+# address (which would also collapse the whole dept under one email in dedup).
+_UCF_ENRICH = {
+    "always": True,
+    "email_selector": ".person-email a[href^='mailto:'], a.person-email[href^='mailto:']",
+    "email_drop": (
+        r"^(?:physics|chemistry|chem|math|mathematics|biology|bio|psychology|"
+        r"psych|sociology|anthropology|anthro|politics|political|polsci|"
+        r"statistics|stats|sciences|cos|business|cba|rosencollege|rosen|"
+        r"hospitality|info|contact|dept|department|advising|advisor|office|"
+        r"admin|frontdesk)@"
+    ),
+    "throttle": 0.0,
+    "timeout": 8,
+    "max_retries": 1,
+}
+
 
 def _elem_dept(short: str, name: str, majors: list[str], url: str, card: str) -> dict:
     """A CECS department on the shared Elementor filterable gallery."""
@@ -99,22 +146,47 @@ def _elem_dept(short: str, name: str, majors: list[str], url: str, card: str) ->
     }
 
 
+def _ucfwp_dept(short: str, name: str, majors: list[str], url: str,
+                *, enrich: bool = False) -> dict:
+    """A department on the ucfwp-post-list-people theme (li card + person-email).
+
+    ``enrich=True`` for rosters whose LISTING omits the email (Business); the
+    per-profile pass fills it. IEMS/Rosen publish it inline, so no enrich.
+    """
+    scrape = {
+        "url": url,
+        "selectors": {"card": _UCFWP_CARD, **_UCFWP_SEL},
+        "ladder_filter": _LADDER,
+    }
+    if enrich:
+        scrape["profile_enrich"] = _UCF_ENRICH
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": url, "scrape": scrape}
+
+
 def _cos_dept(short: str, name: str, majors: list[str], url: str, card: str) -> dict:
-    """A College of Sciences department on the shared "Colleges" people theme."""
+    """A College of Sciences department on the shared "Colleges" people theme.
+
+    The listing has no email, so every record's contact address comes from the
+    per-profile enrich pass.
+    """
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {
             "url": url,
             "selectors": {"card": card, **_COS_SEL},
             "ladder_filter": _LADDER,
+            "profile_enrich": _UCF_ENRICH,
         },
     }
 
 
-# CS/ECE = the clean faculty category (+ trailing-dash variant); MAE = all wraps.
+# CS/ECE/CECE/MSE = the clean faculty category (+ trailing-dash variant);
+# MAE = all wraps (no faculty category — sub-discipline-tagged).
 _CECS_FACULTY_CARD = ".eael-filterable-gallery-item-wrap[class*='eael-cf-faculty']"
 _MAE_CARD = ".eael-filterable-gallery-item-wrap"
-# Physics/Chemistry = home-department faculty section; Math renders people flat.
+# CoS: home-department faculty section where the theme groups by role; flat
+# (all people, ladder-gated) where it doesn't.
 _COS_FACULTY_CARD = "section.ucf-section-faculty a.person-link"
 _COS_FLAT_CARD = "a.person-link"
 
@@ -146,6 +218,20 @@ SCHOOL: dict = {
                     "Biomedical Engineering"],
                    "https://mae.ucf.edu/faculty-directory/",
                    _MAE_CARD),
+        _elem_dept("CECE", "Department of Civil, Environmental and Construction "
+                   "Engineering",
+                   ["Civil Engineering", "Environmental Engineering",
+                    "Construction Engineering"],
+                   "https://www.cece.ucf.edu/faculty_staff/",
+                   _CECS_FACULTY_CARD),
+        _elem_dept("MSE", "Department of Materials Science and Engineering",
+                   ["Materials Science and Engineering"],
+                   "https://mse.ucf.edu/facultystaff/",
+                   _CECS_FACULTY_CARD),
+        _ucfwp_dept("IEMS", "Department of Industrial Engineering and Management "
+                    "Systems",
+                    ["Industrial Engineering"],
+                    "https://iems.ucf.edu/people/"),
         # ---- College of Sciences -------------------------------------------
         _cos_dept("PHYS", "Department of Physics", ["Physics", "Astronomy"],
                   "https://sciences.ucf.edu/physics/people/",
@@ -157,6 +243,55 @@ SCHOOL: dict = {
         _cos_dept("MATH", "Department of Mathematics", ["Mathematics"],
                   "https://sciences.ucf.edu/math/people/",
                   _COS_FLAT_CARD),
+        _cos_dept("BIO", "Department of Biology", ["Biology"],
+                  "https://sciences.ucf.edu/biology/people/",
+                  _COS_FACULTY_CARD),
+        _cos_dept("PSY", "Department of Psychology", ["Psychology"],
+                  "https://sciences.ucf.edu/psychology/people/",
+                  _COS_FACULTY_CARD),
+        _cos_dept("POLS", "Department of Political Science", ["Political Science"],
+                  "https://sciences.ucf.edu/politics/people/",
+                  _COS_FLAT_CARD),
+        _cos_dept("SOC", "Department of Sociology", ["Sociology"],
+                  "https://sciences.ucf.edu/sociology/people/",
+                  _COS_FACULTY_CARD),
+        _cos_dept("ANT", "Department of Anthropology", ["Anthropology"],
+                  "https://sciences.ucf.edu/anthropology/people/",
+                  _COS_FLAT_CARD),
+        _cos_dept("STAT", "Department of Statistics and Data Science",
+                  ["Statistics", "Data Science"],
+                  "https://sciences.ucf.edu/statistics/people/",
+                  _COS_FLAT_CARD),
+        # ---- College of Business -------------------------------------------
+        _ucfwp_dept("ACCT", "Kenneth G. Dixon School of Accounting",
+                    ["Accounting"],
+                    "https://business.ucf.edu/departments-schools/"
+                    "kenneth-g-dixon-school-of-accounting/", enrich=True),
+        _ucfwp_dept("FIN", "Department of Finance", ["Finance"],
+                    "https://business.ucf.edu/departments-schools/finance/",
+                    enrich=True),
+        _ucfwp_dept("REAL", "Dr. P. Phillips School of Real Estate",
+                    ["Real Estate"],
+                    "https://business.ucf.edu/departments-schools/finance/"
+                    "real-estate/", enrich=True),
+        _ucfwp_dept("ECON", "Department of Economics", ["Economics"],
+                    "https://business.ucf.edu/departments-schools/economics/",
+                    enrich=True),
+        _ucfwp_dept("MGMT", "Department of Management", ["Management"],
+                    "https://business.ucf.edu/departments-schools/management/",
+                    enrich=True),
+        _ucfwp_dept("MKT", "Department of Marketing", ["Marketing"],
+                    "https://business.ucf.edu/departments-schools/marketing/",
+                    enrich=True),
+        _ucfwp_dept("IBP", "Integrated Business Program", ["Integrated Business"],
+                    "https://business.ucf.edu/departments-schools/"
+                    "integrated-business-program/", enrich=True),
+        # ---- Rosen College of Hospitality Management -----------------------
+        _ucfwp_dept("HOSP", "Rosen College of Hospitality Management",
+                    ["Hospitality Management", "Event Management",
+                     "Theme Park and Attraction Management"],
+                    "https://hospitality.ucf.edu/about/our-people/"
+                    "faculty-directory/"),
     ],
 }
 
