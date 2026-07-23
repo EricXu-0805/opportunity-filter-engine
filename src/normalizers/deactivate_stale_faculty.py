@@ -219,6 +219,22 @@ FACULTY_SOURCES = frozenset({
     "upenn_faculty",
     # Caltech — live-scraped faculty (single source across divisions).
     "caltech_faculty",
+    # LAC ranks 11-25 (2026-07-23)
+    "grinnell_faculty",
+    "colby_faculty",
+    "hamilton_faculty",
+    "vassar_faculty",
+    "smith_faculty",
+    "wlu_faculty",
+    "colgate_faculty",
+    "wesleyan_faculty",
+    "haverford_faculty",
+    "bates_faculty",
+    "barnard_faculty",
+    "coloradocollege_faculty",
+    "macalester_faculty",
+    "kenyon_faculty",
+    "brynmawr_faculty",
     # Top-10 liberal arts colleges (2026-07-21)
     "amherst_faculty",
     "swarthmore_faculty",

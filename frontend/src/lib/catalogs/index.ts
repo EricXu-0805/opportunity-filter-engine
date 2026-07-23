@@ -114,6 +114,21 @@ const CATALOG_LOADERS: Record<string, () => Promise<CatalogModule>> = {
   cmc: () => import('./cmc'),
   middlebury: () => import('./middlebury'),
   davidson: () => import('./davidson'),
+  grinnell: () => import('./grinnell'),
+  colby: () => import('./colby'),
+  hamilton: () => import('./hamilton'),
+  vassar: () => import('./vassar'),
+  smith: () => import('./smith'),
+  wlu: () => import('./wlu'),
+  colgate: () => import('./colgate'),
+  wesleyan: () => import('./wesleyan'),
+  haverford: () => import('./haverford'),
+  bates: () => import('./bates'),
+  barnard: () => import('./barnard'),
+  coloradocollege: () => import('./coloradocollege'),
+  macalester: () => import('./macalester'),
+  kenyon: () => import('./kenyon'),
+  brynmawr: () => import('./brynmawr'),
 };
 
 export async function loadCatalog(slug: string): Promise<Record<string, string[]> | null> {

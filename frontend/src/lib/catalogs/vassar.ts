@@ -1,0 +1,61 @@
+/*
+ * Vassar College — undergraduate college/major catalog.
+ * Generated from live recon; majors are official undergraduate programs.
+ */
+
+export const COLLEGE_MAJORS: Record<string, string[]> = {
+  'Division of Natural Sciences and Mathematics': [
+    'Biology',
+    'Biochemistry',
+    'Chemistry',
+    'Computer Science',
+    'Earth Science',
+    'Geography',
+    'Mathematics',
+    'Statistics',
+    'Physics',
+    'Astronomy',
+    'Neuroscience and Behavior',
+    'Cognitive Science',
+    'Environmental Studies',
+  ],
+  'Division of Social Sciences': [
+    'Anthropology',
+    'Economics',
+    'Education',
+    'Political Science',
+    'Sociology',
+    'International Studies',
+    'Urban Studies',
+    'Science, Technology, and Society',
+  ],
+  'Division of Humanities': [
+    'English',
+    'History',
+    'Philosophy',
+    'Religion',
+    'Greek and Roman Studies',
+    'French and Francophone Studies',
+    'German Studies',
+    'Italian',
+    'Russian Studies',
+    'Hispanic Studies',
+    'Chinese and Japanese',
+    'Africana Studies',
+    'American Studies',
+    'Asian Studies',
+    'Jewish Studies',
+    'Latin American and Latinx Studies',
+    'Medieval and Renaissance Studies',
+    'Women, Feminist, and Queer Studies',
+  ],
+  'Division of the Arts': [
+    'Art History',
+    'Studio Art',
+    'Drama',
+    'Film',
+    'Dance',
+    'Music',
+    'Media Studies',
+  ],
+};

@@ -32,6 +32,10 @@ from .schools.arizona_faculty import fetch_and_normalize as fetch_arizona_facult
 from .schools.arizona_faculty import merge_into_processed as merge_arizona_faculty
 from .schools.asu_faculty import fetch_and_normalize as fetch_asu_faculty
 from .schools.asu_faculty import merge_into_processed as merge_asu_faculty
+from .schools.barnard_faculty import fetch_and_normalize as fetch_barnard_faculty
+from .schools.barnard_faculty import merge_into_processed as merge_barnard_faculty
+from .schools.bates_faculty import fetch_and_normalize as fetch_bates_faculty
+from .schools.bates_faculty import merge_into_processed as merge_bates_faculty
 
 # Wave-3 batch 1 (2026-07-20)
 from .schools.bc_faculty import fetch_and_normalize as fetch_bc_faculty
@@ -42,6 +46,8 @@ from .schools.bowdoin_faculty import fetch_and_normalize as fetch_bowdoin_facult
 from .schools.bowdoin_faculty import merge_into_processed as merge_bowdoin_faculty
 from .schools.brown_faculty import fetch_and_normalize as fetch_brown_faculty
 from .schools.brown_faculty import merge_into_processed as merge_brown_faculty
+from .schools.brynmawr_faculty import fetch_and_normalize as fetch_brynmawr_faculty
+from .schools.brynmawr_faculty import merge_into_processed as merge_brynmawr_faculty
 from .schools.bu_faculty import fetch_and_normalize as fetch_bu_faculty
 from .schools.bu_faculty import merge_into_processed as merge_bu_faculty
 from .schools.buffalo_faculty import fetch_and_normalize as fetch_buffalo_faculty
@@ -60,6 +66,12 @@ from .schools.cmc_faculty import fetch_and_normalize as fetch_cmc_faculty
 from .schools.cmc_faculty import merge_into_processed as merge_cmc_faculty
 from .schools.cmu_faculty import fetch_and_normalize as fetch_cmu_faculty
 from .schools.cmu_faculty import merge_into_processed as merge_cmu_faculty
+from .schools.colby_faculty import fetch_and_normalize as fetch_colby_faculty
+from .schools.colby_faculty import merge_into_processed as merge_colby_faculty
+from .schools.colgate_faculty import fetch_and_normalize as fetch_colgate_faculty
+from .schools.colgate_faculty import merge_into_processed as merge_colgate_faculty
+from .schools.coloradocollege_faculty import fetch_and_normalize as fetch_coloradocollege_faculty
+from .schools.coloradocollege_faculty import merge_into_processed as merge_coloradocollege_faculty
 from .schools.colostate_faculty import fetch_and_normalize as fetch_colostate_faculty
 from .schools.colostate_faculty import merge_into_processed as merge_colostate_faculty
 from .schools.columbia_faculty import fetch_and_normalize as fetch_columbia_faculty
@@ -82,8 +94,16 @@ from .schools.gatech_faculty import fetch_and_normalize as fetch_gatech_faculty
 from .schools.gatech_faculty import merge_into_processed as merge_gatech_faculty
 from .schools.georgetown_faculty import fetch_and_normalize as fetch_georgetown_faculty
 from .schools.georgetown_faculty import merge_into_processed as merge_georgetown_faculty
+
+# LAC ranks 11-25 (2026-07-23)
+from .schools.grinnell_faculty import fetch_and_normalize as fetch_grinnell_faculty
+from .schools.grinnell_faculty import merge_into_processed as merge_grinnell_faculty
+from .schools.hamilton_faculty import fetch_and_normalize as fetch_hamilton_faculty
+from .schools.hamilton_faculty import merge_into_processed as merge_hamilton_faculty
 from .schools.harvard_faculty import fetch_and_normalize as fetch_harvard_faculty
 from .schools.harvard_faculty import merge_into_processed as merge_harvard_faculty
+from .schools.haverford_faculty import fetch_and_normalize as fetch_haverford_faculty
+from .schools.haverford_faculty import merge_into_processed as merge_haverford_faculty
 from .schools.houston_faculty import fetch_and_normalize as fetch_houston_faculty
 from .schools.houston_faculty import merge_into_processed as merge_houston_faculty
 from .schools.iastate_faculty import fetch_and_normalize as fetch_iastate_faculty
@@ -92,10 +112,14 @@ from .schools.indiana_faculty import fetch_and_normalize as fetch_indiana_facult
 from .schools.indiana_faculty import merge_into_processed as merge_indiana_faculty
 from .schools.jhu_faculty import fetch_and_normalize as fetch_jhu_faculty
 from .schools.jhu_faculty import merge_into_processed as merge_jhu_faculty
+from .schools.kenyon_faculty import fetch_and_normalize as fetch_kenyon_faculty
+from .schools.kenyon_faculty import merge_into_processed as merge_kenyon_faculty
 from .schools.lehigh_faculty import fetch_and_normalize as fetch_lehigh_faculty
 from .schools.lehigh_faculty import merge_into_processed as merge_lehigh_faculty
 from .schools.lsu_faculty import fetch_and_normalize as fetch_lsu_faculty
 from .schools.lsu_faculty import merge_into_processed as merge_lsu_faculty
+from .schools.macalester_faculty import fetch_and_normalize as fetch_macalester_faculty
+from .schools.macalester_faculty import merge_into_processed as merge_macalester_faculty
 from .schools.miami_faculty import fetch_and_normalize as fetch_miami_faculty
 from .schools.miami_faculty import merge_into_processed as merge_miami_faculty
 from .schools.middlebury_faculty import fetch_and_normalize as fetch_middlebury_faculty
@@ -140,6 +164,8 @@ from .schools.rutgers_faculty import fetch_and_normalize as fetch_rutgers_facult
 from .schools.rutgers_faculty import merge_into_processed as merge_rutgers_faculty
 from .schools.sbu_faculty import fetch_and_normalize as fetch_sbu_faculty
 from .schools.sbu_faculty import merge_into_processed as merge_sbu_faculty
+from .schools.smith_faculty import fetch_and_normalize as fetch_smith_faculty
+from .schools.smith_faculty import merge_into_processed as merge_smith_faculty
 from .schools.stanford_faculty import fetch_and_normalize as fetch_stanford_faculty
 from .schools.stanford_faculty import merge_into_processed as merge_stanford_faculty
 
@@ -214,6 +240,8 @@ from .schools.uw_faculty import fetch_and_normalize as fetch_uw_faculty
 from .schools.uw_faculty import merge_into_processed as merge_uw_faculty
 from .schools.vanderbilt_faculty import fetch_and_normalize as fetch_vanderbilt_faculty
 from .schools.vanderbilt_faculty import merge_into_processed as merge_vanderbilt_faculty
+from .schools.vassar_faculty import fetch_and_normalize as fetch_vassar_faculty
+from .schools.vassar_faculty import merge_into_processed as merge_vassar_faculty
 
 # Wave-2 batch 1 (2026-07-18).
 from .schools.vt_faculty import fetch_and_normalize as fetch_vt_faculty
@@ -222,10 +250,14 @@ from .schools.washu_faculty import fetch_and_normalize as fetch_washu_faculty
 from .schools.washu_faculty import merge_into_processed as merge_washu_faculty
 from .schools.wellesley_faculty import fetch_and_normalize as fetch_wellesley_faculty
 from .schools.wellesley_faculty import merge_into_processed as merge_wellesley_faculty
+from .schools.wesleyan_faculty import fetch_and_normalize as fetch_wesleyan_faculty
+from .schools.wesleyan_faculty import merge_into_processed as merge_wesleyan_faculty
 
 # Top-10 liberal arts colleges (2026-07-21)
 from .schools.wisc_faculty import fetch_and_normalize as fetch_wisc_faculty
 from .schools.wisc_faculty import merge_into_processed as merge_wisc_faculty
+from .schools.wlu_faculty import fetch_and_normalize as fetch_wlu_faculty
+from .schools.wlu_faculty import merge_into_processed as merge_wlu_faculty
 from .schools.wpi_faculty import fetch_and_normalize as fetch_wpi_faculty
 from .schools.wpi_faculty import merge_into_processed as merge_wpi_faculty
 from .schools.yale_faculty import fetch_and_normalize as fetch_yale_faculty
@@ -913,6 +945,21 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # all six divisions incl. every EAS/PMA option site; emails are
             # Cloudflare-shielded on profiles (cf-email decode + gated enrich).
             ("caltech_faculty", fetch_caltech_faculty, merge_caltech_faculty),
+            ("grinnell_faculty", fetch_grinnell_faculty, merge_grinnell_faculty),
+            ("colby_faculty", fetch_colby_faculty, merge_colby_faculty),
+            ("hamilton_faculty", fetch_hamilton_faculty, merge_hamilton_faculty),
+            ("vassar_faculty", fetch_vassar_faculty, merge_vassar_faculty),
+            ("smith_faculty", fetch_smith_faculty, merge_smith_faculty),
+            ("wlu_faculty", fetch_wlu_faculty, merge_wlu_faculty),
+            ("colgate_faculty", fetch_colgate_faculty, merge_colgate_faculty),
+            ("wesleyan_faculty", fetch_wesleyan_faculty, merge_wesleyan_faculty),
+            ("haverford_faculty", fetch_haverford_faculty, merge_haverford_faculty),
+            ("bates_faculty", fetch_bates_faculty, merge_bates_faculty),
+            ("barnard_faculty", fetch_barnard_faculty, merge_barnard_faculty),
+            ("coloradocollege_faculty", fetch_coloradocollege_faculty, merge_coloradocollege_faculty),
+            ("macalester_faculty", fetch_macalester_faculty, merge_macalester_faculty),
+            ("kenyon_faculty", fetch_kenyon_faculty, merge_kenyon_faculty),
+            ("brynmawr_faculty", fetch_brynmawr_faculty, merge_brynmawr_faculty),
             ("amherst_faculty", fetch_amherst_faculty, merge_amherst_faculty),
             ("swarthmore_faculty", fetch_swarthmore_faculty, merge_swarthmore_faculty),
             ("pomona_faculty", fetch_pomona_faculty, merge_pomona_faculty),

@@ -81,6 +81,7 @@ async def list_opportunities(
 # from each opportunity's ``source`` prefix (``umich_faculty`` -> ``umich``), so
 # the chip tracks the live corpus instead of a hardcoded number that drifts.
 _SCHOOL_SLUGS = frozenset({
+    "grinnell", "colby", "hamilton", "vassar", "smith", "wlu", "colgate", "wesleyan", "haverford", "bates", "barnard", "coloradocollege", "macalester", "kenyon", "brynmawr",  # LAC ranks 11-25 (2026-07-23)
     "amherst", "swarthmore", "pomona", "wellesley", "bowdoin", "carleton", "cmc", "middlebury", "davidson",  # Top-10 liberal arts colleges (2026-07-21)
     "bc", "emory", "georgetown", "nyu", "tufts", "uva",  # Wave-3 batch 1 (2026-07-20)
     "umich", "princeton", "uchicago", "gatech", "ucla", "utexas",

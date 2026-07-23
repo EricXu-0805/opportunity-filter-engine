@@ -121,7 +121,7 @@ jobs:
             # (the collectors lazy-import it; tests mock it), so install it + Chromium
             # whenever the run is a full refresh OR its shard includes any render-using
             # school — otherwise those schools' render departments silently collect nothing.
-            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucd|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt|uva), ]]; then
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucd|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt|uva|hamilton|haverford), ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi
