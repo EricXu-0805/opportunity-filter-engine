@@ -56,26 +56,32 @@ families:
   Accountancy & Taxation, Finance, Marketing & Entrepreneurship, Management &
   Leadership, and Decision & Information Sciences.
 
-Deliberately DROPPED (not safely scrapeable at the card contract):
-
-* **NSM Mathematics** — its faculty table renders every name in ALL CAPS
-  ("ROBERT AZENCOTT") inside inconsistently nested ``<strong>`` tags that leak the
-  rank/comma into the name ("BERNHARD BODMANN ,\xa0Professor"), and the engine has
-  no case-normalization to recover a clean proper-case pi_name.
-* **College of Liberal Arts & Social Sciences (Psychology, Political Science,
-  Economics, English, History, Sociology, Philosophy, Communication,
-  Anthropology)** — hand-authored prose profile pages with no consistent
-  per-person card wrapper and heavy per-department markup drift (English is a
-  bare ``<ul><li><a>`` name list; Psychology/Economics are ``<p><img><a>...``
-  blocks). No stable card/name/title/email selector spans the college.
-* **Gerald D. Hines College of Architecture & Design** — the faculty roster is
-  injected client-side by a ``#directory-widget`` JS plugin (empty static HTML).
-* **Kathrine G. McGovern College of the Arts (Music, Art, Theatre & Dance)** —
-  faculty are comma-joined "Name, Title" ``<li>`` items in accordions with no
-  emails and no per-person structure.
+* **Campus-wide "Redline" people API (JS-directory recovery).**
+  Four colleges' own web rosters defeat any static card contract — Mathematics
+  (ALL-CAPS names in inconsistently nested ``<strong>`` tags), Liberal Arts &
+  Social Sciences (hand-authored prose profile pages, per-department markup
+  drift), the College of the Arts (comma-joined "Name, Title" accordion ``<li>``
+  items, no emails), and Architecture (roster injected client-side by a
+  ``#directory-widget`` JS plugin). All are recovered from the JSON endpoint that
+  backs the architecture widget (``api.uh.edu/architecture-directory/v1/people``),
+  which is campus-wide, not architecture-specific: a ``division`` (college) filter
+  plus an exact ``department.name`` match yields each department's roster with a
+  real rank and a plaintext uh.edu email on every card. ``faculty=true&staff=
+  false`` drops staff/students server-side; the ``_API_LADDER`` gate drops the
+  adjunct/emeritus/visiting/affiliate/retiree lines. 14 departments (9 CLASS +
+  3 Arts + Math + Architecture); no research field in the feed, so these land
+  keyword-sparse (Bauer/Engineering tier). Wired via the engine's ``json_dir``
+  source; ``department.name`` is the PRIMARY appointment, so cross-listed faculty
+  land once in their home department.
 
 Single source ("houston_faculty"); department rides each record, ids namespaced
 by department short-code.
+
+Deliberately NOT wired (out of the catalog's college/major scope, not blocked):
+non-departmental Redline units (dean's offices, CWM Center for the Arts, Military
+/ Aerospace Studies, area-studies programs, Communication Disorders, Health &
+Human Performance). No department needs a headless render — the Redline API
+reaches every JS/prose/ALL-CAPS roster directly.
 
 Live-verified 2026-07-23.
 """
@@ -191,6 +197,49 @@ def _bauer(short: str, name: str, majors: list[str], code: str) -> dict:
     }
 
 
+# ---- Campus-wide "Redline" people API (JS-directory recovery) ----------------
+# The Hines architecture faculty page is a JS ``#directory-widget`` whose backing
+# endpoint (``api.uh.edu/architecture-directory/v1/people``) is NOT architecture-
+# specific: dropping the division filter returns every college, so ``division``
+# (college code) + a client-side ``department.name`` match expose the four
+# colleges whose own web rosters no static card contract spans — Liberal Arts &
+# Social Sciences and the College of the Arts (prose / accordion pages), NSM
+# Mathematics (ALL-CAPS table), and Architecture itself (the JS widget). The feed
+# is ``{"meta":..,"data":[{fullName,title,contact:{email},division,department}]}``
+# with a real rank on every card and a 100%-covered uh.edu mailto; ``faculty=true
+# &staff=false`` drops non-instructional staff/students server-side, and the
+# ladder gate drops the adjunct/emeritus/visiting/affiliate/retiree lines the
+# roster still mixes in. No profile URL or research field in the feed, so records
+# land titled + emailed but keyword-sparse (same tier as the Bauer/Engineering
+# depts). Division H0403 (architecture) returns base64 photos → a ~15 MB body,
+# well inside the client's 25 s read.
+_API_BASE = ("https://api.uh.edu/architecture-directory/v1/people"
+             "?campus=HR730&faculty=true&staff=false&student=false&limit=800")
+_API_LADDER = {"require": r"professor|lecturer",
+               "drop": r"adjunct|emerit|visiting|affiliate|retiree"}
+
+
+def _api(short: str, name: str, majors: list[str], division: str,
+         department: str, directory: str) -> dict:
+    """A department recovered from the campus-wide Redline people API — scoped to
+    a college by ``division`` at the endpoint, then to the department by an exact
+    ``department.name`` match (the feed's PRIMARY-appointment field)."""
+    return {
+        "short": short, "name": name, "majors": majors,
+        "directory_url": directory,
+        "json_dir": {
+            "url": f"{_API_BASE}&division={division}",
+            "records_key": "data",
+            "name_fields": ["fullName"],
+            "title_field": "title",
+            "email_field": "contact.email",
+            "filter_field": "department.name",
+            "filter_value": department,
+            "ladder_filter": _API_LADDER,
+        },
+    }
+
+
 SCHOOL: dict = {
     "school_slug": "houston",
     "source": "houston_faculty",
@@ -238,6 +287,12 @@ SCHOOL: dict = {
                 "section_filter": _EAS_SECTION,
             },
         },
+        # Mathematics' own page renders names in ALL CAPS in inconsistently
+        # nested <strong> tags no card contract normalizes — recovered instead
+        # from the campus Redline API (clean proper-case names + ranks + email).
+        _api("MATH", "Department of Mathematics",
+             ["Mathematics", "Data Science"], "H0411", "Mathematics",
+             "https://www.uh.edu/nsm/math/people/faculty/"),
         # ---- Cullen College of Engineering ----------------------------------
         _eng("ECE", "Department of Electrical and Computer Engineering",
              ["Electrical Engineering", "Computer Engineering"],
@@ -271,6 +326,55 @@ SCHOOL: dict = {
         _bauer("DISC", "Department of Decision and Information Sciences",
                ["Management Information Systems", "Supply Chain Management"],
                "DISC"),
+        # ---- College of Liberal Arts and Social Sciences (Redline API) ------
+        # Hand-authored prose profile pages with per-department markup drift no
+        # static card contract spans — recovered from the campus people API.
+        _api("ENGL", "Department of English",
+             ["English"], "H0409", "English",
+             "https://www.uh.edu/class/english/"),
+        _api("PSYC", "Department of Psychology",
+             ["Psychology"], "H0409", "Psychology",
+             "https://www.uh.edu/class/psychology/"),
+        _api("POLS", "Department of Political Science",
+             ["Political Science"], "H0409", "Political Science",
+             "https://www.uh.edu/class/political-science/"),
+        _api("HIST", "Department of History",
+             ["History"], "H0409", "History",
+             "https://www.uh.edu/class/history/"),
+        _api("COMM", "Valenti School of Communication",
+             ["Communication"], "H0409", "Communication",
+             "https://www.uh.edu/class/communication/"),
+        _api("ECON", "Department of Economics",
+             ["Economics"], "H0409", "Economics",
+             "https://www.uh.edu/class/economics/"),
+        _api("SOCI", "Department of Sociology",
+             ["Sociology"], "H0409", "Sociology",
+             "https://www.uh.edu/class/sociology/"),
+        _api("ANTH", "Department of Comparative Cultural Studies (Anthropology)",
+             ["Anthropology"], "H0409", "Anthropology & Compara Studies",
+             "https://www.uh.edu/class/comparative-cultural-studies/"),
+        _api("PHIL", "Department of Philosophy",
+             ["Philosophy"], "H0409", "Philosophy",
+             "https://www.uh.edu/class/philosophy/"),
+        # ---- Kathrine G. McGovern College of the Arts (Redline API) ---------
+        # Faculty are comma-joined "Name, Title" accordion <li> items with no
+        # per-person structure and no emails — recovered from the campus API.
+        _api("MUSIC", "Moores School of Music",
+             ["Music"], "H0593", "Music",
+             "https://www.uh.edu/kgmca/msm/about/faculty.php"),
+        _api("ART", "School of Art",
+             ["Art History"], "H0593", "Art",
+             "https://www.uh.edu/kgmca/soa/about/faculty.php"),
+        _api("THEA", "School of Theatre and Dance",
+             ["Theatre", "Dance"], "H0593", "Theatre",
+             "https://www.uh.edu/kgmca/sotd/about/faculty.php"),
+        # ---- Gerald D. Hines College of Architecture and Design (Redline) ---
+        # The faculty roster is injected client-side by a #directory-widget JS
+        # plugin (empty static HTML); its own backing API IS the Redline feed.
+        _api("ARCH", "Gerald D. Hines College of Architecture and Design",
+             ["Architecture", "Industrial Design", "Interior Architecture"],
+             "H0403", "Dean, Architecture and Design",
+             "https://www.uh.edu/architecture/about/faculty/index.php"),
     ],
 }
 

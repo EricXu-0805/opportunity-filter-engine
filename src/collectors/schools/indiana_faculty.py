@@ -40,13 +40,37 @@ are covered:
   SPH department (Epidemiology & Biostatistics, Kinesiology, Applied Health
   Science) cleanly. Research interests ride as ``.rvt-badge`` chips.
 
-Not shipped (JS-rendered or WAF-walled, verified 2026-07-23 — a plain-HTTP fetch
-returns an empty skeleton or a ``data-config-file`` feed shell with zero cards):
-the Luddy School (Computer Science, Informatics, Intelligent Systems Engineering,
-Data Science, Computer Engineering), the Kelley School of Business (names live
-only in image ``alt`` text, no titles), the O'Neill School, and the A&S
-Psychology, Statistics, and Cognitive Science directories. Those are deferred to
-a headless-render pass and omitted here rather than shipped unverified.
+* **JS-rendered rosters recovered via ``render`` (verified 2026-07-23).** The big
+  departments dropped by the first pass paint their cards only after a client-
+  side fetch, so ``scrape["render"] = True`` runs that JS and the same CSS
+  selectors parse the result:
+  - The **Luddy School** people directory (``luddy.iu.edu/people/``) is a shell
+    whose JS POSTs the URL query to a ``search_results.php`` backend and renders
+    ``div.rvt-card`` cards; rendering the wrapper with ``?aca_dept=<id>`` filters
+    per department (Computer Science, Data Science, Informatics, Intelligent
+    Systems Engineering, Information & Library Science), a ``startNum=50``
+    follow-up page picks up the departments over 50 people, and the ladder gate
+    drops the assistant-scientists/adjuncts/emeriti. (The Robotics ``aca_dept``
+    is skipped — its six faculty are all cross-listed into the departments above
+    and net zero unique records after dedup.)
+  - **A&S Psychology** (``/directory/faculty/``) and **Cognitive Science**
+    (``/directory/faculty-with-effort/``) render the standard ``profile.item``
+    card (mailto email); **Statistics** (``/about/core-faculty/``) renders the
+    ``profile.feed-item`` sub-title card.
+  - The **Kelley School of Business** ``faculty-directory`` page is actually
+    fully static — every faculty is an inlined ``div.faculty-directory.grid`` row
+    with name + rank + mailto (the char-tabs only filter client-side) — so it
+    ships as a single plain scrape, no render needed.
+
+* **O'Neill School — Cascade "system-page" XML feed (no render needed).**
+  ``oneill.indiana.edu``'s directory is painted client-side from a Cascade CMS
+  export; rather than page-walk the widget, the feed URL
+  (``/_feed-xml/faculty.xml``, ~327 ``system-page`` items) is fetched directly as
+  the scrape URL — one request carries the whole roster and the engine's
+  html.parser reads its data tags fine. Each node yields a name, the
+  ``profile-details`` rank ``title``, and a plain ``contact-group email``; the
+  ladder gate drops the adjunct / instructor / emeriti / postdoc ranks the export
+  mixes in.
 
 Single source ("indiana_faculty"); department rides each record, ids namespaced
 by department short-code.
@@ -55,7 +79,12 @@ Live-verified card counts 2026-07-23 (pre-ladder / pre-dedupe): Physics 34,
 Mathematics 72, Chemistry 98, Biology 92, Economics 26, English 55, Political
 Science 24, Astronomy 10, Neuroscience 95, History 79, Biochemistry 36, Media
 School 189, Music 226, SPH Epidemiology 43, SPH Kinesiology 48, SPH Applied
-Health Science 91.
+Health Science 91. Recovered depts, gate-passing net of dedup (full
+fetch_and_normalize, 2026-07-23): Kelley 447, O'Neill 98, Computer Science 48,
+Informatics 37, Psychology 36, Data Science 27, Intelligent Systems Engineering
+20, Statistics 11, Information & Library Science 11, Cognitive Science 3 (the
+Luddy interdisciplinary programs cross-list heavily, so per-department counts
+run below their raw rosters after email/URL dedup).
 """
 
 from __future__ import annotations
@@ -91,6 +120,14 @@ _PROFILE_SEL = {
 # drop the non-faculty cards.
 _PROFILE_HIST_SEL = {**_PROFILE_SEL, "title": "p.title"}
 
+# Some A&S directories serve the SAME ``article.profile.item`` card, but only
+# after their JS fetches the roster (a plain fetch lands an empty shell), and the
+# email arrives as a plain ``mailto:`` anchor rather than the static pages'
+# entity-encoded span. ``render: True`` runs that JS; this selector reads the
+# rendered mailto.
+_PROFILE_RENDER_SEL = {**_PROFILE_SEL,
+                       "email": "li.icon-email a[href^='mailto:']"}
+
 # Keep ladder + teaching faculty and lecturers; drop the postdocs, adjuncts, and
 # visiting lecturers the rosters mix in. Emeriti are dropped by the engine's own
 # retired-title guard (and by drop=emerit here).
@@ -99,11 +136,19 @@ _PROFILE_LADDER = {"require": r"professor|lecturer",
 
 
 def _profile_dept(short: str, name: str, majors: list[str], url: str,
-                  sel: dict = _PROFILE_SEL) -> dict:
-    """A department on the shared IU CMS "profile item" component."""
+                  sel: dict = _PROFILE_SEL, *, render: bool = False) -> dict:
+    """A department on the shared IU CMS "profile item" component.
+
+    ``render=True`` routes the fetch through the headless browser for the
+    directories that only paint their cards after a client-side roster fetch.
+    """
+    scrape: dict = {"url": url, "selectors": sel, "ladder_filter": _PROFILE_LADDER}
+    if render:
+        scrape["render"] = True
+        scrape["render_settle"] = 4500
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": sel, "ladder_filter": _PROFILE_LADDER},
+        "scrape": scrape,
     }
 
 
@@ -187,6 +232,99 @@ def _sph_dept(short: str, name: str, majors: list[str], dept_match: str) -> dict
     }
 
 
+# ---- Luddy School: soicbl people-directory (JS wrapper over a PHP search) ----
+# ``luddy.iu.edu/people/`` is a shell whose ``people-directory.js`` POSTs the URL
+# query (``websiteAddy`` + ``aca_dept``) to ``soicbl-people-directory.webapps.iu
+# .edu/search_results.php`` and paints ``div.rvt-card`` cards. Rendering the
+# wrapper with ``?aca_dept=<id>`` runs that JS (a plain fetch lands an empty
+# skeleton). The server pages 50 cards at a time, so a ``startNum=50`` second
+# page is followed for the larger departments. The rank is a bare text node in
+# ``.rvt-card__eyebrow`` (which also wraps the name/email), so ``title_re`` lifts
+# the clean rank and the ladder gate drops the assistant-scientists, adjuncts,
+# and emeriti the roster mixes in. Computer Engineering has no own ``aca_dept`` —
+# those faculty sit in Computer Science / Intelligent Systems Engineering.
+_LUDDY_URL = "https://luddy.iu.edu/people/index.html"
+_LUDDY_SEL = {
+    "card": "div.rvt-card",
+    "name": "h2.rvt-card__title a",
+    "link": "h2.rvt-card__title a",
+    "title": ".rvt-card__eyebrow",
+    "title_re": _PROFILE_SEL["title_re"],
+    "email": "a.email[href^='mailto:']",
+}
+
+
+def _luddy_dept(short: str, name: str, majors: list[str], aca_dept: int) -> dict:
+    """A Luddy academic department off the rendered people-directory wrapper."""
+    url = f"{_LUDDY_URL}?aca_dept={aca_dept}"
+    return {
+        "short": short, "name": name, "majors": majors,
+        "directory_url": _LUDDY_URL,
+        "scrape": {
+            "url": url, "selectors": _LUDDY_SEL,
+            "ladder_filter": _PROFILE_LADDER,
+            "render": True, "render_settle": 4500,
+            # 50 cards/page server-side; the biggest departments spill onto a
+            # second page (a single ``startNum=50`` follow-up covers them — no
+            # department here exceeds ~95 people). URL dedup collapses the
+            # 1-page departments' clamped re-fetch.
+            "paginate": {"param": "startNum", "start": 50, "max": 50},
+        },
+    }
+
+
+# ---- Statistics core-faculty (rendered "sub-title" feed-item card) -----------
+# ``stat.indiana.edu/about/core-faculty/`` renders ``article.profile.feed-item``
+# cards after its roster fetch: the name is a ``span[itemprop=name]`` inside the
+# ``h1`` link, the rank is a ``p.sub-title`` line, and the email is a plain
+# mailto in the ``dl.meta``. (The ``/about/faculty/`` page carries only the
+# adjunct roster, all cross-listed from other departments — deliberately unused.)
+_STAT_URL = "https://stat.indiana.edu/about/core-faculty/index.html"
+_STAT_SEL = {
+    "card": "article.profile.feed-item.core",
+    "name": "span[itemprop='name']",
+    "link": "h1 a",
+    "title": "p.sub-title",
+    "email": "a.email[href^='mailto:']",
+}
+
+# ---- Kelley School of Business (static faculty-directory grid) ---------------
+# ``kelley.iu.edu/faculty-research/faculty-directory/`` inlines every faculty as
+# a ``div.faculty-directory.grid`` row (image / name+rank+email / area cell); the
+# whole roster ships in the static HTML (the char-tabs only filter it client-
+# side). The rank + mailto + office share one ``<p>``, so ``title_re`` lifts the
+# rank and the ladder gate drops the emeriti/adjunct/visiting cards.
+_KELLEY_URL = "https://kelley.iu.edu/faculty-research/faculty-directory/index.html"
+_KELLEY_SEL = {
+    "card": "div.faculty-directory.grid",
+    "name": "h3 a",
+    "link": "h3 a",
+    "title": "div.text p",
+    "title_re": _PROFILE_SEL["title_re"],
+    "email": "a[href^='mailto:']",
+}
+
+# ---- O'Neill School: Cascade "system-page" XML feed --------------------------
+# ``oneill.indiana.edu`` paints its directory client-side from a Cascade CMS
+# export — ``xml-filter.js`` fetches ``/_feed-xml/faculty.xml`` (~327
+# ``system-page`` items) and renders the cards, so a page scrape lands nothing.
+# But the feed URL itself is fetched directly as the scrape URL: one request
+# carries the whole roster and html.parser reads the data tags cleanly (no
+# button page-walk or XML parser needed). Each node has a ``display-name``, the
+# ``profile-details`` rank ``title`` (scoped past the social-media share
+# ``title`` that precedes it), and a plain ``contact-group email``. The feed
+# exposes no per-profile href, so records fall back to the dept listing URL and
+# de-dupe on the distinct per-person email; the ladder gate drops the adjunct /
+# instructor / emeriti / postdoc ranks the faculty export mixes in.
+_ONEILL_URL = "https://oneill.indiana.edu/_feed-xml/faculty.xml"
+_ONEILL_SEL = {
+    "card": "system-page",
+    "name": "display-name",
+    "title": "profile-details title",
+    "email": "contact-group email",
+}
+
+
 SCHOOL: dict = {
     "school_slug": "indiana",
     "source": "indiana_faculty",
@@ -246,6 +384,25 @@ SCHOOL: dict = {
             "HIST", "Department of History", ["History"],
             "https://history.indiana.edu/faculty_staff/index.html",
             sel=_PROFILE_HIST_SEL),
+        # A&S directories that render the same profile-item card only after a
+        # client-side roster fetch (email arrives as a plain mailto).
+        _profile_dept(
+            "PSY", "Department of Psychological and Brain Sciences",
+            ["Psychology", "Neuroscience"],
+            "https://psych.indiana.edu/directory/faculty/index.html",
+            sel=_PROFILE_RENDER_SEL, render=True),
+        _profile_dept(
+            "COGS", "Cognitive Science Program", ["Cognitive Science"],
+            "https://cogs.indiana.edu/directory/faculty-with-effort/index.html",
+            sel=_PROFILE_RENDER_SEL, render=True),
+        {
+            "short": "STAT", "name": "Department of Statistics",
+            "majors": ["Statistics", "Data Science"],
+            "directory_url": _STAT_URL,
+            "scrape": {"url": _STAT_URL, "selectors": _STAT_SEL,
+                       "ladder_filter": _PROFILE_LADDER,
+                       "render": True, "render_settle": 4500},
+        },
         # ---- The Media School ----------------------------------------------
         _subtitle_dept(
             "MSCH", "The Media School",
@@ -258,6 +415,47 @@ SCHOOL: dict = {
             ["Music Performance", "Music Composition", "Jazz Studies"],
             "https://music.indiana.edu/faculty/index.html",
             card="article.profile.feed-item"),
+        # ---- Luddy School of Informatics, Computing, and Engineering -------
+        _luddy_dept(
+            "CS", "Department of Computer Science",
+            ["Computer Science BS", "Computer Science BA", "Computer Engineering"],
+            aca_dept=1),
+        _luddy_dept(
+            "DS", "Department of Data Science", ["Data Science"], aca_dept=5),
+        _luddy_dept(
+            "INFO", "Department of Informatics", ["Informatics"], aca_dept=3),
+        _luddy_dept(
+            "ISE", "Department of Intelligent Systems Engineering",
+            ["Intelligent Systems Engineering", "Computer Engineering"],
+            aca_dept=4),
+        _luddy_dept(
+            "ILS", "Department of Information and Library Science",
+            ["Information Science", "Library Science"], aca_dept=2),
+        # (The Luddy Robotics program, ``aca_dept=7``, is deliberately not wired:
+        # all six of its gate-passing faculty are cross-listed and land under
+        # Computer Science / Intelligent Systems Engineering / Informatics, so a
+        # standalone Robotics department nets zero unique records after dedup.)
+        # ---- Kelley School of Business (single static directory) -----------
+        {
+            "short": "KELLEY", "name": "Kelley School of Business",
+            "majors": ["Accounting", "Finance", "Marketing", "Business Analytics",
+                       "Supply Chain Management", "Business Economics", "Management",
+                       "Operations Management", "Information Systems"],
+            "directory_url": _KELLEY_URL,
+            "scrape": {"url": _KELLEY_URL, "selectors": _KELLEY_SEL,
+                       "ladder_filter": _PROFILE_LADDER},
+        },
+        # ---- O'Neill School of Public and Environmental Affairs ------------
+        {
+            "short": "ONEILL",
+            "name": "O'Neill School of Public and Environmental Affairs",
+            "majors": ["Environmental Science", "Policy Analysis",
+                       "Law and Public Policy",
+                       "Nonprofit Management and Leadership"],
+            "directory_url": "https://oneill.indiana.edu/faculty-research/directory/index.html",
+            "scrape": {"url": _ONEILL_URL, "selectors": _ONEILL_SEL,
+                       "ladder_filter": _PROFILE_LADDER},
+        },
         # ---- School of Public Health-Bloomington ---------------------------
         _sph_dept(
             "EPID", "Department of Epidemiology and Biostatistics",

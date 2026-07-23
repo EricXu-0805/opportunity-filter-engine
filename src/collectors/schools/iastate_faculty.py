@@ -48,15 +48,40 @@ handful of blank/absent rank fields (staff/grad) before the engine's "Professor"
 default could wave them through; emeriti/retired drop by the engine's own
 retired-title guard.
 
-Not covered (no server-rendered directory — deferred, needs a headless render
-pass out of scope for this HTTP onboarding): the College of Engineering (F5 WAF +
-client-injected WordPress rosters, no REST route), the Ivy College of Business
-and the College of Health & Human Sciences (JS ``staff-directory-browser``; the
-``fhsd_staff`` WP REST feed carries rank only in an array-wrapped ``meta_fields``
-the engine can't gate on), and Chemistry / Ecology-Evolution-Organismal-Biology
-(the AJAX-populated variant of the Drupal directory — zero static person rows).
-Agronomy, Horticulture, Food Science and Global Resource Systems in CALS are
-likewise JS-rendered (JetEngine) or carry no rank field, so they are dropped.
+Recovered from the JS-rendered tier via their backing WordPress-REST feeds
+(deep mode ``api`` blocks, coexisting additively with the static scrape family):
+
+* **CALS Agronomy — ``people`` CPT.** ``agron.iastate.edu`` renders its roster
+  through JetEngine (a static scrape lands zero cards), but the ``people`` custom
+  post type is open at ``/wp-json/wp/v2/people``. The ``people-category`` taxonomy
+  is the gate — term 227 (faculty), excluding 250 (emeritus); ``area-of-expertise``
+  supplies clean keyword chips (``interests`` is numeric-id junk, not wired). No
+  rank/email in the feed (records default "Professor"); the personal address is a
+  plaintext jet-listing field on the profile (``strong:Email:`` sibling text, not a
+  mailto — the shared ``agron@`` inbox is the only mailto, dropped) recovered by
+  the profile-enrich pass. Names carry a "Dr." honorific → ``name_strip``.
+
+Still not covered (needs a headless render pass, a new engine adapter, or — for
+the email-less HHS feed — a real email source; all phase 2):
+* **College of Health & Human Sciences (+ CALS Food Science)** — the shared
+  ``fhsd_staff`` feed on ``hs.iastate.edu`` is category-gateable to faculty but
+  carries no email (it lives in array-wrapped ``meta_fields`` the engine can't
+  read, painted client-side) and the host now Cloudflare-403s the wp-json route.
+  Dropped rather than ship ~54 email-less name-only records.
+* **College of Engineering** — the college directory is a FacetWP client app
+  (``facetwp-facet-faculty_a_z``) painting a Twig template off ``admin-ajax.php``;
+  the eight department subdomains register NO faculty/person/profile CPT over
+  wp-json, so there is no REST route to hit config-only. Needs headless.
+* **Ivy College of Business** — its ``cob-directory/v1/profile`` route IS a clean
+  faculty feed (``phd_fac`` flag, ``title`` rank, ``exp0..10`` research), but it's
+  a bespoke namespace, not ``wp/v2/<post_type>``, so it needs a new engine fetch
+  adapter (out of scope for a config-only pass).
+* **Chemistry, Ecology-Evolution-Organismal-Biology** — the F5 front resets the
+  TLS handshake on every proxied fetch (host unreachable); AJAX-Drupal directories
+  with zero static rows. Needs headless from an allowed egress.
+* **Horticulture, Global Resource Systems** — no reachable ``people`` CPT
+  (Horticulture registers only news/video types; GRS host TLS-resets). Needs
+  headless.
 
 Single source ("iastate_faculty"); department rides each record, ids namespaced
 by department short-code.
@@ -159,6 +184,18 @@ def _design(short: str, name: str, majors: list[str], department: str) -> dict:
     }
 
 
+# ---- CALS Agronomy: JetEngine "people" CPT over wp-json --------------------
+# The roster is JS-painted, but the ``people`` post type is open. Gate on the
+# people-category taxonomy (227 = faculty; 250 = emeritus dropped); pull keyword
+# chips from area-of-expertise. The personal email is a plaintext jet-listing
+# field on the profile (the only mailto is the shared agron@ inbox — dropped).
+_AGRON_ENRICH = {
+    "email_selector": "div.jet-listing-dynamic-field__content:-soup-contains('Email')",
+    "email_drop": r"^[^@]*$|^agron@|webmaster@|-info@",
+    "throttle": 0.2,
+}
+
+
 SCHOOL: dict = {
     "school_slug": "iastate",
     "source": "iastate_faculty",
@@ -211,6 +248,22 @@ SCHOOL: dict = {
         _isu("PPEM", "Department of Plant Pathology, Entomology and Microbiology",
              ["Biology"],
              "https://www.plantpath.iastate.edu/people/faculty"),
+        # Agronomy is JetEngine-rendered — recovered via its open ``people`` CPT.
+        {
+            "short": "AGRON", "name": "Department of Agronomy",
+            "majors": ["Agronomy", "Crop Science", "Soil Science"],
+            "directory_url": "https://www.agron.iastate.edu/people/",
+            "api": {
+                "type": "wp", "base": "https://www.agron.iastate.edu",
+                "post_type": "people",
+                "category_include": {"people-category": [227]},
+                "category_exclude": {"people-category": [250]},
+                "keyword_tax": ["area-of-expertise"],
+                "name_strip": r"^(?:Dr|Prof)\.\s+",
+                "name_flip": True,
+            },
+            "profile_enrich": _AGRON_ENRICH,
+        },
         # --- Health sciences (LAS-hosted, health majors) ---
         _isu("IHS", "Department of Integrated Health Sciences",
              ["Kinesiology and Health", "Nutritional Science"],
