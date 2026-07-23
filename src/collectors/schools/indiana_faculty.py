@@ -1,55 +1,68 @@
 """Indiana University Bloomington faculty config (via the faculty_graph engine).
 
 Only the departments that server-render their faculty over plain HTTP are wired
-here — all three verified live through a proxy on 2026-07-19 (clean 200s, no JS
-render, no WAF). Two distinct campus templates:
+here — every URL below was live-verified through a proxy on 2026-07-23 (clean
+200s, real card grids in the static HTML, no JS-only render, no WAF). IU
+Bloomington's campus sites run several CMS templates; four distinct card shapes
+are covered:
 
-* **Physics & Astronomy and Mathematics — the IU CMS "profile item" card.**
-  ``physics.indiana.edu/about/directory/all-faculty-scientists/faculty/`` and
-  ``math.indiana.edu/about/faculty/`` share one component: each person is an
-  ``article.profile.item`` with the name in ``h1 > a`` (linking to a per-person
-  ``<slug>.html`` page), one or more ``p.title.small`` rank lines, an email span
-  under ``li.icon-email``, and a "Research Interests" block in the
-  ``itemprop="description"`` paragraph. The email span is HTML-entity-encoded
-  text (with rot13 *decoy* attributes the engine ignores) that decodes to the
-  real ``@iu.edu`` address. Physics' page is already faculty-only (34 professors);
-  Math's mixes in postdocs / adjuncts / visiting lecturers / a couple of
-  administrators whose directorship is listed on the first title line, so a
-  ``title_re`` recovers the academic rank from whichever line carries it and a
-  ladder filter drops the postdocs/adjuncts/visiting. Research interests land as
-  keywords.
+* **IU CMS "profile item" card** — the College of Arts & Sciences workhorse.
+  ``<subdomain>.indiana.edu/about/faculty/`` (Biology, Economics, English,
+  Political Science, Biochemistry), ``.../directory/faculty/`` (Astronomy), and
+  the Physics / Mathematics directories all render each person as an
+  ``article.profile.item``: name in ``h1 > a`` (linking to a per-person page),
+  a ``p.title.small`` rank line, an entity-encoded email span under
+  ``li.icon-email`` (rot13 *decoy* attributes the engine ignores), and a
+  "Research Interests" block. A ``title_re`` recovers the academic rank from
+  whichever title line carries it (an admin role can lead), and a ladder filter
+  drops the postdocs / adjuncts / visiting / emeriti the mixed rosters include.
+  History uses the same card but the rank sits in a plain ``p.title`` (no
+  ``small``) alongside genuine staff, so its selector reads ``p.title`` directly
+  and lets the ladder gate drop the non-faculty.
 
 * **Chemistry — the older Bootstrap ``dv-header`` grid.**
   ``www.chem.indiana.edu/people/faculty/`` is one flat grid of
-  ``div.col-sm-4.text-center`` cards (name in ``div.dv-header > a`` linking to
-  ``/faculty/<slug>``, rank in ``small.text-muted``, a ``mailto:`` email). It is
-  the whole people roster — ladder faculty plus research scientists, adjuncts,
-  emeriti, lecturers, and a few staff/directors. Several cards concatenate a
-  faculty member's multiple roles with no separator ("ProfessorAdjunct Professor,
-  Physics"); a ``title_strip_after`` camelCase split recovers the primary rank so
-  the ladder filter can keep primary-chemistry professors (with a secondary
-  physics adjunct) while dropping the pure adjunct / scientist / emeritus / staff
-  cards. Chemistry cards carry no research text (topics come from downstream
-  OpenAlex enrichment).
+  ``div.col-sm-4.text-center`` cards; a ``title_strip_after`` camelCase split
+  recovers the primary rank from concatenated multi-role cards so the ladder
+  filter keeps primary-chemistry professors while dropping adjunct / scientist /
+  emeritus / staff cards.
 
-IU Bloomington's Computer Science, Intelligent Systems Engineering (its
-electrical/computer-engineering home), and the mechanical/biomedical topics all
-live in the Luddy School behind a JS-shell directory (``needs_render_js``) — a
-plain-HTTP AJAX endpoint exists but the front page renders no cards, so those
-three are deferred to a headless-render pass and not shipped here.
+* **IU "sub-title" card** — the Media School and Jacobs School of Music.
+  ``mediaschool.indiana.edu/people/faculty/`` (``article.profile.item``) and
+  ``music.indiana.edu/faculty/`` (``article.profile.feed-item``) share a body
+  layout: the name is a ``span[itemprop=name]`` inside the ``p.title`` link and
+  the rank is a separate ``p.sub-title`` line, with a plain ``mailto:`` email.
+
+* **School of Public Health ``sph-profile`` card.**
+  ``publichealth.indiana.edu/about/directory/`` is one static campus-wide grid of
+  ``article.sph-profile`` cards carrying a per-card ``.sph-profile__department``
+  cell — so a single URL, gated by a ``field_filter`` on that cell, yields each
+  SPH department (Epidemiology & Biostatistics, Kinesiology, Applied Health
+  Science) cleanly. Research interests ride as ``.rvt-badge`` chips.
+
+Not shipped (JS-rendered or WAF-walled, verified 2026-07-23 — a plain-HTTP fetch
+returns an empty skeleton or a ``data-config-file`` feed shell with zero cards):
+the Luddy School (Computer Science, Informatics, Intelligent Systems Engineering,
+Data Science, Computer Engineering), the Kelley School of Business (names live
+only in image ``alt`` text, no titles), the O'Neill School, and the A&S
+Psychology, Statistics, and Cognitive Science directories. Those are deferred to
+a headless-render pass and omitted here rather than shipped unverified.
 
 Single source ("indiana_faculty"); department rides each record, ids namespaced
 by department short-code.
 
-Live-verified 2026-07-19 (cards seen / kept after title gate): Physics 34/34,
-Mathematics 72/54, Chemistry 98/53 (pre-dedupe).
+Live-verified card counts 2026-07-23 (pre-ladder / pre-dedupe): Physics 34,
+Mathematics 72, Chemistry 98, Biology 92, Economics 26, English 55, Political
+Science 24, Astronomy 10, Neuroscience 95, History 79, Biochemistry 36, Media
+School 189, Music 226, SPH Epidemiology 43, SPH Kinesiology 48, SPH Applied
+Health Science 91.
 """
 
 from __future__ import annotations
 
 from .. import faculty_graph
 
-# ---- IU CMS "profile item" card (Physics & Astronomy, Mathematics) ----------
+# ---- IU CMS "profile item" card (College of Arts & Sciences) -----------------
 # One shared component. The name is the h1 anchor (the figure's image anchor has
 # no text, so h1 a is unambiguous). The email span is entity-encoded text the
 # engine's _email_from_el decodes (its rot13 decoy attrs carry no data-mail-to,
@@ -72,18 +85,47 @@ _PROFILE_SEL = {
     "research_re": r"Research Interests</strong>(.*?)</p>",
 }
 
+# History uses the same profile-item card but keeps the rank in a plain
+# ``p.title`` (no ``small``) and lists genuine staff alongside faculty — reading
+# the real title element (not the "Professor" default) lets the ladder gate below
+# drop the non-faculty cards.
+_PROFILE_HIST_SEL = {**_PROFILE_SEL, "title": "p.title"}
+
 # Keep ladder + teaching faculty and lecturers; drop the postdocs, adjuncts, and
-# visiting lecturers the Math roster mixes in. Emeriti are dropped by the engine's
-# own retired-title guard (and by drop=emerit here).
+# visiting lecturers the rosters mix in. Emeriti are dropped by the engine's own
+# retired-title guard (and by drop=emerit here).
 _PROFILE_LADDER = {"require": r"professor|lecturer",
                    "drop": r"adjunct|visiting|emerit"}
 
 
-def _profile_dept(short: str, name: str, majors: list[str], url: str) -> dict:
+def _profile_dept(short: str, name: str, majors: list[str], url: str,
+                  sel: dict = _PROFILE_SEL) -> dict:
     """A department on the shared IU CMS "profile item" component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _PROFILE_SEL,
+        "scrape": {"url": url, "selectors": sel, "ladder_filter": _PROFILE_LADDER},
+    }
+
+
+# ---- IU "sub-title" card (Media School, Jacobs School of Music) --------------
+# The name is a span[itemprop=name] inside the p.title link; the rank is a
+# separate p.sub-title line. Only the card class differs between the two schools
+# (Media = article.profile.item, Music = article.profile.feed-item), so the body
+# selectors below are shared and the card is injected per department.
+_SUBTITLE_SEL = {
+    "name": "span[itemprop='name']",
+    "link": "p.title a",
+    "title": "p.sub-title",
+    "email": "a[href^='mailto:']",
+}
+
+
+def _subtitle_dept(short: str, name: str, majors: list[str], url: str,
+                   card: str) -> dict:
+    """A department on the IU "sub-title" card (name span + p.sub-title rank)."""
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": {**_SUBTITLE_SEL, "card": card},
                    "ladder_filter": _PROFILE_LADDER},
     }
 
@@ -111,6 +153,38 @@ _CHEM_SEL = {
 # cards.
 _CHEM_LADDER = {"require": r"professor|lecturer",
                 "drop": r"emerit|adjunct|visiting"}
+
+
+# ---- School of Public Health: campus-wide sph-profile grid ------------------
+# One static directory of every SPH person; each card carries its home
+# department in ``.sph-profile__department``. A field_filter on that cell splits
+# the single URL into per-department rosters, and the ladder gate keeps only the
+# professorial/lecturer titles (dropping the research managers, coordinators, and
+# other staff the campus directory mixes in). Interest chips ride as keywords.
+_SPH_URL = "https://publichealth.indiana.edu/about/directory/index.html"
+_SPH_SEL = {
+    "card": "article.sph-profile",
+    "name": ".sph-profile__name",
+    "link": ".sph-profile__name a",
+    "title": ".sph-profile__title",
+    "email": ".sph-profile__email a",
+    "research_items": ".sph-profile__interest-tags .rvt-badge",
+}
+_SPH_LADDER = {"require": r"professor|lecturer", "drop": r"emerit|visiting"}
+
+
+def _sph_dept(short: str, name: str, majors: list[str], dept_match: str) -> dict:
+    """An SPH department carved out of the campus-wide directory by field_filter."""
+    return {
+        "short": short, "name": name, "majors": majors,
+        "directory_url": _SPH_URL,
+        "scrape": {
+            "url": _SPH_URL, "selectors": _SPH_SEL,
+            "ladder_filter": _SPH_LADDER,
+            "field_filter": {"selector": ".sph-profile__department",
+                             "require_present": True, "include": dept_match},
+        },
+    }
 
 
 SCHOOL: dict = {
@@ -145,6 +219,55 @@ SCHOOL: dict = {
                 "link_filter": r"/faculty/",
             },
         },
+        _profile_dept(
+            "BIOL", "Department of Biology", ["Biology"],
+            "https://biology.indiana.edu/about/faculty/index.html"),
+        _profile_dept(
+            "BIOC", "Department of Molecular and Cellular Biochemistry",
+            ["Biochemistry", "Biology"],
+            "https://biochemistry.indiana.edu/about/faculty/index.html"),
+        _profile_dept(
+            "NSCI", "Program in Neuroscience", ["Neuroscience"],
+            "https://neuroscience.indiana.edu/about/faculty/index.html"),
+        _profile_dept(
+            "ASTR", "Department of Astronomy",
+            ["Astronomy and Astrophysics", "Astronomy", "Astrophysics"],
+            "https://astro.indiana.edu/directory/faculty/index.html"),
+        _profile_dept(
+            "ECON", "Department of Economics", ["Economics"],
+            "https://economics.indiana.edu/about/faculty/index.html"),
+        _profile_dept(
+            "ENGL", "Department of English", ["English"],
+            "https://english.indiana.edu/about/faculty/index.html"),
+        _profile_dept(
+            "POLS", "Department of Political Science", ["Political Science"],
+            "https://polisci.indiana.edu/about/faculty/index.html"),
+        _profile_dept(
+            "HIST", "Department of History", ["History"],
+            "https://history.indiana.edu/faculty_staff/index.html",
+            sel=_PROFILE_HIST_SEL),
+        # ---- The Media School ----------------------------------------------
+        _subtitle_dept(
+            "MSCH", "The Media School",
+            ["Journalism", "Media", "Game Design", "Public Relations"],
+            "https://mediaschool.indiana.edu/people/faculty/index.html",
+            card="article.profile.item"),
+        # ---- Jacobs School of Music ----------------------------------------
+        _subtitle_dept(
+            "MUS", "Jacobs School of Music",
+            ["Music Performance", "Music Composition", "Jazz Studies"],
+            "https://music.indiana.edu/faculty/index.html",
+            card="article.profile.feed-item"),
+        # ---- School of Public Health-Bloomington ---------------------------
+        _sph_dept(
+            "EPID", "Department of Epidemiology and Biostatistics",
+            ["Epidemiology"], r"Epidemiology and Biostatistics"),
+        _sph_dept(
+            "KIN", "Department of Kinesiology", ["Exercise Science"],
+            r"Kinesiology"),
+        _sph_dept(
+            "AHS", "Department of Applied Health Science",
+            ["Nutrition Science"], r"Applied Health Science"),
     ],
 }
 

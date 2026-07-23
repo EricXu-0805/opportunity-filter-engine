@@ -1,56 +1,78 @@
 """University of Utah faculty config (via the faculty_graph engine).
 
-Two markup families cover the five buildable departments — all plain
-server-rendered HTTP 200s (no render mode, no WAF). Live-verified 2026-07-19
-(cards / kept-after-gate):
+University-wide coverage across the six undergraduate colleges in the catalog
+(``frontend/src/lib/catalogs/utah.ts``). All departments are plain server-rendered
+HTTP 200s (no headless render, no WAF); every entry below was live-verified to
+yield ladder faculty. Six markup families cover the buildable departments:
 
 * **The7 "faculty card" grid (ECE + Mechanical Engineering).**
-  ``www.ece.utah.edu/faculty/`` and ``www.mech.utah.edu/directory/faculty/``
-  share one custom-templated The7 grid: each faculty member is a
-  ``div.person-container`` whose ``div.t-entry`` holds the name (``h2.t-entry-title``),
-  the rank (``h3.t-entry-meta``), a ``ul.card-links-list`` of phone/email/office,
-  and a ``p.t-entry-excerpt`` of research prose (not scraped — it is free text,
-  not a clean tag list, so topics come from OpenAlex). GOTCHA: the department's own
-  hand-authored HTML mis-closes the headings (``<h2>Name</h3>``,
-  ``<h3>Rank</h4>``) so ``html.parser`` nests every following node inside the
-  heading — ``h2``'s text absorbs the rank+contacts and ``h3``'s absorbs the
-  contacts+excerpt. ``name_strip`` trims the name back to the person by cutting
-  at the first rank/role token; ``title_strip_after`` trims the rank at the first
-  contact marker (Phone/Email/Office/…). Mechanical's headings are mis-closed on
-  every card; ECE's mostly close cleanly, so the same two cleaners are harmless
-  no-ops there. Both directories are faculty-only, so the professor|lecturer
-  ladder gate is a safety net (drops 0), not the load-bearing filter.
+  ``www.ece.utah.edu/faculty/`` and ``www.mech.utah.edu/directory/faculty/`` share
+  one custom-templated The7 grid: each member is a ``div.person-container`` whose
+  ``div.t-entry`` holds the name (``h2.t-entry-title``), the rank (``h3.t-entry-meta``),
+  a ``ul.card-links-list`` of phone/email/office, and a free-text research excerpt
+  (topics come from OpenAlex, not the card). GOTCHA: the department's hand-authored
+  HTML mis-closes the headings (``<h2>Name</h3>``, ``<h3>Rank</h4>``) so
+  ``html.parser`` nests the following nodes inside the heading. ``name_strip`` trims
+  the name back at the first rank/role token; ``title_strip_after`` trims the rank at
+  the first contact marker.
 
-* **Kahlert School of Computing (Gutenberg blocks).**
-  ``www.cs.utah.edu/people/faculty/`` is a WordPress/The7 page but the faculty
-  are hand-authored ``wp:heading``/``wp:paragraph`` blocks: each person is a
-  ``div.t-entry`` with ``h2`` (name), ``h4`` (rank), a ``mailto`` paragraph, and a
-  "Research Interests" paragraph. The page also lists ~23 adjunct / affiliated
-  faculty as bare ``h2``-only cards with NO rank ``h4`` — a ``field_filter`` on
-  ``h4`` (``require_present``) drops those title-less cross-listed cards before
-  the engine's missing-title default ("Professor") could wave them through, then
-  ``include: professor|lecturer`` keeps the 73 core faculty.
+* **University "v2 faculty directory" (OMNI CMS, ``div.grid-item.faculty``).**
+  A single campus-wide template (``websites.it.utah.edu/v2-faculty-directory``)
+  embedded per-department across Humanities, CSBS, and the School of Music. Each
+  person is a ``div.grid-item.faculty`` with ``h2.name`` (name), a rank paragraph
+  (``.content > p[class='']`` on the compact variant, ``.section-1 p.h6`` on the
+  two-column variant used by World Languages), and a ``p.email`` mailto. Two quirks
+  the selectors absorb: (1) the two-column variant prefixes the name with an
+  ``<span class="sr-only">Profile for </span>`` — ``name_strip`` removes it; (2) an
+  admin appointment ("Department Chair", "Associate Dean") is sometimes listed above
+  the academic rank, so ``title_re`` pulls the real Professor/Lecturer rank from
+  anywhere in the card (the CSS ``title`` stays as a staff-safety fallback so a
+  role-only card fails the ladder gate). Covers English, History, Linguistics,
+  Philosophy, World Languages & Cultures, Writing & Rhetoric, Communication, Family
+  & Consumer Studies, and the School of Music.
+
+* **UU "team member" WordPress widget (Civil & Environmental Engineering).**
+  ``www.civil.utah.edu/directory/`` renders each person as a
+  ``div.uu-team-member-widget-card``. GOTCHA: the widget's field classes are
+  swapped — ``.uu-team-member-widget-title`` holds the *name* and
+  ``.uu-team-member-widget-name`` holds the *rank*.
+
+* **OMNI "flip-panel" grids (Anthropology, Political Science, Economics,
+  Psychology, Sociology).** An older hand-templated OMNI layout (``c-panel`` /
+  ``isotope-item`` cells) where the rank lives in an inconsistent element per site.
+  Rather than chase each element, ``title_re`` extracts the Professor/Lecturer rank
+  (with any Emeritus suffix, so the retired gate can drop it) from the card text;
+  a per-site CSS ``title`` stays as the staff fallback. Name selectors differ by
+  site (``h2.h4 a`` / ``span.h3`` / ``h4.text-uppercase a``); the SHOUTING rosters
+  (Psychology, Sociology) get ``name_title_case``.
 
 * **Chemistry (dedicated card grid).** ``www.chemistry.utah.edu/faculty-directory/``
-  renders one ``div.chem-faculty-card`` per person: name in ``.h3``, the rank as
-  the first ``.titles .title`` (a second ``.title`` holds an endowed-chair line),
-  a ``mailto``, and research-area *icons* (aria-label only, no text — topics come
-  from downstream OpenAlex enrichment). The lone emeriti are dropped by the
-  engine's retired-title gate and the ladder gate; ~30 active faculty remain.
+  renders one ``div.chem-faculty-card`` per person: name in ``.h3``, rank as the
+  first ``.titles .title``, a mailto, and research-area icons (no text).
 
 * **Mathematics (bio-list).** ``www.math.utah.edu/directory/faculty.php`` is a
-  server-rendered ``ul`` of ``li.biolist-item`` rows sub-classed by track
-  (``tenure-line`` / ``career-line-faculty`` / ``adjunct`` / ``emeritus`` /
-  ``asia``). The card selector keeps only the ``tenure-line`` and
-  ``career-line-faculty`` rows, so adjunct/courtesy, emeritus, and Asia-campus
-  rows are excluded by construction (the class IS the gate). Name in
-  ``h2.h3 a[href]`` (a leading empty in-page anchor is skipped by requiring
-  ``href``), rank in ``h3.h5``, ``mailto`` in the row paragraph.
+  server-rendered ``ul`` of ``li.biolist-item`` rows sub-classed by track; the card
+  selector keeps only ``tenure-line`` and ``career-line-faculty`` rows.
 
-Physics & Astronomy is intentionally NOT built: every faculty endpoint on
-web.physics.utah.edu (all-faculty.php / index.php / faculty-by-research-area.php)
-returns an Apache "500 Internal Server Error" (a broken PHP directory backend),
-so there is no server-rendered roster to scrape this pass.
+Two more platforms carry a single department each:
+
+* **Kahlert School of Computing (Gutenberg blocks).**
+  ``www.cs.utah.edu/people/faculty/`` — ``div.t-entry`` with ``h2`` (name), ``h4``
+  (rank), a mailto, and a "Research Interests" paragraph. A ``field_filter`` on the
+  ``h4`` drops the title-less adjunct/affiliated cards.
+* **Parks, Recreation & Tourism (College of Health, Cohesion CMS).**
+  ``health.utah.edu/parks-recreation-tourism/faculty`` — ``div.gls-card`` with
+  ``h3.gls-card-title`` (name), ``p.gls-text-meta`` (rank), a mailto.
+* **Theatre (custom Bootstrap cards).** ``theatre.utah.edu/about/people`` —
+  ``div.card`` with ``.card-title`` (name) and ``.card-text`` (rank); no published
+  email. People are listed once per performance area, so the engine's id/url dedup
+  collapses the cross-area duplicates.
+
+Not built (unscrapeable this pass, recorded for the audit): Physics & Astronomy,
+Biology, Biochemistry, Chemical Engineering, Biomedical Engineering, Materials
+Science, Metallurgical & Mining Engineering (JS/FacetWP-rendered rosters or broken
+PHP backends), Business (David Eccles is a React SPA), and Art/Dance/Film (Squarespace
+/ heavy-JS builds) all return empty static HTML.
 
 Single source ("utah_faculty"); department rides each record, ids namespaced by
 department short-code.
@@ -75,11 +97,23 @@ _NAME_STRIP = (
 # text before the first contact marker.
 _TITLE_STRIP_AFTER = r"\s+(?:Phone|Email|Office|Advisor|Fax|Website)\b"
 
-# The7 faculty-card grid shared by ECE and Mechanical Engineering. No research
-# selector: the card's ``p.t-entry-excerpt`` is free-form prose ("My research
-# focuses specifically on…"), which comma-splits into junk fragments
-# ("specifically", "identification") rather than clean topic tags — so topics
-# come from downstream OpenAlex enrichment, and the card ships name+title+email.
+# Pull the academic rank (Professor/Lecturer, with modifiers and an Emeritus
+# suffix) from anywhere in a card's text. Used as ``title_re`` on the directories
+# whose markup lists an admin appointment ("Department Chair") above the academic
+# rank, or hides the rank in an inconsistent element. Capturing the Emeritus
+# suffix lets the engine's retired-title gate drop emeriti; a card with no rank
+# match keeps its CSS ``title`` (a staff role), which the ladder gate then drops.
+_RANK_RE = (
+    r"((?:(?:Distinguished|University|Presidential|Endowed|Research|Clinical"
+    r"|Teaching|Adjunct|Visiting|Associate|Assistant|Emeritus|Emerita)\s+)*"
+    r"(?:Professor|Lecturer)(?:\s+Emerit(?:us|a))?)"
+)
+_LADDER = {"require": r"professor|lecturer"}
+
+
+# ---- The7 faculty-card grid (ECE + Mechanical Engineering) -----------------
+# No research selector: the card's excerpt is free-form prose that comma-splits
+# into junk, so topics come from OpenAlex and the card ships name+title+email.
 _CARD_SEL = {
     "card": "div.person-container",
     "name": "h2.t-entry-title",
@@ -88,15 +122,71 @@ _CARD_SEL = {
     "title_strip_after": _TITLE_STRIP_AFTER,
     "email": "li.card-email a[href^='mailto:']",
 }
-_CARD_LADDER = {"require": r"professor|lecturer"}
 
 
 def _card_dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """An ECE/ME department on the shared The7 faculty-card grid."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _CARD_SEL, "ladder_filter": _CARD_LADDER},
+        "scrape": {"url": url, "selectors": _CARD_SEL, "ladder_filter": _LADDER},
     }
+
+
+# ---- University "v2 faculty directory" OMNI template -----------------------
+# ``name_strip`` drops the World-Languages "Profile for " sr-only prefix (no-op
+# elsewhere). The CSS ``title`` is the first rank line (compact ``.content`` cards
+# or two-column ``.section-1`` cards); ``title_re`` overrides it with the academic
+# rank when an admin role is listed first. ``link`` prefers the in-name profile
+# anchor (two-column variant), else the profile-link button (compact variant).
+_OMNI_SEL = {
+    "card": "div.grid-item.faculty",
+    "name": "h2.name",
+    "name_strip": r"^\s*Profile for\s+",
+    "link": "h2.name a, p.profile-link a",
+    "title": ".content > p[class=''], .section-1 p.h6",
+    "title_re": _RANK_RE,
+    "email": "p.email a[href^='mailto:']",
+}
+
+
+def _omni_dept(short: str, name: str, majors: list[str], url: str) -> dict:
+    """A department on the campus-wide v2 faculty-directory OMNI template."""
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _OMNI_SEL, "ladder_filter": _LADDER},
+    }
+
+
+# ---- OMNI "flip-panel" grids (rank lives in an inconsistent element) --------
+def _flip_dept(short: str, name: str, majors: list[str], url: str, *,
+               card: str, name_sel: str, title_sel: str,
+               title_case: bool = False, strip_after: str | None = None) -> dict:
+    """An older OMNI flip-panel directory: ``title_re`` recovers the rank, the
+    per-site CSS ``title`` is the staff-safety fallback."""
+    sels: dict = {
+        "card": card, "name": name_sel, "title": title_sel,
+        "title_re": _RANK_RE, "email": "a[href^='mailto:']",
+    }
+    if title_case:
+        sels["name_title_case"] = True
+    if strip_after:
+        sels["title_strip_after"] = strip_after
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": sels, "ladder_filter": _LADDER},
+    }
+
+
+# ---- UU "team member" WordPress widget (field classes are swapped) ----------
+# The widget renders the name in ``.uu-team-member-widget-title`` (an ``h3``) and
+# the rank in ``.uu-team-member-widget-name`` (a ``p``) — key off the class, not
+# the tag. The address is a plain card-level ``mailto`` (no email-field wrapper).
+_TEAM_SEL = {
+    "card": "div.uu-team-member-widget-card",
+    "name": ".uu-team-member-widget-title",
+    "title": ".uu-team-member-widget-name",
+    "email": "a[href^='mailto:']",
+}
 
 
 SCHOOL: dict = {
@@ -111,7 +201,7 @@ SCHOOL: dict = {
         "the arrangement; ask the professor."
     ),
     "departments": [
-        # ---- Kahlert School of Computing (Gutenberg blocks) -----------------
+        # ===== College of Science ===========================================
         {
             "short": "CS",
             "name": "Kahlert School of Computing",
@@ -137,14 +227,6 @@ SCHOOL: dict = {
                 },
             },
         },
-        # ---- The7 faculty-card grid: ECE + Mechanical Engineering -----------
-        _card_dept("ECE", "Department of Electrical and Computer Engineering",
-                   ["Electrical Engineering", "Computer Engineering"],
-                   "https://www.ece.utah.edu/faculty/"),
-        _card_dept("ME", "Department of Mechanical Engineering",
-                   ["Mechanical Engineering"],
-                   "https://www.mech.utah.edu/directory/faculty/"),
-        # ---- College of Science: Chemistry ----------------------------------
         {
             "short": "CHEM",
             "name": "Department of Chemistry",
@@ -161,10 +243,9 @@ SCHOOL: dict = {
                     "title": "div.titles div.title",
                     "email": "a[href^='mailto:']",
                 },
-                "ladder_filter": {"require": r"professor|lecturer"},
+                "ladder_filter": _LADDER,
             },
         },
-        # ---- College of Science: Mathematics (bio-list) ---------------------
         {
             "short": "MATH",
             "name": "Department of Mathematics",
@@ -176,20 +257,110 @@ SCHOOL: dict = {
                 # emeritus, and Asia-campus rows are excluded by construction.
                 "selectors": {
                     "card": "li.biolist-item.tenure-line, li.biolist-item.career-line-faculty",
-                    # Name is the heading text: some rows link it (a leading empty
-                    # <a id="..."> anchor contributes nothing to get_text), others
-                    # print it as bare text with no profile anchor at all — so read
-                    # the whole h2 and take the profile link only when present.
                     "name": "h2.h3",
                     "link": "h2.h3 a[href]",
-                    # Rank is an .h5 element — usually <h3 class="h5"> but a few
-                    # rows use <p class="h5">, so key off the class, not the tag.
                     "title": ".h5",
-                    # Email is a mailto anywhere in the row (some rows wrap it in a
-                    # <p>, some leave it as bare text after the office line).
                     "email": "a[href^='mailto:']",
                 },
-                "ladder_filter": {"require": r"professor|lecturer"},
+                "ladder_filter": _LADDER,
+            },
+        },
+        # ===== John & Marcia Price College of Engineering ===================
+        _card_dept("ECE", "Department of Electrical and Computer Engineering",
+                   ["Electrical Engineering", "Computer Engineering"],
+                   "https://www.ece.utah.edu/faculty/"),
+        _card_dept("ME", "Department of Mechanical Engineering",
+                   ["Mechanical Engineering"],
+                   "https://www.mech.utah.edu/directory/faculty/"),
+        {
+            "short": "CVEEN",
+            "name": "Department of Civil and Environmental Engineering",
+            "majors": ["Civil Engineering"],
+            "directory_url": "https://www.civil.utah.edu/directory/",
+            "scrape": {
+                "url": "https://www.civil.utah.edu/directory/",
+                "selectors": _TEAM_SEL,
+                "ladder_filter": _LADDER,
+            },
+        },
+        # ===== College of Humanities (v2 OMNI template) =====================
+        _omni_dept("ENGL", "Department of English", ["English"],
+                   "https://english.utah.edu/directory/faculty.php"),
+        _omni_dept("HIST", "History Department", ["History"],
+                   "https://history.utah.edu/faculty/index.php"),
+        _omni_dept("LING", "Department of Linguistics", ["Linguistics"],
+                   "https://linguistics.utah.edu/about/faculty-and-staff.php"),
+        _omni_dept("PHIL", "Department of Philosophy", ["Philosophy"],
+                   "https://philosophy.utah.edu/directory/faculty.php"),
+        _omni_dept("WLC", "Department of World Languages and Cultures",
+                   ["World Languages and Cultures"],
+                   "https://languages.utah.edu/directory/faculty.php"),
+        _omni_dept("WRTG", "Department of Writing and Rhetoric Studies",
+                   ["Writing and Rhetoric Studies"],
+                   "https://writing.utah.edu/directory/faculty.php"),
+        # ===== College of Social and Behavioral Science =====================
+        _omni_dept("COMM", "Department of Communication", ["Communication"],
+                   "https://communication.utah.edu/about/directory/faculty.php"),
+        _omni_dept("FCS", "Department of Family and Consumer Studies",
+                   ["Family and Consumer Studies"],
+                   "https://fcs.utah.edu/faculty-directory/index.php"),
+        _flip_dept("ANTH", "Department of Anthropology", ["Anthropology"],
+                   "https://anthro.utah.edu/people/faculty.php",
+                   card="div.c-grid-layout__cell", name_sel="h2.h4 a",
+                   title_sel="p"),
+        _flip_dept("POLS", "Department of Political Science", ["Political Science"],
+                   "https://poli-sci.utah.edu/faculty.php",
+                   card="div.isotope-item", name_sel="h2.h4 a", title_sel="em"),
+        _flip_dept("PSYCH", "Department of Psychology", ["Psychology"],
+                   "https://psych.utah.edu/people/faculty/index.php",
+                   card="div.isotope-item", name_sel="h2.h4 a", title_sel="p",
+                   title_case=True,
+                   strip_after=r"\s+(?:Office|Phone|Email|Fax)\b"),
+        _flip_dept("SOC", "Department of Sociology", ["Sociology"],
+                   "https://soc.utah.edu/people/index.php",
+                   card="div.c-grid-layout__cell",
+                   name_sel="h4.text-uppercase a",
+                   title_sel="h4:not(.text-uppercase)", title_case=True),
+        _flip_dept("ECON", "Department of Economics", ["Economics"],
+                   "https://econ.utah.edu/people/faculty.php",
+                   card="div.isotope-item", name_sel="span.h3", title_sel="em"),
+        # Parks, Recreation & Tourism (College of Health, Cohesion CMS).
+        {
+            "short": "PRT",
+            "name": "Department of Parks, Recreation, and Tourism",
+            "majors": ["Parks, Recreation and Tourism"],
+            "directory_url": "https://health.utah.edu/parks-recreation-tourism/faculty",
+            "scrape": {
+                "url": "https://health.utah.edu/parks-recreation-tourism/faculty",
+                "selectors": {
+                    "card": "div.gls-card",
+                    "name": "h3.gls-card-title",
+                    "title": "p.gls-text-meta",
+                    "email": "a[href^='mailto:']",
+                },
+                "ladder_filter": _LADDER,
+            },
+        },
+        # ===== College of Fine Arts =========================================
+        _omni_dept("MUSIC", "School of Music", ["Music"],
+                   "https://music.utah.edu/faculty/index.php"),
+        {
+            "short": "THEATRE",
+            "name": "Department of Theatre",
+            "majors": ["Theatre"],
+            "directory_url": "https://theatre.utah.edu/about/people",
+            "scrape": {
+                "url": "https://theatre.utah.edu/about/people",
+                # People are listed once per performance area — the engine's
+                # id/url dedup collapses the cross-area duplicates.
+                "selectors": {
+                    "card": "div.card",
+                    "name": ".card-title",
+                    "link": "a[href]",
+                    "title": ".card-text",
+                    "title_re": _RANK_RE,
+                },
+                "ladder_filter": _LADDER,
             },
         },
     ],
