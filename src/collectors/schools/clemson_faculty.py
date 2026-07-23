@@ -1,51 +1,78 @@
 """Clemson University faculty config (via the faculty_graph engine).
 
-Three server-rendered markup families, every page a plain static 200 to a bare
-request (no WAF, no JS render). Live-verified 2026-07-20.
+Clemson's CMS server-renders every faculty roster as a plain static 200 to a
+bare request (no WAF, no JS render needed), but the markup differs by college.
+Seven server-rendered families cover 22 departments across four colleges.
+Live-verified 2026-07-24.
 
 * **CECAS "person-card" grid — School of Computing.**
-  ``div.person-card`` cards on www.clemson.edu/cecas/departments/computing.
-  Name in ``h3.person-name`` (no profile link — the card exposes only a mailto,
-  so the record's url falls back to the directory), rank in the first
-  ``p.about > strong``, address in a ``p.about a[href^=mailto:]``. The page mixes
-  15 staff cards, postdocs and administrators alongside ladder faculty; the
-  ``field_filter`` (require ``professor|lecturer`` on the rank ``<strong>``, which
-  every card carries) drops the non-faculty and keeps every professor / lecturer
-  rank (incl. professor-of-practice / research / principal-lecturer).
+  ``div.person-card`` cards. Name in ``h3.person-name`` (no profile link — the
+  card exposes only a mailto), rank in the first ``p.about > strong``, address in
+  a ``p.about a[href^=mailto:]``. The ``_CECAS_FIELD`` gate (require
+  ``professor|lecturer`` on the rank ``<strong>``) drops the staff / postdoc /
+  administrator cards these flat grids mix in.
 
-* **CECAS "cell large-3" grid — ECE and Mechanical Engineering.**
-  ``div.cell.large-3`` cards on the ece / me department sites. Name in an
-  ``h3 > a`` that links the person's profile page, rank in ``p.about > strong``
-  (rendered ALL-CAPS), address in a ``p.about a[href^=mailto:]``. Both pages list
-  every rank under one flat grid (ECE: Faculty + Joint Faculty + Research Faculty
-  + Professor of Practice; ME: Primary Faculty + Lecturer + Professor of Practice
-  + a Staff block of 18 coordinators/managers). The same ``field_filter`` keeps
-  only professor/lecturer ranks — dropping ME's entire staff block and ECE's lone
-  non-ranked department-chair/research-associate cards — so no non-faculty leak in.
+* **CECAS "cell large-3" grid — ECE, Mechanical, Bioengineering, Chemical &
+  Biomolecular, Industrial Engineering.**
+  ``div.cell.large-3`` cards. Name in an ``h3 > a`` (profile link), rank in
+  ``p.about > strong`` (ALL-CAPS), address a plain mailto. Same ``_CECAS_FIELD``
+  rank gate isolates ladder faculty from the joint/research/staff cards.
 
-* **College of Science LiveWhale table — Physics & Astronomy, Chemistry, and
-  Mathematical & Statistical Sciences.**
-  www.clemson.edu/science/…/about/people.html renders one big ``<table>`` whose
-  every person is a ``<tr>`` of: a category cell (``td`` #1 — "faculty",
-  "graduatestudents", "postdocs", "adjunct", "staff", "emeritifaculty",
-  "inmemoriam", …), a name cell (``td`` #2, an ``a[href*=/profiles/]`` in
-  "Last, First" order — ``name_flip`` un-inverts it), a rank cell (``td`` #3), and
-  an email cell (``td`` #4, a plain ``mailto``). These directories are dominated
-  by graduate students (Physics 86, Math 126) plus postdocs, adjuncts, emeriti and
-  staff, so a title gate alone is not enough — the ``field_filter`` pins the
-  category cell to exactly ``faculty`` (``^faculty$`` — the combined dual-tags
-  "faculty postdocs"/"faculty adjunct"/"faculty emeritifaculty" are correctly
-  excluded), and a ``ladder_filter`` require ``professor|lecturer`` drops the few
-  non-ranked administrators (dept-chair/associate-dean) left in that category.
-  Emeriti that slip the category are additionally dropped by the engine's retired
-  gate. Every kept row exposes a real ``mailto`` → 100% email on the listing.
+* **CECAS "mse" card — Materials Science and Engineering.**
+  Same ``div.cell.large-3`` shell but a hand-built inner layout: name in the
+  first ``p > strong``, rank as bare text opening the second ``<p>``
+  ("Associate Professor <br> phone <br> mailto"). ``title_strip_after`` clips the
+  rank at the first phone/paren/email marker; the gate reads the same cell.
+
+* **CECAS engineering table — Civil, Environmental Eng & Earth Sciences,
+  Automotive Engineering.**
+  A ``<table>`` of ``tr.cell`` rows. Civil keeps name (``td strong``, "Last,
+  First") and rank (a same-cell ``<em>``) in one cell; EEES/Automotive split them
+  (name ``td a strong``, rank ``td:nth-of-type(2)``). EEES lists "Last, First"
+  (``name_flip``); Automotive lists "First Last". The gate requires
+  ``professor|lecturer`` on the rank cell, dropping the admin/staff tables that
+  share the page.
+
+* **College of Science LiveWhale table — Physics & Astronomy, Chemistry,
+  Mathematical & Statistical Sciences, Biological Sciences, Genetics &
+  Biochemistry.**
+  One ``<table>`` per department; each person a ``<tr>`` of category cell (td#1),
+  name link (td#2, "Last, First" → ``name_flip``), rank (td#3), mailto (td#4).
+  Grad students / postdocs / adjuncts / emeriti / staff dominate these rosters,
+  so ``field_filter`` pins the category cell to the faculty tag (``^faculty$`` for
+  most; Genetics tags its ladder faculty ``allfaculty``) and a ``ladder_filter``
+  drops the rare non-ranked administrator left in that category.
+
+* **CBSHS profile table — Psychology, Parks/Recreation & Tourism Management.**
+  A ``<table>`` of plain ``<tr>`` rows carrying a college-directory
+  ``/profiles/`` link: name (td#1, "Last, First" → ``name_flip``), rank (td#2),
+  phone+mailto (td#3). The rank gate keeps ladder/teaching faculty.
+
+* **Powers College of Business grid — Economics, Finance, Management,
+  School of Accountancy, Marketing.**
+  A ``div.columns`` info-column per person (paired with a photo column): name in
+  ``h4 > a[href*=/profiles/]`` (First Last), rank in the first ``p > strong``,
+  a "Fields:"/office/mailto block below. The gate requires
+  ``professor|lecturer|chair`` (business rosters title endowed/interim chairs
+  without the word "professor") and drops the lone admin-coordinator card.
 
 Single source ("clemson_faculty"); department rides each record, ids namespaced
 by department short-code.
 
-Live-verified 2026-07-20 (cards → kept-after-gate): COMP 75/58, ECE 60/58,
-ME 66/48, PHYS 180/33, CHEM 80/45, MATH 261/93 → 335 total, 100% emailed on the
-listing (every kept card/row carries a plain clemson.edu mailto).
+Live-verified 2026-07-24 total ≈ 750 records, ~90%+ emailed on the listing.
+
+DROPPED / phase-2 (no reliably-discoverable static faculty roster — the college
+sub-nav is JS-rendered and per-department roster URLs are bespoke and flaky):
+  * College of Agriculture, Forestry and Life Sciences (CAFLS) — dept slugs
+    unresolved behind a JS accordion; landing catch-all soft-404s every guessed
+    roster path. Needs render-nav discovery in phase-2.
+  * College of Architecture, Arts and Humanities (``/cah/…``) — English,
+    History & Geography, Languages, Philosophy & Religion, Performing Arts,
+    School of Architecture: inconsistent per-dept roster paths, several flaky
+    (200/404 flap). Needs per-dept render discovery in phase-2.
+  * CBSHS Communication / Nursing / Public Health / Political Science /
+    Sociology-Anthropology-Criminal Justice — no static roster page found
+    (rendered nav exposes no roster link; rely on the college-wide directory).
 """
 
 from __future__ import annotations
@@ -53,10 +80,6 @@ from __future__ import annotations
 from .. import faculty_graph
 
 # ---- CECAS "person-card" grid (School of Computing) ------------------------
-# div.person-card: name h3.person-name (no profile link — mailto only), rank in
-# the first p.about<strong>, email a plain mailto. field_filter (not ladder) so a
-# title-less card can't default to "Professor": require_present reads the rank
-# <strong> directly (every card has one) and include keeps only professor/lecturer.
 _CARD_SEL = {
     "card": "div.person-card",
     "name": "h3.person-name",
@@ -64,10 +87,7 @@ _CARD_SEL = {
     "email": 'p.about a[href^="mailto:"]',
 }
 
-# ---- CECAS "cell large-3" grid (ECE, Mechanical Engineering) ---------------
-# div.cell.large-3: name h3>a (profile link), rank p.about<strong> (ALL CAPS),
-# email a plain mailto. Same professor/lecturer field gate isolates ladder faculty
-# from the staff / non-ranked cards these flat grids mix in.
+# ---- CECAS "cell large-3" grid (ECE, ME, Bioeng, ChemBio, Industrial) ------
 _GRID_SEL = {
     "card": "div.cell.large-3",
     "name": "h3",
@@ -77,33 +97,65 @@ _GRID_SEL = {
 }
 
 # Shared CECAS rank gate: require a Professor/Lecturer rank word on the card's
-# rank <strong>; require_present drops a card that has no rank element at all
-# (staff cards carry a staff-title strong, so they're dropped by the include miss).
+# rank <strong>; require_present drops a card that has no rank element at all.
 _CECAS_FIELD = {
     "selector": "p.about strong",
     "require_present": True,
     "include": r"professor|lecturer",
 }
 
-# ---- College of Science LiveWhale table (Physics, Chemistry, MathStat) -----
-# One <table>; each person a <tr>. td#1 = category tag, td#2 = name link
-# ("Last, First" → name_flip), td#3 = rank, td#4 = mailto. field_filter pins the
-# category cell to exactly "faculty" (drops grad students / postdocs / adjuncts /
-# emeriti / staff and the dual-tag combos); ladder_filter then drops the rare
-# non-ranked administrator left in the faculty category.
-_TABLE_SEL = {
+# ---- CECAS "mse" card (Materials Science) ----------------------------------
+# div.cell.large-3 shell but name in first p>strong, rank opening the 2nd <p>.
+_MSE_SEL = {
+    "card": "div.cell.large-3",
+    "name": "p strong",
+    "title": "p:nth-of-type(2)",
+    "title_strip_after": r"\s*(?:\(|\d{3}|[\w.+-]+@)",
+    "email": 'a[href^="mailto:"]',
+}
+_MSE_FIELD = {
+    "selector": "p:nth-of-type(2)",
+    "require_present": True,
+    "include": r"professor|lecturer",
+}
+
+# ---- College of Science LiveWhale table ------------------------------------
+_SCI_SEL = {
     "card": "tr:has(a[href*='/profiles/'])",
     "name": "td a[href*='/profiles/']",
     "link": "td a[href*='/profiles/']",
     "title": "td:nth-of-type(3)",
     "email": 'td a[href^="mailto:"]',
 }
-_TABLE_FIELD = {
-    "selector": "td:nth-of-type(1)",
-    "require_present": True,
-    "include": r"^faculty$",
+_SCI_LADDER = {"require": r"professor|lecturer"}
+
+# ---- CBSHS profile table (Psychology, PRTM) --------------------------------
+_CB_SEL = {
+    "card": "tr:has(a[href*='/profiles/'])",
+    "name": "td a[href*='/profiles/']",
+    "link": "td a[href*='/profiles/']",
+    "title": "td:nth-of-type(2)",
+    "email": 'td a[href^="mailto:"]',
 }
-_TABLE_LADDER = {"require": r"professor|lecturer"}
+_CB_FIELD = {
+    "selector": "td:nth-of-type(2)",
+    "require_present": True,
+    "include": r"professor|lecturer",
+}
+
+# ---- Powers College of Business grid ---------------------------------------
+_BIZ_SEL = {
+    "card": 'div.columns:has(h4 a[href*="/profiles/"])',
+    "name": "h4 a",
+    "link": "h4 a",
+    "title": "p strong",
+    "email": 'a[href^="mailto:"]',
+}
+_BIZ_FIELD = {
+    "selector": "p strong",
+    "require_present": True,
+    "include": r"professor|lecturer|chair",
+}
 
 
 def _computing(short: str, name: str, majors: list[str], url: str) -> dict:
@@ -115,21 +167,74 @@ def _computing(short: str, name: str, majors: list[str], url: str) -> dict:
 
 
 def _grid(short: str, name: str, majors: list[str], url: str) -> dict:
-    """ECE / ME on the CECAS cell-large-3 grid."""
+    """An engineering department on the CECAS cell-large-3 grid."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _GRID_SEL, "field_filter": _CECAS_FIELD},
     }
 
 
-def _science(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A College of Science department on the shared LiveWhale people table."""
+def _mse(short: str, name: str, majors: list[str], url: str) -> dict:
+    """Materials Science on its hand-built cell-large-3 card."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _TABLE_SEL, "name_flip": True,
-                   "field_filter": _TABLE_FIELD, "ladder_filter": _TABLE_LADDER},
+        "scrape": {"url": url, "selectors": _MSE_SEL, "field_filter": _MSE_FIELD},
     }
 
+
+def _eng_table(short: str, name: str, majors: list[str], url: str, *,
+               name_sel: str, title_sel: str, flip: bool) -> dict:
+    """A CECAS engineering department on a tr.cell faculty table."""
+    sel = {
+        "card": "tr.cell",
+        "name": name_sel,
+        "link": name_sel,
+        "title": title_sel,
+        # A few Civil rows carry a trailing comma/space ("Amer, Omar,") that would
+        # survive name_flip and leak a comma into the name; strip it pre-flip.
+        "name_strip": r"[,\s]+$",
+        "email": 'td a[href^="mailto:"]',
+    }
+    field = {"selector": title_sel, "require_present": True,
+             "include": r"professor|lecturer"}
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": sel, "name_flip": flip,
+                   "field_filter": field},
+    }
+
+
+def _science(short: str, name: str, majors: list[str], url: str,
+             category: str = r"^faculty$") -> dict:
+    """A College of Science department on the shared LiveWhale people table."""
+    field = {"selector": "td:nth-of-type(1)", "require_present": True,
+             "include": category}
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _SCI_SEL, "name_flip": True,
+                   "field_filter": field, "ladder_filter": _SCI_LADDER},
+    }
+
+
+def _cbshs(short: str, name: str, majors: list[str], url: str) -> dict:
+    """A CBSHS department on its /profiles/ faculty table."""
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _CB_SEL, "name_flip": True,
+                   "field_filter": _CB_FIELD},
+    }
+
+
+def _business(short: str, name: str, majors: list[str], url: str) -> dict:
+    """A Powers College of Business department on its info-column grid."""
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _BIZ_SEL, "field_filter": _BIZ_FIELD},
+    }
+
+
+_CECAS = "https://www.clemson.edu/cecas/departments"
+_SCI = "https://www.clemson.edu/science/academics/departments"
 
 SCHOOL: dict = {
     "school_slug": "clemson",
@@ -147,23 +252,77 @@ SCHOOL: dict = {
         _computing("COMP", "School of Computing",
                    ["Computer Science", "Computer Information Systems",
                     "Data Science"],
-                   "https://www.clemson.edu/cecas/departments/computing/people/index.html"),
+                   f"{_CECAS}/computing/people/index.html"),
         _grid("ECE", "Holcombe Department of Electrical and Computer Engineering",
               ["Electrical Engineering", "Computer Engineering"],
-              "https://www.clemson.edu/cecas/departments/ece/people/index.html"),
+              f"{_CECAS}/ece/people/index.html"),
         _grid("ME", "Department of Mechanical Engineering",
               ["Mechanical Engineering"],
-              "https://www.clemson.edu/cecas/departments/me/people/index.html"),
+              f"{_CECAS}/me/people/index.html"),
+        _grid("BIOE", "Department of Bioengineering",
+              ["Biomedical Engineering", "Bioengineering"],
+              f"{_CECAS}/bioe/people/index.html"),
+        _grid("CHBE", "Department of Chemical and Biomolecular Engineering",
+              ["Chemical Engineering"],
+              f"{_CECAS}/chbe/people/index.html"),
+        _grid("IE", "Department of Industrial Engineering",
+              ["Industrial Engineering"],
+              f"{_CECAS}/ie/people/index.html"),
+        _mse("MSE", "Department of Materials Science and Engineering",
+             ["Materials Science and Engineering"],
+             f"{_CECAS}/mse/people/index.html"),
+        _eng_table("CE", "Glenn Department of Civil Engineering",
+                   ["Civil Engineering"],
+                   f"{_CECAS}/ce/people/index.html",
+                   name_sel="td strong", title_sel="td em", flip=True),
+        _eng_table("EEES", "Department of Environmental Engineering and Earth Sciences",
+                   ["Environmental Engineering", "Geology"],
+                   f"{_CECAS}/eees/people/index.html",
+                   name_sel="td a strong", title_sel="td:nth-of-type(2)", flip=True),
+        _eng_table("AUE", "Department of Automotive Engineering",
+                   ["Automotive Engineering"],
+                   f"{_CECAS}/automotive-engineering/people/index.html",
+                   name_sel="td a strong", title_sel="td:nth-of-type(2)", flip=False),
         # ---- College of Science -------------------------------------------
         _science("PHYS", "Department of Physics and Astronomy",
                  ["Physics", "Astronomy", "Astrophysics"],
-                 "https://www.clemson.edu/science/academics/departments/physics/about/people.html"),
+                 f"{_SCI}/physics/about/people.html"),
         _science("CHEM", "Department of Chemistry",
                  ["Chemistry", "Biochemistry"],
-                 "https://www.clemson.edu/science/academics/departments/chemistry/about/people.html"),
+                 f"{_SCI}/chemistry/about/people.html"),
         _science("MATH", "School of Mathematical and Statistical Sciences",
                  ["Mathematical Sciences", "Statistics", "Applied Mathematics"],
-                 "https://www.clemson.edu/science/academics/departments/mathstat/about/people.html"),
+                 f"{_SCI}/mathstat/about/people.html"),
+        _science("BIOSCI", "Department of Biological Sciences",
+                 ["Biological Sciences", "Microbiology"],
+                 f"{_SCI}/biosci/about/people.html"),
+        _science("GEN", "Department of Genetics and Biochemistry",
+                 ["Genetics", "Biochemistry"],
+                 f"{_SCI}/genbio/about/people.html",
+                 category=r"^allfaculty"),
+        # ---- College of Behavioral, Social and Health Sciences ------------
+        _cbshs("PSYC", "Department of Psychology",
+               ["Psychology"],
+               "https://www.clemson.edu/cbshs/departments/psychology/people.html"),
+        _cbshs("PRTM", "Department of Parks, Recreation and Tourism Management",
+               ["Parks, Recreation and Tourism Management"],
+               "https://www.clemson.edu/cbshs/departments/prtm/about/prtm-directory.html"),
+        # ---- Wilbur O. and Ann Powers College of Business -----------------
+        _business("ECON", "John E. Walker Department of Economics",
+                  ["Economics"],
+                  "https://www.clemson.edu/business/academics/economics/faculty-staff/index.html"),
+        _business("FIN", "Department of Finance",
+                  ["Finance"],
+                  "https://www.clemson.edu/business/academics/finance/faculty-staff/index.html"),
+        _business("MGT", "Department of Management",
+                  ["Management"],
+                  "https://www.clemson.edu/business/academics/management/faculty-staff.html"),
+        _business("ACCT", "School of Accountancy",
+                  ["Accounting"],
+                  "https://www.clemson.edu/business/academics/accountancy/faculty-staff.html"),
+        _business("MKT", "Department of Marketing",
+                  ["Marketing"],
+                  "https://www.clemson.edu/business/academics/marketing/faculty-staff.html"),
     ],
 }
 
