@@ -2626,8 +2626,21 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
         if emails is not None:
             emails.append(kwargs)
 
+    async def _passthrough_send_webpush(**kwargs):
+        # Bypass the endpoint validator (it would DNS-resolve the fake test
+        # endpoints) but keep the exact kwargs contract the route hands the
+        # real dispatcher; the SSRF boundary itself is pinned by
+        # test_push_security.py.
+        return kwargs["webpush_func"](
+            subscription_info=kwargs["subscription_info"],
+            data=kwargs["data"],
+            vapid_private_key=kwargs["vapid_private_key"],
+            vapid_claims=kwargs["vapid_claims"],
+        )
+
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
     monkeypatch.setattr(pywebpush, "webpush", webpush_impl or _default_webpush)
+    monkeypatch.setattr(push_mod, "send_webpush_safely", _passthrough_send_webpush)
     monkeypatch.setattr(push_mod, "_send_via_resend", _fake_send)
     # Per-recipient quota is in-memory module state shared across tests.
     email_mod._recipient_sends.clear()

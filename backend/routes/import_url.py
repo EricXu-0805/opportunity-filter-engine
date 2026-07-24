@@ -21,6 +21,12 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.lib.blocking import (
+    SINGLE_LLM_TIMEOUT_SECONDS,
+    BlockingWorkOverloaded,
+    BlockingWorkTimeout,
+    run_blocking,
+)
 from src.collectors.url_parser import is_safe_url, parse_url_llm
 
 logger = logging.getLogger(__name__)
@@ -44,7 +50,29 @@ async def import_url(req: ImportUrlRequest) -> ImportUrlResponse:
     if not ok:
         raise HTTPException(status_code=400, detail=f"unsafe url: {reason}")
 
-    result = parse_url_llm(req.url)
+    # DNS, HTTP, HTML parsing, and the optional LLM client are synchronous.
+    # Keep them off the ASGI event loop so one slow import cannot stall every
+    # request handled by the worker.
+    try:
+        result = await run_blocking(
+            parse_url_llm,
+            req.url,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkOverloaded as exc:
+        logger.warning("import_url_work_rejected reason=overloaded")
+        raise HTTPException(
+            status_code=503,
+            detail="URL import is busy. Try again shortly.",
+            headers={"Retry-After": "5"},
+        ) from exc
+    except BlockingWorkTimeout as exc:
+        logger.warning("import_url_work_rejected reason=timeout")
+        raise HTTPException(
+            status_code=503,
+            detail="URL import timed out. Try again shortly.",
+            headers={"Retry-After": "5"},
+        ) from exc
     if result is None:
         return ImportUrlResponse(
             ok=False,

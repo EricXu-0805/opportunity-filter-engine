@@ -39,6 +39,7 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException
 
 from backend.data_loader import load_opportunities_by_id
+from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
 from backend.lib.grounding import LENIENT_PROSE
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured, model_for
@@ -504,7 +505,15 @@ async def extract_bullets(request: ExtractBulletsRequest) -> ExtractBulletsRespo
         return ExtractBulletsResponse(bullets=[], method="heuristic")
 
     if is_configured():
-        ai = _ai_extract_bullets(text)
+        try:
+            ai = await run_blocking(
+                _ai_extract_bullets,
+                text,
+                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            )
+        except BlockingWorkTimeout:
+            logger.warning("tailor extract: model call timed out; using heuristic")
+            ai = None
         if ai:
             return ExtractBulletsResponse(bullets=ai, method="ai")
 
@@ -555,9 +564,18 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         )
 
     profile_dict = request.profile.model_dump()
-    bullets = _ai_tailor_bullets(
-        profile_dict, opp, request.original_bullets, locale=request.locale,
-    )
+    try:
+        bullets = await run_blocking(
+            _ai_tailor_bullets,
+            profile_dict,
+            opp,
+            request.original_bullets,
+            locale=request.locale,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("tailor: model call timed out; using passthrough fallback")
+        bullets = None
     if not bullets:
         return _local_fallback(
             request.original_bullets,
@@ -807,7 +825,16 @@ async def structure_resume(request: StructureResumeRequest) -> StructureResumeRe
         return StructureResumeResponse(sections=[], method="heuristic", warnings=["empty_resume"])
 
     if is_configured():
-        ai = _ai_structure_resume(text, locale=request.locale)
+        try:
+            ai = await run_blocking(
+                _ai_structure_resume,
+                text,
+                locale=request.locale,
+                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            )
+        except BlockingWorkTimeout:
+            logger.warning("tailor structure: model call timed out; using heuristic")
+            ai = None
         if ai:
             return StructureResumeResponse(sections=ai, method="ai")
 
@@ -991,7 +1018,17 @@ async def renovate_resume(
         return _passthrough(["llm_not_configured"])
 
     _schedule_usage(authorization, "renovation")
-    plan = _ai_renovation_plan(sections, opp, locale=request.locale)
+    try:
+        plan = await run_blocking(
+            _ai_renovation_plan,
+            sections,
+            opp,
+            locale=request.locale,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("tailor renovate: plan call timed out; using passthrough")
+        plan = None
     if not plan:
         return _passthrough(["macro_plan_failed"])
 
@@ -1018,10 +1055,19 @@ async def renovate_resume(
         # so the length check below compares the model's RAW item count — a
         # response padded with empty items can't sneak past as "matching" and
         # shift rewrites onto the wrong bullet ids.
-        raw_rewrites = _ai_tailor_bullets(
-            profile_dict, opp, [t for _, t in fg], locale=request.locale,
-            preserve_slots=True,
-        )
+        try:
+            raw_rewrites = await run_blocking(
+                _ai_tailor_bullets,
+                profile_dict,
+                opp,
+                [t for _, t in fg],
+                locale=request.locale,
+                preserve_slots=True,
+                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            )
+        except BlockingWorkTimeout:
+            logger.warning("tailor renovate: rewrite call timed out")
+            raw_rewrites = None
         if not raw_rewrites:
             warnings.append("rewrite_failed_or_invalid")
         elif len(raw_rewrites) != len(fg):
@@ -1147,9 +1193,19 @@ async def optimize_bullet(
 
     _schedule_usage(authorization, "bullet_optimize")
     profile_dict = request.profile.model_dump()
-    result = _ai_optimize_bullet(
-        profile_dict, opp, current, request.instruction, locale=request.locale,
-    )
+    try:
+        result = await run_blocking(
+            _ai_optimize_bullet,
+            profile_dict,
+            opp,
+            current,
+            request.instruction,
+            locale=request.locale,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("tailor bullet: model call timed out")
+        result = None
     if not result:
         return BulletOptimizeResponse(text=current, changed=False, warnings=["llm_failed_or_invalid_json"])
 
