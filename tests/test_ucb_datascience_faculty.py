@@ -71,3 +71,43 @@ class TestNormalize:
 
     def test_source_default_registered(self):
         assert SOURCE_DEFAULTS["ucb_datascience_faculty"] == ("ucb", "unknown")
+
+
+class TestDedupKeepRicher:
+    """The DSUS listing repeats people across sections (link-less leadership
+    card + home-department card with a real profile URL). Live probe 2026-07:
+    first-wins kept the poorer card for Lisa Yan / John DeNero / Zachary
+    Pardos, dropping their real profile URLs."""
+
+    def test_richer_later_duplicate_wins(self):
+        raw = [
+            {"name": "Lisa Yan", "url": "",
+             "title": "Faculty Director of Instruction"},
+            {"name": "Ada Unique", "url": "/people/ada", "title": "Professor"},
+            {"name": "Lisa Yan",
+             "url": "https://www2.eecs.berkeley.edu/Faculty/Homepages/yanlisa.html",
+             "title": "Department of Electrical Engineering and Computer Sciences"},
+        ]
+        out = ds._dedup_keep_richer(raw)
+        assert [r["name"] for r in out] == ["Lisa Yan", "Ada Unique"]  # order kept
+        assert out[0]["url"].startswith("https://www2.eecs")
+
+    def test_poorer_later_duplicate_loses(self):
+        raw = [
+            {"name": "John DeNero", "url": "http://denero.org",
+             "title": "Department of EECS"},
+            {"name": "John DeNero", "url": "", "title": ""},
+        ]
+        out = ds._dedup_keep_richer(raw)
+        assert len(out) == 1
+        assert out[0]["url"] == "http://denero.org"
+
+    def test_specific_title_beats_bare_professor(self):
+        raw = [
+            {"name": "A B", "url": "", "title": "Professor"},
+            {"name": "A B", "url": "", "title": "Statistics, Data Science Undergraduate Studies"},
+        ]
+        assert ds._dedup_keep_richer(raw)[0]["title"].startswith("Statistics")
+
+    def test_nameless_rows_dropped(self):
+        assert ds._dedup_keep_richer([{"name": "  ", "url": "x", "title": "y"}]) == []

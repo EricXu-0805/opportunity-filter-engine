@@ -203,17 +203,34 @@ def _scrape_links(config: dict) -> list[dict]:
 
 
 def fetch_and_normalize(enrich: bool = True) -> list[dict]:
-    """Scrape every configured department and return normalized records."""
+    """Scrape every configured department and return normalized records.
+
+    Per-department counts are logged (zeros included, with a warning): this
+    source aggregates 10 departments under one "fetched" number in the refresh
+    summary, so without them a single department's listing silently breaking
+    (moved URL, changed markup) is invisible — the lump total just sags."""
     out: list[dict] = []
+    per_dept: dict[str, int] = {}
     for config in CONFIGS:
         raw = _scrape_card(config) if config["mode"] == "card" else _scrape_links(config)
         raw = dedup_by_profile_url(raw)
         logger.info(f"  {config['short']}: {len(raw)} faculty (listing)")
         if not raw:
+            per_dept[config["short"]] = 0
             continue
         if enrich:
             raw = enrich_faculty_from_profiles(raw, config)
-        out.extend(n for n in (normalize_faculty(p, config) for p in raw) if n)
+        normalized = [n for n in (normalize_faculty(p, config) for p in raw) if n]
+        per_dept[config["short"]] = len(normalized)
+        out.extend(normalized)
+    logger.info("ucb_extra_faculty per-department: "
+                + ", ".join(f"{short}={count}" for short, count in per_dept.items()))
+    for short, count in per_dept.items():
+        if count == 0:
+            logger.warning(
+                f"ucb_extra_faculty: {short} produced 0 records — "
+                f"its listing may have moved or changed markup"
+            )
     logger.info(f"Normalized {len(out)} UCB extra-department faculty opportunities")
     return out
 

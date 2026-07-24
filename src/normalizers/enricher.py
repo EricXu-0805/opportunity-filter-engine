@@ -16,6 +16,8 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from .rolling_truth import reconcile_rolling_with_deadline
+
 # Canonical major name -> list of regex patterns (lowercase, word-boundary-aware).
 # Title-prefix patterns (ending in ":" or appearing at start) get stronger weight.
 MAJOR_PATTERNS: dict[str, list[str]] = {
@@ -498,6 +500,12 @@ def enrich_opportunity(opp: dict) -> dict:
 
     if "is_rolling" not in opp and is_rolling_deadline(opp):
         opp["is_rolling"] = True
+
+    # A record claiming BOTH a fixed deadline and rolling admission is lying to
+    # someone — the fellowship UI's rolling filter and deactivate_past's
+    # expiry skip both key on is_rolling. Demote-only; deadline-less records
+    # (faculty labs, R70-A defaults) are untouched.
+    reconcile_rolling_with_deadline(opp)
 
     _normalize_date_fields(opp)
 
