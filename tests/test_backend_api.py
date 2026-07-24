@@ -45,8 +45,28 @@ def sample_profile_req():
         "research_interests_text": "machine learning",
         "linkedin_url": "",
         "github_url": "",
+        "scholar_url": "",
         "search_weight": 50,
     }
+
+
+class TestProfileRequestUrls:
+    def test_scholar_url_accepted_and_capped(self, sample_profile_req):
+        # scholar_url mirrors linkedin_url/github_url: accepted by the schema and
+        # capped at 300 chars by the shared cap_url validator.
+        from backend.schemas import ProfileRequest
+
+        profile = ProfileRequest(**{
+            **sample_profile_req,
+            "scholar_url": "https://scholar.google.com/citations?user=" + "A" * 400,
+        })
+        assert profile.scholar_url.startswith("https://scholar.google.com/citations?user=")
+        assert len(profile.scholar_url) == 300
+
+    def test_scholar_url_defaults_to_empty(self):
+        from backend.schemas import ProfileRequest
+
+        assert ProfileRequest().scholar_url == ""
 
 
 class TestHealthEndpoint:

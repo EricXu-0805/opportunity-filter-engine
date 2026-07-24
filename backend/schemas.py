@@ -40,6 +40,9 @@ class ProfileRequest(BaseModel):
     research_interests_text: str = ""
     linkedin_url: str = ""
     github_url: str = ""
+    # The student's own public Google Scholar profile URL. Like linkedin_url it
+    # does not inform matching — it's surfaced in the cold-email signature.
+    scholar_url: str = ""
     search_weight: int = 50
     # "I'm still exploring" — widens matching (lifts cross-domain major floors,
     # suppresses the topic-alignment penalty, de-emphasizes readiness, and
@@ -73,7 +76,7 @@ class ProfileRequest(BaseModel):
     def normalize_home_school(cls, v: str) -> str:
         return v.strip().lower()[:50] or "uiuc"
 
-    @field_validator("linkedin_url", "github_url")
+    @field_validator("linkedin_url", "github_url", "scholar_url")
     @classmethod
     def cap_url(cls, v: str) -> str:
         return v[:300]

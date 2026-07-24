@@ -36,6 +36,10 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.collectors.atomic_json import atomic_write_json  # noqa: E402
+
 WORK_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 SHARDS_DIR = PROJECT_ROOT / "data" / "processed" / "shards"
 NATIONAL = "national"
@@ -112,8 +116,7 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
                 kept.append((slug, len(recs), old_n))
                 counts[slug] = old_n
                 continue
-        with open(shard_path, "w", encoding="utf-8") as f:
-            json.dump(recs, f, ensure_ascii=False, separators=(",", ":"), default=str)
+        atomic_write_json(shard_path, recs, indent=None, separators=(",", ":"))
         counts[slug] = len(recs)
     if kept:
         for slug, new_n, old_n in kept:
@@ -143,8 +146,7 @@ def assemble(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
     if work_file.exists() and not force:
         return -1
     records = load_shards(shards_dir)
-    with open(work_file, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, separators=(",", ":"), default=str)
+    atomic_write_json(work_file, records, indent=None, separators=(",", ":"))
     return len(records)
 
 
