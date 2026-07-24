@@ -411,8 +411,16 @@ class RequestBodyLimitMiddleware:
 def _warmup() -> None:
     """Load the opportunity corpus + fit the TF-IDF vectorizer. Without this the
     first user request after a cold start pays the ~1-2s data-load + fit cost."""
+    import gc
+
     from backend.data_loader import load_opportunities_by_id
     load_opportunities_by_id()
+    # The corpus (~1GB of objects at 126k records) is immutable after load.
+    # Freezing moves it to a permanent generation the GC never scans again —
+    # cuts every later gen-2 collection from ~1M-object scans to the small
+    # per-request population, and keeps the collector from dirtying pages.
+    gc.collect()
+    gc.freeze()
 
 
 @asynccontextmanager
