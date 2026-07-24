@@ -174,8 +174,14 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "Chemistry",
+        "Biology"
+      ],
+      "skills_required": [
+        "Python",
+        "MATLAB"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "unknown",
@@ -10281,7 +10287,7 @@
       "Welsh literature",
       "the Global Middle Ages",
       "Silk Roads art and literature",
-      "“medieval” movies",
+      "medieval” movies",
       "trans/gender/sexuality studies",
       "history of race"
     ],

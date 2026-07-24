@@ -251,7 +251,9 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Business"
+      ],
       "skills_required": [
         "Excel",
         "SPSS"

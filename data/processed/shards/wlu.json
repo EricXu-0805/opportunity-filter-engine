@@ -322,7 +322,9 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Business"
+      ],
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
@@ -469,8 +471,13 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "Philosophy"
+      ],
+      "skills_required": [
+        "Python",
+        "Git"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "unknown",
@@ -542,7 +549,10 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "History",
+        "Library & Information Science"
+      ],
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,

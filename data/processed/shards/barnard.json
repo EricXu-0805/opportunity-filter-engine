@@ -175,8 +175,14 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "Chemistry",
+        "Biology"
+      ],
+      "skills_required": [
+        "Python",
+        "MATLAB"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "unknown",
@@ -391,8 +397,12 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "Political Science"
+      ],
+      "skills_required": [
+        "Stata"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "unknown",
@@ -1168,8 +1178,8 @@
       ],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "unknown",
+      "citizenship_required": true,
+      "international_friendly": "no",
       "work_auth_notes": "External campus (Barnard College) — work authorization depends on the arrangement; ask the professor.",
       "eligibility_text_raw": "Research opportunity with Professor of Biology Jennifer Mansfield in the Department of Biology at Barnard College. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
@@ -9771,7 +9781,7 @@
     "department": "Department of English",
     "lab_or_program": "Prof. Jhumpa Lahiri's Research Group",
     "pi_name": "Jhumpa Lahiri",
-    "contact_email": "english@barnard.edu",
+    "contact_email": null,
     "url": "https://english.barnard.edu/profiles/jhumpa-lahiri",
     "location": "New York, NY",
     "on_campus": false,

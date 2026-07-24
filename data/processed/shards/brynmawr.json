@@ -30,7 +30,9 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Mathematics"
+      ],
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
@@ -452,7 +454,7 @@
     "on_campus": false,
     "remote_option": "unknown",
     "opportunity_type": "research",
-    "paid": "unknown",
+    "paid": "yes",
     "compensation_details": "",
     "deadline": null,
     "is_rolling": true,
@@ -9448,7 +9450,7 @@
     "source": "brynmawr_faculty",
     "source_url": "https://www.brynmawr.edu/inside/people/radcliffe-edmonds",
     "source_type": "faculty_research",
-    "title": "Research with Prof. Radcliffe Edmonds — GLCS (Greek social and intellectual history, with particular focus on mythology, religion)",
+    "title": "Research with Prof. Radcliffe Edmonds — GLCS (Greek social and intellectual history, religion, magic)",
     "organization": "Bryn Mawr College",
     "department": "Department of Greek, Latin, and Classical Studies",
     "lab_or_program": "Prof. Radcliffe Edmonds's Research Group",
@@ -9498,7 +9500,6 @@
     "description_clean": "Research opportunity with Paul Shorey Professor of Greek and Professor and Chair of Greek, Latin, and Classical Studies Radcliffe Edmonds in the Department of Greek, Latin, and Classical Studies at Bryn Mawr College. Research areas: Greek social and intellectual history, with particular focus on mythology, religion, magic, and Platonic philosophy Contact the professor directly to inquire about undergraduate research positions in their lab.",
     "keywords": [
       "Greek social and intellectual history",
-      "with particular focus on mythology",
       "religion",
       "magic",
       "Platonic philosophy"

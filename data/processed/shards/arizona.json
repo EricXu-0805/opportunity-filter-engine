@@ -105,7 +105,9 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Biology"
+      ],
       "skills_required": [
         "Python"
       ],
@@ -332,7 +334,9 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Biology"
+      ],
       "skills_required": [
         "Python"
       ],

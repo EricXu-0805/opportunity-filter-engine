@@ -177,7 +177,10 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Civil Engineering",
+        "Natural Resources & Environmental Sciences"
+      ],
       "skills_required": [],
       "skills_preferred": [],
       "citizenship_required": false,
@@ -323,7 +326,9 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Biology"
+      ],
       "skills_required": [
         "Python"
       ],

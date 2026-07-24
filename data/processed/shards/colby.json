@@ -101,8 +101,15 @@
         "freshman"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "Chemistry",
+        "Biology",
+        "Natural Resources & Environmental Sciences"
+      ],
+      "skills_required": [
+        "Python",
+        "MATLAB"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "unknown",
@@ -2243,8 +2250,8 @@
       ],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "unknown",
+      "citizenship_required": true,
+      "international_friendly": "no",
       "work_auth_notes": "External campus (Colby College) — work authorization depends on the arrangement; ask the professor.",
       "eligibility_text_raw": "Research opportunity with Assistant Professor of Mathematics Stephanie Dodson in the Department of Mathematics at Colby College. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
@@ -7182,8 +7189,8 @@
       ],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "unknown",
+      "citizenship_required": true,
+      "international_friendly": "no",
       "work_auth_notes": "External campus (Colby College) — work authorization depends on the arrangement; ask the professor.",
       "eligibility_text_raw": "Research opportunity with Herbert E. Wadsworth 1892 Professor of Economics; Associate Vice President for Academic Affairs and Associate Dean of Faculty, 2008-2010 Michael Donihue in the Department of Economics at Colby College. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },

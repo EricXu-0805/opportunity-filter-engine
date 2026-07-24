@@ -31,7 +31,10 @@
       ],
       "min_gpa": null,
       "majors": [],
-      "skills_required": [],
+      "skills_required": [
+        "Python",
+        "Git"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "yes",
@@ -250,8 +253,12 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "Natural Resources & Environmental Sciences"
+      ],
+      "skills_required": [
+        "Python"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "unknown",

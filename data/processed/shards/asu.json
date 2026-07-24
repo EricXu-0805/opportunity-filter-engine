@@ -251,7 +251,10 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Chemistry",
+        "Natural Resources & Environmental Sciences"
+      ],
       "skills_required": [
         "Python",
         "MATLAB"
@@ -327,7 +330,10 @@
         "junior"
       ],
       "min_gpa": null,
-      "majors": [],
+      "majors": [
+        "Statistics",
+        "Mathematics"
+      ],
       "skills_required": [
         "Python"
       ],

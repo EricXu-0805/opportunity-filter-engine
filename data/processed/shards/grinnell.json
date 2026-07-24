@@ -104,8 +104,13 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "Mathematics"
+      ],
+      "skills_required": [
+        "Python",
+        "Git"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "yes",
@@ -249,9 +254,18 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
-      "skills_preferred": [],
+      "majors": [
+        "Geography"
+      ],
+      "skills_required": [
+        "GIS",
+        "Python"
+      ],
+      "skills_preferred": [
+        "SQL",
+        "pandas",
+        "C++"
+      ],
       "citizenship_required": false,
       "international_friendly": "yes",
       "work_auth_notes": "",
@@ -395,8 +409,14 @@
         "senior"
       ],
       "min_gpa": null,
-      "majors": [],
-      "skills_required": [],
+      "majors": [
+        "History",
+        "Philosophy"
+      ],
+      "skills_required": [
+        "Python",
+        "Git"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "yes",
@@ -469,7 +489,9 @@
       ],
       "min_gpa": null,
       "majors": [],
-      "skills_required": [],
+      "skills_required": [
+        "Python"
+      ],
       "skills_preferred": [],
       "citizenship_required": false,
       "international_friendly": "unknown",
@@ -1230,8 +1252,8 @@
       ],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "unknown",
+      "citizenship_required": true,
+      "international_friendly": "no",
       "work_auth_notes": "External campus (Grinnell College) — work authorization depends on the arrangement; ask the professor.",
       "eligibility_text_raw": "Research opportunity with Professor Shannon Hinsa-Leasure in the Department of Biology at Grinnell College. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
@@ -9561,8 +9583,8 @@
       ],
       "skills_required": [],
       "skills_preferred": [],
-      "citizenship_required": false,
-      "international_friendly": "unknown",
+      "citizenship_required": true,
+      "international_friendly": "no",
       "work_auth_notes": "External campus (Grinnell College) — work authorization depends on the arrangement; ask the professor.",
       "eligibility_text_raw": "Research opportunity with Associate Professor Sharon Quinsaat in the Department of Sociology at Grinnell College. Contact the professor directly to inquire about undergraduate research positions in their lab."
     },
