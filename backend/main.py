@@ -27,6 +27,7 @@ init_sentry()
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.routes import (
@@ -273,6 +274,140 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 logger = logging.getLogger("ofe.main")
 
 
+DEFAULT_MAX_REQUEST_BODY_BYTES = 1 * 1024 * 1024
+MAX_CONFIGURABLE_REQUEST_BODY_BYTES = 16 * 1024 * 1024
+_MIN_CONFIGURABLE_REQUEST_BODY_BYTES = 1024
+
+
+def _request_body_limit_from_env() -> int:
+    """Read a bounded positive body limit, falling back safely on bad config."""
+    raw = os.environ.get("OFE_MAX_REQUEST_BODY_BYTES")
+    if raw is None:
+        return DEFAULT_MAX_REQUEST_BODY_BYTES
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = 0
+    if not _MIN_CONFIGURABLE_REQUEST_BODY_BYTES <= value <= MAX_CONFIGURABLE_REQUEST_BODY_BYTES:
+        logger.warning(
+            "Ignoring invalid OFE_MAX_REQUEST_BODY_BYTES=%r; using %d",
+            raw,
+            DEFAULT_MAX_REQUEST_BODY_BYTES,
+        )
+        return DEFAULT_MAX_REQUEST_BODY_BYTES
+    return value
+
+
+class _BodyTooLarge(StarletteHTTPException):
+    """The cumulative chunked body crossed the limit.
+
+    An HTTPException subclass on purpose: FastAPI's body-reading path
+    re-raises HTTPException unchanged (any other exception type is flattened
+    into a generic 400 before this middleware could see it), so Starlette's
+    exception handler renders the 413. The middleware's own catch below is the
+    fallback for body reads outside that machinery.
+    """
+
+    def __init__(self):
+        super().__init__(status_code=413, detail="Request body too large")
+
+
+class RequestBodyLimitMiddleware:
+    """Reject oversized HTTP bodies before FastAPI/Pydantic buffer them.
+
+    Without a cap, a chunked (or dishonestly-declared) request body buffers
+    unbounded inside Starlette's ``Request.body()`` on a 2 GB instance. A
+    trustworthy Content-Length is rejected up front without reading a byte;
+    multiple or malformed Content-Length headers are rejected as
+    request-smuggling ambiguity. Everything else flows straight through to the
+    app behind a counting ``receive`` wrapper — no upfront buffering — which
+    trips 413 the moment the cumulative chunk size crosses the limit.
+    """
+
+    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES):
+        if max_bytes < 1:
+            raise ValueError("max_bytes must be positive")
+        self.app = app
+        self.max_bytes = max_bytes
+
+    @staticmethod
+    async def _send_error(send, status: int) -> None:
+        if status == 413:
+            body = b'{"detail":"Request body too large"}'
+        else:
+            body = b'{"detail":"Invalid Content-Length"}'
+        await send(
+            {
+                "type": "http.response.start",
+                "status": status,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("ascii")),
+                    # The body may be unread or only partially consumed. Do not
+                    # reuse the HTTP/1.x connection with bytes still pending.
+                    (b"connection", b"close"),
+                ],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": body,
+                "more_body": False,
+            }
+        )
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
+        content_lengths = [
+            value.strip() for name, value in scope.get("headers", []) if name.lower() == b"content-length"
+        ]
+        if content_lengths:
+            # Multiple Content-Length fields are ambiguous even when their
+            # values happen to match, and have a history of request-smuggling
+            # discrepancies between proxies and application servers.
+            if len(content_lengths) != 1:
+                await self._send_error(send, 400)
+                return
+            raw_length = content_lengths[0]
+            if not raw_length or not raw_length.isdigit() or len(raw_length) > 20:
+                await self._send_error(send, 400)
+                return
+            if int(raw_length) > self.max_bytes:
+                await self._send_error(send, 413)
+                return
+
+        received_bytes = 0
+        response_started = False
+
+        async def counting_receive():
+            nonlocal received_bytes
+            message = await receive()
+            if message.get("type") == "http.request":
+                received_bytes += len(message.get("body", b"") or b"")
+                if received_bytes > self.max_bytes:
+                    raise _BodyTooLarge()
+            return message
+
+        async def tracking_send(message):
+            nonlocal response_started
+            if message.get("type") == "http.response.start":
+                response_started = True
+            await send(message)
+
+        try:
+            await self.app(scope, counting_receive, tracking_send)
+        except _BodyTooLarge:
+            if response_started:
+                # Too late for a clean 413 — surface the abort instead of
+                # corrupting an in-flight response.
+                raise
+            await self._send_error(send, 413)
+
+
 def _warmup() -> None:
     """Load the opportunity corpus + fit the TF-IDF vectorizer. Without this the
     first user request after a cold start pays the ~1-2s data-load + fit cost."""
@@ -299,6 +434,10 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_bytes=_request_body_limit_from_env(),
+)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 
