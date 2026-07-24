@@ -12,8 +12,6 @@
 -- re-onboards under their new anonymous user. Acceptable because this app
 -- has no production users yet.
 
-DROP FUNCTION IF EXISTS public.current_device_id();
-
 ALTER TABLE IF EXISTS profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS profile_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS interactions ENABLE ROW LEVEL SECURITY;
@@ -83,3 +81,9 @@ CREATE POLICY "interactions_update_own" ON interactions
 
 CREATE POLICY "interactions_delete_own" ON interactions
   FOR DELETE USING (device_id = auth.uid()::text);
+
+-- Migration 004's policies depend on current_device_id(). PostgreSQL will not
+-- drop a function while those policies still reference it, so retire the
+-- helper only after every legacy policy above has been replaced. The previous
+-- order failed a real Supabase CLI push with SQLSTATE 2BP01.
+DROP FUNCTION IF EXISTS public.current_device_id();

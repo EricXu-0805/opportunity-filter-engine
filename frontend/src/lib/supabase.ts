@@ -403,7 +403,7 @@ export async function signInExistingEmail(
 // pre-consent); `redeemPendingMerge` runs once on /auth/callback after
 // sign-in and merges the source rows into the now-permanent account
 // (SECURITY DEFINER functions do the actual cross-uid move — see
-// 017_cross_device_merge.sql + 018_oauth_merge_secret.sql for the
+// 017_cross_device_merge.sql + 0181_oauth_merge_secret.sql for the
 // takeover-proof model).
 
 export interface MergeSummary {
