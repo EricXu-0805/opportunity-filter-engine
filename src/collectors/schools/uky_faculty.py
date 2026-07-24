@@ -1,59 +1,99 @@
 """University of Kentucky faculty config (via the faculty_graph engine).
 
-Two server-rendered markup families, both plain static 200s through the proxy
-(no WAF, no JS render). Live-verified 2026-07-20.
+Full university-wide coverage across the five colleges the catalog spans —
+Engineering, Arts & Sciences, Gatton Business & Economics, Martin-Gatton
+Agriculture/Food/Environment, and Communication & Information. Five markup
+families; four are plain server-rendered 200s through the proxy, the fifth
+(CI) sits behind a JS bot wall and is recovered headless.
 
-* **College of Engineering — one shared Drupal "people-list" View.**
+* **College of Engineering — one shared Drupal "people-list" table.**
   All seven engineering departments render from ONE base
   (``engr.uky.edu/people``) differentiated only by a server-side
-  ``?field_department_target_id=<id>`` filter, so every department is the exact
-  same markup at a different URL. The View is a two-column table; each person is
-  one ``td.views-field-rendered-entity`` cell holding
-  ``span.people-list--name > a.underline-link`` (name + ``/people/<slug>``
-  profile link), ``span.people-list--title`` (rank), and a ``contact-info``
-  definition list whose Email ``<dd>`` carries a PLAIN ``mailto:`` (emails land
-  on the listing at ~100%). The View mixes ladder faculty with department Staff
-  (advisors, coordinators, systems programmers, business officers) and Emeriti,
-  so a ladder gate (``require professor|lecturer|instructor``) drops the Staff
-  bucket and the engine's own retired-title guard drops the Emeriti. A handful of
-  real faculty carrying only an endowed-chair / dean / interim-chair title with
-  no "Professor" word are dropped by the gate too (accuracy over recall, so no
-  staff leak in). No pagination — every department's full roster is on one page
-  (card counts match recon exactly: CS 46, ECE 50, MAE 62, BME 18, CME 39,
-  CE 37, Mining 21).
+  ``?field_department_target_id=<id>`` filter. Each person is one
+  ``td.views-field-rendered-entity`` cell holding ``span.people-list--name >
+  a.underline-link`` (name + ``/people/<slug>``), ``span.people-list--title``
+  (rank), and a contact-info ``<dl>`` whose Email ``<dd>`` carries a PLAIN
+  ``mailto:`` (~100% emailed on the listing). A ladder gate drops the Staff
+  bucket; the engine's retired-title guard drops Emeriti. No pagination.
 
 * **College of Arts & Sciences — one shared Drupal "directory-card" grid.**
-  Physics/Chemistry/Mathematics/Statistics each live on their own
-  ``<dept>.as.uky.edu/faculty`` subdomain but share one card component:
-  ``div.directory-card`` wrapping a ``.directory-content`` block whose bold div
-  (``div.text.color-wildcat-blue.font-bold > a``) holds the name +
-  ``/users/<netid>`` profile link and whose sibling non-bold div
-  (``div.text.color-wildcat-blue:not(.font-bold)``) holds the rank. There is NO
-  email anywhere on these listings (0 mailto) — name+title-only records here;
-  addresses come from the downstream per-profile enrichment pass via the
-  ``/users/<netid>`` link. The same ladder gate keeps professors/lecturers/
-  instructors and drops the few coordinators/joint-faculty/blank-title cards;
-  emeriti drop via the retired-title guard. Mathematics paginates (``?page=N``,
-  40 on page 0 + 6 on page 1 = 46) so it carries a ``paginate`` block; the other
-  three are single-page. Two Mathematics name anchors bake the rank into the
-  anchor text ("Richard Ehrenborg, Professor") — a ``name_strip`` trims the
-  trailing ", … Professor" so the pi_name is clean.
+  Nine departments each live on their own ``<dept>.as.uky.edu/faculty``
+  subdomain but share one card component: ``div.directory-card`` wrapping a
+  ``.directory-content`` block whose bold div holds the name + ``/users/<netid>``
+  link and whose non-bold sibling holds the rank. There is NO email on these
+  listings — addresses come from an env-gated per-profile enrichment pass that
+  follows the ``/users/<netid>`` link and reads the address out of the profile's
+  "Contact Information" block (``div.text1.font-bold:-soup-contains("Contact
+  Information") + div``; live-verified 5/5 on Physics and History). Mathematics
+  paginates (40/page); the rest are single-page. A ``name_strip`` trims a rank
+  baked into two Mathematics anchors. The ladder gate keeps
+  professor/lecturer/instructor AND endowed/named ``chair`` holders (History and
+  the humanities carry many named-chair faculty who lack the word "Professor").
+
+* **Gatton College of Business & Economics — the SAME Drupal people-list View
+  as Engineering.** One base (``gatton.uky.edu/faculty-research/faculty-
+  directory``) filtered by ``?field_gatton_department_target_id=<id>``; identical
+  inner markup (``span.people-list--name`` / ``span.people-list--title`` / plain
+  ``mailto:``) except the card is a ``div`` not a ``td``. ~100% emailed on the
+  listing. Five departments (Accountancy, Economics, Finance & Quantitative
+  Methods, Management, Marketing & Supply Chain).
+
+* **Martin-Gatton College of Agriculture, Food & Environment — the campus
+  "college-personnel" directory.** Every CAFE department's own site links to one
+  authoritative host, ``personnel.mgcafe.uky.edu/home?combined_department_filter=
+  <primary_secondary>``, a Drupal View paginated 36/person-per-page. Each
+  ``div.views-row`` carries a ``.views-field-nothing`` name link
+  (``/directory/<slug>``), a ``.views-field-field-personnel-preferred-title``
+  rank, and a ``.views-field-field-personnel-email-address`` plain ``mailto:``
+  (~100% emailed). The directory mixes faculty with a heavy tail of grad research
+  assistants, post-docs, engineers, and administrative staff, so a
+  ``require professor|lecturer|instructor`` ladder gate is essential. Four
+  academic departments (Agricultural Economics; Animal & Food Sciences;
+  Biosystems & Agricultural Engineering; Forestry & Natural Resources).
+
+* **College of Communication & Information — headless render (JS bot wall).**
+  ``ci.uky.edu`` serves a JS challenge ("Making sure you're not a bot!") to a
+  plain request, so both the listing and the profiles are fetched through the
+  headless browser (cron-safe: refresh-data installs Playwright). The college
+  directory is a Drupal AJAX View at ``/about/directory`` filtered by
+  ``?field_directory_type_value=faculty&field_department_target_id=<id>``; each
+  ``div.mb-5.col-6.col-lg-3`` card holds a ``strong > a`` name link
+  (``/about/directory/<slug>``) and a ``.views-field-field-position-title`` rank.
+  The listing has no email, so the env-gated profile pass renders each profile
+  and reads the personal ``mailto:`` (the shared ``a.ico-email`` webmanager inbox
+  is excluded by ``:not(.ico-email)``; live-verified 4/4 on Communication). Four
+  units (Communication; Journalism & Media; Information Science; Integrated
+  Strategic Communication).
 
 Single source ("uky_faculty"); department rides each record, ids namespaced by
 department short-code.
 
-Live-verified 2026-07-20 (cards → kept-after-gate): see the onboarding report.
+Deliberately DROPPED (recorded, not silently omitted):
+* **A&S Neuroscience** — an interdisciplinary undergraduate PROGRAM, not a
+  department; ``neuroscience.as.uky.edu`` publishes no ``directory-card`` roster
+  and its faculty are cross-listed from Biology / Psychology (both covered), so
+  the Neuroscience major rides on those two departments' ``majors`` instead.
+
+Live-verified 2026-07-24.
 """
 
 from __future__ import annotations
 
 from .. import faculty_graph
 
+# Keep ladder + teaching (lecturer/instructor) faculty AND endowed/named chairs;
+# drop the Staff / advising / systems buckets whose titles carry none of these
+# words. Emeriti pass the require gate ("Emeritus Professor" contains "Professor")
+# and are dropped by the engine's own retired-title guard in _normalize.
+_LADDER = {"require": r"professor|lecturer|instructor|chair"}
+
 # ---- College of Engineering: shared Drupal people-list table ---------------
-# One person = one rendered-entity cell. Name/title in dedicated spans; the
-# email is the plain mailto in the contact-info definition list (a sibling tel:
-# link is ignored because the selector keys on the mailto scheme). Profile hrefs
-# are root-relative (/people/<slug>) and the engine urljoins them onto the base.
+# One person = one rendered-entity cell. Name/title in dedicated spans; the email
+# is the plain mailto in the contact-info definition list. Profile hrefs are
+# root-relative (/people/<slug>); the engine urljoins them onto the base. The
+# engineering ladder deliberately stays professor|lecturer|instructor (verified
+# clean at 100% email) — the broader "chair" gate is used on the humanities/
+# business/agriculture rosters where named-chair faculty are common.
 _ENG_SEL = {
     "card": "td.views-field-rendered-entity",
     "name": "span.people-list--name a.underline-link",
@@ -61,10 +101,6 @@ _ENG_SEL = {
     "title": "span.people-list--title",
     "email": "a[href^='mailto:']",
 }
-# Keep ladder + teaching (lecturer/instructor) faculty; drop the Staff bucket
-# (advisors, coordinators, systems/business staff) whose titles carry none of
-# these words. Emeriti pass this gate ("Emeritus Professor" contains "Professor")
-# and are dropped by the engine's own retired-title guard in _normalize.
 _ENG_LADDER = {"require": r"professor|lecturer|instructor"}
 
 
@@ -79,8 +115,9 @@ def _eng(short: str, name: str, majors: list[str], dept_id: int) -> dict:
 
 # ---- College of Arts & Sciences: shared Drupal directory-card grid ----------
 # The bold div holds the name link (/users/<netid>); the non-bold sibling div
-# holds the rank. No email on the listing (enrichment recovers it via the
-# profile link). name_strip trims a rank baked into two Mathematics anchors.
+# holds the rank. No email on the listing — the env-gated profile pass follows
+# the profile link and reads the address from the "Contact Information" block.
+# name_strip trims a rank baked into two Mathematics anchors.
 _AS_SEL = {
     "card": "div.directory-card",
     "name": "div.directory-content div.font-bold a",
@@ -88,18 +125,119 @@ _AS_SEL = {
     "name_strip": r",\s*[A-Za-z ]*Professor\s*$",
     "title": "div.directory-content div.text.color-wildcat-blue:not(.font-bold)",
 }
-_AS_LADDER = {"require": r"professor|lecturer|instructor"}
+# The A&S profile keeps the address as the first div after the "Contact
+# Information" heading (no mailto, no email class) — an adjacent-sibling selector
+# lands it; _clean_email extracts the address shape (a non-address sibling yields
+# None, never a wrong value). Env-gated: OFF in CI / weekly refresh (the merge
+# richer-guard carries a committed contact_email forward), ON for the deliberate
+# enrichment run that generates the data.
+_AS_ENRICH = {
+    "email_selector": 'div.text1.font-bold:-soup-contains("Contact Information") + div',
+    # The A&S directory cards carry NO email at all — the address lives only on
+    # each person's profile page — so this pass is where the record's contact
+    # field comes from, not optional depth. always:True bypasses the monthly
+    # OFE_ENRICH_PROFILES gate (which the weekly cron only sets first-week), so
+    # every A&S department ships majority-emailed instead of name-only.
+    "always": True,
+    "throttle": 0.1,
+    "timeout": 8,
+}
 
 
 def _as(short: str, name: str, majors: list[str], url: str,
         paginate: dict | None = None) -> dict:
     """An Arts & Sciences department on the shared directory-card grid."""
-    scrape = {"url": url, "selectors": _AS_SEL, "ladder_filter": _AS_LADDER}
+    scrape = {"url": url, "selectors": _AS_SEL, "ladder_filter": _LADDER,
+              "profile_enrich": _AS_ENRICH}
     if paginate:
         scrape["paginate"] = paginate
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": scrape,
+    }
+
+
+# ---- Gatton College of Business & Economics: same people-list View ----------
+# Identical inner markup to Engineering; the card is a div (responsive grid) not
+# a td, and the department filter param is field_gatton_department_target_id.
+# Plain mailto on the listing (~100% emailed).
+_GAT_SEL = {
+    "card": "div.views-field-rendered-entity",
+    "name": "span.people-list--name a.underline-link",
+    "link": "span.people-list--name a.underline-link",
+    "title": "span.people-list--title",
+    "email": "a[href^='mailto:']",
+}
+_GAT_BASE = "https://gatton.uky.edu/faculty-research/faculty-directory"
+
+
+def _gatton(short: str, name: str, majors: list[str], dept_id: int) -> dict:
+    """A Gatton department on the shared Drupal people-list View."""
+    url = f"{_GAT_BASE}?field_gatton_department_target_id={dept_id}"
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _GAT_SEL, "ladder_filter": _LADDER},
+    }
+
+
+# ---- Martin-Gatton College of Agriculture: college-personnel directory ------
+# The authoritative campus personnel View, filtered per department by the
+# combined primary_secondary code. Clean class-based fields; plain mailto on each
+# row (~100% emailed). Paginated 36/page (0-indexed pager: base is page 0). The
+# roster mixes in grad assistants / post-docs / engineers / staff, so the ladder
+# gate is load-bearing.
+_CAFE_SEL = {
+    "card": "div.views-row",
+    "name": "div.views-field-nothing a",
+    "link": "div.views-field-nothing a",
+    "title": "div.views-field-field-personnel-preferred-title",
+    "email": "div.views-field-field-personnel-email-address a[href^='mailto:']",
+}
+_CAFE_LADDER = {"require": r"professor|lecturer|instructor"}
+_CAFE_BASE = ("https://personnel.mgcafe.uky.edu/home?combined_department_filter="
+              "{code}&field_personnel_ext_county_target_id=All"
+              "&field_personnel_name_last_value=")
+
+
+def _cafe(short: str, name: str, majors: list[str], code: str) -> dict:
+    """A CAFE academic department on the personnel.mgcafe.uky.edu View."""
+    url = _CAFE_BASE.format(code=code)
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _CAFE_SEL, "ladder_filter": _CAFE_LADDER,
+                   "paginate": {"param": "page", "start": 1, "max": 8}},
+    }
+
+
+# ---- College of Communication & Information: headless render -----------------
+# ci.uky.edu is bot-walled; the college directory is a Drupal AJAX View. Render
+# the filtered listing (wait for the card grid past the challenge + AJAX), then
+# render each profile in the env-gated pass to read the personal mailto.
+_CI_SEL = {
+    "card": "div.mb-5.col-6.col-lg-3",
+    "name": "strong a[href*='/about/directory/']",
+    "link": "strong a[href*='/about/directory/']",
+    "title": "div.views-field-field-position-title",
+}
+_CI_ENRICH = {
+    "render": True,
+    "render_wait": "domcontentloaded",
+    "email_selector": "a[href^='mailto:']:not(.ico-email)",
+    "email_drop": r"webmanager|ciwebmanager|^info@|^comm@|^sis@",
+    "throttle": 0.0,
+}
+_CI_BASE = ("https://ci.uky.edu/about/directory"
+            "?field_directory_type_value=faculty&field_department_target_id={id}")
+
+
+def _ci(short: str, name: str, majors: list[str], dept_id: int) -> dict:
+    """A CI unit recovered headless from the college's Drupal AJAX directory."""
+    url = _CI_BASE.format(id=dept_id)
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _CI_SEL, "ladder_filter": _LADDER,
+                   "render": True, "render_wait": "networkidle",
+                   "render_settle": 6000, "profile_enrich": _CI_ENRICH},
     }
 
 
@@ -140,6 +278,45 @@ SCHOOL: dict = {
             paginate={"param": "page", "max": 3}),
         _as("STAT", "Dr. Bing Zhang Department of Statistics",
             ["Statistics", "Data Science"], "https://stat.as.uky.edu/faculty"),
+        _as("BIO", "Department of Biology",
+            ["Biology", "Neuroscience"], "https://bio.as.uky.edu/faculty"),
+        _as("PSY", "Department of Psychology",
+            ["Psychology", "Neuroscience"], "https://psychology.as.uky.edu/faculty"),
+        _as("ENGL", "Department of English",
+            ["English"], "https://english.as.uky.edu/faculty"),
+        _as("HIST", "Department of History",
+            ["History"], "https://history.as.uky.edu/faculty"),
+        _as("POLS", "Department of Political Science",
+            ["Political Science"], "https://polisci.as.uky.edu/faculty"),
+        # ---- Gatton College of Business & Economics (people-list View) -----
+        _gatton("ACC", "Von Allmen School of Accountancy",
+                ["Accounting"], 1),
+        _gatton("ECON", "Department of Economics",
+                ["Economics"], 9),
+        _gatton("FIN", "Department of Finance and Quantitative Methods",
+                ["Finance", "Business Analytics"], 12),
+        _gatton("MGT", "Department of Management",
+                ["Management"], 25),
+        _gatton("MKT", "Department of Marketing and Supply Chain",
+                ["Marketing"], 27),
+        # ---- Martin-Gatton College of Agriculture (personnel directory) ----
+        _cafe("AEC", "Department of Agricultural Economics",
+              ["Agricultural Economics"], "primary_44_secondary_696"),
+        _cafe("AFS", "Department of Animal and Food Sciences",
+              ["Animal Sciences", "Food Science"], "primary_11_secondary_698"),
+        _cafe("BAE", "Department of Biosystems and Agricultural Engineering",
+              ["Biosystems Engineering"], "primary_47_secondary_652"),
+        _cafe("FNR", "Department of Forestry and Natural Resources",
+              ["Forestry and Natural Resources"], "primary_42_secondary_705"),
+        # ---- College of Communication & Information (headless render) ------
+        _ci("COMM", "Department of Communication",
+            ["Communication"], 18),
+        _ci("JAM", "School of Journalism and Media",
+            ["Journalism", "Media Arts and Studies"], 20),
+        _ci("SIS", "School of Information Science",
+            ["Information Communication Technology"], 21),
+        _ci("ISC", "Department of Integrated Strategic Communication",
+            ["Communication"], 19),
     ],
 }
 
