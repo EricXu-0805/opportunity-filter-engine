@@ -111,7 +111,12 @@ _ENG_SEL = {
     "title": "span.people-list--title",
     "email": "a[href^='mailto:']",
 }
-_ENG_LADDER = {"require": r"professor|lecturer|instructor"}
+# "chair" matches what _LADDER already allows for A&S: an endowed or
+# administrative chair IS the person's listed rank on engr.uky.edu, so
+# requiring a bare rank word dropped ~14 real PIs — among them Brent Seales
+# ("Stanley and Karen Pigman Heritage Science Chair", the Herculaneum scrolls
+# PI) and MAE department chair Jesse Hoagg.
+_ENG_LADDER = {"require": r"professor|lecturer|instructor|chair"}
 # The rank string is NOT the site's status field: engr.uky.edu keeps that in the
 # contact-info <dl> ("Categories": Faculty / Emeritus / Staff / Adjunct), and a
 # retired professor keeps whatever rank he held ("Associate Professor" for
@@ -228,7 +233,12 @@ _CAFE_SEL = {
     "title": "div.views-field-field-personnel-preferred-title",
     "email": "div.views-field-field-personnel-email-address a[href^='mailto:']",
 }
-_CAFE_LADDER = {"require": r"professor|lecturer|instructor"}
+# CAFE's personnel directory publishes an HR JOB CLASS, not an academic rank —
+# tenure-track people frequently read "Regular Faculty" / "Extension Faculty".
+# Requiring a rank word therefore deleted 30 real, emailed faculty (Animal &
+# Food Sciences shipped 8 of 29; Ag Economics 10 of 19), including full
+# professors like Youling Xiong and David Harmon.
+_CAFE_LADDER = {"require": r"professor|lecturer|instructor|regular faculty|extension faculty|special faculty"}
 _CAFE_BASE = ("https://personnel.mgcafe.uky.edu/home?combined_department_filter="
               "{code}&field_personnel_ext_county_target_id=All"
               "&field_personnel_name_last_value=")
