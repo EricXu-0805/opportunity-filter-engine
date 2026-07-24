@@ -130,12 +130,16 @@ def test_import_url_does_not_block_live(monkeypatch):
     assert response.json()["ok"] is False
 
 
-def test_matches_llm_rerank_does_not_block_live(monkeypatch, profile):
-    fake, gate = _gated(
-        lambda _profile, results, _lookup: results
-    )
-    monkeypatch.setattr(matches, "load_opportunities", lambda: [{
-        "id": "threaded-rerank",
+def _fake_matches_corpus(monkeypatch, opportunity_id: str) -> None:
+    """A one-opportunity corpus for BOTH loaders the /matches route touches.
+
+    Deliberately hermetic: the real ``load_opportunities_by_id`` parses the
+    full multi-hundred-MB corpus, and the route calls it on the event loop —
+    on a cold CI runner that alone can outlast the probe window before the
+    gated call is ever reached.
+    """
+    opp = {
+        "id": opportunity_id,
         "title": "Threaded rerank opportunity",
         "organization": "Example Lab",
         "opportunity_type": "research",
@@ -146,7 +150,16 @@ def test_matches_llm_rerank_does_not_block_live(monkeypatch, profile):
         "eligibility": {},
         "application": {},
         "metadata": {"is_active": True},
-    }])
+    }
+    monkeypatch.setattr(matches, "load_opportunities", lambda: [opp])
+    monkeypatch.setattr(matches, "load_opportunities_by_id", lambda: {opp["id"]: opp})
+
+
+def test_matches_llm_rerank_does_not_block_live(monkeypatch, profile):
+    fake, gate = _gated(
+        lambda _profile, results, _lookup: results
+    )
+    _fake_matches_corpus(monkeypatch, "threaded-rerank")
     monkeypatch.setattr(matches, "llm_rerank", fake)
     response = _run_probe(
         "/api/matches?limit=1",
@@ -351,19 +364,7 @@ def test_rerank_pool_rejection_serves_rule_order(monkeypatch, profile, error):
     async def reject(*_args, **_kwargs):
         raise error
 
-    monkeypatch.setattr(matches, "load_opportunities", lambda: [{
-        "id": "rule-order-floor",
-        "title": "Rule order floor",
-        "organization": "Example Lab",
-        "opportunity_type": "research",
-        "audience": "open",
-        "school": "uiuc",
-        "on_campus": True,
-        "paid": "unknown",
-        "eligibility": {},
-        "application": {},
-        "metadata": {"is_active": True},
-    }])
+    _fake_matches_corpus(monkeypatch, "rule-order-floor")
     monkeypatch.setattr(matches, "run_blocking", reject)
     response = _post("/api/matches?limit=1", profile)
 
