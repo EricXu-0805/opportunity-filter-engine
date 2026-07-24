@@ -1,15 +1,24 @@
 {
-  "duration_seconds": 806.9,
+  "duration_seconds": 2271.7,
   "shard": {
     "national": false,
     "schools": [
-      "uky"
+      "drexel",
+      "uky",
+      "utdallas"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 4,
+      "rule_based_tagged": 14,
       "status": "ok"
+    },
+    "campus_graph:drexel": {
+      "deep": true,
+      "fetched": 5,
+      "new": 0,
+      "status": "ok",
+      "updated": 5
     },
     "campus_graph:uky": {
       "deep": true,
@@ -18,24 +27,39 @@
       "status": "ok",
       "updated": 6
     },
+    "campus_graph:utdallas": {
+      "deep": true,
+      "fetched": 4,
+      "new": 0,
+      "status": "ok",
+      "updated": 4
+    },
     "deactivate_past": {
       "already_inactive": 748,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 127267,
+      "skipped_rolling": 127320,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 720,
+      "kept_fresh": 2362,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
+    "drexel_faculty": {
+      "fetched": 578,
+      "new": 28,
+      "status": "ok",
+      "updated": 550
+    },
     "faculty_hygiene": {
-      "duplicates_removed": 4,
-      "keywords_cleaned": 0,
+      "duplicates_removed": 7,
+      "keywords_cleaned": 3,
       "removed_by_school": {
-        "uky": 4
+        "drexel": 3,
+        "uky": 3,
+        "utdallas": 1
       },
       "shared_inbox_nulled": {},
       "status": "ok"
@@ -50,11 +74,11 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 644,
-      "enriched": 75,
+      "already_had": 2341,
+      "enriched": 28,
       "nulled_unit_inboxes": 0,
       "renulled_shared_emails": 11,
-      "scraped": 82,
+      "scraped": 36,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -117,7 +141,7 @@
         "dartmouth_research_programs": 8,
         "davidson_faculty": 221,
         "davidson_research_programs": 8,
-        "drexel_faculty": 561,
+        "drexel_faculty": 589,
         "drexel_research_programs": 5,
         "duke_external_research": 4,
         "duke_faculty": 1115,
@@ -329,7 +353,7 @@
         "uiuc_sro": 279,
         "uiuc_urap": 1,
         "uiuc_ursa": 1,
-        "uky_faculty": 720,
+        "uky_faculty": 723,
         "uky_research_programs": 6,
         "umass_faculty": 1575,
         "umass_research_programs": 9,
@@ -353,7 +377,7 @@
         "usf_research_programs": 5,
         "utah_faculty": 1082,
         "utah_research_programs": 5,
-        "utdallas_faculty": 1028,
+        "utdallas_faculty": 1050,
         "utdallas_research_programs": 4,
         "utexas_external_research": 1,
         "utexas_faculty": 2159,
@@ -390,17 +414,23 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 128879
+      "tagged": 128932
     },
     "uky_faculty": {
-      "fetched": 547,
-      "new": 3,
+      "fetched": 713,
+      "new": 7,
       "status": "ok",
-      "updated": 544
+      "updated": 706
+    },
+    "utdallas_faculty": {
+      "fetched": 1040,
+      "new": 22,
+      "status": "ok",
+      "updated": 1018
     }
   },
-  "timestamp": "2026-07-24T14:54:43.072629",
-  "total_in_file": 128875,
-  "total_new": 3,
-  "total_updated": 550
+  "timestamp": "2026-07-24T16:52:54.506070",
+  "total_in_file": 128925,
+  "total_new": 57,
+  "total_updated": 2289
 }
