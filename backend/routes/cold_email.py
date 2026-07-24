@@ -7,6 +7,7 @@ import os
 import re
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
@@ -14,6 +15,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import load_opportunities_by_id
+from backend.lib.blocking import (
+    LOCAL_WORK_TIMEOUT_SECONDS,
+    MULTI_LLM_TIMEOUT_SECONDS,
+    SINGLE_LLM_TIMEOUT_SECONDS,
+    BlockingWorkTimeout,
+    run_blocking,
+)
 from backend.lib.email_modes import EDIT_OPS, draft_voice, recommended_voice
 from backend.lib.grounding import (
     LENIENT_PROSE,
@@ -847,7 +855,21 @@ async def generate_email(request: ColdEmailRequest):
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = request.profile.model_dump()
-    return _run_engine(request, opp, profile_dict)
+    if request.engine != "ai":
+        # The template path contains no provider I/O and should not wait behind
+        # a saturated AI pool.
+        return _run_engine(request, opp, profile_dict)
+    try:
+        return await run_blocking(
+            _run_engine,
+            request,
+            opp,
+            profile_dict,
+            timeout_seconds=MULTI_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("cold-email: generation timed out; using template")
+        return _template_after_timeout(request, opp, profile_dict)
 
 
 def _run_engine(
@@ -926,6 +948,19 @@ def _run_engine(
     )
 
 
+def _template_after_timeout(
+    request: ColdEmailRequest,
+    opp: dict,
+    profile_dict: dict,
+) -> ColdEmailResponse:
+    """Preserve the usable-response contract after an outer model timeout."""
+    template_request = request.model_copy(update={"engine": "template"})
+    response = _run_engine(template_request, opp, profile_dict)
+    if request.engine == "ai":
+        response.fallback_reason = "unavailable"
+    return response
+
+
 def _sse_frame(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
@@ -944,8 +979,6 @@ async def generate_email_stream(request: ColdEmailRequest):
         raise HTTPException(status_code=404, detail="Opportunity not found")
     profile_dict = request.profile.model_dump()
 
-    _FINISHED = object()  # queue sentinel — same channel as stages, so ordered
-
     async def gen():
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
@@ -955,33 +988,39 @@ async def generate_email_stream(request: ColdEmailRequest):
             loop.call_soon_threadsafe(queue.put_nowait, stage)
 
         def work() -> ColdEmailResponse:
-            # The sentinel travels through the SAME queue as the stage events,
-            # so the reader can never observe "engine finished" before it has
-            # seen every stage (racing a Future's done-flag against separately
-            # scheduled queue callbacks did exactly that).
-            try:
-                return _run_engine(request, opp, profile_dict, on_stage=on_stage)
-            finally:
-                loop.call_soon_threadsafe(queue.put_nowait, _FINISHED)
+            return _run_engine(request, opp, profile_dict, on_stage=on_stage)
 
-        fut = loop.run_in_executor(None, work)
+        # Bounded-pool offload: every stage callback is scheduled onto the loop
+        # BEFORE the work future resolves, so draining the queue once the work
+        # task completes can never drop a stage event.
+        work_task = asyncio.create_task(
+            run_blocking(work, timeout_seconds=MULTI_LLM_TIMEOUT_SECONDS)
+        )
         while True:
-            item = await queue.get()
-            if item is _FINISHED:
+            queue_task = asyncio.create_task(queue.get())
+            done, _pending = await asyncio.wait(
+                {work_task, queue_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if queue_task in done:
+                yield _sse_frame({"stage": queue_task.result()})
+            else:
+                queue_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await queue_task
+            if work_task in done:
+                while not queue.empty():
+                    yield _sse_frame({"stage": queue.get_nowait()})
                 break
-            yield _sse_frame({"stage": item})
         try:
-            resp = await fut
+            resp = work_task.result()
+        except BlockingWorkTimeout:
+            logger.warning("cold-email stream: generation timed out; using template")
+            resp = _template_after_timeout(request, opp, profile_dict)
         except Exception:
             # _run_engine is designed never to raise; this is the last belt.
             logger.exception("cold-email stream: engine crashed; using template")
-            resp = _run_engine(
-                ColdEmailRequest(
-                    profile=request.profile, opportunity_id=request.opportunity_id,
-                    engine="template",
-                ),
-                opp, profile_dict,
-            )
+            resp = _template_after_timeout(request, opp, profile_dict)
         yield _sse_frame({"stage": "done", **resp.model_dump()})
 
     return StreamingResponse(
@@ -998,7 +1037,15 @@ async def generate_email_variants(request: ColdEmailRequest):
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = request.profile.model_dump()
-    raw_variants = generate_variants(profile_dict, opp)
+    try:
+        raw_variants = await run_blocking(
+            generate_variants,
+            profile_dict,
+            opp,
+            timeout_seconds=LOCAL_WORK_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout as exc:
+        raise HTTPException(status_code=503, detail="Email variants timed out") from exc
     lab_type = _detect_lab_type(opp)
 
     recipient_email = opp.get("contact_email") or ""  # key exists but is None on nulled faculty emails
@@ -1091,7 +1138,18 @@ async def refine_email(request: EmailRefineRequest):
             "Return the edited email body only."
         )},
     ]
-    edited = chat_completion(messages, max_tokens=800, temperature=0.7, **model_for("cold_email"))
+    try:
+        edited = await run_blocking(
+            chat_completion,
+            messages,
+            max_tokens=800,
+            temperature=0.7,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            **model_for("cold_email"),
+        )
+    except BlockingWorkTimeout:
+        logger.warning("cold-email refine: model call timed out; using local edit")
+        edited = None
     if edited is None:
         return _local_refine(request.current_body, request.instruction)
 

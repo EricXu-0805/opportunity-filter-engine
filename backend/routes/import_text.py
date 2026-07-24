@@ -24,6 +24,7 @@ from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
 from src.collectors.url_parser import (
     PASTE_TEXT_MAX_CHARS,
     PASTE_TEXT_MIN_CHARS,
@@ -57,7 +58,15 @@ async def import_text(req: ImportTextRequest) -> ImportTextResponse:
             error="text is too short after trimming whitespace",
         )
 
-    result = parse_text_llm(trimmed)
+    try:
+        result = await run_blocking(
+            parse_text_llm,
+            trimmed,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("import-text: AI extraction timed out")
+        result = None
     if result is None:
         return ImportTextResponse(
             ok=False,
