@@ -573,6 +573,15 @@ def _passes_field(card, ff: dict | None) -> bool:
     return not (ff.get("exclude") and text and re.search(ff["exclude"], text, re.I))
 
 
+# Address-shaped CMS template stubs that belong to no person.
+_PLACEHOLDER_EMAIL = re.compile(
+    r"^(?:firstname\.?lastname|first\.?last|firstinitiallastname|name|"
+    r"yourname|your\.?email|email|username|user|someone|noreply|no-reply|"
+    r"donotreply|do-not-reply|example|test|xxx+)@",
+    re.I,
+)
+
+
 def _clean_email(raw: str) -> str | None:
     """Normalize a mailto/text email — hand-edited CMS anchors get creative.
 
@@ -628,6 +637,13 @@ def _clean_email(raw: str) -> str | None:
     # so restore the trailing 'u'. ".edu" never matches (it ends in 'u').
     if result:
         result = re.sub(r"\.ed$", ".edu", result, flags=re.I)
+    # A CMS template stub is address-shaped but belongs to nobody: UKy Math
+    # publishes the literal "firstname.lastname[AT]uky.edu", which the [AT]
+    # de-obfuscation above happily turns into a "real" address. Shipping one
+    # hands a student a guaranteed bounce that looks like a fabricated contact,
+    # so reject the placeholder local parts outright.
+    if result and _PLACEHOLDER_EMAIL.match(result):
+        return None
     # Canonicalize to lowercase: some directories carry a display-cased address
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-
@@ -765,7 +781,20 @@ def _email_from_el(e_el) -> str | None:
     if rev:
         return rev
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
-    return _clean_email(raw)
+    href_addr = _clean_email(raw)
+    # A hand-maintained roster row whose mailto: was copy-pasted from the row
+    # above links to the WRONG person while displaying the right address
+    # (<a href="mailto:orlando.auciello@">kevin.brenner@</a> on UTD MSE, and the
+    # same on UTD CS). Taking the href there hands a student a different
+    # professor's address, and — because merge dedupes on email — silently
+    # deleted the person the stale href pointed at (I-Ling Yen, a full CS
+    # professor, vanished entirely). The visible text is what the page renders
+    # for THIS row, so when both are addresses and they disagree, trust it.
+    if href_addr and e_el.has_attr("href"):
+        text_addr = _clean_email(e_el.get_text(" ", strip=True))
+        if text_addr and text_addr.lower() != href_addr.lower():
+            return text_addr
+    return href_addr
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
