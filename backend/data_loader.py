@@ -17,6 +17,33 @@ _tfidf_fitted_mtime: float = -1
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
+# json.load interns object KEYS but never values, so the parsed corpus holds
+# hundreds of thousands of duplicate value strings (every "freshman", every
+# shared majors vocabulary entry, department-boilerplate application/work-auth
+# text repeated across a school's postings). Pooling them collapses equal
+# strings to one object — worth hundreds of MB at 126k records on the 2GB
+# instance. The pool itself is an index and is dropped after each full load;
+# the cap keeps unique long descriptions from churning it.
+_STR_POOL: dict[str, str] = {}
+_POOL_MAX_LEN = 512
+
+
+def _dedupe_strings(obj) -> None:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(v, str):
+                if len(v) <= _POOL_MAX_LEN:
+                    obj[k] = _STR_POOL.setdefault(v, v)
+            else:
+                _dedupe_strings(v)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            if isinstance(v, str):
+                if len(v) <= _POOL_MAX_LEN:
+                    obj[i] = _STR_POOL.setdefault(v, v)
+            else:
+                _dedupe_strings(v)
+
 
 def _strip_html(text: str) -> str:
     if not text or "<" not in text:
@@ -40,6 +67,11 @@ def _sanitize_opportunity(opp: dict) -> dict:
     if isinstance(meta, dict):
         meta.pop("notes", None)
         meta.pop("research_areas_raw", None)
+        # Harvest bookkeeping with zero serving consumers (last_verified IS
+        # served on cards and stays).
+        meta.pop("first_seen_at", None)
+        meta.pop("last_seen_at", None)
+    _dedupe_strings(opp)
     return opp
 
 
@@ -93,6 +125,7 @@ def load_opportunities() -> list[dict]:
             _opp_cache = [_sanitize_opportunity(o) for o in raw]
             _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
             _opp_cache_mtime = mtime
+            _STR_POOL.clear()
         _maybe_fit_tfidf(_opp_cache, mtime)
         _maybe_register_ranker_corpus(_opp_cache)
         return _opp_cache
@@ -113,6 +146,7 @@ def load_opportunities() -> list[dict]:
                 _opp_cache = [_sanitize_opportunity(o) for o in raw]
                 _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
                 _opp_cache_mtime = mtime
+                _STR_POOL.clear()
             _maybe_fit_tfidf(_opp_cache, mtime)
             _maybe_register_ranker_corpus(_opp_cache)
             return _opp_cache
