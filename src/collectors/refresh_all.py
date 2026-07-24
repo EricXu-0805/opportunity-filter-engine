@@ -20,6 +20,7 @@ from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate
 from src.normalizers.school_audience import SOURCE_DEFAULTS, apply_school_audience
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
+from .atomic_json import atomic_write_json, atomic_write_text
 from .campus_graph import fetch_and_normalize as fetch_campus_graph
 from .campus_graph import merge_into_processed as merge_campus_graph
 from .nsf_reu import fetch_and_normalize as fetch_reu
@@ -382,8 +383,7 @@ def _trim_history_to_max(path: Path, max_entries: int) -> None:
             lines = f.readlines()
         if len(lines) <= max_entries:
             return
-        with path.open("w", encoding="utf-8") as f:
-            f.writelines(lines[-max_entries:])
+        atomic_write_text(path, "".join(lines[-max_entries:]))
     except OSError as e:
         logger.warning("Failed to trim collector history: %s", e)
 
@@ -402,8 +402,7 @@ def write_status(summary: dict) -> None:
     """
     try:
         STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with STATUS_FILE.open("w", encoding="utf-8") as f:
-            json.dump(summary, f, indent=2, sort_keys=True)
+        atomic_write_json(STATUS_FILE, summary, sort_keys=True)
     except OSError as e:
         logger.warning("Failed to write collector status: %s", e)
         return
@@ -1267,8 +1266,7 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             kw_cleaned, removed_dupes,
         )
 
-        with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
-            json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
+        atomic_write_json(PROCESSED_FILE, all_opps)
         summary["sources"]["deactivate_past"] = {
             "newly_deactivated": deact_counts["newly_deactivated"],
             "already_inactive": deact_counts["already_inactive"],

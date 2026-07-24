@@ -46,6 +46,7 @@ from urllib.parse import urljoin, urlsplit
 from src.normalizers.ucb_dedup import dedupe_against_existing
 
 from . import ucb_sources as reg
+from .atomic_json import atomic_write_json
 from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
@@ -520,8 +521,7 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
             existing.append(opp)
             index[opp["id"]] = opp
             added += 1
-    with PROCESSED_FILE.open("w", encoding="utf-8") as f:
-        json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
+    atomic_write_json(PROCESSED_FILE, existing)
     return (added, updated)
 
 
