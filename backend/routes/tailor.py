@@ -32,12 +32,14 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException
 
 from backend.data_loader import load_opportunities_by_id
+from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
 from backend.lib.grounding import LENIENT_PROSE
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured, model_for
@@ -413,23 +415,28 @@ def _heuristic_bullets(resume_text: str, *, limit: int = 12) -> list[str]:
     return out
 
 
-def _bullet_grounded(bullet: str, resume_lower: str) -> bool:
-    """True iff most of the bullet's content words appear in the resume.
+def _normalized_extraction_text(value: str) -> str:
+    """Collapse presentation-only differences before containment matching.
 
-    Extraction must be verbatim, so this catches the model *inventing* a
-    bullet that isn't in the source. We tolerate light whitespace / glyph
-    normalization by requiring only a 0.6 token-overlap ratio rather than
-    an exact substring match.
+    NFKC handles harmless full-width typography and whitespace collapsing
+    handles line wraps, while deliberately preserving word order and
+    punctuation so paraphrases cannot masquerade as verbatim extraction.
     """
-    tokens = re.findall(r"[a-z0-9]{4,}", bullet.lower())
-    if not tokens:
-        # No ASCII tokens ⟹ a CJK (e.g. Chinese) bullet. Verbatim extraction
-        # still holds, so fall back to whitespace-normalized substring
-        # containment instead of dropping every non-ASCII bullet on the floor.
-        squashed = re.sub(r"\s+", "", bullet.lower())
-        return bool(squashed) and squashed in re.sub(r"\s+", "", resume_lower)
-    hits = sum(1 for t in tokens if t in resume_lower)
-    return hits / len(tokens) >= 0.6
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value)).strip().casefold()
+
+
+def _bullet_grounded(bullet: str, resume_text: str) -> bool:
+    """True only when an extracted bullet is contiguous resume text.
+
+    Structure extraction is not a rewriting step. The previous 60% ASCII
+    token-overlap rule let the model copy most of a line and append a
+    fabricated tool or metric. NFKC + collapsed whitespace tolerates
+    presentation-only differences while retaining the verbatim, contiguous
+    trust boundary for every language (CJK bullets included).
+    """
+    candidate = _normalized_extraction_text(bullet)
+    source = _normalized_extraction_text(resume_text)
+    return len(candidate) >= 4 and candidate in source
 
 
 def _ai_extract_bullets(resume_text: str, *, limit: int = 12) -> list[str] | None:
@@ -498,7 +505,15 @@ async def extract_bullets(request: ExtractBulletsRequest) -> ExtractBulletsRespo
         return ExtractBulletsResponse(bullets=[], method="heuristic")
 
     if is_configured():
-        ai = _ai_extract_bullets(text)
+        try:
+            ai = await run_blocking(
+                _ai_extract_bullets,
+                text,
+                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            )
+        except BlockingWorkTimeout:
+            logger.warning("tailor extract: model call timed out; using heuristic")
+            ai = None
         if ai:
             return ExtractBulletsResponse(bullets=ai, method="ai")
 
@@ -549,9 +564,18 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         )
 
     profile_dict = request.profile.model_dump()
-    bullets = _ai_tailor_bullets(
-        profile_dict, opp, request.original_bullets, locale=request.locale,
-    )
+    try:
+        bullets = await run_blocking(
+            _ai_tailor_bullets,
+            profile_dict,
+            opp,
+            request.original_bullets,
+            locale=request.locale,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("tailor: model call timed out; using passthrough fallback")
+        bullets = None
     if not bullets:
         return _local_fallback(
             request.original_bullets,
@@ -639,7 +663,7 @@ async def _record_usage_bg(authorization: str | None, feature: str) -> None:
         key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
         if not token or not url or not key:
             return
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, trust_env=False, follow_redirects=False) as client:
             resp = await client.get(
                 f"{url}/auth/v1/user",
                 headers={"apikey": key, "Authorization": f"Bearer {token}"},
@@ -801,7 +825,16 @@ async def structure_resume(request: StructureResumeRequest) -> StructureResumeRe
         return StructureResumeResponse(sections=[], method="heuristic", warnings=["empty_resume"])
 
     if is_configured():
-        ai = _ai_structure_resume(text, locale=request.locale)
+        try:
+            ai = await run_blocking(
+                _ai_structure_resume,
+                text,
+                locale=request.locale,
+                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            )
+        except BlockingWorkTimeout:
+            logger.warning("tailor structure: model call timed out; using heuristic")
+            ai = None
         if ai:
             return StructureResumeResponse(sections=ai, method="ai")
 
@@ -985,7 +1018,17 @@ async def renovate_resume(
         return _passthrough(["llm_not_configured"])
 
     _schedule_usage(authorization, "renovation")
-    plan = _ai_renovation_plan(sections, opp, locale=request.locale)
+    try:
+        plan = await run_blocking(
+            _ai_renovation_plan,
+            sections,
+            opp,
+            locale=request.locale,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("tailor renovate: plan call timed out; using passthrough")
+        plan = None
     if not plan:
         return _passthrough(["macro_plan_failed"])
 
@@ -1012,10 +1055,19 @@ async def renovate_resume(
         # so the length check below compares the model's RAW item count — a
         # response padded with empty items can't sneak past as "matching" and
         # shift rewrites onto the wrong bullet ids.
-        raw_rewrites = _ai_tailor_bullets(
-            profile_dict, opp, [t for _, t in fg], locale=request.locale,
-            preserve_slots=True,
-        )
+        try:
+            raw_rewrites = await run_blocking(
+                _ai_tailor_bullets,
+                profile_dict,
+                opp,
+                [t for _, t in fg],
+                locale=request.locale,
+                preserve_slots=True,
+                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            )
+        except BlockingWorkTimeout:
+            logger.warning("tailor renovate: rewrite call timed out")
+            raw_rewrites = None
         if not raw_rewrites:
             warnings.append("rewrite_failed_or_invalid")
         elif len(raw_rewrites) != len(fg):
@@ -1141,9 +1193,19 @@ async def optimize_bullet(
 
     _schedule_usage(authorization, "bullet_optimize")
     profile_dict = request.profile.model_dump()
-    result = _ai_optimize_bullet(
-        profile_dict, opp, current, request.instruction, locale=request.locale,
-    )
+    try:
+        result = await run_blocking(
+            _ai_optimize_bullet,
+            profile_dict,
+            opp,
+            current,
+            request.instruction,
+            locale=request.locale,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
+    except BlockingWorkTimeout:
+        logger.warning("tailor bullet: model call timed out")
+        result = None
     if not result:
         return BulletOptimizeResponse(text=current, changed=False, warnings=["llm_failed_or_invalid_json"])
 

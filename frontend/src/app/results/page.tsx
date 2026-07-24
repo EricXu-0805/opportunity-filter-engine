@@ -35,6 +35,7 @@ import {
   type MatchFeedbackContext,
   type MatchVerdict,
 } from '@/lib/match-feedback';
+import { mergeHydratedFeedback } from './feedback-hydration';
 import { hasScopeData, homeSchoolOf } from '@/lib/discovery-scope';
 import { bySlug } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -251,11 +252,19 @@ function ResultsContent() {
   // passes bucket + final_score along so the persisted row stays
   // interpretable after the scorer's weights change.
   const [feedback, setFeedback] = useState<Map<string, MatchVerdict>>(new Map());
+  // Per-id mutation counters: a hydration response that raced a user's click
+  // (fetch started before the click, resolved after) must not clobber the
+  // newer verdict — mergeHydratedFeedback only applies ids whose version is
+  // unchanged since the request was issued.
+  const feedbackMutationVersions = useRef<Map<string, number>>(new Map());
   const handleFeedback = useCallback((
     oppId: string,
     verdict: MatchVerdict | null,
     context: MatchFeedbackContext,
   ) => {
+    feedbackMutationVersions.current.set(
+      oppId, (feedbackMutationVersions.current.get(oppId) ?? 0) + 1,
+    );
     setFeedback(prev => {
       const next = new Map(prev);
       if (verdict) next.set(oppId, verdict);
@@ -318,16 +327,17 @@ function ResultsContent() {
       .map(m => m.opportunity.id)
       .filter(id => !feedbackFetchedRef.current.has(id));
     if (ids.length === 0) return;
+    const requestedVersions = new Map(
+      ids.map(id => [id, feedbackMutationVersions.current.get(id) ?? 0]),
+    );
     ids.forEach(id => feedbackFetchedRef.current.add(id));
     let cancelled = false;
     getMatchFeedback(ids)
       .then((d) => {
         if (cancelled || d.size === 0) return;
-        setFeedback(prev => {
-          const next = new Map(prev);
-          d.forEach((verdict, id) => next.set(id, verdict));
-          return next;
-        });
+        setFeedback(prev => mergeHydratedFeedback(
+          prev, d, requestedVersions, feedbackMutationVersions.current,
+        ));
       })
       .catch(() => {});
     return () => { cancelled = true; };

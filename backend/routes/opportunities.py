@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
@@ -13,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
+from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, run_blocking
 from backend.lib.llm import (
     chat_completion,
     chat_completion_stream,
@@ -531,7 +531,13 @@ async def chat_with_opportunity(
         )
 
     try:
-        reply = await asyncio.to_thread(_llm_chat_call, messages, body.model)
+        # Bounded AI pool with an outer budget — a stalled provider call must
+        # not occupy the unbounded default executor (BlockingWorkTimeout lands
+        # in this belt and serves the local fallback).
+        reply = await run_blocking(
+            _llm_chat_call, messages, body.model,
+            timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+        )
     except Exception:
         logger.exception("chat LLM call failed for opportunity %s", opportunity_id)
         reply = None

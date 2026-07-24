@@ -313,6 +313,19 @@ class TestParseUrlLlm:
         assert result.title == "Research Assistant - ECE"
         assert result.extra_fields.get("llm_enriched") is not True
 
+    def test_unparseable_llm_warning_does_not_log_the_url(self, caplog):
+        # User-submitted URLs can carry signed tokens / PII in the query
+        # string — the fallback warning must not interpolate them into logs.
+        url = "https://example.com/job?token=SECRET-VALUE"
+        with patch("src.collectors.url_parser.requests.get") as mock_get:
+            mock_get.return_value = self._mock_response(self.SAMPLE_HTML)
+            with patch("backend.lib.llm.is_configured", return_value=True):
+                with patch("backend.lib.llm.chat_completion", return_value="not json at all"):
+                    with caplog.at_level("WARNING", logger="src.collectors.url_parser"):
+                        parse_url_llm(url)
+        assert any("unparseable JSON" in r.message for r in caplog.records)
+        assert "SECRET-VALUE" not in caplog.text
+
     def test_returns_none_on_fetch_failure(self):
         with patch("src.collectors.url_parser.requests.get", side_effect=Exception("connect refused")):
             result = parse_url_llm("https://example.com/job")

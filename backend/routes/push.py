@@ -6,6 +6,11 @@ from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Header, HTTPException
 
+from backend.lib.safe_webpush import (
+    UnsafePushEndpointError,
+    WebPushDeliveryTimeout,
+    send_webpush_safely,
+)
 from backend.routes.email import (
     FRONTEND_BASE,
     _enforce_recipient_quota,
@@ -132,7 +137,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     sent, failed, emailed, pruned = 0, 0, 0, 0
     vapid_claims = {"sub": env["VAPID_SUBJECT"]}
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=20.0, trust_env=False, follow_redirects=False) as client:
         r = await client.get(
             f"{supabase_url}/rest/v1/interactions",
             params={
@@ -180,7 +185,12 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                     "endpoint": f"eq.{sub['endpoint']}",
                 }
                 try:
-                    webpush(
+                    # The endpoint is a client-persisted URL consumed by this
+                    # cron: validate it at send time (public-IP-only DNS,
+                    # https, no redirects/proxy) and run the sync pywebpush
+                    # call in safe_webpush's bounded executor with a wall-clock
+                    # budget — never directly on the event loop.
+                    await send_webpush_safely(
                         subscription_info={
                             "endpoint": sub["endpoint"],
                             "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
@@ -188,6 +198,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         data=payload,
                         vapid_private_key=env["VAPID_PRIVATE_KEY"],
                         vapid_claims=vapid_claims,
+                        webpush_func=webpush,
                     )
                     sent += 1
                     delivered = True
@@ -197,6 +208,19 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         headers=headers,
                         json={"last_delivered_at": now_iso},
                     )
+                except UnsafePushEndpointError:
+                    # Junk or an SSRF probe — prune so the cron never
+                    # re-attempts it. The reason code never includes the URL.
+                    failed += 1
+                    await client.delete(
+                        f"{supabase_url}/rest/v1/push_subscriptions",
+                        params=sub_params,
+                        headers=headers,
+                    )
+                    subs_by_device[device_id].remove(sub)
+                    pruned += 1
+                except WebPushDeliveryTimeout:
+                    failed += 1
                 except WebPushException as e:
                     failed += 1
                     status = getattr(getattr(e, "response", None), "status_code", None)

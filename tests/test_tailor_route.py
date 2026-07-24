@@ -252,6 +252,62 @@ class TestExtractBullets:
         assert any("thermal sensor" in b for b in body["bullets"])
 
 
+class TestBulletGrounding:
+    """Extraction is documented as VERBATIM, so grounding is contiguous
+    containment (NFKC + collapsed whitespace), not token overlap. The old 60%
+    token-overlap rule let the model copy most of a line and append a
+    fabricated tool or metric."""
+
+    RESUME = (
+        "Designed a thermal sensor in Java and validated it against ME 270 "
+        "data\nPresented results at the undergraduate symposium"
+    ).lower()
+
+    def test_verbatim_line_is_grounded(self):
+        assert tailor_module._bullet_grounded(
+            "Designed a thermal sensor in Java and validated it against ME 270 data",
+            self.RESUME,
+        )
+
+    def test_copied_line_with_appended_tool_is_rejected(self):
+        # >60% of tokens overlap the resume — the old rule passed this.
+        assert not tailor_module._bullet_grounded(
+            "Designed a thermal sensor in Java and validated it against "
+            "ME 270 data using PyTorch",
+            self.RESUME,
+        )
+
+    def test_copied_line_with_appended_metric_is_rejected(self):
+        assert not tailor_module._bullet_grounded(
+            "Presented results at the undergraduate symposium to 500 attendees",
+            self.RESUME,
+        )
+
+    def test_whitespace_and_case_differences_tolerated(self):
+        assert tailor_module._bullet_grounded(
+            "designed a Thermal  sensor\nin java and validated it against me 270 data",
+            self.RESUME,
+        )
+
+    def test_nfkc_normalizes_fullwidth_glyphs(self):
+        # Full-width "Ｊａｖａ" normalizes to ASCII "java" under NFKC.
+        assert tailor_module._bullet_grounded(
+            "Designed a thermal sensor in Ｊａｖａ and validated it against ME 270 data",
+            self.RESUME,
+        )
+
+    def test_cjk_bullet_still_grounded_by_containment(self):
+        resume = "负责设计热传感器并完成 ME 270 数据验证"
+        assert tailor_module._bullet_grounded("设计热传感器", resume)
+        assert not tailor_module._bullet_grounded("部署 Kubernetes 集群", resume)
+
+    def test_paraphrase_is_rejected(self):
+        assert not tailor_module._bullet_grounded(
+            "Validated a Java thermal sensor against ME 270 data",
+            self.RESUME,
+        )
+
+
 class TestAntiFabrication:
     """The non-negotiable test: model cannot smuggle in unlisted skills."""
 

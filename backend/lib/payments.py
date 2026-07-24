@@ -19,6 +19,15 @@ from datetime import UTC, datetime
 
 CHANNELS = ("manual", "wechat", "alipay", "stripe")
 
+# The authoritative price catalog. The browser mirrors these values for display
+# (frontend/src/lib/pricing.ts), but the client INSERTs its own pending order
+# row via RLS — so the operator confirm step verifies against this server-side
+# mapping, and a modified client cannot choose its own price or currency.
+PACKAGE_CATALOG: dict[str, dict[str, object]] = {
+    "single_email": {"amount_cents": 990, "currency": "usd"},
+    "full_package": {"amount_cents": 4900, "currency": "usd"},
+}
+
 _UNIMPLEMENTED = "channel '{0}' is not integrated yet — see module docstring for prerequisites"
 
 
@@ -53,9 +62,23 @@ def create_order(
     }
 
 
+def order_matches_catalog(order: dict) -> bool:
+    """True only for a manual order whose immutable offer is canonical."""
+    package = order.get("package")
+    offer = PACKAGE_CATALOG.get(package) if isinstance(package, str) else None
+    return bool(
+        offer
+        and order.get("channel") == "manual"
+        and order.get("amount_cents") == offer["amount_cents"]
+        and order.get("currency") == offer["currency"]
+    )
+
+
 def confirm_order(channel: str, order: dict) -> dict:
     """Fields to persist when the operator confirms payment was received."""
     _require_manual(channel)
+    if not order_matches_catalog(order):
+        raise ValueError("order does not match the authoritative package catalog")
     return {"status": "paid", "paid_at": datetime.now(UTC).isoformat()}
 
 

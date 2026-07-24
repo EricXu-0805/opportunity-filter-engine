@@ -13,6 +13,12 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
+from backend.lib.blocking import (
+    MULTI_LLM_TIMEOUT_SECONDS,
+    SINGLE_LLM_TIMEOUT_SECONDS,
+    BlockingWorkTimeout,
+    run_blocking,
+)
 from backend.lib.llm import _resolve, chat_completion
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.routes.responsiveness import signals_map
@@ -267,8 +273,17 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
         )
         cand.append((r.opportunity_id, area[:600]))
 
-    cache_key = hashlib.md5(
-        f"{query}|{_LLM_RERANK_MODEL}|{','.join(c[0] for c in cand)}".encode()
+    # Candidate CONTENT participates in the key, not just the ids: a data
+    # refresh that changes a professor's research areas / recent works must
+    # invalidate the cached scores + reasons, or the rerank keeps serving
+    # stale explanations for the same id set.
+    cache_key = hashlib.sha256(
+        json.dumps(
+            {"query": query, "model": _LLM_RERANK_MODEL, "candidates": cand},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
     ).hexdigest()
     scores = _llm_rerank_cache.get(cache_key)
     if scores is None:
@@ -349,11 +364,15 @@ async def get_matches(
     # never turn the default /matches route into a 5xx.
     if llm:
         try:
-            results = await asyncio.to_thread(
+            # Bounded AI pool, not the unbounded default executor: the rerank
+            # fans out paid provider calls, so saturation/timeout must degrade
+            # to the rule order instead of queueing behind an outage.
+            results = await run_blocking(
                 llm_rerank,
                 profile_dict,
                 results,
                 opp_lookup,
+                timeout_seconds=MULTI_LLM_TIMEOUT_SECONDS,
             )
             # llm_rerank re-sorts and re-buckets, which discards the explore-mode
             # diversity ordering rank_all applied. Re-interleave the top bands so an
@@ -533,13 +552,18 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
     cache_key = _explain_cache_key(opportunity_id, profile_dict)
     llm_text = _explain_cache_get(cache_key)
     if llm_text is None:
-        llm_text = await asyncio.to_thread(
-            _llm_explanation,
-            profile_dict,
-            opp,
-            result.reasons_fit,
-            result.reasons_gap,
-        )
+        try:
+            llm_text = await run_blocking(
+                _llm_explanation,
+                profile_dict,
+                opp,
+                result.reasons_fit,
+                result.reasons_gap,
+                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+            )
+        except BlockingWorkTimeout:
+            logger.warning("explain: LLM call timed out; serving the local summary")
+            llm_text = None
         if llm_text:
             _explain_cache_put(cache_key, llm_text)
 

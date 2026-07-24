@@ -29,7 +29,7 @@ async def parse_github_profile(username: str):
         headers["Authorization"] = f"Bearer {gh_token}"
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as client:
             resp = await client.get(
                 f"https://api.github.com/users/{username}/repos",
                 params={"per_page": 30, "sort": "updated"},

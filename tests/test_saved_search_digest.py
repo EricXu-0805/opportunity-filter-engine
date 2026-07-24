@@ -353,12 +353,25 @@ class TestDigestUnsubscribe:
         import httpx
         monkeypatch.setattr(httpx, "AsyncClient", _Client)
 
-    def test_valid_token_flips_opt_in_off(self, monkeypatch):
+    def test_get_only_confirms_and_does_not_mutate(self, monkeypatch):
+        # Mail security scanners prefetch GET links: a bare open must never
+        # change subscription state, only render the signed confirm form.
         _set_digest_env(monkeypatch)
         patches: list = []
         self._install_patch_stub(monkeypatch, patches)
 
         r = client.get(_unsub_url())
+        assert r.status_code == 200
+        assert "confirm" in r.text.lower()
+        assert 'method="post"' in r.text.lower()
+        assert patches == []
+
+    def test_valid_post_flips_opt_in_off(self, monkeypatch):
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        self._install_patch_stub(monkeypatch, patches)
+
+        r = client.post(_unsub_url())
         assert r.status_code == 200
         assert "unsubscribed" in r.text.lower()
 
@@ -376,6 +389,15 @@ class TestDigestUnsubscribe:
         sig = ss_mod._sign_digest_unsub(SID, ts)
         other_sid = "99999999-2222-3333-4444-555555555555"
         r = client.get(_unsub_url(sid=other_sid, ts=ts, sig=sig))
+        assert r.status_code == 400
+        assert patches == []
+
+    def test_tampered_post_rejected_before_any_write(self, monkeypatch):
+        # The POST shares the same token validator as the GET.
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        self._install_patch_stub(monkeypatch, patches)
+        r = client.post(_unsub_url(sig="00" * 16))
         assert r.status_code == 400
         assert patches == []
 
