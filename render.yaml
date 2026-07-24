@@ -3,9 +3,12 @@ services:
     name: opportunity-filter-engine-api
     runtime: python
     # Standard (2GB) — startup warmup parses the full opportunity corpus into RAM
-    # and fits TF-IDF; at ~19.6k records that peaks well above the 512MB free tier
-    # and OOM-kills boot. 2GB holds it with headroom. Do NOT drop back to free
-    # until the corpus is DB-backed (then a small instance suffices again).
+    # and fits TF-IDF. Measured 2026-07-24 at 126k records: ~1.2GB steady state
+    # (~1.19GB peak single-request), so concurrent heavy requests stacking their
+    # transients is what crosses 2GB (the 07-24 OOM). Budget ≈ 8KB RSS per corpus
+    # record; if the corpus passes ~160k records, upgrade the plan — dieting is
+    # exhausted. Durable fix remains a DB-backed corpus (then a small instance
+    # suffices again).
     plan: standard
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
@@ -14,3 +17,8 @@ services:
         value: "3.11"
       - key: PIP_NO_CACHE_DIR
         value: "1"
+      # glibc mints one malloc arena per thread by default — with the request
+      # thread pool that fragments hundreds of MB of RSS at our allocation
+      # pattern. Two arenas is the standard threaded-CPython setting.
+      - key: MALLOC_ARENA_MAX
+        value: "2"
