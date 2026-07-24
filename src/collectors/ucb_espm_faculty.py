@@ -84,16 +84,26 @@ def _scrape_table_page(soup: BeautifulSoup, base: str) -> list[dict]:
     return out
 
 
+def _table_row_count(soup: BeautifulSoup) -> int:
+    table = soup.select_one("table")
+    return len(table.select("tbody tr")) if table else 0
+
+
 def _scrape_espm_faculty() -> list[dict]:
     """Page through the directory, collecting Faculty-role rows until a page
-    yields none (or the safety bound is hit)."""
+    has no table rows at all (or the safety bound is hit).
+
+    The end-of-pager test must count TABLE rows, not kept faculty rows: the
+    directory sorts all roles together, so a middle page can be 20 rows of
+    Graduate Students/Postdocs with zero Faculty rows (live page 10, 2026-07 —
+    breaking there lost pages 11-21, 29 of 68 faculty)."""
     faculty: list[dict] = []
     for page in range(_MAX_PAGES):
         soup = fetch_soup(f"{ESPM_CONFIG['url']}?page={page}")
         if not soup:
             break
         rows = _scrape_table_page(soup, ESPM_CONFIG["base"])
-        if not rows and page > 0:
+        if not _table_row_count(soup) and page > 0:
             break
         faculty.extend(rows)
         logger.info(f"  page {page}: {len(rows)} faculty")

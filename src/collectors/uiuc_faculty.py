@@ -26,6 +26,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from .ucb_common import clear_contact_claim
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -1638,7 +1640,7 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
         if not _is_faculty_record(opp):
             continue
         if (opp.get("contact_email") or "").strip().lower() in shared:
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 
@@ -1683,7 +1685,7 @@ def _null_unit_inbox_emails(opps: list[dict]) -> int:
         if not local:
             continue
         if local in _UNIT_MAILBOX_LOCALPARTS or local in _dept_name_stems(opp.get("department", "")):
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 
@@ -1715,7 +1717,7 @@ def _null_wrong_person_emails(opps: list[dict]) -> int:
         if (opp.get("source") == "uiuc_faculty"
                 and opp.get("id") in _WRONG_PERSON_EMAIL_IDS
                 and opp.get("contact_email")):
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 

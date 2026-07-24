@@ -1116,3 +1116,33 @@ def test_dedup_program_affiliations_noop_without_program_depts():
          "contact_email": "x@illinois.edu", "keywords": ["optics"]},
     ]
     assert _dedup_program_affiliations(list(opps)) == opps
+
+
+def test_carry_forward_email_needs_no_provenance_to_survive():
+    """W7a invariant: provenance (metadata.email_source) is extra information,
+    never a survival condition. A legacy committed email with NO stamp is
+    carried onto an email-less re-harvest exactly like a stamped one — and no
+    stamp is invented for it."""
+    existing = {
+        "pi_name": "A B", "department": "CS",
+        "keywords": ["x"], "contact_email": "legacy@illinois.edu",
+        "metadata": {"last_verified": "2026-01-01"},
+    }
+    incoming = {"pi_name": "A B", "department": "CS", "keywords": [], "metadata": {}}
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["contact_email"] == "legacy@illinois.edu"
+    assert "email_source" not in incoming["metadata"]
+
+
+def test_carry_forward_new_profile_page_stamp_travels():
+    """The 'profile_page' stamp written by profile_email.apply_emails rides the
+    same unconditional carry as the wayback/constructed stamps."""
+    existing = {
+        "pi_name": "A B", "department": "CS",
+        "keywords": ["x"], "contact_email": "found@illinois.edu",
+        "metadata": {"email_source": "profile_page"},
+    }
+    incoming = {"pi_name": "A B", "department": "CS", "keywords": [], "metadata": {}}
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["contact_email"] == "found@illinois.edu"
+    assert incoming["metadata"]["email_source"] == "profile_page"

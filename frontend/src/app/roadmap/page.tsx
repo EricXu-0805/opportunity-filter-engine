@@ -27,6 +27,79 @@ function CenteredCard({ title, body, cta, href }: { title: string; body: string;
   );
 }
 
+function CourseSuggestions({ skill }: { skill: RoadmapResult['skills'][number] }) {
+  const { t } = useT();
+  // Course codes are UIUC catalog entries — never suggest them to students at
+  // another school as if they were local courses.
+  if (skill.course_catalog !== 'uiuc' || skill.courses.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      <span className="text-[11px] text-gray-400">{t('roadmap.uiucCoursesLabel')}</span>
+      {skill.courses.map((c) => (
+        <span key={c} className="rounded-md bg-teal-50 px-1.5 py-0.5 text-[11px] font-medium text-teal-700">
+          {c}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function TargetActivityNotice({ data }: { data: RoadmapResult }) {
+  const { t } = useT();
+  const inactive = data.inactive_targets ?? 0;
+  const unverified = data.unverified_targets ?? 0;
+  if (inactive === 0 && unverified === 0) return null;
+  return (
+    <div
+      role="status"
+      className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+    >
+      <p className="text-sm font-semibold">{t('roadmap.activityExcludedTitle')}</p>
+      <p className="mt-1 text-[13px] text-amber-800">
+        {t('roadmap.activityExcludedBody', { inactive, unverified })}
+      </p>
+    </div>
+  );
+}
+
+function PartialResolutionNotice({ data }: { data: RoadmapResult }) {
+  const { t } = useT();
+  if (!data.unresolved_targets) return null;
+  return (
+    <div
+      role="status"
+      className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+    >
+      <p className="text-sm font-semibold">{t('roadmap.unresolvedPartialTitle')}</p>
+      <p className="mt-1 text-[13px] text-amber-800">
+        {t('roadmap.unresolvedPartialBody', {
+          unresolved: data.unresolved_targets,
+          resolved: data.resolved_targets ?? data.total_labs,
+        })}
+      </p>
+    </div>
+  );
+}
+
+function SkillEvidenceNotice({ data }: { data: RoadmapResult }) {
+  const { t } = useT();
+  if (!data.targets_without_skill_evidence) return null;
+  return (
+    <div
+      role="status"
+      className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+    >
+      <p className="text-sm font-semibold">{t('roadmap.skillEvidenceIncompleteTitle')}</p>
+      <p className="mt-1 text-[13px] text-amber-800">
+        {t('roadmap.skillEvidenceIncompleteBody', {
+          analyzed: data.targets_with_skill_evidence ?? 0,
+          unknown: data.targets_without_skill_evidence,
+        })}
+      </p>
+    </div>
+  );
+}
+
 export default function RoadmapPage() {
   const router = useRouter();
   const { t } = useT();
@@ -89,6 +162,20 @@ export default function RoadmapPage() {
     </>
   );
 
+  const errorCard = (
+    <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
+      <p className="text-sm font-medium text-gray-600">{t('roadmap.errorTitle')}</p>
+      <p className="mt-1 text-[13px] text-gray-400">{t('roadmap.errorBody')}</p>
+      <button
+        type="button"
+        onClick={retry}
+        className="mt-5 inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+      >
+        {t('roadmap.errorRetry')}
+      </button>
+    </div>
+  );
+
   let inner: React.ReactNode;
   if (loading) {
     inner = (
@@ -100,33 +187,81 @@ export default function RoadmapPage() {
   } else if (!profile) {
     inner = <CenteredCard title={t('roadmap.needProfileTitle')} body={t('roadmap.needProfileBody')} cta={t('roadmap.needProfileCta')} href="/" />;
   } else if (error) {
-    inner = (
-      <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
-        <p className="text-sm font-medium text-gray-600">{t('roadmap.errorTitle')}</p>
-        <p className="mt-1 text-[13px] text-gray-400">{t('roadmap.errorBody')}</p>
-        <button
-          type="button"
-          onClick={retry}
-          className="mt-5 inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-        >
-          {t('roadmap.errorRetry')}
-        </button>
-      </div>
-    );
+    inner = errorCard;
   } else if (!favCount) {
     inner = <CenteredCard title={t('roadmap.needFavoritesTitle')} body={t('roadmap.needFavoritesBody')} cta={t('roadmap.needFavoritesCta')} href="/results" />;
-  } else if (!data || data.skills.length === 0) {
-    inner = (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 px-6 py-12 text-center">
-        <p className="text-sm font-medium text-emerald-700">{t('roadmap.allSetTitle')}</p>
-        <p className="mt-1 text-[13px] text-emerald-600/80">{t('roadmap.allSetBody', { count: favCount })}</p>
-      </div>
-    );
-  } else {
+  } else if (!data) {
+    inner = errorCard;
+  } else if ((data.resolved_targets ?? data.total_labs) === 0) {
     inner = (
       <>
+        <TargetActivityNotice data={data} />
+        <CenteredCard
+          title={t('roadmap.noCurrentTargetsTitle')}
+          body={t('roadmap.noCurrentTargetsBody', {
+            missing: data.unresolved_targets ?? 0,
+            inactive: data.inactive_targets ?? 0,
+            unverified: data.unverified_targets ?? 0,
+          })}
+          cta={t('roadmap.noCurrentTargetsCta')}
+          href="/favorites"
+        />
+      </>
+    );
+  } else if ((data.targets_with_skill_evidence ?? 0) === 0) {
+    // Every resolved target exposes no skill requirements — the honest answer
+    // is "insufficient evidence", never "already competitive".
+    inner = (
+      <>
+        <TargetActivityNotice data={data} />
+        <PartialResolutionNotice data={data} />
+        <CenteredCard
+          title={t('roadmap.noSkillEvidenceTitle')}
+          body={t('roadmap.noSkillEvidenceBody', {
+            count: data.targets_without_skill_evidence ?? data.total_labs,
+          })}
+          cta={t('roadmap.noSkillEvidenceCta')}
+          href="/favorites"
+        />
+      </>
+    );
+  } else if (data.skills.length === 0) {
+    const unknownRemainder = (data.targets_without_skill_evidence ?? 0) > 0;
+    inner = (
+      <>
+        <TargetActivityNotice data={data} />
+        <PartialResolutionNotice data={data} />
+        <SkillEvidenceNotice data={data} />
+        <div className={`rounded-2xl px-6 py-12 text-center ${
+          unknownRemainder
+            ? 'border border-amber-200 bg-amber-50/50'
+            : 'border border-emerald-200 bg-emerald-50/50'
+        }`}>
+          <p className={`text-sm font-medium ${
+            unknownRemainder ? 'text-amber-800' : 'text-emerald-700'
+          }`}>
+            {t(unknownRemainder ? 'roadmap.evidenceCoveredTitle' : 'roadmap.allSetTitle')}
+          </p>
+          <p className={`mt-1 text-[13px] ${
+            unknownRemainder ? 'text-amber-700' : 'text-emerald-600/80'
+          }`}>
+            {t(
+              unknownRemainder ? 'roadmap.evidenceCoveredBody' : 'roadmap.allSetBody',
+              { count: data.targets_with_skill_evidence ?? data.total_labs },
+            )}
+          </p>
+        </div>
+      </>
+    );
+  } else {
+    const evidenceTotal = data.targets_with_skill_evidence ?? data.total_labs;
+    inner = (
+      <>
+        <TargetActivityNotice data={data} />
+        <PartialResolutionNotice data={data} />
+        <SkillEvidenceNotice data={data} />
         <p className="mb-4 text-[13px] text-gray-500">
-          {t('roadmap.summary', { skills: data.skills.length, labs: data.total_labs })}
+          {t('roadmap.summary', { skills: data.skills.length, labs: evidenceTotal })}
         </p>
         <ol className="space-y-3">
           {data.skills.map((s, i) => (
@@ -147,18 +282,11 @@ export default function RoadmapPage() {
                 </span>
               </div>
               <p className="mt-1.5 pl-5 text-xs text-gray-500">
-                {t('roadmap.neededBy', { count: s.needed_by, total: data.total_labs })} · {s.estimated_time}
+                {t('roadmap.neededBy', { count: s.needed_by, total: evidenceTotal })} · {s.estimated_time}
               </p>
-              {s.courses.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5 pl-5">
-                  <span className="text-[11px] text-gray-400">{t('roadmap.coursesLabel')}</span>
-                  {s.courses.map((c) => (
-                    <span key={c} className="rounded-md bg-teal-50 px-1.5 py-0.5 text-[11px] font-medium text-teal-700">
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="pl-5">
+                <CourseSuggestions skill={s} />
+              </div>
             </li>
           ))}
         </ol>

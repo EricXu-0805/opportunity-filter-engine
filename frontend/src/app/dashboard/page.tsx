@@ -1,40 +1,44 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  AlertCircle,
-  Send,
-  MessageSquare,
-  XCircle,
-  Users,
-  BarChart3,
   ArrowRight,
-  Clock,
-  ExternalLink,
+  BarChart3,
   BellRing,
+  BookOpenCheck,
+  CalendarClock,
+  GraduationCap,
+  Loader2,
+  MessageSquare,
+  Send,
   StickyNote,
+  Users,
+  XCircle,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { getStats, getUpcomingDeadlines, getOpportunitiesByIds } from '@/lib/api';
-import { useT } from '@/i18n/client';
-import type { UpcomingDeadline } from '@/lib/api';
-import { getFavorites, getInteractionsFull } from '@/lib/supabase';
-import type { InteractionType, InteractionRecord } from '@/lib/supabase';
-import type { StatsResponse } from '@/lib/types';
-import { collectReminders, formatReminderLabel, type ReminderInfo } from '@/lib/reminders';
-import PushToggle from '@/components/PushToggle';
+import Link from 'next/link';
 
-const STATUS_CONFIG: Record<InteractionType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  applied: { label: 'Applied', icon: Send, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  replied: { label: 'Replied', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  rejected: { label: 'Rejected', icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
-  interviewing: { label: 'Interviewing', icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
-  dismissed: { label: 'Dismissed', icon: XCircle, color: 'text-gray-400', bg: 'bg-gray-50' },
+import PushToggle from '@/components/PushToggle';
+import { useT } from '@/i18n/client';
+import { getOpportunitiesByIds } from '@/lib/api';
+import { daysUntil } from '@/lib/match-utils';
+import { collectReminders, type ReminderInfo } from '@/lib/reminders';
+import { getFavorites, getInteractionsFull } from '@/lib/supabase';
+import type { InteractionRecord, InteractionType } from '@/lib/supabase';
+
+type Replier = (key: string, vars?: Record<string, string | number>) => string;
+type LoadStatus = 'loading' | 'ready' | 'error';
+
+const STATUS_CONFIG: Record<InteractionType, { labelKey: string; icon: React.ElementType; color: string; bg: string }> = {
+  applied: { labelKey: 'tracker.status.applied', icon: Send, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  replied: { labelKey: 'tracker.status.replied', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  rejected: { labelKey: 'tracker.status.rejected', icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
+  interviewing: { labelKey: 'tracker.status.interviewing', icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
+  dismissed: { labelKey: 'tracker.status.dismissed', icon: XCircle, color: 'text-gray-400', bg: 'bg-gray-50' },
 };
 
 interface TrackedOpp {
   id: string;
-  title: string;
+  title?: string;
   organization?: string;
   opportunity_type?: string;
   status: InteractionType;
@@ -42,335 +46,624 @@ interface TrackedOpp {
   remind_at?: string;
 }
 
+interface FavoriteDeadline {
+  id: string;
+  title?: string;
+  organization?: string;
+  deadline: string;
+  deadlineIsEstimate: boolean | null;
+  daysLeft: number;
+}
+
+interface ReminderRow extends ReminderInfo {
+  title?: string;
+  organization?: string;
+}
+
+interface SavedState { status: LoadStatus; count: number }
+interface DeadlineState { status: LoadStatus; items: FavoriteDeadline[] }
+interface TrackerState { status: LoadStatus; items: TrackedOpp[] }
+interface ReminderState {
+  status: LoadStatus;
+  items: ReminderRow[];
+  total: number;
+  detailsUnavailable: boolean;
+}
+
+function sortDeadlines(a: FavoriteDeadline, b: FavoriteDeadline): number {
+  const aPast = a.daysLeft < 0;
+  const bPast = b.daysLeft < 0;
+  if (aPast !== bPast) return aPast ? 1 : -1;
+  return aPast ? b.daysLeft - a.daysLeft : a.daysLeft - b.daysLeft;
+}
+
 export default function DashboardPage() {
-  const router = useRouter();
-  const { t: tr } = useT();
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [tracked, setTracked] = useState<TrackedOpp[]>([]);
-  const [favCount, setFavCount] = useState(0);
-  const [upcoming, setUpcoming] = useState<UpcomingDeadline[]>([]);
-  const [reminders, setReminders] = useState<ReminderInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { t } = useT();
+  const [saved, setSaved] = useState<SavedState>({ status: 'loading', count: 0 });
+  const [deadlines, setDeadlines] = useState<DeadlineState>({ status: 'loading', items: [] });
+  const [tracker, setTracker] = useState<TrackerState>({ status: 'loading', items: [] });
+  const [reminders, setReminders] = useState<ReminderState>({
+    status: 'loading',
+    items: [],
+    total: 0,
+    detailsUnavailable: false,
+  });
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const [statsData, interactionsFull, favSet, upcomingData] = await Promise.all([
-          getStats(),
-          getInteractionsFull(),
-          getFavorites(),
-          getUpcomingDeadlines(30).catch(() => ({ opportunities: [], total: 0, days: 30 })),
-        ]);
-        if (cancelled) return;
-        setStats(statsData);
-        setFavCount(favSet.size);
-        setUpcoming(upcomingData.opportunities.slice(0, 8));
-        setReminders(collectReminders(interactionsFull).slice(0, 5));
 
-        if (interactionsFull.size > 0) {
-          const ids = Array.from(interactionsFull.keys());
-          const opps = await getOpportunitiesByIds(ids);
-          if (cancelled) return;
-          setTracked(
-            opps.map((o) => {
-              const rec: InteractionRecord | undefined = interactionsFull.get(o.id as string);
-              return {
-                id: o.id as string,
-                title: o.title as string,
-                organization: o.organization as string | undefined,
-                opportunity_type: o.opportunity_type as string | undefined,
-                status: rec!.type,
-                notes: rec?.notes,
-                remind_at: rec?.remind_at,
-              };
-            }),
-          );
+    async function loadFavorites() {
+      let favoriteIds: Set<string>;
+      try {
+        favoriteIds = await getFavorites();
+      } catch {
+        if (!cancelled) {
+          setSaved({ status: 'error', count: 0 });
+          setDeadlines({ status: 'error', items: [] });
         }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load');
-      } finally {
-        if (!cancelled) setLoading(false);
+        return;
+      }
+      if (cancelled) return;
+      setSaved({ status: 'ready', count: favoriteIds.size });
+      if (favoriteIds.size === 0) {
+        setDeadlines({ status: 'ready', items: [] });
+        return;
+      }
+      try {
+        const opportunities = await getOpportunitiesByIds(Array.from(favoriteIds));
+        if (cancelled) return;
+        // The batch endpoint should already honor the IDs, but this client-side
+        // allow-list is deliberate: a global or stale record can never leak
+        // into the student's saved-deadline inbox.
+        const items = opportunities
+          .filter((opportunity) => {
+            const id = typeof opportunity.id === 'string' ? opportunity.id : '';
+            return favoriteIds.has(id) && typeof opportunity.deadline === 'string';
+          })
+          .map((opportunity): FavoriteDeadline | null => {
+            const deadline = opportunity.deadline as string;
+            const remaining = daysUntil(deadline);
+            if (remaining === null) return null;
+            return {
+              id: opportunity.id as string,
+              title: typeof opportunity.title === 'string' ? opportunity.title : undefined,
+              organization: typeof opportunity.organization === 'string'
+                ? opportunity.organization
+                : undefined,
+              deadline,
+              deadlineIsEstimate: typeof opportunity.deadline_is_estimate === 'boolean'
+                ? opportunity.deadline_is_estimate
+                : null,
+              daysLeft: remaining,
+            };
+          })
+          .filter((item): item is FavoriteDeadline => item !== null)
+          .sort(sortDeadlines)
+          .slice(0, 8);
+        setDeadlines({ status: 'ready', items });
+      } catch {
+        if (!cancelled) setDeadlines({ status: 'error', items: [] });
       }
     }
-    load();
+
+    async function loadTracker() {
+      let interactions: Map<string, InteractionRecord>;
+      try {
+        interactions = await getInteractionsFull();
+      } catch {
+        if (!cancelled) {
+          setTracker({ status: 'error', items: [] });
+          setReminders({ status: 'error', items: [], total: 0, detailsUnavailable: false });
+        }
+        return;
+      }
+      if (cancelled) return;
+
+      const allReminders = collectReminders(interactions);
+      const reminderItems = allReminders.slice(0, 5);
+
+      if (interactions.size === 0) {
+        setTracker({ status: 'ready', items: [] });
+        setReminders({ status: 'ready', items: [], total: 0, detailsUnavailable: false });
+        return;
+      }
+
+      try {
+        const trackedIds = Array.from(interactions.keys());
+        const opportunities = await getOpportunitiesByIds(trackedIds);
+        if (cancelled) return;
+        const byId = new Map(
+          opportunities
+            .filter((o) => typeof o.id === 'string' && interactions.has(o.id as string))
+            .map((o) => [o.id as string, o]),
+        );
+        setTracker({
+          status: 'ready',
+          items: trackedIds.map((id) => {
+            const record = interactions.get(id)!;
+            const opportunity = byId.get(id);
+            return {
+              id,
+              title: typeof opportunity?.title === 'string' ? opportunity.title : undefined,
+              organization: typeof opportunity?.organization === 'string'
+                ? opportunity.organization
+                : undefined,
+              opportunity_type: typeof opportunity?.opportunity_type === 'string'
+                ? opportunity.opportunity_type
+                : undefined,
+              status: record.type,
+              notes: record.notes,
+              remind_at: record.remind_at,
+            };
+          }),
+        });
+        setReminders({
+          status: 'ready',
+          total: allReminders.length,
+          detailsUnavailable: false,
+          items: reminderItems.map((item) => {
+            const opportunity = byId.get(item.opportunityId);
+            return {
+              ...item,
+              title: typeof opportunity?.title === 'string' ? opportunity.title : undefined,
+              organization: typeof opportunity?.organization === 'string'
+                ? opportunity.organization
+                : undefined,
+            };
+          }),
+        });
+      } catch {
+        if (cancelled) return;
+        // Statuses and reminder dates still came from the student's persisted
+        // tracker. Preserve those real actions and label only the missing
+        // title lookup.
+        setTracker({
+          status: 'ready',
+          items: Array.from(interactions.entries()).map(([id, record]) => ({
+            id,
+            status: record.type,
+            notes: record.notes,
+            remind_at: record.remind_at,
+          })),
+        });
+        setReminders({
+          status: 'ready',
+          items: reminderItems,
+          total: allReminders.length,
+          detailsUnavailable: true,
+        });
+      }
+    }
+
+    void loadFavorites();
+    void loadTracker();
     return () => { cancelled = true; };
   }, []);
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { applied: 0, replied: 0, rejected: 0, interviewing: 0 };
-    for (const t of tracked) counts[t.status] = (counts[t.status] || 0) + 1;
-    return counts;
-  }, [tracked]);
-
-  if (loading) {
-    return <DashboardSkeleton />;
+  const statusCounts: Record<string, number> = { applied: 0, replied: 0, rejected: 0, interviewing: 0 };
+  for (const item of tracker.items) {
+    if (item.status in statusCounts) statusCounts[item.status] += 1;
   }
+  const trackerReady = tracker.status === 'ready';
 
-  if (error || !stats) {
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
+      <header className="mb-8 sm:mb-10">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+          {t('dashboard.title')}
+        </h1>
+        <p className="mt-1.5 max-w-2xl text-[13px] text-gray-400 sm:mt-2 sm:text-[15px]">
+          {t('dashboard.subtitle')}
+        </p>
+      </header>
+
+      <section aria-labelledby="dashboard-summary" className="mb-10">
+        <h2 id="dashboard-summary" className="mb-4 text-sm font-semibold text-gray-900">
+          {t('dashboard.summary.title')}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <StatCard
+            testId="saved-summary"
+            value={saved.status === 'ready' ? saved.count : null}
+            label={t('dashboard.summary.saved')}
+            color="text-amber-600"
+          />
+          <StatCard
+            value={trackerReady ? statusCounts.applied : null}
+            label={t('tracker.status.applied')}
+            color="text-indigo-600"
+          />
+          <StatCard
+            value={trackerReady ? statusCounts.replied : null}
+            label={t('tracker.status.replied')}
+            color="text-emerald-600"
+          />
+          <StatCard
+            value={trackerReady ? statusCounts.interviewing : null}
+            label={t('tracker.status.interviewing')}
+            color="text-violet-600"
+          />
+          <StatCard
+            value={trackerReady ? statusCounts.rejected : null}
+            label={t('tracker.status.rejected')}
+            color="text-red-500"
+          />
+        </div>
+        <div className="mt-3 space-y-1">
+          {saved.status === 'error' && (
+            <p className="text-xs text-red-600">{t('dashboard.saved.errorTitle')}</p>
+          )}
+          {tracker.status === 'error' && (
+            <p className="text-xs text-red-600">{t('dashboard.trackerSection.errorTitle')}</p>
+          )}
+        </div>
+      </section>
+
+      <div className="space-y-6">
+        <DashboardSection
+          icon={CalendarClock}
+          title={t('dashboard.deadlines.title')}
+          subtitle={t('dashboard.deadlines.subtitle')}
+        >
+          <DeadlineContent state={deadlines} savedCount={saved} t={t} />
+        </DashboardSection>
+
+        <DashboardSection
+          icon={BellRing}
+          title={t('dashboard.reminders.title')}
+          subtitle={reminders.status === 'ready' && reminders.total > 0
+            ? t('dashboard.reminders.pending', { count: reminders.total })
+            : undefined}
+          action={<PushToggle />}
+        >
+          <ReminderContent state={reminders} t={t} />
+        </DashboardSection>
+
+        <DashboardSection
+          icon={BarChart3}
+          title={t('dashboard.trackerSection.title')}
+          subtitle={trackerReady && tracker.items.length > 0
+            ? t('dashboard.trackerSection.count', { count: tracker.items.length })
+            : undefined}
+          action={(
+            <Link
+              href="/tracker"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              {t('dashboard.trackerSection.openBoard')}
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          )}
+        >
+          <TrackerContent state={tracker} t={t} />
+        </DashboardSection>
+
+        <section aria-labelledby="dashboard-roadmap-cta">
+          <Link
+            href="/roadmap"
+            className="group flex items-center gap-4 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+              <GraduationCap className="h-5 w-5 text-violet-700" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 id="dashboard-roadmap-cta" className="text-sm font-bold text-gray-950">
+                {t('dashboard.roadmapCta.title')}
+              </h2>
+              <p className="mt-0.5 text-[13px] leading-5 text-gray-500">
+                {t('dashboard.roadmapCta.body')}
+              </p>
+            </div>
+            <ArrowRight
+              className="h-4 w-4 shrink-0 text-violet-500 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </Link>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  value,
+  label,
+  color,
+  testId,
+}: {
+  value: number | null;
+  label: string;
+  color: string;
+  testId?: string;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      className="rounded-2xl border border-gray-100 bg-white px-4 py-4 shadow-sm"
+    >
+      <p className={`text-2xl font-bold tabular-nums tracking-tight ${color}`}>
+        {value ?? '—'}
+      </p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function DashboardSection({
+  icon: Icon,
+  title,
+  subtitle,
+  action,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+      <div className="flex items-center gap-2.5 border-b border-gray-100 px-6 py-4">
+        <Icon className="h-4 w-4 text-gray-500" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        {subtitle && <span className="text-[11px] text-gray-400">{subtitle}</span>}
+        {action && <div className="ml-auto">{action}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function LoadingRow({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 px-6 py-10 text-xs text-gray-400">
+      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+      {label}
+    </div>
+  );
+}
+
+function ErrorRow({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="px-6 py-9 text-center">
+      <p className="text-sm font-semibold text-red-600">{title}</p>
+      <p className="mt-1 text-xs text-gray-500">{body}</p>
+    </div>
+  );
+}
+
+function DeadlineContent({
+  state,
+  savedCount,
+  t,
+}: {
+  state: DeadlineState;
+  savedCount: SavedState;
+  t: Replier;
+}) {
+  if (state.status === 'loading') return <LoadingRow label={t('dashboard.loading')} />;
+  if (state.status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertCircle className="w-8 h-8 text-red-400" />
-        <p className="text-gray-600 font-medium">{error || 'No data'}</p>
-        <button type="button" onClick={() => window.location.reload()} className="text-[13px] text-indigo-600 hover:underline">
-          Retry
-        </button>
+      <ErrorRow
+        title={t('dashboard.deadlines.errorTitle')}
+        body={t('dashboard.deadlines.errorBody')}
+      />
+    );
+  }
+  if (state.items.length === 0) {
+    const noSaves = savedCount.status === 'ready' && savedCount.count === 0;
+    return (
+      <div className="px-6 py-9 text-center">
+        <BookOpenCheck className="mx-auto h-7 w-7 text-gray-300" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-gray-700">
+          {t(noSaves ? 'dashboard.deadlines.noSavesTitle' : 'dashboard.deadlines.emptyTitle')}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">
+          {t(noSaves ? 'dashboard.deadlines.noSavesBody' : 'dashboard.deadlines.emptyBody')}
+        </p>
+        {noSaves && (
+          <Link
+            href="/results"
+            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+          >
+            {t('dashboard.deadlines.noSavesCta')}
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        )}
       </div>
     );
   }
-
-  const typeEntries = Object.entries(stats.by_type).sort(([, a], [, b]) => b - a);
-  const maxType = Math.max(...typeEntries.map(([, v]) => v), 1);
-
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-      <div className="mb-8 sm:mb-12">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">{tr('dashboard.title')}</h1>
-        <p className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-400">{tr('dashboard.subtitle')}</p>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-        <StatCard value={statusCounts.applied} label="Applied" color="text-indigo-600" />
-        <StatCard value={statusCounts.replied} label="Replied" color="text-emerald-600" />
-        <StatCard value={statusCounts.interviewing} label="Interviewing" color="text-violet-600" />
-        <StatCard value={favCount} label="Saved" color="text-amber-500" />
-      </div>
-
-      {tracked.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] mb-12 overflow-hidden">
-          <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
-            <BarChart3 className="w-4 h-4 text-gray-400" />
-            <h2 className="text-[15px] font-semibold text-gray-900">{tr('dashboard.tracker.title')}</h2>
-            <span className="text-[12px] text-gray-400 ml-auto">{tr('dashboard.tracker.count', { count: tracked.length })}</span>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {tracked.map((t) => {
-              const cfg = STATUS_CONFIG[t.status];
-              const Icon = cfg.icon;
-              return (
-                <a
-                  key={t.id}
-                  href={`/opportunities/${encodeURIComponent(t.id)}`}
-                  className="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50/50 transition-colors focus:outline-none focus-visible:bg-gray-50"
-                >
-                  <div className={`w-8 h-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
-                    <Icon className={`w-4 h-4 ${cfg.color}`} aria-hidden="true" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-gray-900 truncate">{t.title}</p>
-                    <p className="text-[12px] text-gray-400 truncate">
-                      {t.organization}{t.opportunity_type ? ` · ${t.opportunity_type}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {t.notes && (
-                      <StickyNote className="w-3.5 h-3.5 text-gray-300" aria-label="Has notes" />
-                    )}
-                    {t.remind_at && (
-                      <BellRing className="w-3.5 h-3.5 text-amber-400" aria-label={`Reminder: ${t.remind_at}`} />
-                    )}
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${cfg.bg} ${cfg.color}`}>
-                      {cfg.label}
-                    </span>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {tracked.length === 0 && (
-        <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8 mb-12 text-center">
-          <BarChart3 className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-          <p className="text-[15px] text-gray-500 mb-1">No applications tracked yet.</p>
-          <p className="text-[13px] text-gray-400 mb-4">Mark opportunities as Applied, Replied, or Interviewing from the results page.</p>
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors"
-          >
-            Find Matches <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {reminders.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] mb-8 overflow-hidden">
-          <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
-            <BellRing className="w-4 h-4 text-amber-500" aria-hidden="true" />
-            <h2 className="text-[15px] font-semibold text-gray-900">{tr('dashboard.reminders.title')}</h2>
-            <span className="text-[12px] text-gray-400">{tr('dashboard.reminders.pending', { count: reminders.length })}</span>
-            <div className="ml-auto"><PushToggle /></div>
-          </div>
-          <ul className="divide-y divide-gray-50">
-            {reminders.map(r => {
-              const tracked_opp = tracked.find(t => t.id === r.opportunityId);
-              const statusColor =
-                r.status === 'overdue' ? 'text-red-600' :
-                r.status === 'today' ? 'text-amber-600' :
-                r.status === 'tomorrow' ? 'text-amber-500' :
-                'text-gray-500';
-              return (
-                <li key={r.opportunityId}>
-                  <a
-                    href={`/opportunities/${encodeURIComponent(r.opportunityId)}`}
-                    className="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50/50 transition-colors focus:outline-none focus-visible:bg-gray-50"
-                  >
-                    <div className={`shrink-0 w-24 text-right ${statusColor}`}>
-                      <p className="text-[12px] font-semibold">{formatReminderLabel(r)}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{r.remindAt}</p>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium text-gray-900 truncate">
-                        {tracked_opp?.title ?? r.opportunityId}
-                      </p>
-                      {r.notes && (
-                        <p className="text-[12px] text-gray-400 truncate mt-0.5 flex items-center gap-1">
-                          <StickyNote className="w-3 h-3" aria-hidden="true" />
-                          {r.notes}
-                        </p>
-                      )}
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" aria-hidden="true" />
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      {upcoming.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] mb-12 overflow-hidden">
-          <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
-            <Clock className="w-4 h-4 text-amber-500" />
-            <h2 className="text-[15px] font-semibold text-gray-900">{tr('dashboard.upcoming.title')}</h2>
-            <span className="text-[12px] text-gray-400 ml-auto">{tr('dashboard.upcoming.next30')}</span>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {upcoming.map(u => {
-              const urgent = u.days_left <= 7;
-              return (
-                <a
-                  key={u.id}
-                  href={u.url || '#'}
-                  target={u.url ? '_blank' : undefined}
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50/50 transition-colors"
-                >
-                  <div className={`shrink-0 w-12 text-center ${urgent ? 'text-red-500' : 'text-amber-500'}`}>
-                    <p className="text-xl font-bold tabular-nums leading-none">{u.days_left}</p>
-                    <p className="text-[9px] font-medium uppercase tracking-wider mt-0.5">
-                      {u.days_left === 1 ? 'day' : 'days'}
-                    </p>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-gray-900 truncate">{u.title}</p>
-                    <p className="text-[12px] text-gray-400 truncate">
-                      {u.organization || 'Unknown org'} · due {u.deadline}
-                    </p>
-                  </div>
-                  {u.url && <ExternalLink className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-        <StatCard value={stats.total} label={tr('dashboard.stats.total')} />
-        <StatCard value={stats.active} label={tr('dashboard.stats.active')} color="text-emerald-600" />
-        <StatCard value={stats.paid_total} label={tr('dashboard.stats.paid')} color="text-indigo-600" />
-        <StatCard value={stats.international_friendly_total} label={tr('dashboard.stats.intl')} color="text-indigo-600" />
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8">
-        <h2 className="text-[15px] font-semibold text-gray-900 mb-6">{tr('dashboard.distribution.title')}</h2>
-        <div className="space-y-3">
-          {typeEntries.map(([type, count]) => {
-            const pct = (count / maxType) * 100;
-            return (
-              <div key={type} className="flex items-center gap-4">
-                <span className="text-[13px] text-gray-500 w-36 truncate shrink-0">{type}</span>
-                <div className="flex-1 h-2 bg-black/[0.04] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-400 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.max(pct, 2)}%` }}
-                  />
-                </div>
-                <span className="text-[13px] font-semibold text-gray-400 tabular-nums w-8 text-right">{count}</span>
+    <ul className="divide-y divide-gray-50">
+      {state.items.map((item) => {
+        const exact = item.deadlineIsEstimate === false;
+        const urgent = exact && item.daysLeft >= 0 && item.daysLeft <= 7;
+        const precisionLabel = item.deadlineIsEstimate === true
+          ? t('dashboard.deadlines.estimated')
+          : item.deadlineIsEstimate === null
+            ? t('dashboard.deadlines.verifyDate')
+            : null;
+        return (
+          <li key={item.id}>
+            <Link
+              href={`/opportunities/${encodeURIComponent(item.id)}`}
+              className="flex min-w-0 items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+            >
+              <div className={`w-20 shrink-0 text-right ${urgent ? 'text-red-600' : 'text-amber-600'}`}>
+                <p className="text-xs font-bold">
+                  {exact ? deadlineLabel(item.daysLeft, t) : precisionLabel}
+                </p>
+                <p className="mt-0.5 text-[10px] text-gray-400">{item.deadline}</p>
               </div>
-            );
-          })}
-        </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-900">
+                  {item.title ?? t('dashboard.unknownTarget')}
+                </p>
+                {item.organization && (
+                  <p className="mt-0.5 truncate text-xs text-gray-400">{item.organization}</p>
+                )}
+              </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden="true" />
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ReminderContent({ state, t }: { state: ReminderState; t: Replier }) {
+  if (state.status === 'loading') return <LoadingRow label={t('dashboard.loading')} />;
+  if (state.status === 'error') {
+    return (
+      <ErrorRow
+        title={t('dashboard.reminders.errorTitle')}
+        body={t('dashboard.reminders.errorBody')}
+      />
+    );
+  }
+  if (state.items.length === 0) {
+    return (
+      <div className="px-6 py-9 text-center">
+        <BellRing className="mx-auto h-7 w-7 text-gray-300" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-gray-700">
+          {t('dashboard.reminders.emptyTitle')}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">{t('dashboard.reminders.emptyBody')}</p>
       </div>
+    );
+  }
+  return (
+    <>
+      {state.detailsUnavailable && (
+        <p className="border-b border-amber-100 bg-amber-50 px-6 py-2 text-[11px] text-amber-700">
+          {t('dashboard.reminders.detailsUnavailable')}
+        </p>
+      )}
+      <ul className="divide-y divide-gray-50">
+        {state.items.map((item) => (
+          <li key={item.opportunityId}>
+            <Link
+              href={`/opportunities/${encodeURIComponent(item.opportunityId)}`}
+              className="flex min-w-0 items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+            >
+              <div className={`w-20 shrink-0 text-right ${reminderColor(item)}`}>
+                <p className="text-xs font-bold">{reminderLabel(item, t)}</p>
+                <p className="mt-0.5 text-[10px] text-gray-400">{item.remindAt}</p>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-900">
+                  {item.title ?? t('dashboard.unknownTarget')}
+                </p>
+                {item.notes ? (
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-gray-400">
+                    <StickyNote className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    {item.notes}
+                  </p>
+                ) : item.organization ? (
+                  <p className="mt-0.5 truncate text-xs text-gray-400">{item.organization}</p>
+                ) : null}
+              </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function TrackerContent({ state, t }: { state: TrackerState; t: Replier }) {
+  if (state.status === 'loading') return <LoadingRow label={t('dashboard.loading')} />;
+  if (state.status === 'error') {
+    return (
+      <ErrorRow
+        title={t('dashboard.trackerSection.errorTitle')}
+        body={t('dashboard.trackerSection.errorBody')}
+      />
+    );
+  }
+  if (state.items.length === 0) {
+    return (
+      <div className="px-6 py-9 text-center">
+        <BarChart3 className="mx-auto h-7 w-7 text-gray-300" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-gray-700">
+          {t('dashboard.trackerSection.emptyTitle')}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">{t('dashboard.trackerSection.emptyBody')}</p>
+        <Link
+          href="/results"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+        >
+          {t('dashboard.trackerSection.emptyCta')}
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="divide-y divide-gray-50">
+      {state.items.map((item) => {
+        const cfg = STATUS_CONFIG[item.status];
+        const Icon = cfg.icon;
+        return (
+          <Link
+            key={item.id}
+            href={`/opportunities/${encodeURIComponent(item.id)}`}
+            className="flex items-center gap-4 px-6 py-3.5 transition-colors hover:bg-gray-50/50 focus:outline-none focus-visible:bg-gray-50"
+          >
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}>
+              <Icon className={`h-4 w-4 ${cfg.color}`} aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[14px] font-medium text-gray-900">
+                {item.title ?? t('dashboard.unknownTarget')}
+              </p>
+              <p className="truncate text-[12px] text-gray-400">
+                {[item.organization, item.opportunity_type].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {item.notes && (
+                <StickyNote className="h-3.5 w-3.5 text-gray-300" aria-label={t('dashboard.trackerSection.hasNotes')} />
+              )}
+              {item.remind_at && (
+                <BellRing className="h-3.5 w-3.5 text-amber-400" aria-label={t('dashboard.trackerSection.hasReminder')} />
+              )}
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${cfg.bg} ${cfg.color}`}>
+                {t(cfg.labelKey)}
+              </span>
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
 
-function StatCard({ value, label, color }: { value: number; label: string; color?: string }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] px-5 py-5">
-      <p className={`text-3xl font-bold tabular-nums tracking-tight ${color || 'text-gray-900'}`}>{value}</p>
-      <p className="text-[11px] font-medium text-gray-400 mt-1 uppercase tracking-wider">{label}</p>
-    </div>
-  );
+function deadlineLabel(days: number, t: Replier): string {
+  if (days < 0) return t('dashboard.deadlines.past');
+  if (days === 0) return t('dashboard.deadlines.today');
+  if (days === 1) return t('dashboard.deadlines.tomorrow');
+  return t('dashboard.deadlines.inDays', { days });
 }
 
-function DashboardSkeleton() {
-  return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16" aria-busy="true" aria-live="polite">
-      <div className="mb-8 sm:mb-12">
-        <div className="skeleton h-10 w-48 mb-3" />
-        <div className="skeleton h-5 w-80" />
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] px-5 py-5">
-            <div className="skeleton h-9 w-16 mb-2" />
-            <div className="skeleton h-3 w-20" />
-          </div>
-        ))}
-      </div>
-      <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] mb-12 overflow-hidden">
-        <div className="h-[57px] border-b border-gray-100 px-6 flex items-center gap-2">
-          <div className="skeleton h-4 w-4 rounded" />
-          <div className="skeleton h-4 w-40" />
-        </div>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4 px-6 py-3.5 border-b border-gray-50 last:border-b-0">
-            <div className="skeleton h-8 w-8 rounded-lg" />
-            <div className="flex-1 space-y-2">
-              <div className="skeleton h-4 w-3/5" />
-              <div className="skeleton h-3 w-2/5" />
-            </div>
-            <div className="skeleton h-6 w-20 rounded-full" />
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.04)] px-5 py-5">
-            <div className="skeleton h-9 w-16 mb-2" />
-            <div className="skeleton h-3 w-20" />
-          </div>
-        ))}
-      </div>
-      <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8">
-        <div className="skeleton h-5 w-32 mb-6" />
-        <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4">
-              <div className="skeleton h-3 w-36" />
-              <div className="skeleton flex-1 h-2" />
-              <div className="skeleton h-3 w-8" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function reminderLabel(reminder: ReminderInfo, t: Replier): string {
+  if (reminder.status === 'overdue') {
+    return reminder.daysAway === -1
+      ? t('dashboard.reminders.overdueSingle')
+      : t('dashboard.reminders.overdue', { days: -reminder.daysAway });
+  }
+  if (reminder.status === 'today') return t('dashboard.reminders.today');
+  if (reminder.status === 'tomorrow') return t('dashboard.reminders.tomorrow');
+  return t('dashboard.reminders.inDays', { days: reminder.daysAway });
+}
+
+function reminderColor(reminder: ReminderInfo): string {
+  if (reminder.status === 'overdue') return 'text-red-600';
+  if (reminder.status === 'today' || reminder.status === 'tomorrow') return 'text-amber-600';
+  return 'text-gray-600';
 }
