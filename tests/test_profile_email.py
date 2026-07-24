@@ -119,8 +119,10 @@ class TestHarvestApply:
         n = apply_emails(opps, mapping)
         assert n == 1
         assert opps[0]["contact_email"] == "nalon@math.princeton.edu"
+        assert opps[0]["metadata"]["email_source"] == "profile_page"  # provenance stamped
         assert opps[0]["application"]["contact_method"] == "email"
         assert opps[1]["contact_email"] == "already@ucla.edu"  # untouched
+        assert "metadata" not in opps[1]  # no stamp on records it didn't write
         assert "contact_email" not in opps[2]
 
     def test_school_filter(self):

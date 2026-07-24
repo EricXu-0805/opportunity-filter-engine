@@ -1042,8 +1042,8 @@ class TestWordPressApiSource:
         monkeypatch.setattr(fg, "_wp_get_json",
                             lambda url, **_kw: records if "page=1" in url else [])
         monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
-                            ("Associate Professor", "Cognitive Psychology", [], None)
-                            if "ada" in url else ("Lecturer", "", [], None))
+                            ("Associate Professor", "Cognitive Psychology", [], None, True)
+                            if "ada" in url else ("Lecturer", "", [], None, True))
         dept = {"short": "PSYCH", "api": {
             "type": "wp", "base": "https://x.edu", "post_type": "faculty-page",
             "profile_enrich": {"require_professor": True},
@@ -2376,3 +2376,98 @@ class TestFreshmanNotLockedOut:
                             {"name": "Jane Q. Researcher", "link": "https://x.edu/jane"})
         assert rec["eligibility"]["preferred_year"] == [
             "freshman", "sophomore", "junior", "senior"]
+
+
+# --- Additive identity provenance (W7a) --------------------------------------
+
+class TestIdentityProvenance:
+    """Provenance annotates where a record's fields were extracted; it is never
+    a condition for keeping them. A person spec without hints (legacy path,
+    un-tagged collector) must normalize byte-identically to the historical
+    output — email included."""
+
+    def _dept(self):
+        return SCHOOL["departments"][0]
+
+    def test_no_hints_produces_historical_metadata(self):
+        person = {"name": "Grace Hopper", "url": "https://x.edu/p/hopper",
+                  "title": "Professor", "email": "ghopper@x.edu"}
+        opp = fg._normalize(SCHOOL, self._dept(), person)
+        assert opp["contact_email"] == "ghopper@x.edu"
+        assert opp["metadata"]["curated"] is True
+        assert "verification_scope" not in opp["metadata"]
+        assert "email_source" not in opp["metadata"]
+
+    def test_hints_copied_into_metadata(self):
+        person = {"name": "Grace Hopper", "url": "https://x.edu/p/hopper",
+                  "title": "Professor", "email": "ghopper@x.edu",
+                  "_verification_scope": "profile", "_email_source": "profile_page"}
+        opp = fg._normalize(SCHOOL, self._dept(), person)
+        assert opp["contact_email"] == "ghopper@x.edu"
+        assert opp["metadata"]["verification_scope"] == "profile"
+        assert opp["metadata"]["email_source"] == "profile_page"
+
+    def test_bogus_scope_hint_ignored(self):
+        person = {"name": "Grace Hopper", "url": "https://x.edu/p/hopper",
+                  "title": "Professor", "email": "ghopper@x.edu",
+                  "_verification_scope": "trust_me"}
+        opp = fg._normalize(SCHOOL, self._dept(), person)
+        assert "verification_scope" not in opp["metadata"]
+
+    def test_curated_seeds_tagged_curated(self, recs):
+        assert all(r["metadata"]["verification_scope"] == "curated" for r in recs)
+        # and the curated tag never leaks the internal hint key into records
+        assert all("_verification_scope" not in r for r in recs)
+
+    def test_seed_configs_not_mutated_by_harvest(self):
+        dept = SCHOOL["departments"][0]
+        before = [dict(p) for p in dept["faculty"]]
+        fg.fetch_and_normalize(SCHOOL, deep=False)
+        assert dept["faculty"] == before  # copies were tagged, not the config
+
+    def test_merge_faculty_fields_carries_email_with_its_provenance(self):
+        survivor = {"contact_email": None, "metadata": {}}
+        loser = {"contact_email": "ada@x.edu",
+                 "metadata": {"email_source": "profile_page"}}
+        fg._merge_faculty_fields(survivor, loser)
+        assert survivor["contact_email"] == "ada@x.edu"
+        assert survivor["metadata"]["email_source"] == "profile_page"
+
+    def test_merge_faculty_fields_adopts_provenance_less_email(self):
+        # Legacy emails without provenance are first-class forever.
+        survivor = {"contact_email": "", "metadata": {}}
+        loser = {"contact_email": "legacy@x.edu", "metadata": {}}
+        fg._merge_faculty_fields(survivor, loser)
+        assert survivor["contact_email"] == "legacy@x.edu"
+        assert "email_source" not in survivor["metadata"]
+
+    def test_merge_faculty_fields_never_clears_surviving_email(self):
+        # The anti-gating invariant: a survivor's provenance-less email is
+        # kept, never wiped for lacking a stamp.
+        survivor = {"contact_email": "keep@x.edu", "metadata": {}}
+        loser = {"contact_email": "other@x.edu",
+                 "metadata": {"email_source": "profile_page"}}
+        fg._merge_faculty_fields(survivor, loser)
+        assert survivor["contact_email"] == "keep@x.edu"
+        assert "email_source" not in survivor["metadata"]
+
+    def test_profile_enrich_stamps_scope_and_email_source(self, monkeypatch):
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr:
+                            ("", "robotics", [], "ada@x.edu", True))
+        people = [{"name": "Ada", "url": "https://x.edu/p/ada"}]
+        out = fg._apply_profile_enrich(
+            people, {"always": True, "email_selector": ".email"})
+        assert out[0]["email"] == "ada@x.edu"
+        assert out[0]["_email_source"] == "profile_page"
+        assert out[0]["_verification_scope"] == "profile"
+
+    def test_profile_enrich_failed_fetch_stamps_nothing(self, monkeypatch):
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr:
+                            ("", "", [], None, False))
+        people = [{"name": "Ada", "url": "https://x.edu/p/ada",
+                   "email": "kept@x.edu"}]
+        out = fg._apply_profile_enrich(
+            people, {"always": True, "email_selector": ".email"})
+        assert out[0]["email"] == "kept@x.edu"
+        assert "_verification_scope" not in out[0]
+        assert "_email_source" not in out[0]

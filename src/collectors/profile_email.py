@@ -239,6 +239,11 @@ def apply_emails(opps: list[dict], mapping: dict[str, str]) -> int:
         email = mapping.get(o.get("source_url") or o.get("url"))
         if email:
             o["contact_email"] = email
+            # Same provenance convention as email_backfill ("wayback",
+            # "constructed_netid"): record where the address came from. The
+            # richer-guard carries the stamp with the address on re-harvest;
+            # addresses without one stay first-class.
+            o.setdefault("metadata", {})["email_source"] = "profile_page"
             o.setdefault("application", {})["contact_method"] = "email"
             n += 1
     return n

@@ -125,6 +125,36 @@ def _scrape_headings(soup: BeautifulSoup, base: str, page_url: str = "") -> list
     return out
 
 
+def _richness(r: dict) -> tuple[bool, bool, int]:
+    """Orderable richness of a scraped row: a real profile link beats none,
+    a specific role line beats the bare "Professor" default, longer role text
+    breaks ties."""
+    title = (r.get("title") or "").strip()
+    return (
+        bool((r.get("url") or "").strip()),
+        title.lower() not in ("", "professor"),
+        len(title),
+    )
+
+
+def _dedup_keep_richer(raw: list[dict]) -> list[dict]:
+    """Collapse same-name rows keeping the richer one (first-seen order kept).
+
+    The DSUS listing repeats people across sections (leadership card + home-
+    department card), and first-wins kept whichever came first — live probe
+    2026-07: the link-less leadership card won for Lisa Yan / John DeNero /
+    Zachary Pardos, dropping their real profile URLs."""
+    kept: dict[str, dict] = {}
+    for r in raw:
+        key = r.get("name", "").strip().lower()
+        if not key:
+            continue
+        cur = kept.get(key)
+        if cur is None or _richness(r) > _richness(cur):
+            kept[key] = r
+    return list(kept.values())
+
+
 def _first_last(name: str) -> tuple[str, str] | None:
     parts = (name or "").split()
     return (parts[0].lower(), parts[-1].lower()) if len(parts) >= 2 else None
@@ -177,14 +207,7 @@ def fetch_and_normalize(enrich: bool = True) -> list[dict]:
         raw.extend(rows)
     # Dedup by name (not profile URL): many CDSS faculty have no individual
     # link, so URL-dedup would be unreliable here.
-    seen: set[str] = set()
-    deduped: list[dict] = []
-    for r in raw:
-        key = r["name"].strip().lower()
-        if key and key not in seen:
-            seen.add(key)
-            deduped.append(r)
-    raw = _drop_already_covered(deduped)
+    raw = _drop_already_covered(_dedup_keep_richer(raw))
     if not raw:
         return []
     # Apply the directory-page URL fallback now (after dedup) so every record
