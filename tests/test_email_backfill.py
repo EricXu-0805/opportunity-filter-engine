@@ -196,6 +196,26 @@ def test_carry_forward_keeps_email_source():
     assert "email_source" not in incoming2["metadata"]
 
 
+def test_carry_forward_does_not_resurrect_a_role_mailbox_for_a_person():
+    from src.collectors.uiuc_faculty import _carry_forward_enrichment
+    # UKy shipped a faculty member carrying the college's ciwebmanager@ box.
+    # Her profile publishes no personal address, so every later harvest emits
+    # None — and an unconditional carry re-installs the bad value forever, so
+    # no scrape fix could ever dislodge it. Let it decay.
+    incoming = {"pi_name": "Sarah Barriage", "metadata": {}}
+    _carry_forward_enrichment({"contact_email": "ciwebmanager@uky.edu"}, incoming)
+    assert incoming.get("contact_email") is None
+    # A program record (no person named) legitimately IS reachable at a role
+    # box — that carry must survive.
+    prog = {"metadata": {}}
+    _carry_forward_enrichment({"contact_email": "contact@research.usf.edu"}, prog)
+    assert prog["contact_email"] == "contact@research.usf.edu"
+    # And a real personal address still carries, which is what the carry exists for.
+    person = {"pi_name": "Jane Doe", "metadata": {}}
+    _carry_forward_enrichment({"contact_email": "jane@x.edu"}, person)
+    assert person["contact_email"] == "jane@x.edu"
+
+
 class TestUtexasDigitalMeasuresEmail:
     def _resp(self, name="Andres Almazan", email="andres.almazan@mccombs.utexas.edu"):
         class _R:

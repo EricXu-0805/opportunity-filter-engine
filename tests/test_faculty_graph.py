@@ -710,6 +710,41 @@ class TestEmailObfuscationDecoding:
         assert fg._decode_rot13email(el) is None
         assert fg._email_from_el(el) == "x@y.edu"
 
+    def test_template_placeholder_addresses_are_rejected(self):
+        # UKy Math publishes the literal "firstname.lastname[AT]uky.edu"; the
+        # [AT] de-obfuscation turns that stub into an address-shaped string that
+        # belongs to nobody. Shipping it is a guaranteed bounce that reads as a
+        # fabricated contact. (Yale had the same stub already in the corpus.)
+        assert fg._clean_email("firstname.lastname[AT]uky.edu") is None
+        assert fg._clean_email("firstname.lastname@yale.edu") is None
+        assert fg._clean_email("noreply@x.edu") is None
+
+    def test_placeholder_rule_does_not_eat_real_surnames(self):
+        # The rule anchors on the whole local part, so real people whose names
+        # merely start with those letters are untouched.
+        assert fg._clean_email("nameera.patel@x.edu") == "nameera.patel@x.edu"
+        assert fg._clean_email("testa.rossi@x.edu") == "testa.rossi@x.edu"
+        assert fg._clean_email("emailia.smith@x.edu") == "emailia.smith@x.edu"
+
+    def test_stale_mailto_href_loses_to_displayed_address(self):
+        # UTD MSE/CS ship rows whose mailto: was copy-pasted from the row above,
+        # so the link points at a DIFFERENT professor than the address it
+        # displays. Taking the href handed students the wrong person's address
+        # and, because merge dedupes on email, deleted the person the stale href
+        # named (I-Ling Yen). The rendered text wins when the two disagree.
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup(
+            '<a href="mailto:orlando.auciello@utdallas.edu">'
+            'kevin.brenner@utdallas.edu</a>', "html.parser").a
+        assert fg._email_from_el(el) == "kevin.brenner@utdallas.edu"
+
+    def test_href_still_wins_over_non_address_link_text(self):
+        # The carve-out is narrow: only when BOTH are addresses. A normal
+        # "Email Me" label must not shadow the real mailto.
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup('<a href="mailto:real@x.edu">Email Me</a>', "html.parser").a
+        assert fg._email_from_el(el) == "real@x.edu"
+
     def test_decode_reversed_data_user_domain(self):
         # UGA College of Education (people.coe.uga.edu) cloak: both attribute
         # strings are simply reversed and joined client-side.
