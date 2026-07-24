@@ -49,6 +49,7 @@ import time
 
 import requests
 
+from .atomic_json import atomic_write_json
 from .openalex_enrich import _flush_checkpoint, _load_resume_state, _record_url
 from .profile_email import PROCESSED_FILE, _pick_personal_email
 from .uiuc_experts import _name_parts
@@ -327,7 +328,7 @@ def _cli(argv: list[str]) -> int:
     opps = json.load(open(PROCESSED_FILE))
     if mode == "construct-uiuc":
         n = construct_uiuc(opps)
-        json.dump(opps, open(PROCESSED_FILE, "w"), ensure_ascii=False, indent=2)
+        atomic_write_json(PROCESSED_FILE, opps)
         print(f"constructed {n} netid emails -> {PROCESSED_FILE}")
         return 0
     if mode == "harvest":
@@ -351,7 +352,7 @@ def _cli(argv: list[str]) -> int:
     for f in rest:
         merged.update(json.load(open(f)))
     n = apply_backfill(opps, merged)
-    json.dump(opps, open(PROCESSED_FILE, "w"), ensure_ascii=False, indent=2)
+    atomic_write_json(PROCESSED_FILE, opps)
     print(f"applied {n} emails from {len(rest)} map(s) -> {PROCESSED_FILE}")
     return 0
 

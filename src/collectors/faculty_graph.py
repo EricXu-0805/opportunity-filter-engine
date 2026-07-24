@@ -2220,6 +2220,14 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
         if not _is_person_name(name):
             continue
         title = _dig(x, cfg.get("title_field", "title")) or "Professor"
+        # WordPress renders post fields as {"rendered": "..."}, and a person
+        # CPT's post title is the person's NAME, not an academic rank. Without
+        # an explicit title_field the bare dict used to str() straight into
+        # user-facing prose ("Research opportunity with {'rendered': 'Taylor,
+        # Brian'} Brian Taylor..."), so unwrap it only when the config actually
+        # asked for that field and otherwise fall back to the default rank.
+        if isinstance(title, dict):
+            title = title.get("rendered", "") if "title_field" in cfg else ""
         if isinstance(title, list):
             title = ", ".join(str(t) for t in title)
         title = str(title).strip() or "Professor"

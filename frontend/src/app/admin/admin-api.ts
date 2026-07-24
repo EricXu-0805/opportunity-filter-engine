@@ -14,6 +14,9 @@ export async function adminFetch<T>(
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       ...init,
+      // Forced after the `init` spread so no caller can accidentally make
+      // feedback, order, or other operator-only responses cacheable.
+      cache: 'no-store',
       headers: {
         ...(init?.headers || {}),
         'X-Admin-Token': token,

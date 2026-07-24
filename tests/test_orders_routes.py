@@ -72,7 +72,7 @@ class _Resp:
 
 
 def _install_client(monkeypatch, *, auth_status=200, auth_uid=UID, orders=None,
-                    gets=None, patches=None):
+                    gets=None, patches=None, patch_rows=None):
     class _Client:
         def __init__(self, *args, **kwargs):
             pass
@@ -93,6 +93,14 @@ def _install_client(monkeypatch, *, auth_status=200, auth_uid=UID, orders=None,
         async def patch(self, url, **kwargs):
             if patches is not None:
                 patches.append({"url": url, **kwargs})
+            if patch_rows is not None:
+                return _Resp(patch_rows)
+            # Default: echo the conditional PATCH back as PostgREST's
+            # return=representation would for a one-row match.
+            if orders and isinstance(orders[0], dict):
+                updated = dict(orders[0])
+                updated.update(kwargs.get("json") or {})
+                return _Resp([updated])
             return _Resp([])
 
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
@@ -155,6 +163,16 @@ class TestMarkPaidClaimed:
         assert patches[0]["params"] == {
             "id": f"eq.{ORDER_ID}", "device_id": f"eq.{UID}", "status": "eq.pending",
         }
+        # return=representation is what lets the route PROVE the conditional
+        # PATCH matched a row (PostgREST answers 200 + [] on zero matches).
+        assert patches[0]["headers"]["Prefer"] == "return=representation"
+
+    def test_409_when_pending_transition_loses_a_race(self, monkeypatch):
+        _set_env(monkeypatch)
+        _install_client(monkeypatch, orders=[_order()], patch_rows=[])
+        r = client.post(f"/api/orders/{ORDER_ID}/mark-paid-claimed", headers=USER_AUTH)
+        assert r.status_code == 409
+        assert "concurrently" in r.json()["detail"]
 
 
 class TestAdminOrders:
@@ -242,6 +260,47 @@ class TestAdminConfirm:
         assert len(patches) == 1
         assert patches[0]["json"]["status"] == "paid"
         assert patches[0]["json"]["paid_at"]
+        # Conditional on the pre-paid states + representation, so a concurrent
+        # cancel/refund can never be silently overwritten to paid.
+        assert patches[0]["params"] == {
+            "id": f"eq.{ORDER_ID}", "status": "in.(pending,awaiting_confirm)",
+        }
+        assert patches[0]["headers"]["Prefer"] == "return=representation"
+
+    def test_refuses_to_confirm_a_tampered_price(self, monkeypatch):
+        # The pending row is client-INSERTed via RLS: a modified browser could
+        # write any amount_cents. Confirm must reject anything off-catalog.
+        _set_env(monkeypatch)
+        patches = []
+        _install_client(
+            monkeypatch,
+            orders=[_order(status="awaiting_confirm", amount_cents=1)],
+            patches=patches,
+        )
+        r = client.post(f"/api/admin/orders/{ORDER_ID}/confirm", headers=ADMIN_AUTH)
+        assert r.status_code == 409
+        assert patches == []
+
+    def test_refuses_to_confirm_an_unknown_package(self, monkeypatch):
+        _set_env(monkeypatch)
+        patches = []
+        _install_client(
+            monkeypatch,
+            orders=[_order(status="awaiting_confirm", package="free_everything")],
+            patches=patches,
+        )
+        r = client.post(f"/api/admin/orders/{ORDER_ID}/confirm", headers=ADMIN_AUTH)
+        assert r.status_code == 409
+        assert patches == []
+
+    def test_409_when_confirm_transition_loses_a_race(self, monkeypatch):
+        _set_env(monkeypatch)
+        _install_client(
+            monkeypatch, orders=[_order(status="awaiting_confirm")], patch_rows=[],
+        )
+        r = client.post(f"/api/admin/orders/{ORDER_ID}/confirm", headers=ADMIN_AUTH)
+        assert r.status_code == 409
+        assert "concurrently" in r.json()["detail"]
 
 
 class TestPaymentsAdapter:
@@ -273,3 +332,25 @@ class TestPaymentsAdapter:
     def test_unknown_channel_rejected(self):
         with pytest.raises(ValueError):
             payments.confirm_order("paypal", {})
+
+    def test_catalog_accepts_canonical_orders(self):
+        for package, offer in payments.PACKAGE_CATALOG.items():
+            assert payments.order_matches_catalog(_order(
+                package=package,
+                amount_cents=offer["amount_cents"],
+                currency=offer["currency"],
+            ))
+
+    @pytest.mark.parametrize("overrides", [
+        {"amount_cents": 1},
+        {"currency": "eur"},
+        {"package": "free_everything"},
+        {"package": None},
+        {"channel": "stripe"},
+    ])
+    def test_catalog_rejects_tampered_orders(self, overrides):
+        assert not payments.order_matches_catalog(_order(**overrides))
+
+    def test_confirm_order_rejects_off_catalog_row(self):
+        with pytest.raises(ValueError):
+            payments.confirm_order("manual", _order(amount_cents=1))

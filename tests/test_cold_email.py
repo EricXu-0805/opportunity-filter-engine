@@ -212,6 +212,25 @@ class TestGenerateColdEmailEndToEnd:
         assert "  " not in email
         assert "a undergraduate" not in email
 
+    def test_scholar_url_appears_in_signature(self):
+        # The student's own Google Scholar link mirrors linkedin/github: it flows
+        # through _common_parts and lands in the email signature when provided.
+        profile = {
+            "name": "Eric", "year": "sophomore", "major": "Computer Science",
+            "school": "UIUC", "research_interests_text": "machine learning",
+            "scholar_url": "https://scholar.google.com/citations?user=ABC123",
+        }
+        email = generate_cold_email(profile, self._OPP)
+        assert "Google Scholar: https://scholar.google.com/citations?user=ABC123" in email
+
+    def test_no_scholar_line_when_url_absent(self):
+        profile = {
+            "name": "Eric", "year": "sophomore", "major": "Computer Science",
+            "school": "UIUC", "research_interests_text": "machine learning",
+        }
+        email = generate_cold_email(profile, self._OPP)
+        assert "Google Scholar:" not in email
+
 
 class TestRecipientJunkNameCE6:
     def test_na_pi_name_does_not_leak_into_recipient(self):
@@ -959,8 +978,8 @@ class TestNDraftJudgeTier:
         monkeypatch.setattr(ce, "chat_completion", fake)
         ce._pipeline_generate(self._profile(), self._opp(), None)
         models = dict(seen)
-        assert models["judge"] == "anthropic/claude-opus-4-8"
-        assert models["critique"] == "anthropic/claude-opus-4-8"
+        assert models["judge"] == "anthropic/claude-opus-4.8"
+        assert models["critique"] == "anthropic/claude-opus-4.8"
         assert models["draft_angle1"] == "anthropic/claude-sonnet-5"
 
     def test_ndraft_count_clamps(self, monkeypatch):

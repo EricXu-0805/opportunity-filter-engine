@@ -141,7 +141,7 @@ async def _send_via_resend(*, api_key: str, from_addr: str, to: str,
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, trust_env=False, follow_redirects=False) as client:
         resp = await client.post(RESEND_API_URL, json=payload, headers=headers)
     if resp.status_code >= 400:
         logger.warning("Resend returned %s: %s", resp.status_code, resp.text[:300])

@@ -79,7 +79,18 @@ export function matchesToCSV(matches: MatchResult[]): string {
     m.bucket,
     m.opportunity.application?.application_url || m.opportunity.url || '',
   ]);
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const escape = (v: string) => {
+    // CSV quoting prevents delimiter injection, but spreadsheet programs may
+    // still execute an imported cell as a formula (=HYPERLINK, @SUM, +cmd…).
+    // Titles/organizations come from scraped third-party pages, so neutralize
+    // formula markers at the export boundary with a leading apostrophe —
+    // without changing what the application displays or stores.
+    const formulaSafe = (
+      /^[\t\r\n]/.test(v)
+      || /^[\u0000-\u0020]*[=+\-@]/.test(v)
+    ) ? `'${v}` : v;
+    return `"${formulaSafe.replace(/"/g, '""')}"`;
+  };
   return [header, ...rows].map(r => r.map(escape).join(',')).join('\n');
 }
 

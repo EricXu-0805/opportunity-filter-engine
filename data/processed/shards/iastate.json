@@ -33617,6 +33617,9 @@
     "duration": "Semester or academic year",
     "eligibility": {
       "preferred_year": [
+        "freshman",
+        "sophomore",
+        "junior",
         "senior"
       ],
       "min_gpa": null,

@@ -364,6 +364,7 @@ def _render_student_brief(p: dict) -> str:
         f"- Research interests: {research_interests}\n"
         f"- LinkedIn: {p['linkedin_url'] or '(not shared)'}\n"
         f"- GitHub: {p['github_url'] or '(not shared)'}\n"
+        f"- Google Scholar: {p.get('scholar_url') or '(not shared)'}\n"
         f"- Real resume experience (use ONLY these for any experience claim):\n{exp_block}\n"
     )
 
@@ -809,7 +810,7 @@ def _build_email_corpus(p: dict, opp: dict) -> str:
         str(p.get("recipient", "")), str(p.get("lab", "")),
         str(p.get("research_area", "")), str(p.get("research_topic", "")),
         str(p.get("opp_desc", "")), str(p.get("linkedin_url", "")),
-        str(p.get("github_url", "")),
+        str(p.get("github_url", "")), str(p.get("scholar_url", "")),
     ]
     for key in ("skills", "coursework", "matching_skills", "opp_skills_required", "resume_bullets"):
         parts.extend(str(x) for x in (p.get(key) or []))
@@ -1051,20 +1052,23 @@ class EmailRefineRequest(BaseModel):
 def _refine_evidence_corpus(request: EmailRefineRequest) -> str:
     """Ground truth a refined draft may draw vocabulary from.
 
-    Profile + opportunity (the same single source of truth as generate)
-    plus the already-grounded prior body. The user's free-text instruction
-    is deliberately EXCLUDED: otherwise "say I'm an expert in PyTorch" would
-    whitelist its own fabrication. A skill the student really has belongs in
-    their profile, where it is allowed everywhere.
+    Profile + opportunity are the same single source of truth as generate.
+    Both the user's free-text instruction *and the existing draft* are
+    deliberately EXCLUDED. Treating ``current_body`` as evidence would let an
+    unsupported claim become self-authenticating after one edit: a student
+    could paste "I am a PyTorch expert", ask for a warmer tone, and the old
+    implementation would whitelist PyTorch merely because it was already in
+    the draft. A real skill belongs in the profile / resume bullets, where it
+    is checked consistently across generation and refinement.
     """
-    corpus = request.current_body.lower()
+    corpus = ""
     if request.profile is not None and request.opportunity_id:
         opp = load_opportunities_by_id().get(request.opportunity_id)
         if opp:
             parts = _common_parts(
                 request.profile.model_dump(), opp, resume_bullets=request.resume_bullets
             )
-            corpus = f"{corpus} {_build_email_corpus(parts, opp)}"
+            corpus = _build_email_corpus(parts, opp)
     return corpus
 
 

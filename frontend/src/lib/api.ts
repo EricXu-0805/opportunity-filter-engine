@@ -80,6 +80,7 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     research_interests_text: profile.research_interests,
     linkedin_url: profile.linkedin_url ?? '',
     github_url: profile.github_url ?? '',
+    scholar_url: profile.scholar_url ?? '',
     search_weight: profile.search_weight ?? 50,
     exploring: profile.exploring ?? false,
     include_cross_school: profile.include_cross_school ?? false,

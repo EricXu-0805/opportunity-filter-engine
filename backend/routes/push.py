@@ -132,7 +132,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     sent, failed, emailed, pruned = 0, 0, 0, 0
     vapid_claims = {"sub": env["VAPID_SUBJECT"]}
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=20.0, trust_env=False, follow_redirects=False) as client:
         r = await client.get(
             f"{supabase_url}/rest/v1/interactions",
             params={

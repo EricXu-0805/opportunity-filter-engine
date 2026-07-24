@@ -1,65 +1,116 @@
 """University of Nebraska-Lincoln faculty config (via the faculty_graph engine).
 
-Every UNL department directory renders on ONE campus-wide UNLcms component — a
-Drupal "unlcms-teaser-person" teaser wrapped in a schema.org/Person list item.
-All ten departments below (School of Computing + five engineering departments on
-the engineering.unl.edu / bse.unl.edu CMS, plus Physics & Astronomy, Chemistry,
-Mathematics and Statistics on the College of Arts & Sciences subdomains) share
-the identical markup, so one shared selector set + one title gate covers them all.
-Live-verified 2026-07-20 — every page is a plain server-rendered 200 through the
-proxy (no WAF, no JS render).
+Campus-wide coverage: 46 departments across seven colleges — Engineering,
+Arts & Sciences, Agricultural Sciences & Natural Resources, Business, Education
+& Human Sciences, Journalism & Mass Communications, and Law. Live-verified
+2026-07-24 through the proxy; every shipped department is majority-emailed.
 
-One card is ``li[itemscope itemtype="…/schema.org/Person"]`` (the inner
-``div.unlcms-teaser-person`` carries ``data-uid`` = netid = email local-part and a
-``data-preferred-name`` attribute). Inside it:
+THREE SOURCE FAMILIES
+---------------------
+1. ``_teaser`` (43 depts) — the campus-wide UNLcms "person teaser" component.
+   Whatever the host (department subdomain, a college subdirectory, or the
+   engineering CMS) the markup is byte-identical, so one selector set covers
+   almost the whole university. One card is
+   ``div.unlcms-teaser-person`` (it carries ``data-uid`` = netid = email
+   local-part). Inside it:
 
-* an ``a.dcf-card-link[itemprop="name"]`` whose direct anchor text is only
-  whitespace — the display name lives in an inner ``<span>``, so the name selector
-  targets ``… span`` (the anchor itself is the profile ``/person/<slug>/`` link,
-  RELATIVE to each department host, resolved by the engine's ``urljoin`` against
-  that department's own listing URL);
-* a ``span[itemprop="jobTitle"]`` with the rank (the reliable gate field);
-* a plain ``mailto:`` inside the card ``<address>`` — no Cloudflare / hex / base64
-  obfuscation anywhere on any UNL page, so email coverage is high wherever the
-  listing exposes an address (~90-100% of kept faculty on every department except
-  Physics, whose grid omits the address for many rows — those recover on the
-  downstream per-profile enrichment pass).
+   * ``a.dcf-card-link[itemprop="name"]`` whose own anchor text is whitespace —
+     the display name sits in an inner ``<span>``, so the name selector targets
+     ``… span``; the anchor itself is the ``/person/<slug>/`` profile link,
+     RELATIVE to each host and resolved by the engine's ``urljoin`` against that
+     department's own listing URL;
+   * ``span[itemprop="jobTitle"]`` with the rank (the reliable gate field);
+   * ``span.organization-unit`` with the person's home academic unit — the field
+     that lets the one 194-card College of Business page split into its seven
+     real departments;
+   * a plain ``mailto:`` inside the card ``<address>`` — no Cloudflare / hex /
+     base64 obfuscation anywhere on any UNL page, so email coverage is 90-100%
+     wherever the listing exposes an address.
 
-Title gate (``field_filter``, require ``professor|lecturer|instructor``): the
-directories interleave ladder faculty with emeriti, adjuncts, and a large block
-of non-teaching staff (project managers, systems managers, academic advisors,
-grants coordinators, communications associates) — Mathematics alone lists 153
-people of whom only ~40 are professors. A ``field_filter`` (not ``ladder_filter``)
-is used so a title-less staff card can't fall through the engine's
-default-to-"Professor": ``require_present`` reads ``span[itemprop='jobTitle']``
-directly and drops the card when the rank is absent/blank, then ``include`` keeps
-only Professor / Lecturer / Instructor ranks (endowed-chair and
-professor-of-practice titles still contain "Professor"). Emeriti that carry the
-word "Professor" are additionally dropped by the engine's own retired-title guard.
+   The card is the ``div``, NOT the enclosing ``li[itemtype*=schema.org/Person]``:
+   UNLcms also ships an ABBREVIATED teaser (``div.unlcms-abbr-teaser-person``)
+   that renders name + rank and NO ``<address>``. Both variants sit in an
+   identical ``li``, so an ``li`` card selector silently mixes email-less rows
+   into a mixed page. Keying on the full-teaser class is exact — verified
+   identical kept/emailed counts to the old ``li`` selector on all ten original
+   departments, while cleanly excluding the abbreviated rosters.
+
+2. ``_snr`` (1 dept) — the School of Natural Resources runs a legacy ASP.NET
+   directory (``directory.aspx``) with its own markup: a
+   ``section.partner[data-category=…]`` card whose ``data-category`` attribute IS
+   the role gate (faculty 113 / staff 78 / graduatestudent 82). Name in
+   ``h3.dcf-regular``, role text in ``div.info p``, plain ``mailto``.
+
+3. ``_law`` (1 dept) — the College of Law paints its roster client-side (a bare
+   shell statically; 0 cards, 0 mailto), so it needs ``scrape["render"]=True``.
+   Rendered, it exposes 50 "Last, First" cards with rank in ``p.dcf-subhead``
+   and a real ``mailto`` — the only UNL department that needs headless.
+
+QUALITY GATE
+------------
+Teaser departments use ``field_filter`` (NOT ``ladder_filter``) so a title-less
+staff card can't fall through the engine's default-to-"Professor":
+``require_present`` reads ``span[itemprop='jobTitle']`` directly and drops the
+card when the rank is absent/blank, then ``include`` keeps only Professor /
+Lecturer / Instructor ranks (endowed-chair and professor-of-practice titles
+still contain "Professor"). This matters — the directories interleave ladder
+faculty with a large block of non-teaching staff, emeriti, advisors, grants
+coordinators and grad students: Biological Sciences lists 150 cards of which 30
+are faculty, Philosophy 48 of which 8, Business 194 of which 114. Emeriti that
+carry the word "Professor" are additionally dropped by the engine's own
+retired-title guard.
+
+The seven College of Business departments all read the SAME college directory
+page and separate on ``span.organization-unit`` via ``field_filter``, so the
+rank gate moves to ``ladder_filter`` there (safe: all 194 cards on that page
+carry a ``jobTitle``, so nothing defaults to "Professor"). ``MNGT`` anchors its
+unit regex (``^management$``) so it does not swallow "Supply Chain Management &
+Analytics"; ``ACCT`` tolerates the live page's "Acountancy" typo.
+
+SNR gates on the card's ``data-category="faculty"`` plus a ``field_filter``
+``exclude`` for emeriti / post-docs / visiting scholars, rather than a
+professor-rank ``include``: SNR lists its ladder faculty under research-specialty
+titles ("Physiological Plant Ecologist | Interim Dean", "Climate Scientist |
+State Climatologist"), so a rank regex would drop 61 of its 70 real faculty.
+
+DROPPED (all live-checked; each is a coverage gap, not an oversight)
+-------------------------------------------------------------------
+Email-less abbreviated-teaser rosters — real faculty, but the listing renders
+NO ``<address>``, so every record would be a name-only stub. Recoverable only by
+a per-profile enrichment pass (phase 2):
+
+* Hixson-Lied College of Fine and Performing Arts — all four schools (Art/Art
+  History & Design ~45, Glenn Korff Music ~68, Johnny Carson Theatre & Film ~42,
+  Carson Center for Emerging Media Arts ~18) plus the college directory.
+* College of Architecture (``architecture.unl.edu/people/college-directory/``) —
+  ~86 abbreviated faculty; its only full teasers are 36 advisory-council members.
+* Agricultural Economics (~38) and Plant Pathology (~31), both CASNR.
+* School of Veterinary Medicine and Biomedical Sciences (~33).
+
+Affiliate-only rosters — every person's ``organization-unit`` is another
+department (the unit has no own-line faculty), so they are already covered at
+their home department and would only steal attribution:
+
+* Ethnic Studies (16 kept, home units History/Psychology/English/MLL/Sociology).
+* Women's and Gender Studies (4 kept, all joint appointments).
+
+``sociology.unl.edu`` is a dead host (TLS handshake reset over any client, HTTP
+502 on :80) — the department is shipped from its live alias ``soc.unl.edu``.
 
 Single source ("unl_faculty"); department rides each record, ids namespaced by
-department short-code. The intra-batch dedup collapses the leadership
-featured-card duplicate some departments render (same name → same id → same
-email/url), so a chair listed twice lands once.
-
-Live-verified 2026-07-20 (page cards → kept-after-gate → deduped in the deep=True
-run): CSE 78/49, ECE 53/32, MME 49/37, CEE 58/34, CHME 22/13, BSE 88/41,
-PHYS 50/25, CHEM 40/27, MATH 153/40, STAT 23/14 → 312 total, 98% emailed. The
-CEE gate keeps 46 but the batch dedup collapses 9 leadership featured-card
-duplicates plus a few cross-department joint appointments to 34; the same joint-
-appointment dedup trims CHME 15→13 and MME 39→37.
+department short-code. The engine's intra-batch dedup keys on contact_email and
+profile URL, so the leadership featured-card duplicate some departments render,
+and the genuine joint appointments the interdisciplinary rosters repeat, each
+land once.
 """
 
 from __future__ import annotations
 
 from .. import faculty_graph
 
-# The shared UNLcms "unlcms-teaser-person" teaser — identical markup on every
-# department host. The name anchor's own text is whitespace (the visible name is
-# in an inner <span>), so the name selector reaches the span; the anchor is the
-# /person/<slug>/ profile link. Email is a plain mailto inside the card <address>.
+# The shared UNLcms full person teaser — identical markup on every UNL host.
 _SEL = {
-    "card": 'li[itemtype*="schema.org/Person"]',
+    "card": "div.unlcms-teaser-person",
     "name": 'a.dcf-card-link[itemprop="name"] span',
     "link": 'a.dcf-card-link[itemprop="name"]',
     "title": 'span[itemprop="jobTitle"]',
@@ -67,24 +118,38 @@ _SEL = {
 }
 
 # Keep Professors (ladder + of-practice + research + endowed-chair) and any
-# Lecturer / Instructor; drop the staff, adjuncts, and admin the directories mix
-# in. field_filter (not ladder_filter) so a title-less staff card can't fall
-# through the engine's default-to-"Professor": require_present reads the jobTitle
-# span directly and drops the card when absent/blank; include then keeps only
-# Professor/Lecturer/Instructor ranks. Emeriti are additionally dropped by the
-# engine's retired-title guard.
+# Lecturer / Instructor; drop the staff, advisors, and grad students the
+# directories mix in. require_present makes a rank-less card fail outright
+# instead of inheriting the engine's default "Professor".
 _FIELD = {
     "selector": 'span[itemprop="jobTitle"]',
     "require_present": True,
     "include": r"professor|lecturer|instructor",
 }
 
+_BUSINESS_DIR = "https://business.unl.edu/about/faculty-and-staff-directory/"
 
-def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
+
+def _teaser(short: str, name: str, majors: list[str], url: str) -> dict:
     """A UNL department on the shared unlcms-teaser-person component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD},
+    }
+
+
+def _business(short: str, name: str, majors: list[str], unit_re: str) -> dict:
+    """One College of Business department, split off the shared college page."""
+    return {
+        "short": short, "name": name, "majors": majors,
+        "directory_url": _BUSINESS_DIR,
+        "scrape": {
+            "url": _BUSINESS_DIR,
+            "selectors": _SEL,
+            "field_filter": {"selector": "span.organization-unit",
+                             "require_present": True, "include": unit_re},
+            "ladder_filter": {"require": r"professor|lecturer|instructor"},
+        },
     }
 
 
@@ -101,39 +166,202 @@ SCHOOL: dict = {
     ),
     "departments": [
         # ---- College of Engineering ---------------------------------------
-        _dept("CSE", "School of Computing",
-              ["Computer Science", "Computer Engineering", "Software Engineering",
-               "Data Science"],
-              "https://computing.unl.edu/directory/"),
-        _dept("ECE", "Department of Electrical and Computer Engineering",
-              ["Electrical Engineering", "Computer Engineering"],
-              "https://engineering.unl.edu/ece/about/faculty-staff/"),
-        _dept("MME", "Department of Mechanical and Materials Engineering",
-              ["Mechanical Engineering", "Materials Engineering", "Materials Science"],
-              "https://engineering.unl.edu/mme/about/faculty-staff/"),
-        _dept("CEE", "Department of Civil and Environmental Engineering",
-              ["Civil Engineering", "Environmental Engineering"],
-              "https://engineering.unl.edu/civil/about/faculty-staff/"),
-        _dept("CHME", "Department of Chemical and Biomolecular Engineering",
-              ["Chemical Engineering", "Biomolecular Engineering"],
-              "https://engineering.unl.edu/chme/about/faculty-staff/"),
-        _dept("BSE", "Department of Biological Systems Engineering",
-              ["Biological Systems Engineering", "Agricultural Engineering",
-               "Biomedical Engineering"],
-              "https://bse.unl.edu/our-people/faculty-directory/"),
+        _teaser("CSE", "School of Computing",
+                ["Computer Science", "Computer Engineering", "Software Engineering",
+                 "Data Science"],
+                "https://computing.unl.edu/directory/"),
+        _teaser("ECE", "Department of Electrical and Computer Engineering",
+                ["Electrical Engineering", "Computer Engineering"],
+                "https://engineering.unl.edu/ece/about/faculty-staff/"),
+        _teaser("MME", "Department of Mechanical and Materials Engineering",
+                ["Mechanical Engineering", "Materials Engineering", "Materials Science"],
+                "https://engineering.unl.edu/mme/about/faculty-staff/"),
+        _teaser("CEE", "Department of Civil and Environmental Engineering",
+                ["Civil Engineering", "Environmental Engineering"],
+                "https://engineering.unl.edu/civil/about/faculty-staff/"),
+        _teaser("CHME", "Department of Chemical and Biomolecular Engineering",
+                ["Chemical Engineering", "Biomolecular Engineering"],
+                "https://engineering.unl.edu/chme/about/faculty-staff/"),
+        _teaser("BSE", "Department of Biological Systems Engineering",
+                ["Biological Systems Engineering", "Agricultural Engineering",
+                 "Biomedical Engineering"],
+                "https://bse.unl.edu/our-people/faculty-directory/"),
+        _teaser("DURH", "Durham School of Architectural Engineering and Construction",
+                ["Architectural Engineering", "Construction Management",
+                 "Construction Engineering"],
+                "https://durhamschool.unl.edu/about/directory/"),
         # ---- College of Arts & Sciences -----------------------------------
-        _dept("PHYS", "Department of Physics and Astronomy",
-              ["Physics", "Astronomy", "Astrophysics"],
-              "https://physics.unl.edu/about/directory/"),
-        _dept("CHEM", "Department of Chemistry",
-              ["Chemistry", "Biochemistry"],
-              "https://chem.unl.edu/research/faculty/"),
-        _dept("MATH", "Department of Mathematics",
-              ["Mathematics", "Applied Mathematics"],
-              "https://math.unl.edu/about/directory/"),
-        _dept("STAT", "Department of Statistics",
-              ["Statistics", "Data Science"],
-              "https://statistics.unl.edu/faculty/"),
+        _teaser("PHYS", "Department of Physics and Astronomy",
+                ["Physics", "Astronomy", "Astrophysics"],
+                "https://physics.unl.edu/about/directory/"),
+        _teaser("CHEM", "Department of Chemistry",
+                ["Chemistry", "Biochemistry"],
+                "https://chem.unl.edu/research/faculty/"),
+        _teaser("MATH", "Department of Mathematics",
+                ["Mathematics", "Applied Mathematics"],
+                "https://math.unl.edu/about/directory/"),
+        _teaser("STAT", "Department of Statistics",
+                ["Statistics", "Data Science"],
+                "https://statistics.unl.edu/faculty/"),
+        _teaser("BIOS", "School of Biological Sciences",
+                ["Biological Sciences", "Biology", "Microbiology", "Genetics",
+                 "Ecology"],
+                "https://biosci.unl.edu/about/directory/"),
+        _teaser("PSYC", "Department of Psychology",
+                ["Psychology", "Neuroscience", "Cognitive Science"],
+                "https://psychology.unl.edu/about/directory/"),
+        _teaser("EAS", "Department of Earth and Atmospheric Sciences",
+                ["Earth Sciences", "Geology", "Meteorology", "Climatology"],
+                "https://eas.unl.edu/about/directory/"),
+        _teaser("SGIS", "School of Global Integrative Studies",
+                ["Anthropology", "Geography", "Global Studies",
+                 "Community and Regional Planning"],
+                "https://sgis.unl.edu/about/directory/"),
+        _teaser("ENGL", "Department of English",
+                ["English", "Creative Writing", "Film Studies"],
+                "https://engl.unl.edu/faculty/"),
+        _teaser("HIST", "Department of History",
+                ["History"],
+                "https://history.unl.edu/about/directory/"),
+        _teaser("POLS", "Department of Political Science",
+                ["Political Science", "International Relations"],
+                "https://polisci.unl.edu/about/directory/"),
+        _teaser("SOC", "Department of Sociology",
+                ["Sociology", "Criminology"],
+                "https://soc.unl.edu/about/directory/"),
+        _teaser("PHIL", "Department of Philosophy",
+                ["Philosophy"],
+                "https://philosophy.unl.edu/about/directory/"),
+        _teaser("MODL", "Department of Modern Languages and Literatures",
+                ["Modern Languages", "Spanish", "French", "German", "Linguistics"],
+                "https://modlang.unl.edu/about/directory/"),
+        _teaser("CLAS", "Department of Classics and Religious Studies",
+                ["Classics", "Religious Studies"],
+                "https://classics.unl.edu/about/directory/"),
+        _teaser("COMM", "Department of Communication Studies",
+                ["Communication Studies"],
+                "https://comm.unl.edu/about/directory/"),
+        # ---- Agricultural Sciences & Natural Resources ---------------------
+        _teaser("AGRO", "Department of Agronomy and Horticulture",
+                ["Agronomy", "Horticulture", "Plant Science", "Soil Science"],
+                "https://agronomy.unl.edu/our-people/faculty-directories/faculty/"),
+        _teaser("ANSC", "Department of Animal Science",
+                ["Animal Science", "Veterinary Science"],
+                "https://animalscience.unl.edu/faculty/"),
+        _teaser("FDST", "Department of Food Science and Technology",
+                ["Food Science and Technology", "Food Science"],
+                "https://foodscience.unl.edu/people/faculty/"),
+        _teaser("ENTO", "Department of Entomology",
+                ["Entomology", "Insect Science"],
+                "https://entomology.unl.edu/faculty/"),
+        _teaser("BIOC", "Department of Biochemistry",
+                ["Biochemistry", "Molecular Biology"],
+                "https://biochem.unl.edu/our-people/faculty/"),
+        _teaser("ALEC", "Department of Agricultural Leadership, Education and Communication",
+                ["Agricultural Education", "Agricultural Leadership",
+                 "Agricultural Communication"],
+                "https://alec.unl.edu/our-people/faculty/"),
+        # ---- College of Business (one page, split on organization-unit) ----
+        _business("MNGT", "Department of Management",
+                  ["Management", "Entrepreneurship", "Human Resources"],
+                  r"^management$"),
+        _business("ACCT", "School of Accountancy",
+                  ["Accounting", "Accountancy"],
+                  r"ac+ountancy"),
+        _business("ECON", "Department of Economics",
+                  ["Economics"],
+                  r"\beconomics\b"),
+        _business("FINA", "Department of Finance",
+                  ["Finance"],
+                  r"\bfinance\b"),
+        _business("MRKT", "Department of Marketing",
+                  ["Marketing"],
+                  r"\bmarketing\b"),
+        _business("SCMA", "Department of Supply Chain Management and Analytics",
+                  ["Supply Chain Management", "Business Analytics"],
+                  r"supply chain"),
+        _business("ACTS", "Actuarial Science Program",
+                  ["Actuarial Science"],
+                  r"actuarial science"),
+        # ---- College of Education & Human Sciences -------------------------
+        _teaser("CYAF", "Department of Child, Youth and Family Studies",
+                ["Child Development", "Family Science", "Human Development"],
+                "https://cehs.unl.edu/cyaf/meet-faculty-and-staff/"),
+        _teaser("EDAD", "Department of Educational Administration",
+                ["Educational Administration", "Higher Education Leadership"],
+                "https://cehs.unl.edu/edad/about-edad/edad-community/"),
+        _teaser("EDPS", "Department of Educational Psychology",
+                ["Educational Psychology", "School Psychology",
+                 "Counseling Psychology"],
+                "https://cehs.unl.edu/edpsych/edps-faculty-and-staff/"),
+        _teaser("NHS", "Department of Nutrition and Health Sciences",
+                ["Nutrition", "Health Sciences", "Exercise Science"],
+                "https://cehs.unl.edu/nhs/nhs-home/facultystaff/"),
+        _teaser("SECD", "Department of Special Education and Communication Disorders",
+                ["Special Education", "Communication Disorders",
+                 "Speech-Language Pathology"],
+                "https://cehs.unl.edu/secd/secd-faculty/"),
+        _teaser("TLTE", "Department of Teaching, Learning and Teacher Education",
+                ["Elementary Education", "Secondary Education", "Teacher Education"],
+                "https://cehs.unl.edu/tlte/tlte-home/faculty-and-staff-directory/"),
+        _teaser("TMFD", "Department of Textiles, Merchandising and Fashion Design",
+                ["Textiles", "Merchandising", "Fashion Design"],
+                "https://cehs.unl.edu/tmfd/tmfd-home/faculty-staff/"),
+        # ---- College of Journalism & Mass Communications -------------------
+        _teaser("JOMC", "College of Journalism and Mass Communications",
+                ["Journalism", "Advertising and Public Relations", "Broadcasting",
+                 "Sports Media and Communication"],
+                "https://journalism.unl.edu/about-college/meet-team/"),
+        # ---- School of Natural Resources (legacy ASP.NET directory) --------
+        # data-category IS the role gate; the exclude prunes emeriti, post-docs
+        # and visiting scholars that share the "faculty" category. No rank
+        # include: SNR lists ladder faculty under research-specialty titles.
+        {
+            "short": "SNR", "name": "School of Natural Resources",
+            "majors": ["Environmental Studies", "Fisheries and Wildlife",
+                       "Natural Resources", "Water Science", "Applied Climate Science"],
+            "directory_url": "https://snr.unl.edu/aboutus/who/people/directory.aspx",
+            "scrape": {
+                "url": "https://snr.unl.edu/aboutus/who/people/directory.aspx",
+                "selectors": {
+                    "card": 'section.partner[data-category="faculty"]',
+                    "name": "h3.dcf-regular",
+                    "link": 'a[href*="member.aspx"]',
+                    "title": "div.info p",
+                    "email": 'a[href^="mailto:"]',
+                },
+                "field_filter": {
+                    "selector": "div.info p",
+                    "require_present": True,
+                    "exclude": (r"emerit|post-?doc|post[- ]doctoral|resesarch associate"
+                                r"|visiting|graduate student"),
+                },
+            },
+        },
+        # ---- College of Law (client-rendered; needs headless) --------------
+        {
+            "short": "LAW", "name": "College of Law",
+            "majors": ["Law", "Legal Studies"],
+            "directory_url": "https://law.unl.edu/faculty-directory/",
+            "scrape": {
+                "url": "https://law.unl.edu/faculty-directory/",
+                "render": True,
+                "render_wait": "networkidle",
+                "selectors": {
+                    "card": "div.dcf-d-grid.dcf-grid-cols-12",
+                    "name": "h4.dcf-regular",
+                    "link": "a.dcf-txt-decor-none",
+                    "title": "p.dcf-subhead",
+                    "email": 'address a[href^="mailto:"]',
+                },
+                "name_flip": True,
+                "field_filter": {
+                    "selector": "p.dcf-subhead",
+                    "require_present": True,
+                    "include": r"professor|lecturer|instructor",
+                },
+            },
+        },
     ],
 }
 

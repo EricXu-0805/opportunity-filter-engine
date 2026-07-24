@@ -20,6 +20,12 @@ export default defineConfig({
   // a burst of failures instead so CI reports red in minutes.
   maxFailures: process.env.CI ? 10 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  // Both default to true on CI. `diff` shells out to git and accumulates the
+  // whole commit diff into one string, which for a data repo (a batch touches
+  // 100+ corpus shards) exceeds V8's max string length and crashes the run
+  // before any test executes — "RangeError: Invalid string length". The diff
+  // only enriches the HTML report, so keep the cheap commit metadata and drop it.
+  captureGitInfo: { commit: true, diff: false },
   globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: BASE_URL,
