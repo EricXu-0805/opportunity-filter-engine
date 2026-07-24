@@ -1,6 +1,6 @@
 'use client';
 
-import { Github, Globe, Linkedin, Loader2 } from 'lucide-react';
+import { Github, Globe, GraduationCap, Linkedin, Loader2 } from 'lucide-react';
 import Card from '@/components/Card';
 import type { ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
@@ -77,6 +77,22 @@ export function OnlineProfilesCard({
               {ghStatus.replace(/^__fail__/, '')}
             </p>
           )}
+        </div>
+
+        <div>
+          <label htmlFor="scholar_url" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+            <GraduationCap className="w-4 h-4 text-[#4285F4]" />
+            {t('home.form.scholarLabel')}
+          </label>
+          <input
+            id="scholar_url"
+            type="url"
+            value={profile.scholar_url ?? ''}
+            onChange={(e) => update('scholar_url', e.target.value)}
+            placeholder={t('home.form.scholarPlaceholder')}
+            className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300"
+          />
+          <p className="mt-2 text-xs text-gray-400">{t('home.form.scholarHint')}</p>
         </div>
       </div>
     </Card>
