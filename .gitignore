@@ -64,3 +64,6 @@ supabase/.temp/
 # per-school representation; see scripts/shard_corpus.py). Never commit the
 # monolith: it exceeds GitHub's 100 MB blob limit.
 data/processed/opportunities.json
+
+# root-level scrape/debug scratch must never be committed
+/*.html

@@ -307,6 +307,7 @@ def _common_parts(
     )
     linkedin_url = profile.get("linkedin_url", "")
     github_url = profile.get("github_url", "")
+    scholar_url = profile.get("scholar_url", "")
 
     pi_name = opportunity.get("pi_name") or ""
     lab = opportunity.get("lab_or_program", "")
@@ -343,6 +344,7 @@ def _common_parts(
         skills=skills, skill_levels=skill_levels,
         research_interests=research_interests,
         linkedin_url=linkedin_url, github_url=github_url,
+        scholar_url=scholar_url,
         pi_name=pi_name, lab=lab, title=title,
         research_area=research_area, research_topic=research_topic,
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
@@ -419,6 +421,8 @@ def _closing(p: dict) -> str:
         lines.append(f"LinkedIn: {p['linkedin_url']}")
     if p.get("github_url"):
         lines.append(f"GitHub: {p['github_url']}")
+    if p.get("scholar_url"):
+        lines.append(f"Google Scholar: {p['scholar_url']}")
     return "\n".join(lines)
 
 

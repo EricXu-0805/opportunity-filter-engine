@@ -137,6 +137,19 @@ describe('getMatches', () => {
     expect(body.include_cross_school).toBe(true);
   });
 
+  it('maps scholar_url into the request and defaults it to "" when absent', async () => {
+    fetchMock.mockImplementation(async () =>
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile({ scholar_url: 'https://scholar.google.com/citations?user=ABC123&hl=en' }));
+    const withUrl = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(withUrl.scholar_url).toBe('https://scholar.google.com/citations?user=ABC123&hl=en');
+
+    await getMatches(makeProfile());
+    const without = JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string);
+    expect(without.scholar_url).toBe('');
+  });
+
   it('maps additional_majors to secondary_interests', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),

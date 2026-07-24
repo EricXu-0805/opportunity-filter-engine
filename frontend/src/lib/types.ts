@@ -40,6 +40,10 @@ export interface ProfileData {
   include_cross_school?: boolean;
   linkedin_url?: string;
   github_url?: string;
+  /** The student's own public Google Scholar profile URL (e.g.
+   * https://scholar.google.com/citations?user=…). Optional; like linkedin_url
+   * it does not inform matching — it's surfaced in the cold-email signature. */
+  scholar_url?: string;
   seeking_types?: string[];
   name?: string;
   experience_level?: string;
@@ -71,6 +75,7 @@ export interface ProfileRequest {
   research_interests_text: string;
   linkedin_url: string;
   github_url: string;
+  scholar_url: string;
   search_weight: number;  // 0-100: 0=pure interests, 100=pure experience
   exploring: boolean;     // widen matching for undecided students
   include_cross_school: boolean;  // opt-in to other schools' opportunities
