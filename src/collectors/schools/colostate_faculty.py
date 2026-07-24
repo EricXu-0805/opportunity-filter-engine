@@ -1,57 +1,106 @@
 """Colorado State University faculty config (via the faculty_graph engine).
 
-Two server-rendered markup families, both plain static 200s to a bare request
-(no WAF, no JS render). Live-verified 2026-07-19. Both are the campus WordPress
-("Jupiter" theme) but ship two different directory widgets, so they need two
-selector sets — a single ``.team-member-*`` set does NOT cover both, and the
-``.team-member-name`` class is emitted 2-3x per person in each (a photo anchor,
-a text anchor, and an inner span), so the card selector must key off the
-per-person WRAPPER, never ``.team-member-name`` itself, or every professor
-triples.
+Colorado State runs a different directory widget per college / department family;
+this config wires one selector (or headless-render) set per family and rides the
+department on each record. Live-verified 2026-07-24. Coverage now spans four
+colleges by six markup families:
 
-* **"sg-directory" list rows (Computer Science, Physics, Mathematics).**
-  ``compsci`` / ``physics`` / ``mathematics``.colostate.edu render the Natural
-  Sciences shared directory as one ``div.directory-default-row`` per person:
-  a photo ``a.team-member-name``, a text ``a.team-member-name`` wrapping the
-  ``span.team-member-name`` display name, a ``span.directory-list-title`` rank
-  (prefixed with a stray "/ ", e.g. "/ Assistant Professor"), a clean
-  ``mailto`` in ``.directory-list-contact-info``, and a free-text research ``<p>``
-  (prose, not a clean tag list — topics come from downstream OpenAlex, not a
-  ``research`` selector). These pages are FULL people directories: Physics alone
-  lists 22 graduate research assistants, 12 graduate teaching assistants, 4
-  graduate assistants, ~10 emeriti, postdocs, research associates and admin staff
-  around only ~20 ladder faculty; CS and Math likewise mix instructors,
-  coordinators, IT/admin staff and emeriti. A ``field_filter`` on
-  ``span.directory-list-title`` (``require_present`` so a title-less card can't
-  fall through to the engine's "Professor" default, ``include: professor|lecturer``,
-  ``exclude: emerit``) is the load-bearing gate that keeps only ladder / teaching
-  professors and drops every grad student, postdoc, staff and emeritus. A
-  ``title_re`` then trims the kept rank back off the "/ " prefix and any trailing
-  " - FC" / "(CCAF)" / "(Joint Appointment …)" / "/ she/they" suffix.
+* **"sg-directory" list rows — ``directory-default-row`` (Natural Sciences:
+  Computer Science, Physics, Mathematics).** One ``div.directory-default-row`` per
+  person: a photo ``a.team-member-name``, a text ``a.team-member-name`` wrapping
+  ``span.team-member-name``, a ``span.directory-list-title`` rank (stray "/ "
+  prefix), a clean ``mailto`` in ``.directory-list-contact-info``. These are FULL
+  people directories (Physics alone lists 22 grad research assistants, 12 grad
+  teaching assistants, emeriti, postdocs, staff around ~20 ladder faculty), so the
+  ``field_filter`` on ``span.directory-list-title`` (``require_present`` so a
+  title-less card can't fall through to the "Professor" default, keep
+  professor/lecturer/instructor, drop ``emerit``) is the load-bearing gate.
 
-* **"mk-employee-item" cards (Chemistry, Statistics).**
-  ``chem`` / ``statistics``.colostate.edu render the Jupiter employees widget:
-  one ``div.mk-employee-item`` per person, name in ``span.team-member-name``,
-  rank in ``span.team-member-position``, and a per-card ``mailto`` (every card
-  publishes one — 100% email coverage). NOTE the ``.team-member-desc`` block is
-  Office/Phone contact text, NOT research areas, so it is deliberately not scraped
-  as research. Same title gate: these are full staff rosters (Chemistry mixes in
-  a dozen ARC-facility scientists/managers, IT and accounting staff, and 12
-  emeriti; Statistics mixes coordinators and 9 emeriti), so the
-  ``field_filter`` on ``span.team-member-position`` keeps only professor/lecturer
-  ranks (incl. teaching professors) and drops emeriti + non-faculty staff.
+* **"mk-employee-item" cards (Natural Sciences: Chemistry, Statistics, Biology,
+  Biochemistry & Molecular Biology).** Jupiter "employees" widget: one
+  ``li.mk-employee-item`` per person, name in ``span.team-member-name``, rank in
+  ``span.team-member-position``, per-card ``mailto`` (100% email). ``.team-member-desc``
+  is Office/Phone text, NOT research. Same title gate drops the dozens of ARC-facility
+  scientists, IT/accounting staff and emeriti these full rosters carry (Biology's
+  raw page is 269 people, Chemistry mixes in facility managers, etc.).
 
-Engineering (ECE + Mechanical, on engr.colostate.edu) is intentionally NOT built
-this pass: the whole engr.colostate.edu WordPress returns HTTP 500 (a site-wide
-crash, likely transient) — re-probe later.
+* **"cns-directory-grid" cards (Natural Sciences: Psychology).** The College of
+  Natural Sciences shared directory (backed by ``cnsdrake.natsci.colostate.edu``):
+  one ``div.cns-directory-grid-item`` per person, name in ``h3.cns-directory-name``,
+  rank in ``p.cns-directory-title``, ``mailto`` inside ``div.cns-directory-contact``.
+  Full roster (admin coordinators, office managers, research scientists) → same gate.
 
-Single source ("colostate_faculty"); department rides each record, ids
-namespaced by department short-code.
+* **engineering "person_row" (Walter Scott College of Engineering: ECE,
+  Mechanical, Civil & Environmental, Chemical & Biological, Biomedical).** Each
+  ``engr.colostate.edu/<dept>/people/`` paints its roster CLIENT-SIDE from the shared
+  ``/libs/directory/`` widget (``div#dir_list``), so a bare GET yields ~zero cards and
+  ``wp-json`` is 403-blocked — these need ``scrape["render"]=True`` (headless
+  Playwright). Rendered card = ``div.person_row`` with ``div.person-name`` (link +
+  name), ``div.person-appointment`` (rank), and a ``mailto`` in ``div.person-contact``
+  (100% emailed). Rosters carry research associates, postdocs, lab engineers and
+  advising staff → gated to professor/lecturer/instructor ranks.
+
+* **"memberSmall" cards (College of Business — one college-wide directory).**
+  ``biz.colostate.edu/directory/`` server-renders every business person as
+  ``div.memberSmall`` with a schema.org ``a.user-listing-name`` ("Last, First" →
+  ``name_flip``), ``span.user-listing-position`` rank, and a ``mailto`` in
+  ``span.user-listing-email`` (297/298 emailed). No per-department split is exposed,
+  so it ships as one "College of Business" department. The gate drops the ~40
+  Instructional Coordinators, advisors and 12 emeriti (note "Instructor" does not
+  substring-match "Instructional", so those coordinators are correctly excluded).
+
+DROPPED / phase-2 (no reachable contact email — shipping them would pad the count
+with worthless name-only records):
+  * **College of Liberal Arts** (Anthropology, Economics, English, History, …):
+    the shared ``cla-people-list-item`` widget lists name + title + profile link
+    but NO email — and the individual profile pages carry no ``mailto`` even after a
+    headless render. Email-less; needs profile-enrich/phase-2.
+  * **Warner College of Natural Resources** (Ecosystem Science, Fish/Wildlife,
+    Forest & Rangeland, Geosciences, Human Dimensions): the college directory is a
+    client-side jQuery-UI accordion (``warnercnr.colostate.edu/directory/``) that
+    lazy-loads only the first expanded section (~10 emails) headless and never
+    hydrates the rest; no reachable per-department roster.
+  * **College of Agricultural Sciences** (Soil & Crop, Animal Sciences, Horticulture
+    & Landscape Architecture, Ag & Resource Economics, Ag Biology): the
+    ``agsci.colostate.edu/directory/`` app renders its people only via an
+    ``admin-ajax.php`` POST (nonce-gated) — no static, headless or REST roster carries
+    emails.
+  * **Biomedical Engineering** (``engr.colostate.edu/sbme/people/``): the School of
+    Biomedical Engineering's people page lists only administrative/advising staff —
+    its faculty are cross-appointed from ME/ECE/Chem etc., so the ladder-rank gate
+    leaves 0 standalone records.
+  * **Systems Engineering** (``engr.colostate.edu/se/people/`` → 404) and
+    **Neuroscience** (graduate program, faculty drawn from other departments): no
+    standalone faculty directory.
+
+Single source ("colostate_faculty"); department rides each record, ids namespaced
+by department short-code.
 """
 
 from __future__ import annotations
 
 from .. import faculty_graph
+
+# Shared rank extractor: trim a matched title back to a clean ladder/teaching rank
+# (drops the stray "/ " prefix and trailing " - FC" / director / chair suffixes).
+_RANK_RE = (
+    r"((?:University\s+)?(?:Distinguished\s+)?"
+    r"(?:Assistant\s+|Associate\s+|Adjunct\s+|Research\s+|Visiting\s+"
+    r"|Teaching\s+|Senior\s+|Clinical\s+|Master\s+)*"
+    r"(?:Professor|Lecturer|Instructor))"
+)
+
+
+def _field(selector: str) -> dict:
+    """Load-bearing gate: require the rank element (so a title-less staff row can't
+    default to "Professor"), keep only ladder/teaching ranks, drop emeriti."""
+    return {
+        "selector": selector,
+        "require_present": True,
+        "include": r"professor|lecturer|instructor",
+        "exclude": r"emerit",
+    }
+
 
 # ---- "sg-directory" list rows: Computer Science / Physics / Mathematics -----
 # Card = the per-person row wrapper (never ``.team-member-name``, which repeats
@@ -62,25 +111,12 @@ _DIR_SEL = {
     "name": "span.team-member-name",
     "link": "a.team-member-name[href*='/person/']",
     "title": "span.directory-list-title",
-    # Trim the kept rank off the stray "/ " prefix and any trailing
-    # " - FC" / "(CCAF)" / "(Joint Appointment …)" / "/ she/they" / chair suffix.
-    "title_re": (
-        r"((?:University\s+)?(?:Distinguished\s+)?"
-        r"(?:Assistant\s+|Associate\s+|Adjunct\s+|Research\s+|Visiting\s+"
-        r"|Teaching\s+|Senior\s+)*(?:Professor|Lecturer))"
-    ),
+    "title_re": _RANK_RE,
     "email": "div.directory-list-contact-info a[href^='mailto:']",
 }
-# Load-bearing gate: require the rank element (so a title-less staff row can't
-# default to "Professor"), keep only professor/lecturer ranks, drop emeriti.
-_DIR_FIELD = {
-    "selector": "span.directory-list-title",
-    "require_present": True,
-    "include": r"professor|lecturer",
-    "exclude": r"emerit",
-}
+_DIR_FIELD = _field("span.directory-list-title")
 
-# ---- "mk-employee-item" cards: Chemistry / Statistics -----------------------
+# ---- "mk-employee-item" cards: Chemistry / Statistics / Biology / Biochem ----
 # ``.team-member-desc`` is Office/Phone contact text, NOT research — no research
 # selector; topics come from downstream OpenAlex enrichment.
 _EMP_SEL = {
@@ -88,30 +124,73 @@ _EMP_SEL = {
     "name": "span.team-member-name",
     "link": "a.team-member-name[href*='/person/']",
     "title": "span.team-member-position",
+    "title_re": _RANK_RE,
     "email": "a[href^='mailto:']",
 }
-_EMP_FIELD = {
-    "selector": "span.team-member-position",
-    "require_present": True,
-    "include": r"professor|lecturer",
-    "exclude": r"emerit",
+_EMP_FIELD = _field("span.team-member-position")
+
+# ---- "cns-directory-grid" cards: Psychology (CNS shared directory) ----------
+_CNS_SEL = {
+    "card": "div.cns-directory-grid-item",
+    "name": "h3.cns-directory-name a",
+    "link": "h3.cns-directory-name a[href*='/person/']",
+    "title": "p.cns-directory-title",
+    "title_re": _RANK_RE,
+    "email": "div.cns-directory-contact a[href^='mailto:']",
 }
+_CNS_FIELD = _field("p.cns-directory-title")
+
+# ---- engineering "person_row" (headless render): Walter Scott College --------
+# Client-rendered from the shared ``/libs/directory/`` widget; wp-json is 403, so
+# the roster exists only after JS runs → ``render: True`` (Playwright).
+_ENGR_SEL = {
+    "card": "div.person_row",
+    "name": "div.person-name a",
+    "link": "div.person-name a",
+    "title": "div.person-appointment",
+    "title_re": _RANK_RE,
+    "email": "div.person-contact a[href^='mailto:']",
+}
+_ENGR_FIELD = _field("div.person-appointment")
+
+# ---- "memberSmall" cards: College of Business (one college-wide directory) ---
+# schema.org markup; name is "Last, First" → name_flip un-inverts it.
+_BIZ_SEL = {
+    "card": "div.memberSmall",
+    "name": "a.user-listing-name",
+    "link": "a.user-listing-name",
+    "title": "span.user-listing-position",
+    "title_re": _RANK_RE,
+    "email": "span.user-listing-email a[href^='mailto:']",
+}
+_BIZ_FIELD = _field("span.user-listing-position")
 
 
-def _dir_dept(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A CS/Physics/Math department on the sg-directory list-row widget."""
-    return {
-        "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _DIR_SEL, "field_filter": _DIR_FIELD},
-    }
+def _dept(short, name, majors, url, sel, field, **scrape):
+    scrape = {"url": url, "selectors": sel, "field_filter": field, **scrape}
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": url, "scrape": scrape}
 
 
-def _emp_dept(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A Chemistry/Statistics department on the mk-employee-item card widget."""
-    return {
-        "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _EMP_SEL, "field_filter": _EMP_FIELD},
-    }
+def _dir_dept(short, name, majors, url):
+    return _dept(short, name, majors, url, _DIR_SEL, _DIR_FIELD)
+
+
+def _emp_dept(short, name, majors, url):
+    return _dept(short, name, majors, url, _EMP_SEL, _EMP_FIELD)
+
+
+def _cns_dept(short, name, majors, url):
+    return _dept(short, name, majors, url, _CNS_SEL, _CNS_FIELD)
+
+
+def _engr_dept(short, name, majors, url):
+    return _dept(short, name, majors, url, _ENGR_SEL, _ENGR_FIELD,
+                 render=True, render_settle=5000)
+
+
+def _biz_dept(short, name, majors, url):
+    return _dept(short, name, majors, url, _BIZ_SEL, _BIZ_FIELD, name_flip=True)
 
 
 SCHOOL: dict = {
@@ -126,6 +205,7 @@ SCHOOL: dict = {
         "depends on the arrangement; ask the professor."
     ),
     "departments": [
+        # ---- College of Natural Sciences ------------------------------------
         _dir_dept("CS", "Department of Computer Science",
                   ["Computer Science", "Data Science"],
                   "https://compsci.colostate.edu/people/"),
@@ -141,6 +221,34 @@ SCHOOL: dict = {
         _emp_dept("STAT", "Department of Statistics",
                   ["Statistics", "Data Science"],
                   "https://statistics.colostate.edu/faculty-staff/"),
+        _emp_dept("BIOL", "Department of Biology",
+                  ["Biology", "Neuroscience"],
+                  "https://www.biology.colostate.edu/directory/"),
+        _emp_dept("BMB", "Department of Biochemistry and Molecular Biology",
+                  ["Biochemistry", "Biology"],
+                  "https://www.bmb.colostate.edu/about/people/"),
+        _cns_dept("PSY", "Department of Psychology",
+                  ["Psychology", "Neuroscience"],
+                  "https://psychology.colostate.edu/people/"),
+        # ---- Walter Scott, Jr. College of Engineering (headless render) -----
+        _engr_dept("ECE", "Department of Electrical and Computer Engineering",
+                   ["Electrical Engineering", "Computer Engineering"],
+                   "https://www.engr.colostate.edu/ece/people/"),
+        _engr_dept("ME", "Department of Mechanical Engineering",
+                   ["Mechanical Engineering"],
+                   "https://www.engr.colostate.edu/me/people/"),
+        _engr_dept("CE", "Department of Civil and Environmental Engineering",
+                   ["Civil Engineering", "Environmental Engineering"],
+                   "https://www.engr.colostate.edu/ce/people/"),
+        _engr_dept("BCE", "Department of Chemical and Biological Engineering",
+                   ["Chemical and Biological Engineering"],
+                   "https://www.engr.colostate.edu/bce/people/"),
+        # ---- College of Business (one college-wide directory) ---------------
+        _biz_dept("BUS", "College of Business",
+                  ["Accounting", "Finance", "Real Estate", "Management",
+                   "Marketing", "Computer Information Systems",
+                   "Human Resource Management", "Business Administration"],
+                  "https://biz.colostate.edu/directory/"),
     ],
 }
 
