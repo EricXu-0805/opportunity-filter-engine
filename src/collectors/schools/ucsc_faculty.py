@@ -1,25 +1,27 @@
 """UC Santa Cruz faculty config (via the faculty_graph engine).
 
-Every UCSC department directory probed for this pass runs the same
-campus-standard "h-card" people component — server-rendered, no WAF, no JS
-render needed (all seven pages return clean 200s to a plain request). One card
-is ``div.section-item.h-card.wrap`` carrying:
+UCSC runs a **campus-standard "h-card" people component** — server-rendered,
+no WAF, no JS render needed — on nearly every department directory across all
+five academic divisions (Baskin Engineering, Physical & Biological Sciences,
+Social Sciences, Humanities, Arts). One card is
+``div.section-item.h-card.wrap`` carrying:
 
 * an ``h3.item-name`` with the display name in ``span.p-name`` and a profile
-  link in ``a.u-url`` (Baskin Engineering depts link out to
-  ``campusdirectory.ucsc.edu/cd_detail?uid=<cruzid>`` absolutely; physics and
-  chemistry use a relative ``?directoryprofilecruzid=<cruzid>`` form the engine
+  link in ``a.u-url`` (Baskin depts link out to
+  ``campusdirectory.ucsc.edu/cd_detail?uid=<cruzid>`` absolutely; many other
+  depts use a relative ``?directoryprofilecruzid=<cruzid>`` form the engine
   resolves against the directory URL);
 * an ``ul.item-info`` list whose "Title" row holds the rank in a nested
-  ``ul.inline-list``, and a "Campus Email" row with a plain ``a.u-email`` mailto.
+  ``ul.inline-list``, and (on the pages that expose it) a "Campus Email" row
+  with a plain ``a.u-email`` mailto.
 
 Because the component is uniform, one shared selector set + one ladder gate
-covers all departments. The listing carries no research/interests field, so
+covers ~20 departments. The listing carries no research/interests field, so
 records land name+title+email only (topics come from downstream OpenAlex
 enrichment) — that matches the recon (research_selector empty everywhere).
 
 Title gate (``require: professor|lecturer``): the directories mix in staff,
-advisors, and — in Chemistry especially — dozens of graduate students,
+advisors, and — in the sciences especially — dozens of graduate students,
 postdocs, project scientists, and researchers alongside faculty. Requiring a
 "Professor"/"Lecturer" rank keeps ladder + teaching faculty and lecturers while
 dropping titleless staff rows, Deans/Directors/Vice-Provosts, and the
@@ -28,26 +30,55 @@ grad-student/postdoc bulk. Emeriti are dropped by the engine's own
 appear twice (a leadership card + a faculty card) collapse via the engine's
 name/url dedupe.
 
+MCD (Molecular, Cell & Developmental) Biology does NOT use the h-card component
+— it hand-builds a Gutenberg column layout (``div.wp-block-column`` with an
+``h4.wp-block-heading`` name link and a ``mailto:``). It gets its own selector
+set (no rank on the listing → the engine defaults "Professor"; the page is a
+faculty-only roster so that is correct).
+
 UCSC's "BME" is BIOMOLECULAR Engineering (genomics / protein / synthetic bio),
-NOT biomedical. UCSC has no separate Math or Mechanical Engineering department,
-so Applied Mathematics is included as the closest math unit.
+NOT biomedical. UCSC has no separate Mechanical Engineering department, and
+Applied Mathematics (Baskin) is the applied-math unit while Mathematics
+(PBSci) is the pure-math department — both are included.
+
+COVERAGE (live-verified 2026-07-24):
+  Baskin Engineering: CS, ECE, Biomolecular Eng, Statistics, Applied Math
+  Phys & Bio Sciences: Physics, Mathematics, Earth & Planetary Sciences,
+    Ocean Sciences, Microbiology & Env Toxicology, MCD Biology (custom layout)
+  Social Sciences: Psychology, Economics, Anthropology, Politics,
+    Environmental Studies, Latin American & Latino Studies, Education
+  Humanities: History, Philosophy, Literature, Linguistics, Feminist Studies,
+    Critical Race & Ethnic Studies
+  Arts: Art, Film & Digital Media, History of Art & Visual Culture, Music
+
+DROPPED / phase-2:
+  * Chemistry & Biochemistry — its roster (chemistry.ucsc.edu/people-auto/)
+    stopped rendering the Campus Email row site-wide (1 u-email / 142 cards as
+    of 2026-07-24; it carried emails at the last audit). Email-less; cruzid in
+    the profile link, so profile-enrich can recover it. Needs phase-2.
+  * Ecology & Evolutionary Biology (EEB) — its only roster (eeb.ucsc.edu/people/)
+    renders the h-card WITHOUT the Campus Email row (1 mailto / 192 cards).
+    Email-less; the profile links carry the cruzid, so a profile-enrich pass
+    can recover addresses. Needs phase-2.
+  * Sociology — /people/faculty/ renders h-cards with Title + Website rows but
+    NO Campus Email row (0 mailto / 50 cards). Email-less; cruzid in the profile
+    link. Needs profile-enrich/phase-2.
+  * Theater Arts — theater.ucsc.edu/people/ is a WordPress news feed, not a
+    directory (0 h-cards even in raw HTML; roster painted elsewhere/client-side).
+    No reachable roster. Phase-2.
+  * Languages & Applied Linguistics (languages.ucsc.edu) — host does not resolve
+    through the collector's network path (consistent DNS/000). Unreachable.
 
 Single source ("ucsc_faculty"); department rides each record, ids namespaced
 by department short-code.
-
-Live-verified 2026-07-19 (card counts / kept-after-gate): CS 88/66, ECE 48/34,
-BME 39/28, Physics 45/34, Chemistry 142/30, Statistics 25/20, Applied Math
-29/17 (pre-dedupe; the engine collapses cross-listed duplicates).
 """
 
 from __future__ import annotations
 
 from .. import faculty_graph
 
-# The shared UCSC campus "h-card" people component — identical markup on
-# engineering.ucsc.edu, physics.ucsc.edu, and chemistry.ucsc.edu. The title
-# selector lands the inner rank <li> under the item-info row whose <strong>
-# label is "Title" (siblings are "Campus Email"/"Office Location").
+# The shared UCSC campus "h-card" people component. The title selector lands the
+# inner rank <li> under the item-info row whose <strong> label is "Title".
 _SEL = {
     "card": "div.section-item.h-card.wrap",
     "name": "h3.item-name span.p-name",
@@ -58,8 +89,8 @@ _SEL = {
 
 # Keep Professors (ladder + teaching + distinguished + research) and Lecturers;
 # drop titleless staff, Deans/Directors/Vice-Provosts, and the grad students /
-# postdocs / project scientists the Chemistry directory mixes in. Emeriti are
-# dropped by the engine's own retired-title guard.
+# postdocs / project scientists the directories mix in. Emeriti are dropped by
+# the engine's own retired-title guard.
 #
 # A field_filter (not ladder_filter) is the gate here: staff/advisor cards carry
 # NO "Title" row at all, and the engine defaults a missing title to "Professor" —
@@ -71,6 +102,18 @@ _FIELD = {
     "selector": 'ul.item-info > li:has(> strong:-soup-contains("Title")) > ul.inline-list > li',
     "require_present": True,
     "include": r"professor|lecturer",
+}
+
+# MCD Biology's hand-built Gutenberg roster (no h-card, no rank text). Each
+# faculty sits in a wp-block-column with an <h4> name link and a mailto; the
+# engine defaults the (absent) rank to "Professor", which is correct for a
+# faculty-only page. No field_filter — a column with no <h4> name is skipped by
+# the engine, so layout-wrapper columns drop out on their own.
+_MCD_SEL = {
+    "card": "div.wp-block-column.is-layout-flow",
+    "name": "h4.wp-block-heading a",
+    "link": "h4.wp-block-heading a",
+    "email": "a[href^='mailto:']",
 }
 
 
@@ -110,11 +153,72 @@ SCHOOL: dict = {
               ["Applied Mathematics", "Mathematics"],
               "https://engineering.ucsc.edu/departments/applied-mathematics/people/"),
         # ---- Physical & Biological Sciences ---------------------------------
-        _dept("PHYS", "Department of Physics", ["Physics"],
+        _dept("PHYS", "Department of Physics", ["Physics", "Applied Physics"],
               "https://physics.ucsc.edu/people/faculty/"),
-        _dept("CHEM", "Department of Chemistry and Biochemistry",
-              ["Chemistry", "Biochemistry"],
-              "https://chemistry.ucsc.edu/people-auto/"),
+        _dept("MATH", "Department of Mathematics", ["Mathematics"],
+              "https://math.ucsc.edu/people/"),
+        _dept("EPS", "Department of Earth and Planetary Sciences",
+              ["Earth Sciences", "Environmental Sciences"],
+              "https://eps.ucsc.edu/people/"),
+        _dept("OCEAN", "Department of Ocean Sciences",
+              ["Marine Biology", "Environmental Sciences", "Ocean Sciences"],
+              "https://ocean.ucsc.edu/people/senate-faculty/"),
+        _dept("METX", "Department of Microbiology and Environmental Toxicology",
+              ["Microbiology", "Environmental Toxicology", "Biology"],
+              "https://metx.ucsc.edu/people/faculty/"),
+        # MCD Biology — custom Gutenberg roster, own selector set.
+        {"short": "MCD",
+         "name": "Department of Molecular, Cell and Developmental Biology",
+         "majors": ["Molecular, Cell, and Developmental Biology", "Biology",
+                    "Neuroscience", "Human Biology"],
+         "directory_url": "https://mcd.ucsc.edu/people/faculty/",
+         "scrape": {"url": "https://mcd.ucsc.edu/people/faculty/",
+                    "selectors": _MCD_SEL}},
+        # ---- Social Sciences ------------------------------------------------
+        _dept("PSYC", "Department of Psychology", ["Psychology", "Neuroscience"],
+              "https://psychology.ucsc.edu/people/faculty/"),
+        _dept("ECON", "Department of Economics",
+              ["Economics", "Business Management Economics", "Global Economics"],
+              "https://economics.ucsc.edu/people/faculty/"),
+        _dept("ANTH", "Department of Anthropology", ["Anthropology"],
+              "https://anthro.ucsc.edu/people/faculty/"),
+        _dept("POLI", "Department of Politics", ["Politics", "Legal Studies"],
+              "https://politics.ucsc.edu/people/faculty/"),
+        _dept("ENVS", "Department of Environmental Studies",
+              ["Environmental Studies", "Environmental Sciences"],
+              "https://envs.ucsc.edu/people/faculty/"),
+        _dept("LALS", "Department of Latin American and Latino Studies",
+              ["Latin American and Latino Studies"],
+              "https://lals.ucsc.edu/people/faculty/"),
+        _dept("EDUC", "Department of Education",
+              ["Education, Democracy, and Justice", "Education"],
+              "https://education.ucsc.edu/people/faculty/"),
+        # ---- Humanities -----------------------------------------------------
+        _dept("HIST", "Department of History", ["History", "Classical Studies"],
+              "https://history.ucsc.edu/people/"),
+        _dept("PHIL", "Department of Philosophy", ["Philosophy"],
+              "https://philosophy.ucsc.edu/people/faculty/"),
+        _dept("LIT", "Department of Literature", ["Literature"],
+              "https://literature.ucsc.edu/people/literature-department-faculty/"),
+        _dept("LING", "Department of Linguistics", ["Linguistics", "Language Studies"],
+              "https://linguistics.ucsc.edu/people/faculty/"),
+        _dept("FMST", "Department of Feminist Studies", ["Feminist Studies"],
+              "https://feministstudies.ucsc.edu/people/"),
+        _dept("CRES", "Department of Critical Race and Ethnic Studies",
+              ["Critical Race and Ethnic Studies"],
+              "https://cres.ucsc.edu/people-in-cres/"),
+        # ---- Arts Division --------------------------------------------------
+        _dept("ART", "Department of Art",
+              ["Art", "Art and Design: Games and Playable Media"],
+              "https://art.ucsc.edu/people/"),
+        _dept("FILM", "Department of Film and Digital Media",
+              ["Film and Digital Media"],
+              "https://film.ucsc.edu/people/faculty/"),
+        _dept("HAVC", "Department of History of Art and Visual Culture",
+              ["History of Art and Visual Culture"],
+              "https://havc.ucsc.edu/people/faculty/"),
+        _dept("MUS", "Department of Music", ["Music"],
+              "https://music.ucsc.edu/people/faculty/"),
     ],
 }
 
