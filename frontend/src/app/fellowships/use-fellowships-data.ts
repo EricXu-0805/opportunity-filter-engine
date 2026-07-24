@@ -10,6 +10,45 @@ interface FellowshipsDataState {
   opportunities: Opportunity[];
 }
 
+const API_PAGE_SIZE = 500;
+const MAX_API_PAGES_PER_TYPE = 100;
+
+async function fetchAllByType(
+  opportunityType: 'fellowship' | 'summer_program',
+): Promise<Opportunity[]> {
+  const opportunities: Opportunity[] = [];
+  let offset = 0;
+  let total = 0;
+  let pageCount = 0;
+
+  do {
+    const response = await getFellowshipOpportunities({
+      opportunity_type: opportunityType,
+      limit: API_PAGE_SIZE,
+      offset,
+    });
+
+    if (!Number.isSafeInteger(response.total) || response.total < 0) {
+      throw new Error('Invalid fellowship pagination response');
+    }
+
+    const page = response.opportunities ?? [];
+    total = response.total;
+    opportunities.push(...page);
+    offset += page.length;
+    pageCount += 1;
+
+    if (page.length === 0 && offset < total) {
+      throw new Error('Incomplete fellowship pagination response');
+    }
+    if (pageCount >= MAX_API_PAGES_PER_TYPE && offset < total) {
+      throw new Error('Fellowship pagination exceeded the safety limit');
+    }
+  } while (offset < total);
+
+  return opportunities;
+}
+
 export function useFellowshipsData(): FellowshipsDataState {
   const [state, setState] = useState<FellowshipsDataState>({
     loading: true,
@@ -19,11 +58,17 @@ export function useFellowshipsData(): FellowshipsDataState {
 
   useEffect(() => {
     let cancelled = false;
-    getFellowshipOpportunities({ opportunity_type: 'summer_program' })
-      .then((resp) => {
+    Promise.all([
+      fetchAllByType('fellowship'),
+      fetchAllByType('summer_program'),
+    ])
+      .then(([fellowships, summerPrograms]) => {
         if (cancelled) return;
-        const opps = (resp.opportunities ?? []) as unknown as Opportunity[];
-        setState({ loading: false, error: null, opportunities: opps });
+        const byId = new Map<string, Opportunity>();
+        for (const opp of [...fellowships, ...summerPrograms]) {
+          if (!byId.has(opp.id)) byId.set(opp.id, opp);
+        }
+        setState({ loading: false, error: null, opportunities: [...byId.values()] });
       })
       .catch((err: unknown) => {
         if (cancelled) return;

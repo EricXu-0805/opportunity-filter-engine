@@ -62,10 +62,61 @@ describe('FellowshipCard', () => {
     expect(screen.getByText('Summer')).toBeInTheDocument();
   });
 
+  it('shows Fellowship badge and preserves fellowship intent in the matcher CTA', () => {
+    render(<FellowshipCard opp={makeOpp({ opportunity_type: 'fellowship' })} />);
+    expect(screen.getByText('Fellowship')).toBeInTheDocument();
+    expect(screen.getByTestId('match-like-this')).toHaveAttribute(
+      'href',
+      expect.stringContaining('prefill_seeking=fellowship'),
+    );
+  });
+
   it('renders the deadline and on-campus location', () => {
     render(<FellowshipCard opp={makeOpp()} />);
     expect(screen.getByText('2026-03-15')).toBeInTheDocument();
     expect(screen.getByText('On campus')).toBeInTheDocument();
+  });
+
+  it('labels an estimated deadline so it is not presented as a confirmed date', () => {
+    render(<FellowshipCard opp={makeOpp({ deadline_is_estimate: true })} />);
+    expect(screen.getByText('2026-03-15')).toBeInTheDocument();
+    expect(screen.getByTestId('deadline-estimate')).toHaveTextContent('estimated');
+  });
+
+  it.each([false, undefined])(
+    'shows no precision caveat when deadline_is_estimate is %s',
+    (deadlineIsEstimate) => {
+      render(<FellowshipCard opp={makeOpp({ deadline_is_estimate: deadlineIsEstimate })} />);
+      expect(screen.getByText('2026-03-15')).toBeInTheDocument();
+      expect(screen.queryByTestId('deadline-estimate')).not.toBeInTheDocument();
+    },
+  );
+
+  it('marks an explicitly inactive listing and removes the matcher CTA', () => {
+    render(<FellowshipCard opp={makeOpp({
+      metadata: { is_active: false, confidence_score: 0.8 },
+    })} />);
+    expect(screen.getByTestId('activity-status')).toHaveTextContent(
+      'This listing is no longer active.',
+    );
+    expect(screen.queryByTestId('match-like-this')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['active', makeOpp()],
+    ['unknown', makeOpp({ metadata: undefined as unknown as Opportunity['metadata'] })],
+  ])('shows no activity badge when activity is %s', (_label, opp) => {
+    render(<FellowshipCard opp={opp} />);
+    expect(screen.queryByTestId('activity-status')).not.toBeInTheDocument();
+    expect(screen.getByTestId('match-like-this')).toBeInTheDocument();
+  });
+
+  it('does not present unknown campus status as off campus', () => {
+    render(<FellowshipCard opp={makeOpp({
+      on_campus: undefined as unknown as boolean,
+    })} />);
+    expect(screen.queryByText('On campus')).not.toBeInTheDocument();
+    expect(screen.queryByText('Off campus')).not.toBeInTheDocument();
   });
 
   it('uses an internal Link when opp has no http url (falls back to /opportunities/<id>)', () => {

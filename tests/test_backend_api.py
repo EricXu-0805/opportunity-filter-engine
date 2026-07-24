@@ -647,6 +647,53 @@ class TestColdEmailEngine:
         assert body["subject"]
         assert body["body"]
 
+    @pytest.mark.parametrize(
+        ("path", "extra"),
+        [
+            ("/api/cold-email", {}),
+            ("/api/cold-email", {"engine": "ai"}),
+            ("/api/cold-email/stream", {"engine": "ai"}),
+            ("/api/cold-email/variants", {}),
+        ],
+    )
+    def test_every_generation_path_requires_name_before_work(
+        self,
+        sample_profile_req,
+        monkeypatch,
+        path,
+        extra,
+    ):
+        """An email must never go out addressed from "Student": every entry
+        point 422s with ``student_name_required`` before any generation or
+        provider work begins."""
+        import backend.routes.cold_email as ce_module
+
+        calls: list[str] = []
+        monkeypatch.setattr(
+            ce_module,
+            "_run_engine",
+            lambda *_args, **_kwargs: calls.append("engine"),
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "generate_variants",
+            lambda *_args, **_kwargs: calls.append("variants"),
+        )
+        payload = {
+            "opportunity_id": "validation-happens-before-opportunity-lookup",
+            **extra,
+            "profile": {**sample_profile_req, "name": "   "},
+        }
+
+        response = client.post(path, json=payload)
+
+        assert response.status_code == 422
+        assert any(
+            error.get("type") == "student_name_required"
+            for error in response.json()["detail"]
+        )
+        assert calls == []
+
     def test_engine_ai_falls_back_when_unconfigured(self, cold_email_body, monkeypatch):
         for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
             monkeypatch.delenv(var, raising=False)

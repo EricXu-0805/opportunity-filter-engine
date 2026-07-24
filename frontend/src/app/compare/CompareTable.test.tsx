@@ -1,15 +1,26 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import CompareTable from './CompareTable';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { Opportunity, ProfileData } from '@/lib/types';
+import type { CompareRow } from './scores';
 
+const mockGetMatchExplanation = vi.fn();
+
+vi.mock('@/lib/api', () => ({
+  getMatchExplanation: (...args: unknown[]) => mockGetMatchExplanation(...args),
+}));
 vi.mock('@/lib/use-local-storage-json', () => ({
   useHasLocalStorageKey: vi.fn(),
   useLocalStorageJSON: vi.fn(),
 }));
+
+let lastBucketRows: CompareRow[] | null = null;
 vi.mock('./BucketCards', () => ({
-  default: () => <div data-testid="bucket-cards" />,
+  default: ({ rows }: { rows: CompareRow[] }) => {
+    lastBucketRows = rows;
+    return <div data-testid="bucket-cards" />;
+  },
 }));
 vi.mock('./RadarChart', () => ({
   default: () => <div data-testid="radar-chart" />,
@@ -27,10 +38,29 @@ const profile = {
   skills: [{ name: 'Python', level: 'expert' }],
 } as ProfileData;
 
+const EXPLANATION = {
+  explanation: 'Great topical fit.',
+  method: 'llm' as const,
+  final_score: 82,
+  bucket: 'high_priority',
+  reasons_fit: ['Strong ML background'],
+  reasons_gap: [],
+  eligibility_score: 90,
+  readiness_score: 80,
+  upside_score: 70,
+};
+
 function setStorage(has: boolean | undefined, value: ProfileData | null) {
   vi.mocked(useHasLocalStorageKey).mockReturnValue(has);
   vi.mocked(useLocalStorageJSON).mockReturnValue(value);
 }
+
+afterEach(() => {
+  cleanup();
+  sessionStorage.clear();
+  vi.clearAllMocks();
+  lastBucketRows = null;
+});
 
 describe('CompareTable', () => {
   it('shows a loading card while storage is hydrating', () => {
@@ -51,15 +81,81 @@ describe('CompareTable', () => {
     expect(screen.queryByText('Loading your profile…')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bucket-cards')).not.toBeInTheDocument();
     expect(screen.queryByTestId('radar-chart')).not.toBeInTheDocument();
+    expect(mockGetMatchExplanation).not.toHaveBeenCalled();
   });
 
-  it('renders the full ranked comparison when a profile is present', () => {
+  it('renders the ranked comparison from canonical matcher scores once every row settles', async () => {
     setStorage(true, profile);
+    mockGetMatchExplanation
+      .mockResolvedValueOnce({ ...EXPLANATION, final_score: 40, bucket: 'reach' })
+      .mockResolvedValueOnce({ ...EXPLANATION, final_score: 90 });
+
     render(<CompareTable opps={opps} />);
-    expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    expect(screen.getByText('Analyzing fit…')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('radar-chart')).toBeInTheDocument();
-    expect(screen.getByText('Differences')).toBeInTheDocument();
-    expect(screen.queryByText('Loading your profile…')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Create your profile' })).not.toBeInTheDocument();
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    // Sorted by canonical final_score: b (90) before a (40).
+    expect(lastBucketRows?.map((r) => r.opp.id)).toEqual(['b', 'a']);
+    expect(lastBucketRows?.map((r) => r.match?.final_score)).toEqual([90, 40]);
+  });
+
+  it('keeps failed rows visible as unavailable instead of substituting a local score', async () => {
+    setStorage(true, profile);
+    mockGetMatchExplanation
+      .mockRejectedValueOnce(new Error('500'))
+      .mockResolvedValueOnce(EXPLANATION);
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+    const failed = lastBucketRows?.find((r) => r.opp.id === 'a');
+    expect(failed?.status).toBe('error');
+    expect(failed?.match).toBeNull();
+  });
+
+  // Re-billing guard: every explain call is a paid LLM completion. The
+  // sessionStorage cache keyed by (opportunity, profile-hash) means a second
+  // visit within the hour renders instantly and bills nothing.
+  it('second render with the same profile serves from cache: one fetch per opportunity total', async () => {
+    setStorage(true, profile);
+    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
+
+    const first = render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    first.unmount();
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+  });
+
+  it('failed calls are not cached — a later visit retries', async () => {
+    setStorage(true, profile);
+    mockGetMatchExplanation
+      .mockRejectedValueOnce(new Error('500'))
+      .mockRejectedValueOnce(new Error('500'))
+      .mockResolvedValue(EXPLANATION);
+
+    const first = render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    first.unmount();
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(mockGetMatchExplanation).toHaveBeenCalledTimes(4);
+    });
   });
 });

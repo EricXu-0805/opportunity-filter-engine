@@ -1,22 +1,22 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Dashboard', () => {
-  test('loads stats without errors', async ({ page }) => {
+  test('shows the personal activity summary instead of database-wide stats', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    await expect(page.getByText(/Total Opps/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your activity' })).toBeVisible();
+    await expect(page.getByTestId('saved-summary')).toBeVisible();
+    // The whole-database vanity metrics are gone.
+    await expect(page.getByText(/Total Opps/i)).toHaveCount(0);
+    await expect(page.getByText(/Next 30 days/i)).toHaveCount(0);
   });
 
-  test('upcoming deadlines widget appears when data available', async ({ page }) => {
+  test('a fresh visitor sees honest empty states, not fabricated activity', async ({ page }) => {
     await page.goto('/dashboard');
-
-    const widget = page.getByRole('heading', { name: /Upcoming deadlines/i });
-    const count = await widget.count();
-    if (count === 0) {
-      test.skip(true, 'No upcoming deadlines in current dataset');
-    }
-    await expect(widget).toBeVisible();
-    await expect(page.getByText(/Next 30 days/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Saved deadlines' })).toBeVisible();
+    await expect(page.getByText('No saved opportunities yet')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('No applications tracked yet')).toBeVisible();
+    await expect(page.getByText('No reminders set')).toBeVisible();
   });
 });
 

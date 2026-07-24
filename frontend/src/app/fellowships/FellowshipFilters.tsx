@@ -1,15 +1,14 @@
 'use client';
 
-import {
-  COLLEGE_KEYS,
-  DEFAULT_FELLOWSHIP_FILTERS,
-  FELLOWSHIP_YEARS,
-  type CollegeKey,
-  type FellowshipFiltersState,
-  type FellowshipYear,
-  type IntlFilter,
-} from './types';
 import { useT } from '@/i18n/client';
+import {
+  DEFAULT_FELLOWSHIP_FILTERS,
+  type DeadlineFilter,
+  type FellowshipFiltersState,
+  type IntlFilter,
+  type PaidFilter,
+  type ProgramTypeFilter,
+} from './types';
 
 interface FellowshipFiltersProps {
   filters: FellowshipFiltersState;
@@ -44,66 +43,69 @@ export default function FellowshipFilters({
         )}
       </div>
 
-      <fieldset className="mb-4">
-        <legend className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-          {t('fellowships.year')}
-        </legend>
-        <div className="flex flex-wrap gap-1.5">
+      <FilterGroup label={t('fellowships.type')}>
+        {(['', 'fellowship', 'summer_program'] as ProgramTypeFilter[]).map((type) => (
           <FilterPill
-            active={filters.year === ''}
-            onClick={() => onChange({ ...filters, year: '' })}
-            label={t('fellowships.years.any')}
+            key={type || 'any'}
+            active={filters.type === type}
+            onClick={() => onChange({ ...filters, type })}
+            label={t(`fellowships.types.${type || 'any'}`)}
           />
-          {FELLOWSHIP_YEARS.map((y) => (
-            <FilterPill
-              key={y}
-              active={filters.year === y}
-              onClick={() => onChange({ ...filters, year: y as FellowshipYear })}
-              label={t(`fellowships.years.${y}`)}
-            />
-          ))}
-        </div>
-      </fieldset>
+        ))}
+      </FilterGroup>
 
-      <fieldset className="mb-4">
-        <legend className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-          {t('fellowships.intl')}
-        </legend>
-        <div className="flex flex-wrap gap-1.5">
+      <FilterGroup label={t('fellowships.intl')}>
+        {(['', 'yes', 'no'] as IntlFilter[]).map((international) => (
           <FilterPill
-            active={filters.international === ''}
-            onClick={() => onChange({ ...filters, international: '' })}
-            label={t('fellowships.intlOptions.any')}
+            key={international || 'any'}
+            active={filters.international === international}
+            onClick={() => onChange({ ...filters, international })}
+            label={t(`fellowships.intlOptions.${international || 'any'}`)}
           />
-          <FilterPill
-            active={filters.international === 'yes'}
-            onClick={() => onChange({ ...filters, international: 'yes' as IntlFilter })}
-            label={t('fellowships.intlOptions.yes')}
-          />
-          <FilterPill
-            active={filters.international === 'no'}
-            onClick={() => onChange({ ...filters, international: 'no' as IntlFilter })}
-            label={t('fellowships.intlOptions.no')}
-          />
-        </div>
-      </fieldset>
+        ))}
+      </FilterGroup>
 
-      <fieldset>
-        <legend className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-          {t('fellowships.college')}
-        </legend>
-        <div className="flex flex-wrap gap-1.5">
-          {COLLEGE_KEYS.map((c) => (
-            <FilterPill
-              key={c}
-              active={filters.college === c}
-              onClick={() => onChange({ ...filters, college: c as CollegeKey })}
-              label={t(`fellowships.colleges.${c}`)}
-            />
-          ))}
-        </div>
-      </fieldset>
+      <FilterGroup label={t('fellowships.paid')}>
+        {(['', 'paid', 'unpaid'] as PaidFilter[]).map((paid) => (
+          <FilterPill
+            key={paid || 'any'}
+            active={filters.paid === paid}
+            onClick={() => onChange({ ...filters, paid })}
+            label={t(`fellowships.paidOptions.${paid || 'any'}`)}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup label={t('fellowships.deadline')} last>
+        {(['', 'upcoming', 'rolling'] as DeadlineFilter[]).map((deadline) => (
+          <FilterPill
+            key={deadline || 'any'}
+            active={filters.deadline === deadline}
+            onClick={() => onChange({ ...filters, deadline })}
+            label={t(`fellowships.deadlineOptions.${deadline || 'any'}`)}
+          />
+        ))}
+      </FilterGroup>
     </div>
+  );
+}
+
+function FilterGroup({
+  label,
+  last = false,
+  children,
+}: {
+  label: string;
+  last?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset className={last ? undefined : 'mb-4'}>
+      <legend className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+        {label}
+      </legend>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </fieldset>
   );
 }
 
