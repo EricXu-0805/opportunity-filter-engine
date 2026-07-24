@@ -95,11 +95,18 @@ jobs:
           NEXT_PUBLIC_API_URL: /api
 
   migrations:
-    name: Migrations (Flow B merge)
+    name: Migrations (Flow B merge + CLI replay)
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
+
+      # Keep both the setup action and CLI release pinned: migration-history
+      # semantics are part of the deployment contract, not a moving CI input.
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.95.4
 
       - name: Ensure PostgreSQL tools on PATH
         run: |
@@ -116,6 +123,12 @@ jobs:
       # assertions. Guards the only data-loss surface against schema drift.
       - name: Flow B merge test (ephemeral Postgres)
         run: bash supabase/tests/run_flow_b_test.sh
+
+      # Full-chain replay with the real CLI: catches duplicate version
+      # prefixes and dependency-order failures (e.g. 006's DROP FUNCTION)
+      # that the psql loop above cannot, and asserts the history table.
+      - name: Real Supabase migration-history contract
+        run: bash supabase/tests/run_supabase_cli_migration_test.sh
 
   e2e:
     name: E2E (Playwright)

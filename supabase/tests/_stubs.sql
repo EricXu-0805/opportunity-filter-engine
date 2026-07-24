@@ -7,8 +7,9 @@
 --     the redeem function's attachment COUNT parse and run.
 --   * roles anon/authenticated/service_role: referenced by GRANT/REVOKE in
 --     014 + 017; absent from a plain cluster.
---   * profiles/favorites: dashboard-created in prod (no migration file), so
---     the test must create them before 006 alters them.
+-- Business tables are deliberately NOT stubbed here. A real migration replay
+-- must create every application-owned relation itself (001 owns
+-- profiles/favorites since the Dashboard-created shape was codified).
 
 -- Supabase roles referenced by GRANT/REVOKE statements.
 DO $$ BEGIN CREATE ROLE anon NOLOGIN;           EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -54,20 +55,3 @@ CREATE OR REPLACE FUNCTION storage.foldername(name text)
 RETURNS text[] LANGUAGE sql IMMUTABLE AS $$
   SELECT (string_to_array(name, '/'))[1 : greatest(array_length(string_to_array(name, '/'), 1) - 1, 1)]
 $$;
-
--- profiles + favorites: dashboard-created in prod (no migration), created here
--- to match the columns the frontend reads/writes (supabase.ts).
-CREATE TABLE IF NOT EXISTS profiles (
-  id           text PRIMARY KEY,
-  profile_data jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at   timestamptz DEFAULT now(),
-  updated_at   timestamptz DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS favorites (
-  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  device_id      text NOT NULL,
-  opportunity_id text NOT NULL,
-  created_at     timestamptz DEFAULT now(),
-  UNIQUE (device_id, opportunity_id)
-);
