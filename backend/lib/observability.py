@@ -60,6 +60,12 @@ def init_sentry() -> bool:
         traces_sample_rate=traces_sample_rate,
         release=release,
         send_default_pii=False,
+        # send_default_pii=False alone is NOT enough: the SDK still uploads
+        # JSON request bodies up to 10KB ("medium") and local variables from
+        # every stack frame by default, so a 5xx on the cold-email / matches
+        # endpoints would ship student resumes and profiles to Sentry.
+        max_request_body_size="never",
+        include_local_variables=False,
         attach_stacktrace=False,
         max_breadcrumbs=50,
     )

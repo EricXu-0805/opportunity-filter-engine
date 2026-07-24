@@ -357,9 +357,9 @@ def _run_llm_extraction(
 
     parsed = _parse_llm_json(response_text)
     if parsed is None:
-        logger.warning(
-            "LLM returned unparseable JSON (url_hint=%r), no enrichment", url_hint
-        )
+        # Deliberately no url_hint here: user-submitted URLs can carry signed
+        # tokens / PII in query strings and must not land in logs.
+        logger.warning("LLM returned unparseable JSON, no enrichment")
         return None
 
     return _merge_llm_into_base(base, parsed)

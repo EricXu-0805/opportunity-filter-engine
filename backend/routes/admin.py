@@ -507,7 +507,7 @@ async def saved_search_health(
         "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE_KEY']}",
     }
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, trust_env=False, follow_redirects=False) as client:
             resp = await client.get(
                 f"{supabase_url}/rest/v1/saved_searches",
                 params={
@@ -591,7 +591,7 @@ async def trigger_refresh(
     payload = {"ref": "main", "inputs": {"deep": "true" if mode == "deep" else "false"}}
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, trust_env=False, follow_redirects=False) as client:
             resp = await client.post(
                 workflow_url,
                 json=payload,
@@ -653,7 +653,7 @@ async def feedback_inbox(
         params["created_at"] = f"gte.{cutoff}"
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
             fb_resp = await client.get(
                 f"{supabase_url}/rest/v1/feedback", params=params, headers=headers
             )

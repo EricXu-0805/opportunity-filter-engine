@@ -82,6 +82,39 @@ async def _fetch_order(
     return rows[0] if rows else None
 
 
+def _require_transition_row(
+    response: httpx.Response,
+    *,
+    order_id: str,
+    expected_status: str,
+) -> dict:
+    """Prove that a conditional PostgREST PATCH changed exactly one row."""
+    rows = response.json()
+    if not isinstance(rows, list):
+        raise HTTPException(
+            status_code=502,
+            detail="Order storage returned an invalid transition response",
+        )
+    # PostgREST returns HTTP 200 plus [] when a concurrent transition makes the
+    # old-state predicate match zero rows. Never turn that into a false success.
+    if not rows:
+        raise HTTPException(
+            status_code=409,
+            detail="Order status changed concurrently; refresh and try again",
+        )
+    if (
+        len(rows) != 1
+        or not isinstance(rows[0], dict)
+        or str(rows[0].get("id")) != order_id
+        or rows[0].get("status") != expected_status
+    ):
+        raise HTTPException(
+            status_code=502,
+            detail="Order storage returned an invalid transition response",
+        )
+    return rows[0]
+
+
 @router.post("/orders/{order_id}/mark-paid-claimed")
 async def mark_paid_claimed(
     order_id: str,
@@ -93,7 +126,9 @@ async def mark_paid_claimed(
 
     supabase_url, headers = _supabase_env()
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(
+        timeout=15.0, trust_env=False, follow_redirects=False,
+    ) as client:
         uid = await _caller_uid(client, supabase_url, headers["apikey"], authorization)
 
         order = await _fetch_order(client, supabase_url, headers, order_id)
@@ -108,12 +143,15 @@ async def mark_paid_claimed(
         patch_resp = await client.patch(
             f"{supabase_url}/rest/v1/orders",
             params={"id": f"eq.{order_id}", "device_id": f"eq.{uid}", "status": "eq.pending"},
-            headers={**headers, "Prefer": "return=minimal"},
+            headers={**headers, "Prefer": "return=representation"},
             json={"status": "awaiting_confirm"},
         )
         patch_resp.raise_for_status()
+        transitioned = _require_transition_row(
+            patch_resp, order_id=order_id, expected_status="awaiting_confirm",
+        )
 
-    return {"id": order_id, "status": "awaiting_confirm"}
+    return {"id": str(transitioned["id"]), "status": transitioned["status"]}
 
 
 @router.get("/admin/orders")
@@ -148,7 +186,9 @@ async def admin_list_orders(
         params["created_at"] = f"gte.{cutoff}"
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(
+            timeout=15.0, trust_env=False, follow_redirects=False,
+        ) as client:
             resp = await client.get(
                 f"{supabase_url}/rest/v1/orders", params=params, headers=headers
             )
@@ -173,7 +213,9 @@ async def admin_confirm_order(
 
     supabase_url, headers = _supabase_env()
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(
+        timeout=15.0, trust_env=False, follow_redirects=False,
+    ) as client:
         order = await _fetch_order(client, supabase_url, headers, order_id)
         if order is None:
             raise HTTPException(status_code=404, detail="Order not found")
@@ -183,14 +225,25 @@ async def admin_confirm_order(
             raise HTTPException(
                 status_code=409, detail=f"Order is {order.get('status')} — cannot confirm"
             )
+        # The pending row was INSERTed by the client (RLS); refuse to confirm a
+        # tampered package/price rather than blessing it as paid.
+        if not payments.order_matches_catalog(order):
+            raise HTTPException(status_code=409, detail="Order package or price is invalid")
 
         fields = payments.confirm_order("manual", order)
         patch_resp = await client.patch(
             f"{supabase_url}/rest/v1/orders",
-            params={"id": f"eq.{order_id}"},
-            headers={**headers, "Prefer": "return=minimal"},
+            params={"id": f"eq.{order_id}", "status": "in.(pending,awaiting_confirm)"},
+            headers={**headers, "Prefer": "return=representation"},
             json=fields,
         )
         patch_resp.raise_for_status()
+        transitioned = _require_transition_row(
+            patch_resp, order_id=order_id, expected_status="paid",
+        )
 
-    return {"id": order_id, **fields}
+    return {
+        "id": str(transitioned["id"]),
+        "status": transitioned["status"],
+        "paid_at": transitioned.get("paid_at"),
+    }

@@ -11,6 +11,7 @@ Covers features added across recent iterations:
 import json
 import os
 import sys
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -368,6 +369,32 @@ class TestLLMRerank:
         assert resp.status_code == 200
         scores = [r["final_score"] for r in resp.json()["results"]]
         assert all(scores[i] >= scores[i + 1] for i in range(len(scores) - 1))
+
+    def test_cache_invalidates_when_candidate_content_changes(self, monkeypatch):
+        # The old md5 key hashed only (query|model|candidate ids): after a data
+        # refresh changed a professor's research areas, the rerank kept serving
+        # the stale cached scores/reasons for the same id set.
+        from backend.routes import matches
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        calls = []
+
+        def fake_score(query, cand):
+            calls.append(cand)
+            return {c[0]: {"s": 50.0, "r": ""} for c in cand}
+
+        monkeypatch.setattr(matches, "_llm_score_candidates", fake_score)
+        matches._llm_rerank_cache.clear()
+        query = {"research_interests_text": "cache-content-query"}
+
+        lookup_v1 = {"a": {"id": "a", "title": "Lab a", "keywords": ["robotics"]}}
+        matches.llm_rerank(query, self._results([("a", 80)]), lookup_v1)
+        matches.llm_rerank(query, self._results([("a", 80)]), lookup_v1)
+        assert len(calls) == 1  # unchanged content → cache hit
+
+        lookup_v2 = {"a": {"id": "a", "title": "Lab a", "keywords": ["genomics"]}}
+        matches.llm_rerank(query, self._results([("a", 80)]), lookup_v2)
+        assert len(calls) == 2  # same ids, new content → cache miss
+        matches._llm_rerank_cache.clear()
 
     def test_candidate_area_is_sanitized(self, monkeypatch):
         # Scraped opportunity text is untrusted: newlines must be flattened so a
@@ -808,10 +835,10 @@ class TestGroundingShadowTelemetry:
 
 class TestColdEmailRefineGrounding:
     """R72-A: the /cold-email/refine LLM edit must not smuggle in claims the
-    student cannot back up. Evidence corpus is the profile + opportunity + the
-    already-grounded prior body. The user's free-text instruction is NOT
-    evidence, so it cannot whitelist its own fabrication (the profile is the
-    single source of truth, exactly as in the generate path)."""
+    student cannot back up. Evidence corpus is the profile + opportunity ONLY.
+    Neither the free-text instruction nor the current draft is evidence: the
+    instruction would whitelist its own fabrication, and the draft would make
+    any pasted claim self-authenticating after a single innocuous edit."""
 
     _BODY = (
         "Dear Professor Lee,\n"
@@ -886,6 +913,29 @@ class TestColdEmailRefineGrounding:
         assert out["method"] == "local"
         assert out["fallback_reason"] == "fabrication"
         assert "pytorch" not in out["body"].lower()
+
+    def test_refine_pasted_claim_cannot_self_authenticate(
+        self, monkeypatch, sample_profile_req, opp_id
+    ):
+        """Self-authentication loophole: pasting 'I am a PyTorch expert' into
+        the draft and asking for a warmer tone must NOT whitelist PyTorch just
+        because it was already in current_body. The claim still has to trace
+        back to the profile / resume bullets."""
+        body_with_claim = self._BODY + "\nI am an expert in PyTorch."
+        self._configure_llm(monkeypatch, body_with_claim)
+        resp = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": body_with_claim,
+                "instruction": "make the tone warmer",
+                "profile": sample_profile_req,
+                "opportunity_id": opp_id,
+            },
+        )
+        assert resp.status_code == 200
+        out = resp.json()
+        assert out["method"] == "local"
+        assert out["fallback_reason"] == "fabrication"
 
     def test_refine_allows_profile_skill(
         self, monkeypatch, sample_profile_req, opp_id
@@ -1960,6 +2010,11 @@ class TestSentryInit:
         assert captured["environment"] == "test-env"
         assert captured["traces_sample_rate"] == 0.25
         assert captured["send_default_pii"] is False
+        # send_default_pii=False does NOT stop the SDK's default upload of
+        # ≤10KB JSON request bodies + stack-frame locals: a 5xx on cold-email
+        # or matches would ship resumes/profiles to Sentry without these.
+        assert captured["max_request_body_size"] == "never"
+        assert captured["include_local_variables"] is False
 
     def test_clamps_invalid_sample_rate(self, monkeypatch):
         monkeypatch.setenv("SENTRY_DSN", "https://x@o0.ingest.sentry.io/1")
@@ -2933,6 +2988,73 @@ class TestRateLimitResolution:
         # The bare list/stats endpoint (no trailing slash) stays generous.
         key = _rate_limit_key("/api/opportunities")
         assert RATE_LIMITS.get(key, DEFAULT_RATE) == DEFAULT_RATE
+
+    def test_unmatched_paths_share_one_default_family(self):
+        from backend.main import DEFAULT_RATE_KEY, _rate_limit_key
+        # Returning the raw path let an attacker mint a fresh bucket (with a
+        # fresh default quota) per invented path.
+        assert _rate_limit_key("/random-1") == DEFAULT_RATE_KEY
+        assert _rate_limit_key("/random-2") == DEFAULT_RATE_KEY
+        assert _rate_limit_key("/api/unknown/with/high/cardinality") == DEFAULT_RATE_KEY
+
+
+class TestRateLimitHardening:
+    def test_random_404_paths_share_one_per_ip_quota(self, monkeypatch):
+        from backend import main as main_mod
+
+        monkeypatch.setattr(main_mod, "RATE_LIMIT_DISABLED", False)
+        main_mod._rate_buckets.clear()
+        main_mod._global_buckets.clear()
+        main_mod._last_purge = time.time()
+
+        try:
+            for index in range(main_mod.DEFAULT_RATE[0]):
+                r = client.get(f"/random-{index}", headers={"x-forwarded-for": "9.9.9.9"})
+                assert r.status_code == 404
+            r = client.get("/one-more-random-path", headers={"x-forwarded-for": "9.9.9.9"})
+            assert r.status_code == 429
+            assert list(main_mod._rate_buckets) == [f"9.9.9.9:{main_mod.DEFAULT_RATE_KEY}"]
+        finally:
+            main_mod._rate_buckets.clear()
+            main_mod._global_buckets.clear()
+
+    def test_hour_window_survives_periodic_cleanup(self, monkeypatch):
+        # The old fixed 120s purge cutoff deleted /api/email's 3/3600 bucket
+        # every 5 minutes, silently resetting hourly quotas.
+        from backend import main as main_mod
+
+        monkeypatch.setattr(main_mod, "RATE_LIMIT_DISABLED", False)
+        now = time.time()
+        key = "9.9.9.9:/api/email/send-matches"
+        main_mod._rate_buckets.clear()
+        main_mod._rate_buckets[key] = [now - 300, now - 299, now - 298]
+        main_mod._last_purge = 0.0
+
+        try:
+            r = client.post(
+                "/api/email/send-matches",
+                json={"items": [{"title": "opp"}]},
+                headers={"x-forwarded-for": "9.9.9.9"},
+            )
+            assert r.status_code == 429
+            assert key in main_mod._rate_buckets
+        finally:
+            main_mod._rate_buckets.clear()
+            main_mod._global_buckets.clear()
+            main_mod._last_purge = 0.0
+
+
+class TestAdminResponsesNotCacheable:
+    def test_admin_paths_get_no_store(self):
+        # Admin responses carry student emails / feedback / order rows; the
+        # X-Admin-Token header is not a cache boundary any shared cache knows.
+        r = client.get("/api/admin/orders")
+        assert r.headers["Cache-Control"] == "private, no-store, max-age=0"
+        assert r.headers["Pragma"] == "no-cache"
+
+    def test_non_admin_paths_unaffected(self):
+        r = client.get("/api/health")
+        assert "no-store" not in r.headers.get("Cache-Control", "")
 
 
 class TestChatBucketIsolation:

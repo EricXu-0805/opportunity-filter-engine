@@ -959,8 +959,8 @@ class TestNDraftJudgeTier:
         monkeypatch.setattr(ce, "chat_completion", fake)
         ce._pipeline_generate(self._profile(), self._opp(), None)
         models = dict(seen)
-        assert models["judge"] == "anthropic/claude-opus-4-8"
-        assert models["critique"] == "anthropic/claude-opus-4-8"
+        assert models["judge"] == "anthropic/claude-opus-4.8"
+        assert models["critique"] == "anthropic/claude-opus-4.8"
         assert models["draft_angle1"] == "anthropic/claude-sonnet-5"
 
     def test_ndraft_count_clamps(self, monkeypatch):
