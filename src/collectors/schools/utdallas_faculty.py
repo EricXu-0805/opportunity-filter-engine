@@ -51,7 +51,6 @@ from __future__ import annotations
 
 from .. import faculty_graph
 
-
 # =============================================================================
 # Erik Jonsson School of Engineering & Computer Science — static WordPress
 # =============================================================================
