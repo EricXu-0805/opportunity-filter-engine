@@ -34,6 +34,9 @@ import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
 
 function makeProfile(overrides: Partial<ProfileData> = {}): ProfileData {
   return {
+    // The cold-email flow requires a sender name (backend 422s without one);
+    // every test not specifically about that gate uses a named profile.
+    name: 'Alex Chen',
     institution: 'UIUC',
     college: 'Grainger',
     major: 'CS',
@@ -92,6 +95,57 @@ afterEach(() => {
 });
 
 describe('ColdEmailModal', () => {
+  describe('student-name gate', () => {
+    it.each([undefined, '', '   '])(
+      'blocks generation and points to the profile form when name is %j',
+      async (name) => {
+        render(
+          <ColdEmailModal
+            isOpen
+            onClose={vi.fn()}
+            profile={makeProfile({ name })}
+            opportunityId="opp-1"
+            opportunityTitle="REU"
+          />,
+        );
+        await waitFor(() => {
+          expect(screen.getByTestId('cold-email-name-required')).toBeInTheDocument();
+        });
+        expect(screen.getByText('coldEmail.nameRequiredTitle')).toBeInTheDocument();
+        expect(screen.getByText('coldEmail.nameRequiredBody')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'coldEmail.nameRequiredCta' }))
+          .toHaveAttribute('href', '/');
+        // Nothing was generated — no variants fetch, no AI pipeline.
+        expect(mockGetVariants).not.toHaveBeenCalled();
+        expect(mockGenerateColdEmail).not.toHaveBeenCalled();
+        expect(mockGenerateColdEmailStream).not.toHaveBeenCalled();
+        // No generic error/retry UI for this state.
+        expect(screen.queryByText('coldEmail.tryAgain')).not.toBeInTheDocument();
+      },
+    );
+
+    it('maps a backend student_name_required 422 to the same guidance instead of a generic failure', async () => {
+      mockGetVariants.mockRejectedValue(new Error(
+        'API 422: {"detail":[{"type":"student_name_required","loc":["body","profile"]}]}',
+      ));
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile()}
+          opportunityId="opp-1"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId('cold-email-name-required')).toBeInTheDocument();
+      });
+      expect(screen.getByRole('link', { name: 'coldEmail.nameRequiredCta' }))
+        .toHaveAttribute('href', '/');
+      expect(screen.queryByText(/API 422/)).not.toBeInTheDocument();
+    });
+  });
+
   describe('lifecycle', () => {
     it('renders nothing when isOpen=false', () => {
       const { container } = render(

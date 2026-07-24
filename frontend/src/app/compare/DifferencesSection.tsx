@@ -3,27 +3,33 @@
 import { useMemo, useState } from 'react';
 import { Check, X, ChevronDown } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
-import { FIELD_SCORERS } from './scores';
 import { useT } from '@/i18n/client';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
-type ValueResolver = (opp: Opportunity) => string | string[] | undefined;
+type ComparisonValue = string | string[] | null | undefined;
+type ValueResolver = (opp: Opportunity) => ComparisonValue;
+
+function truthValue(value: boolean | null | undefined): 'yes' | 'no' | 'unknown' {
+  if (value === true) return 'yes';
+  if (value === false) return 'no';
+  return 'unknown';
+}
 
 interface FieldSpec {
   key: string;
   labelKey: string;
   value: ValueResolver;
-  kind?: 'skills';
+  kind?: 'skills' | 'deadline';
 }
 
 const FIELDS: FieldSpec[] = [
   { key: 'compensation', labelKey: 'compare.fields.compensation', value: (o) => cleanCompensation(o.compensation_details) || (o.paid && o.paid !== 'unknown' ? o.paid : undefined) },
   { key: 'paid', labelKey: 'compare.fields.paid', value: (o) => o.paid },
   { key: 'international', labelKey: 'compare.fields.international', value: (o) => o.eligibility?.international_friendly },
-  { key: 'citizenship', labelKey: 'compare.fields.citizenship', value: (o) => (o.eligibility?.citizenship_required ? 'yes' : 'no') },
-  { key: 'deadline', labelKey: 'compare.fields.deadline', value: (o) => (o.is_rolling ? 'rolling' : o.deadline) },
+  { key: 'citizenship', labelKey: 'compare.fields.citizenship', value: (o) => truthValue(o.eligibility?.citizenship_required) },
+  { key: 'deadline', labelKey: 'compare.fields.deadline', value: (o) => (o.is_rolling ? 'rolling' : o.deadline), kind: 'deadline' },
   { key: 'effort', labelKey: 'compare.fields.applicationEffort', value: (o) => o.application?.application_effort },
   { key: 'skills', labelKey: 'compare.fields.skills', value: (o) => o.eligibility?.skills_required, kind: 'skills' },
   { key: 'majors', labelKey: 'compare.fields.majors', value: (o) => o.eligibility?.majors },
@@ -34,7 +40,7 @@ const FIELDS: FieldSpec[] = [
   { key: 'startDate', labelKey: 'compare.fields.startDate', value: (o) => o.start_date },
   { key: 'location', labelKey: 'compare.fields.location', value: (o) => o.location },
   { key: 'remote', labelKey: 'compare.fields.remote', value: (o) => o.remote_option },
-  { key: 'onCampus', labelKey: 'compare.fields.onCampus', value: (o) => (o.on_campus ? 'yes' : 'no') },
+  { key: 'onCampus', labelKey: 'compare.fields.onCampus', value: (o) => truthValue(o.on_campus) },
   { key: 'requiresResume', labelKey: 'compare.fields.requiresResume', value: (o) => o.application?.requires_resume },
   { key: 'requiresCoverLetter', labelKey: 'compare.fields.requiresCoverLetter', value: (o) => o.application?.requires_cover_letter },
   { key: 'requiresRecommendation', labelKey: 'compare.fields.requiresRecommendation', value: (o) => o.application?.requires_recommendation },
@@ -44,9 +50,20 @@ function formatType(s: string): string {
   return (s || '').replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-function normalizeForComparison(v: string | string[] | undefined): string {
+function normalizeForComparison(v: ComparisonValue): string {
   if (Array.isArray(v)) return [...v].map((s) => s.toLowerCase()).sort().join('|');
   return (v ?? '').toString().toLowerCase().trim();
+}
+
+function normalizeFieldForComparison(field: FieldSpec, opp: Opportunity): string {
+  const value = normalizeForComparison(field.value(opp));
+  if (field.kind !== 'deadline' || !value || value === 'rolling') return value;
+  const precision = opp.deadline_is_estimate === false
+    ? 'confirmed'
+    : opp.deadline_is_estimate === true
+      ? 'estimated'
+      : 'unknown';
+  return `${value}|${precision}`;
 }
 
 interface Props {
@@ -67,7 +84,7 @@ export default function DifferencesSection({ rows, profile }: Props) {
     const diff: FieldSpec[] = [];
     const same: FieldSpec[] = [];
     for (const f of FIELDS) {
-      const norm = rows.map((r) => normalizeForComparison(f.value(r.opp)));
+      const norm = rows.map((r) => normalizeFieldForComparison(f, r.opp));
       const allEmpty = norm.every((n) => !n);
       if (allEmpty) continue;
       const allSame = norm.every((n) => n === norm[0]);
@@ -101,12 +118,12 @@ export default function DifferencesSection({ rows, profile }: Props) {
 
       {showSame && identical.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4">
+          <OpportunityColumnHeaders rows={rows} gridStyle={gridStyle} t={t} />
           {identical.map((field, idx) => (
             <Row
               key={field.key}
               field={field}
               rows={rows}
-              profile={profile}
               gridStyle={gridStyle}
               t={t}
               userSkills={userSkills}
@@ -118,12 +135,14 @@ export default function DifferencesSection({ rows, profile }: Props) {
       )}
 
       <div className="space-y-2">
+        {differing.length > 0 && (
+          <OpportunityColumnHeaders rows={rows} gridStyle={gridStyle} t={t} />
+        )}
         {differing.map((field) => (
           <Row
             key={field.key}
             field={field}
             rows={rows}
-            profile={profile}
             gridStyle={gridStyle}
             t={t}
             userSkills={userSkills}
@@ -139,10 +158,39 @@ export default function DifferencesSection({ rows, profile }: Props) {
   );
 }
 
+function OpportunityColumnHeaders({
+  rows,
+  gridStyle,
+  t,
+}: {
+  rows: Array<{ opp: Opportunity }>;
+  gridStyle: React.CSSProperties;
+  t: Replier;
+}) {
+  return (
+    <div
+      data-testid="compare-opportunity-column-headers"
+      className="hidden gap-2 border-b border-gray-100 bg-gray-50/70 md:grid"
+      style={gridStyle}
+      aria-label={t('compare.subtitle', { count: rows.length })}
+    >
+      <div aria-hidden="true" />
+      {rows.map(({ opp }) => (
+        <div
+          key={opp.id}
+          className="min-w-0 px-4 py-2.5 text-[11px] font-semibold leading-snug text-gray-600"
+          title={opp.title}
+        >
+          <span className="line-clamp-2">{opp.title}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Row({
   field,
   rows,
-  profile,
   gridStyle,
   t,
   userSkills,
@@ -151,7 +199,6 @@ function Row({
 }: {
   field: FieldSpec;
   rows: Array<{ opp: Opportunity }>;
-  profile: ProfileData | null;
   gridStyle: React.CSSProperties;
   t: Replier;
   userSkills: Set<string> | null;
@@ -159,52 +206,33 @@ function Row({
   isIdenticalSection: boolean;
 }) {
   const values = rows.map((r) => field.value(r.opp));
-  const scorer = FIELD_SCORERS[field.key];
-  const fieldScores = (scorer && profile && !isIdenticalSection)
-    ? rows.map((r) => scorer(r.opp, profile))
-    : null;
-
-  let bestVal = -Infinity;
-  let worstVal = Infinity;
-  if (fieldScores) {
-    fieldScores.forEach((v) => {
-      if (v > bestVal) bestVal = v;
-      if (v < worstVal) worstVal = v;
-    });
-  }
-  const gap = bestVal - worstVal;
-  const meaningfulGap = gap >= 15;
 
   const wrapperClass = isIdenticalSection
-    ? `grid gap-3 ${isFirst ? '' : 'border-t border-gray-100'}`
-    : 'grid gap-2 bg-white rounded-xl border border-gray-200 overflow-hidden';
+    ? `flex flex-col md:grid md:gap-3 ${isFirst ? '' : 'border-t border-gray-100'}`
+    : 'flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden md:grid md:gap-2';
 
   return (
     <div className={wrapperClass} style={gridStyle}>
-      <div className="px-4 py-3 text-[12px] font-medium text-gray-500 bg-gray-50 flex items-center">
+      <div className="flex items-center bg-gray-50 px-4 py-3 text-[12px] font-semibold text-gray-600">
         {t(field.labelKey)}
       </div>
       {values.map((v, i) => {
-        let borderClass = 'border-l-4 border-transparent';
-        let bgClass = '';
-        if (!isIdenticalSection && fieldScores) {
-          const score = fieldScores[i];
-          const isBest = meaningfulGap && score === bestVal && score >= 60;
-          const isWorst = meaningfulGap && score === worstVal && score < 50;
-          if (isBest) {
-            borderClass = 'border-l-4 border-emerald-400';
-            bgClass = 'bg-emerald-50/30';
-          } else if (isWorst) {
-            borderClass = 'border-l-4 border-red-400';
-            bgClass = 'bg-red-50/30';
-          } else if (score < 60) {
-            borderClass = 'border-l-4 border-amber-300';
-            bgClass = 'bg-amber-50/20';
-          }
-        }
         return (
-          <div key={rows[i].opp.id} className={`px-4 py-3 text-[13px] ${borderClass} ${bgClass}`}>
-            <CellContent value={v} kind={field.kind} userSkills={userSkills} t={t} />
+          <div
+            key={rows[i].opp.id}
+            data-testid={`compare-value-${field.key}-${rows[i].opp.id}`}
+            className="min-w-0 border-t border-gray-100 px-4 py-3 text-[13px] md:border-l md:border-t-0"
+          >
+            <p className="mb-1.5 text-[11px] font-semibold leading-snug text-indigo-700 md:hidden">
+              {rows[i].opp.title}
+            </p>
+            <CellContent
+              value={v}
+              kind={field.kind}
+              deadlineIsEstimate={rows[i].opp.deadline_is_estimate}
+              userSkills={userSkills}
+              t={t}
+            />
           </div>
         );
       })}
@@ -215,11 +243,13 @@ function Row({
 function CellContent({
   value,
   kind,
+  deadlineIsEstimate,
   userSkills,
   t,
 }: {
-  value: string | string[] | undefined;
-  kind?: 'skills';
+  value: ComparisonValue;
+  kind?: 'skills' | 'deadline';
+  deadlineIsEstimate?: boolean | null;
   userSkills: Set<string> | null;
   t: Replier;
 }) {
@@ -259,5 +289,16 @@ function CellContent({
   if (value === 'no') return <span>{t('common.no')}</span>;
   if (value === 'unknown') return <span className="text-gray-400">{t('common.notSpecified')}</span>;
   if (value === 'rolling') return <span>{t('compare.rolling')}</span>;
+  if (kind === 'deadline' && deadlineIsEstimate !== false) {
+    return (
+      <span>
+        {value} · <span className="text-amber-700">
+          {t(deadlineIsEstimate === true
+            ? 'compare.deadlineEstimated'
+            : 'compare.deadlineVerify')}
+        </span>
+      </span>
+    );
+  }
   return <span>{value}</span>;
 }

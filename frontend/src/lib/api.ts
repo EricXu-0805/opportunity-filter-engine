@@ -111,6 +111,7 @@ export interface FellowshipQuery {
   opportunity_type?: 'summer_program' | 'fellowship' | 'research' | 'internship';
   international_friendly?: 'yes' | 'no';
   limit?: number;
+  offset?: number;
 }
 
 export async function getFellowshipOpportunities(
@@ -122,6 +123,7 @@ export async function getFellowshipOpportunities(
     params.set('international_friendly', query.international_friendly);
   }
   params.set('limit', String(query.limit ?? 500));
+  if (query.offset) params.set('offset', String(query.offset));
   return request<OpportunitiesResponse>(`/opportunities?${params.toString()}`);
 }
 
@@ -153,10 +155,23 @@ export interface RoadmapSkill {
   priority: string;
   estimated_time: string;
   courses: string[];
+  /** Course codes are campus-scoped ('uiuc' is the only verified catalog);
+   *  null means generic self-study guidance, not campus courses. */
+  course_catalog?: 'uiuc' | null;
 }
 export interface RoadmapResult {
   skills: RoadmapSkill[];
+  /** Targets actually resolved against the current corpus (legacy name). */
   total_labs: number;
+  // Accounting fields (additive; absent on older backends): they keep stale
+  // favorite ids and evidence-free records from masquerading as "all set".
+  requested_targets?: number;
+  resolved_targets?: number;
+  unresolved_targets?: number;
+  inactive_targets?: number;
+  unverified_targets?: number;
+  targets_with_skill_evidence?: number;
+  targets_without_skill_evidence?: number;
 }
 
 /** Aggregate the skill gaps across a target set of opportunities (e.g. favorites)

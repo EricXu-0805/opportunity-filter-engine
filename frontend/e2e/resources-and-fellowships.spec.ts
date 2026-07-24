@@ -43,16 +43,23 @@ test.describe('/resources page', () => {
 });
 
 test.describe('/fellowships page', () => {
-  test('renders the heading, filter controls, and the count label', async ({ page }) => {
+  test('renders the heading, general filter controls, and the count label', async ({ page }) => {
     await page.goto('/fellowships');
     await expect(
       page.getByRole('heading', { level: 1, name: /Research fellowships|Fellowships/i }),
     ).toBeVisible();
     await expect(page.getByText(/Showing \d+ of \d+/)).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole('group', { name: /year/i }).first()).toBeVisible();
+    await expect(page.getByRole('group', { name: /Program type/i })).toBeVisible();
+    await expect(page.getByRole('group', { name: /Funding/i })).toBeVisible();
+    await expect(page.getByRole('group', { name: /Deadline/i })).toBeVisible();
+    // The UIUC-only college/year pills are gone for the multi-school catalog.
+    await expect(page.getByRole('group', { name: /college/i })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: /Your year/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Beckman', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Freshman', exact: true })).toHaveCount(0);
   });
 
-  test('changing the year filter changes the visible count', async ({ page }) => {
+  test('changing the program-type filter changes the visible count', async ({ page }) => {
     await page.goto('/fellowships');
     // The count label renders "Showing 0 of 0" while the fetch is in flight
     // (FellowshipFilters sits above the loading gate) — wait for a non-zero
@@ -60,14 +67,15 @@ test.describe('/fellowships page', () => {
     await expect(page.getByText(/Showing \d+ of [1-9]\d*/)).toBeVisible({ timeout: 20_000 });
     const before = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
 
-    await page.getByRole('button', { name: 'Freshman', exact: true }).click();
+    const fellowshipPill = page.getByRole('button', { name: 'Fellowship', exact: true });
+    await fellowshipPill.click();
 
     await expect.poll(async () => {
       const txt = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
       return txt;
     }, { timeout: 5_000 }).not.toBe(before);
 
-    await expect(page.getByRole('button', { name: 'Freshman', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(fellowshipPill).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('clear-filters button resets the state', async ({ page }) => {
@@ -77,7 +85,7 @@ test.describe('/fellowships page', () => {
     await expect(page.getByText(/Showing \d+ of [1-9]\d*/)).toBeVisible({ timeout: 20_000 });
     const cleanCount = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
 
-    await page.getByRole('button', { name: 'Senior', exact: true }).click();
+    await page.getByRole('button', { name: 'Funded', exact: true }).click();
     await page.getByRole('button', { name: /Clear filters/i }).click();
 
     await expect.poll(async () => {
@@ -86,16 +94,16 @@ test.describe('/fellowships page', () => {
     }, { timeout: 5_000 }).toBe(cleanCount);
   });
 
-  test('selecting a college pill toggles aria-pressed', async ({ page }) => {
+  test('selecting a deadline pill toggles aria-pressed', async ({ page }) => {
     await page.goto('/fellowships');
     await expect(page.getByText(/Showing \d+ of \d+/)).toBeVisible({ timeout: 20_000 });
 
-    const beckman = page.getByRole('button', { name: 'Beckman', exact: true });
-    await expect(beckman).toBeVisible();
-    await expect(beckman).toHaveAttribute('aria-pressed', 'false');
+    const rolling = page.getByRole('button', { name: 'Rolling', exact: true });
+    await expect(rolling).toBeVisible();
+    await expect(rolling).toHaveAttribute('aria-pressed', 'false');
 
-    await beckman.click();
-    await expect(beckman).toHaveAttribute('aria-pressed', 'true');
+    await rolling.click();
+    await expect(rolling).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('navigates from /fellowships back to / via "Match by profile instead"', async ({ page }) => {

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import re
-from typing import Union
+from typing import Literal, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic_core import PydanticCustomError
 
 
 class SkillItem(BaseModel):
@@ -175,6 +176,25 @@ class ColdEmailRequest(BaseModel):
     # anti-fabrication corpus so a draft may cite the student's own experience.
     resume_bullets: list[str] = Field(default_factory=list)
 
+    @field_validator("profile")
+    @classmethod
+    def require_student_name(cls, v: ProfileRequest) -> ProfileRequest:
+        """Cold-email generation must have the sender's explicit identity.
+
+        ``ProfileRequest.name`` stays optional for matching and browsing, but
+        every cold-email entry point shares this request model.  Validating
+        here rejects template, AI, streaming, and variant requests before any
+        generation or provider work can begin — no more emails signed
+        "Student".
+        """
+        name = v.name.strip()
+        if not name:
+            raise PydanticCustomError(
+                "student_name_required",
+                "student_name_required",
+            )
+        return v.model_copy(update={"name": name})
+
     @field_validator("resume_bullets")
     @classmethod
     def cap_bullets(cls, v: list) -> list:
@@ -236,11 +256,32 @@ class RoadmapSkill(BaseModel):
     priority: str
     estimated_time: str
     courses: list[str]
+    # Course codes currently come only from the verified UIUC mapping. None
+    # means the roadmap is generic self-study guidance, not a campus catalog.
+    course_catalog: Literal["uiuc"] | None = None
 
 
 class RoadmapResponse(BaseModel):
     skills: list[RoadmapSkill]
-    total_labs: int
+    # ``total_labs`` is the deployed frontend's field name and means targets
+    # actually resolved against the current corpus. The additive counters
+    # below keep stale favorite ids from masquerading as an all-set skill
+    # profile; they default to 0 so callers constructing minimal responses
+    # keep working.
+    total_labs: int = Field(ge=0)
+    requested_targets: int = Field(default=0, ge=0)
+    resolved_targets: int = Field(default=0, ge=0)
+    unresolved_targets: int = Field(default=0, ge=0)
+    # Existing records can resolve by id without being safe current targets.
+    # Explicitly retired and not-yet-verified records are counted separately
+    # and never contribute skills to the learning path.
+    inactive_targets: int = Field(default=0, ge=0)
+    unverified_targets: int = Field(default=0, ge=0)
+    # A resolved target is analyzable only when its record lists at least one
+    # usable required/preferred skill. Empty or malformed skill fields remain
+    # explicitly unknown and must never be interpreted as profile coverage.
+    targets_with_skill_evidence: int = Field(default=0, ge=0)
+    targets_without_skill_evidence: int = Field(default=0, ge=0)
 
 
 class TailorRequest(BaseModel):

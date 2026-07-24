@@ -1,15 +1,70 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { useT } from '@/i18n/client';
-import { rankAndBucket } from './scores';
+import { getMatchExplanation, type MatchExplanationResponse } from '@/lib/api';
+import { hashProfile } from '@/lib/match-utils';
+import {
+  computeDecisionFactors,
+  sortByCanonicalScore,
+  type CanonicalMatchSummary,
+  type CompareRow,
+} from './scores';
 import BucketCards from './BucketCards';
 import DifferencesSection from './DifferencesSection';
 import RadarChart from './RadarChart';
+
+// Each explain call is a paid LLM completion, and this page fires one per card
+// on every visit — so cache per (opportunity, profile-hash) in sessionStorage.
+// Revisits and re-renders within the hour render instantly and bill nothing;
+// a profile edit changes the hash and misses. Same style as lib/match-cache.
+const EXPLAIN_CACHE_PREFIX = 'ofe_explain_';
+const EXPLAIN_TTL_MS = 60 * 60 * 1000;
+
+function readExplainCache(key: string): MatchExplanationResponse | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const c = JSON.parse(raw) as { savedAt: number; data: MatchExplanationResponse };
+    if (!c || typeof c.savedAt !== 'number' || !c.data) return null;
+    if (Date.now() - c.savedAt >= EXPLAIN_TTL_MS) return null;
+    return c.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeExplainCache(key: string, data: MatchExplanationResponse): void {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data }));
+  } catch {
+    // quota / private mode — skip; the next visit simply re-fetches.
+  }
+}
+
+function toCanonicalSummary(resp: MatchExplanationResponse): CanonicalMatchSummary | null {
+  if (
+    typeof resp.final_score !== 'number'
+    || !Number.isFinite(resp.final_score)
+    || resp.final_score < 0
+    || resp.final_score > 100
+    || typeof resp.bucket !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    final_score: resp.final_score,
+    bucket: resp.bucket,
+    reasons_fit: Array.isArray(resp.reasons_fit) ? resp.reasons_fit : [],
+    reasons_gap: Array.isArray(resp.reasons_gap) ? resp.reasons_gap : [],
+    explanation: typeof resp.explanation === 'string' ? resp.explanation : '',
+    method: resp.method === 'llm' ? 'llm' : 'local',
+  };
+}
 
 export default function CompareTable({ opps }: { opps: Opportunity[] }) {
   const { t } = useT();
@@ -18,11 +73,62 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
   // profile stuck on a permanent loading card.
   const hasProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
+  const [matches, setMatches] = useState<Map<string, CanonicalMatchSummary | 'error'>>(new Map());
+
+  useEffect(() => {
+    if (!profile) return;
+    const profileHash = hashProfile(profile);
+    const ids = opps.map((o) => o.id);
+    let cancelled = false;
+    const setOne = (id: string, value: CanonicalMatchSummary | 'error') => {
+      if (cancelled) return;
+      setMatches((prev) => {
+        const next = new Map(prev);
+        next.set(id, value);
+        return next;
+      });
+    };
+    (async () => {
+      await Promise.all(
+        ids.map(async (id) => {
+          const cacheKey = `${EXPLAIN_CACHE_PREFIX}${id}_${profileHash}`;
+          const cached = readExplainCache(cacheKey);
+          if (cached) {
+            setOne(id, toCanonicalSummary(cached) ?? 'error');
+            return;
+          }
+          try {
+            const resp = await getMatchExplanation(profile, id);
+            const summary = toCanonicalSummary(resp);
+            if (summary) writeExplainCache(cacheKey, resp);
+            setOne(id, summary ?? 'error');
+          } catch {
+            // The row stays explicitly unavailable. A local factor estimate is
+            // never promoted into a replacement match score.
+            setOne(id, 'error');
+          }
+        }),
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [opps, profile]);
 
   const ranked = useMemo(() => {
     if (!profile) return null;
-    return rankAndBucket(opps, profile);
-  }, [opps, profile]);
+    if (!opps.every((opp) => matches.has(opp.id))) return null;
+    const rows: CompareRow[] = opps.map((opp, inputIndex) => {
+      const state = matches.get(opp.id);
+      const failed = state === 'error' || state === undefined;
+      return {
+        opp,
+        inputIndex,
+        factors: computeDecisionFactors(profile, opp),
+        status: failed ? 'error' : 'ready',
+        match: failed ? null : state,
+      };
+    });
+    return sortByCanonicalScore(rows);
+  }, [matches, opps, profile]);
 
   if (hasProfile === undefined) {
     return (
@@ -32,7 +138,7 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
     );
   }
 
-  if (!ranked) {
+  if (!profile) {
     return (
       <div>
         <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8 text-center mb-8">
@@ -49,9 +155,17 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
     );
   }
 
+  if (!ranked) {
+    return (
+      <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8 text-center">
+        <p className="text-sm text-gray-500">{t('compare.analyzing')}</p>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <BucketCards rows={ranked} profile={profile} />
+      <BucketCards rows={ranked} />
       <DifferencesSection rows={ranked} profile={profile} />
       <RadarChart rows={ranked} />
     </div>

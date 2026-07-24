@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import {
   X,
   Copy,
@@ -12,6 +13,7 @@ import {
   Mail,
   Send,
   Sparkles,
+  UserRound,
 } from 'lucide-react';
 import {
   generateColdEmail,
@@ -79,6 +81,14 @@ const STAGE_LABEL_KEYS: Record<ColdEmailStage, string> = {
 };
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
+
+// The backend 422s every cold-email entry point with this error code when the
+// profile has no name (emails must never go out addressed from "Student").
+// `request()` throws `Error("API 422: {detail json}")`, so the code survives
+// in the message.
+function isStudentNameRequiredError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes('student_name_required');
+}
 
 // R72-A: pick the right fallback hint. 'fabrication' (the AI invented an
 // unverifiable detail and was rejected) gets a distinct message — the old
@@ -155,6 +165,11 @@ export default function ColdEmailModal({
   const { t } = useT();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Missing sender identity is its own state (not a generic error): the fix is
+  // "add your name to your profile", so the UI links there instead of offering
+  // a pointless retry.
+  const [nameRequired, setNameRequired] = useState(false);
+  const missingStudentName = !(profile.name ?? '').trim();
   const [variants, setVariants] = useState<EmailVariant[]>([]);
   const [aiVariant, setAiVariant] = useState<EmailVariant | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -207,8 +222,14 @@ export default function ColdEmailModal({
   useEffect(() => { aiCacheRef.current.clear(); }, [profile]);
 
   const fetchVariants = useCallback(async () => {
+    if (missingStudentName) {
+      setLoading(false);
+      setNameRequired(true);
+      return;
+    }
     setLoading(true);
     setError(null);
+    setNameRequired(false);
     try {
       const data = await getEmailVariants(profile, opportunityId);
       setVariants(data.variants);
@@ -230,11 +251,15 @@ export default function ColdEmailModal({
         { role: 'assistant', content: t('coldEmail.generated', { count: data.variants.length }) },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('coldEmail.failedGenerate'));
+      if (isStudentNameRequiredError(err)) {
+        setNameRequired(true);
+      } else {
+        setError(err instanceof Error ? err.message : t('coldEmail.failedGenerate'));
+      }
     } finally {
       setLoading(false);
     }
-  }, [profile, opportunityId, t]);
+  }, [profile, opportunityId, t, missingStudentName]);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect --
@@ -257,6 +282,7 @@ export default function ColdEmailModal({
       setBody('');
       setCopied(false);
       setError(null);
+      setNameRequired(false);
       setChatMessages([]);
       setChatInput('');
     };
@@ -337,7 +363,7 @@ export default function ColdEmailModal({
   // silent), it never clobbers a draft the user has meanwhile edited or
   // switched away from, and it seeds/serves the per-open cache.
   const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
-    if (aiLoading) return;
+    if (aiLoading || missingStudentName) return;
     const auto = opts?.auto ?? false;
     const aiIdx = variants.length;
     setSelectedStyle(style);
@@ -437,7 +463,7 @@ export default function ColdEmailModal({
       setAiLoading(false);
       setAiStage(null);
     }
-  }, [aiLoading, variants.length, profile, opportunityId, labType, t]);
+  }, [aiLoading, missingStudentName, variants.length, profile, opportunityId, labType, t]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
@@ -608,7 +634,23 @@ export default function ColdEmailModal({
             <p className="text-sm text-gray-500">{t('coldEmail.generating')}</p>
           </div>
         )}
-        {error && (
+        {nameRequired && !loading && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 px-6 text-center" data-testid="cold-email-name-required">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
+              <UserRound className="w-6 h-6 text-amber-600" aria-hidden="true" />
+            </div>
+            <p className="text-base font-semibold text-gray-900">{t('coldEmail.nameRequiredTitle')}</p>
+            <p className="text-sm text-gray-500 max-w-md">{t('coldEmail.nameRequiredBody')}</p>
+            <Link
+              href="/"
+              onClick={onClose}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+            >
+              {t('coldEmail.nameRequiredCta')}
+            </Link>
+          </div>
+        )}
+        {error && !nameRequired && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <AlertCircle className="w-8 h-8 text-red-500" />
             <p className="text-sm text-red-600">{error}</p>
@@ -617,7 +659,7 @@ export default function ColdEmailModal({
         )}
 
         {/* Two-panel layout */}
-        {!loading && !error && (
+        {!loading && !error && !nameRequired && (
           <>
             <div className="flex-1 flex flex-col lg:flex-row min-h-0">
               <div className="flex-1 flex flex-col lg:border-r border-gray-100 min-w-0">

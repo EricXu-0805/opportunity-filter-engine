@@ -37,9 +37,23 @@ import RoadmapPage from './page';
 
 const ROADMAP = {
   skills: [
-    { skill: 'PyTorch', needed_by: 2, priority: 'high', estimated_time: '4 weeks', courses: ['ECE 449'] },
+    {
+      skill: 'PyTorch',
+      needed_by: 2,
+      priority: 'high',
+      estimated_time: '4 weeks',
+      courses: ['ECE 449'],
+      course_catalog: 'uiuc' as const,
+    },
   ],
   total_labs: 3,
+  requested_targets: 3,
+  resolved_targets: 3,
+  unresolved_targets: 0,
+  inactive_targets: 0,
+  unverified_targets: 0,
+  targets_with_skill_evidence: 3,
+  targets_without_skill_evidence: 0,
 };
 
 afterEach(() => {
@@ -91,5 +105,144 @@ describe('RoadmapPage — error state', () => {
     });
     expect(screen.queryByText('roadmap.errorTitle')).toBeNull();
     expect(mockGetRoadmap).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('RoadmapPage — evidence semantics', () => {
+  it('says "insufficient evidence" instead of "already competitive" when no target lists skills', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['opp-1', 'opp-2']));
+    mockGetRoadmap.mockResolvedValue({
+      ...ROADMAP,
+      skills: [],
+      total_labs: 2,
+      requested_targets: 2,
+      resolved_targets: 2,
+      targets_with_skill_evidence: 0,
+      targets_without_skill_evidence: 2,
+    });
+
+    render(<RoadmapPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('roadmap.noSkillEvidenceTitle')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('roadmap.allSetTitle')).toBeNull();
+  });
+
+  it('keeps the all-set claim only when every resolved target published skill evidence', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['opp-1']));
+    mockGetRoadmap.mockResolvedValue({
+      ...ROADMAP,
+      skills: [],
+      total_labs: 1,
+      requested_targets: 1,
+      resolved_targets: 1,
+      targets_with_skill_evidence: 1,
+      targets_without_skill_evidence: 0,
+    });
+
+    render(<RoadmapPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('roadmap.allSetTitle')).toBeInTheDocument();
+    });
+  });
+
+  it('downgrades an empty gap list to "covered where evidence exists" when some targets list nothing', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['opp-1', 'opp-2']));
+    mockGetRoadmap.mockResolvedValue({
+      ...ROADMAP,
+      skills: [],
+      total_labs: 2,
+      requested_targets: 2,
+      resolved_targets: 2,
+      targets_with_skill_evidence: 1,
+      targets_without_skill_evidence: 1,
+    });
+
+    render(<RoadmapPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('roadmap.evidenceCoveredTitle')).toBeInTheDocument();
+    });
+    expect(screen.getByText('roadmap.skillEvidenceIncompleteTitle')).toBeInTheDocument();
+    expect(screen.queryByText('roadmap.allSetTitle')).toBeNull();
+  });
+
+  it('reports excluded inactive/unverified targets and stale ids instead of claiming all set', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['gone', 'inactive', 'unverified']));
+    mockGetRoadmap.mockResolvedValue({
+      ...ROADMAP,
+      skills: [],
+      total_labs: 0,
+      requested_targets: 3,
+      resolved_targets: 0,
+      unresolved_targets: 1,
+      inactive_targets: 1,
+      unverified_targets: 1,
+      targets_with_skill_evidence: 0,
+      targets_without_skill_evidence: 0,
+    });
+
+    render(<RoadmapPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('roadmap.noCurrentTargetsTitle')).toBeInTheDocument();
+    });
+    expect(screen.getByText('roadmap.activityExcludedTitle')).toBeInTheDocument();
+    expect(screen.queryByText('roadmap.allSetTitle')).toBeNull();
+  });
+
+  it('shows the partial-resolution notice above a real skill list', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['opp-1', 'gone']));
+    mockGetRoadmap.mockResolvedValue({
+      ...ROADMAP,
+      total_labs: 1,
+      requested_targets: 2,
+      resolved_targets: 1,
+      unresolved_targets: 1,
+      targets_with_skill_evidence: 1,
+    });
+
+    render(<RoadmapPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('PyTorch')).toBeInTheDocument();
+    });
+    expect(screen.getByText('roadmap.unresolvedPartialTitle')).toBeInTheDocument();
+  });
+});
+
+describe('RoadmapPage — course catalog gating', () => {
+  it('shows UIUC course codes only for the uiuc catalog', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['opp-1']));
+    mockGetRoadmap.mockResolvedValue(ROADMAP);
+
+    render(<RoadmapPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('ECE 449')).toBeInTheDocument();
+    });
+    expect(screen.getByText('roadmap.uiucCoursesLabel')).toBeInTheDocument();
+  });
+
+  it('never suggests UIUC courses to a non-UIUC student (null catalog)', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['opp-1']));
+    mockGetRoadmap.mockResolvedValue({
+      ...ROADMAP,
+      skills: [{
+        ...ROADMAP.skills[0],
+        courses: ['ECE 449'],
+        course_catalog: null,
+      }],
+    });
+
+    render(<RoadmapPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('PyTorch')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('ECE 449')).toBeNull();
+    expect(screen.queryByText('roadmap.uiucCoursesLabel')).toBeNull();
   });
 });

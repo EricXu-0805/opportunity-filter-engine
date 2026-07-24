@@ -1,117 +1,110 @@
-/*
- * Compare-page re-billing guard: every explain call is a paid LLM completion,
- * and BucketCards used to fire one per card on EVERY visit. These tests pin
- * the sessionStorage cache — a second render with the same profile serves from
- * cache (1 fetch total), a different profile misses, errors are never cached.
- */
-
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-
-const mockGetMatchExplanation = vi.fn();
-
-vi.mock('@/lib/api', () => ({
-  getMatchExplanation: (...args: unknown[]) => mockGetMatchExplanation(...args),
-}));
-
-vi.mock('@/i18n/client', () => ({
-  useT: () => ({ t: (key: string) => key }),
-}));
-
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import type { Opportunity } from '@/lib/types';
 import BucketCards from './BucketCards';
-import type { Opportunity, ProfileData } from '@/lib/types';
-import type { CompareBucket, OppScore } from './scores';
+import type { CompareRow } from './scores';
 
-const PROFILE: ProfileData = {
-  institution: 'UIUC',
-  college: 'Grainger',
-  major: 'ECE',
-  grade: 'Sophomore',
-  is_international: true,
-  research_interests: 'machine learning',
-  skills: [{ name: 'Python', level: 'experienced' }],
+const FACTORS = {
+  skill_match: 5,
+  eligibility: 6,
+  ease: 7,
+  compensation: 8,
+  deadline_runway: 9,
+  intl_friendly: 10,
 };
 
-const EXPLANATION = {
-  explanation: 'Great topical fit.',
-  method: 'llm' as const,
-  final_score: 82,
-  bucket: 'high_priority',
-  reasons_fit: ['Strong ML background'],
-  reasons_gap: [],
-  eligibility_score: 90,
-  readiness_score: 80,
-  upside_score: 70,
-};
+function readyRow(): CompareRow {
+  return {
+    opp: { id: 'opp-1', title: 'ML Lab RA', organization: 'Test U' } as Opportunity,
+    inputIndex: 0,
+    status: 'ready',
+    factors: FACTORS,
+    match: {
+      explanation: 'Great topical fit.',
+      method: 'llm',
+      final_score: 82,
+      bucket: 'good_match',
+      reasons_fit: ['Canonical strong ML background'],
+      reasons_gap: ['Canonical coursework gap'],
+    },
+  };
+}
 
-const SCORE: OppScore = {
-  axes: {
-    skill_match: 80, eligibility: 80, effort: 80,
-    compensation: 80, deadline_runway: 80, intl_friendly: 80,
-  },
-  overall: 82,
-};
+afterEach(cleanup);
 
-const ROWS = [{
-  opp: { id: 'opp-1', title: 'ML Lab RA', organization: 'Test U' } as Opportunity,
-  score: SCORE,
-  bucket: 'top' as CompareBucket,
-}];
+describe('BucketCards — canonical match truth', () => {
+  it('uses canonical score, bucket, and reasons without substituting local factor estimates', () => {
+    render(<BucketCards rows={[readyRow()]} />);
 
-afterEach(() => {
-  cleanup();
-  sessionStorage.clear();
-  vi.clearAllMocks();
-});
-
-describe('BucketCards — explanation cache', () => {
-  it('second render with the same profile serves from cache: 1 fetch total', async () => {
-    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
-
-    const first = render(<BucketCards rows={ROWS} profile={PROFILE} />);
-    await waitFor(() => {
-      expect(screen.getByText('Strong ML background')).toBeInTheDocument();
-    });
-    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(1);
-    first.unmount();
-
-    render(<BucketCards rows={ROWS} profile={PROFILE} />);
-    await waitFor(() => {
-      expect(screen.getByText('Strong ML background')).toBeInTheDocument();
-    });
-    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('82%')).toBeInTheDocument();
+    expect(screen.getByText('Good match')).toBeInTheDocument();
+    expect(screen.getByText('Canonical strong ML background')).toBeInTheDocument();
+    expect(screen.getByText('Canonical coursework gap')).toBeInTheDocument();
+    expect(screen.getByText('AI-adjusted')).toBeInTheDocument();
+    expect(screen.queryByText('7%')).not.toBeInTheDocument();
   });
 
-  it('a changed profile misses the cache and re-fetches', async () => {
-    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
+  it('states that the remaining decision factors are estimates when canonical explanation fails', () => {
+    const failed: CompareRow = {
+      ...readyRow(),
+      status: 'error',
+      match: null,
+    };
+    render(<BucketCards rows={[failed]} />);
 
-    const first = render(<BucketCards rows={ROWS} profile={PROFILE} />);
-    await waitFor(() => {
-      expect(mockGetMatchExplanation).toHaveBeenCalledTimes(1);
-    });
-    first.unmount();
-
-    render(<BucketCards rows={ROWS} profile={{ ...PROFILE, major: 'CS' }} />);
-    await waitFor(() => {
-      expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
-    });
+    expect(screen.getByText(/Match score unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/radar below still shows estimated decision factors/i)).toBeInTheDocument();
+    expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument();
   });
 
-  it('failed calls are not cached — a later visit retries', async () => {
-    mockGetMatchExplanation
-      .mockRejectedValueOnce(new Error('500'))
-      .mockResolvedValueOnce(EXPLANATION);
+  it('does not label a professor profile link as an application form', () => {
+    const faculty = readyRow();
+    faculty.opp = {
+      ...faculty.opp,
+      id: 'faculty-stanford-ee-123',
+      application: { application_url: 'https://faculty.example.edu/profile' },
+    } as Opportunity;
 
-    const first = render(<BucketCards rows={ROWS} profile={PROFILE} />);
-    await waitFor(() => {
-      expect(screen.getByText('compare.analyzeFailed')).toBeInTheDocument();
-    });
-    first.unmount();
+    render(<BucketCards rows={[faculty]} />);
 
-    render(<BucketCards rows={ROWS} profile={PROFILE} />);
-    await waitFor(() => {
-      expect(screen.getByText('Strong ML background')).toBeInTheDocument();
-    });
-    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('link', { name: /View faculty profile/ })).toHaveAttribute(
+      'href',
+      'https://faculty.example.edu/profile',
+    );
+    expect(screen.queryByRole('link', { name: /^Apply$/ })).toBeNull();
+  });
+
+  it.each([
+    [true, 'estimated'],
+    [null, 'verify date'],
+    [undefined, 'verify date'],
+  ] as const)(
+    'keeps deadline precision %s visible as %s',
+    (deadlineIsEstimate, expectedLabel) => {
+      const row = readyRow();
+      row.opp = {
+        ...row.opp,
+        deadline: '2026-08-01',
+        deadline_is_estimate: deadlineIsEstimate,
+      } as Opportunity;
+
+      render(<BucketCards rows={[row]} />);
+
+      expect(screen.getByText(new RegExp(expectedLabel))).toBeInTheDocument();
+    },
+  );
+
+  it('shows a confirmed deadline without an estimate warning', () => {
+    const row = readyRow();
+    row.opp = {
+      ...row.opp,
+      deadline: '2026-08-01',
+      deadline_is_estimate: false,
+    } as Opportunity;
+
+    render(<BucketCards rows={[row]} />);
+
+    expect(screen.getByText(/2026-08-01/)).toBeInTheDocument();
+    expect(screen.queryByText(/estimated|verify date/)).toBeNull();
   });
 });
