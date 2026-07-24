@@ -1,48 +1,15 @@
 {
-  "duration_seconds": 3226.8,
+  "duration_seconds": 420.2,
   "shard": {
     "national": false,
     "schools": [
-      "casewestern",
-      "lsu",
-      "njit",
-      "rpi",
-      "syracuse",
-      "unl"
+      "syracuse"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 335,
+      "rule_based_tagged": 45,
       "status": "ok"
-    },
-    "campus_graph:casewestern": {
-      "deep": true,
-      "fetched": 4,
-      "new": 0,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:lsu": {
-      "deep": true,
-      "fetched": 6,
-      "new": 0,
-      "status": "ok",
-      "updated": 6
-    },
-    "campus_graph:njit": {
-      "deep": true,
-      "fetched": 4,
-      "new": 0,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:rpi": {
-      "deep": true,
-      "fetched": 4,
-      "new": 0,
-      "status": "ok",
-      "updated": 4
     },
     "campus_graph:syracuse": {
       "deep": true,
@@ -51,43 +18,24 @@
       "status": "ok",
       "updated": 5
     },
-    "campus_graph:unl": {
-      "deep": true,
-      "fetched": 5,
-      "new": 0,
-      "status": "ok",
-      "updated": 5
-    },
-    "casewestern_faculty": {
-      "fetched": 692,
-      "new": 537,
-      "status": "ok",
-      "updated": 155
-    },
     "deactivate_past": {
       "already_inactive": 748,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 124167,
+      "skipped_rolling": 124151,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 4819,
+      "kept_fresh": 827,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 16,
-      "keywords_cleaned": 16,
-      "removed_by_school": {
-        "njit": 11,
-        "syracuse": 5
-      },
-      "shared_inbox_nulled": {
-        "casewestern": 2,
-        "lsu": 2
-      },
+      "duplicates_removed": 0,
+      "keywords_cleaned": 4,
+      "removed_by_school": {},
+      "shared_inbox_nulled": {},
       "status": "ok"
     },
     "faculty_joint_collapse": {
@@ -99,32 +47,14 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "lsu_faculty": {
-      "fetched": 1171,
-      "new": 803,
-      "status": "ok",
-      "updated": 368
-    },
-    "njit_faculty": {
-      "fetched": 505,
-      "new": 199,
-      "status": "ok",
-      "updated": 306
-    },
     "pi_enricher": {
-      "already_had": 4758,
-      "enriched": 60,
-      "nulled_unit_inboxes": 6,
-      "renulled_shared_emails": 19,
-      "scraped": 89,
+      "already_had": 826,
+      "enriched": 0,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 0,
+      "scraped": 6,
       "skipped_budget": 0,
       "status": "ok"
-    },
-    "rpi_faculty": {
-      "fetched": 451,
-      "new": 273,
-      "status": "ok",
-      "updated": 178
     },
     "school_audience": {
       "by_source": {
@@ -243,7 +173,7 @@
         "nd_research_programs": 8,
         "neu_faculty": 1772,
         "neu_research_programs": 8,
-        "njit_faculty": 517,
+        "njit_faculty": 506,
         "njit_research_programs": 4,
         "northwestern_faculty": 2769,
         "northwestern_labs": 11,
@@ -289,7 +219,7 @@
         "stevens_research_programs": 5,
         "swarthmore_faculty": 227,
         "swarthmore_research_programs": 10,
-        "syracuse_faculty": 832,
+        "syracuse_faculty": 827,
         "syracuse_research_programs": 5,
         "tamu_faculty": 3182,
         "tamu_research_programs": 8,
@@ -458,23 +388,17 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 125779
+      "tagged": 125763
     },
     "syracuse_faculty": {
       "fetched": 826,
-      "new": 570,
+      "new": 0,
       "status": "ok",
-      "updated": 256
-    },
-    "unl_faculty": {
-      "fetched": 1150,
-      "new": 839,
-      "status": "ok",
-      "updated": 311
+      "updated": 826
     }
   },
-  "timestamp": "2026-07-24T07:49:21.285612",
+  "timestamp": "2026-07-24T09:16:59.181088",
   "total_in_file": 125763,
-  "total_new": 3221,
-  "total_updated": 1602
+  "total_new": 0,
+  "total_updated": 831
 }
