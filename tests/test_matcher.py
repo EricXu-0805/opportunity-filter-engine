@@ -727,8 +727,13 @@ class TestDataIntegrity:
             data = json.load(f)
 
         ids = [opp["id"] for opp in data]
-        dupes = [x for x in ids if ids.count(x) > 1]
-        assert len(ids) == len(set(ids)), f"Duplicate IDs: {set(dupes)}"
+        seen: set[str] = set()
+        dupes: set[str] = set()
+        for i in ids:
+            if i in seen:
+                dupes.add(i)
+            seen.add(i)
+        assert not dupes, f"Duplicate IDs: {dupes}"
 
     def test_ranker_on_real_data(self, sample_profile):
         """End-to-end test: run ranker on actual processed data."""
