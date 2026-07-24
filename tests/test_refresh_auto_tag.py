@@ -85,6 +85,30 @@ def test_rule_based_gates_context_less_single_letter_skills():
     assert "Python" in skills
 
 
+def test_faculty_rank_words_do_not_narrow_preferred_year():
+    # "Senior Lecturer" / "Junior Fellow" are academic ranks, not class-year
+    # eligibility. Reading them as one pinned 2.4k faculty labs to seniors-only
+    # and hid them from every underclassman, so faculty keep the full range.
+    opp = _opp(
+        source_type="faculty_research",
+        title="Research with Prof. Jane Doe — BIOL",
+        description_clean="Senior Lecturer in Biological Sciences. Contact the professor directly.",
+    )
+    apply_updates(opp, rule_based_tag(opp))
+    assert opp["eligibility"]["preferred_year"] == ["freshman", "sophomore", "junior", "senior"]
+
+
+def test_non_faculty_postings_still_infer_preferred_year():
+    # The carve-out is faculty-only: a real posting that names a class year
+    # must still narrow, or the F-1/year matching signal goes inert.
+    opp = _opp(
+        source_type="campus_program",
+        description_clean="This program is open to seniors in their fourth year only.",
+    )
+    apply_updates(opp, rule_based_tag(opp))
+    assert opp["eligibility"]["preferred_year"] == ["senior"]
+
+
 def test_rule_based_keeps_single_letter_skills_with_context():
     # No "research"/"review"/"resume" anywhere (the enricher blocklists R on
     # those tokens) + an explicit "R programming" context → R survives the gate.

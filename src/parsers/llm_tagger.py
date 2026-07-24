@@ -504,7 +504,14 @@ def apply_updates(opp: dict, updates: dict) -> bool:
         elig["skills_preferred"] = updates["skills_preferred"]
         changed = True
 
-    if "preferred_year" in updates:
+    # Faculty are cold-email research contacts, not postings with a class-year
+    # requirement. The year words on their pages are academic ranks ("Senior
+    # Lecturer", "Junior Fellow"), not eligibility, and reading them as one
+    # pinned 2.4k labs to seniors-only, hiding them from every underclassman.
+    # Faculty never get an inferred year, for the same reason (above) that they
+    # never get inferred skills. Guarded here so both the rule-based and LLM
+    # taggers are covered.
+    if "preferred_year" in updates and opp.get("source_type") != "faculty_research":
         current = elig.get("preferred_year", [])
         if current == ["freshman", "sophomore", "junior", "senior"] and updates["preferred_year"] != current:
             elig["preferred_year"] = updates["preferred_year"]
