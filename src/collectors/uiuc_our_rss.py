@@ -23,6 +23,7 @@ from typing import Optional
 
 import feedparser
 
+from .atomic_json import atomic_write_json
 from .base import BaseCollector, RawOpportunity
 
 _VERIFIED_SSL_CTX = ssl.create_default_context()
@@ -270,8 +271,7 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             added += 1
 
     all_opps = list(index.values())
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
+    atomic_write_json(filepath, all_opps)
 
     return added, updated
 

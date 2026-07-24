@@ -18,6 +18,12 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.collectors.atomic_json import atomic_write_json  # noqa: E402
 
 DEFAULT_PATH = "data/processed/opportunities.json"
 
@@ -37,8 +43,7 @@ def compact(path):
     with open(path, encoding="utf-8") as f:
         records = json.load(f)
     removed = prune_duplicate_raw(records)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, separators=(",", ":"), default=str)
+    atomic_write_json(path, records, indent=None, separators=(",", ":"))
     print(f"minify_corpus: pruned {removed}/{len(records)} duplicate description_raw fields")
 
 

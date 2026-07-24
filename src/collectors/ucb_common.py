@@ -41,6 +41,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from .atomic_json import atomic_write_json
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -1171,8 +1173,7 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     derived = _derive_keywords_from_raw(existing)
     if derived:
         logger.info(f"Derived specific keywords for {derived} broad-only faculty from research_areas_raw")
-    with PROCESSED_FILE.open("w", encoding="utf-8") as f:
-        json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
+    atomic_write_json(PROCESSED_FILE, existing)
     return (added, updated)
 
 
