@@ -13,20 +13,28 @@ families; four are plain server-rendered 200s through the proxy, the fifth
   ``td.views-field-rendered-entity`` cell holding ``span.people-list--name >
   a.underline-link`` (name + ``/people/<slug>``), ``span.people-list--title``
   (rank), and a contact-info ``<dl>`` whose Email ``<dd>`` carries a PLAIN
-  ``mailto:`` (~100% emailed on the listing). A ladder gate drops the Staff
-  bucket; the engine's retired-title guard drops Emeriti. No pagination.
+  ``mailto:`` (~100% emailed on the listing). Status is a FIELD here, not the
+  rank string: the same ``<dl>`` carries a "Categories" row (Faculty / Emeritus
+  / Staff / Adjunct), and a ``field_filter`` on it is what drops the retired and
+  staff rows — a ladder gate on the title alone leaks both (a retired professor
+  keeps his rank, and a lab manager's title reads "Lab Instructor").
+  No pagination.
 
 * **College of Arts & Sciences — one shared Drupal "directory-card" grid.**
   Nine departments each live on their own ``<dept>.as.uky.edu/faculty``
   subdomain but share one card component: ``div.directory-card`` wrapping a
   ``.directory-content`` block whose bold div holds the name + ``/users/<netid>``
   link and whose non-bold sibling holds the rank. There is NO email on these
-  listings — addresses come from an env-gated per-profile enrichment pass that
+  listings — addresses come from an always-on per-profile enrichment pass that
   follows the ``/users/<netid>`` link and reads the address out of the profile's
   "Contact Information" block (``div.text1.font-bold:-soup-contains("Contact
   Information") + div``; live-verified 5/5 on Physics and History). Mathematics
   paginates (40/page); the rest are single-page. A ``name_strip`` trims a rank
-  baked into two Mathematics anchors. The ladder gate keeps
+  baked into two Mathematics anchors and the semicolon-joined name-variant dump
+  English publishes for one professor. A few cards render the rank div EMPTY, so
+  the title selector carries ``:not(:empty)`` — matching an empty div would set
+  title="" and the ladder gate would drop a listed professor (Physics' Gary
+  Ferland) for having no rank. The ladder gate keeps
   professor/lecturer/instructor AND endowed/named ``chair`` holders (History and
   the humanities carry many named-chair faculty who lack the word "Professor").
 
@@ -59,11 +67,13 @@ families; four are plain server-rendered 200s through the proxy, the fifth
   ``?field_directory_type_value=faculty&field_department_target_id=<id>``; each
   ``div.mb-5.col-6.col-lg-3`` card holds a ``strong > a`` name link
   (``/about/directory/<slug>``) and a ``.views-field-field-position-title`` rank.
-  The listing has no email, so the env-gated profile pass renders each profile
+  The listing has no email, so an ``always``-on profile pass renders each profile
   and reads the personal ``mailto:`` (the shared ``a.ico-email`` webmanager inbox
-  is excluded by ``:not(.ico-email)``; live-verified 4/4 on Communication). Four
-  units (Communication; Journalism & Media; Information Science; Integrated
-  Strategic Communication).
+  is excluded by ``:not(.ico-email)`` AND by ``email_drop``; live-verified 4/4 on
+  Communication). Like A&S, the pass is NOT env-gated: it is the only source of a
+  CI address, and a harvest that skips it emits no email at all, which leaves the
+  merge carrying whatever the corpus already held. Four units (Communication;
+  Journalism & Media; Information Science; Integrated Strategic Communication).
 
 Single source ("uky_faculty"); department rides each record, ids namespaced by
 department short-code.
@@ -102,6 +112,21 @@ _ENG_SEL = {
     "email": "a[href^='mailto:']",
 }
 _ENG_LADDER = {"require": r"professor|lecturer|instructor"}
+# The rank string is NOT the site's status field: engr.uky.edu keeps that in the
+# contact-info <dl> ("Categories": Faculty / Emeritus / Staff / Adjunct), and a
+# retired professor keeps whatever rank he held ("Associate Professor" for
+# J. Robert Heath and William Smith, "University President 2001-11, Professor
+# 1974-83, 2011-14" for Lee T. Todd, whose appointments ended in 2014) — so the
+# title gate and the engine's retired-title guard both wave them through. The
+# same field is the only thing marking a Staff row whose job title happens to
+# carry a ladder word ("Research Facilities Manager/Lab Instructor"). Gate on
+# the field itself. Eight active faculty (e.g. CS's Ruiquan Huang, MAE's
+# Samantha Zambuto) publish NO Categories row at all, so the absent-field-passes
+# default is load-bearing — an ``include`` gate here would delete them.
+_ENG_CATEGORY = {
+    "selector": 'dl.invisible-labels dt:-soup-contains("Categories") + dd',
+    "exclude": r"emeritus|staff",
+}
 
 
 def _eng(short: str, name: str, majors: list[str], dept_id: int) -> dict:
@@ -109,21 +134,31 @@ def _eng(short: str, name: str, majors: list[str], dept_id: int) -> dict:
     url = f"https://engr.uky.edu/people?field_department_target_id={dept_id}"
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _ENG_SEL, "ladder_filter": _ENG_LADDER},
+        "scrape": {"url": url, "selectors": _ENG_SEL, "ladder_filter": _ENG_LADDER,
+                   "field_filter": _ENG_CATEGORY},
     }
 
 
 # ---- College of Arts & Sciences: shared Drupal directory-card grid ----------
 # The bold div holds the name link (/users/<netid>); the non-bold sibling div
-# holds the rank. No email on the listing — the env-gated profile pass follows
-# the profile link and reads the address from the "Contact Information" block.
-# name_strip trims a rank baked into two Mathematics anchors.
+# holds the rank — sometimes empty. No email on the listing — the always-on
+# profile pass follows the profile link and reads the address from the "Contact
+# Information" block.
 _AS_SEL = {
     "card": "div.directory-card",
     "name": "div.directory-content div.font-bold a",
     "link": "div.directory-content div.font-bold a",
-    "name_strip": r",\s*[A-Za-z ]*Professor\s*$",
-    "title": "div.directory-content div.text.color-wildcat-blue:not(.font-bold)",
+    # Two strips on one pattern: a rank baked into two Mathematics anchors, and
+    # a semicolon-joined name-variant dump (English publishes "Janet Eldred;
+    # Janet Carey Eldred; JCM Eldred" as the anchor text — every alias the
+    # person publishes under). Keep the first, displayed form.
+    "name_strip": r"\s*;.*$|,\s*[A-Za-z ]*Professor\s*$",
+    # ``:not(:empty)`` matters: a handful of cards (Physics' Gary Ferland and
+    # Ryan Sanders, Math's Amy Green, Psychology's Cara Worick) render the rank
+    # div with nothing in it. Matching it would set title="" and the ladder gate
+    # would drop a listed faculty member for having no rank; not matching it
+    # lets the engine's "Professor" default stand so they ship.
+    "title": "div.directory-content div.text.color-wildcat-blue:not(.font-bold):not(:empty)",
 }
 # The A&S profile keeps the address as the first div after the "Contact
 # Information" heading (no mailto, no email class) — an adjacent-sibling selector
@@ -224,6 +259,17 @@ _CI_ENRICH = {
     "render_wait": "domcontentloaded",
     "email_selector": "a[href^='mailto:']:not(.ico-email)",
     "email_drop": r"webmanager|ciwebmanager|^info@|^comm@|^sis@",
+    # Same reason A&S sets it: the CI LISTING carries no email at all, so this
+    # pass is where the address comes from, not optional depth. Left env-gated,
+    # every harvest that runs without OFE_ENRICH_PROFILES emits contact_email=
+    # None for all ~95 CI faculty, and the merge's carry-forward then re-installs
+    # whatever address the corpus already held — freezing pre-fix values in place
+    # (the display-cased "Clements@uky.edu" / "HannahJones@uky.edu" the site
+    # publishes, and the shared ciwebmanager@uky.edu inbox this block's own
+    # ``email_drop``/``:not(.ico-email)`` were added to reject). Running it every
+    # harvest re-derives each address through _clean_email, so the canonical
+    # lowercase value wins and a dropped address is never re-derived.
+    "always": True,
     "throttle": 0.0,
 }
 _CI_BASE = ("https://ci.uky.edu/about/directory"

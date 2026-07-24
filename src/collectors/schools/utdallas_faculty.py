@@ -30,11 +30,13 @@ one per delivery mechanism the campus uses:
 
 Shared ladder gates keep professor / lecturer / instruction ranks (incl. teaching
 "of Instruction", clinical, and endowed-chair titles — all real, contactable
-faculty) and drop adjunct / visiting; emeriti are dropped by the engine's own
-retired-title guard.
+faculty) and drop adjunct / visiting. Emeriti usually go with the engine's own
+retired-title guard, but the NSM department pages list theirs under a heading
+with an ordinary "Professor - <dept>" title, so those pages also gate on the
+roster grid they sit in (``_ACTIVE_SECTION``).
 
 Single source ("utdallas_faculty"); department rides each record, ids namespaced
-by department short-code. Live-verified 2026-07-24.
+by department short-code. Live-verified 2026-07-25.
 
 Departments DROPPED (recorded honestly rather than shipped email-less):
 
@@ -62,22 +64,38 @@ _LADDER = {"require": r"profe?ss?or|lecturer|instructor"}
 
 
 # ---- Decoder D: Computer Science wp-block-table -----------------------------
+# The name cell is hand-edited and splits a name across two or three anchors
+# ("Alagar, " + "Sridhar"), so ``name_last`` re-joins the second one. One row
+# also hyperlinks the person's endowed chair from the same cell
+# (chairs.utdallas.edu, "Research Initiation Chair") — counting that as the
+# surname produced the corrupted "Sanda Research Initiation Chair Harabagiu",
+# so the name anchors exclude the endowed-chair microsite. Email hrefs are
+# inconsistently written: most are ``mailto:``, a few are the bare address
+# (``href="sruthi.chappidi@utdallas.edu"``), so match on the "@" instead.
 _CS_SEL = {
     "card": "figure.wp-block-table table tbody tr",
-    "name": "td:first-child a",
-    "name_last": "td:first-child a:nth-of-type(2)",
-    "link": "td:first-child a",
+    "name": "td:first-child a:not([href*='chairs.utdallas.edu'])",
+    "name_last": "td:first-child a:not([href*='chairs.utdallas.edu']):nth-of-type(2)",
+    # Seven faculty with no profile page yet are linked to the placeholder
+    # ``profiles.utdallas.edu/#``; taking it as their profile URL made them one
+    # duplicated person, so six real professors never shipped. Skip it and let
+    # them fall back to the department directory.
+    "link": "td:first-child a:not([href$='#'])",
     "title_html_re": r"<td>.*?<br\s*/?>(.*?)</td>",
-    "email": "td a[href^='mailto:']",
+    "email": "td a[href*='@']",
 }
 
 # ---- Decoder B: ECE wp-block-columns ----------------------------------------
+# Several rows keep an EMPTY leftover anchor from the row they were copied from
+# (``<a href="mailto:poras@utdallas.edu"></a><a href="mailto:sxa176730@…">…</a>``)
+# — taking the first mailto there hands a student a different professor's
+# address, so only anchors that actually render an address qualify.
 _ECE_SEL = {
     "card": 'div.wp-block-column:has(> ul.wp-block-list a[href^="mailto:"])',
     "name": "ul.wp-block-list > li:first-child",
     "link": "ul.wp-block-list > li:first-child a",
     "title": "ul.wp-block-list > li:nth-of-type(2)",
-    "email": "a[href^='mailto:']",
+    "email": "a[href^='mailto:']:not(:empty)",
     "research_re_text": r"Research Interests:\s*(.+)",
 }
 
@@ -92,11 +110,19 @@ _ME_SEL = {
 }
 
 # ---- Decoder A (div variant): Bioengineering --------------------------------
+# The rank is normally the second line, but the department head's card puts
+# "Department Head" there and her rank on the line below — reading only line 2
+# gave her a rank-less title that the ladder gate then dropped, so the whole
+# department's head was missing from the corpus. Fall through to line 3 when
+# line 2 is the administrative role (selector lists resolve in document order,
+# so ordinary cards still take line 2).
 _BE_SEL = {
     "card": "div.wp-block-column.faculty-contact",
     "name": "ul.wp-block-list:first-of-type > li:first-child strong",
     "link": "ul.wp-block-list:first-of-type > li:first-child a",
-    "title": "ul.wp-block-list:first-of-type > li:nth-of-type(2)",
+    "title": ('ul.wp-block-list:first-of-type > li:nth-of-type(2)'
+              ':not(:-soup-contains("Department Head")), '
+              'ul.wp-block-list:first-of-type > li:nth-of-type(3)'),
     "email": "a[href^='mailto:']",
     "research": "ul.wp-block-list:nth-of-type(2)",
 }
@@ -167,11 +193,53 @@ _PROF_SEL = {
     "title": "li:not(.item-template) [data-item-text='title']",
     "email": "li:not(.item-template) [data-item-text='email']",
     "research_items": ".profile-tags .profile-tag",
+    # The central Profiles system stores the rank with the person's department
+    # appended ("Professor - Physics", "Assist. Prof. of Instruction — Biological
+    # Sciences"), which the record's prose splices in front of the name:
+    # "Research opportunity with Professor - Physics Yuri Gartstein in the
+    # Department of Physics…". Cut the suffix at the separator. A dash followed
+    # by another RANK is part of a real compound title ("Bert Moore Chair in
+    # BrainHealth - Professor - Department of Psychology") and must survive, or
+    # the ladder gate would drop the person entirely; an unspaced hyphen is left
+    # alone so hyphenated words ("Cross-Cultural") stay intact.
+    "title_strip_after": (r"(?:\s*[–—]\s*|\s+-\s*|-\s+)"
+                          r"(?!\s*(?:Prof\.|Professor|Assoc|Assist|Clinical|"
+                          r"Research|Lect|Instruct))"),
 }
 # Keep professor (incl. "Prof."-abbreviated and "of Instruction" teaching ranks),
 # lecturer, and instructor; drop adjunct / visiting. Emeriti drop via the engine.
 _PROF_LADDER = {"require": r"profe?ss?or|prof\.|lecturer|instruct",
                 "drop": r"emerit|adjunct|visiting"}
+
+
+# A hire announced before they arrive is listed with the start date inside the
+# name ("Ioulia Kovelman (Starts Fall 2026)") — not yet a contactable UT Dallas
+# lab, and the parenthetical would ride into pi_name.
+_NOT_ARRIVED = ':not(:has(.profile-name a:-soup-contains("(Starts")))'
+
+# The NSM department pages stack several rosters on one URL, each an h2/h3
+# heading followed by its own ``.profiles-container`` grid — active ranks first,
+# then "Emeritus Professors" / "Emeritus Faculty" / "Retired Faculty" /
+# "In Memoriam". Those trailing groups carry ordinary "Professor - <dept>"
+# titles (no "emeritus" token for the engine's retired-title guard to catch), so
+# only the grid's position tells them apart: keep every container EXCEPT one
+# introduced by a retired-group heading. Affiliated/cross-listed groups stay —
+# they are the only listing for a few active faculty.
+_ACTIVE_SECTION = (
+    "div.profiles-plugin.profiles-container:not("
+    ":is(h2,h3,h4):-soup-contains('Emeritus') + div, "
+    ":is(h2,h3,h4):-soup-contains('Retired') + div, "
+    ":is(h2,h3,h4):-soup-contains('Memoriam') + div) "
+)
+
+# Physics lists a professor who left for another university but still appears on
+# the roster with his new address (chuanwei.zhang@wustl.edu). An address outside
+# utdallas.edu is the tell that the listing is stale; a card with no address at
+# all is unaffected (``field_filter`` passes an empty field).
+_UTD_EMAIL_ONLY = {
+    "selector": "li:not(.item-template) [data-item-text='email']",
+    "exclude": r"@(?!(?:[\w-]+\.)*utdallas\.edu\b)",
+}
 
 
 def _prof_card(tag_slugs: list[str] | None) -> str:
@@ -181,19 +249,32 @@ def _prof_card(tag_slugs: list[str] | None) -> str:
     return ", ".join(f".profiles-plugin.profile[id].{s}" for s in tag_slugs)
 
 
+def _gated(card: str, section_gate: bool) -> str:
+    """Apply the active-roster gates to every branch of a card selector union."""
+    prefix = _ACTIVE_SECTION if section_gate else ""
+    return ", ".join(f"{prefix}{part.strip()}{_NOT_ARRIVED}"
+                     for part in card.split(","))
+
+
 def _prof(short: str, name: str, majors: list[str], url: str,
           tag_slugs: list[str] | None = None, card: str | None = None,
-          directory_url: str | None = None) -> dict:
+          directory_url: str | None = None, section_gate: bool = False,
+          field_filter: dict | None = None) -> dict:
     """A profiles-plugin department (headless render). ``tag_slugs`` scopes a
     combined school page to one department; ``card`` overrides the selector for
-    a per-department roster page (e.g. Math's id-less plugin variant)."""
+    a per-department roster page (e.g. Math's id-less plugin variant);
+    ``section_gate`` drops the emeritus / retired / in-memoriam grids on the
+    per-department NSM pages."""
     sel = dict(_PROF_SEL)
-    sel["card"] = card or _prof_card(tag_slugs)
+    sel["card"] = _gated(card or _prof_card(tag_slugs), section_gate)
+    scrape = {"url": url, "selectors": sel, "ladder_filter": _PROF_LADDER,
+              "render": True, "render_settle": 6000}
+    if field_filter:
+        scrape["field_filter"] = field_filter
     return {
         "short": short, "name": name, "majors": majors,
         "directory_url": directory_url or url,
-        "scrape": {"url": url, "selectors": sel, "ladder_filter": _PROF_LADDER,
-                   "render": True, "render_settle": 6000},
+        "scrape": scrape,
     }
 
 
@@ -221,6 +302,11 @@ SCHOOL: dict = {
         _eng("ECE", "Department of Electrical and Computer Engineering",
              ["Electrical Engineering", "Computer Engineering"],
              "https://ece.utdallas.edu/people/tenure-system-faculty/", _ECE_SEL),
+        # ECE splits its roster across two pages; the instructional faculty live
+        # on their own URL and are absent from the tenure-system list entirely.
+        _eng("ECE2", "Department of Electrical and Computer Engineering",
+             ["Electrical Engineering", "Computer Engineering"],
+             "https://ece.utdallas.edu/instructional-faculty/", _ECE_SEL),
         _eng("ME", "Department of Mechanical Engineering",
              ["Mechanical Engineering"],
              "https://me.utdallas.edu/faculty/", _ME_SEL),
@@ -245,13 +331,15 @@ SCHOOL: dict = {
 
         # ---- School of Natural Sciences and Mathematics (render) -----------
         _prof("PHYS", "Department of Physics", ["Physics"],
-              "https://physics.utdallas.edu/faculty/"),
+              "https://physics.utdallas.edu/faculty/",
+              section_gate=True, field_filter=_UTD_EMAIL_ONLY),
         _prof("BIO", "Department of Biological Sciences",
               ["Biology", "Molecular Biology"],
-              "https://biology.utdallas.edu/faculty/"),
+              "https://biology.utdallas.edu/faculty/", section_gate=True),
         _prof("CHEM", "Department of Chemistry and Biochemistry",
               ["Chemistry", "Biochemistry"],
-              "https://chemistry.utdallas.edu/research-faculty/"),
+              "https://chemistry.utdallas.edu/research-faculty/",
+              section_gate=True),
         _prof("MATH", "Department of Mathematical Sciences",
               ["Mathematics", "Actuarial Science"],
               "https://math.utdallas.edu/people/faculty/",
