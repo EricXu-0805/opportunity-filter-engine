@@ -250,6 +250,78 @@ class TestScrapeLayer:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ann Alpha", "Ben Beta"]  # page 2 repeats -> pagination stops
 
+    def test_rank_html_entities_are_decoded_like_the_name(self, monkeypatch):
+        """The rank is spliced into the generated prose, so an undecoded entity
+        reaches the student ("Professor of Materials Science &amp; Engineering").
+        The name was already decoded; the title was not."""
+        from bs4 import BeautifulSoup
+        listing = ('<div class="c"><a class="n" href="/p/a">Jane Roe</a>'
+                   '<span class="t">Professor of Materials Science &amp;amp; Engineering</span></div>')
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url, **_kw: BeautifulSoup(listing, "html.parser"),
+        )
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere"}
+        dept = {"short": "MSE", "name": "Department of Materials Science", "majors": [],
+                "scrape": {"url": "https://x.edu/f",
+                           "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": ".t"}}}
+        people = fg._scrape_directory(dept)
+        rec = fg._normalize(school, dept, people[0])
+        desc = rec.get("description_clean") or ""
+        assert "&amp;" not in desc
+        assert "Materials Science & Engineering" in desc
+
+    def test_pagination_survives_a_transient_page_failure(self, monkeypatch):
+        """A page that fails to fetch must not end the walk. Drexel's CoE lost 25
+        of ~116 professors — the whole Sh-Z tail — because page 16 of 21 came
+        back slow and the loop treated that as the end of the directory."""
+        from bs4 import BeautifulSoup
+        pages = {
+            "https://x.edu/f": '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>',
+            "https://x.edu/f?page=1": '<div class="c"><a class="n" href="/p/b">Ben Beta</a></div>',
+            "https://x.edu/f?page=2": '<div class="c"><a class="n" href="/p/c">Cy Gamma</a></div>',
+        }
+        failed = {"once": False}
+
+        def flaky(url, **_kw):
+            # page=1 fails the first time only, exactly like a slow render.
+            if url.endswith("?page=1") and not failed["once"]:
+                failed["once"] = True
+                return None
+            return BeautifulSoup(pages[url], "html.parser") if url in pages else None
+
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", flaky)
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "paginate": {"param": "page", "start": 1, "max": 5},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ann Alpha", "Ben Beta", "Cy Gamma"]
+
+    def test_pagination_survives_one_barren_page_then_continues(self, monkeypatch):
+        """A single page whose cards haven't hydrated yields nothing new, which
+        is indistinguishable from the end of the roster — keep walking, and stop
+        only after two barren pages in a row."""
+        from bs4 import BeautifulSoup
+        pages = {
+            "https://x.edu/f": '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>',
+            "https://x.edu/f?page=1": "<div></div>",  # hydrated late: no cards
+            "https://x.edu/f?page=2": '<div class="c"><a class="n" href="/p/c">Cy Gamma</a></div>',
+        }
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url, **_kw: BeautifulSoup(pages[url], "html.parser") if url in pages else None,
+        )
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "paginate": {"param": "page", "start": 1, "max": 5},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ann Alpha", "Cy Gamma"]
+
     def test_profile_enrich_fills_research_from_profile_when_enabled(self, monkeypatch):
         """A listing that carries name/title only can be enriched per-profile: the
         gated pass follows each profile link and lifts a "<strong>Research Areas:
