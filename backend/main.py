@@ -78,6 +78,8 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     CHAT_RATE_KEY: (15, 60),
 }
 DEFAULT_RATE = (60, 60)
+DEFAULT_RATE_KEY = "__default__"
+MAX_RATE_WINDOW = max(DEFAULT_RATE[1], *(window for _, window in RATE_LIMITS.values()))
 
 # SEC-4: resolve the rate bucket by LONGEST matching prefix, not insertion order.
 # First-match-wins let "/api/cold-email" shadow "/api/cold-email/refine" (and
@@ -87,14 +89,19 @@ _RATE_LIMIT_PREFIXES_BY_LEN = sorted(RATE_LIMITS, key=len, reverse=True)
 
 
 def _rate_limit_key(path: str) -> str:
-    """The RATE_LIMITS key governing ``path`` by longest matching prefix, or the
-    path itself (→ DEFAULT_RATE) when none match."""
+    """The RATE_LIMITS key governing ``path`` by longest matching prefix.
+
+    Unknown paths deliberately share ``DEFAULT_RATE_KEY``. Returning the raw
+    path let an attacker mint unlimited independent buckets (each with its own
+    fresh default quota) by changing a path segment, bypassing the default
+    ceiling while growing the in-memory map without bound.
+    """
     if path.startswith("/api/opportunities/") and path.endswith("/chat"):
         return CHAT_RATE_KEY
     for prefix in _RATE_LIMIT_PREFIXES_BY_LEN:
         if path.startswith(prefix):
             return prefix
-    return path
+    return DEFAULT_RATE_KEY
 
 
 _last_purge = 0.0
@@ -189,7 +196,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
 
         if now - _last_purge > 300:
-            stale = [k for k, ts in _rate_buckets.items() if not ts or ts[-1] < now - 120]
+            # Preserve buckets for the longest configured window. The old fixed
+            # 120-second cutoff silently reset one-hour quotas (e.g. the 3/3600
+            # email sends) on the five-minute cleanup cadence.
+            stale = [
+                k for k, ts in _rate_buckets.items()
+                if not ts or ts[-1] < now - MAX_RATE_WINDOW
+            ]
             for k in stale:
                 del _rate_buckets[k]
             _last_purge = now
@@ -246,6 +259,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = (
             "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
         )
+        path = request.url.path
+        if path == "/api/admin" or path.startswith("/api/admin/"):
+            # Admin responses can contain student email addresses, feedback
+            # text, order rows, and internal notes. The X-Admin-Token custom
+            # header is not a cache boundary any shared HTTP cache understands,
+            # so make every admin response explicitly non-storable.
+            response.headers["Cache-Control"] = "private, no-store, max-age=0"
+            response.headers["Pragma"] = "no-cache"
         return response
 
 

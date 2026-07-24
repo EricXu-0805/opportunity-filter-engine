@@ -169,7 +169,9 @@ def strong_model() -> Optional[str]:
 # — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.6-terra or google/gemini-3.1-pro.
 _TASK_MODEL_DEFAULTS: dict[str, str] = {
     "cold_email": "anthropic/claude-sonnet-5",
-    "cold_email_review": "anthropic/claude-opus-4-8",
+    # NB: OpenRouter's slug is dotted ("4.8") — the hyphenated "opus-4-8" does
+    # not exist in the catalog and 404s, silently degrading the review tier.
+    "cold_email_review": "anthropic/claude-opus-4.8",
     "tailor": "anthropic/claude-sonnet-5",
     "extract": "anthropic/claude-sonnet-5",
 }

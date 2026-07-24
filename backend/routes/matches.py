@@ -267,8 +267,17 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
         )
         cand.append((r.opportunity_id, area[:600]))
 
-    cache_key = hashlib.md5(
-        f"{query}|{_LLM_RERANK_MODEL}|{','.join(c[0] for c in cand)}".encode()
+    # Candidate CONTENT participates in the key, not just the ids: a data
+    # refresh that changes a professor's research areas / recent works must
+    # invalidate the cached scores + reasons, or the rerank keeps serving
+    # stale explanations for the same id set.
+    cache_key = hashlib.sha256(
+        json.dumps(
+            {"query": query, "model": _LLM_RERANK_MODEL, "candidates": cand},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
     ).hexdigest()
     scores = _llm_rerank_cache.get(cache_key)
     if scores is None:

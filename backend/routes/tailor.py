@@ -32,6 +32,7 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from typing import Any
 
 import httpx
@@ -413,23 +414,28 @@ def _heuristic_bullets(resume_text: str, *, limit: int = 12) -> list[str]:
     return out
 
 
-def _bullet_grounded(bullet: str, resume_lower: str) -> bool:
-    """True iff most of the bullet's content words appear in the resume.
+def _normalized_extraction_text(value: str) -> str:
+    """Collapse presentation-only differences before containment matching.
 
-    Extraction must be verbatim, so this catches the model *inventing* a
-    bullet that isn't in the source. We tolerate light whitespace / glyph
-    normalization by requiring only a 0.6 token-overlap ratio rather than
-    an exact substring match.
+    NFKC handles harmless full-width typography and whitespace collapsing
+    handles line wraps, while deliberately preserving word order and
+    punctuation so paraphrases cannot masquerade as verbatim extraction.
     """
-    tokens = re.findall(r"[a-z0-9]{4,}", bullet.lower())
-    if not tokens:
-        # No ASCII tokens ⟹ a CJK (e.g. Chinese) bullet. Verbatim extraction
-        # still holds, so fall back to whitespace-normalized substring
-        # containment instead of dropping every non-ASCII bullet on the floor.
-        squashed = re.sub(r"\s+", "", bullet.lower())
-        return bool(squashed) and squashed in re.sub(r"\s+", "", resume_lower)
-    hits = sum(1 for t in tokens if t in resume_lower)
-    return hits / len(tokens) >= 0.6
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value)).strip().casefold()
+
+
+def _bullet_grounded(bullet: str, resume_text: str) -> bool:
+    """True only when an extracted bullet is contiguous resume text.
+
+    Structure extraction is not a rewriting step. The previous 60% ASCII
+    token-overlap rule let the model copy most of a line and append a
+    fabricated tool or metric. NFKC + collapsed whitespace tolerates
+    presentation-only differences while retaining the verbatim, contiguous
+    trust boundary for every language (CJK bullets included).
+    """
+    candidate = _normalized_extraction_text(bullet)
+    source = _normalized_extraction_text(resume_text)
+    return len(candidate) >= 4 and candidate in source
 
 
 def _ai_extract_bullets(resume_text: str, *, limit: int = 12) -> list[str] | None:
@@ -639,7 +645,7 @@ async def _record_usage_bg(authorization: str | None, feature: str) -> None:
         key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
         if not token or not url or not key:
             return
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, trust_env=False, follow_redirects=False) as client:
             resp = await client.get(
                 f"{url}/auth/v1/user",
                 headers={"apikey": key, "Authorization": f"Bearer {token}"},

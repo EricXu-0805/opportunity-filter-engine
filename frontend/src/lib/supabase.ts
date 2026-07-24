@@ -93,6 +93,13 @@ let anonSignInPromise: Promise<string | null> | null = null;
 
 async function ensureAnonSession(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
+  if (!SUPABASE_CONFIGURED) {
+    // The dummy client points at localhost:54321 — signInAnonymously would
+    // fire a doomed network call (and its late console.warn crashes vitest
+    // worker teardown in CI). Unconfigured means local-only, full stop.
+    setStorageStatus('local-only', 'Supabase is not configured');
+    return null;
+  }
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user?.id) {
     setStorageStatus('synced');

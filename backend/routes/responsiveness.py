@@ -39,7 +39,7 @@ async def _fetch_status_rows(supabase_url: str, headers: dict) -> list[dict]:
     import httpx
 
     rows: list[dict] = []
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
         for page in range(_MAX_PAGES):
             resp = await client.get(
                 f"{supabase_url}/rest/v1/interaction_status_changes",

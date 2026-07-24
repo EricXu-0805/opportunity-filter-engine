@@ -239,7 +239,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
     total_new_matches = 0
     errors: list[str] = []
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
@@ -352,7 +352,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     skipped = 0
     errors: list[str] = []
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
@@ -448,15 +448,27 @@ _UNSUB_CONFIRMATION_HTML = f"""<!doctype html><html><head><meta charset="utf-8">
 </div>
 </body></html>"""
 
+# The form posts to action="" — the same URL including the signed query
+# string — so the POST carries the exact sid/t/s token the GET validated.
+_UNSUB_CONFIRM_HTML = f"""<!doctype html><html><head><meta charset="utf-8"><title>Unsubscribe</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fafafa;margin:0;padding:48px 24px">
+<div style="max-width:480px;margin:0 auto;background:white;padding:32px;border-radius:12px;text-align:center">
+  <h1 style="font-size:20px;margin:0 0 12px;color:#111827">Stop this weekly digest?</h1>
+  <p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 8px">
+    Confirm below to stop email for this saved search. Opening this page alone does not change your settings.
+  </p>
+  <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px">
+    确认退订 — 仅打开此页面不会修改你的邮件设置。
+  </p>
+  <form method="post" action="">
+    <button type="submit" style="border:0;border-radius:8px;background:#111827;color:white;padding:11px 20px;font-weight:600;cursor:pointer">Unsubscribe / 确认退订</button>
+  </form>
+  <a href="{FRONTEND_BASE}/favorites" style="display:inline-block;margin-top:18px;color:#4f46e5;font-size:14px;text-decoration:none">Cancel · 返回 JoinALab</a>
+</div>
+</body></html>"""
 
-@router.get("/email/digest-unsubscribe")
-async def digest_unsubscribe(sid: str, t: int, s: str):
-    """One-click unsubscribe from a saved search's weekly digest.
 
-    No auth beyond the HMAC token: the link lands in the recipient's
-    inbox, and the only effect of a valid token is turning email OFF —
-    same threat model as email.py's restore link, lower stakes.
-    """
+def _validate_digest_unsubscribe_token(sid: str, t: int, signature: str) -> None:
     if not _UUID_RE.match(sid):
         raise HTTPException(status_code=400, detail="Invalid saved search id")
     if not _restore_signing_secret():
@@ -467,8 +479,31 @@ async def digest_unsubscribe(sid: str, t: int, s: str):
         raise HTTPException(status_code=400, detail="Link expired")
 
     expected = _sign_digest_unsub(sid, t)
-    if not expected or not hmac.compare_digest(expected, s):
+    if not expected or not hmac.compare_digest(expected, signature):
         raise HTTPException(status_code=400, detail="Invalid signature")
+
+
+@router.get("/email/digest-unsubscribe")
+async def digest_unsubscribe(sid: str, t: int, s: str):
+    """Validate a digest opt-out link and ask the human to confirm.
+
+    Email security scanners routinely prefetch GET links, so a GET must never
+    mutate subscription state (users were being silently unsubscribed by their
+    own mail filters). The signed POST below performs the actual opt-out.
+    """
+    _validate_digest_unsubscribe_token(sid, t, s)
+    return HTMLResponse(_UNSUB_CONFIRM_HTML)
+
+
+@router.post("/email/digest-unsubscribe")
+async def confirm_digest_unsubscribe(sid: str, t: int, s: str):
+    """Turn a saved-search digest off after explicit signed confirmation.
+
+    No auth beyond the HMAC token: the link lands in the recipient's
+    inbox, and the only effect of a valid token is turning email OFF —
+    same threat model as email.py's restore link, lower stakes.
+    """
+    _validate_digest_unsubscribe_token(sid, t, s)
 
     env_result = _required_env(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
     if isinstance(env_result, tuple):
@@ -484,7 +519,7 @@ async def digest_unsubscribe(sid: str, t: int, s: str):
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=15.0, trust_env=False, follow_redirects=False) as client:
         resp = await client.patch(
             f"{supabase_url}/rest/v1/saved_searches",
             params={"id": f"eq.{sid}"},

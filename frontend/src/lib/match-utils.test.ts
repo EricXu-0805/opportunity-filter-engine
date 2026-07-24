@@ -134,6 +134,28 @@ describe('matchesToCSV', () => {
     expect(csv).toContain('"Lab ""AI for Good"""');
   });
 
+  it.each([
+    ['equals', '=HYPERLINK("https://attacker.example","Open")'],
+    ['plus', '+cmd|\' /C calc\'!A0'],
+    ['minus', '-1+1'],
+    ['at', '@SUM(1,1)'],
+    ['leading spaces', '  =WEBSERVICE("https://attacker.example")'],
+    ['leading tab', '\t=HYPERLINK("https://attacker.example")'],
+    ['leading carriage return', '\r=1+1'],
+    ['leading line feed', '\n=1+1'],
+  ])('neutralizes spreadsheet formulas with a %s prefix', (_label, title) => {
+    const csv = matchesToCSV([makeMatch({ title })]);
+    const escapedTitle = title.replace(/"/g, '""');
+    expect(csv).toContain(`"'${escapedTitle}"`);
+    expect(csv).not.toContain(`,"${escapedTitle}",`);
+  });
+
+  it('leaves ordinary titles unprefixed', () => {
+    const csv = matchesToCSV([makeMatch({ title: 'ML Research Assistant' })]);
+    expect(csv).toContain('"ML Research Assistant"');
+    expect(csv).not.toContain("'ML Research Assistant");
+  });
+
   it('prefers application_url over opportunity.url', () => {
     const csv = matchesToCSV([
       makeMatch({
