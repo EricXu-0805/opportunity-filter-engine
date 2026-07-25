@@ -107,8 +107,12 @@ _ENG_FIELD = {
 _ENG_ENRICH = {
     "always": True,
     "email_selector": "div.field-name-field-email div.field-item",
-    "timeout": 10,
-    "max_retries": 2,
+    # ENG + MatSci profiles carry a comma-joined "Areas of Research" field-item;
+    # prose path (comma-split downstream). Rides the same always-on email pass.
+    "research_selector": "div.field-name-field-areas-of-research div.field-item",
+    "timeout": 8,
+    "max_retries": 1,
+    "throttle": 0.3,
 }
 
 
@@ -156,13 +160,23 @@ _CAS_FIELD = {
     "include": r"professor|lecturer",
     "exclude": r"adjunct|visiting|emerit",
 }
+# CAS profiles keep research areas as discrete tagged <li> in ul.research-items —
+# atomic items path (each <li> survives whole, no comma re-split). Env-gated
+# (OFE_ENRICH_PROFILES); _carry_forward_enrichment persists it across refreshes.
+_CAS_ENRICH = {
+    "research_items_selector": "ul.research-items li",
+    "timeout": 8,
+    "max_retries": 1,
+    "throttle": 0.3,
+}
 
 
 def _cas(short: str, name: str, majors: list[str], url: str) -> dict:
     """A CAS department on the substratum cas-profile component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _CAS_SEL, "field_filter": _CAS_FIELD},
+        "scrape": {"url": url, "selectors": _CAS_SEL, "field_filter": _CAS_FIELD,
+                   "profile_enrich": _CAS_ENRICH},
     }
 
 
@@ -188,6 +202,15 @@ _BIZ_SEL = {
 }
 _BIZ_LADDER = {"require": r"professor|lecturer", "drop": r"adjunct|visiting|emerit"}
 _BIZ_DIR = "https://business.lehigh.edu/directory?type=1&category="
+# Business profiles expose research under a "Research Interests" accordion whose
+# <ul><li> items are discrete tagged areas (the accordion is hidden="" but
+# server-rendered, so BS4 sees it). Env-gated; carry-forward persists it.
+_BIZ_ENRICH = {
+    "research_items_selector": 'h4:-soup-contains("Research Interests") + ul li',
+    "timeout": 8,
+    "max_retries": 1,
+    "throttle": 0.3,
+}
 
 
 def _biz(short: str, name: str, majors: list[str], category: str) -> dict:
@@ -196,7 +219,8 @@ def _biz(short: str, name: str, majors: list[str], category: str) -> dict:
     return {
         "short": short, "name": name, "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _BIZ_SEL, "ladder_filter": _BIZ_LADDER},
+        "scrape": {"url": url, "selectors": _BIZ_SEL, "ladder_filter": _BIZ_LADDER,
+                   "profile_enrich": _BIZ_ENRICH},
     }
 
 
