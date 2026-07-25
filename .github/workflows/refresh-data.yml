@@ -200,11 +200,21 @@ jobs:
           EMAILS=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('contact_email')))")
           INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
           MSG="chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode, shard: ${SHARD:-full})"
-          BRANCH="auto/refresh-data-${{ github.run_id }}"
           REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # An earlier run's PR can linger open when main moved between its
+          # checks going green and its merge (how #637 sat stuck for days,
+          # blocking the pipeline). This scrape supersedes its data either way:
+          # close leftovers before opening a fresh PR.
+          STALE=$(gh pr list --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("auto/refresh-data-")) | .number' || true)
+          for PR in $STALE; do
+            echo "closing superseded refresh PR #$PR"
+            gh pr close "$PR" --comment "Superseded by a newer data-refresh run." --delete-branch || true
+          done
 
           # A deep scrape can run hours, during which other PRs can merge to main and
           # rewrite these same data files. Branching from the run-start checkout would
@@ -219,55 +229,72 @@ jobs:
           if [ -f data/processed/professor_tracking.json ]; then
             cp data/processed/professor_tracking.json /tmp/refresh-professor_tracking.json
           fi
-          git fetch "$REMOTE" main
-          git checkout -f -B "$BRANCH" FETCH_HEAD
-          cp /tmp/refresh-opportunities.json data/processed/opportunities.json
-          cp /tmp/refresh-collector_status.json data/processed/collector_status.json
-          if [ -f /tmp/refresh-professor_tracking.json ]; then
-            cp /tmp/refresh-professor_tracking.json data/processed/professor_tracking.json
-          fi
 
-          # Commit-time chokepoint: split the work file into minified per-school
-          # shards (scripts/shard_corpus.py) — each shard sits far below GitHub's
-          # 100 MB blob limit and grows independently, so onboarding more schools
-          # can't outgrow a single file again. split() prunes description_raw
-          # duplicates (lossless). It is UPSERT-ONLY (no --prune): this run's work
-          # file is assembled from its run-start checkout and omits any school
-          # onboarded to main after the run began, so pruning "absent" shards here
-          # would delete freshly-landed schools (how #614 wiped Yale, #630 the
-          # Wave-3 six). Upsert-only writes only the schools we actually scraped
-          # and leaves every other on-disk shard (from the FETCH_HEAD rebase onto
-          # latest main) untouched.
-          python3 scripts/shard_corpus.py split
+          # Two attempts: main can move again during the ~20 min the required
+          # checks run, un-merging an already-green PR. Rather than erroring out
+          # with a stuck-open PR, close it and replay once onto the new main —
+          # a fresh branch each time, so no force-push ever hits automation.
+          for ATTEMPT in 1 2; do
+            BRANCH="auto/refresh-data-${{ github.run_id }}"
+            [ "$ATTEMPT" -gt 1 ] && BRANCH="$BRANCH-r$ATTEMPT"
 
-          git add data/processed/shards data/processed/collector_status.json
-          if [ -f data/processed/professor_tracking.json ]; then
-            git add data/processed/professor_tracking.json
-          fi
-          if git diff --cached --quiet; then
-            echo "Latest main already matches this scrape — nothing to ship."
-            exit 0
-          fi
-          git commit -m "$MSG"
-          # Push via PAT so the PR triggers CI (the default GITHUB_TOKEN does not).
-          git push "$REMOTE" "$BRANCH"
+            git fetch "$REMOTE" main
+            git checkout -f -B "$BRANCH" FETCH_HEAD
+            cp /tmp/refresh-opportunities.json data/processed/opportunities.json
+            cp /tmp/refresh-collector_status.json data/processed/collector_status.json
+            if [ -f /tmp/refresh-professor_tracking.json ]; then
+              cp /tmp/refresh-professor_tracking.json data/processed/professor_tracking.json
+            fi
 
-          gh pr create --base main --head "$BRANCH" --title "$MSG" \
-            --body "Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
+            # Commit-time chokepoint: split the work file into minified per-school
+            # shards (scripts/shard_corpus.py) — each shard sits far below GitHub's
+            # 100 MB blob limit and grows independently, so onboarding more schools
+            # can't outgrow a single file again. split() prunes description_raw
+            # duplicates (lossless). It is UPSERT-ONLY (no --prune): this run's work
+            # file is assembled from its run-start checkout and omits any school
+            # onboarded to main after the run began, so pruning "absent" shards here
+            # would delete freshly-landed schools (how #614 wiped Yale, #630 the
+            # Wave-3 six). Upsert-only writes only the schools we actually scraped
+            # and leaves every other on-disk shard (from the FETCH_HEAD rebase onto
+            # latest main) untouched.
+            python3 scripts/shard_corpus.py split
 
-          # Wait for the required checks to register, then watch them to completion.
-          for i in $(seq 1 12); do
-            gh pr checks "$BRANCH" --required >/dev/null 2>&1 && break
-            echo "waiting for required checks to register ($i)…"; sleep 15
+            git add data/processed/shards data/processed/collector_status.json
+            if [ -f data/processed/professor_tracking.json ]; then
+              git add data/processed/professor_tracking.json
+            fi
+            if git diff --cached --quiet; then
+              echo "Latest main already matches this scrape — nothing to ship."
+              exit 0
+            fi
+            git commit -m "$MSG"
+            # Push via PAT so the PR triggers CI (the default GITHUB_TOKEN does not).
+            git push "$REMOTE" "$BRANCH"
+
+            gh pr create --base main --head "$BRANCH" --title "$MSG" \
+              --body "Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
+
+            # Wait for the required checks to register, then watch them to
+            # completion. A red check fails this step (no retry: a data/DQ
+            # failure will not pass on replay) and triggers the alert below.
+            for i in $(seq 1 12); do
+              gh pr checks "$BRANCH" --required >/dev/null 2>&1 && break
+              echo "waiting for required checks to register ($i)…"; sleep 15
+            done
+            gh pr checks "$BRANCH" --required --watch
+
+            # Merge once green (retry briefly while GitHub recomputes mergeability).
+            MERGED=""
+            for i in $(seq 1 6); do
+              if gh pr merge "$BRANCH" --squash --delete-branch; then MERGED=1; break; fi
+              echo "merge not ready, retrying ($i)…"; sleep 10
+            done
+            [ -n "$MERGED" ] && exit 0
+
+            echo "checks passed but the merge was rejected — main moved; closing and replaying"
+            gh pr close "$BRANCH" --comment "Superseded: main moved between green checks and merge; replaying onto the new main." --delete-branch || true
           done
-          gh pr checks "$BRANCH" --required --watch
-
-          # Merge once green (retry briefly while GitHub recomputes mergeability).
-          for i in $(seq 1 6); do
-            gh pr merge "$BRANCH" --squash --delete-branch && exit 0
-            echo "merge not ready, retrying ($i)…"; sleep 10
-          done
-          echo "::error::Required checks passed but the PR could not be merged."
+          echo "::error::Data refresh could not be merged even after a replay retry."
           exit 1
 
       # The refresh failed silently 7 runs in a row (6/25–7/02) before anyone

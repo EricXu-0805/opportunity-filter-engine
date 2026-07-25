@@ -134,3 +134,26 @@ jobs:
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" || true
+
+      # Cron failures send no notification by default — the data-refresh
+      # pipeline once failed 7 runs in a row before anyone noticed. Same
+      # operator alert as refresh-data.yml.
+      - name: Alert operator on failure
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            exit 0
+          fi
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
+              \"to\": [\"$OPERATOR_EMAIL\"],
+              \"subject\": \"JoinALab: daily reminders cron FAILED\",
+              \"text\": \"The daily reminders workflow failed.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nReminder emails, the health check, and the feedback/orders digests did not run this cycle.\"
+            }" || true

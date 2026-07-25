@@ -1,5 +1,5 @@
 {
-  "duration_seconds": 1063.8,
+  "duration_seconds": 1152.5,
   "shard": {
     "national": false,
     "schools": [
@@ -8,7 +8,7 @@
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 4,
+      "rule_based_tagged": 5,
       "status": "ok"
     },
     "campus_graph:uky": {
@@ -22,21 +22,19 @@
       "already_inactive": 748,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 127322,
+      "skipped_rolling": 127321,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 747,
+      "kept_fresh": 746,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 1,
+      "duplicates_removed": 0,
       "keywords_cleaned": 0,
-      "removed_by_school": {
-        "uky": 1
-      },
+      "removed_by_school": {},
       "shared_inbox_nulled": {},
       "status": "ok"
     },
@@ -50,7 +48,7 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 732,
+      "already_had": 731,
       "enriched": 16,
       "nulled_unit_inboxes": 0,
       "renulled_shared_emails": 9,
@@ -329,7 +327,7 @@
         "uiuc_sro": 279,
         "uiuc_urap": 1,
         "uiuc_ursa": 1,
-        "uky_faculty": 747,
+        "uky_faculty": 746,
         "uky_research_programs": 6,
         "umass_faculty": 1575,
         "umass_research_programs": 9,
@@ -390,17 +388,17 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 128934
+      "tagged": 128933
     },
     "uky_faculty": {
       "fetched": 746,
-      "new": 34,
+      "new": 0,
       "status": "ok",
-      "updated": 712
+      "updated": 746
     }
   },
-  "timestamp": "2026-07-24T19:07:34.264603",
+  "timestamp": "2026-07-25T02:54:29.490397",
   "total_in_file": 128933,
-  "total_new": 34,
-  "total_updated": 718
+  "total_new": 0,
+  "total_updated": 752
 }

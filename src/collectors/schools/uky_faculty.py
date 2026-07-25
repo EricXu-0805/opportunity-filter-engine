@@ -173,6 +173,12 @@ _AS_SEL = {
 # enrichment run that generates the data.
 _AS_ENRICH = {
     "email_selector": 'div.text1.font-bold:-soup-contains("Contact Information") + div',
+    # PILOT (semantic payload): the A&S profile the email pass already fetches
+    # also lists research interests as a <ul> under a "Research Interests"
+    # heading — 7 of 9 sampled departments carry them. Capturing them here is
+    # free (same request) and gives the ranker real per-person signal instead of
+    # department-only matching. No new fetches: this rides the existing pass.
+    "research_items_selector": 'div.text1.font-bold:-soup-contains("Research Interests") + ul li',
     # The A&S directory cards carry NO email at all — the address lives only on
     # each person's profile page — so this pass is where the record's contact
     # field comes from, not optional depth. always:True bypasses the monthly
