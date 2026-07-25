@@ -13,6 +13,7 @@ import type {
   ResumeSectionInput,
   RenovateResponse,
   BulletOptimizeResponse,
+  ProfessorUpdatesResponse,
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
@@ -334,6 +335,26 @@ export async function getMatchExplanation(
 
 export async function getOpportunityById(id: string): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>(`/opportunities/${encodeURIComponent(id)}`);
+}
+
+/**
+ * POST /api/professors/updates — verified change events for the professors the
+ * user follows, newest first. `available: false` means the tracking artifact
+ * hasn't been published yet (an honest empty state, not an error).
+ */
+export async function getProfessorUpdates(
+  ids: string[],
+  limit = 50,
+): Promise<ProfessorUpdatesResponse> {
+  if (ids.length === 0) {
+    return { available: true, events: [], requested: 0, has_more: false };
+  }
+  return request<ProfessorUpdatesResponse>('/professors/updates', {
+    method: 'POST',
+    // The API caps a request at 200 ids; the newest events across the first
+    // 200 follows is plenty for the dashboard feed.
+    body: JSON.stringify({ ids: ids.slice(0, 200), limit }),
+  });
 }
 
 export async function getOpportunitiesByIds(ids: string[]): Promise<Record<string, unknown>[]> {

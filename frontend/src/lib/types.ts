@@ -149,6 +149,9 @@ export interface Opportunity {
   // /matches card payload carries it top-level; the full record keeps the
   // complete list under metadata.
   recent_works?: { title: string; year?: number | string | null }[];
+  // Record-scoped follow/tracking id (W8) — present on faculty detail
+  // payloads only; the key for professor_follows and /professors/updates.
+  professor_id?: string;
 }
 
 // ── Match Results ────────────────────────────────────────────────────
@@ -386,4 +389,30 @@ export interface StatsResponse {
 export interface OpportunitiesResponse {
   opportunities: Opportunity[];
   total: number;
+}
+
+// ── Professor updates (W8) ───────────────────────────────────────────
+export type ProfessorChangeType =
+  | 'research_focus'
+  | 'department_or_lab'
+  | 'project_availability'
+  | 'public_source';
+
+export interface ProfessorUpdateEvent {
+  event_id: string;
+  professor_id: string;
+  professor_name: string;
+  school: string;
+  verified_at: string;
+  source_url: string;
+  change_types: ProfessorChangeType[];
+  project_became_available: boolean;
+}
+
+export interface ProfessorUpdatesResponse {
+  /** false only when the tracking artifact is absent/unreadable server-side. */
+  available: boolean;
+  events: ProfessorUpdateEvent[];
+  requested: number;
+  has_more: boolean;
 }

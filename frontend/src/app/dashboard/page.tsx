@@ -25,6 +25,8 @@ import { collectReminders, type ReminderInfo } from '@/lib/reminders';
 import { getFavorites, getInteractionsFull } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 
+import { ProfessorUpdatesSection } from './ProfessorUpdatesSection';
+
 type Replier = (key: string, vars?: Record<string, string | number>) => string;
 type LoadStatus = 'loading' | 'ready' | 'error';
 
@@ -318,6 +320,8 @@ export default function DashboardPage() {
         >
           <ReminderContent state={reminders} t={t} />
         </DashboardSection>
+
+        <ProfessorUpdatesSection />
 
         <DashboardSection
           icon={BarChart3}

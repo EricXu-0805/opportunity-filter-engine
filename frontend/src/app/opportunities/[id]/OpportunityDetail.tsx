@@ -21,6 +21,7 @@ import {
 } from './DetailSections';
 import { InteractionPills } from './InteractionPills';
 import { OpportunityHeader } from './OpportunityHeader';
+import { ProfessorFollowToggle } from './ProfessorFollowToggle';
 import { SimilarOpportunities } from './SimilarOpportunities';
 import { TrackerPanel } from './TrackerPanel';
 import { useOpportunityDetail } from './use-opportunity-detail';
@@ -106,6 +107,11 @@ export default function OpportunityDetail({
               opportunityId={opp.id as string}
               hasInteraction={!!interaction}
               t={t}
+            />
+            <ProfessorFollowToggle
+              professorId={opp.professor_id}
+              professorName={opp.pi_name}
+              school={opp.school}
             />
           </div>
 

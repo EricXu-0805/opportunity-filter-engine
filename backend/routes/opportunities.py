@@ -21,6 +21,7 @@ from backend.lib.llm import (
 )
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.schemas import ProfileRequest
+from src.tracking.professor_profiles import canonical_professor_id
 
 router = APIRouter()
 logger = logging.getLogger("ofe.opportunities")
@@ -253,7 +254,14 @@ async def get_opportunity(opportunity_id: str):
     opp = load_opportunities_by_id().get(opportunity_id)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
-    return _redact(opp)
+    detail = _redact(opp)
+    # Additive: the record-scoped follow/tracking id (None for non-faculty
+    # records), so the detail page can offer "follow this professor" and ask
+    # /api/professors/updates about exactly the record it is showing.
+    professor_id = canonical_professor_id(opp)
+    if professor_id is not None:
+        detail["professor_id"] = professor_id
+    return detail
 
 
 @router.get("/opportunities/stats/summary")
