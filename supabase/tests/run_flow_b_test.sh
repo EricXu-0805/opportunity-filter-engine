@@ -49,4 +49,7 @@ echo "==> run flow_b_merge_test.sql"
 echo "==> run orders_rls_test.sql"
 "${PSQL[@]}" -f "$HERE/orders_rls_test.sql"
 
+echo "==> run professor_tracking_merge_test.sql"
+"${PSQL[@]}" -f "$HERE/professor_tracking_merge_test.sql"
+
 echo "==> OK"

@@ -38,6 +38,7 @@ from backend.routes import (
     matches,
     opportunities,
     orders,
+    professors,
     push,
     responsiveness,
     resume,
@@ -486,6 +487,7 @@ app.include_router(import_url.router, prefix="/api", tags=["import-url"])
 app.include_router(import_text.router, prefix="/api", tags=["import-text"])
 app.include_router(saved_searches.router, prefix="/api", tags=["saved-searches"])
 app.include_router(orders.router, prefix="/api", tags=["orders"])
+app.include_router(professors.router, prefix="/api", tags=["professors"])
 
 
 @app.get("/api/health")

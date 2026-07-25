@@ -1407,3 +1407,151 @@ export async function listRenovationVersions(
     created_at: String(r.created_at ?? ''),
   }));
 }
+
+// ── Professor follows + verified-update read cursors (W8) ─────────────────
+// Cloud rows only (migrations 022/023) — follows must survive the device and
+// merge across devices, so there is deliberately NO localStorage fallback.
+// Follow/unfollow THROW on failure instead of pretending success: the toggle
+// renders an explicit retry state, mirroring the repo's truthful-UI rule.
+
+// Record-scoped tracking id minted by the backend (src/tracking): validated
+// here before any network call so a junk id can never reach a table row.
+const PROFESSOR_ID_RE = /^prof:v1:[a-z0-9-]{1,48}:[0-9a-f]{20}$/;
+const PROFESSOR_EVENT_ID_RE = /^prof-event:v1:[0-9a-f]{24}$/;
+
+export function isCanonicalProfessorId(value: unknown): value is string {
+  return typeof value === 'string' && PROFESSOR_ID_RE.test(value);
+}
+
+function assertProfessorId(professorId: string): void {
+  if (!isCanonicalProfessorId(professorId)) {
+    throw new Error('Not a faculty profile tracking id: ' + professorId);
+  }
+}
+
+export interface ProfessorFollow {
+  professorId: string;
+  professorName: string | null;
+  school: string | null;
+  createdAt: string;
+}
+
+const FOLLOW_PAGE_SIZE = 1000;
+
+/**
+ * Every follow for the current identity, paged past PostgREST's 1000-row
+ * default cap. Throws on any page failure — a partial read must not
+ * masquerade as the complete follow list (or worse, an empty one).
+ */
+export async function listProfessorFollows(): Promise<ProfessorFollow[]> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return [];
+
+  const follows: ProfessorFollow[] = [];
+  for (let offset = 0; ; offset += FOLLOW_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('professor_follows')
+      .select('professor_id, professor_name, school, created_at')
+      .eq('device_id', deviceId)
+      .order('professor_id', { ascending: true })
+      .range(offset, offset + FOLLOW_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    for (const r of rows) {
+      follows.push({
+        professorId: String(r.professor_id),
+        professorName: r.professor_name == null ? null : String(r.professor_name),
+        school: r.school == null ? null : String(r.school),
+        createdAt: String(r.created_at ?? ''),
+      });
+    }
+    if (rows.length < FOLLOW_PAGE_SIZE) return follows;
+  }
+}
+
+export async function followProfessor(
+  professorId: string,
+  professorName?: string | null,
+  school?: string | null,
+): Promise<void> {
+  assertProfessorId(professorId);
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) throw new Error('Cloud storage is unavailable');
+
+  const { error } = await supabase.from('professor_follows').insert({
+    device_id: deviceId,
+    professor_id: professorId,
+    professor_name: professorName?.slice(0, 200) || null,
+    school: school?.slice(0, 64) || null,
+  });
+  // 23505 = unique_violation: already following — an idempotent success so
+  // a double-tap or retry can never surface as an error.
+  if (error && error.code !== '23505') throw new Error(error.message);
+}
+
+export async function unfollowProfessor(professorId: string): Promise<void> {
+  assertProfessorId(professorId);
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) throw new Error('Cloud storage is unavailable');
+
+  const { error } = await supabase
+    .from('professor_follows')
+    .delete()
+    .eq('device_id', deviceId)
+    .eq('professor_id', professorId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Per-professor read cursors (professor_id -> last read event id). Read
+ * failures degrade to an empty map with a warning: the worst outcome is a
+ * seen update briefly showing as unread — never lost or fabricated data.
+ */
+export async function getProfessorUpdateReads(): Promise<Map<string, string>> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return new Map();
+
+  const { data, error } = await supabase
+    .from('professor_update_reads')
+    .select('professor_id, last_read_event_id')
+    .eq('device_id', deviceId);
+  if (error || !data) {
+    if (error) console.warn('[ofe] professor update reads load failed:', error.message);
+    return new Map();
+  }
+  return new Map(
+    data.map((r: { professor_id: string; last_read_event_id: string }) => [
+      r.professor_id,
+      r.last_read_event_id,
+    ]),
+  );
+}
+
+/**
+ * Advance read cursors after the user has seen a professor's updates.
+ * Best-effort like the other cursor-ish writes (trackInteraction): failure
+ * only means the unread badge reappears, so it warns instead of throwing.
+ */
+export async function markProfessorUpdatesRead(
+  entries: { professorId: string; lastReadEventId: string }[],
+): Promise<void> {
+  const rows = entries.filter(
+    (e) => isCanonicalProfessorId(e.professorId)
+      && PROFESSOR_EVENT_ID_RE.test(e.lastReadEventId),
+  );
+  if (rows.length === 0) return;
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return;
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('professor_update_reads').upsert(
+    rows.map((e) => ({
+      device_id: deviceId,
+      professor_id: e.professorId,
+      last_read_event_id: e.lastReadEventId,
+      updated_at: now,
+    })),
+    { onConflict: 'device_id,professor_id' },
+  );
+  if (error) console.warn('[ofe] professor updates mark-read failed:', error.message);
+}

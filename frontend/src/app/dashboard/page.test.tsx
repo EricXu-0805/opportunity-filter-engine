@@ -24,6 +24,12 @@ vi.mock('@/components/PushToggle', () => ({
   default: () => <div data-testid="push-toggle" />,
 }));
 
+// Owns its own data loads and has a dedicated test file — stub it here so
+// page tests stay focused on the page's four original sections.
+vi.mock('./ProfessorUpdatesSection', () => ({
+  ProfessorUpdatesSection: () => <div data-testid="professor-updates-section" />,
+}));
+
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
     locale: 'en',
