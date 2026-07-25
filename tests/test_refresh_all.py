@@ -38,6 +38,9 @@ def _stub_all_collectors(monkeypatch, tmp_path):
         elif attr.startswith("merge_"):
             monkeypatch.setattr(refresh_all, attr, lambda opps: (0, 0))
     monkeypatch.setattr(refresh_all, "PROCESSED_FILE", tmp_path / "missing.json")
+    # The post-write tracking pass must never touch the repo's real artifact
+    # from a test run.
+    monkeypatch.setattr(refresh_all, "TRACKING_FILE", tmp_path / "professor_tracking.json")
 
 
 def test_deep_run_registers_all_ucb_collectors(monkeypatch, tmp_path):

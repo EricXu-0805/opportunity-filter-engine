@@ -368,6 +368,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 STATUS_FILE = PROJECT_ROOT / "data" / "processed" / "collector_status.json"
 STATUS_HISTORY_FILE = PROJECT_ROOT / "data" / "processed" / "collector_status_history.jsonl"
+TRACKING_FILE = PROJECT_ROOT / "data" / "processed" / "professor_tracking.json"
 
 STATUS_HISTORY_MAX_ENTRIES = 200
 
@@ -430,6 +431,27 @@ def write_status(summary: dict) -> None:
         _trim_history_to_max(STATUS_HISTORY_FILE, STATUS_HISTORY_MAX_ENTRIES)
     except OSError as e:
         logger.warning("Failed to append collector status history: %s", e)
+
+
+def _update_professor_tracking(all_opps: list[dict], summary: dict) -> None:
+    """Append verified professor change events derived from this refresh.
+
+    Never raises: professor tracking is an additive artifact and a failure
+    here must not fail the refresh or block the corpus write that already
+    happened. Errors are logged and surfaced in the summary only.
+    """
+    try:
+        from src.tracking.professor_profiles import update_tracking_file
+
+        stats = update_tracking_file(all_opps, TRACKING_FILE)
+        summary["sources"]["professor_tracking"] = {**stats, "status": "ok"}
+        logger.info(
+            "professor_tracking: %d profile baseline(s), %d event(s) (%d new)",
+            stats["profiles"], stats["events"], stats["new_events"],
+        )
+    except Exception as e:
+        logger.error(f"Professor tracking update failed (non-fatal): {e}")
+        summary["sources"]["professor_tracking"] = {"status": "error", "error": str(e)}
 
 
 def refresh_all(deep: bool = True, schools: set[str] | None = None,
@@ -1267,6 +1289,12 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
         )
 
         atomic_write_json(PROCESSED_FILE, all_opps)
+
+        # Professor tracking ledger: derive verified change events from the
+        # exact corpus just persisted. Strictly best-effort — a tracking bug
+        # must never fail or roll back the refresh itself.
+        _update_professor_tracking(all_opps, summary)
+
         summary["sources"]["deactivate_past"] = {
             "newly_deactivated": deact_counts["newly_deactivated"],
             "already_inactive": deact_counts["already_inactive"],
