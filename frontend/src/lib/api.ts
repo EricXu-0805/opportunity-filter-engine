@@ -17,6 +17,7 @@ import type {
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
+import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -30,6 +31,34 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(`API ${res.status}: ${errBody}`);
   }
   return res.json() as Promise<T>;
+}
+
+/**
+ * W10b contact reveal: run a request with the signed-in session's token
+ * attached, and — when the backend still answers "sign_in_required" for a
+ * token we believed valid (stale/expired) — refresh the session ONCE and
+ * retry ONCE. The backend degrades a bad token to the anonymous shape rather
+ * than a 401, so this never surfaces an auth error to the page; if the retry
+ * still comes back locked, the caller renders the sign-in affordance.
+ */
+async function requestWithRevealRetry<T>(
+  url: string,
+  init: Omit<RequestInit, 'headers'>,
+  isStaleReveal: (resp: T) => boolean,
+): Promise<T> {
+  const token = await getRevealAccessToken();
+  const headers = (auth: string | null): Record<string, string> => ({
+    'Content-Type': 'application/json',
+    ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+  });
+  let resp = await request<T>(url, { ...init, headers: headers(token) });
+  if (token && isStaleReveal(resp)) {
+    const fresh = await refreshRevealAccessToken();
+    if (fresh) {
+      resp = await request<T>(url, { ...init, headers: headers(fresh) });
+    }
+  }
+  return resp;
 }
 
 /**
@@ -334,7 +363,14 @@ export async function getMatchExplanation(
 }
 
 export async function getOpportunityById(id: string): Promise<Record<string, unknown>> {
-  return request<Record<string, unknown>>(`/opportunities/${encodeURIComponent(id)}`);
+  // Reveal-aware: a signed-in session gets contact_email back on the detail
+  // payload; a stale token refreshes + retries once, then degrades to the
+  // anonymous shape (contact_email_status: 'sign_in_required').
+  return requestWithRevealRetry<Record<string, unknown>>(
+    `/opportunities/${encodeURIComponent(id)}`,
+    {},
+    (resp) => resp.contact_email_status === 'sign_in_required',
+  );
 }
 
 /**
@@ -389,10 +425,11 @@ export async function generateColdEmail(
   if (options.resumeBullets && options.resumeBullets.length > 0) {
     body.resume_bullets = options.resumeBullets;
   }
-  return request<ColdEmailResponse>('/cold-email', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return requestWithRevealRetry<ColdEmailResponse>(
+    '/cold-email',
+    { method: 'POST', body: JSON.stringify(body) },
+    (resp) => resp.recipient_status === 'sign_in_required',
+  );
 }
 
 export type ColdEmailStage = 'drafting' | 'judging' | 'critiquing' | 'revising';
@@ -422,9 +459,18 @@ export async function generateColdEmailStream(
     body.resume_bullets = options.resumeBullets;
   }
 
+  // Reveal token only (no refresh-retry here: the variants call that always
+  // precedes a stream already refreshed a stale session, and a locked stream
+  // still delivers the draft — the UI keys the recipient state off the
+  // response's recipient_status).
+  const streamToken = await getRevealAccessToken();
   const res = await fetch(`${API_BASE}/cold-email/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      ...(streamToken ? { Authorization: `Bearer ${streamToken}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -487,10 +533,14 @@ export async function getEmailVariants(
   profile: ProfileData,
   opportunityId: string,
 ): Promise<EmailVariantsResponse> {
-  return request<EmailVariantsResponse>('/cold-email/variants', {
-    method: 'POST',
-    body: JSON.stringify({ profile: toProfileRequest(profile), opportunity_id: opportunityId }),
-  });
+  return requestWithRevealRetry<EmailVariantsResponse>(
+    '/cold-email/variants',
+    {
+      method: 'POST',
+      body: JSON.stringify({ profile: toProfileRequest(profile), opportunity_id: opportunityId }),
+    },
+    (resp) => resp.recipient_status === 'sign_in_required',
+  );
 }
 
 export async function refineEmail(

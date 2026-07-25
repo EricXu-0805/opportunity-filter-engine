@@ -120,6 +120,33 @@ describe('MatchCard', () => {
       ).toBeInTheDocument();
       expect(screen.queryByText(/Second Paper/)).toBeNull();
     });
+
+    it('shows the matched-by-name hint unless attribution is verified', () => {
+      const works = [{ title: 'A Borderline Paper', year: 2025 }];
+      // name_match and absent (legacy) both get the subdued hint
+      for (const status of ['name_match', undefined] as const) {
+        const { unmount } = render(
+          <MatchCard
+            match={makeMatch({ recent_works: works, publication_attribution_status: status })}
+            onDraftEmail={() => {}}
+          />,
+        );
+        expect(screen.getByText(/card.recentWorkNameMatch/)).toBeInTheDocument();
+        expect(screen.getByText(/A Borderline Paper \(2025\)/)).toBeInTheDocument();
+        unmount();
+      }
+      render(
+        <MatchCard
+          match={makeMatch({
+            recent_works: works,
+            publication_attribution_status: 'verified_author_id',
+          })}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.queryByText(/card.recentWorkNameMatch/)).toBeNull();
+      expect(screen.getByText(/A Borderline Paper \(2025\)/)).toBeInTheDocument();
+    });
   });
 
   describe('international-friendly badge', () => {

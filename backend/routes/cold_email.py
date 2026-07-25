@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -22,6 +22,7 @@ from backend.lib.blocking import (
     BlockingWorkTimeout,
     run_blocking,
 )
+from backend.lib.contact_visibility import contact_email_status
 from backend.lib.email_modes import EDIT_OPS, draft_voice, recommended_voice
 from backend.lib.grounding import (
     LENIENT_PROSE,
@@ -30,6 +31,8 @@ from backend.lib.grounding import (
 )
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.publication_attribution import works_are_verified
+from backend.lib.supabase_auth import authenticated_uid
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
@@ -392,6 +395,15 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
     required_str = _sanitize_field(", ".join(p["opp_skills_required"][:5]), max_len=200) or "(none specified)"
     opp_desc = _sanitize_field(p["opp_desc"], max_len=600) or "(no description)"
     recent_works = _format_recent_works(opp) or "(none)"
+    # Truthful attribution: only pipeline-verified works are presented as the
+    # professor's own; name-matched/legacy works get an honest label instead
+    # of suppression (they are usually correct — the model may still cite one).
+    works_label = (
+        "Recent publications by this professor"
+        if recent_works == "(none)" or works_are_verified(opp)
+        else "Recent publications matched to this professor by name, not "
+             "independently verified"
+    )
     return (
         f"PROFESSOR / OPPORTUNITY:\n"
         f"- Recipient: {recipient}\n"
@@ -402,7 +414,7 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
         f"- Research area: {research_area}\n"
         f"- Specific topic signal: {research_topic}\n"
         f"- Professor's stated research areas: {research_areas_raw}\n"
-        f"- Recent publications by this professor (cite at most ONE, whichever "
+        f"- {works_label} (cite at most ONE, whichever "
         f"is most relevant): {recent_works}\n"
         f"- Required skills: {required_str}\n"
         f"- Description excerpt: {opp_desc}\n"
@@ -841,7 +853,10 @@ def _build_email_corpus(p: dict, opp: dict) -> str:
 
 
 @router.post("/cold-email", response_model=ColdEmailResponse)
-async def generate_email(request: ColdEmailRequest):
+async def generate_email(
+    request: ColdEmailRequest,
+    authorization: str | None = Header(default=None),
+):
     """Generate a cold email for a specific opportunity with mailto: link.
 
     ``request.engine`` controls the generator:
@@ -849,33 +864,41 @@ async def generate_email(request: ColdEmailRequest):
       - ``"ai"``: LLM-personalized draft via ``backend.lib.llm.chat_completion``.
         Falls back to template if no LLM provider is configured or the call
         fails, so callers always get a usable email.
+
+    The recipient is ALWAYS resolved server-side from the opportunity record —
+    the request carries no address — and is offered only per the W10b contact
+    bar (verified provenance + signed-in session); drafting itself is open to
+    everyone. A stale token degrades to the anonymous shape, never a 401.
     """
     opp = load_opportunities_by_id().get(request.opportunity_id)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
+    authed = await authenticated_uid(authorization) is not None
     profile_dict = request.profile.model_dump()
     if request.engine != "ai":
         # The template path contains no provider I/O and should not wait behind
         # a saturated AI pool.
-        return _run_engine(request, opp, profile_dict)
+        return _run_engine(request, opp, profile_dict, authed)
     try:
         return await run_blocking(
             _run_engine,
             request,
             opp,
             profile_dict,
+            authed,
             timeout_seconds=MULTI_LLM_TIMEOUT_SECONDS,
         )
     except BlockingWorkTimeout:
         logger.warning("cold-email: generation timed out; using template")
-        return _template_after_timeout(request, opp, profile_dict)
+        return _template_after_timeout(request, opp, profile_dict, authed)
 
 
 def _run_engine(
     request: ColdEmailRequest,
     opp: dict,
     profile_dict: dict,
+    authenticated: bool,
     on_stage: Callable[[str], None] | None = None,
 ) -> ColdEmailResponse:
     """The full engine decision + response assembly, shared by the blocking
@@ -929,7 +952,12 @@ def _run_engine(
         email_text = generate_cold_email(profile_dict, opp)
         subject, body = _extract_subject_and_body(email_text)
 
-    recipient_email = opp.get("contact_email", "") or ""
+    # W10b: the send target obeys the shared contact bar — verified provenance
+    # AND a signed-in session — while the draft itself stays available to
+    # everyone (the draft is the value; the UI shows an honest recipient state).
+    recipient_status, recipient_email = contact_email_status(
+        opp, authenticated=authenticated,
+    )
     mailto_link = _build_mailto_link(recipient_email, subject, body)
     lab_type = _detect_lab_type(opp)
 
@@ -938,6 +966,7 @@ def _run_engine(
         body=body,
         recipient_email=recipient_email,
         mailto_link=mailto_link,
+        recipient_status=recipient_status,
         method=method,
         lab_type=lab_type,
         # echo the applied voice (only meaningful on the AI path) + the
@@ -952,10 +981,11 @@ def _template_after_timeout(
     request: ColdEmailRequest,
     opp: dict,
     profile_dict: dict,
+    authenticated: bool,
 ) -> ColdEmailResponse:
     """Preserve the usable-response contract after an outer model timeout."""
     template_request = request.model_copy(update={"engine": "template"})
-    response = _run_engine(template_request, opp, profile_dict)
+    response = _run_engine(template_request, opp, profile_dict, authenticated)
     if request.engine == "ai":
         response.fallback_reason = "unavailable"
     return response
@@ -966,7 +996,10 @@ def _sse_frame(payload: dict) -> str:
 
 
 @router.post("/cold-email/stream")
-async def generate_email_stream(request: ColdEmailRequest):
+async def generate_email_stream(
+    request: ColdEmailRequest,
+    authorization: str | None = Header(default=None),
+):
     """SSE mirror of ``/cold-email``: emits ``{"stage": "drafting" |
     "critiquing" | "revising"}`` progress events while the pipeline runs, then
     a final ``{"stage": "done", ...ColdEmailResponse fields...}``. The blocking
@@ -977,6 +1010,9 @@ async def generate_email_stream(request: ColdEmailRequest):
     opp = load_opportunities_by_id().get(request.opportunity_id)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    # Resolved before the stream starts: the generator outlives the request
+    # handler, and the recipient decision must not wait behind LLM stages.
+    authed = await authenticated_uid(authorization) is not None
     profile_dict = request.profile.model_dump()
 
     async def gen():
@@ -988,7 +1024,7 @@ async def generate_email_stream(request: ColdEmailRequest):
             loop.call_soon_threadsafe(queue.put_nowait, stage)
 
         def work() -> ColdEmailResponse:
-            return _run_engine(request, opp, profile_dict, on_stage=on_stage)
+            return _run_engine(request, opp, profile_dict, authed, on_stage=on_stage)
 
         # Bounded-pool offload: every stage callback is scheduled onto the loop
         # BEFORE the work future resolves, so draining the queue once the work
@@ -1016,11 +1052,11 @@ async def generate_email_stream(request: ColdEmailRequest):
             resp = work_task.result()
         except BlockingWorkTimeout:
             logger.warning("cold-email stream: generation timed out; using template")
-            resp = _template_after_timeout(request, opp, profile_dict)
+            resp = _template_after_timeout(request, opp, profile_dict, authed)
         except Exception:
             # _run_engine is designed never to raise; this is the last belt.
             logger.exception("cold-email stream: engine crashed; using template")
-            resp = _template_after_timeout(request, opp, profile_dict)
+            resp = _template_after_timeout(request, opp, profile_dict, authed)
         yield _sse_frame({"stage": "done", **resp.model_dump()})
 
     return StreamingResponse(
@@ -1031,11 +1067,15 @@ async def generate_email_stream(request: ColdEmailRequest):
 
 
 @router.post("/cold-email/variants")
-async def generate_email_variants(request: ColdEmailRequest):
+async def generate_email_variants(
+    request: ColdEmailRequest,
+    authorization: str | None = Header(default=None),
+):
     opp = load_opportunities_by_id().get(request.opportunity_id)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
+    authed = await authenticated_uid(authorization) is not None
     profile_dict = request.profile.model_dump()
     try:
         raw_variants = await run_blocking(
@@ -1048,7 +1088,12 @@ async def generate_email_variants(request: ColdEmailRequest):
         raise HTTPException(status_code=503, detail="Email variants timed out") from exc
     lab_type = _detect_lab_type(opp)
 
-    recipient_email = opp.get("contact_email") or ""  # key exists but is None on nulled faculty emails
+    # W10b: same contact bar as /cold-email — status is per-response (top
+    # level) because it is a property of the opportunity + session, not of a
+    # variant. recipient_email stays "" unless revealed.
+    recipient_status, recipient_email = contact_email_status(
+        opp, authenticated=authed,
+    )
 
     results = []
     for v in raw_variants:
@@ -1066,6 +1111,7 @@ async def generate_email_variants(request: ColdEmailRequest):
     return {
         "variants": results,
         "lab_type": lab_type,
+        "recipient_status": recipient_status,
         "recommended_style": _recommended_style(lab_type),
     }
 

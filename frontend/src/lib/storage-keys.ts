@@ -24,6 +24,12 @@ export const STORAGE_KEYS = {
   LOCALE: 'ofe_lang',
   OAUTH_LINK_PROVIDER: 'ofe_oauth_link_provider',
   ONBOARDING_SEEN: 'ofe_onboarding_seen',
+  // Separate from ONBOARDING_SEEN: returning users may have completed an older
+  // tour that never required an explicit campus choice. The matching scope is
+  // not trustworthy until the school gate has written this confirmation.
+  // Value: JSON {slug, ts} — see lib/school-confirmation.ts. User-scoped in
+  // the W6 registry (school choice is an account-level decision).
+  SCHOOL_CONFIRMED: 'ofe_school_confirmed',
   // Flow B: a merge-grant token minted on the anon (source) session right
   // before an existing-account sign-in redirect. Survives the redirect in
   // localStorage and is redeemed once on /auth/callback, then cleared.

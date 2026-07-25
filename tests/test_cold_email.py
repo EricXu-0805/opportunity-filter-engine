@@ -508,6 +508,21 @@ class TestRecentWorkGrounding:
         user_msg = self._capture_prompt(monkeypatch, self._opp())
         assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
 
+    def test_prompt_states_attribution_truthfully(self, monkeypatch):
+        # Pipeline-verified works are presented as the professor's own; a
+        # legacy record (no stamp) gets the honest name-match label — with the
+        # titles still offered either way, never suppressed.
+        opp = self._opp(self._WORKS)
+        opp["metadata"]["publication_attribution_status"] = "verified_author_id"
+        user_msg = self._capture_prompt(monkeypatch, opp)
+        assert "Recent publications by this professor (cite at most ONE" in user_msg
+        assert "matched to this professor by name" not in user_msg
+
+        user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
+        assert ("Recent publications matched to this professor by name, not "
+                "independently verified (cite at most ONE") in user_msg
+        assert '"NeuroFlow: Decoding Imagined Speech from ECoG Arrays" (2026)' in user_msg
+
     def _validate_draft(self, opp):
         from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
         from backend.routes.cold_email import _EMAIL_SCAFFOLDING, _build_email_corpus

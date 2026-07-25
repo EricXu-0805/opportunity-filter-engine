@@ -99,6 +99,12 @@ export interface OpportunityApplication {
   application_url?: string;
 }
 
+// Pipeline-stamped provenance for recent_works: 'verified_author_id' when the
+// works were fetched through a resolved OpenAlex author id, 'name_match' when
+// only a name-based association exists. Absent/null on records enriched
+// before the stamp existed — treated as unverified, never as an error.
+export type PublicationAttributionStatus = 'verified_author_id' | 'name_match';
+
 export interface OpportunityMetadata {
   is_active: boolean;
   confidence_score: number;
@@ -106,6 +112,7 @@ export interface OpportunityMetadata {
   // the harvest stores no URLs). Absent on non-faculty records and on faculty
   // without a confident OpenAlex match.
   recent_works?: { title: string; year?: number | null }[];
+  publication_attribution_status?: PublicationAttributionStatus | null;
 }
 
 // Multi-university discovery scope (PR #187 / #189). `school` is the
@@ -147,12 +154,28 @@ export interface Opportunity {
   metadata: OpportunityMetadata;
   // Match-card projection of metadata.recent_works (title/year only) — the
   // /matches card payload carries it top-level; the full record keeps the
-  // complete list under metadata.
+  // complete list under metadata. The attribution status rides alongside
+  // (null/absent = unverified).
   recent_works?: { title: string; year?: number | string | null }[];
+  publication_attribution_status?: PublicationAttributionStatus | null;
   // Record-scoped follow/tracking id (W8) — present on faculty detail
   // payloads only; the key for professor_follows and /professors/updates.
   professor_id?: string;
+  // W10b auth-gated contact reveal (detail payload only). The server includes
+  // contact_email ONLY when status is 'revealed'; 'sign_in_required' means a
+  // verified address exists behind the sign-in gate; 'unavailable' means no
+  // verified-provenance address exists at all. Absent on cached/list shapes.
+  contact_email?: string;
+  contact_email_status?: ContactEmailStatus;
 }
+
+/**
+ * W10b contact bar (mirrors backend.lib.contact_visibility): a professor's
+ * address is offered only when it is real harvested data AND the session is a
+ * signed-in account. A stale token degrades to 'sign_in_required' — the same
+ * shape as anonymous — never an error.
+ */
+export type ContactEmailStatus = 'revealed' | 'sign_in_required' | 'unavailable';
 
 // ── Match Results ────────────────────────────────────────────────────
 export type MatchBucket = 'high_priority' | 'good_match' | 'reach' | 'low_fit';
@@ -217,6 +240,10 @@ export interface ColdEmailResponse {
   body: string;
   recipient_email: string;
   mailto_link: string;
+  /** W10b: recipient_email is non-empty only when 'revealed'. Optional so
+   *  cached pre-W10b responses still typecheck (treated as 'revealed' when an
+   *  address is present). */
+  recipient_status?: ContactEmailStatus;
   method: 'template' | 'ai';
   lab_type?: LabType | null;
   /** The voice overlay applied (null on the template path). */
@@ -247,6 +274,9 @@ export interface EmailVariant {
 export interface EmailVariantsResponse {
   variants: EmailVariant[];
   lab_type?: LabType | null;
+  /** W10b: one status for the whole response — it is a property of the
+   *  opportunity + session, not of a variant. */
+  recipient_status?: ContactEmailStatus;
   recommended_style?: EmailStyle | null;
 }
 

@@ -223,6 +223,10 @@ class ColdEmailResponse(BaseModel):
     body: str
     recipient_email: str
     mailto_link: str
+    # W10b contact bar: "revealed" | "sign_in_required" | "unavailable".
+    # recipient_email is non-empty only when "revealed" (verified-provenance
+    # address + signed-in session); the UI keys its send affordance off this.
+    recipient_status: str = "unavailable"
     method: str = "template"
     lab_type: str | None = None
     # The voice overlay actually applied (echoes request.style; None on the

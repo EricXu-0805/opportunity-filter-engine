@@ -145,6 +145,18 @@ describe('dictionary parity', () => {
     expect(missing).toEqual([]);
   });
 
+  it('publication attribution strings resolve in both locales', () => {
+    for (const key of [
+      'card.recentWorkNameMatch',
+      'detail.recentWorksNameMatch',
+      'detail.recentWorksNoteUnverified',
+    ]) {
+      expect(translate('en', key)).not.toBe(key);
+      expect(translate('zh', key)).not.toBe(key);
+      expect(translate('en', key)).not.toBe(translate('zh', key));
+    }
+  });
+
   it('dictionaries object exposes both locales', () => {
     expect(dictionaries.en).toBeDefined();
     expect(dictionaries.zh).toBeDefined();

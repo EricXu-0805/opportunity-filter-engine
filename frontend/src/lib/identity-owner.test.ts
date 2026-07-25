@@ -49,6 +49,9 @@ describe('registry sanity', () => {
     expect(USER_SCOPED_KEYS).toContain(STORAGE_KEYS.PROFILE);
     expect(USER_SCOPED_KEYS).toContain(STORAGE_KEYS.CUSTOM_IMPORTS);
     expect(USER_SCOPED_KEYS).toContain(STORAGE_KEYS.FAVORITES_FALLBACK);
+    // W10b: the school confirmation is an account-level decision — the next
+    // uid on this browser must confirm their own campus.
+    expect(USER_SCOPED_KEYS).toContain(STORAGE_KEYS.SCHOOL_CONFIRMED);
     expect(USER_SCOPED_PREFIXES).toContain(STORAGE_KEYS.TAILOR_DRAFT_PREFIX);
     expect(USER_SCOPED_KEYS).not.toContain('ofe_auth');
     expect(USER_SCOPED_KEYS).not.toContain(MARKER);

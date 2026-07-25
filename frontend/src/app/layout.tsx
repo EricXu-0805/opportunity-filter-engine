@@ -5,6 +5,7 @@ import BackendWaker from '@/components/BackendWaker';
 import GuestBanner from '@/components/GuestBanner';
 import FeedbackWidget from '@/components/FeedbackWidget';
 import OnboardingIntro from '@/components/OnboardingIntro';
+import SchoolConfirmGate from '@/components/SchoolConfirmGate';
 import Header from '@/components/Header';
 import { AuthModalProvider } from '@/lib/auth-modal-context';
 import { SITE_URL } from '@/lib/site';
@@ -146,6 +147,11 @@ export default async function RootLayout({
 
             {/* First-visit product intro — top-most overlay (z-60), shown once. */}
             <OnboardingIntro />
+
+            {/* W10b: one-time school re-confirmation for returning users whose
+                campus predates the explicit confirmation receipt. Soft gate —
+                dismissible per session; never shown alongside the tour. */}
+            <SchoolConfirmGate />
           </AuthModalProvider>
         </LanguageProvider>
       </body>
