@@ -5,6 +5,7 @@ import {
   type User,
 } from '@supabase/supabase-js';
 
+import { syncLocalIdentityOwner } from './identity-owner';
 import { STORAGE_KEYS } from './storage-keys';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -50,7 +51,7 @@ export const supabase: SupabaseClient = createClient(
   },
 );
 
-const FAV_FALLBACK_KEY = 'ofe_favs_fallback';
+const FAV_FALLBACK_KEY = STORAGE_KEYS.FAVORITES_FALLBACK;
 
 export type StorageStatus = 'synced' | 'local-only' | 'unknown';
 
@@ -102,6 +103,7 @@ async function ensureAnonSession(): Promise<string | null> {
   }
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user?.id) {
+    syncLocalIdentityOwner(session.user.id);
     setStorageStatus('synced');
     return session.user.id;
   }
@@ -117,6 +119,7 @@ async function ensureAnonSession(): Promise<string | null> {
       anonSignInPromise = null;
       return null;
     }
+    syncLocalIdentityOwner(data.user?.id ?? null);
     setStorageStatus('synced');
     return data.user?.id ?? null;
   })();
@@ -256,6 +259,10 @@ export async function getAuthState(): Promise<AuthState> {
  */
 export function onAuthChange(cb: (state: AuthState) => void): () => void {
   const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    // W6: every uid observed here passes through the owner sync, so an
+    // account switch from ANY flow clears the previous identity's local
+    // data before subscribers render against the new session.
+    syncLocalIdentityOwner(session?.user?.id ?? null);
     cb({
       session,
       user: session?.user ?? null,
@@ -743,6 +750,9 @@ export async function signOutOfAccount(): Promise<string | null> {
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) console.warn('[ofe] signOut failed:', error.message);
   clearOAuthLinkProvider(); // don't let a stale link-provider stash cross sessions
+  // W6: no bespoke clear here — the re-anon below lands in ensureAnonSession's
+  // owner sync, where the fresh anon uid differs from the marker and the
+  // signed-out account's local data is cleared.
   return ensureAnonSession();
 }
 
