@@ -55,18 +55,21 @@ def _sanitize_opportunity(opp: dict) -> dict:
     for field in ("description_raw", "description_clean", "title"):
         if field in opp and isinstance(opp[field], str):
             opp[field] = _strip_html(opp[field])
-    # Pipeline-only payloads no serving path reads (verified: zero consumers in
-    # backend/, src/matcher/ and frontend/src): drop them from the in-memory
+    # Pipeline-only payloads no serving path reads: drop them from the in-memory
     # copy. The on-disk corpus keeps them — the collectors' own passes
     # (llm_tagger reads eligibility_text_raw, enrichment audits read notes)
     # open the file directly, never through this loader.
+    # NB: research_areas_raw is NOT dropped — it has real serving consumers
+    # (matches.llm_rerank candidate text, cold_email professor brief +
+    # anti-fabrication allowlist, and the ranker similarity corpus). An earlier
+    # comment mislabeled it "zero consumers" and this pop silently blanked the
+    # richest topical signal for every faculty record that carries it.
     elig = opp.get("eligibility")
     if isinstance(elig, dict):
         elig.pop("eligibility_text_raw", None)
     meta = opp.get("metadata")
     if isinstance(meta, dict):
         meta.pop("notes", None)
-        meta.pop("research_areas_raw", None)
         # Harvest bookkeeping with zero serving consumers (last_verified IS
         # served on cards and stays).
         meta.pop("first_seen_at", None)
@@ -76,10 +79,16 @@ def _sanitize_opportunity(opp: dict) -> dict:
 
 
 def _opportunity_corpus_text(opp: dict) -> str:
+    # Must include the same fields the ranker's _similarity_corpus scores, so
+    # every term that can appear in a scored record is in the fitted TF-IDF
+    # vocabulary (max_features caps it; OOV terms are dropped at transform).
+    # research_areas_raw carries the professor's stated areas verbatim — the
+    # only topical signal for faculty whose keywords stayed generic.
     parts = [
         opp.get("title", ""),
         opp.get("lab_or_program", ""),
         " ".join(opp.get("keywords", []) or []),
+        (opp.get("metadata") or {}).get("research_areas_raw", ""),
         opp.get("description_clean") or opp.get("description_raw") or "",
     ]
     return " ".join(p for p in parts if p)
