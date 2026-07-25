@@ -7,12 +7,13 @@ from collections import Counter
 from collections.abc import Iterator
 from datetime import UTC, date, timedelta
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, run_blocking
+from backend.lib.contact_visibility import STATUS_REVEALED, contact_email_status
 from backend.lib.llm import (
     chat_completion,
     chat_completion_stream,
@@ -21,6 +22,7 @@ from backend.lib.llm import (
 )
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.publication_attribution import attribution_status, works_are_verified
+from backend.lib.supabase_auth import authenticated_uid
 from backend.routes.cold_email import _format_recent_works
 from backend.schemas import ProfileRequest
 from src.tracking.professor_profiles import canonical_professor_id
@@ -257,7 +259,10 @@ async def get_similar_opportunities(
 
 
 @router.get("/opportunities/{opportunity_id}")
-async def get_opportunity(opportunity_id: str):
+async def get_opportunity(
+    opportunity_id: str,
+    authorization: str | None = Header(default=None),
+):
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
 
@@ -265,6 +270,16 @@ async def get_opportunity(opportunity_id: str):
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     detail = _redact(opp)
+    # W10b auth-gated contact reveal: a signed-in (non-anonymous) session gets
+    # the verified-provenance contact email back; everyone else — including a
+    # stale/expired token — gets the SAME anonymous shape plus the status flag
+    # the UI renders as a sign-in affordance. Degrade, never 401.
+    status, email = contact_email_status(
+        opp, authenticated=await authenticated_uid(authorization) is not None,
+    )
+    detail["contact_email_status"] = status
+    if status == STATUS_REVEALED:
+        detail["contact_email"] = email
     # Additive: the record-scoped follow/tracking id (None for non-faculty
     # records), so the detail page can offer "follow this professor" and ask
     # /api/professors/updates about exactly the record it is showing.

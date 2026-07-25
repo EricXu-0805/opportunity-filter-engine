@@ -11,6 +11,7 @@ import type { SimilarOpportunity } from '@/lib/api-server';
 import { useT } from '@/i18n/client';
 
 import { ChatDrawer } from './ChatDrawer';
+import { ContactRevealSection } from './ContactRevealSection';
 import {
   ApplicationSection,
   AtAGlanceSection,
@@ -120,6 +121,7 @@ export default function OpportunityDetail({
           <AtAGlanceSection opp={opp} t={t} />
           <EligibilitySection opp={opp} t={t} />
           <ApplicationSection opp={opp} t={t} />
+          <ContactRevealSection opp={opp} t={t} />
           <KeywordsSection opp={opp} t={t} />
           <SimilarOpportunities similar={similar} t={t} />
 

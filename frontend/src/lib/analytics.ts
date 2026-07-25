@@ -10,7 +10,8 @@ export type FunnelEvent =
   | 'pay_qr_view'
   | 'order_created'
   | 'feedback_submitted'
-  | 'onboarding_completed';
+  | 'onboarding_completed'
+  | 'school_confirmed';
 
 // Fire-and-forget funnel instrumentation. NEVER throws and NEVER blocks the UI:
 // a failed insert (offline, no session, RLS) is swallowed — analytics must not

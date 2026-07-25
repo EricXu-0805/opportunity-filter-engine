@@ -15,7 +15,16 @@ export default function globalSetup(): void {
     origins: [
       {
         origin: `http://127.0.0.1:${port}`,
-        localStorage: [{ name: STORAGE_KEYS.ONBOARDING_SEEN, value: '1' }],
+        localStorage: [
+          { name: STORAGE_KEYS.ONBOARDING_SEEN, value: '1' },
+          // W10b: the one-time school-confirm gate is the same kind of
+          // full-viewport modal — pre-confirm the default campus so specs
+          // (which never exercise the gate) aren't intercepted by it.
+          {
+            name: STORAGE_KEYS.SCHOOL_CONFIRMED,
+            value: JSON.stringify({ slug: 'uiuc', ts: '2026-01-01T00:00:00.000Z' }),
+          },
+        ],
       },
     ],
   };

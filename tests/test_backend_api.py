@@ -3963,11 +3963,11 @@ class TestColdEmailStream:
         real = ce_module._run_engine
         calls = {"n": 0}
 
-        def flaky(request, opp, profile_dict, on_stage=None):
+        def flaky(request, opp, profile_dict, authenticated, on_stage=None):
             calls["n"] += 1
             if calls["n"] == 1:
                 raise RuntimeError("boom")
-            return real(request, opp, profile_dict, on_stage=on_stage)
+            return real(request, opp, profile_dict, authenticated, on_stage=on_stage)
 
         monkeypatch.setattr(ce_module, "_run_engine", flaky)
         with client.stream(

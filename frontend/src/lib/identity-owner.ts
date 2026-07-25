@@ -29,6 +29,7 @@ export const USER_SCOPED_KEYS: readonly string[] = [
   STORAGE_KEYS.ANCHOR_3FAV_DISMISSED, // "save your favorites" prompt decision — the person's, not the device's
   STORAGE_KEYS.RESULTS_CTA_DISMISSED, // concierge CTA dismissal — same
   STORAGE_KEYS.FAVORITES_FALLBACK, // offline favorites mirror — would backfill into the next uid's account
+  STORAGE_KEYS.SCHOOL_CONFIRMED, // W10b school confirmation — an account-level decision; the next uid must confirm their own campus
 ];
 
 // Per-opportunity keys discovered by localStorage key scan.

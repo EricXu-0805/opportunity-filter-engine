@@ -25,10 +25,12 @@ import {
 } from '@/lib/api';
 import {
   getInteractionDetail,
+  onAuthChange,
   trackInteraction,
   updateInteractionDetails,
 } from '@/lib/supabase';
-import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse } from '@/lib/types';
+import { useAuthModal } from '@/lib/auth-modal-context';
+import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
@@ -114,6 +116,15 @@ const QUICK_ACTION_INSTRUCTIONS: Record<Exclude<QuickActionKey, 'coursework'>, s
   enthusiastic: 'Make it more enthusiastic',
 };
 
+// Pre-W10b cached/skewed responses lack recipient_status; a present address
+// means it was revealed, an absent one means there is nothing to offer.
+function statusOf(
+  status: ContactEmailStatus | undefined,
+  email: string,
+): ContactEmailStatus {
+  return status ?? (email ? 'revealed' : 'unavailable');
+}
+
 // Coursework stays client-side: it inserts the student's own courses verbatim
 // (naturally grounded), so a network round-trip buys nothing.
 function applyQuickEdit(
@@ -163,6 +174,7 @@ export default function ColdEmailModal({
   opportunitySchool,
 }: ColdEmailModalProps) {
   const { t } = useT();
+  const { openModal } = useAuthModal();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Missing sender identity is its own state (not a generic error): the fix is
@@ -186,6 +198,11 @@ export default function ColdEmailModal({
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [recipient, setRecipient] = useState('');
+  // W10b contact bar: why the To field is (or isn't) prefilled. 'sign_in_required'
+  // renders the sign-in-to-reveal affordance; 'unavailable' the honest
+  // no-verified-address state. Pre-W10b cached responses lack the field —
+  // derive from whether an address arrived.
+  const [recipientStatus, setRecipientStatus] = useState<ContactEmailStatus>('unavailable');
   const [copied, setCopied] = useState(false);
   // After the user copies/opens the email we treat the lab as contacted: record
   // last_contacted_at (and create an 'applied' interaction if none exists yet, so
@@ -240,6 +257,9 @@ export default function ColdEmailModal({
       const rec = data.recommended_style ?? null;
       setRecommendedStyle(rec);
       if (rec) setSelectedStyle(rec);
+      setRecipientStatus(
+        statusOf(data.recipient_status, data.variants[0]?.recipient_email ?? ''),
+      );
       if (data.variants.length > 0) {
         const first = data.variants[0];
         setSubject(first.subject);
@@ -280,6 +300,7 @@ export default function ColdEmailModal({
       setRecommendedStyle(null);
       setSubject('');
       setBody('');
+      setRecipientStatus('unavailable');
       setCopied(false);
       setError(null);
       setNameRequired(false);
@@ -343,13 +364,36 @@ export default function ColdEmailModal({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // W10b: once the user signs in from the reveal affordance, fetch the
+  // recipient once via the (cheap) variants endpoint and fill the To field —
+  // WITHOUT regenerating or touching the draft they may have edited. The
+  // subscription also fires with the current session on mount, which
+  // self-heals the stale-token case where the api-level refresh-retry failed.
+  useEffect(() => {
+    if (!isOpen || recipientStatus !== 'sign_in_required') return;
+    const unsubscribe = onAuthChange((state) => {
+      if (!state.session || state.isAnonymous) return;
+      void (async () => {
+        try {
+          const data = await getEmailVariants(profile, opportunityId);
+          const email = data.variants[0]?.recipient_email ?? '';
+          setRecipientStatus(statusOf(data.recipient_status, email));
+          if (email) setRecipient((prev) => prev || email);
+        } catch { /* keep the sign-in affordance */ }
+      })();
+    });
+    return unsubscribe;
+  }, [isOpen, recipientStatus, profile, opportunityId]);
+
   function selectVariant(idx: number) {
     const v = allVariants[idx];
     if (!v) return;
     setActiveVariant(idx);
     setSubject(v.subject);
     setBody(v.body);
-    setRecipient(v.recipient_email);
+    // Variants share one server-resolved recipient; when the reveal is locked
+    // they carry "" — never wipe an address the user typed themselves.
+    setRecipient((prev) => v.recipient_email || prev);
     setChatMessages((prev) => [
       ...prev,
       { role: 'assistant', content: t('coldEmail.switched', { label: v.label }) },
@@ -381,12 +425,13 @@ export default function ColdEmailModal({
         fallback_reason: resp.fallback_reason,
       };
       setAiVariant(v);
+      setRecipientStatus(statusOf(resp.recipient_status, resp.recipient_email));
       if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
       if (select) {
         setActiveVariant(aiIdx);
         setSubject(v.subject);
         setBody(v.body);
-        setRecipient(v.recipient_email);
+        setRecipient((prev) => v.recipient_email || prev);
       }
     };
 
@@ -747,7 +792,26 @@ export default function ColdEmailModal({
                       placeholder={t('coldEmail.toPlaceholder')}
                       className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
-                    {!recipient ? (
+                    {!recipient && recipientStatus === 'sign_in_required' ? (
+                      /* W10b: a verified address exists behind the sign-in
+                         gate — offer sign-in instead of the "we couldn't find
+                         one" state, which would be a lie here. */
+                      <div className="mt-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2" data-testid="recipient-sign-in">
+                        <p className="text-[12px] font-medium text-indigo-900">
+                          {t('coldEmail.signInToRevealTitle')}
+                        </p>
+                        <p className="mt-0.5 text-[12px] leading-snug text-indigo-700">
+                          {t('coldEmail.signInToRevealBody')}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => openModal({ reason: 'contact-reveal' })}
+                          className="mt-1.5 inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors"
+                        >
+                          {t('coldEmail.signInToRevealCta')}
+                        </button>
+                      </div>
+                    ) : !recipient ? (
                       <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
                         <p className="text-[12px] font-medium text-amber-800">
                           {t('coldEmail.emailUnavailableTitle')}
