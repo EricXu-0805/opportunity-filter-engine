@@ -39,6 +39,7 @@ import {
   type MergeSummary,
   type OAuthProvider,
 } from '@/lib/supabase';
+import { syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
@@ -68,8 +69,15 @@ function CallbackInner() {
     // post-exchange re-check, and the normal exchange). Redeems a pending
     // Flow B merge grant BEFORE loading the inventory so the counts reflect
     // the merged data, then flips to the success screen.
-    const finishSignedIn = async (email: string | null) => {
+    const finishSignedIn = async (email: string | null, uid: string | null) => {
       const merge = await redeemPendingMerge().catch(() => null);
+      // W6: any non-null summary — even a "nothing to move" one — means the
+      // grant was validated and consumed by the account it was bound to, i.e.
+      // the same human controlled both the anon session and this account.
+      // Claim the browser-local data for the new uid instead of clearing it
+      // (custom imports live ONLY in localStorage — a clear would destroy
+      // them). No summary → plain sync, which clears on a uid change.
+      syncLocalIdentityOwner(uid, { claim: merge !== null });
       const inv = await getDataInventory().catch(() => null);
       if (cancelled) return;
       setSignedInEmail(email);
@@ -143,7 +151,7 @@ function CallbackInner() {
       // completed THIS link's conversion in an earlier tick.)
       const preflight = await getAuthState();
       if (preflight.user && !preflight.isAnonymous) {
-        await finishSignedIn(preflight.email);
+        await finishSignedIn(preflight.email, preflight.user.id);
         return;
       }
 
@@ -184,7 +192,7 @@ function CallbackInner() {
         // error as a no-op and show success.
         const postCheck = await getAuthState();
         if (!cancelled && postCheck.user && !postCheck.isAnonymous) {
-          await finishSignedIn(postCheck.email);
+          await finishSignedIn(postCheck.email, postCheck.user.id);
           return;
         }
         setStatus('error');
@@ -196,7 +204,7 @@ function CallbackInner() {
       // shared helper redeems any pending merge, then loads the inventory.
       const state = await getAuthState();
       if (cancelled) return;
-      await finishSignedIn(state.email);
+      await finishSignedIn(state.email, state.user?.id ?? null);
     })();
 
     return () => { cancelled = true; };
