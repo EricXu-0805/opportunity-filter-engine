@@ -86,12 +86,50 @@ _ENG_SELECTORS = {
 }
 
 
-def _eng(short: str, name: str, majors: list[str], url: str) -> dict:
+def _eng(short: str, name: str, majors: list[str], url: str,
+         enrich: dict | None = None) -> dict:
+    scrape = {"url": url, "selectors": _ENG_SELECTORS,
+              "ladder_filter": {"require": r"professor|lecturer|instructor",
+                                "drop": _DROP}}
+    if enrich:
+        scrape["profile_enrich"] = enrich
     return {"short": short, "name": name, "majors": majors,
-            "directory_url": url,
-            "scrape": {"url": url, "selectors": _ENG_SELECTORS,
-                       "ladder_filter": {"require": r"professor|lecturer|instructor",
-                                         "drop": _DROP}}}
+            "directory_url": url, "scrape": scrape}
+
+
+# ---- Per-profile research enrichment (gated by OFE_ENRICH_PROFILES) ---------
+# Research-only: the listings already land name/rank/email; these follow each
+# faculty's own bio page to recover the research areas the directory cards omit.
+# Three markup families across CMU's colleges.
+
+# College of Engineering shared "bio" pages (MechE/ChemE/CEE/MSE) — tagged list.
+_ENG_ENRICH = {
+    "throttle": 0.3, "timeout": 8, "max_retries": 1,
+    "research_items_selector": "ul.facultyBioInterests li",
+}
+
+# School of Computer Science profile pages (CSD/HCII/LTI) — taxonomy list/links.
+_SCS_ENRICH = {
+    "throttle": 0.3, "timeout": 8, "max_retries": 1,
+    "research_items_selector": (
+        "ul.research-areas li, "
+        "h2:-soup-contains('Research Areas') + div a, "
+        "h2:-soup-contains('Research Areas') + div li"),
+}
+
+# Dietrich central-CMS + BME (SDS/PHIL tagged list; PSY/SDSC/BME prose).
+_CMS_ENRICH = {
+    "throttle": 0.3, "timeout": 8, "max_retries": 1,
+    "research_items_selector": (
+        "div.content h2:-soup-contains('Areas of Research') + ul li, "
+        "div.content h2:-soup-contains('Research') + ul li"),
+    # Only labelled topic-list headings — a bare "Research" heading fronts a
+    # biography paragraph on some Dietrich depts (SDSC), which comma-splits into
+    # sentence-fragment junk, so it is deliberately excluded.
+    "research_selector": (
+        "div.content h2:-soup-contains('Areas of Expertise') + p, "
+        "div.content h2:-soup-contains('Specific Research Interests') + p"),
+}
 
 
 SCHOOL: dict = {
@@ -117,6 +155,7 @@ SCHOOL: dict = {
                                   "email": "a[href^='mailto:']",
                                   "title_re": _TITLE_RE},
                     "name_flip": True,
+                    "profile_enrich": _SCS_ENRICH,
                     "paginate": {"param": "page", "start": 1, "max": 8}}},
         {"short": "HCII", "name": "Human-Computer Interaction Institute",
          "majors": ["Human-Computer Interaction", "Computer Science"],
@@ -126,11 +165,13 @@ SCHOOL: dict = {
                                   "name": ".faculty-content-heading h2 a",
                                   "link": ".faculty-content-heading h2 a",
                                   "title": "h3.faculty-content-heading-position",
-                                  "email": "a[href^='mailto:']"}}},
+                                  "email": "a[href^='mailto:']"},
+                    "profile_enrich": _SCS_ENRICH}},
         _filt("LTI", "Language Technologies Institute",
               ["Language Technologies", "Computer Science",
                "Natural Language Processing"],
-              "https://lti.cs.cmu.edu/people/faculty/index.html"),
+              "https://lti.cs.cmu.edu/people/faculty/index.html",
+              profile_enrich=_SCS_ENRICH),
         # ---- College of Engineering ----------------------------------------
         {"short": "ECE", "name": "Department of Electrical & Computer Engineering",
          "majors": ["Electrical Engineering", "Computer Engineering"],
@@ -142,16 +183,20 @@ SCHOOL: dict = {
                     "ladder_filter": {"drop": r"emerit|adjunct|courtesy|special faculty"}}},
         _eng("MECHE", "Department of Mechanical Engineering",
              ["Mechanical Engineering"],
-             "https://www.meche.engineering.cmu.edu/directory/index.html"),
+             "https://www.meche.engineering.cmu.edu/directory/index.html",
+             enrich=_ENG_ENRICH),
         _eng("CHEME", "Department of Chemical Engineering",
              ["Chemical Engineering"],
-             "https://www.cheme.engineering.cmu.edu/directory/index.html"),
+             "https://www.cheme.engineering.cmu.edu/directory/index.html",
+             enrich=_ENG_ENRICH),
         _eng("CEE", "Department of Civil & Environmental Engineering",
              ["Civil Engineering", "Environmental Engineering"],
-             "https://www.cee.engineering.cmu.edu/directory/index.html"),
+             "https://www.cee.engineering.cmu.edu/directory/index.html",
+             enrich=_ENG_ENRICH),
         _eng("MSE", "Department of Materials Science & Engineering",
              ["Materials Science & Engineering"],
-             "https://www.materials.cmu.edu/directory/index.html"),
+             "https://www.materials.cmu.edu/directory/index.html",
+             enrich=_ENG_ENRICH),
         _eng("EPP", "Department of Engineering & Public Policy",
              ["Engineering & Public Policy"],
              "https://www.cmu.edu/epp/people/faculty/index.html"),
@@ -162,6 +207,7 @@ SCHOOL: dict = {
               # pi_name stays a clean person name (same fix as OSU/UF configs).
               selectors={**_FILTERABLE, "title": "p",
                          "name_strip": r"^Dr\.?\s+"},
+              profile_enrich=_CMS_ENRICH,
               ladder_filter={"require": r"professor|lecturer|instructor",
                              "drop": _DROP}),
         # ---- Mellon College of Science --------------------------------------
@@ -176,15 +222,18 @@ SCHOOL: dict = {
         # ---- Dietrich College ------------------------------------------------
         _filt("SDS", "Department of Statistics & Data Science",
               ["Statistics & Data Science", "Data Science"],
-              "https://www.cmu.edu/dietrich/statistics-datascience/people/faculty/index.html"),
+              "https://www.cmu.edu/dietrich/statistics-datascience/people/faculty/index.html",
+              profile_enrich=_CMS_ENRICH),
         _filt("PSY", "Department of Psychology", ["Psychology", "Neuroscience"],
               "https://www.cmu.edu/dietrich/psychology/directory/index.html",
-              link_filter=r"core-training-faculty/"),
+              link_filter=r"core-training-faculty/", profile_enrich=_CMS_ENRICH),
         _filt("PHIL", "Department of Philosophy", ["Philosophy", "Logic"],
-              "https://www.cmu.edu/dietrich/philosophy/people/faculty/index.html"),
+              "https://www.cmu.edu/dietrich/philosophy/people/faculty/index.html",
+              profile_enrich=_CMS_ENRICH),
         _filt("SDSC", "Department of Social & Decision Sciences",
               ["Social & Decision Sciences", "Behavioral Economics"],
-              "https://www.cmu.edu/dietrich/sds/people/faculty/index.html"),
+              "https://www.cmu.edu/dietrich/sds/people/faculty/index.html",
+              profile_enrich=_CMS_ENRICH),
     ],
 }
 
