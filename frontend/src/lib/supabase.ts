@@ -253,6 +253,42 @@ export async function getAuthState(): Promise<AuthState> {
 }
 
 /**
+ * W10b contact reveal: the access token to send the backend, or null when the
+ * caller is not a signed-in account. Anonymous sessions hold real tokens but
+ * can never unlock the reveal (the backend enforces the same), so sending
+ * theirs would only buy a wasted GoTrue round-trip.
+ */
+export async function getRevealAccessToken(): Promise<string | null> {
+  if (typeof window === 'undefined' || !SUPABASE_CONFIGURED) return null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token || isAnonymousUser(session)) return null;
+    return session.access_token;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * W10b degrade-retry: when the backend answers `sign_in_required` to a token
+ * we believed valid, refresh the session once and hand back the new token —
+ * or null, in which case the UI shows the sign-in affordance instead of an
+ * error. Never throws.
+ */
+export async function refreshRevealAccessToken(): Promise<string | null> {
+  if (typeof window === 'undefined' || !SUPABASE_CONFIGURED) return null;
+  try {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error) return null;
+    const session = data.session;
+    if (!session?.access_token || isAnonymousUser(session)) return null;
+    return session.access_token;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Subscribe to auth state changes. Returns an unsubscribe function.
  * Wraps `onAuthStateChange` so callers don't have to deal with the
  * Supabase subscription object shape directly.

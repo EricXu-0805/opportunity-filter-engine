@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Star, Check, Sparkles, Calendar, Target, Send, MapPin } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { track } from '@/lib/analytics';
-import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
+import { persistHomeSchool, recordSchoolConfirmation } from '@/lib/school-confirmation';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { SCHOOLS } from '@/lib/schools';
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
@@ -25,28 +26,6 @@ const LOCATIONS: Partial<Record<SlideKey, string>> = {
   dashboard: 'dashboardLoc',
   roadmap: 'roadmapLoc',
 };
-
-// The first-visit school choice is handed to the home profile form two ways:
-//   1. merged into the persisted local profile blob — the same key loadProfile()
-//      reads first — so a *fresh* load (no Supabase row yet, which is every
-//      first-visit user) opens on the chosen campus;
-//   2. broadcast on a window event, because the home form usually mounts and
-//      reads its profile *before* the tour finishes — so a plain localStorage
-//      write would never be re-read. The form listens and updates home_school
-//      live (see use-profile-form.ts).
-// Local-only persistence keeps this component off the supabase client (and its
-// jsdom test trivial); a later form submit syncs the full profile to Supabase.
-function persistHomeSchool(slug: string): void {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    const parsed = raw ? JSON.parse(raw) : null;
-    const base = parsed && typeof parsed === 'object' ? parsed : {};
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ ...base, home_school: slug }));
-  } catch { /* storage unavailable */ }
-  try {
-    window.dispatchEvent(new CustomEvent(HOME_SCHOOL_EVENT, { detail: slug }));
-  } catch { /* SSR / no window */ }
-}
 
 // ---- per-feature mini visuals — each "assembles" on view (staggered .ob-* anims) ----
 
@@ -352,6 +331,10 @@ export default function OnboardingIntro() {
   const locKey = LOCATIONS[slide];
 
   const finish = () => {
+    // W10b: choosing a school IS confirming it. Record the receipt BEFORE
+    // persistHomeSchool — its HOME_SCHOOL_EVENT wakes the confirm gate, which
+    // must already see this campus as confirmed.
+    recordSchoolConfirmation(schoolSlug);
     persistHomeSchool(schoolSlug);
     track('onboarding_completed', { school: schoolSlug });
     try { localStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, '1'); } catch { /* ignore */ }

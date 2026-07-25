@@ -41,7 +41,8 @@ export type AuthModalReason =
   | 'save-favorites-anchor'
   | 'guest-banner'
   | 'deep-link'
-  | 'home-save-cta';
+  | 'home-save-cta'
+  | 'contact-reveal';
 
 interface OpenOptions {
   reason?: AuthModalReason;

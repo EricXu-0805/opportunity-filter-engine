@@ -152,7 +152,21 @@ export interface Opportunity {
   // Record-scoped follow/tracking id (W8) — present on faculty detail
   // payloads only; the key for professor_follows and /professors/updates.
   professor_id?: string;
+  // W10b auth-gated contact reveal (detail payload only). The server includes
+  // contact_email ONLY when status is 'revealed'; 'sign_in_required' means a
+  // verified address exists behind the sign-in gate; 'unavailable' means no
+  // verified-provenance address exists at all. Absent on cached/list shapes.
+  contact_email?: string;
+  contact_email_status?: ContactEmailStatus;
 }
+
+/**
+ * W10b contact bar (mirrors backend.lib.contact_visibility): a professor's
+ * address is offered only when it is real harvested data AND the session is a
+ * signed-in account. A stale token degrades to 'sign_in_required' — the same
+ * shape as anonymous — never an error.
+ */
+export type ContactEmailStatus = 'revealed' | 'sign_in_required' | 'unavailable';
 
 // ── Match Results ────────────────────────────────────────────────────
 export type MatchBucket = 'high_priority' | 'good_match' | 'reach' | 'low_fit';
@@ -217,6 +231,10 @@ export interface ColdEmailResponse {
   body: string;
   recipient_email: string;
   mailto_link: string;
+  /** W10b: recipient_email is non-empty only when 'revealed'. Optional so
+   *  cached pre-W10b responses still typecheck (treated as 'revealed' when an
+   *  address is present). */
+  recipient_status?: ContactEmailStatus;
   method: 'template' | 'ai';
   lab_type?: LabType | null;
   /** The voice overlay applied (null on the template path). */
@@ -247,6 +265,9 @@ export interface EmailVariant {
 export interface EmailVariantsResponse {
   variants: EmailVariant[];
   lab_type?: LabType | null;
+  /** W10b: one status for the whole response — it is a property of the
+   *  opportunity + session, not of a variant. */
+  recipient_status?: ContactEmailStatus;
   recommended_style?: EmailStyle | null;
 }
 

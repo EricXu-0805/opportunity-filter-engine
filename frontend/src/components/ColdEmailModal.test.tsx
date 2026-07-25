@@ -29,6 +29,21 @@ vi.mock('@/lib/api', () => ({
   extractResumeBullets: async () => ({ bullets: [], method: 'heuristic' }),
 }));
 
+// W10b: spy the auth modal opener so the sign-in-to-reveal affordance is
+// assertable; every other test simply ignores the stub (same shape as the
+// context's INERT fallback).
+const openAuthModalMock = vi.fn();
+vi.mock('@/lib/auth-modal-context', () => ({
+  useAuthModal: () => ({
+    open: false,
+    phase: 'auto',
+    reason: null,
+    openModal: openAuthModalMock,
+    closeModal: () => {},
+    setPhase: () => {},
+  }),
+}));
+
 import ColdEmailModal from './ColdEmailModal';
 import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
 
@@ -1025,5 +1040,70 @@ describe('no-email directory self-lookup link', () => {
       expect(screen.getByText('coldEmail.emailUnavailableTitle')).toBeInTheDocument(),
     );
     expect(screen.queryByText(/emailLookupDirectory/)).toBeNull();
+  });
+});
+
+describe('W10b recipient states (contact bar)', () => {
+  it('locked reveal: shows the sign-in affordance, not the "not found" lie', async () => {
+    mockGetVariants.mockResolvedValue({
+      variants: [makeVariant({ recipient_email: '' })],
+      recipient_status: 'sign_in_required',
+    });
+    render(
+      <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+    );
+    expect(await screen.findByTestId('recipient-sign-in')).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.emailUnavailableTitle')).toBeNull();
+    // Drafting still works — the draft is the value.
+    expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument();
+    // Send affordances stay disabled until an address exists.
+    expect(screen.getByText('coldEmail.openInEmail').closest('button')).toBeDisabled();
+    fireEvent.click(screen.getByText('coldEmail.signInToRevealCta'));
+    expect(openAuthModalMock).toHaveBeenCalledWith({ reason: 'contact-reveal' });
+  });
+
+  it('no verified address: keeps the honest unavailable state (no sign-in bait)', async () => {
+    mockGetVariants.mockResolvedValue({
+      variants: [makeVariant({ recipient_email: '' })],
+      recipient_status: 'unavailable',
+    });
+    render(
+      <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText('coldEmail.emailUnavailableTitle')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('recipient-sign-in')).toBeNull();
+  });
+
+  it('revealed: prefills the To field exactly as before', async () => {
+    mockGetVariants.mockResolvedValue({
+      variants: [makeVariant({ recipient_email: 'prof@illinois.edu' })],
+      recipient_status: 'revealed',
+    });
+    render(
+      <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+    );
+    await waitFor(() => expect(screen.getByDisplayValue('prof@illinois.edu')).toBeInTheDocument());
+    expect(screen.queryByTestId('recipient-sign-in')).toBeNull();
+    expect(screen.getByText('coldEmail.openInEmail').closest('button')).not.toBeDisabled();
+  });
+
+  it('switching variants never wipes a hand-typed address', async () => {
+    mockGetVariants.mockResolvedValue({
+      variants: [
+        makeVariant({ id: 'a', label: 'Formal', recipient_email: '' }),
+        makeVariant({ id: 'b', label: 'Casual', recipient_email: '' }),
+      ],
+      recipient_status: 'sign_in_required',
+    });
+    render(
+      <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+    );
+    await waitFor(() => expect(screen.getByText('Casual')).toBeInTheDocument());
+    const toInput = screen.getByPlaceholderText('coldEmail.toPlaceholder');
+    fireEvent.change(toInput, { target: { value: 'typed@example.edu' } });
+    fireEvent.click(screen.getByText('Casual'));
+    expect(screen.getByDisplayValue('typed@example.edu')).toBeInTheDocument();
   });
 });

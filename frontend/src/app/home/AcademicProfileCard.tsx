@@ -11,6 +11,7 @@ import type { ProfileData } from '@/lib/types';
 import { GRADES } from '@/lib/colleges';
 import { loadCatalog } from '@/lib/catalogs';
 import { suggestInterests } from '@/lib/interest-suggestions';
+import { recordSchoolConfirmation } from '@/lib/school-confirmation';
 import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
 import { SEEKING_TYPES, type TFunc } from './types';
@@ -349,6 +350,9 @@ export function AcademicProfileCard({
           initialSelectedSlug={homeSchool}
           onCancel={() => setSwitcherOpen(false)}
           onConfirm={(slug) => {
+            // W10b: switching IS confirming — the explicit choice doubles as
+            // the one-time school confirmation, so the gate never re-asks.
+            recordSchoolConfirmation(slug);
             update('home_school', slug);
             setSwitcherOpen(false);
           }}

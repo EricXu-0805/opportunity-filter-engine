@@ -21,6 +21,12 @@ interface UniversitySwitcherModalProps {
   initialSelectedSlug: string;
   onCancel: () => void;
   onConfirm: (slug: string) => void;
+  // W10b confirm-gate reuse: pre-translated overrides so the one-time school
+  // confirmation can present this same picker as "confirm your school" rather
+  // than "change university". Defaults keep the switcher unchanged.
+  title?: string;
+  note?: string;
+  confirmLabel?: string;
 }
 
 function CoverageChip(
@@ -55,6 +61,9 @@ export default function UniversitySwitcherModal({
   initialSelectedSlug,
   onCancel,
   onConfirm,
+  title,
+  note,
+  confirmLabel,
 }: UniversitySwitcherModalProps) {
   const { t, locale } = useT();
   const [query, setQuery] = useState('');
@@ -104,7 +113,7 @@ export default function UniversitySwitcherModal({
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 id="university-switcher-title" className="text-[15px] font-semibold text-gray-900">
-            {t('universitySwitcher.title')}
+            {title ?? t('universitySwitcher.title')}
           </h2>
           <button
             type="button"
@@ -187,7 +196,7 @@ export default function UniversitySwitcherModal({
           )}
 
           <p className="mt-4 text-[11px] text-gray-400 leading-relaxed">
-            {t('universitySwitcher.footerNote')}
+            {note ?? t('universitySwitcher.footerNote')}
           </p>
         </div>
 
@@ -210,7 +219,7 @@ export default function UniversitySwitcherModal({
               disabled={!selected}
               className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {t('universitySwitcher.confirm')}
+              {confirmLabel ?? t('universitySwitcher.confirm')}
             </button>
           </div>
         </div>
