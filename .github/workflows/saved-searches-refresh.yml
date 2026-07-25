@@ -33,3 +33,26 @@ jobs:
           curl -sfSL \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.BACKEND_URL }}/api/cron/saved-searches/digest"
+
+      # Cron failures send no notification by default — the data-refresh
+      # pipeline once failed 7 runs in a row before anyone noticed. Same
+      # operator alert as refresh-data.yml.
+      - name: Alert operator on failure
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            exit 0
+          fi
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
+              \"to\": [\"$OPERATOR_EMAIL\"],
+              \"subject\": \"JoinALab: saved-searches refresh FAILED\",
+              \"text\": \"The scheduled saved-searches refresh/digest failed.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nSaved-search alerts and digests did not go out this cycle.\"
+            }" || true
