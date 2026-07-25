@@ -34,11 +34,41 @@ _NW_SEL = {"card": "div.people-wrap", "name": "h3 a", "link": "h3 a",
 _NW_LADDER = {"require": r"\bprofessor\b",
               "drop": (r"\bemerit|instruction|\blecturer|\bvisiting|\badjunct"
                        r"|\bpostdoctoral|\bfellow\b|\bstaff\b")}
+# Weinberg Cascade profiles keep research in a ``div#biography-content`` block
+# under a "Research"/"Interests"/"Specializations" heading (case-sensitive
+# soupsieve, so the uppercase Anthropology variant is listed explicitly); the
+# body sometimes sits in an <h1> rather than <p>, so the combinator is ``+ *``.
+# research_selector (prose, comma/semicolon-split downstream); env-gated
+# (no ``always``) so it rides OFE_ENRICH_PROFILES + carry-forward persistence.
+_NW_ENRICH = {
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
+    "research_selector": (
+        '#biography-content h2:-soup-contains("Research") + *, '
+        '#biography-content h3:-soup-contains("Research") + *, '
+        '#biography-content h4:-soup-contains("Research") + *, '
+        '#biography-content h5:-soup-contains("Research") + *, '
+        '#biography-content h2:-soup-contains("RESEARCH AND TEACHING INTERESTS") + *, '
+        '#biography-content h3:-soup-contains("RESEARCH AND TEACHING INTERESTS") + *, '
+        '#biography-content h4:-soup-contains("RESEARCH AND TEACHING INTERESTS") + *, '
+        '#biography-content h5:-soup-contains("RESEARCH AND TEACHING INTERESTS") + *, '
+        '#biography-content h2:-soup-contains("Specializations") + *, '
+        '#biography-content h3:-soup-contains("Specializations") + *, '
+        '#biography-content h4:-soup-contains("Specializations") + *, '
+        '#biography-content h5:-soup-contains("Specializations") + *, '
+        '#biography-content h2:-soup-contains("Interests") + *, '
+        '#biography-content h3:-soup-contains("Interests") + *, '
+        '#biography-content h4:-soup-contains("Interests") + *, '
+        '#biography-content h5:-soup-contains("Interests") + *'
+    ),
+}
 
 
 def _nw(short: str, name: str, majors: list[str], url: str,
         link_filter: str | None = None) -> dict:
-    scrape: dict = {"url": url, "selectors": _NW_SEL, "ladder_filter": _NW_LADDER}
+    scrape: dict = {"url": url, "selectors": _NW_SEL, "ladder_filter": _NW_LADDER,
+                    "profile_enrich": _NW_ENRICH}
     if link_filter:
         scrape["link_filter"] = link_filter
     return {"short": short, "name": name, "majors": majors,
