@@ -13,6 +13,10 @@ export const STORAGE_KEYS = {
   FILTER_PRESETS: 'ofe_filter_presets',
   CUSTOM_IMPORTS: 'ofe_custom_imports',
   EMAIL_HINT: 'ofe_email_hint',
+  FAVORITES_FALLBACK: 'ofe_favs_fallback',
+  // W6: auth uid that owns the user-scoped local values below. Plain string,
+  // written beside the data (never wrapped around it) — see identity-owner.ts.
+  LOCAL_IDENTITY_OWNER: 'ofe_local_identity_owner',
   TAILOR_DRAFT_PREFIX: 'ofe_tailor_draft_',
   ANCHOR_3FAV_DISMISSED: 'ofe_anchor_3fav_dismissed',
   JUST_SIGNED_OUT: 'ofe_just_signed_out',

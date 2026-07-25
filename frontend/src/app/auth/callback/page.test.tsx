@@ -64,6 +64,8 @@ vi.mock('@/i18n/client', () => ({
   useT: () => stableTApi,
 }));
 
+import { STORAGE_KEYS } from '@/lib/storage-keys';
+
 import CallbackPage from './page';
 
 afterEach(() => {
@@ -201,6 +203,55 @@ describe('CallbackPage — R68 idempotency guard', () => {
       expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('callback-merge-line')).not.toBeInTheDocument();
+  });
+
+  // W6 wiring: the callback page calls the REAL identity-owner module (only
+  // @/lib/supabase is mocked here), so these two pin the claim/clear decision
+  // it makes after redeeming (or failing to redeem) a Flow B merge grant.
+  it('claims the guest\'s local data for the new uid after a successful merge', async () => {
+    localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, 'anon-uid');
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_IMPORTS, '[{"id":"custom-1"}]');
+    mockGetAuthState.mockResolvedValue({
+      session: { user: { id: 'p' } },
+      user: { id: 'p' },
+      isAnonymous: false,
+      email: 'eric@illinois.edu',
+    });
+    mockRedeemMerge.mockResolvedValue({
+      merged: true,
+      favorites: 0,
+      interactions: 0,
+      savedSearches: 0,
+      attachmentsNotMoved: 0,
+    });
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+    });
+    expect(localStorage.getItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER)).toBe('p');
+    expect(localStorage.getItem(STORAGE_KEYS.CUSTOM_IMPORTS)).toBe('[{"id":"custom-1"}]');
+  });
+
+  it('clears the previous identity\'s local data on a plain (non-merge) sign-in', async () => {
+    localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, 'anon-uid');
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_IMPORTS, '[{"id":"custom-1"}]');
+    mockGetAuthState.mockResolvedValue({
+      session: { user: { id: 'p' } },
+      user: { id: 'p' },
+      isAnonymous: false,
+      email: 'eric@illinois.edu',
+    });
+    mockRedeemMerge.mockResolvedValue(null);
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+    });
+    expect(localStorage.getItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER)).toBe('p');
+    expect(localStorage.getItem(STORAGE_KEYS.CUSTOM_IMPORTS)).toBeNull();
   });
 
   it('shows the error page when exchange fails AND no session is established', async () => {

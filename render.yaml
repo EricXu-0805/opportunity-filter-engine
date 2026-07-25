@@ -10,6 +10,10 @@ services:
     # exhausted. Durable fix remains a DB-backed corpus (then a small instance
     # suffices again).
     plan: standard
+    # Deploy only after the commit's CI checks pass (Render blueprint spec,
+    # verified 2026-07-25) — the default deploys every main commit immediately,
+    # so a red-CI commit could reach prod before its checks finished.
+    autoDeployTrigger: checksPass
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     envVars:
