@@ -6,6 +6,7 @@ Covers: field matching, eligibility/readiness/upside scoring,
 Run with: pytest tests/test_matcher.py -v
 """
 
+import functools
 import json
 import os
 import sys
@@ -47,6 +48,22 @@ from src.matcher.ranker import (
     score_upside,
     semantic_rerank,
 )
+
+_CORPUS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
+
+
+@functools.lru_cache(maxsize=1)
+def _load_corpus() -> list[dict]:
+    # Parsed once per session and shared read-only across every test that runs
+    # the ranker over the real corpus. The file is 300 MB+; re-parsing it per
+    # test was pure redundant CI cost. rank_all does not mutate its input, and
+    # these tests only read — do not mutate the returned records.
+    if not os.path.exists(_CORPUS_PATH):
+        pytest.skip("No processed data file")
+    with open(_CORPUS_PATH) as f:
+        data = json.load(f)
+    return data["opportunities"] if isinstance(data, dict) and "opportunities" in data else data
+
 
 # ── Fixtures ──────────────────────────────────
 
@@ -649,11 +666,7 @@ class TestHighPriorityBucketing:
     that yields 5 for one student and 80 for another."""
 
     def _opps(self):
-        path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
-        if not os.path.exists(path):
-            pytest.skip("No processed data file")
-        with open(path) as f:
-            return json.load(f)
+        return _load_corpus()
 
     def test_high_priority_quality_gated_and_bounded(self):
         from src.matcher.config import BUCKET_THRESHOLDS
@@ -703,12 +716,7 @@ class TestBucketClassification:
 
 class TestDataIntegrity:
     def test_processed_data_schema(self):
-        path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
-        if not os.path.exists(path):
-            pytest.skip("No processed data file")
-
-        with open(path) as f:
-            data = json.load(f)
+        data = _load_corpus()
 
         assert len(data) > 0, "Processed data is empty"
 
@@ -719,12 +727,7 @@ class TestDataIntegrity:
             assert isinstance(opp.get("eligibility"), dict), f"Bad eligibility in: {opp.get('title')}"
 
     def test_no_duplicate_ids(self):
-        path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
-        if not os.path.exists(path):
-            pytest.skip("No processed data file")
-
-        with open(path) as f:
-            data = json.load(f)
+        data = _load_corpus()
 
         ids = [opp["id"] for opp in data]
         seen: set[str] = set()
@@ -737,12 +740,7 @@ class TestDataIntegrity:
 
     def test_ranker_on_real_data(self, sample_profile):
         """End-to-end test: run ranker on actual processed data."""
-        path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
-        if not os.path.exists(path):
-            pytest.skip("No processed data file")
-
-        with open(path) as f:
-            opps = json.load(f)
+        opps = _load_corpus()
 
         results = rank_all(sample_profile, opps)
         assert len(results) > 0, "Ranker returned no results on real data"
@@ -1867,12 +1865,7 @@ class TestMajorDriveRealCorpus:
     the corpus barely covers)."""
 
     def _opps(self):
-        path = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
-        if not os.path.exists(path):
-            pytest.skip("No processed data file")
-        with open(path) as f:
-            data = json.load(f)
-        return data["opportunities"] if isinstance(data, dict) and "opportunities" in data else data
+        return _load_corpus()
 
     def _profile(self, major):
         return {"year": "sophomore", "major": major, "secondary_interests": [],
