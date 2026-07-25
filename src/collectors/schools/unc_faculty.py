@@ -199,18 +199,8 @@ SCHOOL: dict = {
             "directory_url": "https://publicpolicy.unc.edu/people/core-faculty/",
             "scrape": {
                 "url": "https://publicpolicy.unc.edu/people/core-faculty/",
-                "selectors": {
-                    **_WPLOOP_SEL,
-                    "title": ".is-acf-field.is-text-field .value",
-                    "email": "a[href^='mailto:']"},
-            },
-        },
-        {
-            "short": "PLCY", "name": "Department of Public Policy",
-            "majors": ["Public Policy"],
-            "directory_url": "https://publicpolicy.unc.edu/people/teaching-research-faculty/",
-            "scrape": {
-                "url": "https://publicpolicy.unc.edu/people/teaching-research-faculty/",
+                "extra_urls": [
+                    "https://publicpolicy.unc.edu/people/teaching-research-faculty/"],
                 "selectors": {
                     **_WPLOOP_SEL,
                     "title": ".is-acf-field.is-text-field .value",
@@ -361,15 +351,7 @@ SCHOOL: dict = {
             "directory_url": "https://art.unc.edu/people/art-history-faculty/",
             "scrape": {
                 "url": "https://art.unc.edu/people/art-history-faculty/",
-                "selectors": {**_WPLOOP_SEL}, "name_flip": True,
-            },
-        },
-        {
-            "short": "ART", "name": "Department of Art & Art History",
-            "majors": ["Studio Art", "Art History"],
-            "directory_url": "https://art.unc.edu/people/studio-art-faculty/",
-            "scrape": {
-                "url": "https://art.unc.edu/people/studio-art-faculty/",
+                "extra_urls": ["https://art.unc.edu/people/studio-art-faculty/"],
                 "selectors": {**_WPLOOP_SEL}, "name_flip": True,
             },
         },
@@ -409,18 +391,21 @@ SCHOOL: dict = {
             "MEDBIOCHEM", "SOM — Biochemistry & Biophysics",
             ["Biochemistry", "Biophysics", "Molecular Biology"],
             "https://www.med.unc.edu/biochem/our-people/faculty/"),
-        _som_dept(
-            "MEDGEN", "SOM — Genetics",
-            ["Genetics", "Genomics", "Molecular Genetics"],
-            "https://www.med.unc.edu/genetics/people/professors-and-distinguished-professors/"),
-        _som_dept(
-            "MEDGEN", "SOM — Genetics",
-            ["Genetics", "Genomics", "Molecular Genetics"],
-            "https://www.med.unc.edu/genetics/people/associate-professors/"),
-        _som_dept(
-            "MEDGEN", "SOM — Genetics",
-            ["Genetics", "Genomics", "Molecular Genetics"],
-            "https://www.med.unc.edu/genetics/people/assistant-professors/"),
+        {
+            # Genetics splits faculty across rank sub-pages (no single all-faculty
+            # gallery); the three ladder pages share the SOM directory-gallery
+            # theme and merge under one department via extra_urls.
+            "short": "MEDGEN", "name": "SOM — Genetics",
+            "majors": ["Genetics", "Genomics", "Molecular Genetics"],
+            "directory_url": "https://www.med.unc.edu/genetics/people/professors-and-distinguished-professors/",
+            "scrape": {
+                "url": "https://www.med.unc.edu/genetics/people/professors-and-distinguished-professors/",
+                "extra_urls": [
+                    "https://www.med.unc.edu/genetics/people/associate-professors/",
+                    "https://www.med.unc.edu/genetics/people/assistant-professors/"],
+                "selectors": _SOM_SEL, "ladder_filter": _SOM_LADDER,
+            },
+        },
         _som_dept(
             "MEDPHARM", "SOM — Pharmacology",
             ["Pharmacology", "Molecular Pharmacology"],

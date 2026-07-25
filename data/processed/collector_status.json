@@ -1,32 +1,25 @@
 {
-  "duration_seconds": 1152.5,
+  "duration_seconds": 126.0,
   "shard": {
     "national": false,
     "schools": [
-      "uky"
+      "unc"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 5,
+      "rule_based_tagged": 0,
       "status": "ok"
-    },
-    "campus_graph:uky": {
-      "deep": true,
-      "fetched": 6,
-      "new": 0,
-      "status": "ok",
-      "updated": 6
     },
     "deactivate_past": {
       "already_inactive": 748,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 127321,
+      "skipped_rolling": 127253,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 746,
+      "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
@@ -48,12 +41,18 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 731,
-      "enriched": 16,
+      "already_had": 0,
+      "enriched": 0,
       "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 9,
-      "scraped": 21,
+      "renulled_shared_emails": 0,
+      "scraped": 0,
       "skipped_budget": 0,
+      "status": "ok"
+    },
+    "professor_tracking": {
+      "events": 0,
+      "new_events": 0,
+      "profiles": 2824,
       "status": "ok"
     },
     "school_audience": {
@@ -97,7 +96,7 @@
         "clemson_research_programs": 4,
         "cmc_faculty": 154,
         "cmc_research_programs": 10,
-        "cmu_faculty": 960,
+        "cmu_faculty": 897,
         "cmu_research_programs": 6,
         "colby_faculty": 238,
         "colby_research_programs": 8,
@@ -370,7 +369,7 @@
         "vassar_research_programs": 8,
         "vt_faculty": 1707,
         "vt_research_programs": 9,
-        "washu_faculty": 1096,
+        "washu_faculty": 1091,
         "washu_research_programs": 8,
         "wellesley_faculty": 285,
         "wellesley_research_programs": 2,
@@ -388,17 +387,15 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 128933
+      "tagged": 128865
     },
-    "uky_faculty": {
-      "fetched": 746,
-      "new": 0,
-      "status": "ok",
-      "updated": 746
+    "unc_faculty": {
+      "error": "unc faculty config invalid: duplicate department short 'PLCY'; duplicate department short 'ART'; duplicate department short 'MEDGEN'; duplicate department short 'MEDGEN'",
+      "status": "error"
     }
   },
-  "timestamp": "2026-07-25T02:54:29.490397",
-  "total_in_file": 128933,
+  "timestamp": "2026-07-25T16:53:22.436734",
+  "total_in_file": 128865,
   "total_new": 0,
-  "total_updated": 752
+  "total_updated": 0
 }
