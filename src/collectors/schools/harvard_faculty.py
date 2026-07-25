@@ -349,7 +349,9 @@ SCHOOL: dict = {
                 "ladder_filter": {"drop": r"emerit|visiting|\blecturer\b|climenko|fellow"},
                 "paginate": {"param": "page", "start": 2, "max": 5},
                 "profile_enrich": {"email_selector": "a[href^='mailto:']",
-                                   "email_drop": r"^[^@]*$", "throttle": 0.2},
+                                   "email_drop": r"^[^@]*$",
+                                   "research_items_selector": ".faculty-page__meta-group--areas ul li a",
+                                   "throttle": 0.3, "timeout": 8, "max_retries": 1},
             },
         },
         {
