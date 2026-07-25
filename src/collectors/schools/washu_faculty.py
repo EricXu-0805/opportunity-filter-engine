@@ -142,6 +142,19 @@ _AS_SELECTORS = {
 # ?cat=88 already gates the roles server-side; drop emeriti stragglers.
 _LADDER_LIGHT = {"drop": r"emerit"}
 
+# Research-only per-profile pass: the ?cat=88 listing carries name/title/email
+# but no research, so A&S faculty ship research-blind. Each profile exposes a
+# discrete tagged list <ul class="interests"><li>…</li></ul> — one <li> per
+# area → clean atomic keywords. Env-gated (OFE_ENRICH_PROFILES=1) at capture
+# time; the captured keywords then persist via _carry_forward_enrichment on
+# listing-only refreshes, so the weekly cron pays nothing.
+_AS_ENRICH = {
+    "research_items_selector": "ul.interests li",
+    "timeout": 8,
+    "max_retries": 1,
+    "throttle": 0.3,
+}
+
 
 def _as(short: str, name: str, majors: list[str], subdomain: str,
         path: str = "/people") -> dict:
@@ -150,6 +163,7 @@ def _as(short: str, name: str, majors: list[str], subdomain: str,
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _AS_SELECTORS,
                        "ladder_filter": _LADDER_LIGHT,
+                       "profile_enrich": _AS_ENRICH,
                        "paginate": {"param": "page", "start": 1, "max": 6}}}
 
 
