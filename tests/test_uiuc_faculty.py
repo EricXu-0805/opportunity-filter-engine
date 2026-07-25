@@ -362,6 +362,36 @@ def test_carry_forward_preserves_profile_pass_email():
     assert incoming["keywords"] == ["quantum optics", "laser cooling", "bose-einstein condensates"]
 
 
+def test_carry_forward_keeps_attribution_stamp_with_recent_works():
+    """The publication_attribution_status stamp travels WITH the works it
+    describes: carried when the works are carried, gone when a fresh scrape
+    brings its own works (the stamp never labels works it didn't describe)."""
+    existing = {
+        "pi_name": "A B", "department": "Physics",
+        "metadata": {"recent_works": [{"title": "Old Paper", "year": 2024}],
+                     "publication_attribution_status": "verified_author_id"},
+    }
+    incoming = {"pi_name": "A B", "department": "Physics"}
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["recent_works"] == [{"title": "Old Paper", "year": 2024}]
+    assert incoming["metadata"]["publication_attribution_status"] == "verified_author_id"
+
+    # incoming already has works → neither existing works nor stamp are carried
+    incoming2 = {"pi_name": "A B", "department": "Physics",
+                 "metadata": {"recent_works": [{"title": "New Paper", "year": 2026}]}}
+    _carry_forward_enrichment(existing, incoming2)
+    assert incoming2["metadata"]["recent_works"] == [{"title": "New Paper", "year": 2026}]
+    assert "publication_attribution_status" not in incoming2["metadata"]
+
+    # legacy record with works but no stamp → works still carried, no stamp invented
+    legacy = {"pi_name": "A B", "department": "Physics",
+              "metadata": {"recent_works": [{"title": "Old Paper", "year": 2024}]}}
+    incoming3 = {"pi_name": "A B", "department": "Physics"}
+    _carry_forward_enrichment(legacy, incoming3)
+    assert incoming3["metadata"]["recent_works"] == [{"title": "Old Paper", "year": 2024}]
+    assert "publication_attribution_status" not in incoming3["metadata"]
+
+
 def test_carry_forward_fresh_email_still_wins():
     existing = {
         "pi_name": "A B", "department": "Computer Science",

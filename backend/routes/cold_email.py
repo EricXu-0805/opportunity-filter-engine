@@ -30,6 +30,7 @@ from backend.lib.grounding import (
 )
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.publication_attribution import works_are_verified
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
@@ -392,6 +393,15 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
     required_str = _sanitize_field(", ".join(p["opp_skills_required"][:5]), max_len=200) or "(none specified)"
     opp_desc = _sanitize_field(p["opp_desc"], max_len=600) or "(no description)"
     recent_works = _format_recent_works(opp) or "(none)"
+    # Truthful attribution: only pipeline-verified works are presented as the
+    # professor's own; name-matched/legacy works get an honest label instead
+    # of suppression (they are usually correct — the model may still cite one).
+    works_label = (
+        "Recent publications by this professor"
+        if recent_works == "(none)" or works_are_verified(opp)
+        else "Recent publications matched to this professor by name, not "
+             "independently verified"
+    )
     return (
         f"PROFESSOR / OPPORTUNITY:\n"
         f"- Recipient: {recipient}\n"
@@ -402,7 +412,7 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
         f"- Research area: {research_area}\n"
         f"- Specific topic signal: {research_topic}\n"
         f"- Professor's stated research areas: {research_areas_raw}\n"
-        f"- Recent publications by this professor (cite at most ONE, whichever "
+        f"- {works_label} (cite at most ONE, whichever "
         f"is most relevant): {recent_works}\n"
         f"- Required skills: {required_str}\n"
         f"- Description excerpt: {opp_desc}\n"

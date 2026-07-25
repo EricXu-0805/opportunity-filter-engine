@@ -318,8 +318,11 @@ def test_harvest_works_targets_matched_authors_only(monkeypatch):
     monkeypatch.setattr(oa, "author_recent_works",
                         lambda aid, dept="": [{"title": "Recent Paper", "year": 2026}])
     mapping = oa.harvest_works(opps, throttle=0)
-    # keyworded faculty ARE works targets; already-enriched + unmapped schools are not
-    assert mapping == {"https://x.edu/a#a match": [{"title": "Recent Paper", "year": 2026}]}
+    # keyworded faculty ARE works targets; already-enriched + unmapped schools
+    # are not — and the entry carries the resolved author id (the provenance
+    # apply_works turns into a verified_author_id stamp).
+    assert mapping == {"https://x.edu/a#a match": {
+        "author_id": "A1", "works": [{"title": "Recent Paper", "year": 2026}]}}
 
 
 def test_apply_works_is_updates_only_and_capped():
@@ -346,7 +349,11 @@ def test_apply_works_is_updates_only_and_capped():
     stored = opps[0]["metadata"]["recent_works"]
     assert len(stored) == oa._MAX_WORKS
     assert len(stored[0]["title"]) == oa._TITLE_CAP
+    # legacy bare-list entries carry no author id → stamped name_match
+    assert opps[0]["metadata"]["publication_attribution_status"] == oa.ATTRIBUTION_NAME_MATCH
     assert opps[1]["metadata"]["recent_works"] == [{"title": "keep me", "year": 2020}]
+    # untouched records are never retro-stamped
+    assert "publication_attribution_status" not in opps[1]["metadata"]
     assert "metadata" not in opps[2] or not opps[2]["metadata"].get("recent_works")
 
 
@@ -374,6 +381,53 @@ def test_apply_works_upgrades_when_store_is_richer():
     assert opps[1]["metadata"]["recent_works"][0]["title"] == "p1"  # unchanged
 
 
+def test_apply_works_stamps_verified_for_id_resolved_entries():
+    # The current harvest format carries the resolved OpenAlex author id →
+    # verified_author_id; a dict entry WITHOUT one degrades honestly to
+    # name_match rather than claiming verification it can't prove.
+    opps = [
+        {"pi_name": "A", "school": "uw", "url": "https://x.edu/a",
+         "source_type": "faculty_research"},
+        {"pi_name": "B", "school": "uw", "url": "https://x.edu/b",
+         "source_type": "faculty_research"},
+    ]
+    mapping = {
+        "https://x.edu/a": {"author_id": "https://openalex.org/A123",
+                            "works": [{"title": "Verified Paper", "year": 2026}]},
+        "https://x.edu/b": {"works": [{"title": "Idless Paper", "year": 2026}]},
+    }
+    assert oa.apply_works(opps, mapping) == 2
+    assert opps[0]["metadata"]["publication_attribution_status"] == oa.ATTRIBUTION_VERIFIED
+    assert opps[1]["metadata"]["publication_attribution_status"] == oa.ATTRIBUTION_NAME_MATCH
+
+
+def test_apply_works_upgrade_restamps_with_the_new_entrys_status():
+    # The stamp describes the works actually stored: when a verified harvest
+    # replaces a name_match set, the stamp upgrades with it — and stays put
+    # when the entry is not richer (works unchanged ⟹ label unchanged).
+    opps = [
+        {"pi_name": "A", "school": "uw", "url": "https://x.edu/a",
+         "source_type": "faculty_research",
+         "metadata": {"recent_works": [{"title": "old", "year": 2020}],
+                      "publication_attribution_status": oa.ATTRIBUTION_NAME_MATCH}},
+        {"pi_name": "B", "school": "uw", "url": "https://x.edu/b",
+         "source_type": "faculty_research",
+         "metadata": {"recent_works": [{"title": "b1", "year": 2026},
+                                       {"title": "b2", "year": 2025}],
+                      "publication_attribution_status": oa.ATTRIBUTION_VERIFIED}},
+    ]
+    mapping = {
+        "https://x.edu/a": {"author_id": "A9",
+                            "works": [{"title": "n1", "year": 2026},
+                                      {"title": "n2", "year": 2025}]},
+        "https://x.edu/b": [{"title": "not richer", "year": 2026}],
+    }
+    assert oa.apply_works(opps, mapping) == 1
+    assert opps[0]["metadata"]["publication_attribution_status"] == oa.ATTRIBUTION_VERIFIED
+    assert opps[1]["metadata"]["publication_attribution_status"] == oa.ATTRIBUTION_VERIFIED
+    assert opps[1]["metadata"]["recent_works"][0]["title"] == "b1"
+
+
 def test_harvest_works_shared_url_keys_per_person(monkeypatch):
     # 430 JHU Krieger faculty share one directory URL; a url-keyed mapping let
     # the last-harvested person's papers overwrite everyone else's slot and
@@ -389,8 +443,10 @@ def test_harvest_works_shared_url_keys_per_person(monkeypatch):
                         lambda aid, dept="": [{"title": f"{aid} paper", "year": 2026}])
     mapping = oa.harvest_works(opps, throttle=0)
     assert mapping == {
-        "https://x.edu/dir#erik andersen": [{"title": "Erik paper", "year": 2026}],
-        "https://x.edu/dir#gira bhabha": [{"title": "Gira paper", "year": 2026}],
+        "https://x.edu/dir#erik andersen": {
+            "author_id": "Erik", "works": [{"title": "Erik paper", "year": 2026}]},
+        "https://x.edu/dir#gira bhabha": {
+            "author_id": "Gira", "works": [{"title": "Gira paper", "year": 2026}]},
     }
 
 
