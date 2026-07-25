@@ -109,13 +109,23 @@ _WH_SEL = {"card": "li.wdp_listing-row", "name": "strong a", "link": "strong a",
 _WH_LADDER = {"require": r"\bprofessor\b",
               "drop": (r"\bemerit|\badjunct|\blecturer|\bvisiting"
                        r"|\bpractice\b|senior fellow")}
+# Listings carry name/title/email but zero research. Each *.wharton profile
+# keeps interests in the first <p> of div.wfp-header-research
+# ("Research Interests: a, b, c"); the engine strips the label + comma-splits.
+_WH_ENRICH = {
+    "research_selector": 'div.wfp-header-research p:-soup-contains("Research Interests")',
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
+}
 
 
 def _wh(short: str, name: str, majors: list[str], url: str) -> dict:
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url,
             "scrape": {"url": url, "selectors": _WH_SEL,
-                       "ladder_filter": _WH_LADDER}}
+                       "ladder_filter": _WH_LADDER,
+                       "profile_enrich": _WH_ENRICH}}
 
 
 # ---------------------------------------------------------------------------

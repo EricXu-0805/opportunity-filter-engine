@@ -48,6 +48,20 @@ from .. import faculty_graph
 
 _API = "https://web-api2.rice.edu/profiles/search"
 
+# Every shared-platform dept's profiles.rice.edu/<faculty|staff>/<slug> page ships
+# the same Drupal WYSIWYG markup: an optional <p class="profileBody">Research Areas
+# </p> heading immediately followed by a <p> of comma/semicolon-separated topics.
+# The origin (Fastly) 406s a browser User-Agent but 200s an honest tool UA, so the
+# per-profile fetch must send ``ua``. ARCH (different template) and JGSB (title-only
+# Sitecore) don't match this selector and harmlessly return empty.
+_RICE_ENRICH = {
+    "research_selector": 'p.profileBody:-soup-contains("Research Areas") + p',
+    "ua": "curl/8.7.1",
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
+}
+
 
 def _rice(short: str, name: str, majors: list[str], directory_url: str, data_tags: str) -> dict:
     """A Rice department served by the shared web-api2 profiles endpoint.
@@ -60,7 +74,8 @@ def _rice(short: str, name: str, majors: list[str], directory_url: str, data_tag
     return {"short": short, "name": name, "majors": majors, "directory_url": directory_url,
             "json_dir": {"url": url, "records_key": "data",
                          "name_fields": ["fname", "lname"],
-                         "title_field": "title", "link_field": "profile_url"}}
+                         "title_field": "title", "link_field": "profile_url"},
+            "profile_enrich": _RICE_ENRICH}
 
 
 # School of Architecture is the one static-HTML outlier (not the js-profiles API).

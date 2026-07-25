@@ -32,7 +32,7 @@
     "national": 3686
   },
   "brown": {
-    "campus": 1137,
+    "campus": 1159,
     "national": 3686
   },
   "brynmawr": {
@@ -96,7 +96,7 @@
     "national": 3686
   },
   "cornell": {
-    "campus": 1688,
+    "campus": 1601,
     "national": 3686
   },
   "dartmouth": {
@@ -188,7 +188,7 @@
     "national": 3686
   },
   "mit": {
-    "campus": 1392,
+    "campus": 1363,
     "national": 3686
   },
   "msu": {
@@ -248,7 +248,7 @@
     "national": 3686
   },
   "rice": {
-    "campus": 991,
+    "campus": 982,
     "national": 3686
   },
   "rochester": {
@@ -312,7 +312,7 @@
     "national": 3686
   },
   "uci": {
-    "campus": 1187,
+    "campus": 1189,
     "national": 3686
   },
   "ucla": {
@@ -328,7 +328,7 @@
     "national": 3686
   },
   "ucsb": {
-    "campus": 1100,
+    "campus": 1078,
     "national": 3686
   },
   "ucsc": {
@@ -384,7 +384,7 @@
     "national": 3686
   },
   "upenn": {
-    "campus": 1922,
+    "campus": 1915,
     "national": 3686
   },
   "usc": {
@@ -456,7 +456,7 @@
     "national": 3686
   },
   "yale": {
-    "campus": 1274,
+    "campus": 1280,
     "national": 3686
   }
 }
