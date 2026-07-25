@@ -19,6 +19,7 @@ the issues we just fixed:
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 from datetime import date, datetime
@@ -37,7 +38,12 @@ _PHONE_IN_LOCAL = re.compile(r"^[^@]*\d{3,4}-\d{3,4}")
 _CAPS_MASHED_LOCAL = re.compile(r"^[A-Z][a-z]+[^A-Z_@]{12,}@")
 
 
+@functools.lru_cache(maxsize=1)
 def _load_data() -> list[dict]:
+    # Parsed once per session and shared across every test in this module — the
+    # corpus is 300 MB+ and every test below reads it strictly read-only, so
+    # re-parsing it per test (there are ~40 of them) was the dominant CI cost.
+    # Do not mutate the returned records.
     if not DATA_FILE.exists():
         pytest.skip(f"{DATA_FILE} not present")
     with DATA_FILE.open("r", encoding="utf-8") as f:

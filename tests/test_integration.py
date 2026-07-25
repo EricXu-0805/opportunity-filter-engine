@@ -6,6 +6,8 @@ Covers: collector→normalizer pipeline, tagger updates, ranker sanity,
 Run with: pytest tests/test_integration.py -v
 """
 
+import copy
+import functools
 import json
 import os
 import sys
@@ -28,35 +30,53 @@ from src.recommender.resume_advisor import analyze_gaps
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "processed", "opportunities.json")
 
 
+@functools.lru_cache(maxsize=1)
 def _load_real_data():
+    # Parsed once per session and shared read-only across every test that reads
+    # the real corpus. The file is 300 MB+; re-parsing it per test was pure
+    # redundant CI cost. Do not mutate the returned records.
     if not os.path.exists(DATA_PATH):
         pytest.skip("No processed data file")
     with open(DATA_PATH) as f:
         return json.load(f)
 
 
+_SAMPLE_PROFILE = {
+    "name": "Test Student",
+    "school": "UIUC",
+    "year": "sophomore",
+    "major": "CS",
+    "secondary_interests": ["ECE", "Data Science"],
+    "international_student": True,
+    "hard_skills": ["Python", "Java", "C++"],
+    "coursework": ["CS 124", "STAT 107"],
+    "experience_level": "beginner",
+    "resume_ready": True,
+    "can_cold_email": True,
+    "projects": [
+        {"name": "ChatBot", "description": "Built a chatbot using Python and Flask"}
+    ],
+    "preferences": {
+        "min_match_threshold": 0,
+        "exclude_citizenship_restricted": True,
+    },
+}
+
+
 @pytest.fixture
 def sample_profile():
-    return {
-        "name": "Test Student",
-        "school": "UIUC",
-        "year": "sophomore",
-        "major": "CS",
-        "secondary_interests": ["ECE", "Data Science"],
-        "international_student": True,
-        "hard_skills": ["Python", "Java", "C++"],
-        "coursework": ["CS 124", "STAT 107"],
-        "experience_level": "beginner",
-        "resume_ready": True,
-        "can_cold_email": True,
-        "projects": [
-            {"name": "ChatBot", "description": "Built a chatbot using Python and Flask"}
-        ],
-        "preferences": {
-            "min_match_threshold": 0,
-            "exclude_citizenship_restricted": True,
-        },
-    }
+    # Deep-copied so a test that mutates its profile can't leak into another.
+    return copy.deepcopy(_SAMPLE_PROFILE)
+
+
+@pytest.fixture(scope="module")
+def sanity_ranked_results():
+    # The ranker-sanity tests each assert a different invariant over the SAME
+    # rank_all(sample_profile, corpus) result. Ranking the full 128k-record
+    # corpus is ~25s, so compute it once and share it read-only rather than
+    # re-ranking per assertion. rank_all mutates neither its profile nor the
+    # corpus, so the shared result is safe.
+    return rank_all(copy.deepcopy(_SAMPLE_PROFILE), _load_real_data())
 
 
 @pytest.fixture
@@ -232,36 +252,28 @@ class TestTaggerUpdates:
 
 
 class TestRankerSanity:
-    def test_rank_all_returns_results(self, sample_profile):
-        data = _load_real_data()
-        results = rank_all(sample_profile, data)
-        assert len(results) > 0, "Ranker should return results on real data"
+    def test_rank_all_returns_results(self, sanity_ranked_results):
+        assert len(sanity_ranked_results) > 0, "Ranker should return results on real data"
 
-    def test_scores_in_valid_range(self, sample_profile):
-        data = _load_real_data()
-        results = rank_all(sample_profile, data)
-        for r in results:
+    def test_scores_in_valid_range(self, sanity_ranked_results):
+        for r in sanity_ranked_results:
             assert 0 <= r.final_score <= 100
             assert 0 <= r.eligibility_score <= 100
             assert 0 <= r.readiness_score <= 100
             assert 0 <= r.upside_score <= 100
 
-    def test_results_sorted_descending(self, sample_profile):
-        data = _load_real_data()
-        results = rank_all(sample_profile, data)
-        for i in range(len(results) - 1):
-            assert results[i].final_score >= results[i + 1].final_score
+    def test_results_sorted_descending(self, sanity_ranked_results):
+        for i in range(len(sanity_ranked_results) - 1):
+            assert sanity_ranked_results[i].final_score >= sanity_ranked_results[i + 1].final_score
 
     def test_good_match_scores_high(self, sample_profile, sample_opportunity):
         result = rank_opportunity(sample_profile, sample_opportunity)
         assert result.final_score >= 60, "A well-matched opportunity should score >= 60"
         assert result.bucket in ("high_priority", "good_match")
 
-    def test_buckets_are_valid(self, sample_profile):
-        data = _load_real_data()
-        results = rank_all(sample_profile, data)
+    def test_buckets_are_valid(self, sanity_ranked_results):
         valid_buckets = {"high_priority", "good_match", "reach", "low_fit"}
-        for r in results:
+        for r in sanity_ranked_results:
             assert r.bucket in valid_buckets
 
 
