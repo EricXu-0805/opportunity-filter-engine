@@ -92,7 +92,6 @@ export function OnlineProfilesCard({
             placeholder={t('home.form.scholarPlaceholder')}
             className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300"
           />
-          <p className="mt-2 text-xs text-gray-400">{t('home.form.scholarHint')}</p>
         </div>
       </div>
     </Card>
