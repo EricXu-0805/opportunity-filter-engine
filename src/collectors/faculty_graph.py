@@ -382,8 +382,13 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # ("Position title: Glynn LL Isaac Professor…", "Title: …"); strip it so the
     # label doesn't leak into the description ("Research opportunity with
     # Position title: … in the Department of Anthropology…").
+    # The rank gets spliced into the generated prose, so it needs the same
+    # entity decode the name above already gets — otherwise a student reads
+    # "Research opportunity with Professor of Materials Science &amp; Engineering
+    # ...". 245 records across 30+ schools were shipping raw entities.
     title = re.sub(r"^\s*(?:position\s+title|title)\s*:\s*", "",
-                   person.get("title") or "Professor", flags=re.IGNORECASE).strip() or "Professor"
+                   html.unescape(person.get("title") or "Professor"),
+                   flags=re.IGNORECASE).strip() or "Professor"
     if _RETIRED_TITLE_RE.search(title):
         return None
 
@@ -1219,16 +1224,28 @@ def _scrape_directory(dept: dict) -> list[dict]:
             # Drupal multi-view pagers prefix the page value ("?page=%2C3" —
             # SEAS's faculty view is the second view on the page).
             vpre = pag.get("value_prefix", "")
+            # A page that fails to fetch, or renders before its XHR-fed cards
+            # hydrate, is indistinguishable from the end of the directory — and
+            # breaking on the first one silently drops every page after it.
+            # Drexel's College of Engineering lost 25 of ~116 professors (the
+            # whole Sh-Z tail) because page 16 of 21 came back slow. Retry a
+            # failed fetch once, and require two barren pages in a row before
+            # concluding the walk is actually over. Costs one extra request per
+            # paginated department; buys back silently-missing faculty.
+            barren = 0
             for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
                 next_url = _paginated_url(base, pg, param) if path_mode else (
                     f"{base}{'&' if '?' in base else '?'}{param}={vpre}{pg}")
-                s2 = fetch(next_url)
-                if s2 is None:
-                    break
-                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
-                         if (p["name"], p["url"]) not in seen]
+                s2 = fetch(next_url) or fetch(next_url)
+                fresh = [] if s2 is None else [
+                    p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
+                    if (p["name"], p["url"]) not in seen]
                 if not fresh:
-                    break
+                    barren += 1
+                    if barren >= 2:
+                        break
+                    continue
+                barren = 0
                 seen.update((p["name"], p["url"]) for p in fresh)
                 people.extend(fresh)
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
