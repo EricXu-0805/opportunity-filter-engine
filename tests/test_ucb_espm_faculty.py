@@ -131,3 +131,44 @@ def test_known_record_id_is_byte_stable():
     corpus on the next scrape. Pin a real corpus id."""
     ackerly = next(p for p in _scrape() if p["name"] == "David Ackerly")
     assert normalize_faculty(ackerly, ESPM_CONFIG)["id"] == "faculty-ucb-espm-d213a3f3"
+
+
+# --- Pagination -------------------------------------------------------------
+
+_GRAD_ONLY_TABLE = f"""
+<table><tbody>
+  {_row("grad-one", "Grad One", "GSR", "Graduate Student")}
+  {_row("grad-two", "Grad Two", "GSR", "Graduate Student")}
+</tbody></table>
+"""
+
+_PAGE2_TABLE = f"""
+<table><tbody>
+  {_row("justin-luong", "Justin Luong", "Professor", "Faculty, Ecosystem Sciences")}
+</tbody></table>
+"""
+
+_EMPTY_TABLE = "<table><tbody></tbody></table>"
+
+
+def test_pagination_survives_faculty_free_middle_page(monkeypatch):
+    """The directory sorts all roles together, so a full middle page can hold
+    zero Faculty-role rows (live page 10, 2026-07 — 20 rows, all Graduate
+    Students; breaking there lost pages 11-21, 29 of 68 faculty). Only an empty
+    TABLE ends the walk."""
+    from src.collectors import ucb_espm_faculty as espm
+
+    pages = {0: TABLE_HTML, 1: _GRAD_ONLY_TABLE, 2: _PAGE2_TABLE, 3: _EMPTY_TABLE}
+    fetched: list[int] = []
+
+    def fake_fetch(url):
+        page = int(url.rsplit("?page=", 1)[1])
+        fetched.append(page)
+        html = pages.get(page)
+        return BeautifulSoup(html, "html.parser") if html is not None else None
+
+    monkeypatch.setattr(espm, "fetch_soup", fake_fetch)
+    names = {p["name"] for p in espm._scrape_espm_faculty()}
+    assert names == {"David Ackerly", "Ronald Amundson", "Justin Luong"}
+    # walked past the faculty-free page 1, stopped at the truly empty page 3
+    assert fetched == [0, 1, 2, 3]

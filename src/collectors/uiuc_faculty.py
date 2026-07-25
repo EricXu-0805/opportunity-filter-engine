@@ -26,6 +26,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from .ucb_common import clear_contact_claim
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -1065,6 +1067,15 @@ def _faculty_is_richer(a: dict, b: dict) -> bool:
 _ENRICHMENT_CARRY_FIELDS = ("keywords", "title", "description_raw", "description_clean")
 
 
+# Departmental/role boxes — a real contact for a program record, never a
+# person's address. Only consulted for records that name a person.
+_ROLE_MAILBOX = re.compile(
+    r"^(?:\w*webmanager|\w*webmaster|info|contact|no-?reply|donotreply|office|"
+    r"admin|administrator|help|support|inquiries|reception|frontdesk)@",
+    re.I,
+)
+
+
 def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     """When a re-scrape upserts over a committed record by stable id, keep the
     committed record's enrichment if it is keyword-richer than the fresh scrape:
@@ -1095,6 +1106,13 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     # emits None and would silently wipe every one of them. A fresh scrape
     # that actually carries an email still wins (professor changed address).
     email = existing.get("contact_email")
+    # ...with one exception: a role mailbox is not a person's address, and the
+    # unconditional carry makes a bad one IMMORTAL — every later harvest emits
+    # None for that person and this line re-installs the stale value, so no
+    # scrape fix can ever dislodge it (UKy shipped a faculty member with the
+    # college's ciwebmanager@ box). Let those decay instead of resurrecting them.
+    if email and _ROLE_MAILBOX.match(email) and incoming.get("pi_name"):
+        email = None
     if email and not incoming.get("contact_email"):
         incoming["contact_email"] = email
         # The provenance flag travels with the address it describes (a
@@ -1622,7 +1640,7 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
         if not _is_faculty_record(opp):
             continue
         if (opp.get("contact_email") or "").strip().lower() in shared:
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 
@@ -1667,7 +1685,7 @@ def _null_unit_inbox_emails(opps: list[dict]) -> int:
         if not local:
             continue
         if local in _UNIT_MAILBOX_LOCALPARTS or local in _dept_name_stems(opp.get("department", "")):
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 
@@ -1699,7 +1717,7 @@ def _null_wrong_person_emails(opps: list[dict]) -> int:
         if (opp.get("source") == "uiuc_faculty"
                 and opp.get("id") in _WRONG_PERSON_EMAIL_IDS
                 and opp.get("contact_email")):
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 

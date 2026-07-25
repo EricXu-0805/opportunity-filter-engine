@@ -69,6 +69,7 @@ from .ucb_common import (
     _detect_funding,
     _is_person_name,
     _strip_nav_furniture,
+    clear_contact_claim,
 )
 
 logger = logging.getLogger(__name__)
@@ -381,8 +382,13 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # ("Position title: Glynn LL Isaac Professor…", "Title: …"); strip it so the
     # label doesn't leak into the description ("Research opportunity with
     # Position title: … in the Department of Anthropology…").
+    # The rank gets spliced into the generated prose, so it needs the same
+    # entity decode the name above already gets — otherwise a student reads
+    # "Research opportunity with Professor of Materials Science &amp; Engineering
+    # ...". 245 records across 30+ schools were shipping raw entities.
     title = re.sub(r"^\s*(?:position\s+title|title)\s*:\s*", "",
-                   person.get("title") or "Professor", flags=re.IGNORECASE).strip() or "Professor"
+                   html.unescape(person.get("title") or "Professor"),
+                   flags=re.IGNORECASE).strip() or "Professor"
     if _RETIRED_TITLE_RE.search(title):
         return None
 
@@ -432,6 +438,30 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     opp_title = f"Research with Prof. {name} — {short}{research_summary}"
     paid, compensation_details = _detect_funding(f"{research_areas} {description} {title}")
 
+    metadata = {
+        "confidence_score": 0.7 if email else 0.5,
+        "last_verified": now,
+        "first_seen_at": now,
+        "last_seen_at": now,
+        "is_active": True,
+        "manually_reviewed": False,
+        "notes": f"Curated from {dept_name} faculty directory ({school['organization']})",
+        "faculty_title": title,
+        "research_areas_raw": research_areas[:300] if research_areas else "",
+        "curated": True,
+    }
+    # Additive provenance from the harvest path (fetch_and_normalize tags
+    # curated-vs-discovered, _apply_profile_enrich upgrades to "profile" after
+    # a successful individual-page fetch). Absent hints — every legacy record,
+    # every path that doesn't tag — produce the exact historical metadata;
+    # provenance never gates whether an email is kept.
+    scope = person.get("_verification_scope")
+    if scope in ("curated", "directory", "profile"):
+        metadata["verification_scope"] = scope
+    email_source = person.get("_email_source")
+    if email and isinstance(email_source, str) and email_source:
+        metadata["email_source"] = email_source
+
     return {
         "id": opp_id,
         "source": school["source"],
@@ -453,6 +483,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "paid": paid,
         "compensation_details": compensation_details,
         "deadline": None,
+        # True is the honest value for a faculty lab, not a placeholder: a
+        # professor's page has no application deadline and accepts inquiries
+        # year-round (same policy as enricher.is_rolling_deadline). Records
+        # with a real deadline are reconciled by normalizers.rolling_truth.
         "is_rolling": True,
         "posted_date": None,
         "start_date": None,
@@ -484,18 +518,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "keywords": keywords,
         "school": school["school_slug"],
         "audience": school.get("audience", "unknown"),
-        "metadata": {
-            "confidence_score": 0.7 if email else 0.5,
-            "last_verified": now,
-            "first_seen_at": now,
-            "last_seen_at": now,
-            "is_active": True,
-            "manually_reviewed": False,
-            "notes": f"Curated from {dept_name} faculty directory ({school['organization']})",
-            "faculty_title": title,
-            "research_areas_raw": research_areas[:300] if research_areas else "",
-            "curated": True,
-        },
+        "metadata": metadata,
     }
 
 
@@ -573,6 +596,15 @@ def _passes_field(card, ff: dict | None) -> bool:
     return not (ff.get("exclude") and text and re.search(ff["exclude"], text, re.I))
 
 
+# Address-shaped CMS template stubs that belong to no person.
+_PLACEHOLDER_EMAIL = re.compile(
+    r"^(?:firstname\.?lastname|first\.?last|firstinitiallastname|name|"
+    r"yourname|your\.?email|email|username|user|someone|noreply|no-reply|"
+    r"donotreply|do-not-reply|example|test|xxx+)@",
+    re.I,
+)
+
+
 def _clean_email(raw: str) -> str | None:
     """Normalize a mailto/text email — hand-edited CMS anchors get creative.
 
@@ -628,6 +660,13 @@ def _clean_email(raw: str) -> str | None:
     # so restore the trailing 'u'. ".edu" never matches (it ends in 'u').
     if result:
         result = re.sub(r"\.ed$", ".edu", result, flags=re.I)
+    # A CMS template stub is address-shaped but belongs to nobody: UKy Math
+    # publishes the literal "firstname.lastname[AT]uky.edu", which the [AT]
+    # de-obfuscation above happily turns into a "real" address. Shipping one
+    # hands a student a guaranteed bounce that looks like a fabricated contact,
+    # so reject the placeholder local parts outright.
+    if result and _PLACEHOLDER_EMAIL.match(result):
+        return None
     # Canonicalize to lowercase: some directories carry a display-cased address
     # ("Charles.gersbach@duke.edu"), and the DQ gate flags a capitalized local
     # part as a corruption pattern. Email local parts are effectively case-
@@ -765,7 +804,20 @@ def _email_from_el(e_el) -> str | None:
     if rev:
         return rev
     raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
-    return _clean_email(raw)
+    href_addr = _clean_email(raw)
+    # A hand-maintained roster row whose mailto: was copy-pasted from the row
+    # above links to the WRONG person while displaying the right address
+    # (<a href="mailto:orlando.auciello@">kevin.brenner@</a> on UTD MSE, and the
+    # same on UTD CS). Taking the href there hands a student a different
+    # professor's address, and — because merge dedupes on email — silently
+    # deleted the person the stale href pointed at (I-Ling Yen, a full CS
+    # professor, vanished entirely). The visible text is what the page renders
+    # for THIS row, so when both are addresses and they disagree, trust it.
+    if href_addr and e_el.has_attr("href"):
+        text_addr = _clean_email(e_el.get_text(" ", strip=True))
+        if text_addr and text_addr.lower() != href_addr.lower():
+            return text_addr
+    return href_addr
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
@@ -1172,16 +1224,28 @@ def _scrape_directory(dept: dict) -> list[dict]:
             # Drupal multi-view pagers prefix the page value ("?page=%2C3" —
             # SEAS's faculty view is the second view on the page).
             vpre = pag.get("value_prefix", "")
+            # A page that fails to fetch, or renders before its XHR-fed cards
+            # hydrate, is indistinguishable from the end of the directory — and
+            # breaking on the first one silently drops every page after it.
+            # Drexel's College of Engineering lost 25 of ~116 professors (the
+            # whole Sh-Z tail) because page 16 of 21 came back slow. Retry a
+            # failed fetch once, and require two barren pages in a row before
+            # concluding the walk is actually over. Costs one extra request per
+            # paginated department; buys back silently-missing faculty.
+            barren = 0
             for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
                 next_url = _paginated_url(base, pg, param) if path_mode else (
                     f"{base}{'&' if '?' in base else '?'}{param}={vpre}{pg}")
-                s2 = fetch(next_url)
-                if s2 is None:
-                    break
-                fresh = [p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
-                         if (p["name"], p["url"]) not in seen]
+                s2 = fetch(next_url) or fetch(next_url)
+                fresh = [] if s2 is None else [
+                    p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
+                    if (p["name"], p["url"]) not in seen]
                 if not fresh:
-                    break
+                    barren += 1
+                    if barren >= 2:
+                        break
+                    continue
+                barren = 0
                 seen.update((p["name"], p["url"]) for p in fresh)
                 people.extend(fresh)
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
@@ -1423,7 +1487,9 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
         want_title = bool(enr.get("title_selector"))
         if not (want_research or want_email or want_title):
             continue
-        pos, research, items, email = _enrich_profile(target, enr)
+        pos, research, items, email, fetched = _enrich_profile(target, enr)
+        if fetched:
+            p["_verification_scope"] = "profile"
         if items and want_research:
             p["keywords"] = items
         elif research and want_research:
@@ -1436,6 +1502,7 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             email = None
         if email and want_email:
             p["email"] = email
+            p["_email_source"] = "profile_page"
         if pos and (enr.get("use_position_title") or enr.get("title_selector")):
             p["title"] = pos
         if throttle:
@@ -1446,8 +1513,15 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     return people
 
 
-def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | None]:
-    """Fetch one profile page; extract (position, research-text, research-items, email).
+def _enrich_profile(
+    url: str, enrich: dict,
+) -> tuple[str, str, list[str], str | None, bool]:
+    """Fetch one profile page; extract (position, research-text, research-items,
+    email, fetch_succeeded).
+
+    ``fetch_succeeded`` is provenance for the caller (was the person's own page
+    actually reached?), never a gate: a failed fetch extracts nothing extra and
+    the record ships with its listing fields exactly as before.
 
     ``research-items`` is a clean atomic keyword list from a CSS
     ``research_items_selector`` (taxonomy-links markup); ``research-text`` is a
@@ -1455,10 +1529,11 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
     or the other depending on how the site stores research areas.
     """
     if not url:
-        return ("", "", [], None)
+        return ("", "", [], None, False)
     dm = enrich.get("digitalmeasures")
     if dm:
-        return ("", _fetch_digitalmeasures(url, dm), [], None)
+        research = _fetch_digitalmeasures(url, dm)
+        return ("", research, [], None, bool(research))
     if enrich.get("render"):
         # Profile pages sit behind the same bot wall as the listing (Princeton
         # dept subdomains, umich) — a plain GET 403s, so route the per-profile
@@ -1473,7 +1548,7 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
         try:
             from .ucb_common import fetch_soup
         except Exception:  # noqa: BLE001
-            return ("", "", [], None)
+            return ("", "", [], None, False)
         _ua = enrich.get("ua")
         # Optional per-profile enrichment fetches one page PER faculty member —
         # thousands across an expanded multi-department school. Fail fast on
@@ -1484,7 +1559,7 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
         soup = (fetch_soup(url, ua=_ua, timeout=_t, max_retries=_r) if _ua
                 else fetch_soup(url, timeout=_t, max_retries=_r))
     if soup is None:
-        return ("", "", [], None)
+        return ("", "", [], None, False)
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
     pos = ""
     if enrich.get("title_selector"):
@@ -1545,7 +1620,7 @@ def _enrich_profile(url: str, enrich: dict) -> tuple[str, str, list[str], str | 
             if isinstance(vals, list):
                 raw = "; ".join(v for v in vals if isinstance(v, str) and v.strip())
                 kw = re.sub(r"[\r\n]+", "; ", raw).strip()
-    return (pos, kw, items, email)
+    return (pos, kw, items, email, True)
 
 
 def _fetch_wp_api(dept: dict) -> list[dict]:
@@ -1645,8 +1720,10 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
             # Same title gate as the scrape path — REST role taxonomies are often
             # too coarse (UGA Terry tags lecturers `faculty` too).
             continue
+        fetched = False
+        email_from_profile = False
         if enrich:
-            pos, extra_kw, extra_items, extra_email = _enrich_profile(url, enrich)
+            pos, extra_kw, extra_items, extra_email, fetched = _enrich_profile(url, enrich)
             if pos:
                 title = pos
             if enrich.get("require_professor") and pos and not re.search(r"profess", pos, re.I):
@@ -1657,10 +1734,14 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
                 keywords.insert(0, extra_kw)
             if extra_email and not email:
                 email = extra_email
-        specs.append(
-            faculty(name, title=title, url=url, email=email,
-                    keywords=list(dict.fromkeys(keywords)))
-        )
+                email_from_profile = True
+        spec = faculty(name, title=title, url=url, email=email,
+                       keywords=list(dict.fromkeys(keywords)))
+        if fetched:
+            spec["_verification_scope"] = "profile"
+        if email_from_profile:
+            spec["_email_source"] = "profile_page"
+        specs.append(spec)
     return specs
 
 
@@ -2479,6 +2560,12 @@ def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
     dropped duplicate, so collapsing never loses a usable address or URL."""
     if not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip():
         survivor["contact_email"] = loser["contact_email"]
+        # The provenance stamp travels with the address it describes (same rule
+        # as _carry_forward_enrichment); a loser email without one is adopted
+        # just the same — provenance is never a condition.
+        src = (loser.get("metadata") or {}).get("email_source")
+        if src:
+            survivor.setdefault("metadata", {})["email_source"] = src
     for f in ("url", "source_url"):
         if not (survivor.get(f) or "").strip() and (loser.get(f) or "").strip():
             survivor[f] = loser[f]
@@ -2616,7 +2703,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
                 removed_by_school[school] += 1
         else:
             for o in group:
-                o["contact_email"] = None
+                clear_contact_claim(o)
                 nulled_by_school[school] += 1
 
     by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
@@ -3265,7 +3352,10 @@ def _fetch_sitemap_directory(dept: dict) -> list[dict]:
             if e_el is not None:
                 raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
                 email = _clean_email(raw)
-        specs.append(faculty(name, title=title, url=u, email=email))
+        spec = faculty(name, title=title, url=u, email=email)
+        # Every sitemap record is parsed from the person's own fetched page.
+        spec["_verification_scope"] = "profile"
+        specs.append(spec)
         if throttle:
             time.sleep(throttle)
     return specs
@@ -3290,7 +3380,11 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     for dept in school.get("departments", []):
-        specs = list(dept.get("faculty", []))
+        # Copies, not the config dicts themselves: the provenance tag (and the
+        # profile-enrich pass) mutate specs, and curated seeds are shared
+        # module-level config.
+        specs = [dict(person, _verification_scope="curated")
+                 for person in dept.get("faculty", [])]
         if deep:
             seen_urls_local = {u for p in specs
                                if (u := (p.get("url") or "").strip().lower())
@@ -3304,6 +3398,7 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
                                + _fetch_krieger_table(dept)
                                + _fetch_poly_jsonapi(dept)
                                + _fetch_sitemap_directory(dept)):
+                discovered.setdefault("_verification_scope", "directory")
                 key = (discovered.get("url") or "").strip().lower()
                 if key and key not in listing_urls and key in seen_urls_local:
                     continue

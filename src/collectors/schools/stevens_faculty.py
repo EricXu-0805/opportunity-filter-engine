@@ -1,9 +1,21 @@
 """Stevens Institute of Technology faculty config (via the faculty_graph engine).
 
-Ten departments share ONE campus Next.js "faculty-card" component — every page is
-server-rendered raw HTML behind Cloudflare but not challenge-walled, so a plain
-proxied request returns a clean static 200 (no ``render`` needed). Live-verified
-2026-07-20.
+Twelve departments across all four colleges share ONE campus Next.js
+"faculty-card" component — every page is server-rendered raw HTML behind
+Cloudflare but not challenge-walled, so a plain proxied request returns a clean
+static 200 (no ``render`` needed). Live-verified 2026-07-20 (engineering) and
+2026-07-24 (business + arts-and-letters).
+
+The Schaefer School of Engineering & Science exposes one roster per department
+under ``/school-engineering-science/departments/<slug>/faculty``; the two
+non-engineering colleges — the School of Business and the College of Arts and
+Letters (served under ``/hass/``) — each publish a single combined faculty
+roster (no per-program sub-pages: ``/school-business/<area>/faculty`` 404s), so
+each is wired as one department carrying all of that college's majors. The
+School of Systems and Enterprises is its own catalog college but lives on the
+engineering base path. That is the full four-college catalog — Schaefer
+SES's "Biology" major has no standalone department (it rides Chemistry &
+Chemical Biology), and Software Engineering / AI / Cybersecurity are CS majors.
 
 The component's CSS-module class names carry a per-build hash suffix
 (``faculty-card_cc--faculty-card__j3sBO``, ``faculty-card_name-title__WxAmJ``)
@@ -43,6 +55,8 @@ CS 54→44 (44/44 email), ECE 37→20, ME 46→31, BME 16→14, Physics 23→18,
 Chemistry 26→18, ChemE 12→11 (one emeritus dropped by the retired guard),
 CEOE 44→23, Math 23→21, Systems 57→24 — every kept card carries a decoded
 @stevens.edu address (100% listing email).
+Live-verified 2026-07-24 (business + arts-and-letters):
+Business 178→70, Arts-and-Letters 94→45 — both 100% @stevens.edu email.
 """
 
 from __future__ import annotations
@@ -124,8 +138,31 @@ SCHOOL: dict = {
               ["Mathematics", "Applied Mathematics"],
               f"{_BASE}/mathematical-sciences/faculty"),
         _dept("SSE", "School of Systems and Enterprises",
-              ["Systems Engineering", "Engineering Management"],
+              ["Systems Engineering", "Engineering Management",
+               "Industrial and Systems Engineering"],
               f"{_BASE}/systems-engineering/faculty"),
+        # School of Business — one combined roster (no per-area sub-pages);
+        # carries every business major. Same shared faculty-card component +
+        # Cloudflare email decoder. field_filter drops the ~90 Adjunct /
+        # WebCampus-adjunct / staff / dean / emeritus cards, keeping ladder,
+        # teaching, research, and industry (professor-of-practice) professors +
+        # lecturers. Live-verified 2026-07-24: 70 kept, 100% @stevens.edu email.
+        _dept("BUS", "School of Business",
+              ["Business & Technology", "Finance", "Quantitative Finance",
+               "Accounting & Analytics", "Information Systems", "Economics",
+               "Management", "Marketing Innovation & Analytics"],
+              "https://www.stevens.edu/school-business/faculty"),
+        # College of Arts and Letters — served under /hass/, one combined roster
+        # (no per-program sub-pages); carries every arts-and-letters major. Same
+        # component + gate; drops Adjunct / music-instructor / writing-consultant
+        # / TA / dean / emeritus cards. Live-verified 2026-07-24: 45 kept,
+        # 100% @stevens.edu email.
+        _dept("CAL", "College of Arts and Letters",
+              ["Literature", "Philosophy", "Social Sciences",
+               "Quantitative Social Science", "Science Communication",
+               "Music and Technology", "Visual Arts and Technology",
+               "Science, Technology, and Society"],
+              "https://www.stevens.edu/hass/hass-faculty"),
     ],
 }
 

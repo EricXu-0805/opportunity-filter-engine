@@ -250,6 +250,78 @@ class TestScrapeLayer:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ann Alpha", "Ben Beta"]  # page 2 repeats -> pagination stops
 
+    def test_rank_html_entities_are_decoded_like_the_name(self, monkeypatch):
+        """The rank is spliced into the generated prose, so an undecoded entity
+        reaches the student ("Professor of Materials Science &amp; Engineering").
+        The name was already decoded; the title was not."""
+        from bs4 import BeautifulSoup
+        listing = ('<div class="c"><a class="n" href="/p/a">Jane Roe</a>'
+                   '<span class="t">Professor of Materials Science &amp;amp; Engineering</span></div>')
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url, **_kw: BeautifulSoup(listing, "html.parser"),
+        )
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere"}
+        dept = {"short": "MSE", "name": "Department of Materials Science", "majors": [],
+                "scrape": {"url": "https://x.edu/f",
+                           "selectors": {"card": "div.c", "name": ".n", "link": ".n", "title": ".t"}}}
+        people = fg._scrape_directory(dept)
+        rec = fg._normalize(school, dept, people[0])
+        desc = rec.get("description_clean") or ""
+        assert "&amp;" not in desc
+        assert "Materials Science & Engineering" in desc
+
+    def test_pagination_survives_a_transient_page_failure(self, monkeypatch):
+        """A page that fails to fetch must not end the walk. Drexel's CoE lost 25
+        of ~116 professors — the whole Sh-Z tail — because page 16 of 21 came
+        back slow and the loop treated that as the end of the directory."""
+        from bs4 import BeautifulSoup
+        pages = {
+            "https://x.edu/f": '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>',
+            "https://x.edu/f?page=1": '<div class="c"><a class="n" href="/p/b">Ben Beta</a></div>',
+            "https://x.edu/f?page=2": '<div class="c"><a class="n" href="/p/c">Cy Gamma</a></div>',
+        }
+        failed = {"once": False}
+
+        def flaky(url, **_kw):
+            # page=1 fails the first time only, exactly like a slow render.
+            if url.endswith("?page=1") and not failed["once"]:
+                failed["once"] = True
+                return None
+            return BeautifulSoup(pages[url], "html.parser") if url in pages else None
+
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", flaky)
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "paginate": {"param": "page", "start": 1, "max": 5},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ann Alpha", "Ben Beta", "Cy Gamma"]
+
+    def test_pagination_survives_one_barren_page_then_continues(self, monkeypatch):
+        """A single page whose cards haven't hydrated yields nothing new, which
+        is indistinguishable from the end of the roster — keep walking, and stop
+        only after two barren pages in a row."""
+        from bs4 import BeautifulSoup
+        pages = {
+            "https://x.edu/f": '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>',
+            "https://x.edu/f?page=1": "<div></div>",  # hydrated late: no cards
+            "https://x.edu/f?page=2": '<div class="c"><a class="n" href="/p/c">Cy Gamma</a></div>',
+        }
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url, **_kw: BeautifulSoup(pages[url], "html.parser") if url in pages else None,
+        )
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f",
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "paginate": {"param": "page", "start": 1, "max": 5},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ann Alpha", "Cy Gamma"]
+
     def test_profile_enrich_fills_research_from_profile_when_enabled(self, monkeypatch):
         """A listing that carries name/title only can be enriched per-profile: the
         gated pass follows each profile link and lifts a "<strong>Research Areas:
@@ -710,6 +782,41 @@ class TestEmailObfuscationDecoding:
         assert fg._decode_rot13email(el) is None
         assert fg._email_from_el(el) == "x@y.edu"
 
+    def test_template_placeholder_addresses_are_rejected(self):
+        # UKy Math publishes the literal "firstname.lastname[AT]uky.edu"; the
+        # [AT] de-obfuscation turns that stub into an address-shaped string that
+        # belongs to nobody. Shipping it is a guaranteed bounce that reads as a
+        # fabricated contact. (Yale had the same stub already in the corpus.)
+        assert fg._clean_email("firstname.lastname[AT]uky.edu") is None
+        assert fg._clean_email("firstname.lastname@yale.edu") is None
+        assert fg._clean_email("noreply@x.edu") is None
+
+    def test_placeholder_rule_does_not_eat_real_surnames(self):
+        # The rule anchors on the whole local part, so real people whose names
+        # merely start with those letters are untouched.
+        assert fg._clean_email("nameera.patel@x.edu") == "nameera.patel@x.edu"
+        assert fg._clean_email("testa.rossi@x.edu") == "testa.rossi@x.edu"
+        assert fg._clean_email("emailia.smith@x.edu") == "emailia.smith@x.edu"
+
+    def test_stale_mailto_href_loses_to_displayed_address(self):
+        # UTD MSE/CS ship rows whose mailto: was copy-pasted from the row above,
+        # so the link points at a DIFFERENT professor than the address it
+        # displays. Taking the href handed students the wrong person's address
+        # and, because merge dedupes on email, deleted the person the stale href
+        # named (I-Ling Yen). The rendered text wins when the two disagree.
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup(
+            '<a href="mailto:orlando.auciello@utdallas.edu">'
+            'kevin.brenner@utdallas.edu</a>', "html.parser").a
+        assert fg._email_from_el(el) == "kevin.brenner@utdallas.edu"
+
+    def test_href_still_wins_over_non_address_link_text(self):
+        # The carve-out is narrow: only when BOTH are addresses. A normal
+        # "Email Me" label must not shadow the real mailto.
+        from bs4 import BeautifulSoup
+        el = BeautifulSoup('<a href="mailto:real@x.edu">Email Me</a>', "html.parser").a
+        assert fg._email_from_el(el) == "real@x.edu"
+
     def test_decode_reversed_data_user_domain(self):
         # UGA College of Education (people.coe.uga.edu) cloak: both attribute
         # strings are simply reversed and joined client-side.
@@ -1042,8 +1149,8 @@ class TestWordPressApiSource:
         monkeypatch.setattr(fg, "_wp_get_json",
                             lambda url, **_kw: records if "page=1" in url else [])
         monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
-                            ("Associate Professor", "Cognitive Psychology", [], None)
-                            if "ada" in url else ("Lecturer", "", [], None))
+                            ("Associate Professor", "Cognitive Psychology", [], None, True)
+                            if "ada" in url else ("Lecturer", "", [], None, True))
         dept = {"short": "PSYCH", "api": {
             "type": "wp", "base": "https://x.edu", "post_type": "faculty-page",
             "profile_enrich": {"require_professor": True},
@@ -2376,3 +2483,98 @@ class TestFreshmanNotLockedOut:
                             {"name": "Jane Q. Researcher", "link": "https://x.edu/jane"})
         assert rec["eligibility"]["preferred_year"] == [
             "freshman", "sophomore", "junior", "senior"]
+
+
+# --- Additive identity provenance (W7a) --------------------------------------
+
+class TestIdentityProvenance:
+    """Provenance annotates where a record's fields were extracted; it is never
+    a condition for keeping them. A person spec without hints (legacy path,
+    un-tagged collector) must normalize byte-identically to the historical
+    output — email included."""
+
+    def _dept(self):
+        return SCHOOL["departments"][0]
+
+    def test_no_hints_produces_historical_metadata(self):
+        person = {"name": "Grace Hopper", "url": "https://x.edu/p/hopper",
+                  "title": "Professor", "email": "ghopper@x.edu"}
+        opp = fg._normalize(SCHOOL, self._dept(), person)
+        assert opp["contact_email"] == "ghopper@x.edu"
+        assert opp["metadata"]["curated"] is True
+        assert "verification_scope" not in opp["metadata"]
+        assert "email_source" not in opp["metadata"]
+
+    def test_hints_copied_into_metadata(self):
+        person = {"name": "Grace Hopper", "url": "https://x.edu/p/hopper",
+                  "title": "Professor", "email": "ghopper@x.edu",
+                  "_verification_scope": "profile", "_email_source": "profile_page"}
+        opp = fg._normalize(SCHOOL, self._dept(), person)
+        assert opp["contact_email"] == "ghopper@x.edu"
+        assert opp["metadata"]["verification_scope"] == "profile"
+        assert opp["metadata"]["email_source"] == "profile_page"
+
+    def test_bogus_scope_hint_ignored(self):
+        person = {"name": "Grace Hopper", "url": "https://x.edu/p/hopper",
+                  "title": "Professor", "email": "ghopper@x.edu",
+                  "_verification_scope": "trust_me"}
+        opp = fg._normalize(SCHOOL, self._dept(), person)
+        assert "verification_scope" not in opp["metadata"]
+
+    def test_curated_seeds_tagged_curated(self, recs):
+        assert all(r["metadata"]["verification_scope"] == "curated" for r in recs)
+        # and the curated tag never leaks the internal hint key into records
+        assert all("_verification_scope" not in r for r in recs)
+
+    def test_seed_configs_not_mutated_by_harvest(self):
+        dept = SCHOOL["departments"][0]
+        before = [dict(p) for p in dept["faculty"]]
+        fg.fetch_and_normalize(SCHOOL, deep=False)
+        assert dept["faculty"] == before  # copies were tagged, not the config
+
+    def test_merge_faculty_fields_carries_email_with_its_provenance(self):
+        survivor = {"contact_email": None, "metadata": {}}
+        loser = {"contact_email": "ada@x.edu",
+                 "metadata": {"email_source": "profile_page"}}
+        fg._merge_faculty_fields(survivor, loser)
+        assert survivor["contact_email"] == "ada@x.edu"
+        assert survivor["metadata"]["email_source"] == "profile_page"
+
+    def test_merge_faculty_fields_adopts_provenance_less_email(self):
+        # Legacy emails without provenance are first-class forever.
+        survivor = {"contact_email": "", "metadata": {}}
+        loser = {"contact_email": "legacy@x.edu", "metadata": {}}
+        fg._merge_faculty_fields(survivor, loser)
+        assert survivor["contact_email"] == "legacy@x.edu"
+        assert "email_source" not in survivor["metadata"]
+
+    def test_merge_faculty_fields_never_clears_surviving_email(self):
+        # The anti-gating invariant: a survivor's provenance-less email is
+        # kept, never wiped for lacking a stamp.
+        survivor = {"contact_email": "keep@x.edu", "metadata": {}}
+        loser = {"contact_email": "other@x.edu",
+                 "metadata": {"email_source": "profile_page"}}
+        fg._merge_faculty_fields(survivor, loser)
+        assert survivor["contact_email"] == "keep@x.edu"
+        assert "email_source" not in survivor["metadata"]
+
+    def test_profile_enrich_stamps_scope_and_email_source(self, monkeypatch):
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr:
+                            ("", "robotics", [], "ada@x.edu", True))
+        people = [{"name": "Ada", "url": "https://x.edu/p/ada"}]
+        out = fg._apply_profile_enrich(
+            people, {"always": True, "email_selector": ".email"})
+        assert out[0]["email"] == "ada@x.edu"
+        assert out[0]["_email_source"] == "profile_page"
+        assert out[0]["_verification_scope"] == "profile"
+
+    def test_profile_enrich_failed_fetch_stamps_nothing(self, monkeypatch):
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr:
+                            ("", "", [], None, False))
+        people = [{"name": "Ada", "url": "https://x.edu/p/ada",
+                   "email": "kept@x.edu"}]
+        out = fg._apply_profile_enrich(
+            people, {"always": True, "email_selector": ".email"})
+        assert out[0]["email"] == "kept@x.edu"
+        assert "_verification_scope" not in out[0]
+        assert "_email_source" not in out[0]

@@ -243,3 +243,226 @@ class TestReadableExcerptChrome:
         html = "<html><body><div>Skip to content Home About People Faculty Staff</div></body></html>"
         soup = BeautifulSoup(html, "html.parser")
         assert _readable_excerpt(soup) == ""
+
+
+# --- 429 rate-limit circuit (W7a) -------------------------------------------
+
+class Test429Circuit:
+    """fetch_soup respects Retry-After (capped) and, after consecutive 429s
+    from one host, skips that host's remaining URLs for the run. In-memory
+    only; other hosts are unaffected."""
+
+    import pytest as _pytest
+
+    @_pytest.fixture(autouse=True)
+    def _clean_circuit(self):
+        from src.collectors import ucb_common
+        ucb_common._reset_rate_limit_circuit()
+        yield
+        ucb_common._reset_rate_limit_circuit()
+
+    def _install_fake_session(self, monkeypatch, status_by_host, calls, retry_after=None):
+        import requests
+
+        from src.collectors import ucb_common
+
+        class FakeSession:
+            def __init__(self):
+                self.headers = {}
+                self.verify = True
+
+            def get(self, url, timeout=None):
+                calls.append(url)
+                host = url.split("/")[2]
+                resp = requests.Response()
+                resp.status_code = status_by_host.get(host, 200)
+                resp.url = url
+                resp._content = b"<html><body>ok</body></html>"
+                if retry_after is not None and resp.status_code == 429:
+                    resp.headers["Retry-After"] = retry_after
+                return resp
+
+        monkeypatch.setattr(ucb_common.requests, "Session", FakeSession)
+        monkeypatch.setattr(ucb_common.time, "sleep", lambda s: None)
+
+    def test_circuit_opens_after_consecutive_429s_and_spares_other_hosts(self, monkeypatch):
+        from src.collectors import ucb_common
+        calls: list[str] = []
+        self._install_fake_session(
+            monkeypatch, {"limited.berkeley.edu": 429}, calls)
+
+        for _ in range(ucb_common._RATE_LIMIT_THRESHOLD):
+            assert ucb_common.fetch_soup(
+                "https://limited.berkeley.edu/x", max_retries=1) is None
+        n_before = len(calls)
+        # circuit open: no request is issued for this host any more
+        assert ucb_common.fetch_soup(
+            "https://limited.berkeley.edu/y", max_retries=1) is None
+        assert len(calls) == n_before
+        # a different host is untouched
+        assert ucb_common.fetch_soup(
+            "https://fine.berkeley.edu/z", max_retries=1) is not None
+        assert len(calls) == n_before + 1
+
+    def test_success_resets_the_streak(self, monkeypatch):
+        from src.collectors import ucb_common
+        calls: list[str] = []
+        status = {"flaky.berkeley.edu": 429}
+        self._install_fake_session(monkeypatch, status, calls)
+
+        for _ in range(ucb_common._RATE_LIMIT_THRESHOLD - 1):
+            ucb_common.fetch_soup("https://flaky.berkeley.edu/x", max_retries=1)
+        status["flaky.berkeley.edu"] = 200
+        assert ucb_common.fetch_soup(
+            "https://flaky.berkeley.edu/ok", max_retries=1) is not None
+        status["flaky.berkeley.edu"] = 429
+        # streak restarted — one more 429 must not open the circuit
+        ucb_common.fetch_soup("https://flaky.berkeley.edu/x2", max_retries=1)
+        assert "flaky.berkeley.edu" not in ucb_common._rate_limited_hosts
+
+    def test_retry_after_respected_and_capped(self, monkeypatch):
+        from src.collectors import ucb_common
+        calls: list[str] = []
+        self._install_fake_session(
+            monkeypatch, {"slow.berkeley.edu": 429}, calls, retry_after="999")
+        slept: list[float] = []
+        monkeypatch.setattr(ucb_common.time, "sleep", lambda s: slept.append(s))
+
+        ucb_common.fetch_soup("https://slow.berkeley.edu/x", max_retries=2)
+        assert slept == [ucb_common._RETRY_AFTER_CAP]  # 999 capped to 120
+
+    def test_unparseable_retry_after_falls_back_to_backoff(self, monkeypatch):
+        from src.collectors import ucb_common
+        calls: list[str] = []
+        self._install_fake_session(
+            monkeypatch, {"odd.berkeley.edu": 429}, calls,
+            retry_after="Wed, 21 Oct 2026 07:28:00 GMT")
+        slept: list[float] = []
+        monkeypatch.setattr(ucb_common.time, "sleep", lambda s: slept.append(s))
+
+        ucb_common.fetch_soup("https://odd.berkeley.edu/x", max_retries=2)
+        assert slept == [ucb_common._RETRY_BACKOFF]
+
+
+# --- Open-Berkeley person-template fallbacks (W7a) ---------------------------
+
+class TestOpenBerkeleyTemplateFallback:
+    """The standard field-openberkeley-person-* wrappers (verified live on
+    ourenvironment.berkeley.edu person pages, 2026-07) are extracted even when
+    a department config carries no bespoke selectors."""
+
+    _OB_PROFILE = """
+    <html><body class="node-type-openberkeley-person">
+      <h1>David Ackerly</h1>
+      <div class="field-name-field-openberkeley-person-title">
+        <div class="field-item">Title: Dean and Professor</div>
+      </div>
+      <div class="field-name-field-openberkeley-person-email">dackerly@berkeley.edu</div>
+      <div class="field-name-field-resint">
+        <div class="field-items"><div class="field-item">Plant ecology, climate change</div></div>
+      </div>
+    </body></html>
+    """
+
+    def _soup(self):
+        from bs4 import BeautifulSoup
+        return BeautifulSoup(self._OB_PROFILE, "html.parser")
+
+    def test_email_found_without_config_selector(self):
+        from src.collectors.ucb_common import extract_email_from_profile
+        assert extract_email_from_profile(self._soup(), _CONFIG) == "dackerly@berkeley.edu"
+
+    def test_research_found_without_config_selector(self):
+        from src.collectors.ucb_common import extract_research_interests
+        assert "Plant ecology" in extract_research_interests(self._soup(), _CONFIG)
+
+    def test_configured_selectors_still_win(self):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.ucb_common import extract_research_interests
+        cfg = {**_CONFIG, "selectors": {"research_interests": ["div.custom .field-item"]}}
+        html = ('<div class="custom"><div class="field-item">Custom text</div></div>'
+                '<div class="field-name-field-resint"><div class="field-item">OB text</div></div>')
+        got = extract_research_interests(BeautifulSoup(html, "html.parser"), cfg)
+        assert got == "Custom text"
+
+    def test_enrich_recovers_missing_title_and_stamps_provenance(self, monkeypatch):
+        from src.collectors import ucb_common
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: self._soup())
+        person = {"name": "David Ackerly", "url": "https://x/people/david-ackerly"}
+        ucb_common.enrich_faculty_from_profiles([person], _CONFIG)
+        assert person["title"] == "Dean and Professor"  # "Title:" label stripped
+        assert person["email"] == "dackerly@berkeley.edu"
+        assert person["_email_source"] == "profile_page"
+        assert person["_verification_scope"] == "profile"
+
+    def test_failed_fetch_leaves_person_unstamped(self, monkeypatch):
+        from src.collectors import ucb_common
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: None)
+        person = {"name": "A B", "url": "https://x/people/a-b", "email": "kept@berkeley.edu"}
+        ucb_common.enrich_faculty_from_profiles([person], _CONFIG)
+        assert person["email"] == "kept@berkeley.edu"
+        assert "_verification_scope" not in person
+        assert "_email_source" not in person
+
+
+# --- Additive contact provenance (W7a) ---------------------------------------
+
+class TestContactProvenance:
+    """Provenance is extra information, never a gate: a person spec without
+    hints — listing-supplied email, un-migrated collector, legacy record —
+    normalizes exactly as before and KEEPS its email."""
+
+    def test_email_without_provenance_is_first_class(self):
+        person = {"name": "Jane Doe", "url": "https://x/p/jane",
+                  "title": "Professor", "email": "jdoe@berkeley.edu"}
+        opp = normalize_faculty(person, _CONFIG)
+        assert opp["contact_email"] == "jdoe@berkeley.edu"
+        assert "email_source" not in opp["metadata"]
+        assert "verification_scope" not in opp["metadata"]
+
+    def test_hints_copied_into_metadata(self):
+        person = {"name": "Jane Doe", "url": "https://x/p/jane",
+                  "title": "Professor", "email": "jdoe@berkeley.edu",
+                  "_email_source": "profile_page", "_verification_scope": "profile"}
+        opp = normalize_faculty(person, _CONFIG)
+        assert opp["contact_email"] == "jdoe@berkeley.edu"
+        assert opp["metadata"]["email_source"] == "profile_page"
+        assert opp["metadata"]["verification_scope"] == "profile"
+
+    def test_email_source_not_stamped_without_email(self):
+        person = {"name": "Jane Doe", "url": "https://x/p/jane",
+                  "title": "Professor", "_email_source": "profile_page"}
+        opp = normalize_faculty(person, _CONFIG)
+        assert opp["contact_email"] is None
+        assert "email_source" not in opp["metadata"]
+
+    def test_clear_contact_claim_drops_stale_provenance(self):
+        from src.collectors.ucb_common import clear_contact_claim
+        opp = {"contact_email": "shared@berkeley.edu",
+               "metadata": {"email_source": "profile_page", "faculty_title": "Professor"}}
+        clear_contact_claim(opp)
+        assert opp["contact_email"] is None
+        assert "email_source" not in opp["metadata"]
+        assert opp["metadata"]["faculty_title"] == "Professor"  # rest untouched
+
+    def test_nulling_paths_clear_provenance(self):
+        from src.collectors.ucb_common import (
+            _null_shared_contact_emails,
+            _null_unit_mailbox_emails,
+        )
+        opps = [
+            {"source": "ucb_tdps_faculty", "source_type": "faculty_research",
+             "pi_name": "Alice A", "contact_email": "tdps@berkeley.edu",
+             "metadata": {"email_source": "profile_page"}},
+            {"source": "ucb_tdps_faculty", "source_type": "faculty_research",
+             "pi_name": "Bob B", "contact_email": "tdps@berkeley.edu",
+             "metadata": {}},
+            {"source": "ucb_music_faculty", "source_type": "faculty_research",
+             "pi_name": "Carol C", "contact_email": "office@music.berkeley.edu",
+             "metadata": {"email_source": "profile_page"}},
+        ]
+        assert _null_shared_contact_emails(opps) == 2
+        assert _null_unit_mailbox_emails(opps) == 1
+        assert all(o["contact_email"] is None for o in opps)
+        assert all("email_source" not in o["metadata"] for o in opps)

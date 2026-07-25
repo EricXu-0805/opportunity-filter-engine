@@ -36,7 +36,7 @@ import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -348,6 +348,34 @@ SKILL_MAP = {
 }
 
 
+# Per-host 429 circuit: repeated rate-limit responses mean the host is telling
+# us to go away for longer than a retry backoff — keep hammering it and every
+# remaining URL burns its full retry budget for nothing (and invites a ban).
+# After _RATE_LIMIT_THRESHOLD consecutive 429s from one host, the rest of that
+# host's URLs are skipped for this run. In-memory only: state lives for the
+# process (= one refresh run), nothing is persisted, no other host is affected.
+_RATE_LIMIT_THRESHOLD = 5
+_RETRY_AFTER_CAP = 120.0  # seconds; don't let a hostile header stall the run
+_consecutive_429: dict[str, int] = {}
+_rate_limited_hosts: set[str] = set()
+
+
+def _reset_rate_limit_circuit() -> None:
+    _consecutive_429.clear()
+    _rate_limited_hosts.clear()
+
+
+def _retry_after_seconds(resp) -> float | None:
+    """Delay-seconds form of Retry-After, capped; None when absent/unusable
+    (the HTTP-date form is rare on rate limiters and not worth parsing)."""
+    raw = (resp.headers.get("Retry-After") or "").strip() if resp is not None else ""
+    try:
+        val = float(raw)
+    except ValueError:
+        return None
+    return min(val, _RETRY_AFTER_CAP) if val >= 0 else None
+
+
 def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
                timeout: int | None = None, max_retries: int | None = None) -> BeautifulSoup | None:
     """Fetch a URL with browser-like headers, retrying transient failures.
@@ -364,6 +392,10 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
     certificate chain (cmsw.mit.edu omits its intermediate — browsers repair
     it via AIA fetching, requests cannot). Scrape-only, opt-in per source.
     """
+    host = (urlsplit(url).hostname or "").lower()
+    if host in _rate_limited_hosts:
+        logger.info(f"Skipping {url}: rate-limit circuit open for {host}")
+        return None
     session = requests.Session()
     session.headers.update(HEADERS)
     if ua:
@@ -380,10 +412,13 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
     eff_timeout = timeout if timeout is not None else _TIMEOUT
     eff_retries = max_retries if max_retries is not None else _MAX_RETRIES
     last_err: Exception | None = None
+    retry_after: float | None = None
     for attempt in range(1, eff_retries + 1):
+        retry_after = None
         try:
             resp = session.get(url, timeout=eff_timeout)
             resp.raise_for_status()
+            _consecutive_429.pop(host, None)
             # Parse bytes, not resp.text: the EECS server omits a charset
             # header, so requests falls back to ISO-8859-1 and mangles UTF-8
             # names ("Björn" -> "BjÃ¶rn"). BeautifulSoup detects the encoding.
@@ -399,6 +434,17 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
             if status is None or (status < 500 and status != 429):
                 logger.warning(f"Failed to fetch {url}: {e}")
                 return None
+            if status == 429 and host:
+                streak = _consecutive_429.get(host, 0) + 1
+                _consecutive_429[host] = streak
+                if streak >= _RATE_LIMIT_THRESHOLD:
+                    _rate_limited_hosts.add(host)
+                    logger.warning(
+                        f"{host}: {streak} consecutive 429s — skipping this "
+                        f"host's remaining URLs for this run"
+                    )
+                    return None
+                retry_after = _retry_after_seconds(e.response)
             last_err = e
         except Exception as e:  # noqa: BLE001 — unexpected; don't crash the run
             logger.warning(f"Failed to fetch {url}: {e}")
@@ -406,6 +452,8 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
 
         if attempt < eff_retries:
             delay = _RETRY_BACKOFF * (2 ** (attempt - 1))
+            if retry_after is not None:
+                delay = max(delay, retry_after)
             logger.warning(
                 f"Fetch attempt {attempt}/{eff_retries} for {url} failed "
                 f"({last_err}); retrying in {delay:.0f}s"
@@ -502,11 +550,27 @@ def scrape_open_berkeley_faculty(soup: BeautifulSoup, config: dict) -> list[dict
     return faculty
 
 
+# Open-Berkeley person pages share one identity template across departments
+# (body class ``node-type-openberkeley-person``; verified live on
+# ourenvironment.berkeley.edu /people/<slug>, 2026-07): the standard
+# ``field-openberkeley-person-*`` wrappers below carry the person's email,
+# rank, and research interests. Tried as fallbacks so a department config
+# without bespoke selectors still extracts from the platform template; on
+# non-Open-Berkeley pages they simply match nothing.
+_OPENBERKELEY_EMAIL_SEL = "div.field-name-field-openberkeley-person-email"
+_OPENBERKELEY_TITLE_SEL = "div.field-name-field-openberkeley-person-title"
+_OPENBERKELEY_RESEARCH_SELS = (
+    "div.field-name-field-openberkeley-person-research-interests .field-item",
+    "div.field-name-field-resint .field-item",
+)
+
+
 def extract_email_from_profile(soup: BeautifulSoup, config: dict) -> str | None:
     """Pull a contact email from an individual faculty profile page.
 
-    Tries, in order: a mailto: link, the configured email field, then a
-    page-wide scan. Prefers Berkeley addresses and skips shared/admin mailboxes.
+    Tries, in order: a mailto: link, the configured email field (with the
+    standard Open-Berkeley person-email field as fallback), then a page-wide
+    scan. Prefers Berkeley addresses and skips shared/admin mailboxes.
     Returns None when nothing usable is found.
     """
     candidates: list[str] = []
@@ -517,8 +581,8 @@ def extract_email_from_profile(soup: BeautifulSoup, config: dict) -> str | None:
             candidates.append(addr)
 
     email_sel = config.get("selectors", {}).get("email_field")
-    if email_sel:
-        field = soup.select_one(email_sel)
+    for sel in dict.fromkeys(s for s in (email_sel, _OPENBERKELEY_EMAIL_SEL) if s):
+        field = soup.select_one(sel)
         if field:
             candidates += EMAIL_RE.findall(field.get_text(" ", strip=True))
 
@@ -548,6 +612,14 @@ def extract_research_interests(soup: BeautifulSoup, config: dict) -> str:
             text = el.get_text(" ", strip=True)
             if text:
                 parts.append(text)
+    if not parts:
+        # Standard Open-Berkeley person-template fields, for configs without
+        # bespoke research selectors (matches nothing on other platforms).
+        for sel in _OPENBERKELEY_RESEARCH_SELS:
+            for el in soup.select(sel):
+                text = el.get_text(" ", strip=True)
+                if text:
+                    parts.append(text)
     return "; ".join(parts)
 
 
@@ -567,14 +639,25 @@ def enrich_faculty_from_profiles(faculty: list[dict], config: dict) -> list[dict
             continue
         soup = fetch_soup(url)
         if soup:
+            # Provenance hints, not gates: normalize_faculty copies them into
+            # metadata when present; a person without them (unenriched
+            # collector, listing-supplied email) normalizes exactly as before.
+            person["_verification_scope"] = "profile"
             email = extract_email_from_profile(soup, config)
             if email:
                 person["email"] = email
+                person["_email_source"] = "profile_page"
                 found += 1
             interests = extract_research_interests(soup, config)
             if interests:
                 person["research_areas"] = interests
                 with_interests += 1
+            if not (person.get("title") or "").strip():
+                field = soup.select_one(_OPENBERKELEY_TITLE_SEL)
+                title = re.sub(r"(?i)^\s*title\s*:\s*", "",
+                               field.get_text(" ", strip=True)).strip() if field else ""
+                if title:
+                    person["title"] = title
         if i < total - 1:
             time.sleep(PROFILE_DELAY)
         if (i + 1) % 10 == 0:
@@ -781,6 +864,28 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
 
     paid, compensation_details = _detect_funding(f"{research_areas} {description} {title}")
 
+    metadata = {
+        "confidence_score": 0.7 if email else 0.5,
+        "last_verified": now,
+        "first_seen_at": now,
+        "last_seen_at": now,
+        "is_active": True,
+        "manually_reviewed": False,
+        "notes": f"Auto-imported from {dept_name} faculty directory",
+        "faculty_title": title,
+        "research_areas_raw": research_areas[:300] if research_areas else "",
+    }
+    # Additive provenance: enrich_faculty_from_profiles leaves hints about
+    # where the record's fields were extracted. A person without them (email
+    # straight off the listing, un-enriched collector, every legacy record)
+    # normalizes identically — provenance is extra information, never a
+    # condition for keeping the email.
+    if person.get("_verification_scope") == "profile":
+        metadata["verification_scope"] = "profile"
+    email_source = person.get("_email_source")
+    if email and isinstance(email_source, str) and email_source:
+        metadata["email_source"] = email_source
+
     return {
         "id": opp_id,
         "source": config["source"],
@@ -826,17 +931,7 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "description_raw": description,
         "description_clean": description[:1500],
         "keywords": keywords,
-        "metadata": {
-            "confidence_score": 0.7 if email else 0.5,
-            "last_verified": now,
-            "first_seen_at": now,
-            "last_seen_at": now,
-            "is_active": True,
-            "manually_reviewed": False,
-            "notes": f"Auto-imported from {dept_name} faculty directory",
-            "faculty_title": title,
-            "research_areas_raw": research_areas[:300] if research_areas else "",
-        },
+        "metadata": metadata,
     }
 
 
@@ -927,6 +1022,16 @@ def _is_ucb_faculty(opp: dict) -> bool:
         opp.get("source_type") == "faculty_research"
 
 
+def clear_contact_claim(opp: dict) -> None:
+    """Null a rejected contact_email together with its ``email_source``
+    provenance — a stale source stamp left behind would misattribute whatever
+    address a later pass writes."""
+    opp["contact_email"] = None
+    metadata = opp.get("metadata")
+    if isinstance(metadata, dict):
+        metadata.pop("email_source", None)
+
+
 def _null_shared_contact_emails(opps: list[dict]) -> int:
     """Null a contact_email shared by 2+ distinct ucb_* faculty — a scraped
     department/coordinator inbox, never a personal address (two different people
@@ -947,7 +1052,7 @@ def _null_shared_contact_emails(opps: list[dict]) -> int:
     nulled = 0
     for opp in opps:
         if _is_ucb_faculty(opp) and _dedup_email(opp) in shared:
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 
@@ -962,7 +1067,7 @@ def _null_unit_mailbox_emails(opps: list[dict]) -> int:
             continue
         email = _dedup_email(opp)
         if email and email.split("@", 1)[0] in _UNIT_MAILBOX_LOCALPARTS:
-            opp["contact_email"] = None
+            clear_contact_claim(opp)
             nulled += 1
     return nulled
 

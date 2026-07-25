@@ -1,190 +1,43 @@
 {
-  "duration_seconds": 7945.9,
+  "duration_seconds": 1063.8,
   "shard": {
     "national": false,
     "schools": [
-      "cincinnati",
-      "clemson",
-      "cmu",
-      "columbia",
-      "jhu",
-      "miami",
-      "northwestern",
-      "princeton",
-      "stanford",
-      "ucf",
-      "ucsc",
-      "ucsd",
-      "uf",
-      "unl",
-      "washu"
+      "uky"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 734,
+      "rule_based_tagged": 4,
       "status": "ok"
     },
-    "campus_graph:cincinnati": {
-      "deep": true,
-      "fetched": 4,
-      "new": 0,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:clemson": {
-      "deep": true,
-      "fetched": 4,
-      "new": 0,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:cmu": {
+    "campus_graph:uky": {
       "deep": true,
       "fetched": 6,
       "new": 0,
       "status": "ok",
       "updated": 6
     },
-    "campus_graph:columbia": {
-      "deep": true,
-      "fetched": 7,
-      "new": 0,
-      "status": "ok",
-      "updated": 7
-    },
-    "campus_graph:jhu": {
-      "deep": true,
-      "fetched": 31,
-      "new": 0,
-      "status": "ok",
-      "updated": 31
-    },
-    "campus_graph:miami": {
-      "deep": true,
-      "fetched": 5,
-      "new": 0,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:northwestern": {
-      "deep": true,
-      "fetched": 29,
-      "new": 0,
-      "status": "ok",
-      "updated": 29
-    },
-    "campus_graph:princeton": {
-      "deep": true,
-      "fetched": 11,
-      "new": 0,
-      "status": "ok",
-      "updated": 11
-    },
-    "campus_graph:stanford": {
-      "deep": true,
-      "fetched": 40,
-      "new": 0,
-      "status": "ok",
-      "updated": 39
-    },
-    "campus_graph:ucf": {
-      "deep": true,
-      "fetched": 5,
-      "new": 0,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:ucsc": {
-      "deep": true,
-      "fetched": 4,
-      "new": 0,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:ucsd": {
-      "deep": true,
-      "fetched": 32,
-      "new": 0,
-      "status": "ok",
-      "updated": 30
-    },
-    "campus_graph:uf": {
-      "deep": true,
-      "fetched": 8,
-      "new": 0,
-      "status": "ok",
-      "updated": 8
-    },
-    "campus_graph:unl": {
-      "deep": true,
-      "fetched": 5,
-      "new": 0,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:washu": {
-      "deep": true,
-      "fetched": 8,
-      "new": 0,
-      "status": "ok",
-      "updated": 8
-    },
-    "cincinnati_faculty": {
-      "fetched": 326,
-      "new": 1,
-      "status": "ok",
-      "updated": 325
-    },
-    "clemson_faculty": {
-      "fetched": 897,
-      "new": 1,
-      "status": "ok",
-      "updated": 896
-    },
-    "cmu_faculty": {
-      "fetched": 963,
-      "new": 54,
-      "status": "ok",
-      "updated": 909
-    },
-    "columbia_faculty": {
-      "fetched": 1009,
-      "new": 17,
-      "status": "ok",
-      "updated": 992
-    },
     "deactivate_past": {
       "already_inactive": 748,
       "kept_active": 3,
       "newly_deactivated": 0,
-      "skipped_rolling": 117847,
+      "skipped_rolling": 127322,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 18989,
-      "newly_deactivated": 15,
+      "kept_fresh": 747,
+      "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 147,
-      "keywords_cleaned": 11,
+      "duplicates_removed": 1,
+      "keywords_cleaned": 0,
       "removed_by_school": {
-        "clemson": 1,
-        "cmu": 5,
-        "columbia": 20,
-        "jhu": 20,
-        "northwestern": 15,
-        "princeton": 21,
-        "stanford": 47,
-        "ucsd": 11,
-        "uf": 4,
-        "washu": 3
+        "uky": 1
       },
-      "shared_inbox_nulled": {
-        "columbia": 2
-      },
+      "shared_inbox_nulled": {},
       "status": "ok"
     },
     "faculty_joint_collapse": {
@@ -196,38 +49,14 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "jhu_faculty": {
-      "fetched": 4562,
-      "new": 23,
-      "status": "ok",
-      "updated": 4539
-    },
-    "miami_faculty": {
-      "fetched": 456,
-      "new": 1,
-      "status": "ok",
-      "updated": 455
-    },
-    "northwestern_faculty": {
-      "fetched": 2783,
-      "new": 16,
-      "status": "ok",
-      "updated": 2767
-    },
     "pi_enricher": {
-      "already_had": 12372,
-      "enriched": 329,
-      "nulled_unit_inboxes": 6,
-      "renulled_shared_emails": 276,
-      "scraped": 1000,
-      "skipped_budget": 2915,
+      "already_had": 732,
+      "enriched": 16,
+      "nulled_unit_inboxes": 0,
+      "renulled_shared_emails": 9,
+      "scraped": 21,
+      "skipped_budget": 0,
       "status": "ok"
-    },
-    "princeton_faculty": {
-      "fetched": 628,
-      "new": 22,
-      "status": "ok",
-      "updated": 606
     },
     "school_audience": {
       "by_source": {
@@ -262,15 +91,15 @@
         "caltech_research_programs": 8,
         "carleton_faculty": 294,
         "carleton_research_programs": 10,
-        "casewestern_faculty": 156,
+        "casewestern_faculty": 683,
         "casewestern_research_programs": 4,
-        "cincinnati_faculty": 326,
+        "cincinnati_faculty": 1025,
         "cincinnati_research_programs": 4,
-        "clemson_faculty": 898,
+        "clemson_faculty": 897,
         "clemson_research_programs": 4,
         "cmc_faculty": 154,
         "cmc_research_programs": 10,
-        "cmu_faculty": 965,
+        "cmu_faculty": 960,
         "cmu_research_programs": 6,
         "colby_faculty": 238,
         "colby_research_programs": 8,
@@ -278,9 +107,9 @@
         "colgate_research_programs": 9,
         "coloradocollege_faculty": 202,
         "coloradocollege_research_programs": 7,
-        "colostate_faculty": 161,
+        "colostate_faculty": 537,
         "colostate_research_programs": 5,
-        "columbia_faculty": 1083,
+        "columbia_faculty": 1063,
         "columbia_research_programs": 7,
         "cornell_faculty": 1684,
         "cornell_research_programs": 4,
@@ -288,7 +117,7 @@
         "dartmouth_research_programs": 8,
         "davidson_faculty": 221,
         "davidson_research_programs": 8,
-        "drexel_faculty": 46,
+        "drexel_faculty": 577,
         "drexel_research_programs": 5,
         "duke_external_research": 4,
         "duke_faculty": 1115,
@@ -320,14 +149,14 @@
         "indiana_faculty": 1573,
         "indiana_research_programs": 4,
         "jhu_external_research": 1,
-        "jhu_faculty": 4590,
+        "jhu_faculty": 4570,
         "jhu_labs": 7,
         "jhu_research_programs": 23,
         "kenyon_faculty": 168,
         "kenyon_research_programs": 11,
-        "lehigh_faculty": 233,
+        "lehigh_faculty": 564,
         "lehigh_research_programs": 4,
-        "lsu_faculty": 368,
+        "lsu_faculty": 1171,
         "lsu_research_programs": 6,
         "macalester_faculty": 192,
         "macalester_research_programs": 8,
@@ -346,9 +175,9 @@
         "nd_research_programs": 8,
         "neu_faculty": 1772,
         "neu_research_programs": 8,
-        "njit_faculty": 318,
+        "njit_faculty": 505,
         "njit_research_programs": 4,
-        "northwestern_faculty": 2785,
+        "northwestern_faculty": 2770,
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
         "nsf_reu": 671,
@@ -362,7 +191,7 @@
         "pitt_research_programs": 4,
         "pomona_faculty": 255,
         "pomona_research_programs": 8,
-        "princeton_faculty": 633,
+        "princeton_faculty": 612,
         "princeton_labs": 4,
         "princeton_research_programs": 7,
         "psu_faculty": 2704,
@@ -375,7 +204,7 @@
         "rice_research_programs": 5,
         "rochester_faculty": 845,
         "rochester_research_programs": 8,
-        "rpi_faculty": 182,
+        "rpi_faculty": 451,
         "rpi_research_programs": 4,
         "rutgers_faculty": 1889,
         "rutgers_research_programs": 8,
@@ -385,14 +214,14 @@
         "smith_faculty": 299,
         "smith_research_programs": 6,
         "stanford_external_research": 1,
-        "stanford_faculty": 1406,
+        "stanford_faculty": 1359,
         "stanford_labs": 1,
         "stanford_research_programs": 38,
-        "stevens_faculty": 222,
+        "stevens_faculty": 337,
         "stevens_research_programs": 5,
         "swarthmore_faculty": 227,
         "swarthmore_research_programs": 10,
-        "syracuse_faculty": 262,
+        "syracuse_faculty": 827,
         "syracuse_research_programs": 5,
         "tamu_faculty": 3182,
         "tamu_research_programs": 8,
@@ -472,25 +301,25 @@
         "ucla_research_programs": 31,
         "uconn_faculty": 1159,
         "uconn_research_programs": 6,
-        "ucr_faculty": 236,
+        "ucr_faculty": 1147,
         "ucr_research_programs": 6,
         "ucsb_external_research": 1,
         "ucsb_faculty": 840,
         "ucsb_labs": 2,
         "ucsb_research_programs": 13,
         "ucsb_urca_projects": 245,
-        "ucsc_faculty": 210,
+        "ucsc_faculty": 692,
         "ucsc_research_programs": 4,
-        "ucsd_faculty": 1489,
+        "ucsd_faculty": 1478,
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
-        "udel_faculty": 216,
+        "udel_faculty": 997,
         "udel_research_programs": 5,
-        "uf_faculty": 1966,
+        "uf_faculty": 1962,
         "uf_research_programs": 8,
         "uga_faculty": 2051,
         "uga_research_programs": 7,
-        "uiowa_faculty": 152,
+        "uiowa_faculty": 917,
         "uiowa_research_programs": 4,
         "uiuc_drp": 2,
         "uiuc_faculty": 3196,
@@ -500,7 +329,7 @@
         "uiuc_sro": 279,
         "uiuc_urap": 1,
         "uiuc_ursa": 1,
-        "uky_faculty": 315,
+        "uky_faculty": 747,
         "uky_research_programs": 6,
         "umass_faculty": 1575,
         "umass_research_programs": 9,
@@ -512,7 +341,7 @@
         "umich_research_programs": 6,
         "umn_faculty": 1425,
         "umn_research_programs": 7,
-        "unl_faculty": 312,
+        "unl_faculty": 1149,
         "unl_research_programs": 5,
         "upenn_external_research": 9,
         "upenn_faculty": 1894,
@@ -524,7 +353,7 @@
         "usf_research_programs": 5,
         "utah_faculty": 1082,
         "utah_research_programs": 5,
-        "utdallas_faculty": 230,
+        "utdallas_faculty": 1040,
         "utdallas_research_programs": 4,
         "utexas_external_research": 1,
         "utexas_faculty": 2159,
@@ -543,7 +372,7 @@
         "vassar_research_programs": 8,
         "vt_faculty": 1707,
         "vt_research_programs": 9,
-        "washu_faculty": 1099,
+        "washu_faculty": 1096,
         "washu_research_programs": 8,
         "wellesley_faculty": 285,
         "wellesley_research_programs": 2,
@@ -555,59 +384,23 @@
         "wisc_research_programs": 39,
         "wlu_faculty": 228,
         "wlu_research_programs": 8,
-        "wpi_faculty": 260,
+        "wpi_faculty": 461,
         "wpi_research_programs": 4,
         "yale_faculty": 1269,
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 119459
+      "tagged": 128934
     },
-    "stanford_faculty": {
-      "fetched": 1400,
-      "new": 49,
+    "uky_faculty": {
+      "fetched": 746,
+      "new": 34,
       "status": "ok",
-      "updated": 1351
-    },
-    "ucf_faculty": {
-      "fetched": 790,
-      "new": 1,
-      "status": "ok",
-      "updated": 789
-    },
-    "ucsc_faculty": {
-      "fetched": 210,
-      "new": 0,
-      "status": "ok",
-      "updated": 210
-    },
-    "ucsd_faculty": {
-      "fetched": 1438,
-      "new": 11,
-      "status": "ok",
-      "updated": 1427
-    },
-    "uf_faculty": {
-      "fetched": 1962,
-      "new": 9,
-      "status": "ok",
-      "updated": 1953
-    },
-    "unl_faculty": {
-      "fetched": 311,
-      "new": 0,
-      "status": "ok",
-      "updated": 311
-    },
-    "washu_faculty": {
-      "fetched": 1094,
-      "new": 11,
-      "status": "ok",
-      "updated": 1083
+      "updated": 712
     }
   },
-  "timestamp": "2026-07-24T06:47:55.660759",
-  "total_in_file": 119312,
-  "total_new": 216,
-  "total_updated": 18809
+  "timestamp": "2026-07-24T19:07:34.264603",
+  "total_in_file": 128933,
+  "total_new": 34,
+  "total_updated": 718
 }
