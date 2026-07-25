@@ -1098,7 +1098,14 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
                 incoming[f] = existing[f]
     works = (existing.get("metadata") or {}).get("recent_works")
     if works and not (incoming.get("metadata") or {}).get("recent_works"):
-        incoming.setdefault("metadata", {})["recent_works"] = works
+        md = incoming.setdefault("metadata", {})
+        md["recent_works"] = works
+        # The attribution stamp describes exactly these works, so it travels
+        # with them — and ONLY with them: when the works aren't carried, the
+        # stamp isn't either (it would then label works it never described).
+        status = (existing.get("metadata") or {}).get("publication_attribution_status")
+        if status:
+            md["publication_attribution_status"] = status
 
     # contact_email is carried the same unconditional way: for schools whose
     # listings never expose emails (e.g. CU Experts), the address exists ONLY

@@ -99,6 +99,12 @@ export interface OpportunityApplication {
   application_url?: string;
 }
 
+// Pipeline-stamped provenance for recent_works: 'verified_author_id' when the
+// works were fetched through a resolved OpenAlex author id, 'name_match' when
+// only a name-based association exists. Absent/null on records enriched
+// before the stamp existed — treated as unverified, never as an error.
+export type PublicationAttributionStatus = 'verified_author_id' | 'name_match';
+
 export interface OpportunityMetadata {
   is_active: boolean;
   confidence_score: number;
@@ -106,6 +112,7 @@ export interface OpportunityMetadata {
   // the harvest stores no URLs). Absent on non-faculty records and on faculty
   // without a confident OpenAlex match.
   recent_works?: { title: string; year?: number | null }[];
+  publication_attribution_status?: PublicationAttributionStatus | null;
 }
 
 // Multi-university discovery scope (PR #187 / #189). `school` is the
@@ -147,8 +154,10 @@ export interface Opportunity {
   metadata: OpportunityMetadata;
   // Match-card projection of metadata.recent_works (title/year only) — the
   // /matches card payload carries it top-level; the full record keeps the
-  // complete list under metadata.
+  // complete list under metadata. The attribution status rides alongside
+  // (null/absent = unverified).
   recent_works?: { title: string; year?: number | string | null }[];
+  publication_attribution_status?: PublicationAttributionStatus | null;
   // Record-scoped follow/tracking id (W8) — present on faculty detail
   // payloads only; the key for professor_follows and /professors/updates.
   professor_id?: string;

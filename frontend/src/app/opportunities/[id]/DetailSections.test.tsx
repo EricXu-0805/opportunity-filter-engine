@@ -53,6 +53,38 @@ describe('RecentWorksSection', () => {
     expect(screen.getByRole('link', { name: 'A Study Without a Year' })).toBeInTheDocument();
   });
 
+  it('labels unverified attribution honestly without hiding the works', () => {
+    const works = [{ title: 'A Borderline Paper', year: 2026 }];
+    // name_match and legacy-absent both get the subdued hint + honest note
+    for (const metadata of [
+      { recent_works: works, publication_attribution_status: 'name_match' as const },
+      { recent_works: works },
+    ]) {
+      const { unmount } = render(<RecentWorksSection opp={opp(metadata)} t={tFn} />);
+      expect(screen.getByText('detail.recentWorksNameMatch')).toBeInTheDocument();
+      expect(screen.getByText('detail.recentWorksNoteUnverified')).toBeInTheDocument();
+      expect(screen.queryByText('detail.recentWorksNote')).not.toBeInTheDocument();
+      // never hidden: the work still renders
+      expect(screen.getByRole('link', { name: 'A Borderline Paper' })).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it('shows no attribution hint for verified works', () => {
+    render(
+      <RecentWorksSection
+        opp={opp({
+          recent_works: [{ title: 'A Verified Paper', year: 2026 }],
+          publication_attribution_status: 'verified_author_id',
+        })}
+        t={tFn}
+      />,
+    );
+    expect(screen.queryByText('detail.recentWorksNameMatch')).not.toBeInTheDocument();
+    expect(screen.getByText('detail.recentWorksNote')).toBeInTheDocument();
+    expect(screen.queryByText('detail.recentWorksNoteUnverified')).not.toBeInTheDocument();
+  });
+
   it('caps the list at 5 works', () => {
     render(
       <RecentWorksSection
