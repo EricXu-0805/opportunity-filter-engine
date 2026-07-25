@@ -74,6 +74,19 @@ _CE_SELECTORS = {
 # Lecturer); drop emeriti. Faculty-only listing pages pass this unchanged.
 _LADDER = {"require": r"\bprofessor\b|\blecturer\b", "drop": r"emerit"}
 
+# A&S profile enrichment (research-only; captured under OFE_ENRICH_PROFILES).
+# STEM / science / social-science profiles carry a tagged "Research areas" list
+# yielding clean atomic keywords. The humanities depts (econ/govt/hist/engl) have
+# no tag list; their only research block is the Overview prose paragraph, which is
+# biography / full sentences (comma-splitting it yields fragments), so it is NOT
+# harvested — those depts stay research-blind rather than ship noisy keywords.
+_AS_ENRICH = {
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
+    "research_items_selector": 'h3:-soup-contains("Research areas") + ul li',
+}
+
 # Bowers College of Computing & Information Science — paginated Drupal views-row.
 _CIS_SELECTORS = {
     "card": "div.views-row",
@@ -105,9 +118,11 @@ def _cis(short: str, name: str, majors: list[str], subdomain: str, max_pages: in
 def _as(short: str, name: str, majors: list[str], subdomain: str, *, render: bool = False) -> dict:
     """A College of Arts & Sciences department (<subdomain>.cornell.edu/faculty)."""
     url = f"https://{subdomain}.cornell.edu/faculty"
-    scrape = {"url": url, "selectors": _AS_SELECTORS, "ladder_filter": _LADDER}
+    scrape = {"url": url, "selectors": _AS_SELECTORS, "ladder_filter": _LADDER,
+              "profile_enrich": dict(_AS_ENRICH)}
     if render:  # a few A&S subdomains 403 a plain request (Cloudflare); headless clears it.
         scrape["render"] = True
+        scrape["profile_enrich"]["render"] = True  # profile pages likely gated too.
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": scrape}
 

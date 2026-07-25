@@ -87,13 +87,33 @@ _FIELD_OLD = {"selector": "td.views-field-name", "include": _KEEP, "exclude": _D
 _FIELD_DLC = {"selector": ".directory-listing-card__subheading",
               "include": _KEEP, "exclude": _DROP}
 
+# Profile-pass research capture for OLD (Drupal 7) profiles. The listing carries
+# no research for most departments, but each /people/<slug> profile exposes the
+# department's structured research field. Target ONLY the discrete labelled
+# blocks — field-of-study ("Research Areas: …"), field-s-of-interest ("Fields of
+# interest: …; …"), field-specialization ("Specialization: …") — whose text is a
+# short comma/semicolon list of areas (the engine's label strip + downstream
+# _RESEARCH_LABEL_RE clean the leading label). The universal field-bio block is
+# deliberately EXCLUDED: it is a biography paragraph that comma-splits into
+# sentence fragments. Bio-only departments simply no-op (no keywords, no noise).
+_OLD_ENRICH = {
+    "research_selector": (
+        "div.field-name-field-field-of-study, "
+        "div.field-name-field-field-s-of-interest, "
+        "div.field-name-field-specialization"
+    ),
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
+}
+
 
 def _old(short: str, name: str, majors: list[str], host: str, path: str,
          filtered: bool = False) -> dict:
     """A department on the OLD (Drupal 7) people table. ``filtered`` gates a
     mixed all-people listing down to professor/lecturer/lector rows."""
     url = f"https://{host}.yale.edu/{path}"
-    scrape = {"url": url, "selectors": _OLD_SELECTORS}
+    scrape = {"url": url, "selectors": _OLD_SELECTORS, "profile_enrich": _OLD_ENRICH}
     if filtered:
         scrape["field_filter"] = _FIELD_OLD
     return {"short": short, "name": name, "majors": majors,

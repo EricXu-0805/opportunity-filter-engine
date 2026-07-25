@@ -421,6 +421,10 @@ _RESEARCH_ENRICH: dict[str, dict] = {
     "CHEMENGR": {"research_items_selector": ".field-name-field-people-research-area .field-item"},
     "MATSCI": {"research_items_selector": ".field-name-field-people-research-area .field-item"},
     "BREN": {"research_items_selector": ".field--name-field-department .field--item"},
+    # ECE profiles keep research as a labelled prose block (h2 "Research Interests"
+    # + p), not a taxonomy field → research_selector (comma/semicolon-split).
+    "ECE": {"research_selector": 'h2:-soup-contains("Research Interests") + p',
+            "throttle": 0.3, "timeout": 8, "max_retries": 1},
     # Prose-body departments (Sociology, Mathematics, PSTAT, Political Science)
     # were tried and dropped: their bios have no clean, consistently-labelled
     # research line, so a regex either misses most people or runs past the areas
