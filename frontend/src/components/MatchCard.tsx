@@ -247,6 +247,11 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.recentWork')}: {opp.recent_works[0].title}
               {opp.recent_works[0].year ? ` (${opp.recent_works[0].year})` : ''}
             </span>
+            {opp.publication_attribution_status !== 'verified_author_id' && (
+              <span className="shrink-0 text-[11px] text-gray-300">
+                · {t('card.recentWorkNameMatch')}
+              </span>
+            )}
           </p>
         )}
 

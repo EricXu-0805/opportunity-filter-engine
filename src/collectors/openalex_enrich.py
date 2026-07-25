@@ -50,6 +50,16 @@ _WORKS_API = "https://api.openalex.org/works"
 _MAX_WORKS = 3
 _TITLE_CAP = 200
 
+# metadata.publication_attribution_status — stamped by apply_works WITH the
+# works it describes, never retro-labeled onto works some other pass stored.
+# verified_author_id: the mapping entry carries the OpenAlex author id the
+# works were fetched through (the gated _match_author resolution). name_match:
+# the entry is a bare title list (the pre-provenance WORKS_STORE format) whose
+# only person linkage is the name-derived key. Records enriched before this
+# stamp existed simply lack the field — downstream treats absent as unknown.
+ATTRIBUTION_VERIFIED = "verified_author_id"
+ATTRIBUTION_NAME_MATCH = "name_match"
+
 # The committed "works library": the durable url -> [{title, year}] master record
 # of every OpenAlex paper we ever paid the metered API to harvest. recent_works is
 # the ONE faculty field no directory scrape reproduces, so this store is how we
@@ -624,8 +634,11 @@ def harvest_works(
     checkpoint_every: int = 50,
     resume: bool = False,
 ) -> dict[str, list[dict]]:
-    """Pure harvest: ``{url#name: [{title, year}, ...]}`` for faculty with a confident
-    OpenAlex author match (same institution/surname/field gates as topics).
+    """Pure harvest: ``{url#name: {"author_id": ..., "works": [{title, year}, ...]}}``
+    for faculty with a confident OpenAlex author match (same institution/
+    surname/field gates as topics). Carrying the resolved author id is what
+    lets apply_works stamp these works ``verified_author_id`` instead of the
+    bare-list legacy form's ``name_match``.
 
     OpenAlex is metered (paid per call), so two guards protect the budget:
     with ``checkpoint_path`` set, matches AND misses are flushed every
@@ -652,7 +665,7 @@ def harvest_works(
                   f"(confirmed 429); {len(mapping)} matched", flush=True)
             break
         if works:
-            mapping[_person_key(o)] = works
+            mapping[_person_key(o)] = {"author_id": best["id"], "works": works}
         else:
             misses.add(_person_key(o))
         if checkpoint_path and (i + 1) % checkpoint_every == 0:
@@ -663,23 +676,37 @@ def harvest_works(
     return mapping
 
 
-def apply_works(opps: list[dict], mapping: dict[str, list[dict]]) -> int:
+def _entry_works_and_status(entry) -> tuple[list[dict], str]:
+    """A mapping entry's works + the attribution status they earn. The dict
+    form (current harvests) proves the works came through a resolved author id;
+    the bare-list form (the committed pre-provenance WORKS_STORE) retains only
+    the name-keyed association, so its works are honestly ``name_match``."""
+    if isinstance(entry, dict):
+        status = ATTRIBUTION_VERIFIED if entry.get("author_id") else ATTRIBUTION_NAME_MATCH
+        return entry.get("works") or [], status
+    return entry or [], ATTRIBUTION_NAME_MATCH
+
+
+def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
     """Set ``metadata.recent_works`` on faculty keyed in mapping (composite
     ``url#name`` first; bare-URL fallback only for a URL owned by exactly one
     faculty — see ``apply_openalex``), whenever
     the mapping carries MORE papers than the record already has. Upgrade-when-
     richer (not skip-if-present): re-applying the fuller ``WORKS_STORE`` promotes a
     1-paper record to the full ``_MAX_WORKS`` set, while never downgrading a record
-    that already has more. Idempotent; never touches any other field."""
+    that already has more. Every write also stamps
+    ``metadata.publication_attribution_status`` for the works it stores (see
+    ``_entry_works_and_status``); records it doesn't touch keep whatever they
+    had. Idempotent; never touches any other field."""
     counts = _shared_url_counts(opps)
     n = 0
     for o in opps:
         if not _is_faculty(o):
             continue
-        works = mapping.get(_person_key(o))
-        if not works and counts.get(_record_url(o), 0) == 1:
-            works = mapping.get(_record_url(o))
-        works = works or []
+        entry = mapping.get(_person_key(o))
+        if not entry and counts.get(_record_url(o), 0) == 1:
+            entry = mapping.get(_record_url(o))
+        works, status = _entry_works_and_status(entry)
         clean: list[dict] = []
         seen: set[str] = set()
         for w in works:
@@ -696,7 +723,9 @@ def apply_works(opps: list[dict], mapping: dict[str, list[dict]]) -> int:
                 break
         existing = (o.get("metadata") or {}).get("recent_works") or []
         if clean and len(clean) > len(existing):
-            o.setdefault("metadata", {})["recent_works"] = clean
+            md = o.setdefault("metadata", {})
+            md["recent_works"] = clean
+            md["publication_attribution_status"] = status
             n += 1
     return n
 

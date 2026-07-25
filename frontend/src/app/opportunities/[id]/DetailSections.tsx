@@ -178,8 +178,16 @@ export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
 export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   const works = opp.metadata?.recent_works;
   if (!works?.length) return null;
+  // Honest labeling only — publications are never hidden or reordered by
+  // attribution status; unverified ones are usually correct.
+  const verified = opp.metadata?.publication_attribution_status === 'verified_author_id';
   return (
     <Section title={t('detail.sections.recentWorks')}>
+      {!verified && (
+        <p className="-mt-2 mb-3 text-[11px] text-gray-400">
+          {t('detail.recentWorksNameMatch')}
+        </p>
+      )}
       <ul className="space-y-2.5">
         {works.slice(0, 5).map((w) => (
           <li key={w.title} className="flex items-baseline gap-2.5 text-[13px] leading-snug">
@@ -197,7 +205,9 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-[11px] text-gray-400">{t('detail.recentWorksNote')}</p>
+      <p className="mt-4 text-[11px] text-gray-400">
+        {t(verified ? 'detail.recentWorksNote' : 'detail.recentWorksNoteUnverified')}
+      </p>
     </Section>
   );
 }

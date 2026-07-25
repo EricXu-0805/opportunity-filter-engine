@@ -20,6 +20,8 @@ from backend.lib.llm import (
     chat_model_slug,
 )
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.publication_attribution import attribution_status, works_are_verified
+from backend.routes.cold_email import _format_recent_works
 from backend.schemas import ProfileRequest
 from src.tracking.professor_profiles import canonical_professor_id
 
@@ -34,7 +36,15 @@ _STATS_TTL = 300
 
 
 def _redact(opp: dict) -> dict:
-    return {k: v for k, v in opp.items() if k not in REDACTED_FIELDS}
+    out = {k: v for k, v in opp.items() if k not in REDACTED_FIELDS}
+    # Serve only known attribution values; junk normalizes to null. Copy-on-
+    # write — the metadata dict is shared with the in-process corpus cache.
+    md = out.get("metadata")
+    if isinstance(md, dict) and "publication_attribution_status" in md:
+        status = attribution_status(opp)
+        if status != md["publication_attribution_status"]:
+            out["metadata"] = {**md, "publication_attribution_status": status}
+    return out
 
 
 # Heavy fields the browse-list cards never render — the raw HTML scrape and the
@@ -394,6 +404,17 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
         f"- Apply URL: {app.get('application_url') or opp.get('url') or opp.get('source_url') or '—'}",
         f"- Keywords: {', '.join(opp.get('keywords') or []) or '(none)'}",
     ]
+    # Publications enter the chat context with their attribution stated
+    # truthfully: only pipeline-verified works may be described as the
+    # professor's own; name-matched/legacy works are labeled, never hidden.
+    works_str = _format_recent_works(opp)
+    if works_str:
+        lines.append(
+            f"- Recent publications by this professor: {works_str}"
+            if works_are_verified(opp)
+            else "- Publications matched to this professor by name (not "
+                 f"independently verified — say so if asked about them): {works_str}"
+        )
     if desc:
         lines.append(f"- Description: {desc}")
 

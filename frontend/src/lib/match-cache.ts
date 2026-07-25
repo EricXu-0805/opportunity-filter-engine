@@ -36,6 +36,7 @@ const OPP_FIELDS = [
   'deadline', 'source', 'on_campus', 'posted_date', 'location', 'url',
   'duration', 'compensation_details', 'keywords', 'lab_or_program', 'pi_name',
   'school', 'audience', 'source_type', 'recent_works',
+  'publication_attribution_status',
 ] as const;
 const ELIG_FIELDS = ['international_friendly', 'skills_required', 'skills_preferred'] as const;
 const APP_FIELDS = [
