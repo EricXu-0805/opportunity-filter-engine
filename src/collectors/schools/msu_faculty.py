@@ -129,6 +129,44 @@ def _eng(short: str, name: str, majors: list[str], dept_text: str) -> dict:
     }
 
 
+# ---- College of Natural Science — one shared JSON REST directory -------------
+# directory.natsci.msu.edu is a Vue shell (static scrape sees zero people) backed
+# by a clean paginated JSON API: GET /Directory/api/Directory/<orgId>?page=<n>
+# returns {results:[{name, email, organizationTitles:[{organizationId, title}],
+# researchInterests, …}], pageCount}. A department = the API sliced by its org id;
+# ``title_from_list`` reads the rank from the appointment matching that org (so a
+# joint appointee lands with THIS dept's rank), and the inline email + research
+# interests come free. The roster mixes grad students / staff / emeriti / adjuncts
+# heavily, so a rank gate keeping professor/chair ranks is required.
+_NATSCI_BASE = "https://directory.natsci.msu.edu/Directory/api/Directory"
+# require professor|chair already excludes Graduate Student / Postdoc / Research
+# Associate / staff titles; the drop list removes non-ladder professor variants.
+# "Fixed Term …Professor" (teaching faculty) is intentionally KEPT.
+_NATSCI_LADDER = {"require": r"professor|chair",
+                  "drop": r"emerit|adjunct|visiting"}
+
+
+def _natsci(short: str, name: str, majors: list[str], org_id: int) -> dict:
+    """A College of Natural Science department via the shared directory JSON API."""
+    return {
+        "short": short, "name": name, "majors": majors,
+        "directory_url": f"https://directory.natsci.msu.edu/Directory/Directory/Department/{org_id}",
+        "json_dir": {
+            "url": f"{_NATSCI_BASE}/{org_id}",
+            "records_key": "results",
+            "paginate": {"param": "page", "count_key": "pageCount", "max": 8},
+            "name_fields": ["name"],
+            "title_from_list": {"field": "organizationTitles",
+                                "match_field": "organizationId",
+                                "match_value": org_id, "value_field": "title"},
+            "email_field": "email",
+            "link_field": "id",
+            "research_field": "researchInterests",
+            "ladder_filter": _NATSCI_LADDER,
+        },
+    }
+
+
 # ---- College directory pools recovered via per-profile email -----------------
 # Two MSU colleges expose a complete college-wide roster but keep the personal
 # email only on each person's profile page (no per-card email, no per-card
@@ -259,24 +297,24 @@ SCHOOL: dict = {
                 },
             },
         },
-        # ---- College of Natural Science: Physics (condensed-matter group) ---
-        {
-            "short": "PHYS", "name": "Department of Physics and Astronomy",
-            "majors": ["Physics", "Astrophysics"],
-            "directory_url": "https://pa.msu.edu/condensed-matter-physics/people/faculty.aspx",
-            "scrape": {
-                "url": "https://pa.msu.edu/condensed-matter-physics/people/faculty.aspx",
-                # Columns: Name "Last, First" | Title | Phone | Office | Email.
-                # Header row is <th>-only (no td name) so it self-skips.
-                "selectors": {
-                    "card": "div.table-responsive table tr",
-                    "name": "td:nth-of-type(1)",
-                    "title": "td:nth-of-type(2)",
-                    "email": "td:nth-of-type(5) a[href^='mailto:']",
-                },
-                "name_flip": True,
-            },
-        },
+        # ---- College of Natural Science (shared JSON REST directory) --------
+        # Physics & Astronomy: the whole department via the API (99 ladder) —
+        # supersedes the old condensed-matter-only table (~a dozen).
+        _natsci("PHYS", "Department of Physics and Astronomy",
+                ["Physics", "Astrophysics"], 34),
+        _natsci("MATH", "Department of Mathematics",
+                ["Mathematics", "Applied Mathematics"], 3),
+        _natsci("STAT", "Department of Statistics and Probability",
+                ["Statistics", "Data Science"], 2),
+        _natsci("BMB", "Department of Biochemistry and Molecular Biology",
+                ["Biochemistry", "Molecular Biology"], 6),
+        _natsci("MGI", "Department of Microbiology, Genetics and Immunology",
+                ["Microbiology", "Genetics", "Immunology"], 26),
+        _natsci("IBIO", "Department of Integrative Biology",
+                ["Integrative Biology", "Zoology", "Ecology"], 4),
+        _natsci("PSL", "Department of Physiology", ["Physiology"], 35),
+        _natsci("EES", "Department of Earth and Environmental Sciences",
+                ["Earth Science", "Environmental Science", "Geology"], 20),
         # ---- College of Communication Arts and Sciences (college pool) ------
         _cas_pool(),
         # ---- College of Arts and Letters (college pool, sitemap) ------------
