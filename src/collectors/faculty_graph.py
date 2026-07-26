@@ -2267,6 +2267,37 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     # endpoint returns empty to a header-less request); merge any per-source
     # headers over the browser-like defaults.
     hdrs = {**HEADERS, **(cfg.get("headers") or {})}
+    pag = cfg.get("paginate")
+    if pag:
+        # Paginated REST directory (MSU College of Natural Science:
+        # ``?page=1..pageCount``, 100 records/page). Follow pages until the
+        # feed's own ``count_key`` (pageCount) is reached, a page yields no
+        # records, or the ``max`` guard trips. Records accumulate across pages.
+        param = pag.get("param", "page")
+        recs_all: list = []
+        for page in range(pag.get("start", 1), pag.get("max", 50) + 1):
+            sep = "&" if "?" in cfg["url"] else "?"
+            try:
+                resp = requests.get(f"{cfg['url']}{sep}{param}={page}",
+                                    headers=hdrs, timeout=25)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception:  # noqa: BLE001
+                break
+            rk = cfg.get("records_key")
+            if rk and isinstance(data, dict):
+                page_recs = data.get(rk) or []
+            elif isinstance(data, dict):
+                page_recs = next((v for v in data.values() if isinstance(v, list)), [])
+            else:
+                page_recs = data
+            if not page_recs:
+                break
+            recs_all.extend(page_recs)
+            cnt = pag.get("count_key")
+            if cnt and isinstance(data, dict) and data.get(cnt) and page >= data[cnt]:
+                break
+        return _json_dir_records(dept, cfg, recs_all)
     try:
         if str(cfg.get("method", "get")).lower() == "post":
             # Some campus HR feeds only answer form POSTs (UCSD's EAH directory
@@ -2328,7 +2359,24 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
                       " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
         if not _is_person_name(name):
             continue
-        title = _dig(x, cfg.get("title_field", "title")) or "Professor"
+        tfl = cfg.get("title_from_list")
+        if tfl:
+            # The rank lives inside a list of appointment objects, one per
+            # organization a person is affiliated with (MSU's
+            # ``organizationTitles: [{organizationId, title}, …]``). Pick the
+            # entry whose ``match_field`` equals ``match_value`` (the queried
+            # department's org id) so a joint appointee lands with THIS dept's
+            # rank, not another org's. Falls back to the first entry's value,
+            # then the default rank.
+            lst = _dig(x, tfl["field"])
+            lst = lst if isinstance(lst, list) else []
+            title = next((str(e.get(tfl["value_field"], "")) for e in lst
+                          if isinstance(e, dict) and e.get(tfl["match_field"]) == tfl["match_value"]), None)
+            if not title:
+                title = (str(lst[0].get(tfl["value_field"], "")) if lst and isinstance(lst[0], dict)
+                         else "") or "Professor"
+        else:
+            title = _dig(x, cfg.get("title_field", "title")) or "Professor"
         # WordPress renders post fields as {"rendered": "..."}, and a person
         # CPT's post title is the person's NAME, not an academic rank. Without
         # an explicit title_field the bare dict used to str() straight into

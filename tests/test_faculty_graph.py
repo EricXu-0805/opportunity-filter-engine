@@ -1512,6 +1512,48 @@ class TestJsonDirSource:
     def test_json_dir_degrades_without_block(self):
         assert fg._fetch_json_dir({"short": "X"}) == []
 
+    def test_json_dir_paginates_and_reads_title_from_list(self, monkeypatch):
+        """MSU NatSci shape: a paginated REST feed (?page=N up to pageCount) whose
+        rank lives in an appointment list keyed by the queried org id."""
+        pages = {
+            1: {"pageCount": 2, "results": [
+                {"name": "Ada Prof", "email": "ada@msu.edu",
+                 "organizationTitles": [{"organizationId": 3, "title": "Professor"},
+                                        {"organizationId": 9, "title": "Adjunct Professor"}]},
+                {"name": "Gina Grad", "email": "gg@msu.edu",
+                 "organizationTitles": [{"organizationId": 3, "title": "Graduate Student"}]}]},
+            2: {"pageCount": 2, "results": [
+                {"name": "Lee Chair", "email": "lee@msu.edu",
+                 "organizationTitles": [{"organizationId": 3, "title": "Associate Chair and Professor"}]}]},
+        }
+
+        def _get(url, **k):
+            import urllib.parse as up
+            page = int(up.parse_qs(up.urlparse(url).query).get("page", ["1"])[0])
+
+            class _R:
+                def raise_for_status(self): pass
+                def json(self): return pages.get(page, {"pageCount": 2, "results": []})
+            return _R()
+
+        monkeypatch.setattr("requests.get", _get)
+        dept = {"short": "MATH", "json_dir": {
+            "url": "https://d.msu.edu/api/Directory/3",
+            "records_key": "results",
+            "paginate": {"param": "page", "count_key": "pageCount", "max": 8},
+            "name_fields": ["name"],
+            "title_from_list": {"field": "organizationTitles", "match_field": "organizationId",
+                                "match_value": 3, "value_field": "title"},
+            "email_field": "email",
+            "ladder_filter": {"require": r"professor|chair"}}}
+        people = fg._fetch_json_dir(dept)
+        # Both pages walked; grad student dropped by the require gate; Ada's rank
+        # comes from the org-3 appointment ("Professor"), NOT the org-9 adjunct one.
+        names = {p["name"]: p for p in people}
+        assert set(names) == {"Ada Prof", "Lee Chair"}
+        assert names["Ada Prof"]["title"] == "Professor"
+        assert names["Lee Chair"]["title"] == "Associate Chair and Professor"
+
     def test_json_dir_research_field_list_and_array_segment(self, monkeypatch):
         """UCSD-Biology shape: sections[].title area tags win, prose fallback."""
         payload = [
