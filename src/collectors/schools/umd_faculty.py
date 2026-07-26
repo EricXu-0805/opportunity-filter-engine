@@ -116,9 +116,15 @@ _CLARK_MEMORIAM_FILTER = {
 _CLARK_ENRICH = {
     "email_selector": "a[href^='mailto:']",
     "email_drop": r"^[^@]*$|webmaster|communications@|info@",
-    # Semicolon-separated interest phrases; _clean_keywords splits downstream.
-    "research_selector": "#faculty_research_interests .field-item",
-    "throttle": 0.2,
+    # #faculty_research_interests holds EITHER a <ul><li> area list OR a prose
+    # <p> block, one per profile. items path handles tagged-list profiles;
+    # the whole-block prose path covers the prose majority (split on ;/,
+    # downstream). items win when present. (Old '.field-item' matched 0.)
+    "research_items_selector": "#faculty_research_interests li",
+    "research_selector": "#faculty_research_interests",
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
 }
 
 

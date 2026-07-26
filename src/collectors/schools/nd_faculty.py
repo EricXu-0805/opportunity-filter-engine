@@ -107,6 +107,20 @@ _EMAIL_ENRICH = {
     "throttle": 0.2,
 }
 
+# Research capture for the two research-bearing markup families that share the
+# email-only profile pass: Engineering WP prose (div.research-area) and
+# Conductor CMS (div.person-research — scoped to the first <p> after the
+# "Research Interests" h2 so the sibling "Selected Publications" section can't
+# leak). research_selector is comma/semicolon-split downstream; depts with
+# neither container (Econ/Soc/ACMS bio-only, Math's directory URL) no-op safely.
+_RESEARCH_ENRICH = {
+    **_EMAIL_ENRICH,
+    "research_selector": "div.person-research > p:nth-of-type(1), div.research-area",
+    "timeout": 8,
+    "max_retries": 1,
+    "throttle": 0.3,
+}
+
 # ---- College of Engineering WordPress multisite -----------------------------
 _WP_SELECTORS = {
     "card": "article.type-profile",
@@ -123,7 +137,7 @@ def _wp(short: str, name: str, majors: list[str], subdomain: str) -> dict:
             "scrape": {"url": url, "selectors": _WP_SELECTORS,
                        "paginate": {"mode": "path", "param": "page", "start": 2, "max": 10},
                        "ladder_filter": _LADDER_STRICT,
-                       "profile_enrich": _EMAIL_ENRICH}}
+                       "profile_enrich": _RESEARCH_ENRICH}}
 
 
 # ---- Conductor CMS /people/faculty/ card pages ------------------------------
@@ -142,7 +156,7 @@ def _cc(short: str, name: str, majors: list[str], subdomain: str,
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _CARD_SELECTORS,
                        "ladder_filter": _LADDER_STRICT if strict else _LADDER,
-                       "profile_enrich": _EMAIL_ENRICH}}
+                       "profile_enrich": _RESEARCH_ENRICH}}
 
 
 # ---- Conductor results-list variant (Physics, Math) -------------------------
@@ -247,7 +261,7 @@ SCHOOL: dict = {
                 "section_filter": {"heading": "h2",
                                    "exclude": r"visiting|guest|adjunct|emerit"},
                 "ladder_filter": _LADDER,
-                "profile_enrich": _EMAIL_ENRICH,
+                "profile_enrich": _RESEARCH_ENRICH,
             },
         },
         {
@@ -307,7 +321,7 @@ SCHOOL: dict = {
                 "selectors": {"card": "div.faculty-item", "name": "h5 a",
                               "link": "h5 a", "title": "p"},
                 "ladder_filter": _LADDER,
-                "profile_enrich": _EMAIL_ENRICH,
+                "profile_enrich": _RESEARCH_ENRICH,
             },
         },
         {
@@ -317,7 +331,7 @@ SCHOOL: dict = {
                 "url": "https://history.nd.edu/faculty/",
                 "selectors": _HIST_SELECTORS,
                 "ladder_filter": _LADDER,
-                "profile_enrich": _EMAIL_ENRICH,
+                "profile_enrich": _RESEARCH_ENRICH,
             },
         },
         _cc("Theo", "Department of Theology", ["Theology"], "theology"),
@@ -342,7 +356,7 @@ SCHOOL: dict = {
                 "url": "https://americanstudies.nd.edu/faculty/",
                 "selectors": _AMST_SELECTORS,
                 "ladder_filter": _LADDER,
-                "profile_enrich": _EMAIL_ENRICH,
+                "profile_enrich": _RESEARCH_ENRICH,
             },
         },
         # ---- Mendoza College of Business ----------------------------------
@@ -387,7 +401,7 @@ SCHOOL: dict = {
                     "name_strip": r"\s*,?\s*(?:AIA|NCARB|LEED\b|PhD|\(?['’]\d{2}).*$",
                 },
                 "ladder_filter": _LADDER_STRICT,
-                "profile_enrich": _EMAIL_ENRICH,
+                "profile_enrich": _RESEARCH_ENRICH,
             },
         },
         # ---- Keough School of Global Affairs ------------------------------

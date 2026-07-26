@@ -303,7 +303,10 @@ SCHOOL: dict = {
                 "profile_enrich": {
                     "email_selector": "[data-cfemail]",
                     "email_drop": r"^[^@]*$|dean@|info@|admissions@",
-                    "throttle": 0.2,
+                    "research_selector": 'h2.wp-block-heading:-soup-contains("Research Interests") + p',
+                    "throttle": 0.3,
+                    "timeout": 8,
+                    "max_retries": 1,
                 },
             },
         },

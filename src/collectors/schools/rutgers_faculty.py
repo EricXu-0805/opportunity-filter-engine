@@ -146,10 +146,12 @@ _RUD_SELECTORS = {
 # (ece Bajwa: "High-dimensional inference…, compressed sensing, …";
 # dbm Bhattacharya: "algal evolution, endosymbiosis…").
 _RUD_ENRICH = {
-    "research_selector": 'section.cc--profile-chapter:-soup-contains("Research Interests")',
+    "research_selector": 'section.cc--profile-chapter:has(.f--section-title:-soup-contains("Research")) .f--rich-text',
     "email_selector": "p.email a[href^='mailto:']",
     "email_drop": r"^[^@]*$",
-    "throttle": 0.2,
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
 }
 
 
