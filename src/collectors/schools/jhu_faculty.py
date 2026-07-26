@@ -223,8 +223,10 @@ SCHOOL: dict = {
         # Turnstile). A one-time local harvest kept the ~2905 with an academic
         # "Professor" title (dropping residents/fellows/clinical-instructors/DNPs)
         # and committed them to a seed JSON. Loaded via json_dir file (no re-render
-        # each refresh). Clinical profiles carry no public email → name+rank only;
-        # specialty rides the title. See scripts/harvest for regeneration.
+        # each refresh). Each provider profile embeds the personal address in a
+        # ``"provider_email":"…@jh.edu"`` JSON blob, re-harvested into the seed's
+        # email field (2899/2905 emailed); specialty rides the title. See
+        # scripts/harvest for regeneration.
         {
             "short": "SOM", "name": "School of Medicine",
             "majors": ["Medicine", "Neuroscience", "Cell Biology", "Pharmacology",
