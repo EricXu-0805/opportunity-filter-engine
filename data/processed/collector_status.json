@@ -1,105 +1,31 @@
 {
-  "duration_seconds": 13903.2,
+  "duration_seconds": 1846.0,
   "shard": {
-    "national": false,
-    "schools": [
-      "nd",
-      "neu",
-      "northwestern",
-      "purdue",
-      "rutgers",
-      "uf",
-      "umd",
-      "vanderbilt"
-    ]
+    "national": true,
+    "schools": []
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 125,
+      "rule_based_tagged": 1607,
       "status": "ok"
     },
-    "campus_graph:nd": {
-      "deep": true,
-      "fetched": 8,
-      "new": 0,
-      "status": "ok",
-      "updated": 8
-    },
-    "campus_graph:neu": {
-      "deep": true,
-      "fetched": 8,
-      "new": 0,
-      "status": "ok",
-      "updated": 8
-    },
-    "campus_graph:northwestern": {
-      "deep": true,
-      "fetched": 29,
-      "new": 0,
-      "status": "ok",
-      "updated": 29
-    },
-    "campus_graph:purdue": {
-      "deep": true,
-      "fetched": 82,
-      "new": 3,
-      "status": "ok",
-      "updated": 78
-    },
-    "campus_graph:rutgers": {
-      "deep": true,
-      "fetched": 8,
-      "new": 0,
-      "status": "ok",
-      "updated": 8
-    },
-    "campus_graph:uf": {
-      "deep": true,
-      "fetched": 8,
-      "new": 0,
-      "status": "ok",
-      "updated": 8
-    },
-    "campus_graph:umd": {
-      "deep": true,
-      "fetched": 7,
-      "new": 0,
-      "status": "ok",
-      "updated": 7
-    },
-    "campus_graph:vanderbilt": {
-      "deep": true,
-      "fetched": 5,
-      "new": 0,
-      "status": "ok",
-      "updated": 5
-    },
     "deactivate_past": {
-      "already_inactive": 748,
-      "kept_active": 3,
-      "newly_deactivated": 0,
-      "skipped_rolling": 127259,
+      "already_inactive": 347,
+      "kept_active": 4,
+      "newly_deactivated": 438,
+      "skipped_rolling": 127810,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 14319,
-      "newly_deactivated": 1,
+      "kept_fresh": 0,
+      "newly_deactivated": 0,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 112,
-      "keywords_cleaned": 35,
-      "removed_by_school": {
-        "nd": 4,
-        "neu": 3,
-        "northwestern": 17,
-        "purdue": 30,
-        "rutgers": 3,
-        "uf": 1,
-        "umd": 51,
-        "vanderbilt": 3
-      },
+      "duplicates_removed": 0,
+      "keywords_cleaned": 1,
+      "removed_by_school": {},
       "shared_inbox_nulled": {},
       "status": "ok"
     },
@@ -112,50 +38,26 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "nd_faculty": {
-      "fetched": 1250,
-      "new": 9,
+    "nsf_reu": {
+      "fetched": 441,
+      "new": 38,
       "status": "ok",
-      "updated": 1241
-    },
-    "neu_faculty": {
-      "fetched": 1769,
-      "new": 5,
-      "status": "ok",
-      "updated": 1764
-    },
-    "northwestern_faculty": {
-      "fetched": 2783,
-      "new": 15,
-      "status": "ok",
-      "updated": 2768
+      "updated": 403
     },
     "pi_enricher": {
-      "already_had": 11688,
-      "enriched": 922,
-      "nulled_unit_inboxes": 2,
-      "renulled_shared_emails": 885,
-      "scraped": 1000,
-      "skipped_budget": 1786,
+      "already_had": 725,
+      "enriched": 262,
+      "nulled_unit_inboxes": 0,
+      "renulled_shared_emails": 0,
+      "scraped": 266,
+      "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
-      "events": 354,
+      "events": 0,
       "new_events": 0,
-      "profiles": 14040,
+      "profiles": 14018,
       "status": "ok"
-    },
-    "purdue_faculty": {
-      "fetched": 2148,
-      "new": 25,
-      "status": "ok",
-      "updated": 2123
-    },
-    "rutgers_faculty": {
-      "fetched": 1892,
-      "new": 6,
-      "status": "ok",
-      "updated": 1886
     },
     "school_audience": {
       "by_source": {
@@ -198,7 +100,7 @@
         "clemson_research_programs": 4,
         "cmc_faculty": 154,
         "cmc_research_programs": 10,
-        "cmu_faculty": 960,
+        "cmu_faculty": 897,
         "cmu_research_programs": 6,
         "colby_faculty": 238,
         "colby_research_programs": 8,
@@ -270,19 +172,19 @@
         "msu_research_programs": 6,
         "ncsu_faculty": 2091,
         "ncsu_research_programs": 11,
-        "nd_faculty": 1254,
+        "nd_faculty": 1250,
         "nd_research_programs": 8,
-        "neu_faculty": 1777,
+        "neu_faculty": 1774,
         "neu_research_programs": 8,
         "njit_faculty": 505,
         "njit_research_programs": 4,
-        "northwestern_faculty": 2785,
+        "northwestern_faculty": 2768,
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
-        "nsf_reu": 671,
+        "nsf_reu": 709,
         "nyu_faculty": 1806,
         "nyu_research_programs": 11,
-        "oregonstate_faculty": 194,
+        "oregonstate_faculty": 603,
         "oregonstate_research_programs": 4,
         "osu_faculty": 2247,
         "osu_research_programs": 8,
@@ -296,7 +198,7 @@
         "psu_faculty": 2704,
         "psu_research_programs": 10,
         "purdue_external_research": 6,
-        "purdue_faculty": 2171,
+        "purdue_faculty": 2141,
         "purdue_labs": 17,
         "purdue_research_programs": 62,
         "rice_faculty": 977,
@@ -305,11 +207,11 @@
         "rochester_research_programs": 8,
         "rpi_faculty": 451,
         "rpi_research_programs": 4,
-        "rutgers_faculty": 1895,
+        "rutgers_faculty": 1892,
         "rutgers_research_programs": 8,
         "sbu_faculty": 867,
         "sbu_research_programs": 5,
-        "simplify_internships": 2666,
+        "simplify_internships": 2983,
         "smith_faculty": 299,
         "smith_research_programs": 6,
         "stanford_external_research": 1,
@@ -414,7 +316,7 @@
         "ucsd_research_programs": 29,
         "udel_faculty": 997,
         "udel_research_programs": 5,
-        "uf_faculty": 1964,
+        "uf_faculty": 1963,
         "uf_research_programs": 8,
         "uga_faculty": 2051,
         "uga_research_programs": 7,
@@ -432,7 +334,7 @@
         "uky_research_programs": 6,
         "umass_faculty": 1575,
         "umass_research_programs": 9,
-        "umd_faculty": 1353,
+        "umd_faculty": 1302,
         "umd_research_programs": 7,
         "umich_external_research": 2,
         "umich_faculty": 1186,
@@ -465,7 +367,7 @@
         "uw_faculty": 2199,
         "uw_labs": 3,
         "uw_research_programs": 30,
-        "vanderbilt_faculty": 1126,
+        "vanderbilt_faculty": 1123,
         "vanderbilt_research_programs": 5,
         "vassar_faculty": 251,
         "vassar_research_programs": 8,
@@ -489,29 +391,25 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 128871
+      "tagged": 129460
     },
-    "uf_faculty": {
-      "fetched": 1963,
-      "new": 2,
+    "simplify_internships": {
+      "deactivated_stale": 250,
+      "fetched": 1385,
+      "new": 317,
       "status": "ok",
-      "updated": 1961
+      "updated": 1068
     },
-    "umd_faculty": {
-      "fetched": 1268,
+    "uiuc_sro": {
+      "deep": true,
+      "fetched": 278,
       "new": 0,
       "status": "ok",
-      "updated": 1268
-    },
-    "vanderbilt_faculty": {
-      "fetched": 1123,
-      "new": 2,
-      "status": "ok",
-      "updated": 1121
+      "updated": 278
     }
   },
-  "timestamp": "2026-07-25T19:42:32.682846",
-  "total_in_file": 128759,
-  "total_new": 67,
-  "total_updated": 14283
+  "timestamp": "2026-07-26T06:51:53.381090",
+  "total_in_file": 129460,
+  "total_new": 355,
+  "total_updated": 1749
 }
