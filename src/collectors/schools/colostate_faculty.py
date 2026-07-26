@@ -193,6 +193,60 @@ def _biz_dept(short, name, majors, url):
     return _dept(short, name, majors, url, _BIZ_SEL, _BIZ_FIELD, name_flip=True)
 
 
+# ---- College of Health & Human Sciences: one shared JSON directory API -------
+# The CHHS directory pages are a List.js widget that server-renders only 10 cards
+# but hydrates from a public JSON REST endpoint. Each department = the feed sliced
+# by its ``<CODE> - Faculty and Staff`` group; keep roles=Faculty (drops the
+# staff-only rows) and drop emeriti. Email is inline in the feed.
+_CHHS_API = "https://apps.chhs.colostate.edu/directory/api/users"
+
+
+def _chhs(short, name, majors, code):
+    url = f"https://www.chhs.colostate.edu/{code.lower()}/faculty/"
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "json_dir": {"url": _CHHS_API,
+                         "name_fields": ["name.display"],
+                         "title_field": "title", "email_field": "email",
+                         "filter_field": "groups",
+                         "filter_value": f"{code} - Faculty and Staff",
+                         "status_field": "roles", "status_value": "Faculty",
+                         "ladder_filter": {"drop": r"emerit"}}}
+
+
+# ---- College of Liberal Arts shared "cla-people" widget (static HTML) --------
+# TABLE flavor (Music/Theatre/Dance): inline mailto per row; title-gated
+# (professor/lecturer/instructor, drop emeriti). CARD flavor (English): each
+# person is an li with data-position — gate on data-position=faculty, email in
+# the card's mailto.
+_CLA_TABLE_SEL = {
+    "card": "tr.cla-people-list-item",
+    "name": "td.cla-people-list-item-name a",
+    "link": "td.cla-people-list-item-name a",
+    "title": "td.cla-people-list-item-title",
+    "email": "td.cla-people-list-item-email a[href^='mailto:']",
+}
+_CLA_CARD_SEL = {
+    "card": "li.cla-people-list-item[data-position='faculty']",
+    "name": "h3.cla-people-name",
+    "link": "a.cla-people-name-link",
+    "title": "ul.cla-people-position-title li",
+    "email": "p.cla-people-email a.cla-people-email-link[href^='mailto:']",
+}
+_CLA_LADDER = {"require": r"professor|lecturer|instructor", "drop": r"emerit"}
+
+
+def _cla_table(short, name, majors, url):
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _CLA_TABLE_SEL,
+                       "ladder_filter": _CLA_LADDER}}
+
+
+def _cla_card(short, name, majors, url):
+    return {"short": short, "name": name, "majors": majors, "directory_url": url,
+            "scrape": {"url": url, "selectors": _CLA_CARD_SEL,
+                       "ladder_filter": {"drop": r"emerit"}}}
+
+
 SCHOOL: dict = {
     "school_slug": "colostate",
     "source": "colostate_faculty",
@@ -249,6 +303,33 @@ SCHOOL: dict = {
                    "Marketing", "Computer Information Systems",
                    "Human Resource Management", "Business Administration"],
                   "https://biz.colostate.edu/directory/"),
+        # ---- College of Health & Human Sciences (shared JSON directory API) -
+        _chhs("FSHN", "Department of Food Science and Human Nutrition",
+              ["Food Science", "Human Nutrition", "Nutrition and Food Science"], "FSHN"),
+        _chhs("HDFS", "Department of Human Development and Family Studies",
+              ["Human Development and Family Studies"], "HDFS"),
+        _chhs("HES", "Department of Health and Exercise Science",
+              ["Health and Exercise Science", "Kinesiology"], "HES"),
+        _chhs("OT", "Department of Occupational Therapy",
+              ["Occupational Therapy"], "OT"),
+        _chhs("CM", "Department of Construction Management",
+              ["Construction Management"], "CM"),
+        _chhs("DM", "Department of Design and Merchandising",
+              ["Interior Architecture and Design", "Apparel and Merchandising"], "DM"),
+        _chhs("SOE", "School of Education", ["Education"], "SOE"),
+        _chhs("SSW", "School of Social Work", ["Social Work"], "SSW"),
+        # ---- College of Liberal Arts: School of Music, Theatre & Dance ------
+        _cla_table("MUS", "School of Music, Theatre and Dance — Music",
+                   ["Music", "Music Education", "Music Performance"],
+                   "https://music.colostate.edu/people/"),
+        _cla_table("THTR", "School of Music, Theatre and Dance — Theatre",
+                   ["Theatre"], "https://theatre.colostate.edu/people/"),
+        _cla_table("DANC", "School of Music, Theatre and Dance — Dance",
+                   ["Dance"], "https://dance.colostate.edu/people/"),
+        # ---- College of Liberal Arts: English (card flavor, inline email) ---
+        _cla_card("ENGL", "Department of English",
+                  ["English", "Creative Writing", "Literature"],
+                  "https://english.colostate.edu/faculty-staff/"),
     ],
 }
 
