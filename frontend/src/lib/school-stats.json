@@ -32,7 +32,7 @@
     "national": 3686
   },
   "brown": {
-    "campus": 1137,
+    "campus": 1159,
     "national": 3686
   },
   "brynmawr": {
@@ -96,7 +96,7 @@
     "national": 3686
   },
   "cornell": {
-    "campus": 1688,
+    "campus": 1601,
     "national": 3686
   },
   "dartmouth": {
@@ -188,7 +188,7 @@
     "national": 3686
   },
   "mit": {
-    "campus": 1392,
+    "campus": 1363,
     "national": 3686
   },
   "msu": {
@@ -200,11 +200,11 @@
     "national": 3686
   },
   "nd": {
-    "campus": 1253,
+    "campus": 1258,
     "national": 3686
   },
   "neu": {
-    "campus": 1780,
+    "campus": 1782,
     "national": 3686
   },
   "njit": {
@@ -212,7 +212,7 @@
     "national": 3686
   },
   "northwestern": {
-    "campus": 2799,
+    "campus": 2797,
     "national": 3686
   },
   "nyu": {
@@ -220,7 +220,7 @@
     "national": 3686
   },
   "oregonstate": {
-    "campus": 198,
+    "campus": 607,
     "national": 3686
   },
   "osu": {
@@ -244,11 +244,11 @@
     "national": 3686
   },
   "purdue": {
-    "campus": 2222,
+    "campus": 2220,
     "national": 3686
   },
   "rice": {
-    "campus": 991,
+    "campus": 982,
     "national": 3686
   },
   "rochester": {
@@ -260,7 +260,7 @@
     "national": 3686
   },
   "rutgers": {
-    "campus": 1897,
+    "campus": 1900,
     "national": 3686
   },
   "sbu": {
@@ -312,7 +312,7 @@
     "national": 3686
   },
   "uci": {
-    "campus": 1187,
+    "campus": 1189,
     "national": 3686
   },
   "ucla": {
@@ -328,7 +328,7 @@
     "national": 3686
   },
   "ucsb": {
-    "campus": 1100,
+    "campus": 1078,
     "national": 3686
   },
   "ucsc": {
@@ -344,7 +344,7 @@
     "national": 3686
   },
   "uf": {
-    "campus": 1970,
+    "campus": 1971,
     "national": 3686
   },
   "uga": {
@@ -368,7 +368,7 @@
     "national": 3686
   },
   "umd": {
-    "campus": 1360,
+    "campus": 1309,
     "national": 3686
   },
   "umich": {
@@ -384,7 +384,7 @@
     "national": 3686
   },
   "upenn": {
-    "campus": 1922,
+    "campus": 1915,
     "national": 3686
   },
   "usc": {
@@ -420,7 +420,7 @@
     "national": 3686
   },
   "vanderbilt": {
-    "campus": 1129,
+    "campus": 1128,
     "national": 3686
   },
   "vassar": {
@@ -456,7 +456,7 @@
     "national": 3686
   },
   "yale": {
-    "campus": 1274,
+    "campus": 1280,
     "national": 3686
   }
 }

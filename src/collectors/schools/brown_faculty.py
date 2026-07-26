@@ -49,9 +49,24 @@ _BROWN_SELECTORS = {
 # unchanged.
 _LADDER = {"require": r"\bprofessor\b|\blecturer\b", "drop": r"emerit"}
 
+# Per-faculty research capture (gated by OFE_ENRICH_PROFILES). Brown stores
+# research two disjoint ways that never co-occur on one page: VIVO profiles
+# (vivo.brown.edu) tag areas as <a> links in div.brown-research-areas-list
+# (clean atomic items), while the dept Drupal "people component" subdomains
+# carry a comma-separated prose block in div.people_research. Ship both; the
+# engine prefers research_items when present, else splits the prose block.
+_BROWN_PROFILE_ENRICH = {
+    "research_items_selector": "div.brown-research-areas-list a",
+    "research_selector": "div.people_research",
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
+}
+
 
 def _d(short: str, name: str, majors: list[str], url: str, *, render: bool = False) -> dict:
-    scrape = {"url": url, "selectors": _BROWN_SELECTORS, "ladder_filter": _LADDER}
+    scrape = {"url": url, "selectors": _BROWN_SELECTORS, "ladder_filter": _LADDER,
+              "profile_enrich": _BROWN_PROFILE_ENRICH}
     if render:
         scrape["render"] = True
     return {"short": short, "name": name, "majors": majors, "directory_url": url,

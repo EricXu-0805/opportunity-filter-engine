@@ -122,7 +122,16 @@ def _cla(short: str, name: str, majors: list[str], include: str) -> dict:
     return {"short": short, "name": name, "majors": majors, "directory_url": _CLA_URL,
             "scrape": {"url": _CLA_URL, "selectors": _CLA_SEL,
                        "ladder_filter": _CLA_LADDER,
-                       "field_filter": {"selector": "td:nth-child(2)", "include": include}}}
+                       "field_filter": {"selector": "td:nth-child(2)", "include": include},
+                       # Listing carries no research; the per-profile page holds a
+                       # "Research Focus" block. Gated pass (OFE_ENRICH_PROFILES),
+                       # plain fetch (CLA profiles are server-rendered).
+                       "profile_enrich": {
+                           "research_selector": 'h2:-soup-contains("Research Focus") + p',
+                           "throttle": 0.3,
+                           "timeout": 8,
+                           "max_retries": 1,
+                       }}}
 
 
 # Purdue Polytechnic Institute: five schools from one Drupal JSON:API feed

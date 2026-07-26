@@ -1613,6 +1613,69 @@ class TestTitleRe:
         assert people[0]["title"] == "Professor"
 
 
+class TestDepartmentField:
+    """A single college-wide directory that carries each person's home
+    department/school in a card field lands per-record department attribution
+    (OSU Liberal Arts' ``div.school``), overriding the config's umbrella name."""
+
+    _HTML = """<div>
+      <div class='row'>
+        <div class='dir-name'><a href='/directory/ada'>Ada Prof</a></div>
+        <div class='school'>School of Public Policy</div>
+        <div class='position'>Associate Professor</div>
+      </div>
+      <div class='row'>
+        <div class='dir-name'><a href='/directory/lee'>Lee Prof</a></div>
+        <div class='school'>School of Writing, Literature &amp; Film</div>
+        <div class='position'>Professor</div>
+      </div>
+      <div class='row'>
+        <div class='dir-name'><a href='/directory/kim'>Kim Prof</a></div>
+        <div class='position'>Professor</div>
+      </div>
+    </div>"""
+
+    _SEL = {"card": "div.row", "name": "div.dir-name a",
+            "link": "div.dir-name a", "title": "div.position",
+            "department_field": "div.school"}
+
+    def test_parse_reads_per_card_department(self):
+        from bs4 import BeautifulSoup
+        people = fg._parse_cards(BeautifulSoup(self._HTML, "html.parser"),
+                                 self._SEL, "https://x.edu/directory")
+        by_name = {p["name"]: p for p in people}
+        assert by_name["Ada Prof"]["department"] == "School of Public Policy"
+        # HTML entity in the field is decoded to text.
+        assert by_name["Lee Prof"]["department"] == "School of Writing, Literature & Film"
+        # A card missing the field yields an empty override (falls back downstream).
+        assert by_name["Kim Prof"]["department"] == ""
+
+    def test_normalize_prefers_card_department_over_config(self):
+        dept = {"short": "CLA", "name": "College of Liberal Arts", "majors": []}
+        school = {"school_slug": "oregonstate", "source": "oregonstate_faculty",
+                  "organization": "Oregon State University", "location": "Corvallis, OR",
+                  "id_prefix": "oregonstate", "audience": "unknown", "work_auth_notes": ""}
+        spec = fg.faculty("Ada Prof", url="https://x.edu/directory/ada",
+                          department="School of Public Policy")
+        rec = fg._normalize(school, dept, spec)
+        assert rec["department"] == "School of Public Policy"
+        # Absent per-card department → config umbrella name is kept.
+        spec2 = fg.faculty("Kim Prof", url="https://x.edu/directory/kim")
+        assert fg._normalize(school, dept, spec2)["department"] == "College of Liberal Arts"
+
+    def test_normalize_department_map_rewrites_and_drops(self):
+        dept = {"short": "CLA", "name": "College of Liberal Arts", "majors": [],
+                "department_map": {"SPP": "School of Public Policy"}}
+        school = {"school_slug": "oregonstate", "source": "oregonstate_faculty",
+                  "organization": "Oregon State University", "location": "Corvallis, OR",
+                  "id_prefix": "oregonstate", "audience": "unknown", "work_auth_notes": ""}
+        spec = fg.faculty("Ada Prof", url="https://x.edu/a", department="SPP")
+        assert fg._normalize(school, dept, spec)["department"] == "School of Public Policy"
+        # An unmapped raw value falls back to the umbrella name.
+        spec2 = fg.faculty("Lee Prof", url="https://x.edu/l", department="Unknown Unit")
+        assert fg._normalize(school, dept, spec2)["department"] == "College of Liberal Arts"
+
+
 class TestProfileCoreFieldEnrich:
     """Link-list directories (UCSD Literature/Theatre): title/email/ladder all
     live on the profile page; the ``always`` flag runs the pass without the

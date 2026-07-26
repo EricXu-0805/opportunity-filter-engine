@@ -122,7 +122,13 @@ def _hum(short: str, name: str, majors: list[str], url: str) -> dict:
             "research": ".field--name-field-research-interest",
         },
         "ladder_filter": _LADDER,
-        "profile_enrich": {"email_selector": "a[href^='mailto:']", "throttle": 1.0},
+        "profile_enrich": {
+            "email_selector": "a[href^='mailto:']",
+            "research_selector": "#research-interests .profile-section-item",
+            "throttle": 0.3,
+            "timeout": 8,
+            "max_retries": 1,
+        },
     })
 
 
@@ -478,7 +484,10 @@ SCHOOL: dict = {
                 {"selectors": {"card": "p:has(strong):has(a[href^='mailto:'])",
                                "name": "strong",
                                "link": "a[href*='faculty.uci.edu']",
-                               "email": "a[href^='mailto:']"}})
+                               "email": "a[href^='mailto:']"},
+                 "profile_enrich": {
+                     "research_selector": "#research-interests .profile-section-item",
+                     "throttle": 0.3, "timeout": 8, "max_retries": 1}})
           for short, name, majors, url in [
               ("ENGL", "Department of English", ["English"],
                "https://www.humanities.uci.edu/english/core-faculty"),

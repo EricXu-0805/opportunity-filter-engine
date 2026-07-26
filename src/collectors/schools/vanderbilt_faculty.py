@@ -36,12 +36,27 @@ _CAS_SELECTORS = {
     "email": "a[href^='mailto:']",
 }
 
+# CAS /bio/<slug> profiles are static HTML: when present, research areas sit
+# under a "Specialization(s)" heading (h3 or h4) immediately followed by the
+# content block, whose tag varies by dept (<p>/<table>/<ul>). The any-tag
+# adjacent-sibling union captures all three; the engine get_text + comma/
+# semicolon split downstream yields research keywords. Gated by
+# OFE_ENRICH_PROFILES (no "always"); persisted via _carry_forward_enrichment.
+_CAS_ENRICH = {
+    "research_selector": 'h3:-soup-contains("Specialization") + *, '
+                         'h4:-soup-contains("Specialization") + *',
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
+}
+
 
 def _cas(short: str, name: str, majors: list[str], slug: str, path: str) -> dict:
     """A College of Arts & Science department (as.vanderbilt.edu/<slug>/<path>)."""
     url = f"https://as.vanderbilt.edu/{slug}/{path}"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
-            "scrape": {"url": url, "selectors": _CAS_SELECTORS}}
+            "scrape": {"url": url, "selectors": _CAS_SELECTORS,
+                       "profile_enrich": _CAS_ENRICH}}
 
 
 # Keep ladder faculty across the FutureVU JSON rosters (Engineering, Blair):

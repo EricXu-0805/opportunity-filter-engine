@@ -65,7 +65,7 @@ def _dept(short: str, name: str, majors: list[str], url: str, selectors: dict,
     if ladder:
         scrape["ladder_filter"] = ladder
     if enrich:
-        scrape["profile_enrich"] = {**enrich, "throttle": 0.2}
+        scrape["profile_enrich"] = {"throttle": 0.2, **enrich}
     scrape.update(scrape_extra)
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url, "scrape": scrape}
@@ -88,7 +88,9 @@ SCHOOL: dict = {
               "https://math.mit.edu/directory/faculty/",
               {"card": "div.person", "name": ".name a", "link": ".name a",
                "title": ".title p", "email": "a.email-hidden"},
-              name_flip=True),
+              name_flip=True,
+              enrich={"research_items_selector": ".research p em, .research ul.comma-list li a",
+                      "throttle": 0.3, "timeout": 8, "max_retries": 1}),
         _dept("PHYS", "Department of Physics", ["Physics"],
               "https://physics.mit.edu/faculty/",
               {"card": ".card.faculty-card", "name": "h3 a",
@@ -157,7 +159,9 @@ SCHOOL: dict = {
                "name_strip": r"\s*arrow-right\s*$"},
               ladder=None,
               enrich={"email_selector": "a[href^='mailto:']",
-                      "email_drop": r"^[^@]*$|chemeweb@"}),
+                      "email_drop": r"^[^@]*$|chemeweb@",
+                      "research_selector": 'h2:-soup-contains("Research Interests") + p',
+                      "throttle": 0.3, "timeout": 8, "max_retries": 1}),
         _dept("CEE", "Department of Civil and Environmental Engineering",
               ["Civil and Environmental Engineering"],
               "https://cee.mit.edu/faculty/",
@@ -178,7 +182,9 @@ SCHOOL: dict = {
               {"card": ".faculty-teaser", "name": "h2.faculty-teaser__name",
                "link": "a", "title": ".faculty-teaser__title"},
               enrich={"email_selector": ".info a[href^='mailto:']",
-                      "email_drop": r"^[^@]*$"}),
+                      "email_drop": r"^[^@]*$",
+                      "research_items_selector": ".faculty-header__categories ul li a",
+                      "throttle": 0.3, "timeout": 8, "max_retries": 1}),
         _dept("MECHE", "Department of Mechanical Engineering", ["Mechanical Engineering"],
               "https://meche.mit.edu/people",
               {"card": "a.clearfix[href*='/people/faculty/']", "name": "span.name",
@@ -236,7 +242,9 @@ SCHOOL: dict = {
               {"card": "a.profile-teaser", "name": "h3.profile-teaser__name",
                "link": ":self", "title": "h4.profile-teaser__title"},
               enrich={"email_selector": ".contact-info__data a[href^='mailto:']",
-                      "email_drop": r"^[^@]*$"}),
+                      "email_drop": r"^[^@]*$",
+                      "research_selector": ".faculty-profile-page-categories",
+                      "throttle": 0.3, "timeout": 8, "max_retries": 1}),
         _dept("GSL", "Global Languages",
               ["French", "German Studies", "Spanish", "Chinese", "Japanese"],
               "https://languages.mit.edu/people/",

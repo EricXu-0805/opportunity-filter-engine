@@ -152,7 +152,23 @@ _CONN_RI_RE = (r"Research\s+Interests\s*:?\s*(?:</p>\s*<p[^>]*>)?"
 _CONN_ENRICH = {
     "email_selector": ".cn-entry a[href^='mailto:']",
     "email_drop": r"^[^@]*$",
-    "throttle": 0.2,
+    # Research lives under an h3/h4/h5 heading inside the cn-list-item card;
+    # heading-level scoping excludes the nav dropdown "Faculty Research Areas"
+    # links (those are <a>, not headings). Plural blocks are comma lists.
+    "research_selector": (
+        'div.cn-list-item :is(h3, h4, h5):-soup-contains("Research Areas") + p, '
+        'div.cn-list-item :is(h3, h4, h5):-soup-contains("Research Interests") + p'
+    ),
+    # ESSIE profiles whose only research label is the singular "Primary Research
+    # Area"; fires only when the CSS selector above yields nothing.
+    "research_re": (
+        r"Primary Research Area\s+([A-Z][^.]{2,60}?)\s+"
+        r"(?:Research (?:Topic|Areas|Interests)|Other Research|Education|"
+        r"Awards|Honors|Courses|Teaching|Publications)"
+    ),
+    "throttle": 0.3,
+    "timeout": 8,
+    "max_retries": 1,
 }
 
 
