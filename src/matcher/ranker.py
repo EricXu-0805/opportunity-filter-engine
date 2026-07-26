@@ -500,10 +500,16 @@ def _similarity_corpus(opportunity: dict) -> str:
     opp_kw_list = [k.lower() for k in opportunity.get("keywords", [])]
     specific_kw = list(dict.fromkeys(kw for kw in opp_kw_list if kw not in _GENERIC_KEYWORDS))
     opp_desc = (opportunity.get("description_raw") or opportunity.get("description_clean") or "").lower()
+    # The professor's own stated research areas — often the only topical signal
+    # for faculty whose keywords never got past the generic department template.
+    # Kept resident by the loader (backend/data_loader._sanitize_opportunity)
+    # and included in the TF-IDF fit corpus so these terms aren't dropped OOV.
+    research_areas_raw = ((opportunity.get("metadata") or {}).get("research_areas_raw") or "").lower()
     return " ".join(filter(None, [
         opportunity.get("title", ""),
         opportunity.get("lab_or_program", ""),
         " ".join(specific_kw),
+        research_areas_raw,
         opp_desc,
     ]))
 

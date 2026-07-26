@@ -3823,7 +3823,7 @@ class TestMemoryObservability:
 
 class TestInMemoryCorpusSlim:
     def test_loader_drops_pipeline_only_fields(self):
-        # eligibility_text_raw / metadata.notes / metadata.research_areas_raw
+        # eligibility_text_raw / metadata.notes / first_seen_at / last_seen_at
         # exist for the collectors' own passes; no serving path reads them, so
         # the loader must not keep 10+ MiB of them resident on a 2 GB instance.
         opps = data_loader.load_opportunities()
@@ -3834,7 +3834,22 @@ class TestInMemoryCorpusSlim:
             meta = o.get("metadata")
             if isinstance(meta, dict):
                 assert "notes" not in meta
-                assert "research_areas_raw" not in meta
+                assert "first_seen_at" not in meta
+                assert "last_seen_at" not in meta
+
+    def test_loader_keeps_research_areas_raw(self):
+        # research_areas_raw HAS serving consumers (llm_rerank candidate text,
+        # cold_email professor brief + anti-fabrication allowlist, ranker
+        # similarity corpus) — the loader must NOT strip it.
+        out = data_loader._sanitize_opportunity(
+            {"metadata": {"research_areas_raw": "vision transformers", "notes": "n"}})
+        assert out["metadata"]["research_areas_raw"] == "vision transformers"
+        assert "notes" not in out["metadata"]
+
+    def test_fit_corpus_text_includes_research_areas_raw(self):
+        text = data_loader._opportunity_corpus_text(
+            {"title": "Research", "metadata": {"research_areas_raw": "photonic crystals"}})
+        assert "photonic crystals" in text
 
     def test_sanitize_tolerates_missing_subdicts(self):
         assert data_loader._sanitize_opportunity({"title": "x"}) == {"title": "x"}

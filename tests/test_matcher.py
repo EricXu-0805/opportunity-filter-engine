@@ -514,6 +514,43 @@ class TestUpsideScoring:
         assert 0 <= score <= 100
 
 
+class TestResearchAreasRawSignal:
+    """research_areas_raw is the only topical signal for faculty whose keywords
+    never got past the generic department template. The loader used to strip it
+    before any consumer saw it; these lock in that it now flows into the
+    similarity corpus and actually moves the score."""
+
+    def _faculty_opp(self, research_areas_raw):
+        # A faculty record with NO specific keywords and only a template
+        # description — the exact shape where research_areas_raw is the sole
+        # topical signal.
+        return {
+            "id": "prof-x",
+            "title": "Research with Prof. X",
+            "keywords": [],
+            "description_raw": "Research opportunity in the department.",
+            "metadata": {"research_areas_raw": research_areas_raw},
+        }
+
+    def test_similarity_corpus_includes_research_areas_raw(self):
+        from src.matcher.ranker import _similarity_corpus
+
+        corpus = _similarity_corpus(self._faculty_opp("superconducting qubits"))
+        assert "superconducting qubits" in corpus
+
+    def test_research_areas_raw_lifts_on_topic_similarity(self):
+        from src.matcher.ranker import _similarity_corpus, _token_cosine_similarity
+
+        opp = self._faculty_opp("superconducting qubits and quantum error correction")
+        query = "quantum error correction"
+        with_field = _token_cosine_similarity(query, _similarity_corpus(opp))
+        without_field = _token_cosine_similarity(
+            query, _similarity_corpus({**opp, "metadata": {}})
+        )
+        assert with_field > 0.0
+        assert with_field > without_field
+
+
 # ── Integration Tests: Full Ranking ───────────
 
 class TestRankOpportunity:
