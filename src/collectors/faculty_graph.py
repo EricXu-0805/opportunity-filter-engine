@@ -92,6 +92,7 @@ def faculty(
     email: str | None = None,
     research_areas: str = "",
     keywords: list[str] | None = None,
+    department: str = "",
 ) -> dict:
     """Build one curated faculty spec.
 
@@ -99,6 +100,9 @@ def faculty(
     ``keywords`` is the clean topical list that drives the title parenthetical
     and the matcher — keep it tidy (no page furniture / fragments) so it passes
     the faculty data-quality gate. If omitted it falls back to research_areas.
+    ``department`` (usually empty) overrides the config department per-record —
+    for a single college-wide directory that carries each person's home
+    department in a card field (see ``department_field`` in ``_parse_cards``).
     """
     return {
         "name": name,
@@ -107,6 +111,7 @@ def faculty(
         "email": email,
         "research_areas": research_areas,
         "keywords": keywords or [],
+        "department": department,
     }
 
 
@@ -394,6 +399,14 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
 
     short = dept["short"]
     dept_name = dept["name"]
+    # A college-wide directory can carry each person's home department in the
+    # card (``department_field``); when present it overrides the config's
+    # umbrella name. ``department_map`` optionally rewrites the raw field text
+    # to a clean display name (and can drop a card by mapping it to "").
+    card_dept = (person.get("department") or "").strip()
+    if card_dept:
+        dmap = dept.get("department_map")
+        dept_name = dmap.get(card_dept, dept_name) if dmap else card_dept
     # Some authoritative feeds (e.g. UCSD Physics' profile API) carry no
     # per-person page; point at the directory the person is listed on rather
     # than ship a record with no destination (the integrity gate requires url).
@@ -833,6 +846,10 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     ``link_filter`` keeps only cards whose profile href matches (e.g. "/Faculty/"
     on directories that list faculty and staff together); ``section_filter`` keeps
     only cards under a matching role heading (single-page role-grouped directories).
+    ``department_field`` (a selector) reads each card's home department/school
+    text into the spec's ``department`` so a single college-wide directory lands
+    with per-record department attribution (see ``_normalize`` / OSU Liberal
+    Arts) instead of one umbrella label.
     """
     people: list[dict] = []
     for card in soup.select(sel.get("card", "")):
@@ -956,9 +973,20 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             e_el = card.select_one(sel["email"])
             if e_el is not None:
                 email = _email_from_el(e_el)
+        # A single college-wide directory that carries each person's home
+        # department/school in a card field (OSU Liberal Arts' ``div.school``):
+        # derive the per-record department from it so the whole college is one
+        # scrape yet lands with real department attribution (falls back to the
+        # config department name when the field is absent on a card).
+        dept_override = ""
+        if sel.get("department_field"):
+            d_el = card.select_one(sel["department_field"])
+            if d_el is not None:
+                dept_override = re.sub(r"\s+", " ", d_el.get_text(" ", strip=True)).strip()
         if _is_person_name(name):
             people.append(faculty(name, title=title, url=href, email=email,
-                                  research_areas=research, keywords=keywords))
+                                  research_areas=research, keywords=keywords,
+                                  department=dept_override))
     return people
 
 
