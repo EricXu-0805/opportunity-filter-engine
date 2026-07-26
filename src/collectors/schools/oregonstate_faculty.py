@@ -38,6 +38,22 @@ title. A handful of real professors listed only by an administrative title
 Science") are dropped by the gate — accuracy over recall, so no non-ladder rows
 leak in. Emeriti are additionally dropped by the engine's own retired-title gate.
 
+Three further server-rendered families added 2026-07-26 to grow past the
+original STEM core (all plain static 200s, no WAF/render):
+
+* **College of Forestry Display-Suite directory** (own subdomain
+  ``directory.forestry.oregonstate.edu``) — one college-wide roster, "Last,
+  First" names, inline mailto; the site's position-type=Faculty flag leaks
+  postdocs/staff so a title ladder is also applied.
+* **College of Business per-department "person-teaser" pages**
+  (``business.oregonstate.edu/faculty/<slug>``) — first/last split names, rank
+  gate, no listing email (downstream enrichment). Nine departments.
+* **College of Liberal Arts college-wide directory** — ONE directory for the
+  whole college; each card carries the person's home School in ``div.school``,
+  so ``department_field`` lands every record with real per-School attribution
+  from a single scrape. Rank-gated; the Cloudflare-obfuscated listing email is
+  recovered by the engine's cf-shield decode.
+
 Single source ("oregonstate_faculty"); department rides each record, ids
 namespaced by department short-code.
 
@@ -47,6 +63,20 @@ Chemistry 36→6, Mathematics 56→9, Statistics 36→9. EECS + MIME publish a r
 mailto per card (~100% email on the kept engineering faculty); the College of
 Science directories publish none on the listing (name+title only — emails come
 from the downstream profile-enrichment pass via the directory__title link).
+
+Deferred (phase-2, live-verified 2026-07-26): the entire College of
+Agricultural Sciences (Animal & Rangeland Sciences, Crop & Soil Science,
+Horticulture, Fisheries/Wildlife/Conservation Sciences, Food Science &
+Technology, Applied Economics) plus Botany & Plant Pathology run the legacy
+Drupal-7 "larch" AJAX view — the GET returns only the filter shell and an empty
+view (rows inject client-side), so they need headless render or a bespoke
+/views/ajax POST. CEOAS + Veterinary Medicine share the madrone directory but
+keep the rank as a bare text node (no selectable element) so their
+courtesy/DVM/resident-heavy rosters can't be rank-gated cleanly; Public Health &
+Human Sciences is on the same template but very staff-heavy; Pharmacy is a small
+A-Z-paginated directory with cf-obfuscated email — all await a rank-bearing
+selector or their own pass. The central directory.oregonstate.edu is SAML
+login-gated and deliberately avoided.
 """
 
 from __future__ import annotations
@@ -110,6 +140,86 @@ def _sci(short: str, name: str, majors: list[str], url: str) -> dict:
     }
 
 
+# ---- College of Forestry Display-Suite directory (own subdomain) -----------
+# directory.forestry.oregonstate.edu is one college-wide Drupal Display-Suite
+# view: name is "Last, First" (name_flip), rank in the job-title field, email
+# inline. The site's own position-type field flags Faculty vs Staff/Graduate
+# Student, but it leaks postdocs and a few staff, so a title ladder
+# (professor/lecturer/instructor, minus courtesy/emeritus/adjunct/postdoc) is
+# also applied. 25 cards per page, ``?page=N``.
+_FOR_SEL = {
+    "card": "div.views-row",
+    "name": "div.field--name-node-title h2 a",
+    "link": "div.field--name-node-title h2 a",
+    "title": "div.field--name-field-person-job-title .field__item",
+    "email": "div.field--name-field-person-email .field__item a[href^='mailto:']",
+}
+_FOR_FIELD = {
+    "selector": "div.field--name-field-person-position-type .field__item",
+    "require_present": True,
+    "include": r"Faculty",
+}
+_FOR_LADDER = {"require": r"professor|lecturer|instructor",
+               "drop": r"courtesy|emerit|adjunct|postdoc"}
+
+# ---- College of Business per-department "person-teaser" pages ---------------
+# business.oregonstate.edu/faculty/<slug> server-renders an article.person-teaser
+# list; the name is split across first/last name cells (name + name_last), the
+# rank is field-position, no listing email (downstream enrichment). Mixes staff,
+# so the same professor/lecturer rank gate applies. One page per department.
+_BUS_SEL = {
+    "card": "article.person-teaser",
+    "name": "div.field-name-field-first-name",
+    "name_last": "div.field-name-field-last-name",
+    "link": "div.person-image a[href]",
+    "title": "div.field-name-field-position",
+}
+_BUS_FIELD = {
+    "selector": "div.field-name-field-position",
+    "require_present": True,
+    "include": r"professor|lecturer",
+}
+
+# ---- College of Liberal Arts college-wide directory (madrone) --------------
+# liberalarts.oregonstate.edu/directory is ONE directory for the whole college;
+# each card carries the person's home School in ``div.school``, so a single
+# scrape lands with real per-School department attribution (``department_field``).
+# Rank in ``div.position`` (gated), email is Cloudflare-obfuscated (the engine's
+# cf-shield decode recovers it from ``p.dir-email a``). ``?page=N``.
+_CLA_SEL = {
+    "card": "div.views-field.views-field-nothing",
+    "name": "div.dir-name a",
+    "link": "div.dir-name a",
+    "title": "div.position",
+    "email": "p.dir-email a",
+    "department_field": "div.school",
+}
+_CLA_FIELD = {
+    "selector": "div.position",
+    "require_present": True,
+    "include": r"professor|lecturer",
+}
+
+
+def _for(short: str, name: str, majors: list[str], url: str) -> dict:
+    """The College of Forestry Display-Suite college-wide directory."""
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _FOR_SEL, "name_flip": True,
+                   "field_filter": _FOR_FIELD, "ladder_filter": _FOR_LADDER,
+                   "paginate": _PAGINATE},
+    }
+
+
+def _bus(short: str, name: str, majors: list[str], slug: str) -> dict:
+    """A College of Business department (business.oregonstate.edu/faculty/<slug>)."""
+    url = f"https://business.oregonstate.edu/faculty/{slug}"
+    return {
+        "short": short, "name": name, "majors": majors, "directory_url": url,
+        "scrape": {"url": url, "selectors": _BUS_SEL, "field_filter": _BUS_FIELD},
+    }
+
+
 SCHOOL: dict = {
     "school_slug": "oregonstate",
     "source": "oregonstate_faculty",
@@ -131,6 +241,15 @@ SCHOOL: dict = {
              ["Mechanical Engineering", "Industrial Engineering",
               "Manufacturing Engineering", "Energy Systems Engineering"],
              "https://engineering.oregonstate.edu/MIME/About/People"),
+        _coe("CBEE", "School of Chemical, Biological, and Environmental Engineering",
+             ["Chemical Engineering", "Bioengineering", "Environmental Engineering"],
+             "https://engineering.oregonstate.edu/CBEE/About/People"),
+        _coe("CCE", "School of Civil and Construction Engineering",
+             ["Civil Engineering", "Construction Engineering Management"],
+             "https://engineering.oregonstate.edu/CCE/About/People"),
+        _coe("NSE", "School of Nuclear Science and Engineering",
+             ["Nuclear Engineering", "Radiation Health Physics"],
+             "https://engineering.oregonstate.edu/NSE/About/People"),
         # ---- College of Science (directory card, no listing email) ----------
         _sci("PHYS", "Department of Physics", ["Physics"],
              "https://physics.oregonstate.edu/directory"),
@@ -141,6 +260,54 @@ SCHOOL: dict = {
              "https://math.oregonstate.edu/directory"),
         _sci("STAT", "Department of Statistics", ["Statistics", "Data Science"],
              "https://stat.oregonstate.edu/directory"),
+        _sci("BB", "Department of Biochemistry and Biophysics",
+             ["Biochemistry", "Biophysics"],
+             "https://biochem.oregonstate.edu/directory"),
+        _sci("MICRO", "Department of Microbiology", ["Microbiology"],
+             "https://microbiology.oregonstate.edu/directory"),
+        _sci("IB", "Department of Integrative Biology",
+             ["Integrative Biology", "Zoology", "Botany"],
+             "https://ib.oregonstate.edu/directory"),
+        # ---- College of Forestry (Display-Suite college-wide directory) -----
+        _for("FOR", "College of Forestry",
+             ["Forestry", "Forest Ecosystems and Society",
+              "Forest Engineering, Resources and Management",
+              "Wood Science and Engineering"],
+             "https://directory.forestry.oregonstate.edu/"),
+        # ---- College of Business (per-department person-teaser pages) -------
+        _bus("ACTG", "College of Business — Accounting", ["Accounting"], "accounting"),
+        _bus("FIN", "College of Business — Finance", ["Finance"], "finance"),
+        _bus("MGMT", "College of Business — Management",
+             ["Management"], "management"),
+        _bus("MKTG", "College of Business — Marketing", ["Marketing"], "marketing"),
+        _bus("BANA", "College of Business — Business Analytics",
+             ["Business Analytics"], "business-analytics"),
+        _bus("BIS", "College of Business — Business Information Systems",
+             ["Business Information Systems"], "business-information-systems"),
+        _bus("DSGN", "College of Business — Design and Merchandising Management",
+             ["Design", "Merchandising Management"], "design"),
+        _bus("IE", "College of Business — Innovation and Entrepreneurship",
+             ["Innovation", "Entrepreneurship"], "innovation-and-entrepreneurship"),
+        _bus("SCLM", "College of Business — Supply Chain and Logistics Management",
+             ["Supply Chain Management", "Logistics"],
+             "supply-chain-and-logistics-management"),
+        # ---- College of Liberal Arts (one directory, split by home School) --
+        {
+            "short": "CLA", "name": "College of Liberal Arts",
+            "majors": ["Political Science", "Public Policy", "History",
+                       "Philosophy", "Religious Studies", "Psychology",
+                       "Communication", "Art", "Music", "Design",
+                       "English", "Writing", "Anthropology", "Sociology",
+                       "Ethnic Studies", "Women, Gender and Sexuality Studies",
+                       "Languages"],
+            "directory_url": "https://liberalarts.oregonstate.edu/directory",
+            "scrape": {
+                "url": "https://liberalarts.oregonstate.edu/directory",
+                "selectors": _CLA_SEL,
+                "field_filter": _CLA_FIELD,
+                "paginate": _PAGINATE,
+            },
+        },
     ],
 }
 
