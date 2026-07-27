@@ -134,6 +134,10 @@ _TEASER_ENRICH = {
     "email_drop": _EMAIL_DROP,
     "title_selector": ".field-field_title",
     "ladder_recheck": _LADDER_DROP,
+    # A&S profiles that carry a research-areas taxonomy publish one chip per area
+    # (Psychology, Political Science, …); depts without it yield nothing (mixed).
+    "research_items_selector": (".field-field_research_areas a, "
+                                ".field-field_research_interesdt > div:nth-of-type(2) div"),
     "throttle": 0.2,
 }
 
