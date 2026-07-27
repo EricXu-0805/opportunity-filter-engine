@@ -1,32 +1,166 @@
 {
-  "duration_seconds": 1846.0,
+  "duration_seconds": 12453.4,
   "shard": {
-    "national": true,
-    "schools": []
+    "national": false,
+    "schools": [
+      "asu",
+      "bc",
+      "buffalo",
+      "emory",
+      "fsu",
+      "iastate",
+      "ncsu",
+      "rutgers",
+      "stevens",
+      "tufts",
+      "ucr",
+      "uiowa",
+      "uiuc"
+    ]
   },
   "sources": {
+    "asu_faculty": {
+      "fetched": 2374,
+      "new": 3,
+      "status": "ok",
+      "updated": 2371
+    },
     "auto_tagger": {
-      "rule_based_tagged": 1607,
+      "rule_based_tagged": 106,
       "status": "ok"
     },
+    "bc_faculty": {
+      "fetched": 824,
+      "new": 2,
+      "status": "ok",
+      "updated": 822
+    },
+    "buffalo_faculty": {
+      "fetched": 838,
+      "new": 0,
+      "status": "ok",
+      "updated": 838
+    },
+    "campus_graph:asu": {
+      "deep": true,
+      "fetched": 6,
+      "new": 0,
+      "status": "ok",
+      "updated": 6
+    },
+    "campus_graph:bc": {
+      "deep": true,
+      "fetched": 4,
+      "new": 0,
+      "status": "ok",
+      "updated": 4
+    },
+    "campus_graph:buffalo": {
+      "deep": true,
+      "fetched": 6,
+      "new": 0,
+      "status": "ok",
+      "updated": 6
+    },
+    "campus_graph:emory": {
+      "deep": true,
+      "fetched": 8,
+      "new": 0,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:fsu": {
+      "deep": true,
+      "fetched": 5,
+      "new": 0,
+      "status": "ok",
+      "updated": 5
+    },
+    "campus_graph:iastate": {
+      "deep": true,
+      "fetched": 4,
+      "new": 0,
+      "status": "ok",
+      "updated": 4
+    },
+    "campus_graph:ncsu": {
+      "deep": true,
+      "fetched": 11,
+      "new": 0,
+      "status": "ok",
+      "updated": 11
+    },
+    "campus_graph:rutgers": {
+      "deep": true,
+      "fetched": 8,
+      "new": 0,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:stevens": {
+      "deep": true,
+      "fetched": 5,
+      "new": 0,
+      "status": "ok",
+      "updated": 5
+    },
+    "campus_graph:tufts": {
+      "deep": true,
+      "fetched": 8,
+      "new": 0,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:ucr": {
+      "deep": true,
+      "fetched": 6,
+      "new": 0,
+      "status": "ok",
+      "updated": 6
+    },
+    "campus_graph:uiowa": {
+      "deep": true,
+      "fetched": 4,
+      "new": 0,
+      "status": "ok",
+      "updated": 4
+    },
     "deactivate_past": {
-      "already_inactive": 347,
+      "already_inactive": 785,
       "kept_active": 4,
-      "newly_deactivated": 438,
-      "skipped_rolling": 127810,
+      "newly_deactivated": 0,
+      "skipped_rolling": 126375,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
-      "kept_fresh": 0,
-      "newly_deactivated": 0,
+      "kept_fresh": 18721,
+      "newly_deactivated": 16,
       "skipped_partial_scrape": [],
       "status": "ok"
     },
+    "emory_faculty": {
+      "fetched": 1437,
+      "new": 26,
+      "status": "ok",
+      "updated": 1411
+    },
     "faculty_hygiene": {
-      "duplicates_removed": 0,
-      "keywords_cleaned": 1,
-      "removed_by_school": {},
-      "shared_inbox_nulled": {},
+      "duplicates_removed": 40,
+      "keywords_cleaned": 84,
+      "removed_by_school": {
+        "asu": 1,
+        "emory": 2,
+        "iastate": 1,
+        "ncsu": 7,
+        "rutgers": 3,
+        "uiuc": 26
+      },
+      "shared_inbox_nulled": {
+        "buffalo": 2,
+        "iastate": 4,
+        "tufts": 2,
+        "uiuc": 4
+      },
       "status": "ok"
     },
     "faculty_joint_collapse": {
@@ -34,30 +168,48 @@
       "shared_mailbox_nulled": 0,
       "status": "ok"
     },
+    "fsu_faculty": {
+      "fetched": 632,
+      "new": 1,
+      "status": "ok",
+      "updated": 631
+    },
+    "iastate_faculty": {
+      "fetched": 595,
+      "new": 1,
+      "status": "ok",
+      "updated": 594
+    },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "nsf_reu": {
-      "fetched": 441,
-      "new": 38,
+    "ncsu_faculty": {
+      "fetched": 2255,
+      "new": 176,
       "status": "ok",
-      "updated": 403
+      "updated": 2079
     },
     "pi_enricher": {
-      "already_had": 725,
-      "enriched": 262,
-      "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 0,
-      "scraped": 266,
-      "skipped_budget": 0,
+      "already_had": 16846,
+      "enriched": 313,
+      "nulled_unit_inboxes": 7,
+      "renulled_shared_emails": 229,
+      "scraped": 1000,
+      "skipped_budget": 1038,
       "status": "ok"
     },
     "professor_tracking": {
       "events": 0,
       "new_events": 0,
-      "profiles": 14018,
+      "profiles": 14558,
       "status": "ok"
+    },
+    "rutgers_faculty": {
+      "fetched": 1856,
+      "new": 107,
+      "status": "ok",
+      "updated": 1749
     },
     "school_audience": {
       "by_source": {
@@ -65,13 +217,13 @@
         "amherst_research_programs": 9,
         "arizona_faculty": 1465,
         "arizona_research_programs": 5,
-        "asu_faculty": 2426,
+        "asu_faculty": 2429,
         "asu_research_programs": 6,
         "barnard_faculty": 209,
         "barnard_research_programs": 9,
         "bates_faculty": 168,
         "bates_research_programs": 11,
-        "bc_faculty": 823,
+        "bc_faculty": 825,
         "bc_research_programs": 4,
         "boulder_faculty": 1586,
         "boulder_labs": 5,
@@ -108,7 +260,7 @@
         "colgate_research_programs": 9,
         "coloradocollege_faculty": 202,
         "coloradocollege_research_programs": 7,
-        "colostate_faculty": 537,
+        "colostate_faculty": 902,
         "colostate_research_programs": 5,
         "columbia_faculty": 1063,
         "columbia_research_programs": 7,
@@ -124,9 +276,9 @@
         "duke_faculty": 1115,
         "duke_labs": 9,
         "duke_research_programs": 58,
-        "emory_faculty": 1433,
+        "emory_faculty": 1437,
         "emory_research_programs": 8,
-        "fsu_faculty": 631,
+        "fsu_faculty": 632,
         "fsu_research_programs": 5,
         "gatech_external_research": 2,
         "gatech_faculty": 1225,
@@ -145,12 +297,12 @@
         "haverford_research_programs": 5,
         "houston_faculty": 1015,
         "houston_research_programs": 6,
-        "iastate_faculty": 594,
+        "iastate_faculty": 595,
         "iastate_research_programs": 4,
         "indiana_faculty": 1573,
         "indiana_research_programs": 4,
         "jhu_external_research": 1,
-        "jhu_faculty": 4570,
+        "jhu_faculty": 4560,
         "jhu_labs": 7,
         "jhu_research_programs": 23,
         "kenyon_faculty": 168,
@@ -168,9 +320,9 @@
         "middlebury_research_programs": 9,
         "mit_faculty": 1356,
         "mit_research_programs": 7,
-        "msu_faculty": 597,
+        "msu_faculty": 959,
         "msu_research_programs": 6,
-        "ncsu_faculty": 2091,
+        "ncsu_faculty": 2267,
         "ncsu_research_programs": 11,
         "nd_faculty": 1250,
         "nd_research_programs": 8,
@@ -182,13 +334,13 @@
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
         "nsf_reu": 709,
-        "nyu_faculty": 1806,
+        "nyu_faculty": 1787,
         "nyu_research_programs": 11,
         "oregonstate_faculty": 603,
         "oregonstate_research_programs": 4,
         "osu_faculty": 2247,
         "osu_research_programs": 8,
-        "pitt_faculty": 253,
+        "pitt_faculty": 1098,
         "pitt_research_programs": 4,
         "pomona_faculty": 255,
         "pomona_research_programs": 8,
@@ -207,7 +359,7 @@
         "rochester_research_programs": 8,
         "rpi_faculty": 451,
         "rpi_research_programs": 4,
-        "rutgers_faculty": 1892,
+        "rutgers_faculty": 1999,
         "rutgers_research_programs": 8,
         "sbu_faculty": 867,
         "sbu_research_programs": 5,
@@ -302,7 +454,7 @@
         "ucla_research_programs": 31,
         "uconn_faculty": 1159,
         "uconn_research_programs": 6,
-        "ucr_faculty": 1147,
+        "ucr_faculty": 1148,
         "ucr_research_programs": 6,
         "ucsb_external_research": 1,
         "ucsb_faculty": 818,
@@ -311,7 +463,7 @@
         "ucsb_urca_projects": 245,
         "ucsc_faculty": 692,
         "ucsc_research_programs": 4,
-        "ucsd_faculty": 1478,
+        "ucsd_faculty": 1449,
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
         "udel_faculty": 997,
@@ -323,7 +475,7 @@
         "uiowa_faculty": 917,
         "uiowa_research_programs": 4,
         "uiuc_drp": 2,
-        "uiuc_faculty": 3196,
+        "uiuc_faculty": 3279,
         "uiuc_other": 7,
         "uiuc_our_rss": 26,
         "uiuc_siebel": 14,
@@ -361,7 +513,7 @@
         "utexas_research_programs": 35,
         "utk_faculty": 1022,
         "utk_research_programs": 5,
-        "uva_faculty": 1227,
+        "uva_faculty": 1149,
         "uva_research_programs": 9,
         "uw_external_research": 1,
         "uw_faculty": 2199,
@@ -391,25 +543,82 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 129460
+      "tagged": 131274
     },
-    "simplify_internships": {
-      "deactivated_stale": 250,
-      "fetched": 1385,
-      "new": 317,
-      "status": "ok",
-      "updated": 1068
-    },
-    "uiuc_sro": {
-      "deep": true,
-      "fetched": 278,
+    "stevens_faculty": {
+      "fetched": 337,
       "new": 0,
       "status": "ok",
-      "updated": 278
+      "updated": 337
+    },
+    "tufts_faculty": {
+      "fetched": 2048,
+      "new": 361,
+      "status": "ok",
+      "updated": 1687
+    },
+    "ucr_faculty": {
+      "fetched": 1139,
+      "new": 1,
+      "status": "ok",
+      "updated": 1138
+    },
+    "uiowa_faculty": {
+      "fetched": 917,
+      "new": 0,
+      "status": "ok",
+      "updated": 917
+    },
+    "uiuc_drp": {
+      "fetched": 2,
+      "new": 0,
+      "status": "ok",
+      "updated": 0
+    },
+    "uiuc_faculty": {
+      "empty_departments": [],
+      "enriched": true,
+      "fetched": 3817,
+      "html_fetched": 825,
+      "js_fetched": 167,
+      "json_fetched": 563,
+      "new": 483,
+      "status": "ok",
+      "updated": 3334
+    },
+    "uiuc_other": {
+      "fetched": 7,
+      "new": 0,
+      "status": "ok",
+      "updated": 0
+    },
+    "uiuc_our_rss": {
+      "fetched": 25,
+      "new": 0,
+      "status": "ok",
+      "updated": 25
+    },
+    "uiuc_siebel": {
+      "fetched": 14,
+      "new": 0,
+      "status": "ok",
+      "updated": 1
+    },
+    "uiuc_urap": {
+      "fetched": 1,
+      "new": 0,
+      "status": "ok",
+      "updated": 0
+    },
+    "uiuc_ursa": {
+      "fetched": 1,
+      "new": 0,
+      "status": "ok",
+      "updated": 0
     }
   },
-  "timestamp": "2026-07-26T06:51:53.381090",
-  "total_in_file": 129460,
-  "total_new": 355,
-  "total_updated": 1749
+  "timestamp": "2026-07-27T07:02:52.461090",
+  "total_in_file": 131234,
+  "total_new": 1161,
+  "total_updated": 18009
 }
