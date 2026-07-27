@@ -153,6 +153,9 @@ SCHOOL: dict = {
                 # carry the shared Jacobs research capsule. Gated
                 # (OFE_ENRICH_PROFILES=1) — optional depth.
                 "profile_enrich": {"research_html_re": _JACOBS_CAPSULE_RE,
+                                   # jacobsschool profile shows the email as
+                                   # plain text in the col-3 sidebar (no mailto).
+                                   "email_selector": ".col-3 p",
                                    "throttle": 1.5},
             },
         ),
@@ -172,6 +175,9 @@ SCHOOL: dict = {
                 # URL flavors, one shared template) — the same research capsule
                 # as ECE. Gated pass.
                 "profile_enrich": {"research_html_re": _JACOBS_CAPSULE_RE,
+                                   # jacobsschool profile shows the email as
+                                   # plain text in the col-3 sidebar (no mailto).
+                                   "email_selector": ".col-3 p",
                                    "throttle": 1.5},
             },
         ),
@@ -194,6 +200,9 @@ SCHOOL: dict = {
                 # Stored links resolve to jacobsschool profile pages — the
                 # shared research capsule. Gated pass.
                 "profile_enrich": {"research_html_re": _JACOBS_CAPSULE_RE,
+                                   # jacobsschool profile shows the email as
+                                   # plain text in the col-3 sidebar (no mailto).
+                                   "email_selector": ".col-3 p",
                                    "throttle": 1.5},
             },
         ),
@@ -265,6 +274,9 @@ SCHOOL: dict = {
                 "name_flip": True,
                 "ladder_filter": _LADDER,
                 "profile_enrich": {"research_html_re": _JACOBS_CAPSULE_RE,
+                                   # jacobsschool profile shows the email as
+                                   # plain text in the col-3 sidebar (no mailto).
+                                   "email_selector": ".col-3 p",
                                    "throttle": 1.5},
             },
         ),
@@ -461,6 +473,10 @@ SCHOOL: dict = {
                         r"research(?:\s+interests?|\s+focus(?:es)?)?\s+"
                         r"(?:is|are|lies?|spans?|focus(?:es)?|centers?|interests?)\s*"
                         r"(?:in|on|at|around)?\s*([^<.]{10,400})"),
+                    # Personal mailto on the pendari profile; the page footer
+                    # also carries a shared inbox, dropped.
+                    "email_selector": ".person-page .email a[href^='mailto:']",
+                    "email_drop": r"communication@ucsd\.edu",
                     "throttle": 1.0,
                 },
             },
