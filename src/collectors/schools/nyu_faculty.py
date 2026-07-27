@@ -487,14 +487,16 @@ SCHOOL: dict = {
                     "selectors": _WAGNER_SEL,
                     "paginate": {"param": "page", "start": 1, "max": 15},
                     "ladder_filter": {"require": _KEEP,
-                                      "drop": r"emerit|adjunct|visiting"}}},
+                                      "drop": r"emerit|adjunct|visiting"},
+                    "profile_enrich": _AS_ENRICH}},
         # ---- Silver School of Social Work (core faculty; search-gated) ----
         {"short": "SILVER", "name": "Silver School of Social Work",
          "majors": ["Social Work"],
          "directory_url": "https://socialwork.nyu.edu/nyusilver/en/home/faculty-and-research/our-faculty.html",
          "scrape": {"url": "https://socialwork.nyu.edu/nyusilver/en/home/faculty-and-research/our-faculty.html",
                     "selectors": _SILVER_SEL,
-                    "ladder_filter": _LADDER}},
+                    "ladder_filter": _LADDER,
+                    "profile_enrich": _AS_ENRICH}},
     ],
 }
 
