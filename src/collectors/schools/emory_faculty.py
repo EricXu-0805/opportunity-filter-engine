@@ -298,8 +298,13 @@ SCHOOL: dict = {
                               "title": ".faculty-card__content--body"},
                 "paginate": {"param": "page", "start": 1, "max": 12},
                 "ladder_filter": _LADDER,
-                "profile_enrich": {"email_selector": "a[href^='mailto:']",
-                                   "throttle": 0.3},
+                # The generic first-mailto selector picks up the site-nav inbox
+                # (executiveeducation@emory.edu); the personal address lives only
+                # inside the full faculty card, and the GBS shared inboxes drop.
+                "profile_enrich": {
+                    "email_selector": "article.faculty-card--full a[href^='mailto:']",
+                    "email_drop": r"^(?:executiveeducation|gbsalumni|gbsinfo|gbs[\w.-]*|info)@",
+                    "throttle": 0.3},
             },
         },
     ],
