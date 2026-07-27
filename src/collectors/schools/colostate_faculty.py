@@ -224,6 +224,9 @@ _CLA_TABLE_SEL = {
     "link": "td.cla-people-list-item-name a",
     "title": "td.cla-people-list-item-title",
     "email": "td.cla-people-list-item-email a[href^='mailto:']",
+    # Expertise/concentration ("Piano", "Voice", …) rides the listing card —
+    # comma/semicolon-split into keywords downstream.
+    "research": "td.cla-people-list-item-concentration",
 }
 _CLA_CARD_SEL = {
     "card": "li.cla-people-list-item[data-position='faculty']",
@@ -231,6 +234,9 @@ _CLA_CARD_SEL = {
     "link": "a.cla-people-name-link",
     "title": "ul.cla-people-position-title li",
     "email": "p.cla-people-email a.cla-people-email-link[href^='mailto:']",
+    # English lists expertise as the card's data-concentration attribute
+    # ("Creative Writing, Contemporary Literature") — no text element holds it.
+    "research_re": r'data-concentration="([^"]+)"',
 }
 _CLA_LADDER = {"require": r"professor|lecturer|instructor", "drop": r"emerit"}
 
