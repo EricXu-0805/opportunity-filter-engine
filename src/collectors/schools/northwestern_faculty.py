@@ -103,7 +103,13 @@ _SOC_SEL = {"card": "article", "name": "h2", "link": "a", "title": "p.title"}
 _SOC_LADDER = {"require": r"\bprofessor\b",
                "drop": (r"\bemerit|\blecturer|\bvisiting|\badjunct|instruction"
                         r"|artist in residence|\bstaff\b|\bfellow\b|\bpostdoc")}
-_SOC_ENRICH = {"always": True, "email_selector": "a[href^='mailto:']", "throttle": 0.15}
+_SOC_ENRICH = {"always": True, "email_selector": "a[href^='mailto:']", "throttle": 0.15,
+               # School of Communication profiles carry an "expertise" div
+               # ("<div class='… expertise …'><h2>…</h2> Feminist theory, Queer
+               # theory, …</div>"); rides the already-on pass (bounded to that
+               # block's comma line).
+               "research_html_re":
+                   r'<div class="[^"]*\bexpertise\b[^"]*">\s*<h2[^>]*>[^<]*</h2>(.*?)</div>'}
 
 
 def _soc(short: str, name: str, majors: list[str], slug: str) -> dict:
@@ -193,6 +199,13 @@ SCHOOL: dict = {
                     "email": "td:nth-child(3) a[href^='mailto:']",
                 },
                 "ladder_filter": _NW_LADDER,
+                # Profile lists an "Area(s) of Interest" heading + sibling comma
+                # line inside #biography-content; env-gated research-only pass.
+                "profile_enrich": {
+                    "research_selector":
+                        '#biography-content h3:-soup-contains("Area(s) of Interest") + *',
+                    "throttle": 0.2,
+                },
             },
         },
         {
@@ -321,7 +334,11 @@ SCHOOL: dict = {
                 "include": r"/faculty/profiles/[^/]+/$",
                 "render": False,
                 "selectors": {"name": "h1", "title": "p.mb-0",
-                              "email": "a[href^='mailto:']"},
+                              "email": "a[href^='mailto:']",
+                              # "Areas of Expertise" <h2> section → clean <li>
+                              # chips (Criminal Procedure, Evidence, …).
+                              "research_items":
+                                  'div.section:has(> h2:-soup-contains("Areas of Expertise")) li'},
                 "ladder_filter": {"require": r"\bprofessor\b",
                                   "drop": r"\bemerit|\bvisiting|\blecturer\b|\badjunct"},
                 "cap": 200,

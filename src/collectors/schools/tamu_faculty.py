@@ -179,6 +179,17 @@ def _agrilife(short: str, name: str, majors: list[str], host: str,
                     "ladder_filter": _DROP_RETIRED}
     if ua:
         scrape["ua"] = ua
+    # The listing card carries no research; each profile publishes a clean
+    # "Areas of Expertise" <h2> + <ul><li> chip list (distinct from the prose
+    # "Professional Summary" we avoid). Env-gated research-only pass — the card
+    # already supplies name/title/email, so this fetch fills only keywords.
+    enrich: dict = {
+        "research_items_selector": 'h2:-soup-contains("Areas of Expertise") + ul li',
+        "throttle": 0.2,
+    }
+    if ua:
+        enrich["ua"] = ua
+    scrape["profile_enrich"] = enrich
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url, "scrape": scrape}
 
@@ -208,7 +219,14 @@ def _health(short: str, name: str, majors: list[str], url: str) -> dict:
             "directory_url": url,
             "scrape": {"url": url, "selectors": _HEALTH_SELECTORS,
                        "field_filter": _HEALTH_FIELD_FILTER,
-                       "ladder_filter": _DROP_RETIRED}}
+                       "ladder_filter": _DROP_RETIRED,
+                       # Profiles carry a clean "Research Interests" <h2> +
+                       # <ul><li> chip list; env-gated research-only pass.
+                       "profile_enrich": {
+                           "research_items_selector":
+                               'h2:-soup-contains("Research Interests") + ul li',
+                           "throttle": 0.2,
+                       }}}
 
 
 # ---- VMBS directory (vet-school dept subdomains; curl UA required) ---------
@@ -266,7 +284,9 @@ def _bush(short: str, name: str, majors: list[str], path: str) -> dict:
 
 def _wp_profiled(short: str, name: str, majors: list[str], *, base: str,
                  post_type: str, directory_url: str, title_selector: str,
-                 query: str = "", category_include: dict | None = None) -> dict:
+                 query: str = "", category_include: dict | None = None,
+                 research_selector: str | None = None,
+                 research_items_selector: str | None = None) -> dict:
     """A WP-REST roster completed by an always-on per-profile pass.
 
     The REST feed has no rank/email, so the profile pass is where the record's
@@ -274,6 +294,10 @@ def _wp_profiled(short: str, name: str, majors: list[str], *, base: str,
     a NON-professorial sentinel: a missing rank element or a failed profile
     fetch leaves the sentinel in place and the ``ladder_recheck`` drops the
     record — staff/PhD students can never slip through as "Professor".
+
+    ``research_selector`` / ``research_items_selector`` ride the SAME already-on
+    fetch (Architecture's "Scholarly Interests" chip list, Mays' ".bio-research"
+    semicolon line) at zero extra cost; absent on a profile, they yield nothing.
     """
     api: dict = {"type": "wp", "base": base, "post_type": post_type,
                  "title": "Directory listing"}
@@ -281,21 +305,30 @@ def _wp_profiled(short: str, name: str, majors: list[str], *, base: str,
         api["query"] = query
     if category_include:
         api["category_include"] = category_include
+    enrich: dict = {
+        "always": True,
+        "title_selector": title_selector,
+        "email_selector": "a[href^='mailto:']",
+        "email_drop": r"^[^@]*$",
+        "throttle": 0.2,
+        "ladder_recheck": _LADDER_STRICT,
+    }
+    if research_selector:
+        enrich["research_selector"] = research_selector
+    if research_items_selector:
+        enrich["research_items_selector"] = research_items_selector
     return {"short": short, "name": name, "majors": majors,
             "directory_url": directory_url,
             "api": api,
-            "profile_enrich": {
-                "always": True,
-                "title_selector": title_selector,
-                "email_selector": "a[href^='mailto:']",
-                "email_drop": r"^[^@]*$",
-                "throttle": 0.2,
-                "ladder_recheck": _LADDER_STRICT,
-            }}
+            "profile_enrich": enrich}
 
 
 def _arch(short: str, name: str, majors: list[str], term: int) -> dict:
-    """One School of Architecture department (category term = its faculty)."""
+    """One School of Architecture department (category term = its faculty).
+
+    Profiles publish a clean "Scholarly Interests" ``<h2>`` + ``<ul><li>`` chip
+    list (verified across ARCH/COSC/LAUP); it rides the always-on profile pass.
+    """
     return _wp_profiled(
         short, name, majors,
         base="https://www.arch.tamu.edu", post_type="directory",
@@ -303,6 +336,7 @@ def _arch(short: str, name: str, majors: list[str], term: int) -> dict:
         title_selector=".callout__content .heading-group h2",
         query=f"&categories={term}",
         category_include={"categories": [term]},
+        research_items_selector='h2:-soup-contains("Scholarly Interests") + .t-body li',
     )
 
 
@@ -457,6 +491,9 @@ SCHOOL: dict = {
             base="https://mays.tamu.edu", post_type="directory",
             directory_url="https://mays.tamu.edu/directory/",
             title_selector=".bio-title",
+            # Where present, a ".bio-research" element carries a semicolon
+            # "Research Interest" line; rides the always-on pass (low yield, safe).
+            research_selector=".bio-research",
         ),
         # ---- School of Architecture (WP REST, split by category term) -------
         _arch("ARCH", "Department of Architecture",

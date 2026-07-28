@@ -118,12 +118,30 @@ _DRUPAL_SEL = {
 _DRUPAL_LADDER = {"require": r"professor|lecturer"}
 
 
-def _drupal(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A department on the shared FSU campus Drupal people view."""
+def _drupal(short: str, name: str, majors: list[str], url: str, *,
+            research_items_selector: str | None = None,
+            research_selector: str | None = None) -> dict:
+    """A department on the shared FSU campus Drupal people view.
+
+    The listing card carries no research, but each ``/person/<slug>`` profile
+    publishes it in a per-department Drupal field — a taxonomy-chip list on the
+    sciences (Physics ``field-research-tags``, Math ``field-research-area-tags``,
+    Psych ``field-directory-categories``, Philosophy ``field-tags``) and a
+    comma-delimited free line on History (``field-research-interests``). An
+    env-gated research-only per-profile pass fills keywords (the card already
+    has name/title/email)."""
+    scrape: dict = {"url": url, "selectors": _DRUPAL_SEL,
+                    "ladder_filter": _DRUPAL_LADDER}
+    if research_items_selector or research_selector:
+        enr: dict = {"throttle": 0.2}
+        if research_items_selector:
+            enr["research_items_selector"] = research_items_selector
+        if research_selector:
+            enr["research_selector"] = research_selector
+        scrape["profile_enrich"] = enr
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _DRUPAL_SEL,
-                   "ladder_filter": _DRUPAL_LADDER},
+        "scrape": scrape,
     }
 
 
@@ -143,10 +161,18 @@ _ENG_LADDER = {"require": r"professor|lecturer", "drop": r"emerit|courtesy"}
 
 
 def _eng(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A department on the shared FAMU-FSU engineering Drupal roster."""
+    """A department on the shared FAMU-FSU engineering Drupal roster.
+
+    Research lives only on the profile — a clean ``field-faculty-research-
+    interests`` chip list; env-gated research-only per-profile pass."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _ENG_SEL, "ladder_filter": _ENG_LADDER},
+        "scrape": {"url": url, "selectors": _ENG_SEL, "ladder_filter": _ENG_LADDER,
+                   "profile_enrich": {
+                       "research_items_selector":
+                           ".field--name-field-faculty-research-interests .field--item",
+                       "throttle": 0.2,
+                   }},
     }
 
 
@@ -174,7 +200,14 @@ def _cosspp(short: str, name: str, majors: list[str], slug: str) -> dict:
         # cosspp.fsu.edu serves an incomplete TLS chain (missing InCommon
         # intermediate) — a verifying GET dies with a cert error.
         "scrape": {"url": url, "insecure": True, "selectors": _COSSPP_SEL,
-                   "ladder_filter": _COSSPP_LADDER},
+                   "ladder_filter": _COSSPP_LADDER,
+                   # Profile carries a labelled "Specialization:"/"Areas of
+                   # Interest:" comma line; env-gated research-only pass.
+                   "profile_enrich": {
+                       "research_html_re":
+                           r"(?:Specialization|Areas of Interest):\s*</strong>(.*?)</p>",
+                       "insecure": True, "throttle": 0.2,
+                   }},
     }
 
 
@@ -196,6 +229,13 @@ def _cci(short: str, name: str, majors: list[str], school_class: str) -> dict:
             "name_flip": True,  # cards read "Last, First"
             "ladder_filter": {"require": r"professor|lecturer",
                               "drop": r"adjunct|emerit"},
+            # Each /<slug>/ profile has a "Research Interests" <h3> + a
+            # .fsu-content <p> comma line; env-gated research-only pass.
+            "profile_enrich": {
+                "research_html_re":
+                    r'Research Interests</h3>.*?<div class="fsu-content">\s*<p>(.*?)</p>',
+                "throttle": 0.2,
+            },
         },
     }
 
@@ -260,11 +300,14 @@ SCHOOL: dict = {
                     "exclude": r"teaching|affiliated|emerit",
                 },
                 # No email on the card, but each /person/ profile carries a
-                # personal mailto — enrich to make the department emailed.
+                # personal mailto — enrich to make the department emailed. The
+                # same profile has a "Research Specialties" <h3> + <p> comma
+                # line; both ride the already-on (always) pass.
                 "profile_enrich": {
                     "always": True,  # listing has no email — profile IS the source
                     "email_selector": "a[href^='mailto:']",
                     "email_drop": r"^[^@]*$|^chem@|^info@|webmaster@",
+                    "research_html_re": r"Research Specialties</h3>\s*<p>(.*?)</p>",
                     "throttle": 0.2,
                 },
             },
@@ -272,22 +315,27 @@ SCHOOL: dict = {
         # ---- FSU campus Drupal people-view (sciences + humanities) ---------
         _drupal("PHYS", "Department of Physics",
                 ["Physics", "Astrophysics"],
-                "https://www.physics.fsu.edu/people"),
+                "https://www.physics.fsu.edu/people",
+                research_items_selector=".field--name-field-research-tags .field--item"),
         _drupal("MATH", "Department of Mathematics",
                 ["Mathematics", "Applied Mathematics", "Statistics",
                  "Biomathematics", "Financial Mathematics"],
-                "https://mathematics.fsu.edu/people"),
+                "https://mathematics.fsu.edu/people",
+                research_items_selector=".field--name-field-research-area-tags .field--item"),
         _drupal("STAT", "Department of Statistics",
                 ["Statistics", "Actuarial Science", "Data Science",
                  "Biostatistics"],
                 "https://stat.fsu.edu/people"),
         _drupal("PSY", "Department of Psychology",
                 ["Psychology", "Neuroscience", "Cognitive Science"],
-                "https://psychology.fsu.edu/people/faculty"),
+                "https://psychology.fsu.edu/people/faculty",
+                research_items_selector=".field--name-field-directory-categories .field--item"),
         _drupal("HIST", "Department of History", ["History"],
-                "https://history.fsu.edu/people"),
+                "https://history.fsu.edu/people",
+                research_selector=".field--name-field-research-interests"),
         _drupal("PHIL", "Department of Philosophy", ["Philosophy"],
-                "https://philosophy.fsu.edu/people"),
+                "https://philosophy.fsu.edu/people",
+                research_items_selector=".field--name-field-tags .field--item"),
         # ---- EOAS (Earth, Ocean & Atmospheric Science) — WP table ----------
         {
             "short": "EOAS",

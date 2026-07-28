@@ -2442,6 +2442,15 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
             # A feed carrying a relative pathAlias (Chemistry: "/paul-alivisatos")
             # joins onto the department site host.
             url_v = cfg["link_base"].rstrip("/") + url_v
+        elif (url_v and cfg.get("link_base")
+              and not url_v.startswith(("http://", "https://"))):
+            # A feed carrying a BARE-relative path with no leading slash
+            # (TAMU Arts & Sciences: "mathematics/contact/profiles/foo.html")
+            # urljoins onto the college base so the gated per-profile enrich pass
+            # can actually fetch it — a schemeless path never resolves, which is
+            # why A&S stayed research-blind while Engineering (absolute links)
+            # populated. The "/"-prefixed and absolute forms are handled above.
+            url_v = urljoin(cfg["link_base"].rstrip("/") + "/", url_v)
         research = ""
         keywords: list[str] = []
         for rf in ([cfg["research_field"]] if isinstance(cfg.get("research_field"), str)
@@ -3444,7 +3453,18 @@ def _fetch_sitemap_directory(dept: dict) -> list[dict]:
             if e_el is not None:
                 raw = e_el.get("href") if e_el.has_attr("href") else e_el.get_text(" ", strip=True)
                 email = _clean_email(raw)
-        spec = faculty(name, title=title, url=u, email=email)
+        # The profile page is already fetched, so a research selector costs
+        # nothing extra: ``research_items`` collects clean atomic chips (e.g.
+        # Northwestern Law's "Areas of Expertise" <li> list), ``research`` reads
+        # a single labelled block. Absent on a profile, both yield nothing.
+        research, r_kws = "", []
+        if sel.get("research_items"):
+            r_kws = _clean_selector_items(soup, sel["research_items"])
+        elif sel.get("research"):
+            r_el = soup.select_one(sel["research"])
+            research = r_el.get_text(" ", strip=True) if r_el else ""
+        spec = faculty(name, title=title, url=u, email=email,
+                       research_areas=research, keywords=r_kws)
         # Every sitemap record is parsed from the person's own fetched page.
         spec["_verification_scope"] = "profile"
         specs.append(spec)
