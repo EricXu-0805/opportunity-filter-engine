@@ -219,6 +219,8 @@ from .schools.umich_faculty import fetch_and_normalize as fetch_umich_faculty
 from .schools.umich_faculty import merge_into_processed as merge_umich_faculty
 from .schools.umn_faculty import fetch_and_normalize as fetch_umn_faculty
 from .schools.umn_faculty import merge_into_processed as merge_umn_faculty
+from .schools.unc_faculty import fetch_and_normalize as fetch_unc_faculty
+from .schools.unc_faculty import merge_into_processed as merge_unc_faculty
 from .schools.unl_faculty import fetch_and_normalize as fetch_unl_faculty
 from .schools.unl_faculty import merge_into_processed as merge_unl_faculty
 from .schools.upenn_faculty import fetch_and_normalize as fetch_upenn_faculty
@@ -998,6 +1000,10 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             ("uva_faculty", fetch_uva_faculty, merge_uva_faculty),
             # UC Davis (render-mode SiteFarm via faculty_graph; WAF best-effort).
             ("ucd_faculty", fetch_ucd_faculty, merge_ucd_faculty),
+            # UNC-Chapel Hill (via faculty_graph): A&S + Gillings + SOM basic
+            # science + professional schools. UNC ITS fronts *.unc.edu with a
+            # burst-rate WAF, so every listing hit is pre_delay-throttled.
+            ("unc_faculty", fetch_unc_faculty, merge_unc_faculty),
         ]:
             # Direct SOURCE_DEFAULTS index: an unregistered source must fail
             # loudly here (KeyError) rather than silently run outside the shard

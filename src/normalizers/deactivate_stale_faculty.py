@@ -127,6 +127,8 @@ FACULTY_SOURCES = frozenset({
     "usc_faculty",
     # Minnesota — CSE/CLA/CBS + professional-college directories (single source).
     "umn_faculty",
+    # UNC-Chapel Hill — A&S + Gillings + SOM basic science + professional schools.
+    "unc_faculty",
     # Ohio State — Engineering/ASC + professional-college directories (single source).
     "osu_faculty",
     # Notre Dame — Engineering/Science/A&L + Mendoza directories (single source).
