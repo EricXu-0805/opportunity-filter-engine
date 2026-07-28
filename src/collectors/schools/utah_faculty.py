@@ -183,11 +183,22 @@ _CARD_SEL = {
 }
 
 
-def _card_dept(short: str, name: str, majors: list[str], url: str) -> dict:
-    """An ECE/ME department on the shared The7 faculty-card grid."""
+def _card_dept(short: str, name: str, majors: list[str], url: str, *,
+               research_re: str | None = None) -> dict:
+    """An ECE/ME department on the shared The7 faculty-card grid.
+
+    ECE's excerpt is free-form prose (topics come from OpenAlex), but Mechanical
+    Engineering authored its excerpt as a labelled ``Research Interests:`` block
+    of ``<br>``-separated topics with a trailing Google-Scholar link — a bounded
+    ``research_re`` captures just those topics (the engine turns each ``<br>``
+    into a delimiter) and stops before the link. The pattern requires the
+    ``Research Interests:`` label, so it never fires on ECE's prose excerpt."""
+    sel = _CARD_SEL
+    if research_re:
+        sel = dict(_CARD_SEL, research_re=research_re)
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _CARD_SEL, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": sel, "ladder_filter": _LADDER},
     }
 
 
@@ -208,20 +219,37 @@ _OMNI_SEL = {
 }
 
 
-def _omni_dept(short: str, name: str, majors: list[str], url: str) -> dict:
-    """A department on the campus-wide v2 faculty-directory OMNI template."""
+def _omni_dept(short: str, name: str, majors: list[str], url: str, *,
+               research_items: str | None = None) -> dict:
+    """A department on the campus-wide v2 faculty-directory OMNI template.
+
+    English and Writing & Rhetoric author a clean atomic chip list under a
+    "Research and Teaching Interests:" heading (``p.short-bio li``); pass it as
+    ``research_items``. The other OMNI departments publish research only as
+    isotope-filter slug tokens (no clean text element) or not at all, so they
+    ship name/title/email only (topics come from OpenAlex)."""
+    sel = _OMNI_SEL
+    if research_items:
+        sel = dict(_OMNI_SEL, research_items=research_items)
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _OMNI_SEL, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": sel, "ladder_filter": _LADDER},
     }
 
 
 # ---- OMNI "flip-panel" grids (rank lives in an inconsistent element) --------
 def _flip_dept(short: str, name: str, majors: list[str], url: str, *,
                card: str, name_sel: str, title_sel: str,
-               title_case: bool = False, strip_after: str | None = None) -> dict:
+               title_case: bool = False, strip_after: str | None = None,
+               research_items: str | None = None,
+               research_re_text: str | None = None) -> dict:
     """An older OMNI flip-panel directory: ``title_re`` recovers the rank, the
-    per-site CSS ``title`` is the staff-safety fallback."""
+    per-site CSS ``title`` is the staff-safety fallback.
+
+    Political Science publishes an "Areas of Expertise" ``<ul>`` on the card's
+    back panel (``research_items='ul li'`` — the card has exactly that one list),
+    and Economics labels an "Area of Specialty:" comma line in the card prose
+    (``research_re_text`` bounded before the "Send … Email"/"|" contact tail)."""
     sels: dict = {
         "card": card, "name": name_sel, "title": title_sel,
         "title_re": _RANK_RE, "email": "a[href^='mailto:']",
@@ -230,6 +258,10 @@ def _flip_dept(short: str, name: str, majors: list[str], url: str, *,
         sels["name_title_case"] = True
     if strip_after:
         sels["title_strip_after"] = strip_after
+    if research_items:
+        sels["research_items"] = research_items
+    if research_re_text:
+        sels["research_re_text"] = research_re_text
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": sels, "ladder_filter": _LADDER},
@@ -382,7 +414,8 @@ SCHOOL: dict = {
                    "https://www.ece.utah.edu/faculty/"),
         _card_dept("ME", "Department of Mechanical Engineering",
                    ["Mechanical Engineering"],
-                   "https://www.mech.utah.edu/directory/faculty/"),
+                   "https://www.mech.utah.edu/directory/faculty/",
+                   research_re=r"Research Interests:\s*(.*?)(?:<a\b|</p>)"),
         {
             "short": "CVEEN",
             "name": "Department of Civil and Environmental Engineering",
@@ -437,7 +470,8 @@ SCHOOL: dict = {
         },
         # ===== College of Humanities (v2 OMNI template) =====================
         _omni_dept("ENGL", "Department of English", ["English"],
-                   "https://english.utah.edu/directory/faculty.php"),
+                   "https://english.utah.edu/directory/faculty.php",
+                   research_items="p.short-bio li"),
         _omni_dept("HIST", "History Department", ["History"],
                    "https://history.utah.edu/faculty/index.php"),
         _omni_dept("LING", "Department of Linguistics", ["Linguistics"],
@@ -449,7 +483,8 @@ SCHOOL: dict = {
                    "https://languages.utah.edu/directory/faculty.php"),
         _omni_dept("WRTG", "Department of Writing and Rhetoric Studies",
                    ["Writing and Rhetoric Studies"],
-                   "https://writing.utah.edu/directory/faculty.php"),
+                   "https://writing.utah.edu/directory/faculty.php",
+                   research_items="p.short-bio li"),
         # ===== College of Social and Behavioral Science =====================
         _omni_dept("COMM", "Department of Communication", ["Communication"],
                    "https://communication.utah.edu/about/directory/faculty.php"),
@@ -462,7 +497,8 @@ SCHOOL: dict = {
                    title_sel="p"),
         _flip_dept("POLS", "Department of Political Science", ["Political Science"],
                    "https://poli-sci.utah.edu/faculty.php",
-                   card="div.isotope-item", name_sel="h2.h4 a", title_sel="em"),
+                   card="div.isotope-item", name_sel="h2.h4 a", title_sel="em",
+                   research_items="ul li"),
         _flip_dept("PSYCH", "Department of Psychology", ["Psychology"],
                    "https://psych.utah.edu/people/faculty/index.php",
                    card="div.isotope-item", name_sel="h2.h4 a", title_sel="p",
@@ -475,7 +511,9 @@ SCHOOL: dict = {
                    title_sel="h4:not(.text-uppercase)", title_case=True),
         _flip_dept("ECON", "Department of Economics", ["Economics"],
                    "https://econ.utah.edu/people/faculty.php",
-                   card="div.isotope-item", name_sel="span.h3", title_sel="em"),
+                   card="div.isotope-item", name_sel="span.h3", title_sel="em",
+                   research_re_text=(r"Areas? of Specialty\s*:?\s*(.+?)"
+                                     r"(?:\s+Send\s|\s*\||\s+\S+['’]s\s)")),
         # Parks, Recreation & Tourism (College of Health, Cohesion CMS).
         {
             "short": "PRT",
