@@ -59,6 +59,13 @@ _AS_SELECTORS = {
     "link": ".person-content h2 a",
     "title": ".person-title",
     "email": "a[href^='mailto:']",
+    # Despite the class name, "person-departments" holds the person's comma-
+    # delimited research areas/subfields on the LISTING card (verified across
+    # econ/physics/english/history/math: "Applied Economics, Labor Economics, …",
+    # "Astrophysics, General Relativity and Cosmology, …") — a zero-fetch win for
+    # ALL A&S depts. The profile "Academic Interests" pass below stays as a
+    # fallback for any card that lacks this line.
+    "research": "p.person-departments",
 }
 
 # College of Engineering — Duffield "ce-block people-list" (static HTML, mailto).
@@ -76,15 +83,20 @@ _LADDER = {"require": r"\bprofessor\b|\blecturer\b", "drop": r"emerit"}
 
 # A&S profile enrichment (research-only; captured under OFE_ENRICH_PROFILES).
 # STEM / science / social-science profiles carry a tagged "Research areas" list
-# yielding clean atomic keywords. The humanities depts (econ/govt/hist/engl) have
-# no tag list; their only research block is the Overview prose paragraph, which is
-# biography / full sentences (comma-splitting it yields fragments), so it is NOT
-# harvested — those depts stay research-blind rather than ship noisy keywords.
+# yielding clean atomic keywords. The humanities depts (econ/govt/hist/engl/…)
+# publish the IDENTICAL h3+ul chip list but under an "Academic Interests"
+# heading instead — verified live (government/jill-frank → "Political Theory",
+# history/eric-rebillard → "Social"/"Religion"), correcting the earlier
+# assumption that they were prose-only. Both headings are matched so the
+# humanities depts populate clean chips too (not the Overview bio paragraph).
 _AS_ENRICH = {
     "throttle": 0.3,
     "timeout": 8,
     "max_retries": 1,
-    "research_items_selector": 'h3:-soup-contains("Research areas") + ul li',
+    "research_items_selector": (
+        'h3:-soup-contains("Research areas") + ul li, '
+        'h3:-soup-contains("Academic Interests") + ul li'
+    ),
 }
 
 # Bowers College of Computing & Information Science — paginated Drupal views-row.
@@ -94,6 +106,10 @@ _CIS_SELECTORS = {
     "link": ".name a",
     "title": ".position-titles .field__item",
     "email": ".email a[href^='mailto:']",
+    # The CS/InfoSci listing card carries a "Research Areas" line as plain
+    # delimited text (verified: "Architecture; Systems + Networking; Theory of
+    # Computing", "Machine Learning") — bound it (zero-fetch listing win).
+    "research_re": r'Research Areas</div>\s*<div class="item-content">([^<]+)</div>',
 }
 
 # ILR School — distinct Cornell Drupal ``cu-person`` theme (single page).
@@ -131,7 +147,15 @@ def _eng(short: str, name: str, majors: list[str], subdomain: str) -> dict:
     """A College of Engineering department (www.<subdomain>.cornell.edu/people/faculty)."""
     url = f"https://www.{subdomain}.cornell.edu/people/faculty"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
-            "scrape": {"url": url, "selectors": _CE_SELECTORS, "ladder_filter": _LADDER}}
+            "scrape": {"url": url, "selectors": _CE_SELECTORS, "ladder_filter": _LADDER,
+                       # The listing has no research; each Duffield profile carries
+                       # a clean "Research Interests" <ul><li> chip list. Env-gated
+                       # research-only per-profile pass.
+                       "profile_enrich": {
+                           "research_items_selector":
+                               "section.person-section--research ul li",
+                           "throttle": 0.3, "timeout": 8, "max_retries": 1,
+                       }}}
 
 
 # College of Agriculture & Life Sciences — shared Drupal "expert-card" person

@@ -117,8 +117,12 @@ _PROFILE_SEL = {
 # History uses the same profile-item card but keeps the rank in a plain
 # ``p.title`` (no ``small``) and lists genuine staff alongside faculty — reading
 # the real title element (not the "Professor" default) lets the ladder gate below
-# drop the non-faculty cards.
-_PROFILE_HIST_SEL = {**_PROFILE_SEL, "title": "p.title"}
+# drop the non-faculty cards. Its card has no inline "Research Interests" block
+# (so the inherited ``research_re`` never matches), but it DOES carry a clean
+# per-person tag list right on the listing card — take those chips (no per-
+# profile fetch needed); ``research_items`` is consulted before ``research_re``.
+_PROFILE_HIST_SEL = {**_PROFILE_SEL, "title": "p.title",
+                     "research_items": "li.profile-tags a"}
 
 # Some A&S directories serve the SAME ``article.profile.item`` card, but only
 # after their JS fetches the roster (a plain fetch lands an empty shell), and the
@@ -302,6 +306,10 @@ _KELLEY_SEL = {
     "title": "div.text p",
     "title_re": _PROFILE_SEL["title_re"],
     "email": "a[href^='mailto:']",
+    # The card's 3rd grid-item is a comma-delimited research-interest line
+    # (verified: "Intercultural Communication, Qualitative Research and Analysis,
+    # User Experience (UX) Research") — a zero-fetch listing win.
+    "research": "div.grid-item:nth-of-type(3) .text p",
 }
 
 # ---- O'Neill School: Cascade "system-page" XML feed --------------------------
@@ -322,6 +330,9 @@ _ONEILL_SEL = {
     "name": "display-name",
     "title": "profile-details title",
     "email": "contact-group email",
+    # The Cascade XML feed carries per-person <interests><interest> nodes —
+    # clean atomic areas straight off the feed (no per-profile fetch).
+    "research_items": "interests interest",
 }
 
 
@@ -355,6 +366,12 @@ SCHOOL: dict = {
                 "selectors": _CHEM_SEL,
                 "ladder_filter": _CHEM_LADDER,
                 "link_filter": r"/faculty/",
+                # Each profile lists its research areas as "Research Areas"
+                # chip buttons; env-gated research-only per-profile pass.
+                "profile_enrich": {
+                    "research_items_selector": "a.btn-chemiub-blue",
+                    "throttle": 0.2,
+                },
             },
         },
         _profile_dept(

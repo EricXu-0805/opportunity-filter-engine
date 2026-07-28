@@ -87,7 +87,7 @@ _SCI_LADDER = {"require": r"\bprofessor\b",
 # profile-only, recovered by the gated per-profile pass.
 _BIO_SEL = {"card": "div.people-item[data-position='faculty']",
             "name": "p.people-name a", "link": "p.people-name a",
-            "title": "p.people-title", "research": "div.areas"}
+            "title": "p.people-title", "research": ".areas"}
 
 
 def _sci_bio(short: str, name: str, majors: list[str], url: str) -> dict:
@@ -168,7 +168,10 @@ def _daniels(short, name, majors, area_id):
 # (name + rank + public email on the listing).
 _PHARM_SEL = {"card": ".faculty-profile-card", "name": "p.faculty-name",
               "link": "a[href*='/faculty/']", "title": "p.faculty-title",
-              "email": "a[href^='mailto:']"}
+              "email": "a[href^='mailto:']",
+              # The card's top-level content div carries a "Specialization: …"
+              # line (label auto-stripped by the engine) — zero-fetch listing win.
+              "research": "div.content:has(> strong)"}
 _PHARM_LADDER = {"require": r"\bprofessor\b",
                  "drop": r"\bemerit|\blecturer|\binstructor|\badjunct|\bvisiting|\bcourtesy"}
 
@@ -262,6 +265,14 @@ SCHOOL: dict = {
                     "email": "a[href^='mailto:']",
                 },
                 "ladder_filter": _SCI_LADDER,
+                # Each profile has a short comma line after a
+                # "<h6>Research Interest(s):</h6>" heading (bare text node, so a
+                # regex over the profile HTML, not a CSS selector); env-gated.
+                "profile_enrich": {
+                    "research_html_re":
+                        r"Research Interest\(s\):</h6>\s*(?:<br\s*/?>\s*)?([^<]+)",
+                    "throttle": 0.2,
+                },
             },
         },
         {
@@ -279,6 +290,11 @@ SCHOOL: dict = {
                     "email": "a[href^='mailto:']",
                 },
                 "ladder_filter": _SCI_LADDER,
+                # NOTE: Statistics profiles DO carry a clean "Research Interests"
+                # <h2>+<ul><li> list, but the listing mixes absolute
+                # (/people/faculty/<slug>) and relative (<slug>.html) link forms
+                # that mis-resolve to 404s, so a per-profile pass lands nothing —
+                # deferred until the link handling is sorted (small dept).
             },
         },
         _sci_bio("BIO", "Department of Biological Sciences",
