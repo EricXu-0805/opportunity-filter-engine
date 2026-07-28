@@ -1276,6 +1276,22 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 barren = 0
                 seen.update((p["name"], p["url"]) for p in fresh)
                 people.extend(fresh)
+        for _extra_url in cfg.get("extra_urls", []):
+            # Sibling roster pages of the SAME department that share one theme —
+            # rank-split med-school galleries, art-history + studio art, core +
+            # teaching faculty — merged under this department's short/name (dedup
+            # on name+url). Each hit is throttled like the base fetch so a
+            # multi-page department stays under a burst-rate WAF's threshold.
+            if cfg.get("pre_delay"):
+                import time
+                time.sleep(cfg["pre_delay"])
+            _es = fetch(_extra_url) or fetch(_extra_url)
+            if _es is None:
+                continue
+            _seen = {(p["name"], p["url"]) for p in people}
+            people.extend(
+                p for p in _parse_cards(_es, sel, _extra_url, lf, flip, link_f, sf, ff)
+                if (p["name"], p["url"]) not in _seen)
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)

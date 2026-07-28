@@ -183,6 +183,7 @@ SCHOOL_INST = {
     "syracuse": "I70983195",  # Syracuse University
     "cincinnati": "I63135867",  # University of Cincinnati
     "unl": "I114395901",  # University of Nebraska-Lincoln
+    "unc": "I114027177",  # University of North Carolina at Chapel Hill (API-verified 2026-07-26)
     "lsu": "I121820613",  # Louisiana State University
     "utdallas": "I162577319",  # University of Texas at Dallas
     "casewestern": "I58956616",
