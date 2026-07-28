@@ -117,11 +117,27 @@ _MCD_SEL = {
 }
 
 
+# Research lives on the individual profile, in one of two campus templates:
+# Baskin Engineering links out to campusdirectory.ucsc.edu, whose profile lists
+# "Research Interests"/"Areas of Expertise" as a <ul><li> under a <label>; the
+# PBSci SiteFarm dept profiles use a "Faculty Areas of Expertise" <dt>/<dd>.
+# Both are matched — whichever the fetched profile carries wins, the other yields
+# nothing (safe on depts with neither). Env-gated research-only per-profile pass.
+_RESEARCH_ENRICH = {
+    "research_items_selector": (
+        'p:has(> label:-soup-contains("Research Interests")) > ul > li, '
+        'p:has(> label:-soup-contains("Areas of Expertise")) > ul > li, '
+        'div:has(> dt:-soup-contains("Areas of Expertise")) > dd'),
+    "throttle": 0.2, "timeout": 8, "max_retries": 1,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared UCSC h-card component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD},
+        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+                   "profile_enrich": _RESEARCH_ENRICH},
     }
 
 

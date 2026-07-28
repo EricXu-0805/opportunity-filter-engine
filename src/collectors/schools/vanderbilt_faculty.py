@@ -43,8 +43,20 @@ _CAS_SELECTORS = {
 # semicolon split downstream yields research keywords. Gated by
 # OFE_ENRICH_PROFILES (no "always"); persisted via _carry_forward_enrichment.
 _CAS_ENRICH = {
+    # Where the interests are a <ul><li> chip list (English, part of Sociology),
+    # take the chips — the plain research_selector only splits the first <li>.
+    # STEM depts (Math, …) label the same block "Research Interest(s)" instead of
+    # "Specialization(s)", so both headings are matched. Items win when a <ul>
+    # exists; the research_selector below covers the <p>/<table> line depts.
+    "research_items_selector": (
+        'h3:-soup-contains("Specialization") + ul li, '
+        'h4:-soup-contains("Specialization") + ul li, '
+        'h3:-soup-contains("Research Interest") + ul li, '
+        'h4:-soup-contains("Research Interest") + ul li'),
     "research_selector": 'h3:-soup-contains("Specialization") + *, '
-                         'h4:-soup-contains("Specialization") + *',
+                         'h4:-soup-contains("Specialization") + *, '
+                         'h3:-soup-contains("Research Interest") + *, '
+                         'h4:-soup-contains("Research Interest") + *',
     "throttle": 0.3,
     "timeout": 8,
     "max_retries": 1,

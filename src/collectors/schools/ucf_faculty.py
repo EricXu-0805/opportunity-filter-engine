@@ -134,6 +134,16 @@ _UCF_ENRICH = {
 }
 
 
+# CECS profiles publish research areas as a clean <li> list under an Elementor
+# "RESEARCH ..." heading widget; env-gated research-only per-profile pass.
+_CECS_RESEARCH_ENRICH = {
+    "research_items_selector": (
+        'div.elementor-widget-heading:has(h4:-soup-contains("RESEARCH")) '
+        '+ div.elementor-widget-text-editor li'),
+    "throttle": 0.0, "timeout": 8, "max_retries": 1,
+}
+
+
 def _elem_dept(short: str, name: str, majors: list[str], url: str, card: str) -> dict:
     """A CECS department on the shared Elementor filterable gallery."""
     return {
@@ -142,6 +152,7 @@ def _elem_dept(short: str, name: str, majors: list[str], url: str, card: str) ->
             "url": url,
             "selectors": {"card": card, **_ELEM_SEL},
             "ladder_filter": _LADDER,
+            "profile_enrich": _CECS_RESEARCH_ENRICH,
         },
     }
 
