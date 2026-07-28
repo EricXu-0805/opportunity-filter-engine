@@ -238,9 +238,26 @@ _CLAS_LADDER = {
 
 
 def _clas(short: str, name: str, majors: list[str], url: str,
-          enrich: dict | None = None) -> dict:
+          enrich: dict | None = None, *,
+          research: str | None = None, research_items: str | None = None,
+          research_re: str | None = None) -> dict:
+    """A CLAS ufclas-team department. Most list-variant rosters publish the
+    person's areas on the listing itself (zero extra fetch): STA/GLY carry a
+    comma/semicolon ``.ufclas-team-list__summary`` (``research``), POS wraps each
+    area in a ``<strong>`` inside that summary (``research_items`` chips, so the
+    ``>`` breadcrumb separators never leak), and the cards-variant BIO roster
+    labels a "Research Interests:" line inside each card (``research_re``)."""
+    sel = _CLAS_SEL
+    if research or research_items or research_re:
+        sel = dict(_CLAS_SEL)
+        if research:
+            sel["research"] = research
+        if research_items:
+            sel["research_items"] = research_items
+        if research_re:
+            sel["research_re"] = research_re
     d = {"short": short, "name": name, "majors": majors, "directory_url": url,
-         "scrape": {"url": url, "selectors": _CLAS_SEL,
+         "scrape": {"url": url, "selectors": sel,
                     "ladder_filter": _CLAS_LADDER}}
     if enrich:
         d["scrape"]["profile_enrich"] = enrich
@@ -441,18 +458,30 @@ SCHOOL: dict = {
             },
         },
         _clas("STA", "Department of Statistics", ["Statistics"],
-              "https://stat.ufl.edu/people/faculty/"),
+              "https://stat.ufl.edu/people/faculty/",
+              research=".ufclas-team-list__summary"),
+        # Biology is the cards variant: each card labels a "Research Interests:"
+        # line (comma list) — bounded so the trailing "Pronouns:/Profile:" spans
+        # never ride in.
         _clas("BIO", "Department of Biology", ["Biology"],
-              "https://biology.ufl.edu/people/faculty/"),
+              "https://biology.ufl.edu/people/faculty/",
+              research_re=r"Research Interests:\s*</strong>\s*([^<]+)"),
         _clas("PSY", "Department of Psychology", ["Psychology"],
               "https://psych.ufl.edu/people/faculty/"),
         _clas("AST", "Department of Astronomy", ["Astronomy", "Physics"],
               "https://astro.ufl.edu/people/faculty/"),
+        # Geology's list summary ("Areas of Interest: …") is cleaner and cheaper
+        # than the per-profile pass; keep the enrich as a fallback for the ~11
+        # cards with no summary.
         _clas("GLY", "Department of Geological Sciences",
               ["Geology", "Environmental Science"],
-              "https://geology.ufl.edu/people/faculty/", enrich=_GLY_ENRICH),
+              "https://geology.ufl.edu/people/faculty/", enrich=_GLY_ENRICH,
+              research=".ufclas-team-list__summary"),
+        # Political Science wraps each area in a <strong> (with a ">" breadcrumb
+        # span between) — take the strongs as atomic chips.
         _clas("POS", "Department of Political Science", ["Political Science"],
-              "https://polisci.ufl.edu/people/faculty/"),
+              "https://polisci.ufl.edu/people/faculty/",
+              research_items=".ufclas-team-list__summary strong"),
         _clas("GEO", "Department of Geography", ["Geography"],
               "https://geog.ufl.edu/people/faculty/"),
         # Economics "mercury" team grid; email is a plain-text div.
