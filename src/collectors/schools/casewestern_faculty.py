@@ -305,6 +305,9 @@ SCHOOL: dict = {
                     "link": "a[href*='/faculty/']",
                     "title_re": _RANK_RE,
                     "email": "a[href^='mailto:']",
+                    # Each card carries a "Focus:" research line (comma list);
+                    # zero-fetch listing win.
+                    "research_re": r"Focus:\s*(.*?)</p>",
                 },
             },
         },

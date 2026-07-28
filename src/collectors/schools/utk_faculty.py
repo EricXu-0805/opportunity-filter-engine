@@ -309,7 +309,9 @@ SCHOOL: dict = {
               {"card": "table.faculty tr:has(td.table-info)",
                "name": "td.table-info h3 a",
                "link": "td.table-info h3 a",
-               "title": "td.table-info span"},
+               "title": "td.table-info span",
+               # The table's research column is a comma line on the listing.
+               "research": "td.table-info span.research"},
               ladder=_CBE_LADDER,
               enrich={"email_selector": "a[href^='mailto:']",
                       "email_drop": r"^[^@]*$|^cbe@",

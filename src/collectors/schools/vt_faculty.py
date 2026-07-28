@@ -133,10 +133,19 @@ _ENRICH = {
     "ladder_recheck": _LADDER,
     "throttle": 0.2,
 }
-# CS lowercases "Research interests", ME/MATH title-case it.
+# CS lowercases "Research interests", ME/MATH title-case it; BEAM/some eng depts
+# label the identical h3+ul list "Research Areas".
 _ENRICH_RESEARCH = {**_ENRICH, "research_items_selector": (
     'h3:-soup-contains("Research interests") + ul > li, '
-    'h3:-soup-contains("Research Interests") + ul > li')}
+    'h3:-soup-contains("Research Interests") + ul > li, '
+    'h3:-soup-contains("Research Areas") + ul > li, '
+    'h3:-soup-contains("Research area") + ul > li')}
+# Pamplin business + ENGE profiles put the same clean chip list under an <h2>.
+_ENRICH_RESEARCH_H2 = {**_ENRICH, "research_items_selector":
+                       'h2:-soup-contains("Research Interests") + ul > li'}
+# SPIA publishes per-person specialty tag chips instead of a heading+list.
+_ENRICH_SPIA = {**_ENRICH, "research_items_selector":
+                'ul.tagcloud a.vt-tag-link[href*="/specialties/"]'}
 _ENRICH_EXPERTISE = {**_ENRICH, "research_items_selector":
                      'h4:-soup-contains("Expertise") + ul > li'}
 
@@ -218,6 +227,7 @@ SCHOOL: dict = {
         _lst("BEAM", "Department of Biomedical Engineering and Mechanics",
              ["Biomedical Engineering", "Engineering Mechanics"],
              "https://bme.vt.edu/people/faculty.html",
+             enrich=_ENRICH_RESEARCH,
              # Keep the BME core roster + the SBES members based at VT
              # Blacksburg; Wake Forest / Roanoke / emeritus sections excluded.
              section={"heading": "h2",
@@ -228,7 +238,7 @@ SCHOOL: dict = {
              "https://mse.vt.edu/faculty-staff/Faculty.html",
              desc_title=True, link_filter=r"mse\.vt\.edu"),
         _lst("ChE", "Department of Chemical Engineering", ["Chemical Engineering"],
-             "https://che.vt.edu/People/faculty.html"),
+             "https://che.vt.edu/People/faculty.html", enrich=_ENRICH_RESEARCH),
         _lst("CEE", "Charles E. Via Jr. Department of Civil and Environmental Engineering",
              ["Civil Engineering", "Environmental Engineering"],
              "https://www.webapps.cee.vt.edu/index.php?category=people&item=faculty&do=listing",
@@ -239,7 +249,8 @@ SCHOOL: dict = {
              desc_title=True, title_strip=r"\s*\|", desc_email=True),
         _lst("MINE", "Department of Mining and Minerals Engineering",
              ["Mining Engineering"],
-             "https://www.mining.vt.edu/people/faculty.html", desc_title=True),
+             "https://www.mining.vt.edu/people/faculty.html", desc_title=True,
+             enrich=_ENRICH_RESEARCH),
         _lst("BSE", "Department of Biological Systems Engineering",
              ["Biological Systems Engineering", "Environmental Science"],
              "https://www.bse.vt.edu/about/people/faculty.html",
@@ -314,18 +325,19 @@ SCHOOL: dict = {
         # ---- Pamplin College of Business -----------------------------------
         _lst("MKTG", "Department of Marketing", ["Marketing", "Business"],
              "https://marketing.pamplin.vt.edu/people/faculty.html",
-             desc_title=True, ladder=_LADDER_REQ),
+             desc_title=True, ladder=_LADDER_REQ, enrich=_ENRICH_RESEARCH_H2),
         _lst("BIT", "Department of Business Information Technology",
              ["Business Information Technology", "Information Systems"],
              "https://bit.vt.edu/faculty/directory.html"),
         _lst("FIN", "Department of Finance, Insurance, and Business Law",
              ["Finance", "Real Estate"],
              "https://finance.pamplin.vt.edu/faculty/directory.html",
+             enrich=_ENRICH_RESEARCH_H2,
              section={"heading": "h2",
                       "include": r"^(?:leadership|full-time faculty)$"}),
         _lst("MGMT", "Department of Management", ["Management", "Business"],
              "https://management.pamplin.vt.edu/faculty/directory.html",
-             desc_title=True,
+             desc_title=True, enrich=_ENRICH_RESEARCH_H2,
              section={"heading": "h2",
                       "include": (r"^(?:full-time tenure track faculty"
                                   r"|collegiate faculty|professor of practice"
@@ -337,7 +349,8 @@ SCHOOL: dict = {
              # always-on profile pass reads .vt-bio-title and require-gates.
              section={"heading": "h2",
                       "include": r"^department head$|^htm faculty\s*&\s*staff$"},
-             enrich={**_ENRICH, "always": True, "ladder_recheck": _LADDER_REQ}),
+             enrich={**_ENRICH_RESEARCH, "always": True,
+                     "ladder_recheck": _LADDER_REQ}),
         # ---- College of Agriculture and Life Sciences ----------------------
         _grid("AAEC", "Department of Agricultural and Applied Economics",
               ["Agricultural and Applied Economics", "Agribusiness"],
@@ -431,7 +444,8 @@ SCHOOL: dict = {
         _lst("SPIA", "School of Public and International Affairs",
              ["Public and International Affairs", "Urban Planning"],
              "https://spia.vt.edu/people/Faculty.html",
-             desc_title=True, title_strip=r"\s*\|", desc_email=True),
+             desc_title=True, title_strip=r"\s*\|", desc_email=True,
+             enrich=_ENRICH_SPIA),
         # ---- College of Architecture, Arts, and Design ---------------------
         _lst("ARCH", "School of Architecture", ["Architecture"],
              "https://arch.vt.edu/people/blacksburg-campus-faculty-directory.html",

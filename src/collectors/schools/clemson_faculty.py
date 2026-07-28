@@ -150,6 +150,10 @@ _BIZ_SEL = {
     "link": "h4 a",
     "title": "p strong",
     "email": 'a[href^="mailto:"]',
+    # Economics cards carry a clean comma "Fields:" line on the roster (verified
+    # 33/33); other business depts have no such line, so this yields nothing
+    # there (safe). Zero-fetch listing win.
+    "research_re": r"Fields:\s*(.*?)\s*<br",
 }
 _BIZ_FIELD = {
     "selector": "p strong",

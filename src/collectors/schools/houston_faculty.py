@@ -285,6 +285,12 @@ SCHOOL: dict = {
                 "selectors": _EAS_SEL,
                 "name_flip": True,
                 "section_filter": _EAS_SECTION,
+                # Each profile lists research areas as a clean "#research" <ul><li>;
+                # env-gated research-only per-profile pass.
+                "profile_enrich": {
+                    "research_items_selector": "#research li",
+                    "throttle": 0.2,
+                },
             },
         },
         # Mathematics' own page renders names in ALL CAPS in inconsistently
