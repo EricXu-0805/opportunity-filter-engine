@@ -250,6 +250,29 @@ class TestScrapeLayer:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ann Alpha", "Ben Beta"]  # page 2 repeats -> pagination stops
 
+    def test_scrape_merges_extra_urls_deduped(self, monkeypatch):
+        """A department split across sibling roster pages (rank-split med-school
+        galleries, art-history + studio art, core + teaching faculty) lists them
+        via ``extra_urls`` — same selectors, merged under one short/name and
+        deduped on (name, url) so a person cross-listed on two pages lands once."""
+        from bs4 import BeautifulSoup
+        pages = {
+            "https://x.edu/profs": '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>',
+            "https://x.edu/assoc": ('<div class="c"><a class="n" href="/p/b">Ben Beta</a></div>'
+                                    '<div class="c"><a class="n" href="/p/a">Ann Alpha</a></div>'),
+        }
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url, **_kw: BeautifulSoup(pages[url], "html.parser") if url in pages else None,
+        )
+        dept = {"short": "GEN", "scrape": {
+            "url": "https://x.edu/profs",
+            "extra_urls": ["https://x.edu/assoc"],
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+        }}
+        names = [p["name"] for p in fg._scrape_directory(dept)]
+        assert names == ["Ann Alpha", "Ben Beta"]  # Ann on the extra page is deduped
+
     def test_rank_html_entities_are_decoded_like_the_name(self, monkeypatch):
         """The rank is spliced into the generated prose, so an undecoded entity
         reaches the student ("Professor of Materials Science &amp; Engineering").
