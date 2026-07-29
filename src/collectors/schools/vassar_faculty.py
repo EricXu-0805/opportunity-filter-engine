@@ -79,7 +79,11 @@ _LADDER = {
 # Public email lives only on the /faculty/<slug> profile page. Env-gated
 # (OFF in CI / weekly refresh); backfilled on the deliberate local enrichment
 # run and by the PI email enricher.
-_ENRICH = {"email_selector": "a[href^='mailto:']", "throttle": 0.2}
+_ENRICH = {"email_selector": "a[href^='mailto:']", "throttle": 0.2,
+           # Profile carries a "field-faculty-interests" Drupal field — a
+           # semicolon-delimited interest line; rides the existing (env-gated)
+           # per-profile pass.
+           "research_html_re": r'field--name-field-faculty-interests[^>]*>(.*?)</div>'}
 
 
 def _dept(short: str, name: str, majors: list[str], slug: str,

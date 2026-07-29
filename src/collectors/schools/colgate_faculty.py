@@ -89,6 +89,16 @@ def _dept(short: str, name: str, majors: list[str], unit: int) -> dict:
             "selectors": _SELECTORS,
             "ladder_filter": _LADDER,
             "paginate": _PAGINATE,
+            # Profiles expose a clean comma "Specialties" accordion; deliberately
+            # ONLY that label (the "Interests"/"Research Interests" siblings are
+            # prose and excluded). No profile pass today → always:true.
+            "profile_enrich": {
+                "always": True,
+                "research_selector": (
+                    'button.silc-accordion__label:-soup-contains("Specialties") '
+                    '+ div.silc-accordion__content'),
+                "throttle": 0.2,
+            },
         },
     }
 

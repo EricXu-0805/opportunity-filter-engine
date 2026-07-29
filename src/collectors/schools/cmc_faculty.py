@@ -63,7 +63,16 @@ def _dept(short: str, name: str, majors: list[str], path: str) -> dict:
     url = f"https://www.cmc.edu/{path}"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _DEPT_SELECTORS,
-                       "ladder_filter": _DEPT_LADDER}}
+                       "ladder_filter": _DEPT_LADDER,
+                       # Profile "faculty-expertise" Drupal field is a clean chip
+                       # list; no profile pass exists today, so always:true (the
+                       # weekly refresh env-gates OFE_ENRICH_PROFILES off).
+                       "profile_enrich": {
+                           "always": True,
+                           "research_items_selector":
+                               ".field--name-field-faculty-expertise .field__item",
+                           "throttle": 0.2,
+                       }}}
 
 
 # Kravis Department of Integrated Sciences (CMC's own science department) —

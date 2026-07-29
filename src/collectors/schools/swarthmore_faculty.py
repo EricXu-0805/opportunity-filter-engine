@@ -65,6 +65,11 @@ _SELECTORS = {
     "name_strip": r"\s+[’'`]\d{2}\b",
     "title": ".c-person-detail__role",
     "email": ".c-person-detail__email a[href^='mailto:']",
+    # Some cards carry a clean comma "Areas of Interest: X, Y, Z" line (label in
+    # its own <strong>); others put a prose "Research: <sentence>" there. Bind
+    # ONLY the "Areas of Interest" list (skipping the label tag) so the prose
+    # variant yields nothing — no bio-derived junk. Zero-fetch listing win.
+    "research_re": r"Areas? of Interest:\s*(?:<[^>]+>\s*)*([^<]+)",
 }
 
 # Keep Professors + Lecturers (research/teaching faculty); drop emeriti,
