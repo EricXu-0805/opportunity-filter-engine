@@ -94,6 +94,9 @@ _COE_SEL = {
     "link": "a[href]",
     "title": "p.mb-4-5",
     "email": "p.coe-brand-people-email a[href^='mailto:']",
+    # The card carries a "Research Groups" label <p> followed by a pipe-delimited
+    # <p> of areas — a zero-fetch listing win.
+    "research": "p.coe-brand-people-email-label:-soup-contains('Research Groups') + p",
 }
 _COE_FIELD = {
     "selector": "p.mb-4-5",
@@ -136,7 +139,15 @@ def _sci(short: str, name: str, majors: list[str], url: str) -> dict:
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SCI_SEL,
-                   "field_filter": _SCI_FIELD, "paginate": _PAGINATE},
+                   "field_filter": _SCI_FIELD, "paginate": _PAGINATE,
+                   # Science profiles list research under a "Research Interests"
+                   # <h3> + <ul>; listing has no email either, so run always.
+                   "profile_enrich": {
+                       "always": True,
+                       "research_items_selector":
+                           "a.directory__area, h3:-soup-contains('Research Interests') + ul li",
+                       "throttle": 0.2,
+                   }},
     }
 
 

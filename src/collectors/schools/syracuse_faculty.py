@@ -137,6 +137,19 @@ _AS_SEL = {
 _LADDER = {"require": r"professor|lecturer|instructor"}
 
 
+# Research lives on the profile: A&S/most colleges use a
+# "<p><strong>Areas of Expertise:</strong></p> <ul><li>" chip list; ECS uses an
+# "Areas of Expertise" question-accordion body (comma line). One combined block
+# — items win where the <ul> exists, the accordion body is the fallback — rides
+# an always-on pass (listings carry no research). Absent → nothing (safe).
+_SYR_RESEARCH = {
+    "always": True, "throttle": 0.2,
+    "research_items_selector": 'p:has(strong:-soup-contains("Areas of Expertise")) + ul li',
+    "research_selector": ('div.question-accordion:has(h2:-soup-contains'
+                          '("Areas of Expertise")) div.question-accordion-body'),
+}
+
+
 def _as(short: str, name: str, majors: list[str], section: str) -> dict:
     """An A&S department = one ``<h2>`` section of the college-wide roster."""
     return {
@@ -144,7 +157,8 @@ def _as(short: str, name: str, majors: list[str], section: str) -> dict:
         "directory_url": _AS_URL,
         "scrape": {"url": _AS_URL, "selectors": _AS_SEL,
                    "section_filter": {"heading": "h2", "include": section},
-                   "ladder_filter": _LADDER},
+                   "ladder_filter": _LADDER,
+                   "profile_enrich": _SYR_RESEARCH},
     }
 
 
@@ -159,7 +173,12 @@ _ECS_SEL = {
 # not the optional monthly depth pass. The address is bare text in
 # div.entry-content (office/department precede it and carry no '@').
 _ECS_ENRICH = {"email_selector": "div.entry-content", "always": True,
-               "throttle": 0.2}
+               "throttle": 0.2,
+               # ECS profiles put research in an "Areas of Expertise" accordion
+               # body (comma line); rides the mandatory email pass.
+               "research_selector": ('div.question-accordion:has(h2:-soup-contains'
+                                     '("Areas of Expertise")) div.question-accordion-body'),
+               "research_items_selector": 'p:has(strong:-soup-contains("Areas of Expertise")) + ul li'}
 
 
 def _ecs(short: str, name: str, majors: list[str], category: str) -> dict:
