@@ -129,7 +129,15 @@ def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A WPI department on the shared directory-widget template."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD},
+        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+                   # Each profile carries a clean "Research Interests" Drupal
+                   # field of atomic <div class=field__item> chips (all 19 depts
+                   # share this widget); env-gated research-only per-profile pass.
+                   "profile_enrich": {
+                       "research_items_selector":
+                           "div.field--name-field-research-interests div.field__item",
+                       "throttle": 0.2,
+                   }},
     }
 
 
