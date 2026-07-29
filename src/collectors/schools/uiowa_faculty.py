@@ -106,7 +106,15 @@ _FIELD = {
 def _dept(short: str, name: str, majors: list[str], url: str,
           paginate: dict | None = None) -> dict:
     """A department on the shared University of Iowa SiteNow people card."""
-    scrape = {"url": url, "selectors": _SEL, "field_filter": _FIELD}
+    scrape = {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+              # Profiles carry a clean "Research areas" SiteNow taxonomy field of
+              # atomic chips (CLAS + Nursing share it); env-gated research-only
+              # per-profile pass (listing already has position/email).
+              "profile_enrich": {
+                  "research_items_selector":
+                      ".field--name-field-person-research-areas .field__item",
+                  "throttle": 0.2,
+              }}
     if paginate:
         scrape["paginate"] = paginate
     return {"short": short, "name": name, "majors": majors,

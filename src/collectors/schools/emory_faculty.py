@@ -110,7 +110,15 @@ _LADDER = {"require": r"profess|lecturer|instructor", "drop": r"emerit"}
 
 # card_contact profiles publish a plain mailto too; the env-gated pass only has
 # work to do on the handful of kept records missing an inline address.
-_CC_ENRICH = {"email_selector": "a[href^='mailto:']", "throttle": 0.2}
+_CC_ENRICH = {"email_selector": "a[href^='mailto:']", "throttle": 0.2,
+              # BIOL/ANTH/ECON publish a clean bulleted research field on the
+              # profile, each under a different heading (heading-scoped so the
+              # ANTH "Courses Taught" ul never leaks). Other card_contact depts
+              # yield nothing (safe). Rides the email pass.
+              "research_items_selector": (
+                  'h4:-soup-contains("Research Area") + ul li, '
+                  'h3:-soup-contains("Specializations") + ul li, '
+                  'div.row-heading:-soup-contains("Areas of Interest") + div.wysiwyg ul li')}
 
 # DSci (formerly QTM): its people page lists admin-titled core faculty (Chair,
 # Directors) alongside affiliated secondary appointments (home dept elsewhere)
@@ -169,7 +177,11 @@ _COH_SEL = {
 def _coh(short: str, name: str, majors: list[str], url: str,
          email_drop: str | None = None) -> dict:
     """A professional school on the shared Emory Cohesion faculty-listing grid."""
-    enrich = {"email_selector": "a[href^='mailto:']", "throttle": 0.3}
+    enrich = {"email_selector": "a[href^='mailto:']", "throttle": 0.3,
+              # Rollins SPH + Nursing profiles publish an "<h2>Areas of Interest"
+              # heading followed by a <ul> of atomic areas; heading-scoped so the
+              # profile's other h2+ul blocks never leak. Rides the email pass.
+              "research_items_selector": 'h2:-soup-contains("Areas of Interest") + ul li'}
     if email_drop:
         enrich["email_drop"] = email_drop
     return {"short": short, "name": name, "majors": majors,
@@ -304,6 +316,9 @@ SCHOOL: dict = {
                 "profile_enrich": {
                     "email_selector": "article.faculty-card--full a[href^='mailto:']",
                     "email_drop": r"^(?:executiveeducation|gbsalumni|gbsinfo|gbs[\w.-]*|info)@",
+                    # Each GBS profile has one "Areas of Expertise" sidebar list
+                    # (clean atomic <li>); rides the email pass.
+                    "research_items_selector": "ul.faculty-sidebar-details__list li",
                     "throttle": 0.3},
             },
         },

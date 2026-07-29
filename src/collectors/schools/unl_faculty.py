@@ -130,11 +130,35 @@ _FIELD = {
 _BUSINESS_DIR = "https://business.unl.edu/about/faculty-and-staff-directory/"
 
 
+# Research lives only on the /person/<slug>/ profile (relative link already in
+# the card). Chips win where a heading is followed by a <ul> (Engineering/A&S:
+# "Research Areas"/"Areas of Research and Professional Interest"/"EXPERTISE"/
+# "Areas of Expertise"; Law uses a taxonomy <section> of <a>); a comma <p> line
+# is the fallback (STAT/EAS/CHEM/ENGL). Bio-div scope keeps figure/publication
+# <ul>s out. No profile pass exists today → always:true (weekly enrich is gated).
+_BIO = 'div.unlcms-grid-person-detail-bio :is(h2,h3,h4,h5,h6)'
+_UNL_ENRICH = {
+    "always": True, "throttle": 0.2,
+    "research_items_selector": (
+        f'{_BIO}:-soup-contains("Research Areas") + ul li, '
+        f'{_BIO}:-soup-contains("Areas of Research and Professional Interest") + ul li, '
+        f'{_BIO}:-soup-contains("EXPERTISE") + ul li, '
+        f'{_BIO}:-soup-contains("Areas of Expertise") + ul li, '
+        ':is(h2,h3,h4,h5,h6):-soup-contains("Areas of Expertise") + section a'),
+    "research_selector": (
+        f'{_BIO}:-soup-contains("Research Interests") + p, '
+        f'{_BIO}:-soup-contains("Areas of Expertise") + p, '
+        f'{_BIO}:-soup-contains("Expertise Areas") + p, '
+        f'{_BIO}:-soup-contains("Areas of Interest") + p'),
+}
+
+
 def _teaser(short: str, name: str, majors: list[str], url: str) -> dict:
     """A UNL department on the shared unlcms-teaser-person component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD},
+        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+                   "profile_enrich": _UNL_ENRICH},
     }
 
 
@@ -149,6 +173,7 @@ def _business(short: str, name: str, majors: list[str], unit_re: str) -> dict:
             "field_filter": {"selector": "span.organization-unit",
                              "require_present": True, "include": unit_re},
             "ladder_filter": {"require": r"professor|lecturer|instructor"},
+            "profile_enrich": _UNL_ENRICH,
         },
     }
 
