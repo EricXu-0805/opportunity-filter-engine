@@ -120,7 +120,15 @@ def _isu(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared Drupal isu-people-directory component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _ISU_SEL, "field_filter": _ISU_FIELD},
+        "scrape": {"url": url, "selectors": _ISU_SEL, "field_filter": _ISU_FIELD,
+                   # Profiles publish research/expertise as clean <ul><li> chips;
+                   # no profile pass today → always:true (weekly enrich gated).
+                   "profile_enrich": {
+                       "always": True,
+                       "research_items_selector":
+                           "ul.isu-people_research-list li, ul.isu-people_expertise-list li",
+                       "throttle": 0.2,
+                   }},
     }
 
 
@@ -146,6 +154,13 @@ def _profiles(short: str, name: str, majors: list[str], url: str) -> dict:
         "scrape": {
             "url": url, "selectors": _PROFILE_SEL, "field_filter": _PROFILE_FIELD,
             "paginate": {"mode": "path", "param": "page", "start": 2, "max": 20},
+            # Profile "Topics of interest" section renders each topic as a
+            # span.tag chip; always:true (no profile pass today).
+            "profile_enrich": {
+                "always": True,
+                "research_items_selector": 'h3:-soup-contains("Topics of interest") + p span.tag',
+                "throttle": 0.2,
+            },
         },
     }
 

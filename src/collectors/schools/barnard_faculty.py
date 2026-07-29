@@ -94,7 +94,16 @@ def _dept(short: str, name: str, majors: list[str], sub: str, path: str) -> dict
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   # Each profile's research areas live in an "Academic Focus"
+                   # accordion as a clean <ul><li>. No profile pass exists today,
+                   # so always:true (weekly refresh env-gates enrich off).
+                   "profile_enrich": {
+                       "always": True,
+                       "research_items_selector":
+                           '.accordion-item h3:-soup-contains("Academic Focus") + .accordion-panel li',
+                       "throttle": 0.2,
+                   }},
     }
 
 
