@@ -71,12 +71,26 @@ _SAS_ENRICH = {"email_selector": "a[href^='mailto:']", "throttle": 0.2,
 
 def _sas(short: str, name: str, majors: list[str], url: str, *,
          theme: dict = _SAS_A, ua: str | None = None,
-         enrich: bool = False, selectors: dict | None = None) -> dict:
+         enrich: bool = False, selectors: dict | None = None,
+         research_items_selector: str | None = None,
+         research_selector: str | None = None) -> dict:
     scrape: dict = {"url": url, "selectors": selectors or theme,
                     "ladder_filter": _SAS_LADDER}
     if ua:
         scrape["ua"] = ua
-    if enrich:
+    # A few SAS depts publish a CLEAN taxonomy on the profile (Anthropology's
+    # "modes of approach" chips, Art History's "field of study" chips, Psych's
+    # semicolon "research interests" field). Those ride the same env-gated pass
+    # as the email enrich. The dominant SAS free-text field is a bio narrative
+    # and is deliberately NOT wired.
+    if research_items_selector or research_selector:
+        e = dict(_SAS_ENRICH)
+        if research_items_selector:
+            e["research_items_selector"] = research_items_selector
+        if research_selector:
+            e["research_selector"] = research_selector
+        scrape["profile_enrich"] = e
+    elif enrich:
         scrape["profile_enrich"] = _SAS_ENRICH
     return {"short": short, "name": name, "majors": majors,
             "directory_url": url, "scrape": scrape}
@@ -160,7 +174,7 @@ SCHOOL: dict = {
              "https://anthropology.sas.upenn.edu/people/standing-faculty",
              selectors={**_SAS_B, "name": ".views-field-title-1 h2 a",
                         "link": ".views-field-title-1 h2 a"},
-             enrich=True),
+             research_items_selector="div.field-name-field-modes-of-approach a"),
         _sas("BIOL", "Department of Biology", ["Biology"],
              "https://www.bio.upenn.edu/people/standing-faculty"),
         _sas("CHEM", "Department of Chemistry", ["Chemistry", "Biochemistry"],
@@ -211,7 +225,7 @@ SCHOOL: dict = {
         _sas("ARTH", "Department of the History of Art", ["Art History"],
              "https://arth.sas.upenn.edu/people/standing-faculty",
              selectors={**_SAS_B, "title": ".views-field-views-conditional h3"},
-             enrich=True),
+             research_items_selector="div.field-field-of-study a"),
         _sas("LING", "Department of Linguistics", ["Linguistics"],
              "https://www.ling.upenn.edu/people/faculty"),
         _sas("MATH", "Department of Mathematics", ["Mathematics"],
@@ -234,7 +248,8 @@ SCHOOL: dict = {
              "https://www.polisci.upenn.edu/people/standing-faculty", enrich=True),
         _sas("PSYC", "Department of Psychology", ["Psychology"],
              "https://psychology.sas.upenn.edu/people/standing-faculty",
-             theme=_SAS_C),
+             theme=_SAS_C,
+             research_selector="div.field--name-field-research-interests"),
         _sas("RELS", "Department of Religious Studies", ["Religious Studies"],
              "https://rels.sas.upenn.edu/people/standing-faculty"),
         _sas("REES", "Department of Russian & East European Studies",
@@ -308,6 +323,13 @@ SCHOOL: dict = {
                 # Drupal pager: base page is ?page=0, follow-ups 1..5.
                 "paginate": {"param": "page", "start": 1, "max": 5},
                 "ladder_filter": _SAS_LADDER,
+                # Profile sidebar links each research area to /research/research-
+                # areas/… — clean atomic chips; env-gated research-only pass.
+                "profile_enrich": {
+                    "research_items_selector":
+                        ".profile-content__sidebar a[href*='/research/research-areas/']",
+                    "throttle": 0.2,
+                },
             },
         },
         {
@@ -365,6 +387,9 @@ SCHOOL: dict = {
             "api": {"type": "wp", "base": "https://sp2.upenn.edu",
                     "post_type": "people",
                     "category_include": {"departments": [141, 146]},
+                    # WP "research-cat" taxonomy → clean controlled-vocabulary
+                    # keywords straight off the feed (no per-profile fetch).
+                    "keyword_tax": ["research-cat"],
                     "name_strip": r",\s*(?:Ph\.?D|Ed\.?D|D\.?S\.?W|J\.?D|M\.?D|MSW|LCSW|MPA|MS|MA)\b.*$"},
             "profile_enrich": {"email_selector": "a[href^='mailto:']",
                                "title_selector": "h1 ~ h2",
