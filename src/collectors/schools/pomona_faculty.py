@@ -73,7 +73,14 @@ def _dept(short: str, name: str, majors: list[str], slug: str) -> dict:
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SEL,
-                   "ladder_filter": _LADDER, "field_filter": _POMONA_ONLY},
+                   "ladder_filter": _LADDER, "field_filter": _POMONA_ONLY,
+                   # Profile "Areas of Expertise" section is a <ul><li> list
+                   # (scoping to li excludes the <p> dept label); env-gated
+                   # research-only per-profile pass.
+                   "profile_enrich": {
+                       "research_items_selector": 'h2:-soup-contains("Areas of Expertise") + div li',
+                       "throttle": 0.2,
+                   }},
     }
 
 

@@ -84,7 +84,14 @@ def _dept(short: str, name: str, majors: list[str], slug: str,
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   # Each profile carries a WordPress "expertise" taxonomy as
+                   # <a rel="tag"> chips; env-gated research-only per-profile pass
+                   # (the listing already supplies title + email).
+                   "profile_enrich": {
+                       "research_items_selector": 'section.profile-expertise a[rel="tag"]',
+                       "throttle": 0.2,
+                   }},
     }
 
 

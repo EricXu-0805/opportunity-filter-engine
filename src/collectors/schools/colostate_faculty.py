@@ -184,9 +184,26 @@ def _cns_dept(short, name, majors, url):
     return _dept(short, name, majors, url, _CNS_SEL, _CNS_FIELD)
 
 
+# Each engineering profile is also client-rendered; its "Research Interests"
+# (or "Research Focus Areas"/"Academic Areas") Elementor heading is followed by a
+# <li> chip list. The profile pass renders too (env-gated; CI does not render
+# colostate, so the local seed persists via keyword carry-forward).
+_ENGR_RESEARCH_ENRICH = {
+    "render": True, "render_settle": 4000, "throttle": 0.2,
+    "research_items_selector": (
+        'div.elementor-widget-heading:has(h2.elementor-heading-title'
+        ':-soup-contains("Research Interests")) + div.elementor-widget-text-editor li, '
+        'div.elementor-widget-heading:has(h2.elementor-heading-title'
+        ':-soup-contains("Research Focus Areas")) + div.elementor-widget-text-editor li, '
+        'div.elementor-widget-heading:has(h2.elementor-heading-title'
+        ':-soup-contains("Academic Areas")) + div.elementor-widget-text-editor li'),
+}
+
+
 def _engr_dept(short, name, majors, url):
     return _dept(short, name, majors, url, _ENGR_SEL, _ENGR_FIELD,
-                 render=True, render_settle=5000)
+                 render=True, render_settle=5000,
+                 profile_enrich=_ENGR_RESEARCH_ENRICH)
 
 
 def _biz_dept(short, name, majors, url):
