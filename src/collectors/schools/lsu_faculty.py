@@ -138,12 +138,15 @@ def _table_sel(*, name: int = 1, title: int = 2, research: int | None = None,
 
 
 def _block_sel(card: str, name: str, *, link: str | None = None,
-               research: str | None = None, name_strip: str | None = None,
+               research: str | None = None, research_re: str | None = None,
+               name_strip: str | None = None,
                title: str | None = None, email: str = _MAILTO) -> dict:
     """Card grid / loose block whose rank is free text, lifted by ``title_re``.
 
     Pass ``title`` instead when the rank does have an element of its own (the
-    Manship cards, where the first ``<p>`` is the rank line).
+    Manship cards, where the first ``<p>`` is the rank line). ``research_re``
+    binds a labelled research line in the card HTML (History's rank-tail,
+    Sociology's "Specializations:" strong) where no CSS element isolates it.
     """
     sel: dict = {"card": card, "name": name, "email": email}
     if title:
@@ -154,6 +157,8 @@ def _block_sel(card: str, name: str, *, link: str | None = None,
         sel["link"] = link
     if research:
         sel["research"] = research
+    if research_re:
+        sel["research_re"] = research_re
     if name_strip:
         sel["name_strip"] = name_strip
     return sel
@@ -224,6 +229,9 @@ def _business(short: str, name: str, majors: list[str], slug: str) -> dict:
                 "always": True,
                 "email_selector": _MAILTO,
                 "email_drop": r"experienceourso@|^business@",
+                # Each Ourso profile carries a labelled "Research Interests:" line;
+                # rides the mandatory email pass.
+                "research_html_re": r"Research Interests?\s*:?\s*(?:</strong>)?\s*(.*?)</p>",
                 "throttle": 0.2,
             },
         },
@@ -527,7 +535,9 @@ SCHOOL: dict = {
                 "url": "https://www.lsu.edu/hss/history/people/faculty/index.php",
                 "selectors": _block_sel(
                     "div.col-md-4", "p strong",
-                    link="a[href*='/people/faculty/']"),
+                    link="a[href*='/people/faculty/']",
+                    # The rank line is followed by a <br> then the research line.
+                    research_re=r"(?:Professor|Lecturer|Instructor)[^<]*<br\s*/?>(.*?)</p>"),
                 "section_filter": {"heading": "h2", "exclude": r"Retired"},
                 "ladder_filter": _LADDER,
             },
@@ -545,7 +555,8 @@ SCHOOL: dict = {
                 # the address out of its text.
                 "selectors": _block_sel(
                     "div.col-md-6", "p.lead a",
-                    email="p:-soup-contains('Email')"),
+                    email="p:-soup-contains('Email')",
+                    research_re=r"Specializations?\s*:?\s*</strong>\s*:?\s*(.*?)</p>"),
                 "ladder_filter": _LADDER,
             },
         },
