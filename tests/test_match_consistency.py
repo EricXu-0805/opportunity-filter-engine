@@ -176,11 +176,11 @@ class TestExplainServesTheListConclusion:
 
     def test_llm_blended_scores_and_buckets_match(self, snapshot_env):
         profile = _profile()
-        listing = client.post("/api/matches", json=profile).json()
+        listing = client.post("/api/matches?llm=true", json=profile).json()
         # The fake scorer must actually have blended something, or this test
         # would silently degrade into the rule-only comparison.
         assert any(r["ai_reason"] for r in listing["results"])
-        self._assert_identical(listing, profile)
+        self._assert_identical(listing, profile, "?llm=true")
 
     def test_llm_false_path_matches(self, snapshot_env):
         profile = _profile()
@@ -234,8 +234,8 @@ class TestExplainServesTheListConclusion:
 class TestSnapshotPagination:
     def test_repeated_requests_identical_order(self, snapshot_env):
         profile = _profile()
-        first = client.post("/api/matches", json=profile).json()
-        second = client.post("/api/matches", json=profile).json()
+        first = client.post("/api/matches?llm=true", json=profile).json()
+        second = client.post("/api/matches?llm=true", json=profile).json()
         assert [r["opportunity_id"] for r in first["results"]] == [
             r["opportunity_id"] for r in second["results"]
         ]

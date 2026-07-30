@@ -9,6 +9,7 @@ import SaveFavoritesAnchor from '@/components/SaveFavoritesAnchor';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useCustomImports } from '@/lib/custom-imports';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { ProfileData } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -131,7 +132,7 @@ export default function FavoritesPage() {
       <FavoritesHeader
         opportunities={opportunities}
         serverOpportunitiesCount={serverOpportunities.length}
-        selectionMode={selectionMode}
+        selectionMode={RELEASE_SCOPE.compare && selectionMode}
         onEnterSelection={enterSelection}
         onCancelSelection={cancelSelection}
         t={t}
@@ -156,7 +157,7 @@ export default function FavoritesPage() {
             <OpportunityCard
               key={opp.id}
               opp={opp}
-              selectionMode={selectionMode}
+              selectionMode={RELEASE_SCOPE.compare && selectionMode}
               isSelected={selected.has(opp.id)}
               selectedSize={selected.size}
               isExpanded={expanded.has(opp.id)}
@@ -172,7 +173,7 @@ export default function FavoritesPage() {
         </div>
       )}
 
-      {selectionMode && (
+      {RELEASE_SCOPE.compare && selectionMode && (
         <SelectionFooter
           selectedCount={selected.size}
           selectedTitles={selectedTitles}

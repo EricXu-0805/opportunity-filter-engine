@@ -33,6 +33,12 @@ describe('Header', () => {
     expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('does not advertise dormant Fellowships or Roadmap routes', () => {
+    render(<Header />);
+    expect(screen.queryByText('nav.fellowships')).not.toBeInTheDocument();
+    expect(screen.queryByText('nav.roadmap')).not.toBeInTheDocument();
+  });
+
   it('exposes a hamburger toggle that is initially collapsed', () => {
     render(<Header />);
     const toggle = screen.getByTestId('mobile-nav-toggle');

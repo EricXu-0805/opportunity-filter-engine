@@ -100,14 +100,14 @@ describe('request<T> (internal helper, exercised through every endpoint)', () =>
 });
 
 describe('getMatches', () => {
-  it('POSTs /matches with the profile body and no semantic flag by default', async () => {
+  it('POSTs /matches with the profile body and an explicit deterministic flag', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile());
     const url = fetchMock.mock.calls[0][0] as string;
     const init = fetchMock.mock.calls[0][1] as RequestInit;
-    expect(url).toBe('/api/matches');
+    expect(url).toBe('/api/matches?llm=false');
     expect(init.method).toBe('POST');
     const body = JSON.parse(init.body as string);
     expect(body.school).toBe('UIUC');
@@ -135,6 +135,15 @@ describe('getMatches', () => {
     await getMatches(makeProfile({ include_cross_school: true }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.include_cross_school).toBe(true);
+  });
+
+  it('removes the dormant fellowship preference before matching', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile({ seeking_types: ['research', 'fellowship'] }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.seeking_type).toEqual(['research']);
   });
 
   it('maps scholar_url into the request and defaults it to "" when absent', async () => {
@@ -188,7 +197,7 @@ describe('getMatches', () => {
     expect(body.school).toBe('UC Berkeley');
   });
 
-  it('AI smart match is the server default: llm=true sends no param, llm=false opts out', async () => {
+  it('forces deterministic matching while AI refine is outside the release', async () => {
     // Fresh Response per call — this test fetches twice, and a shared
     // mockResolvedValue Response throws "Body has already been read" on the
     // second res.json() (CI Node enforces single-use bodies).
@@ -196,7 +205,7 @@ describe('getMatches', () => {
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile(), { llm: true });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=false');
     await getMatches(makeProfile(), { llm: false });
     expect(fetchMock.mock.calls[1][0]).toBe('/api/matches?llm=false');
   });
@@ -228,7 +237,7 @@ describe('per-opportunity endpoints', () => {
       }),
     );
     await getMatchExplanation(makeProfile(), 'opp-1');
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/opp-1/explain');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/opp-1/explain?llm=false');
   });
 
   it('chatWithOpportunity passes profile through toProfileRequest when present', async () => {

@@ -3,6 +3,7 @@
 import { GitCompare, X } from 'lucide-react';
 import EmailMeButton from '@/components/EmailMeButton';
 import { sendFavoritesEmail } from '@/lib/api';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { getInteractionsFull } from '@/lib/supabase';
 import { MAX_COMPARE, MIN_COMPARE, type Opp, type TFunc } from './types';
 
@@ -61,7 +62,7 @@ export function FavoritesHeader({
             }}
           />
         )}
-        {!selectionMode && serverOpportunitiesCount >= MIN_COMPARE && (
+        {RELEASE_SCOPE.compare && !selectionMode && serverOpportunitiesCount >= MIN_COMPARE && (
           <button
             type="button"
             onClick={onEnterSelection}

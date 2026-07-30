@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { adminFetch, SESSION_KEY } from './admin-api';
 import type {
   AdminResponse,
@@ -66,7 +67,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setLoading(true);
     setError(null);
     try {
-      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox] = await Promise.all([
+      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox] = await Promise.all([
         adminFetch<AdminResponse>(`/admin/data-quality`, tok),
         adminFetch<{ history: HistoryEntry[] }>(`/admin/data-quality/history?limit=30`, tok),
         adminFetch<HealthResponse>(`/admin/health-check`, tok),
@@ -74,8 +75,10 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
         adminFetch<{ entries: CollectorHistoryEntry[]; count: number }>(`/admin/collector-status/history?limit=30`, tok),
         adminFetch<SavedSearchHealth>(`/admin/saved-search-health`, tok),
         adminFetch<FeedbackInbox>(`/admin/feedback?limit=50`, tok),
-        adminFetch<OrdersInbox>(`/admin/orders?limit=50`, tok),
       ]);
+      const ordInbox = RELEASE_SCOPE.payments
+        ? await adminFetch<OrdersInbox>(`/admin/orders?limit=50`, tok)
+        : null;
       if (main.status === 401) {
         setError('Invalid admin token');
         sessionStorage.removeItem(SESSION_KEY);
@@ -100,7 +103,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setCollectorHistory(collectorHist.data?.entries ?? []);
       setSavedSearchHealth(ssHealth.data ?? null);
       setFeedbackInbox(fbInbox.data ?? null);
-      setOrdersInbox(ordInbox.data ?? null);
+      setOrdersInbox(ordInbox?.data ?? null);
     } finally {
       setLoading(false);
     }
@@ -154,7 +157,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   }, []);
 
   const handleConfirmOrder = useCallback(async (id: string) => {
-    if (!token) return;
+    if (!token || !RELEASE_SCOPE.payments) return;
     const res = await adminFetch(`/admin/orders/${id}/confirm`, token, { method: 'POST' });
     if (res.error) {
       setError(res.error);

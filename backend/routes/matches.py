@@ -24,6 +24,11 @@ from backend.lib.llm import _resolve, chat_completion
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.publication_attribution import attribution_status, verified_recent_works
+from backend.lib.release_scope import (
+    feature_enabled,
+    release_visible_opportunities,
+    release_visible_opportunity_by_id,
+)
 from backend.routes.responsiveness import signals_map
 from backend.schemas import (
     MatchesResponse,
@@ -389,6 +394,12 @@ def _normalized_profile(profile: ProfileRequest) -> dict:
     """One profile normalization for every match endpoint — /matches and
     /explain must default the same preferences or their conclusions diverge."""
     profile_dict = profile.model_dump()
+    if not feature_enabled("fellowships"):
+        seeking = [
+            value for value in profile_dict.get("seeking_type", [])
+            if value != "fellowship"
+        ]
+        profile_dict["seeking_type"] = seeking or ["research", "summer_program"]
     if profile_dict.get("preferences") is None:
         profile_dict["preferences"] = {
             "min_match_threshold": 25,
@@ -405,21 +416,34 @@ def _snapshot_key(profile_dict: dict, llm: bool) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+async def _responsiveness_for_matching() -> dict | None:
+    """Return accepted professor signals, never hidden release data.
+
+    The endpoint/UI gate is insufficient on its own: when professor signals are
+    outside the release, they must not silently change deterministic ranking or
+    the standalone score used by the explain path.
+    """
+    if not feature_enabled("professor_signals") or RESPONSIVENESS_BONUS <= 0:
+        return None
+    return await signals_map()
+
+
 async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnapshot:
     # Load FIRST: load_opportunities() is what advances corpus_version() on a
     # reload, so the key must be derived after it, never before.
-    opportunities = load_opportunities()
+    corpus = load_opportunities()
+    opportunities = release_visible_opportunities(corpus)
     key = _snapshot_key(profile_dict, llm)
     snap = _match_snapshots.get(key)
     if (
         snap is not None
         and _SNAPSHOT_TTL_SECONDS > 0
-        and snap.corpus_ref is opportunities  # belt: identity, like register_corpus
+        and snap.corpus_ref is corpus  # belt: identity, like register_corpus
         and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
     ):
         return snap
 
-    responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
+    responsiveness = await _responsiveness_for_matching()
     results = await asyncio.to_thread(
         rank_all, profile_dict, opportunities, responsiveness=responsiveness
     )
@@ -462,7 +486,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
 
     snap = _MatchSnapshot(
         created_at=time.time(),
-        corpus_ref=opportunities,
+        corpus_ref=corpus,
         results=results,
         by_id={r.opportunity_id: r for r in results},
         visible=visible_results,
@@ -485,7 +509,7 @@ async def get_matches(
     profile: ProfileRequest,
     limit: int | None = Query(default=None, ge=1, le=MAX_RESULTS_PER_REQUEST),
     offset: int = Query(default=0, ge=0),
-    llm: bool = Query(default=True),
+    llm: bool = Query(default=False),
 ):
     """Score and rank opportunities for the given profile.
 
@@ -501,19 +525,18 @@ async def get_matches(
     and to the number of items a full offset traversal returns. low_fit is
     counted separately and never returned.
 
-    The "AI smart match" pass is ON by default: a bounded OpenRouter rerank of
-    the top results that also writes each card's concrete lead reason (strict
-    no-op when unconfigured; rule order is always the floor). Pass
-    ``llm=false`` to skip it. The retired embedding ``semantic`` blend was
-    removed — it regressed faculty ranking (see memory
-    `ofe-semantic-rerank-regresses`).
+    Deterministic matching is the public default. The bounded OpenRouter refine
+    pass only runs when the feature has passed release acceptance and the caller
+    explicitly sends ``llm=true``. URL manipulation cannot promote the dormant
+    feature.
     """
     opportunities = load_opportunities()
     if not opportunities:
         raise HTTPException(status_code=503, detail="No opportunity data available")
 
     profile_dict = _normalized_profile(profile)
-    snap = await _get_or_compute_snapshot(profile_dict, llm)
+    use_llm = llm and feature_enabled("match_ai_refine")
+    snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     opp_lookup = load_opportunities_by_id()
 
     visible_results = snap.visible
@@ -553,7 +576,10 @@ async def get_matches(
 async def get_gap_analysis(opportunity_id: str, profile: ProfileRequest):
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
-    opp = load_opportunities_by_id().get(opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -676,7 +702,7 @@ _EXCLUSION_GAP_TEXT = {
 async def get_match_explanation(
     opportunity_id: str,
     profile: ProfileRequest,
-    llm: bool = Query(default=True),
+    llm: bool = Query(default=False),
 ):
     """Render a personalized fit summary for one opportunity. Lazy / on-demand
     so the bulk /matches call stays fast and LLM cost stays bounded.
@@ -692,12 +718,16 @@ async def get_match_explanation(
     """
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
-    opp = load_opportunities_by_id().get(opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = _normalized_profile(profile)
-    snap = await _get_or_compute_snapshot(profile_dict, llm)
+    use_llm = llm and feature_enabled("match_ai_refine")
+    snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     result = snap.by_id.get(opportunity_id)
     excluded_reason = None
     if result is None:
@@ -705,7 +735,7 @@ async def get_match_explanation(
         # list applied — never a re-derivation — plus an informational
         # standalone score so the surface can still show *why*.
         excluded_reason = hard_exclusion(opp, _filter_context(profile_dict)) or "below_threshold"
-        responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
+        responsiveness = await _responsiveness_for_matching()
         result = await asyncio.to_thread(
             rank_opportunity, profile_dict, opp, responsiveness=responsiveness
         )

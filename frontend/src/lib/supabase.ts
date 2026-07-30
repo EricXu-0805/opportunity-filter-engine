@@ -6,6 +6,7 @@ import {
 } from '@supabase/supabase-js';
 
 import { syncLocalIdentityOwner } from './identity-owner';
+import { RELEASE_SCOPE } from './release-scope';
 import { STORAGE_KEYS } from './storage-keys';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -311,7 +312,7 @@ export function onAuthChange(cb: (state: AuthState) => void): () => void {
 
 export type SignInOutcome =
   | { ok: true; mode: 'link-anon' | 'sign-in'; message: string }
-  | { ok: false; reason: 'not-configured' | 'invalid-email' | 'rate-limited' | 'email-taken' | 'identity-taken' | 'unknown'; message: string };
+  | { ok: false; reason: 'not-configured' | 'feature-disabled' | 'invalid-email' | 'rate-limited' | 'email-taken' | 'identity-taken' | 'unknown'; message: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -598,6 +599,17 @@ export async function redeemPendingMerge(): Promise<MergeSummary | null> {
 
 export type OAuthProvider = 'google' | 'azure';
 
+function oauthProviderReleaseRejection(
+  provider: OAuthProvider,
+): SignInOutcome | null {
+  if (provider !== 'azure' || RELEASE_SCOPE.microsoftSchoolAuth) return null;
+  return {
+    ok: false,
+    reason: 'feature-disabled',
+    message: 'Microsoft school sign-in is not available in this release.',
+  };
+}
+
 function oauthOptions(provider: OAuthProvider, redirectTo: string) {
   return {
     redirectTo,
@@ -656,6 +668,9 @@ export async function signInWithOAuthProvider(
   provider: OAuthProvider,
   redirectTo: string,
 ): Promise<SignInOutcome> {
+  const releaseRejection = oauthProviderReleaseRejection(provider);
+  if (releaseRejection) return releaseRejection;
+
   if (!SUPABASE_CONFIGURED) {
     return {
       ok: false,
@@ -697,6 +712,9 @@ export async function signInExistingOAuth(
   provider: OAuthProvider,
   redirectTo: string,
 ): Promise<SignInOutcome> {
+  const releaseRejection = oauthProviderReleaseRejection(provider);
+  if (releaseRejection) return releaseRejection;
+
   if (!SUPABASE_CONFIGURED) {
     return {
       ok: false,
@@ -994,73 +1012,6 @@ export async function submitFeedback(
     return false;
   }
   return true;
-}
-
-// Concierge manual-payment orders (migration 019). The client may only
-// INSERT its own pending order and SELECT its own rows — every status
-// transition happens server-side (mark-paid-claimed + admin confirm).
-export interface OrderRow {
-  id: string;
-  package: string;
-  amount_cents: number;
-  currency: string;
-  status: 'pending' | 'awaiting_confirm' | 'paid' | 'cancelled' | 'refunded';
-  channel: string;
-  created_at: string;
-  paid_at: string | null;
-}
-
-export async function createOrder(
-  pkg: { id: string; amountCents: number; currency: string },
-): Promise<OrderRow | null> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return null;
-
-  const { data, error } = await supabase
-    .from('orders')
-    .insert({
-      device_id: deviceId,
-      package: pkg.id,
-      amount_cents: pkg.amountCents,
-      currency: pkg.currency,
-      channel: 'manual',
-    })
-    .select()
-    .single();
-  if (error || !data) {
-    console.warn('[ofe] order insert failed:', error?.message);
-    return null;
-  }
-  return data as OrderRow;
-}
-
-export async function getMyOrders(): Promise<OrderRow[]> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return [];
-
-  const { data, error } = await supabase
-    .from('orders')
-    .select('id,package,amount_cents,currency,status,channel,created_at,paid_at')
-    .order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return data as OrderRow[];
-}
-
-export async function claimOrderPaid(orderId: string): Promise<boolean> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) return false;
-
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
-  try {
-    const res = await fetch(`${apiBase}/orders/${orderId}/mark-paid-claimed`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
 
 export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';

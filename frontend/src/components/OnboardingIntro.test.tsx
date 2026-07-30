@@ -1,5 +1,5 @@
 /*
- * OnboardingIntro: 8-slide product tour. First-visit gate (localStorage),
+ * OnboardingIntro: accepted-release product tour. First-visit gate (localStorage),
  * Back/Next paging, and "Try it" completion. analytics is mocked; i18n returns
  * the key verbatim. localStorage is real in jsdom and cleared between tests.
  */
@@ -14,7 +14,7 @@ vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
 
 import OnboardingIntro from './OnboardingIntro';
 
-const SLIDE_COUNT = 8;
+const SLIDE_COUNT = 6;
 
 beforeEach(() => {
   localStorage.clear();
@@ -49,6 +49,17 @@ describe('OnboardingIntro', () => {
     fireEvent.click(screen.getByTestId('onboarding-back'));
     expect(screen.getByTestId('onboarding-skip')).toBeInTheDocument();
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
+  });
+
+  it('does not advertise dormant Compare or Roadmap slides', async () => {
+    render(<OnboardingIntro />);
+    await waitFor(() => screen.getByTestId('onboarding-intro'));
+    expect(screen.getByText(`1 / ${SLIDE_COUNT}`)).toBeInTheDocument();
+    expect(screen.queryByText('onboarding.compareTitle')).not.toBeInTheDocument();
+    expect(screen.queryByText('onboarding.roadmapTitle')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('onboarding-primary'));
+    expect(screen.getByText('onboarding.exResearch')).toBeInTheDocument();
+    expect(screen.queryByText('onboarding.exFellowship')).not.toBeInTheDocument();
   });
 
   it('pages through to the end and completes via the school gate (default UIUC: seen + tracked + persisted)', async () => {

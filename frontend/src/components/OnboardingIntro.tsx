@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Star, Check, Sparkles, Calendar, Target, Send, M
 import { useT } from '@/i18n/client';
 import { track } from '@/lib/analytics';
 import { persistHomeSchool, recordSchoolConfirmation } from '@/lib/school-confirmation';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { SCHOOLS } from '@/lib/schools';
 
@@ -14,7 +15,14 @@ type SlideKey =
   | 'tracker' | 'dashboard' | 'roadmap' | 'school';
 
 const SLIDES: SlideKey[] = [
-  'welcome', 'generate', 'favorites', 'compare', 'tracker', 'dashboard', 'roadmap', 'school',
+  'welcome',
+  'generate',
+  'favorites',
+  ...(RELEASE_SCOPE.compare ? ['compare' as const] : []),
+  'tracker',
+  'dashboard',
+  ...(RELEASE_SCOPE.roadmap ? ['roadmap' as const] : []),
+  'school',
 ];
 
 // Feature slides that carry a "where to find it" location chip (welcome/school don't).
@@ -49,7 +57,9 @@ function ResultsVisual({ t }: { t: T }) {
   const rows = [
     { title: t('onboarding.exResearch'), pct: 94, tier: t('onboarding.tierHigh'), bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700' },
     { title: t('onboarding.exInternship'), pct: 88, tier: t('onboarding.tierGood'), bar: 'bg-indigo-500', dot: 'bg-indigo-500', badge: 'bg-indigo-50 text-indigo-700' },
-    { title: t('onboarding.exFellowship'), pct: 71, tier: t('onboarding.tierReach'), bar: 'bg-amber-500', dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' },
+    ...(RELEASE_SCOPE.fellowships
+      ? [{ title: t('onboarding.exFellowship'), pct: 71, tier: t('onboarding.tierReach'), bar: 'bg-amber-500', dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' }]
+      : []),
   ];
   return (
     <div className="w-full max-w-[360px] mx-auto space-y-2.5">

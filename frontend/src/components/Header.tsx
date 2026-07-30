@@ -6,16 +6,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, Sparkles, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { hasMatchCache as readHasMatchCache } from '@/lib/match-cache';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useNewMatchCount } from '@/lib/use-new-match-count';
 import AccountMenu from './AccountMenu';
 import LanguageSwitcher from './LanguageSwitcher';
 
 const NAV_ITEMS = [
   { href: '/', labelKey: 'nav.findMatches', shortKey: 'nav.findShort' },
-  { href: '/fellowships', labelKey: 'nav.fellowships', shortKey: 'nav.fellowshipsShort' },
+  ...(RELEASE_SCOPE.fellowships
+    ? [{ href: '/fellowships', labelKey: 'nav.fellowships', shortKey: 'nav.fellowshipsShort' }]
+    : []),
   { href: '/favorites', labelKey: 'nav.favorites', shortKey: 'nav.favShort' },
   { href: '/tracker', labelKey: 'nav.tracker', shortKey: 'nav.trackerShort' },
-  { href: '/roadmap', labelKey: 'nav.roadmap', shortKey: 'nav.roadmapShort' },
+  ...(RELEASE_SCOPE.roadmap
+    ? [{ href: '/roadmap', labelKey: 'nav.roadmap', shortKey: 'nav.roadmapShort' }]
+    : []),
   { href: '/dashboard', labelKey: 'nav.dashboard', shortKey: 'nav.dashShort' },
   { href: '/import', labelKey: 'nav.import', shortKey: 'nav.importShort' },
   { href: '/resources', labelKey: 'nav.resources', shortKey: 'nav.resourcesShort' },

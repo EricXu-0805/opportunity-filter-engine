@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { getDeadlineUrgency, daysUntil } from '@/lib/match-utils';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import ResponsivenessBadge from '@/components/ResponsivenessBadge';
 import { DetailBadge } from './DetailBadge';
 import { formatType } from './detail-utils';
@@ -87,7 +88,9 @@ export function OpportunityHeader({
               <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}
             {deadlineBadge}
-            <ResponsivenessBadge opportunityId={opp.id} size="detail" />
+            {RELEASE_SCOPE.professorSignals && (
+              <ResponsivenessBadge opportunityId={opp.id} size="detail" />
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight tracking-tight">
             {opp.title}

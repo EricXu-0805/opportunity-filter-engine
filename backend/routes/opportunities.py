@@ -23,6 +23,10 @@ from backend.lib.llm import (
 from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.publication_attribution import works_are_verified
+from backend.lib.release_scope import (
+    release_visible_opportunities,
+    release_visible_opportunity_by_id,
+)
 from backend.lib.supabase_auth import authenticated_uid
 from backend.routes.cold_email import _format_recent_works
 from backend.schemas import ProfileRequest
@@ -106,7 +110,7 @@ async def list_opportunities(
     # so offset paging here is a deterministic total order: same filters + same
     # corpus generation → same pages, no duplicates, no omissions.
     opportunities = [
-        o for o in load_opportunities()
+        o for o in release_visible_opportunities(load_opportunities())
         if (o.get("metadata") or {}).get("is_active") is not False
     ]
 
@@ -164,7 +168,7 @@ async def opportunity_coverage():
     the source name is prefixed with; inactive records are excluded.
     """
     counts: Counter[str] = Counter()
-    for o in load_opportunities():
+    for o in release_visible_opportunities(load_opportunities()):
         if (o.get("metadata") or {}).get("is_active") is False:
             continue
         slug = (o.get("source") or "").split("_", 1)[0]
@@ -192,7 +196,7 @@ async def get_opportunities_batch(request: dict):
     for oid in ids:
         if not isinstance(oid, str) or len(oid) > 100:
             continue
-        opp = lookup.get(oid)
+        opp = release_visible_opportunity_by_id(lookup, oid)
         if opp is not None:
             results.append(_redact(opp))
     return {"opportunities": results, "requested": len(ids), "found": len(results)}
@@ -205,7 +209,7 @@ async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     Useful for building a calendar / "what's due soon" widget without
     re-ranking the full corpus per request.
     """
-    opportunities = load_opportunities()
+    opportunities = release_visible_opportunities(load_opportunities())
     today = date.today()
     cutoff = today + timedelta(days=days)
     upcoming = []
@@ -257,7 +261,7 @@ async def get_similar_opportunities(
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
 
     lookup = load_opportunities_by_id()
-    source = lookup.get(opportunity_id)
+    source = release_visible_opportunity_by_id(lookup, opportunity_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -267,7 +271,7 @@ async def get_similar_opportunities(
     source_org = (source.get("organization") or "").lower()
 
     scored: list[tuple[float, dict]] = []
-    for opp in load_opportunities():
+    for opp in release_visible_opportunities(load_opportunities()):
         if opp.get("id") == opportunity_id:
             continue
         if not (opp.get("metadata") or {}).get("is_active", True):
@@ -317,7 +321,10 @@ async def get_opportunity(
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
 
-    opp = load_opportunities_by_id().get(opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     detail = _redact(opp)
@@ -347,7 +354,7 @@ async def get_stats():
     if _stats_cache and now - _stats_cache_time < _STATS_TTL:
         return _stats_cache
 
-    opportunities = load_opportunities()
+    opportunities = release_visible_opportunities(load_opportunities())
 
     type_counts = dict(Counter(o.get("opportunity_type", "unknown") for o in opportunities))
     source_counts = dict(Counter(o.get("source", "unknown") for o in opportunities))
@@ -596,7 +603,10 @@ async def chat_with_opportunity(
 ):
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
-    opp = load_opportunities_by_id().get(opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 

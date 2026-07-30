@@ -379,6 +379,32 @@ describe('CallbackPage — linkIdentity conflict (identity_already_exists)', () 
     expect(screen.queryByTestId('callback-oauth-signin-existing')).toBeNull();
   });
 
+  it('discards a stale azure stash and cannot offer Microsoft OAuth recovery', async () => {
+    sessionStorage.setItem('ofe_oauth_link_provider', 'azure');
+    searchRef.current = CONFLICT_QS;
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.identityTakenTitle')).toBeInTheDocument();
+    });
+    expect(sessionStorage.getItem('ofe_oauth_link_provider')).toBeNull();
+    expect(screen.queryByTestId('callback-oauth-signin-existing')).toBeNull();
+    expect(mockOAuthExisting).not.toHaveBeenCalled();
+  });
+
+  it('ignores a hand-written provider=azure callback parameter', async () => {
+    searchRef.current = `${CONFLICT_QS}&provider=azure`;
+
+    render(<CallbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('auth.callback.identityTakenTitle')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('callback-oauth-signin-existing')).toBeNull();
+    expect(mockOAuthExisting).not.toHaveBeenCalled();
+  });
+
   it('keeps the generic error screen for non-conflict OAuth errors (behavior pin)', async () => {
     searchRef.current = '?error=access_denied&error_description=User+denied+access';
 

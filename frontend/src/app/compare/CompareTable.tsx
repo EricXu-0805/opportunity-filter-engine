@@ -54,14 +54,13 @@ function writeExplainCache(key: string, data: MatchExplanationResponse): void {
   }
 }
 
-// The same "AI smart match" preference /results honors (page.tsx writes
-// '1'/'0'; default ON). Compare must request the SAME scoring path, or the two
-// surfaces reach different conclusions for the same opportunity.
+// The same explicit AI-refine opt-in /results honors. Missing, unreadable, or
+// legacy state is deterministic; Compare must never turn AI on by default.
 function readAiTogglePreference(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK) !== '0';
+    return localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK) === '1';
   } catch {
-    return true;
+    return false;
   }
 }
 

@@ -9,6 +9,7 @@ import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { SimilarOpportunity } from '@/lib/api-server';
 import { useT } from '@/i18n/client';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 
 import { ChatDrawer } from './ChatDrawer';
 import { ContactRevealSection } from './ContactRevealSection';
@@ -90,7 +91,9 @@ export default function OpportunityDetail({
               onStar={handleStar}
               onOpenEmailModal={() => setEmailModalOpen(true)}
               onOpenTailorModal={() => setTailorOpen(true)}
-              onOpenRenovationModal={() => setRenovationOpen(true)}
+              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate
+                ? () => setRenovationOpen(true)
+                : undefined}
               onShare={handleShare}
               t={t}
             />
@@ -109,11 +112,13 @@ export default function OpportunityDetail({
               hasInteraction={!!interaction}
               t={t}
             />
-            <ProfessorFollowToggle
-              professorId={opp.professor_id}
-              professorName={opp.pi_name}
-              school={opp.school}
-            />
+            {RELEASE_SCOPE.professorSignals && (
+              <ProfessorFollowToggle
+                professorId={opp.professor_id}
+                professorName={opp.pi_name}
+                school={opp.school}
+              />
+            )}
           </div>
 
           <DescriptionSection description={description} t={t} />
@@ -133,21 +138,25 @@ export default function OpportunityDetail({
           </div>
         </main>
 
-        <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">
-          <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
-            <OpportunityChatbot opportunity={opp} profile={profile} />
-          </div>
-        </aside>
+        {RELEASE_SCOPE.askAi && (
+          <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">
+            <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
+              <OpportunityChatbot opportunity={opp} profile={profile} />
+            </div>
+          </aside>
+        )}
       </div>
 
-      <ChatDrawer
-        opp={opp}
-        profile={profile}
-        open={chatDrawerOpen}
-        onOpen={() => setChatDrawerOpen(true)}
-        onClose={() => setChatDrawerOpen(false)}
-        t={t}
-      />
+      {RELEASE_SCOPE.askAi && (
+        <ChatDrawer
+          opp={opp}
+          profile={profile}
+          open={chatDrawerOpen}
+          onOpen={() => setChatDrawerOpen(true)}
+          onClose={() => setChatDrawerOpen(false)}
+          t={t}
+        />
+      )}
 
       {profile && (
         <ColdEmailModal
@@ -170,7 +179,7 @@ export default function OpportunityDetail({
         />
       )}
 
-      {profile && (
+      {RELEASE_SCOPE.resumeRenovate && profile && (
         <ResumeRenovationModal
           isOpen={renovationOpen}
           onClose={() => setRenovationOpen(false)}

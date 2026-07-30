@@ -36,6 +36,13 @@ afterEach(() => {
 });
 
 describe('AcademicProfileCard — school row + switcher entry', () => {
+  it('does not offer the dormant Fellowship opportunity type', () => {
+    renderCard();
+    expect(screen.getByText('home.form.seekingResearch')).toBeInTheDocument();
+    expect(screen.getByText('home.form.seekingInternship')).toBeInTheDocument();
+    expect(screen.queryByText('home.form.seekingFellowship')).not.toBeInTheDocument();
+  });
+
   it('shows the current school name and a Change button (default uiuc)', () => {
     renderCard();
     expect(screen.getByText('University of Illinois Urbana-Champaign')).toBeInTheDocument();

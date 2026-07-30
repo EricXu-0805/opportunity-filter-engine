@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Verify migrations 017/018 (Flow B cross-device merge) + 019 (orders RLS)
-# against a real, throwaway Postgres cluster — no docker, no Supabase. Spins
+# Verify migrations 017/018 (Flow B cross-device merge), 019 (orders RLS), and
+# 024 (pre-LLC order hard-close) against a real, throwaway Postgres cluster.
+# Spins
 # an ephemeral cluster in a temp dir, loads test stubs -> the effective prod
 # schema (migrations, 004 is excluded because 006 supersedes it), runs
 # flow_b_merge_test.sql + orders_rls_test.sql, and tears everything down.
@@ -39,6 +40,13 @@ for f in "$MIGRATIONS"/0*.sql; do
   case "$base" in
     004_*) echo "    skip $base (superseded by 006)"; continue ;;
   esac
+  if [[ "$base" == "024_disable_pre_llc_orders.sql" ]]; then
+    # Supabase grants browser roles access to public tables through its
+    # managed default privileges. Mirror that state immediately before the
+    # hard-close migration so this test proves 024 actively revokes it.
+    "${PSQL[@]}" -c \
+      "GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO anon, authenticated"
+  fi
   echo "    apply $base"
   "${PSQL[@]}" -f "$f"
 done

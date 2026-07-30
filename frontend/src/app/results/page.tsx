@@ -39,6 +39,7 @@ import { mergeHydratedFeedback } from './feedback-hydration';
 import { hasScopeData, homeSchoolOf } from '@/lib/discovery-scope';
 import { bySlug } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import {
   getAuthState,
   getFavorites,
@@ -279,6 +280,7 @@ function ResultsContent() {
   }, [hasStoredProfile, router]);
 
   const toggleSemantic = useCallback((next: boolean) => {
+    if (!RELEASE_SCOPE.matchAiRefine) return;
     setSemanticRerank(next);
     try { localStorage.setItem(STORAGE_KEYS.SEMANTIC_RERANK, next ? '1' : '0'); } catch { /* quota */ }
     setData(null);

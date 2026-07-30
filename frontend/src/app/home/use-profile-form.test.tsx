@@ -61,9 +61,11 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 import { useProfileForm } from './use-profile-form';
+import { DEFAULT_PROFILE } from './types';
 import { saveProfile } from '@/lib/supabase';
 import { parseGitHubProfile } from '@/lib/api';
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from '@/lib/storage-keys';
+import { encodeProfile } from '@/lib/profile-share';
 
 const RESUME = (suggested_interests: string) => ({
   extracted_skills: [] as string[],
@@ -108,6 +110,7 @@ beforeEach(() => {
   mockLoadProfile = () => Promise.resolve(null);
   authChangeCb = null;
   unsubSpy.mockReset();
+  localStorage.clear();
 });
 
 describe('useProfileForm — prefill from URL', () => {
@@ -141,11 +144,38 @@ describe('useProfileForm — prefill from URL', () => {
     await waitFor(() => expect(screen.getByTestId('seeking').textContent).toBe(''));
   });
 
-  it('applies both prefill_year and prefill_seeking when present', async () => {
-    searchRef.current = 'prefill_year=Senior&prefill_seeking=fellowship';
+  it('applies both prefill_year and an accepted prefill_seeking when present', async () => {
+    searchRef.current = 'prefill_year=Senior&prefill_seeking=internship';
     render(<Wrapped />);
     await waitFor(() => expect(screen.getByTestId('grade').textContent).toBe('Senior'));
-    expect(screen.getByTestId('seeking').textContent).toContain('fellowship');
+    expect(screen.getByTestId('seeking').textContent).toContain('internship');
+  });
+
+  it('ignores the dormant fellowship prefill', async () => {
+    searchRef.current = 'prefill_seeking=fellowship';
+    render(<Wrapped />);
+    await waitFor(() => expect(screen.getByTestId('seeking').textContent).toBe(''));
+  });
+
+  it('removes a stale fellowship preference from a stored profile', async () => {
+    mockLoadProfile = () =>
+      Promise.resolve({ seeking_types: ['research', 'fellowship'] });
+    render(<Wrapped />);
+    await waitFor(() =>
+      expect(screen.getByTestId('seeking').textContent).toBe('research'),
+    );
+  });
+
+  it('removes a stale fellowship preference from a shared profile', async () => {
+    const share = encodeProfile({
+      ...DEFAULT_PROFILE,
+      seeking_types: ['internship', 'fellowship'],
+    });
+    searchRef.current = `share=${share}`;
+    render(<Wrapped />);
+    await waitFor(() =>
+      expect(screen.getByTestId('seeking').textContent).toBe('internship'),
+    );
   });
 });
 

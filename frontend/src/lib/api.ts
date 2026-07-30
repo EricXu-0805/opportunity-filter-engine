@@ -17,6 +17,7 @@ import type {
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
+import { RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -88,6 +89,11 @@ export function deriveDesiredFields(interests: string | undefined): string[] {
 
 function toProfileRequest(profile: ProfileData): ProfileRequest {
   const homeSchool = profile.home_school ?? 'uiuc';
+  const requestedSeekingTypes =
+    profile.seeking_types ?? ['research', 'summer_program'];
+  const acceptedSeekingTypes = requestedSeekingTypes.filter(
+    (value) => value !== 'fellowship' || RELEASE_SCOPE.fellowships,
+  );
   return {
     name: profile.name ?? '',
     // Free-text display name (cold-email "…student at {school}");
@@ -100,7 +106,10 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     // Additional majors/minors feed the matcher's secondary-major + keyword signal.
     secondary_interests: profile.additional_majors ?? [],
     international_student: profile.is_international,
-    seeking_type: profile.seeking_types ?? ['research', 'summer_program'],
+    seeking_type:
+      acceptedSeekingTypes.length > 0
+        ? acceptedSeekingTypes
+        : ['research', 'summer_program'],
     desired_fields: deriveDesiredFields(profile.research_interests),
     hard_skills: profile.skills.map((s) => ({ name: s.name, level: s.level })),
     coursework: profile.coursework ?? [],
@@ -122,11 +131,10 @@ export async function getMatches(
   profile: ProfileData,
   options: { llm?: boolean } = {},
 ): Promise<MatchesResponse> {
-  // The LLM reranker is the server default (scores topical fit + writes each
-  // card's concrete lead reason via OpenRouter); the "AI smart match" toggle
-  // only opts OUT (?llm=false). The older embedding ?semantic path is retired
-  // — it regressed the ranking; this replaces it.
-  const qs = options.llm === false ? '?llm=false' : '';
+  // Deterministic is the release default. Both source-controlled acceptance
+  // and an explicit user action are required before the request can opt in.
+  const llm = RELEASE_SCOPE.matchAiRefine && options.llm === true;
+  const qs = `?llm=${llm ? 'true' : 'false'}`;
   return request<MatchesResponse>(`/matches${qs}`, {
     method: 'POST',
     body: JSON.stringify(toProfileRequest(profile)),
@@ -365,10 +373,10 @@ export async function getMatchExplanation(
   opportunityId: string,
   options: { llm?: boolean } = {},
 ): Promise<MatchExplanationResponse> {
-  // Mirror getMatches: the AI toggle must select the SAME scoring path on the
-  // compare page as on /results, or the two surfaces reach different
-  // conclusions for the same opportunity.
-  const qs = options.llm === false ? '?llm=false' : '';
+  // Mirror getMatches so every surface reaches the same deterministic
+  // conclusion while AI refine remains outside the accepted release.
+  const llm = RELEASE_SCOPE.matchAiRefine && options.llm === true;
+  const qs = `?llm=${llm ? 'true' : 'false'}`;
   return request<MatchExplanationResponse>(
     `/matches/${encodeURIComponent(opportunityId)}/explain${qs}`,
     {

@@ -105,6 +105,16 @@ describe('mint (via signInExistingEmail)', () => {
 });
 
 describe('mint (via signInExistingOAuth) — device-secret binding', () => {
+  it('does not mint a merge grant or start OAuth for frozen azure', async () => {
+    const result = await signInExistingOAuth('azure', REDIRECT);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('feature-disabled');
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockSignInWithOAuth).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
   it('mints a secret-bound grant (null email + SHA-256 hash) and stashes {token, secret}', async () => {
     mockRpc.mockResolvedValueOnce({ data: GRANT, error: null });
 

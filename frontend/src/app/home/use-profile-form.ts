@@ -5,14 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { getStats, parseGitHubProfile } from '@/lib/api';
 import { clearMatchCache } from '@/lib/match-cache';
+import { normalizeProfileForRelease } from '@/lib/release-scope';
 import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 import { bySlug } from '@/lib/schools';
 import { loadProfile, onAuthChange, saveProfile } from '@/lib/supabase';
 import { decodeProfile, buildShareUrl } from '@/lib/profile-share';
-import { DEFAULT_PROFILE, type SaveStatus, type TFunc } from './types';
+import { DEFAULT_PROFILE, SEEKING_TYPES, type SaveStatus, type TFunc } from './types';
 
 const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Masters', 'PhD']);
-const VALID_SEEKING = new Set(['research', 'summer_program', 'internship', 'fellowship']);
+const VALID_SEEKING = new Set<string>(SEEKING_TYPES);
 
 function applyPrefillFromQuery(
   params: URLSearchParams | ReadonlyURLSearchParams,
@@ -99,7 +100,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
            + setSharedBanner must all flush in the same effect tick so the
            form renders pre-filled from the share link before any user
            interaction; otherwise the home page would flash empty fields. */
-        setProfile((prev) => ({ ...prev, ...shared } as ProfileData));
+        setProfile((prev) =>
+          normalizeProfileForRelease({ ...prev, ...shared } as ProfileData),
+        );
         if (typeof shared.search_weight === 'number') setSearchWeight(shared.search_weight);
         setSharedBanner(t('home.sharedBanner'));
         /* eslint-enable react-hooks/set-state-in-effect */
@@ -114,7 +117,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         if (Array.isArray(raw.skills) && raw.skills.length > 0 && typeof raw.skills[0] === 'string') {
           raw.skills = (raw.skills as string[]).map((name) => ({ name, level: 'beginner' as const }));
         }
-        setProfile((prev) => ({ ...prev, ...raw } as ProfileData));
+        setProfile((prev) =>
+          normalizeProfileForRelease({ ...prev, ...raw } as ProfileData),
+        );
         if (typeof raw.search_weight === 'number') setSearchWeight(raw.search_weight);
       }
       applyPrefillFromQuery(searchParams, setProfile);
@@ -165,7 +170,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           if (Array.isArray(raw.skills) && raw.skills.length > 0 && typeof raw.skills[0] === 'string') {
             raw.skills = (raw.skills as string[]).map((name) => ({ name, level: 'beginner' as const }));
           }
-          setProfile((prev) => ({ ...prev, ...raw } as ProfileData));
+          setProfile((prev) =>
+            normalizeProfileForRelease({ ...prev, ...raw } as ProfileData),
+          );
           if (typeof raw.search_weight === 'number') setSearchWeight(raw.search_weight);
         }
         setTimeout(() => { isInitialLoad.current = false; }, 500);
@@ -192,7 +199,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, []);
 
   const handleShare = useCallback(async () => {
-    const url = buildShareUrl({ ...profile, search_weight: searchWeight });
+    const url = buildShareUrl(
+      normalizeProfileForRelease({ ...profile, search_weight: searchWeight }),
+    );
     try {
       await navigator.clipboard.writeText(url);
       setShareCopied(true);
@@ -206,7 +215,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     if (isInitialLoad.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
-    const toSave = { ...profile, search_weight: searchWeight };
+    const toSave = normalizeProfileForRelease({
+      ...profile,
+      search_weight: searchWeight,
+    });
     pendingSaveRef.current = toSave;
     setSaveStatus('saving');
 
@@ -308,7 +320,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
 
   const handleSubmit = useCallback(async () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    let profileToSave = { ...profile, search_weight: searchWeight };
+    let profileToSave = normalizeProfileForRelease({
+      ...profile,
+      search_weight: searchWeight,
+    });
     // Auto-import GitHub when a URL is present but its skills weren't imported
     // yet, so a pasted-but-not-imported URL isn't silently dropped. Bounded by a
     // short timeout so a slow GitHub API can never block reaching the results.

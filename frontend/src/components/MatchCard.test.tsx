@@ -67,6 +67,17 @@ function makeMatch(
   };
 }
 
+const PROFILE: ProfileData = {
+  institution: 'UIUC',
+  home_school: 'uiuc',
+  college: 'Grainger College of Engineering',
+  major: 'Computer Science',
+  grade: 'Sophomore',
+  is_international: false,
+  research_interests: 'machine learning',
+  skills: [{ name: 'Python', level: 'experienced' }],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -401,6 +412,17 @@ describe('MatchCard', () => {
       render(<MatchCard match={makeMatch({ id: 'opp-abc' })} onDraftEmail={handler} />);
       fireEvent.click(screen.getByText('card.draftEmail'));
       expect(handler).toHaveBeenCalledWith('opp-abc');
+    });
+  });
+
+  describe('MVP release surface', () => {
+    it('keeps Tailor but hides full Renovate and generic preparation-plan actions', () => {
+      render(<MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={() => {}} />);
+      expect(screen.getByText('card.tailorResume')).toBeInTheDocument();
+      expect(screen.queryByText('card.renovateResume')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.queryByText('Show preparation plan')).not.toBeInTheDocument();
     });
   });
 

@@ -32,6 +32,7 @@ from backend.lib.grounding import (
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.publication_attribution import verified_recent_works
+from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.supabase_auth import authenticated_uid
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.matcher.ranker import _is_grad_year
@@ -875,7 +876,10 @@ async def generate_email(
     bar (verified provenance + signed-in session); drafting itself is open to
     everyone. A stale token degrades to the anonymous shape, never a 401.
     """
-    opp = load_opportunities_by_id().get(request.opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        request.opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -1012,7 +1016,10 @@ async def generate_email_stream(
     show which stage the (now multi-call) pipeline is in instead of one long
     opaque spinner. Same never-5xx contract: engine errors surface as the
     template payload in the ``done`` event."""
-    opp = load_opportunities_by_id().get(request.opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        request.opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     # Resolved before the stream starts: the generator outlives the request
@@ -1076,7 +1083,10 @@ async def generate_email_variants(
     request: ColdEmailRequest,
     authorization: str | None = Header(default=None),
 ):
-    opp = load_opportunities_by_id().get(request.opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        request.opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -1161,7 +1171,10 @@ def _refine_evidence_corpus(request: EmailRefineRequest) -> str:
     """
     corpus = ""
     if request.profile is not None and request.opportunity_id:
-        opp = load_opportunities_by_id().get(request.opportunity_id)
+        opp = release_visible_opportunity_by_id(
+            load_opportunities_by_id(),
+            request.opportunity_id,
+        )
         if opp:
             parts = _common_parts(
                 request.profile.model_dump(), opp, resume_bullets=request.resume_bullets
@@ -1172,6 +1185,14 @@ def _refine_evidence_corpus(request: EmailRefineRequest) -> str:
 
 @router.post("/cold-email/refine")
 async def refine_email(request: EmailRefineRequest):
+    if request.opportunity_id:
+        opp = release_visible_opportunity_by_id(
+            load_opportunities_by_id(),
+            request.opportunity_id,
+        )
+        if opp is None:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+
     if not is_configured():
         return _local_refine(request.current_body, request.instruction)
 

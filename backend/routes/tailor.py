@@ -45,6 +45,7 @@ from backend.lib.grounding import validate_no_fabrication as _validate_no_fabric
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.schemas import (
     BulletOptimizeRequest,
     BulletOptimizeResponse,
@@ -546,7 +547,10 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         passthrough fallback so the user never sees a 5xx).
       - Empty ``original_bullets`` → 200 with empty list and a hint.
     """
-    opp = load_opportunities_by_id().get(request.opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        request.opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -997,7 +1001,10 @@ async def renovate_resume(
     rejected rewrite falls back to the student's own base_text. Never 5xx for
     LLM issues — degrades to a passthrough doc (every bullet at base_text).
     """
-    opp = load_opportunities_by_id().get(request.opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        request.opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -1181,7 +1188,10 @@ async def optimize_bullet(
     unchanged with a warning and ``changed=false`` — never fabricates, never
     5xx for LLM issues.
     """
-    opp = load_opportunities_by_id().get(request.opportunity_id)
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        request.opportunity_id,
+    )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 

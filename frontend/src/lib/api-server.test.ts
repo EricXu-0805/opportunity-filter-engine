@@ -82,7 +82,9 @@ describe('server-side API base URL resolution', () => {
     await fetchOpportunityServer('x');
 
     const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toBe('https://backend.example.com/api/opportunities/x');
+    expect(url).toBe(
+      'https://backend.example.com/api/opportunities/x?_release_scope=mvp-route-freeze-v1',
+    );
   });
 });
 
@@ -101,7 +103,9 @@ describe('fetchOpportunityServer', () => {
     fetchMock.mockResolvedValue(okJson({ id: 'x' }));
     await fetchOpportunityServer('uiuc/cs:101');
     const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toBe('https://api.test/api/opportunities/uiuc%2Fcs%3A101');
+    expect(url).toBe(
+      'https://api.test/api/opportunities/uiuc%2Fcs%3A101?_release_scope=mvp-route-freeze-v1',
+    );
   });
 
   it('returns null on a non-2xx response', async () => {
@@ -157,6 +161,14 @@ describe('fetchSimilarServer', () => {
     await fetchSimilarServer('seed', 12);
     expect(fetchMock.mock.calls[0][0]).toContain('limit=12');
   });
+
+  it('uses the release-scope cache version after the limit query', async () => {
+    fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
+    await fetchSimilarServer('seed');
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      'limit=5&_release_scope=mvp-route-freeze-v1',
+    );
+  });
 });
 
 describe('fetchOpportunityIdsServer', () => {
@@ -197,5 +209,13 @@ describe('fetchOpportunityIdsServer', () => {
     fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
     await fetchOpportunityIdsServer();
     expect(fetchMock.mock.calls[0][0]).toContain('limit=200');
+  });
+
+  it('does not reuse a pre-release-scope server data-cache key', async () => {
+    fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
+    await fetchOpportunityIdsServer();
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      'limit=200&_release_scope=mvp-route-freeze-v1',
+    );
   });
 });

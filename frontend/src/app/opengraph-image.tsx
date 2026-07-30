@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'JoinALab — AI-powered research & internship matching';
+export const alt = 'JoinALab — evidence-based research & internship matching';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -84,7 +84,7 @@ export default async function OGImage() {
             lineHeight: 1.4,
           }}
         >
-          AI-powered matching for research, internships & fellowships · built by students, for students
+          Evidence-based matching for research & internships · built by students, for students
         </p>
 
         <div
@@ -98,7 +98,7 @@ export default async function OGImage() {
         >
           <span>🎯 thousands of opportunities</span>
           <span>·</span>
-          <span>🤖 AI smart match</span>
+          <span>✓ Deterministic match</span>
           <span>·</span>
           <span>⚡ Free · Privacy-first</span>
         </div>

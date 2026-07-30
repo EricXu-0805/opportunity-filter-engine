@@ -11,6 +11,7 @@ import { STORAGE_KEYS } from './storage-keys';
 import type { MatchResult, MatchesResponse } from './types';
 
 const MATCH_KEY = STORAGE_KEYS.MATCH_RESULTS;
+const LEGACY_RELEASE_SCOPE_KEY = 'ofe_match_results_v4';
 
 function makeResult(id: string, bucket: MatchResult['bucket'] = 'good_match'): MatchResult {
   return {
@@ -116,6 +117,27 @@ describe('match-cache', () => {
     expect(hasMatchCache()).toBe(false);
     writeMatchCache('h1', false, makeResponse());
     expect(hasMatchCache()).toBe(true);
+  });
+
+  it('does not read the pre-release-scope v4 cache', () => {
+    localStorage.setItem(
+      LEGACY_RELEASE_SCOPE_KEY,
+      JSON.stringify({
+        hash: 'h1',
+        semantic: false,
+        savedAt: Date.now(),
+        total: 1,
+        high_priority: 0,
+        good_match: 1,
+        reach: 0,
+        low_fit: 0,
+        results: [makeResult('hidden-fellowship')],
+      }),
+    );
+
+    expect(MATCH_KEY).toBe('ofe_match_results_v5');
+    expect(hasMatchCache()).toBe(false);
+    expect(readMatchCache('h1', false)).toBeNull();
   });
 
   it('misses on a different profile hash or semantic mode', () => {

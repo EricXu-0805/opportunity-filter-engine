@@ -22,21 +22,16 @@ import {
 } from 'lucide-react';
 import Card from '@/components/Card';
 import { useT } from '@/i18n/client';
-import { track, trackOnce } from '@/lib/analytics';
+import { track } from '@/lib/analytics';
 import { useAuthModal } from '@/lib/auth-modal-context';
-import { formatPrice, PACKAGES, paymentsEnabled, payQrEnabled, type PricingPackage } from '@/lib/pricing';
 import {
-  claimOrderPaid,
-  createOrder,
   getAuthState,
   getFavorites,
   getInteractionsFull,
-  getMyOrders,
   joinWaitlist,
   loadProfile,
   onAuthChange,
   type AuthState,
-  type OrderRow,
 } from '@/lib/supabase';
 
 interface Snapshot {
@@ -76,11 +71,6 @@ export default function AccountPage() {
   const [favCount, setFavCount] = useState<number | null>(null);
   const [trackCount, setTrackCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<OrderRow[] | null>(null);
-  const payments = paymentsEnabled();
-  // Concierge QR (scan-to-pay, hand-fulfilled) runs the WTP test without the
-  // package/order flow; only shown when the order flow itself is off.
-  const payQr = !payments && payQrEnabled();
 
   useEffect(() => {
     let cancelled = false;
@@ -107,14 +97,9 @@ export default function AccountPage() {
       }
     }
     load();
-    if (payments) {
-      getMyOrders()
-        .then((rows) => { if (!cancelled) setOrders(rows); })
-        .catch(() => {});
-    }
     const unsub = onAuthChange((s) => { if (!cancelled) setAuth(s); });
     return () => { cancelled = true; unsub(); };
-  }, [payments]);
+  }, []);
 
   const isPermanent = Boolean(auth?.user && !auth.isAnonymous);
   const email = auth?.email ?? '';
@@ -243,19 +228,17 @@ export default function AccountPage() {
             </div>
           </Card>
 
-          {/* ── Plan (flag off = waitlist placeholder; flag on = manual-payment order flow) ── */}
+          {/* ── Plan — pre-LLC release keeps only the no-price request path. ── */}
           <Card>
             <h2 className="text-lg font-bold text-gray-900 mb-5">{t('account.planTitle')}</h2>
-            <PlanRow orders={payments ? orders : null} />
+            <PlanRow />
             <div className="flex items-center justify-between gap-4 pt-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900">{t('account.premiumTitle')}</p>
                 <p className="text-[13px] text-gray-500 mt-0.5">{t('account.premiumDesc')}</p>
               </div>
-              {!payments && !payQr && <PremiumIntent defaultEmail={email} />}
+              <PremiumIntent defaultEmail={email} />
             </div>
-            {payments && <OrderFlow orders={orders} />}
-            {payQr && <ConciergePayPanel defaultEmail={email} />}
           </Card>
         </div>
       )}
@@ -327,199 +310,17 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
   );
 }
 
-// Concierge QR panel (NEXT_PUBLIC_PAY_QR): the willingness-to-pay test with no
-// pricing and no order rows — just the WeChat/Alipay codes and a hand-fulfilled
-// follow-up. Reuses PremiumIntent for the lead/contact capture. Prices aren't
-// shown (they're deferred), so the exact amount is settled in the follow-up.
-function ConciergePayPanel({ defaultEmail }: { defaultEmail: string }) {
+function PlanRow() {
   const { t } = useT();
-  useEffect(() => { void trackOnce('pay_qr_view', { source: 'account' }); }, []);
-  return (
-    <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/30 p-4">
-      <p className="text-sm font-semibold text-gray-900">{t('account.payQrTitle')}</p>
-      <p className="text-[13px] text-gray-600 mt-1">{t('account.payQrDesc')}</p>
-      <div className="flex flex-wrap gap-4 mt-4">
-        <figure className="text-center">
-          <img
-            src="/pay/wechat.png"
-            alt={t('account.payWechat')}
-            className="w-36 h-36 rounded-xl border border-gray-200 bg-white"
-          />
-          <figcaption className="text-[12px] text-gray-500 mt-1">{t('account.payWechat')}</figcaption>
-        </figure>
-        <figure className="text-center">
-          <img
-            src="/pay/alipay.png"
-            alt={t('account.payAlipay')}
-            className="w-36 h-36 rounded-xl border border-gray-200 bg-white"
-          />
-          <figcaption className="text-[12px] text-gray-500 mt-1">{t('account.payAlipay')}</figcaption>
-        </figure>
-      </div>
-      <p className="text-[12px] text-gray-500 mt-3">{t('account.payQrContact')}</p>
-      <div className="mt-3">
-        <PremiumIntent defaultEmail={defaultEmail} />
-      </div>
-    </div>
-  );
-}
-
-function packageLabel(t: ReturnType<typeof useT>['t'], pkgId: string): string {
-  if (pkgId === 'single_email') return t('account.packageSingleEmail');
-  if (pkgId === 'full_package') return t('account.packageFullPackage');
-  return pkgId;
-}
-
-// Current-plan row: a confirmed paid order shows its package as the active
-// plan; otherwise the free tier (also whenever payments are flagged off —
-// callers pass orders=null then, so the markup is byte-identical to before).
-function PlanRow({ orders }: { orders: OrderRow[] | null }) {
-  const { t } = useT();
-  const paid = orders?.find((o) => o.status === 'paid') ?? null;
   return (
     <div className="flex items-center justify-between gap-4 pb-4 border-b border-gray-100">
       <div>
-        <p className="text-sm font-semibold text-gray-900">
-          {paid ? packageLabel(t, paid.package) : t('account.freePlan')}
-        </p>
-        <p className="text-[13px] text-gray-500 mt-0.5">
-          {paid ? t('account.paidPlanDesc') : t('account.freePlanDesc')}
-        </p>
+        <p className="text-sm font-semibold text-gray-900">{t('account.freePlan')}</p>
+        <p className="text-[13px] text-gray-500 mt-0.5">{t('account.freePlanDesc')}</p>
       </div>
-      <span
-        className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ${
-          paid ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
-        }`}
-      >
+      <span className="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 bg-gray-100 text-gray-600">
         {t('account.currentBadge')}
       </span>
-    </div>
-  );
-}
-
-// Manual-payment order flow (NEXT_PUBLIC_PAYMENTS only): pick a package →
-// insert a pending order under RLS → show static QR codes → the user claims
-// payment → awaiting operator confirmation. No payment aggregator involved.
-function OrderFlow({ orders }: { orders: OrderRow[] | null }) {
-  const { t } = useT();
-  const [localOrder, setLocalOrder] = useState<OrderRow | null>(null);
-  const [localPhase, setLocalPhase] = useState<'pay' | 'claimed'>('pay');
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  // Resume an in-flight order after a reload (derived, no effect): a
-  // claimed-but-unconfirmed order shows the waiting state, an unclaimed
-  // pending one re-opens the QR step. Local actions take precedence.
-  const resumed =
-    orders?.find((o) => o.status === 'awaiting_confirm')
-    ?? orders?.find((o) => o.status === 'pending')
-    ?? null;
-  const order = localOrder ?? resumed;
-  const phase: 'choose' | 'pay' | 'claimed' = localOrder
-    ? localPhase
-    : resumed
-      ? (resumed.status === 'awaiting_confirm' ? 'claimed' : 'pay')
-      : 'choose';
-
-  const choose = async (pkg: PricingPackage) => {
-    if (busy) return;
-    setBusy(true);
-    setFailed(false);
-    void track('order_created', { source: 'account', package: pkg.id });
-    const row = await createOrder(pkg);
-    setBusy(false);
-    if (!row) { setFailed(true); return; }
-    setLocalOrder(row);
-    setLocalPhase('pay');
-  };
-
-  const claim = async () => {
-    if (busy || !order) return;
-    setBusy(true);
-    setFailed(false);
-    const ok = await claimOrderPaid(order.id);
-    setBusy(false);
-    if (!ok) { setFailed(true); return; }
-    setLocalOrder(order);
-    setLocalPhase('claimed');
-  };
-
-  if (phase === 'claimed' && order) {
-    return (
-      <div className="mt-4 rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
-        <p className="text-sm font-semibold text-emerald-800">
-          {t('account.orderAwaitingConfirm')}
-        </p>
-        <p className="text-[12px] text-emerald-700 mt-1 font-mono break-all">
-          {t('account.orderId')}: {order.id}
-        </p>
-      </div>
-    );
-  }
-
-  if (phase === 'pay' && order) {
-    return (
-      <div className="mt-4 rounded-2xl border border-gray-100 p-4">
-        <p className="text-sm font-semibold text-gray-900">
-          {packageLabel(t, order.package)} · {formatPrice(order.amount_cents)}
-        </p>
-        <p className="text-[13px] text-gray-500 mt-1">{t('account.payHint')}</p>
-        <div className="flex flex-wrap gap-4 mt-4">
-          <figure className="text-center">
-            <img
-              src="/pay/wechat.png"
-              alt={t('account.payWechat')}
-              className="w-36 h-36 rounded-xl border border-gray-200"
-            />
-            <figcaption className="text-[12px] text-gray-500 mt-1">
-              {t('account.payWechat')}
-            </figcaption>
-          </figure>
-          <figure className="text-center">
-            <img
-              src="/pay/alipay.png"
-              alt={t('account.payAlipay')}
-              className="w-36 h-36 rounded-xl border border-gray-200"
-            />
-            <figcaption className="text-[12px] text-gray-500 mt-1">
-              {t('account.payAlipay')}
-            </figcaption>
-          </figure>
-        </div>
-        <p className="text-[11px] text-gray-400 mt-3 font-mono break-all">
-          {t('account.orderId')}: {order.id}
-        </p>
-        <button
-          type="button"
-          onClick={claim}
-          disabled={busy}
-          className="mt-3 px-4 py-2 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition-colors"
-        >
-          {t('account.paidClaimCta')}
-        </button>
-        {failed && <p className="text-[12px] text-red-600 mt-2">{t('account.orderError')}</p>}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4">
-      <p className="text-[13px] font-medium text-gray-700 mb-2">{t('account.choosePackage')}</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {PACKAGES.map((pkg) => (
-          <button
-            key={pkg.id}
-            type="button"
-            onClick={() => choose(pkg)}
-            disabled={busy}
-            className="rounded-2xl border border-gray-200 p-4 text-left hover:border-indigo-300 hover:bg-indigo-50/30 disabled:opacity-60 transition-colors"
-          >
-            <p className="text-sm font-semibold text-gray-800">{packageLabel(t, pkg.id)}</p>
-            <p className="text-lg font-bold text-indigo-600 mt-1">{formatPrice(pkg.amountCents)}</p>
-          </button>
-        ))}
-      </div>
-      {failed && <p className="text-[12px] text-red-600 mt-2">{t('account.orderError')}</p>}
     </div>
   );
 }

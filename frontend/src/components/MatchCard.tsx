@@ -36,6 +36,7 @@ import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
 import { getDeadlineUrgency } from '@/lib/match-utils';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { allowsProfessorFraming, cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
@@ -214,7 +215,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             <DollarSign className="w-3 h-3" />
             {paid.label}
           </Badge>
-          <ResponsivenessBadge opportunityId={opp.id} />
+          {RELEASE_SCOPE.professorSignals && <ResponsivenessBadge opportunityId={opp.id} />}
           {opp.source && <Badge variant="gray">{opp.source}</Badge>}
           {scopeChip && (
             <Badge variant={scopeChip.kind === 'open' ? 'green' : 'gray'} dot>
@@ -360,7 +361,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.tailorResume')}
             </button>
           )}
-          {profile && (
+          {RELEASE_SCOPE.resumeRenovate && profile && (
             <button
               type="button"
               onClick={() => setRenovationOpen(true)}
@@ -481,7 +482,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </div>
             )}
 
-            {profile && !gaps && (
+            {RELEASE_SCOPE.roadmap && profile && !gaps && (
               <button
                 type="button"
                 disabled={gapLoading}
@@ -500,7 +501,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </button>
             )}
 
-            {gaps && (
+            {RELEASE_SCOPE.roadmap && gaps && (
               <div className="space-y-4 pt-1">
                 {gaps.missing_skills.length > 0 && (
                   <div>
@@ -582,7 +583,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         opportunityTitle={opp.title}
       />
     )}
-    {profile && (
+    {RELEASE_SCOPE.resumeRenovate && profile && (
       <ResumeRenovationModal
         isOpen={renovationOpen}
         onClose={() => setRenovationOpen(false)}

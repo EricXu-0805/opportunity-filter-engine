@@ -3,6 +3,7 @@
 import { Download, Sparkles } from 'lucide-react';
 import EmailMeButton from '@/components/EmailMeButton';
 import { sendMatchesEmail } from '@/lib/api';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
 import { SemanticToggle } from './SemanticToggle';
 import type { Tab, TFunc } from './types';
@@ -50,12 +51,14 @@ export function ResultsHeader({
           aria-live="polite"
         >
           {loading
-            ? loadingMessage || (semanticRerank ? t('results.analyzingAi') : t('results.analyzing'))
+            ? loadingMessage || (RELEASE_SCOPE.matchAiRefine && semanticRerank
+              ? t('results.analyzingAi')
+              : t('results.analyzing'))
             : data
               ? (
                 <>
                   {t('results.rankedFor', { count: counts.all })}
-                  {semanticRerank && (
+                  {RELEASE_SCOPE.matchAiRefine && semanticRerank && (
                     <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 align-middle">
                       <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
                       {t('results.aiBadge')}
@@ -83,7 +86,9 @@ export function ResultsHeader({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <SemanticToggle value={semanticRerank} onChange={onSemanticChange} disabled={loading} t={t} />
+        {RELEASE_SCOPE.matchAiRefine && (
+          <SemanticToggle value={semanticRerank} onChange={onSemanticChange} disabled={loading} t={t} />
+        )}
         {!loading && data && (
           <button
             type="button"

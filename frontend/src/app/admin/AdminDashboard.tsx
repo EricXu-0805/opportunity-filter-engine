@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft, Database, Lock, RefreshCw } from 'lucide-react';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { AlertList } from './AlertList';
 import { CollectorStatusSection } from './CollectorStatusSection';
 import { FreshnessBanner } from './FreshnessBanner';
@@ -155,7 +156,9 @@ export function AdminDashboard({
 
             <SavedSearchHealthSection health={savedSearchHealth} t={t} />
             <FeedbackSection inbox={feedbackInbox} t={t} />
-            <OrdersSection inbox={ordersInbox} onConfirm={onConfirmOrder} t={t} />
+            {RELEASE_SCOPE.payments && (
+              <OrdersSection inbox={ordersInbox} onConfirm={onConfirmOrder} t={t} />
+            )}
 
             <RefreshTriggerSection
               status={triggerStatus}

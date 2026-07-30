@@ -22,6 +22,7 @@ except ImportError:
     pass
 
 from backend.lib.observability import init_sentry
+from backend.lib.release_scope import ReleaseFeature, feature_enabled
 
 init_sentry()
 
@@ -157,6 +158,9 @@ def _billable_class(request: Request, path: str) -> str | None:
     throttled by a global cap."""
     if request.method != "POST":
         return None
+    release_feature = _release_feature_for_path(path)
+    if release_feature is not None and not feature_enabled(release_feature):
+        return None
     if path in _EMAIL_SEND_PATHS:
         return "email"
     if path.startswith("/api/tailor") and not path.startswith("/api/tailor/status"):
@@ -170,7 +174,11 @@ def _billable_class(request: Request, path: str) -> str | None:
     # the plain matches list stay non-billable.
     if path.startswith("/api/matches/") and path.endswith("/explain"):
         return "llm"
-    if path == "/api/matches" and request.query_params.get("llm", "").lower() in ("1", "true"):
+    if (
+        path == "/api/matches"
+        and feature_enabled("match_ai_refine")
+        and request.query_params.get("llm", "").lower() in ("1", "true")
+    ):
         return "llm"
     return None
 
@@ -270,6 +278,50 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Cache-Control"] = "private, no-store, max-age=0"
             response.headers["Pragma"] = "no-cache"
         return response
+
+
+def _release_feature_for_path(path: str) -> ReleaseFeature | None:
+    """Map direct API entry points for dormant features to their release gate."""
+    path = path.rstrip("/") or "/"
+    if path == "/api/roadmap":
+        return "roadmap"
+    if path.startswith("/api/matches/") and path.endswith("/gaps"):
+        return "roadmap"
+    if path.startswith("/api/matches/") and path.endswith("/explain"):
+        return "compare"
+    if path in {
+        "/api/tailor/structure",
+        "/api/tailor/renovate",
+        "/api/tailor/bullet",
+    }:
+        return "resume_renovate"
+    if path == "/api/chat/models":
+        return "ask_ai"
+    if path.startswith("/api/opportunities/") and path.endswith("/chat"):
+        return "ask_ai"
+    if path == "/api/opportunities/responsiveness":
+        return "professor_signals"
+    if path == "/api/professors/updates":
+        return "professor_signals"
+    if path == "/api/orders" or path.startswith("/api/orders/"):
+        return "payments"
+    if path == "/api/admin/orders" or path.startswith("/api/admin/orders/"):
+        return "payments"
+    return None
+
+
+class ReleaseScopeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        feature = _release_feature_for_path(request.url.path)
+        if feature is not None and not feature_enabled(feature):
+            return Response(
+                content='{"detail":"Not found"}',
+                status_code=404,
+                media_type="application/json",
+            )
+        return await call_next(request)
 
 
 logger = logging.getLogger("ofe.main")
@@ -447,8 +499,9 @@ app.add_middleware(
     RequestBodyLimitMiddleware,
     max_bytes=_request_body_limit_from_env(),
 )
-app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(ReleaseScopeMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

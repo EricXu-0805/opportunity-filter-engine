@@ -18,11 +18,12 @@ interface UseResultsDataResult {
 
 // Hydrate-from-durable-cache, fetch on miss. The cache (see lib/match-cache)
 // is keyed by { hash(profile), semanticRerank } and lives in localStorage as a
-// compact copy (no opportunity bodies); a hit re-hydrates the opportunity
-// payloads by id — a fast lookup, NOT a re-match — so returning to /results from
-// anywhere (nav, another tab, a later session) is instant. Flipping the AI
-// toggle changes semanticRerank → cache miss → re-rank. Caller resets data via
-// setData(null) when toggling.
+// compact, self-contained projection of each result; a hit performs no network
+// lookup or re-match, so returning to /results is instant. Because those
+// projections can preserve old release behavior, storage-key version bumps are
+// mandatory whenever the public record/ranking contract changes. The semantic
+// key remains for a future accepted AI-refine path; this release always passes
+// false.
 export function useResultsData(
   profile: ProfileData | null,
   semanticRerank: boolean,

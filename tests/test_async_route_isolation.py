@@ -162,7 +162,7 @@ def test_matches_llm_rerank_does_not_block_live(monkeypatch, profile):
     _fake_matches_corpus(monkeypatch, "threaded-rerank")
     monkeypatch.setattr(matches, "llm_rerank", fake)
     response = _run_probe(
-        "/api/matches?limit=1",
+            "/api/matches?limit=1&llm=true",
         profile,
         gate,
     )

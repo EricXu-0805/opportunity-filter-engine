@@ -1,4 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function openMobileNavIfVisible(page: Page) {
+  const toggle = page.getByTestId('mobile-nav-toggle');
+  if (await toggle.isVisible()) {
+    await toggle.click();
+  }
+}
 
 test.describe('/resources page', () => {
   test('renders the main heading and both sections', async ({ page }) => {
@@ -36,93 +43,36 @@ test.describe('/resources page', () => {
 
   test('navigates from /resources back to home via the header', async ({ page }) => {
     await page.goto('/resources');
+    await openMobileNavIfVisible(page);
     await page.getByRole('link', { name: /Find Matches|^Match$/ }).first().click();
     await page.waitForURL('**/');
     await expect(page.getByRole('heading', { name: /Find Your Perfect/i })).toBeVisible();
   });
 });
 
-test.describe('/fellowships page', () => {
-  test('renders the heading, general filter controls, and the count label', async ({ page }) => {
-    await page.goto('/fellowships');
-    await expect(
-      page.getByRole('heading', { level: 1, name: /Research fellowships|Fellowships/i }),
-    ).toBeVisible();
-    await expect(page.getByText(/Showing \d+ of \d+/)).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole('group', { name: /Program type/i })).toBeVisible();
-    await expect(page.getByRole('group', { name: /Funding/i })).toBeVisible();
-    await expect(page.getByRole('group', { name: /Deadline/i })).toBeVisible();
-    // The UIUC-only college/year pills are gone for the multi-school catalog.
-    await expect(page.getByRole('group', { name: /college/i })).toHaveCount(0);
-    await expect(page.getByRole('group', { name: /Your year/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Beckman', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Freshman', exact: true })).toHaveCount(0);
-  });
+test.describe('dormant release routes', () => {
+  for (const path of ['/fellowships', '/roadmap', '/compare?ids=one,two']) {
+    test(`${path} fails closed with 404`, async ({ page }) => {
+      const response = await page.goto(path);
+      expect(response?.status()).toBe(404);
+    });
+  }
 
-  test('changing the program-type filter changes the visible count', async ({ page }) => {
-    await page.goto('/fellowships');
-    // The count label renders "Showing 0 of 0" while the fetch is in flight
-    // (FellowshipFilters sits above the loading gate) — wait for a non-zero
-    // total so the captured baseline is the loaded state, not the transient.
-    await expect(page.getByText(/Showing \d+ of [1-9]\d*/)).toBeVisible({ timeout: 20_000 });
-    const before = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
-
-    const fellowshipPill = page.getByRole('button', { name: 'Fellowship', exact: true });
-    await fellowshipPill.click();
-
-    await expect.poll(async () => {
-      const txt = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
-      return txt;
-    }, { timeout: 5_000 }).not.toBe(before);
-
-    await expect(fellowshipPill).toHaveAttribute('aria-pressed', 'true');
-  });
-
-  test('clear-filters button resets the state', async ({ page }) => {
-    await page.goto('/fellowships');
-    // Same loaded-state gate as above: capturing during the "0 of 0"
-    // in-flight render made the reset comparison flaky.
-    await expect(page.getByText(/Showing \d+ of [1-9]\d*/)).toBeVisible({ timeout: 20_000 });
-    const cleanCount = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
-
-    await page.getByRole('button', { name: 'Funded', exact: true }).click();
-    await page.getByRole('button', { name: /Clear filters/i }).click();
-
-    await expect.poll(async () => {
-      const txt = (await page.getByText(/Showing \d+ of \d+/).first().textContent()) ?? '';
-      return txt;
-    }, { timeout: 5_000 }).toBe(cleanCount);
-  });
-
-  test('selecting a deadline pill toggles aria-pressed', async ({ page }) => {
-    await page.goto('/fellowships');
-    await expect(page.getByText(/Showing \d+ of \d+/)).toBeVisible({ timeout: 20_000 });
-
-    const rolling = page.getByRole('button', { name: 'Rolling', exact: true });
-    await expect(rolling).toBeVisible();
-    await expect(rolling).toHaveAttribute('aria-pressed', 'false');
-
-    await rolling.click();
-    await expect(rolling).toHaveAttribute('aria-pressed', 'true');
-  });
-
-  test('navigates from /fellowships back to / via "Match by profile instead"', async ({ page }) => {
-    await page.goto('/fellowships');
-    await page.getByRole('link', { name: /Match by profile instead/i }).click();
-    await page.waitForURL('**/');
-    await expect(page.getByRole('heading', { name: /Find Your Perfect/i })).toBeVisible();
+  test('home and header do not advertise dormant product areas', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('link', { name: /^Fellowships$|^Funding$/ })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Roadmap$/ })).toHaveCount(0);
+    await expect(page.getByTestId('featured-fellowships')).toHaveCount(0);
+    await expect(page.getByText(/^Fellowship$/)).toHaveCount(0);
   });
 });
 
 test.describe('cross-route navigation from header', () => {
-  test('Resources and Fellowships nav items both link to their routes', async ({ page }) => {
+  test('Resources remains reachable from the accepted header', async ({ page }) => {
     await page.goto('/');
+    await openMobileNavIfVisible(page);
     await page.getByRole('link', { name: /^Resources$|^Tips$/ }).click();
     await page.waitForURL('**/resources');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-
-    await page.getByRole('link', { name: /^Fellowships$|^Funding$/ }).click();
-    await page.waitForURL('**/fellowships');
-    await expect(page.getByRole('heading', { level: 1, name: /Research fellowships|Fellowships/i })).toBeVisible();
   });
 });

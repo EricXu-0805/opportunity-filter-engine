@@ -1,3 +1,4 @@
+import { PUBLIC_RELEASE_CACHE_VERSION } from './release-scope';
 import type { Opportunity } from './types';
 
 export type SimilarOpportunity = Opportunity & { _similarity: number };
@@ -12,9 +13,16 @@ function serverApiBase(): string {
       : 'http://127.0.0.1:8000');
 }
 
+function releaseScopedUrl(url: string): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}_release_scope=${encodeURIComponent(PUBLIC_RELEASE_CACHE_VERSION)}`;
+}
+
 export async function fetchOpportunityServer(id: string): Promise<Opportunity | null> {
   const base = serverApiBase();
-  const url = `${base.replace(/\/$/, '')}/api/opportunities/${encodeURIComponent(id)}`;
+  const url = releaseScopedUrl(
+    `${base.replace(/\/$/, '')}/api/opportunities/${encodeURIComponent(id)}`,
+  );
   try {
     const res = await fetch(url, {
       next: { revalidate: 3600 },
@@ -28,7 +36,9 @@ export async function fetchOpportunityServer(id: string): Promise<Opportunity | 
 
 export async function fetchSimilarServer(id: string, limit = 5): Promise<SimilarOpportunity[]> {
   const base = serverApiBase();
-  const url = `${base.replace(/\/$/, '')}/api/opportunities/${encodeURIComponent(id)}/similar?limit=${limit}`;
+  const url = releaseScopedUrl(
+    `${base.replace(/\/$/, '')}/api/opportunities/${encodeURIComponent(id)}/similar?limit=${limit}`,
+  );
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
@@ -41,7 +51,9 @@ export async function fetchSimilarServer(id: string, limit = 5): Promise<Similar
 
 export async function fetchOpportunityIdsServer(): Promise<string[]> {
   const base = serverApiBase();
-  const url = `${base.replace(/\/$/, '')}/api/opportunities?limit=200`;
+  const url = releaseScopedUrl(
+    `${base.replace(/\/$/, '')}/api/opportunities?limit=200`,
+  );
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return [];

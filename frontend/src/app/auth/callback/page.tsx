@@ -40,6 +40,7 @@ import {
   type OAuthProvider,
 } from '@/lib/supabase';
 import { syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
@@ -234,7 +235,11 @@ function CallbackInner() {
   // On success the browser navigates to the provider's consent page, so
   // `retrying` only ever resets on failure.
   const signInToExistingAccount = useCallback(async () => {
-    if (!linkProvider || retrying) return;
+    if (
+      !linkProvider
+      || retrying
+      || (linkProvider === 'azure' && !RELEASE_SCOPE.microsoftSchoolAuth)
+    ) return;
     setRetrying(true);
     const result = await signInExistingOAuth(
       linkProvider,
@@ -427,7 +432,9 @@ function readStashedOAuthProvider(): OAuthProvider | null {
     // stash from an abandoned OAuth attempt can't survive to misroute a
     // later non-OAuth email_exists conflict into the OAuth recovery screen.
     sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
-    return v === 'google' || v === 'azure' ? v : null;
+    if (v === 'google') return v;
+    if (v === 'azure' && RELEASE_SCOPE.microsoftSchoolAuth) return v;
+    return null;
   } catch { return null; }
 }
 

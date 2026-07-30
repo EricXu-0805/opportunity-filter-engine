@@ -2,6 +2,7 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import CompareTable from './CompareTable';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { CompareRow } from './scores';
 
@@ -57,6 +58,7 @@ function setStorage(has: boolean | undefined, value: ProfileData | null) {
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   sessionStorage.clear();
   vi.clearAllMocks();
   lastBucketRows = null;
@@ -98,9 +100,32 @@ describe('CompareTable', () => {
     });
     expect(screen.getByTestId('radar-chart')).toBeInTheDocument();
     expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    expect(mockGetMatchExplanation).toHaveBeenNthCalledWith(
+      1,
+      profile,
+      'a',
+      { llm: false },
+    );
     // Sorted by canonical final_score: b (90) before a (40).
     expect(lastBucketRows?.map((r) => r.opp.id)).toEqual(['b', 'a']);
     expect(lastBucketRows?.map((r) => r.match?.final_score)).toEqual([90, 40]);
+  });
+
+  it('uses AI only after the current-version preference is explicitly enabled', async () => {
+    setStorage(true, profile);
+    localStorage.setItem(STORAGE_KEYS.SEMANTIC_RERANK, '1');
+    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+    expect(mockGetMatchExplanation).toHaveBeenNthCalledWith(
+      1,
+      profile,
+      'a',
+      { llm: true },
+    );
   });
 
   it('keeps failed rows visible as unavailable instead of substituting a local score', async () => {

@@ -24,6 +24,12 @@ describe('sitemap', () => {
       expect(urls.some((u) => u.endsWith(p))).toBe(false);
     }
   });
+
+  it('excludes dormant public product routes', () => {
+    const urls = sitemap().map((e) => e.url);
+    expect(urls).not.toContain(`${SITE_URL}/fellowships`);
+    expect(urls).not.toContain(`${SITE_URL}/roadmap`);
+  });
 });
 
 describe('robots', () => {

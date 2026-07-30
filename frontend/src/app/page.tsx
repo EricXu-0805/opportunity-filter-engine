@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react';
 import FeaturedFellowships from '@/components/FeaturedFellowships';
 import { trackOnce } from '@/lib/analytics';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useT } from '@/i18n/client';
 
 import { AcademicProfileCard } from './home/AcademicProfileCard';
@@ -98,7 +99,7 @@ function HomePageInner() {
 
       <SaveCta t={t} />
 
-      <FeaturedFellowships />
+      {RELEASE_SCOPE.fellowships && <FeaturedFellowships />}
     </div>
   );
 }
