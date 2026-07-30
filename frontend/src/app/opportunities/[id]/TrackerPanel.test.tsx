@@ -278,7 +278,7 @@ describe('TrackerPanel — debounced save', () => {
         detail={null}
         onSave={onSave}
         opportunityId={OPP_ID}
-        hasInteraction={false}
+        hasInteraction
         t={tFn}
       />,
     );
@@ -307,7 +307,7 @@ describe('TrackerPanel — debounced save', () => {
         detail={null}
         onSave={onSave}
         opportunityId={OPP_ID}
-        hasInteraction={false}
+        hasInteraction
         t={tFn}
       />,
     );
@@ -351,6 +351,59 @@ describe('TrackerPanel — debounced save', () => {
 
     expect(onSave).toHaveBeenCalledWith({ notes: null, remind_at: null });
     vi.useRealTimers();
+  });
+
+  it('never auto-saves when no status is tracked yet (no inferred applied)', async () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <TrackerPanel
+        detail={null}
+        onSave={onSave}
+        opportunityId={OPP_ID}
+        hasInteraction={false}
+        t={tFn}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
+    fireEvent.change(textarea, { target: { value: 'drafting thoughts' } });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('shows the pick-a-status hint while no status is tracked', () => {
+    render(
+      <TrackerPanel
+        detail={null}
+        onSave={vi.fn()}
+        opportunityId={OPP_ID}
+        hasInteraction={false}
+        t={tFn}
+      />,
+    );
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    expect(screen.getByText(/detail.tracker.statusFirst/)).toBeInTheDocument();
+  });
+
+  it('hides the pick-a-status hint once a status exists', () => {
+    render(
+      <TrackerPanel
+        detail={detail({ notes: 'existing' })}
+        onSave={vi.fn()}
+        opportunityId={OPP_ID}
+        hasInteraction
+        t={tFn}
+      />,
+    );
+    expect(screen.queryByText(/detail.tracker.statusFirst/)).toBeNull();
   });
 });
 

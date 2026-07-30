@@ -3087,6 +3087,7 @@ export const en = {
     tracker: {
       addButton: 'Add notes or reminder',
       openButton: 'Notes & reminder',
+      statusFirst: 'Pick a status above first — notes and reminders attach to your tracked status.',
       notesPlaceholder: 'Private notes \u2014 prep questions, who you spoke to, follow-up action. **Bold**, _italic_, lists, [links](https://example.com), tables, and `code` all work.',
       remindLabel: 'Remind me on:',
       markdownHint: 'Markdown supported · **bold**, _italic_, lists, [links], `code`, tables · saves as you type',
@@ -3366,6 +3367,8 @@ export const en = {
     openInEmail: 'Open in Email',
     gmail: 'Gmail',
     outlook: 'Outlook',
+    sentQuestion: 'Did you send the email?',
+    confirmSent: 'Yes — mark as contacted',
     remindPrompt: 'Remind me to follow up:',
     remind3: 'in 3 days',
     remind7: 'in 1 week',
@@ -7116,6 +7119,7 @@ export const zh = {
     tracker: {
       addButton: '添加笔记或提醒',
       openButton: '笔记和提醒',
+      statusFirst: '请先在上方选择一个状态 —— 笔记和提醒会附加到你跟踪的状态上。',
       notesPlaceholder: '私人笔记 —— 准备问题、谈话对象、后续行动。支持 **粗体**、_斜体_、列表、[链接](https://example.com)、表格、`代码`。',
       remindLabel: '提醒日期：',
       markdownHint: '支持 Markdown · **粗体**、_斜体_、列表、[链接]、`代码`、表格 · 输入时自动保存',
@@ -7393,6 +7397,8 @@ export const zh = {
     openInEmail: '在邮件中打开',
     gmail: 'Gmail',
     outlook: 'Outlook',
+    sentQuestion: '你发送这封邮件了吗？',
+    confirmSent: '是的 — 标记为已联系',
     remindPrompt: '提醒我跟进：',
     remind3: '3 天后',
     remind7: '1 周后',

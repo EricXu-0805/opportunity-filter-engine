@@ -17,9 +17,16 @@ trackable yet — never an error, never an event.  Contact details and URL query
 strings are deliberately excluded from both the baseline and the event log.
 Event ids are content-derived so replaying the same refresh is idempotent.
 
-There is NO global freshness gate and NO release marker: an event serves iff
-its own evidence validates (see ``validate_tracking_event_evidence``), so the
-ledger is useful from the very first verified change.
+Serving stays per-record (an event serves iff its own evidence validates, see
+``validate_tracking_event_evidence``), so the ledger is useful from the very
+first verified change.  Schema v2 additionally stamps an artifact-level
+``release`` block (see ``compute_release_status``): an honest, recomputed-
+every-write summary of whether the artifact as a whole is release-ready —
+schema valid, every stored event evidence-valid, baseline freshness >=
+``FRESHNESS_MIN_PCT``, zero fully-stale schools, and the producing refresh run
+free of collector errors.  ``release_ready`` is a marker for consumers and
+ops; it never gates per-record serving (v1's global gate shipped the feature
+permanently dead — see #661).
 """
 
 from __future__ import annotations
@@ -30,14 +37,29 @@ import logging
 import re
 import unicodedata
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 logger = logging.getLogger(__name__)
 
-TRACKING_SCHEMA_VERSION = 1
+# v2 = v1 (profiles + events, unchanged shapes) + top-level "release" block.
+# v1 artifacts are read-migrated (per-record salvage, same as any prior state)
+# but every write is v2 — no production path emits v1 anymore.
+TRACKING_SCHEMA_VERSION = 2
 TRACKING_EVENT_EVIDENCE_VERSION = 1
+_READABLE_SCHEMA_VERSIONS = frozenset({1, TRACKING_SCHEMA_VERSION})
+
+# Freshness reuses the corpus's existing per-record verification semantics:
+# metadata.last_verified is stamped only when a collector actually fetched the
+# source this run, and a baseline's last_verified only ever advances from a
+# strictly-newer profile-verified snapshot (update_tracking_state).  The 60-day
+# TTL mirrors the admin data-quality "stale_verify" threshold
+# (backend/routes/admin.py) — the project's one existing staleness definition
+# for last_verified.  A failed or skipped fetch leaves the old timestamp in
+# place, so freshness here can only be improved by real successful checks.
+FRESHNESS_TTL_DAYS = 60
+FRESHNESS_MIN_PCT = 95.0
 
 # Only real changes become events, but a systemic engine change (e.g. a
 # corpus-wide keyword cleanup) can legitimately touch every professor at once.
@@ -478,6 +500,103 @@ def _empty_state() -> dict:
     }
 
 
+# Bound the fully-stale-school list so a systemic outage can't balloon the
+# artifact; the count is always exact.
+_MAX_FULLY_STALE_SCHOOLS_LISTED = 20
+
+
+def compute_release_status(
+    profiles: dict[str, dict],
+    events: list[dict],
+    *,
+    refresh_ok: bool,
+    now: datetime | None = None,
+) -> dict:
+    """Compute the artifact-level ``release`` block from real state only.
+
+    ``release_ready`` is true iff every check holds:
+
+    * ``schema_v2`` — this writer only emits v2, recorded for consumers;
+    * ``events_valid`` — every stored event re-validates against its own
+      evidence (the project's existing validator, nothing waived);
+    * ``freshness_min_pct`` — >= ``FRESHNESS_MIN_PCT`` of profile baselines
+      were successfully profile-verified within ``FRESHNESS_TTL_DAYS``.  A
+      baseline's ``last_verified`` only advances from a real, strictly-newer
+      profile fetch, so this cannot be gamed by pipeline execution alone.
+      An artifact with zero baselines has nothing verified — freshness is
+      ``None`` and the check fails (fail-closed, never vacuously fresh);
+    * ``no_fully_stale_school`` — no school whose *entire* baseline set is
+      stale.  The global percentage alone would mask a school-wide outage
+      (one dead school among many fresh ones still averages above 95%);
+    * ``refresh_ok`` — the producing refresh run reported no collector
+      errors.  Passed in by the caller from the run summary; a standalone
+      recompute must derive it from the run's real recorded statuses, never
+      assume success.
+    """
+
+    now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
+    ttl = timedelta(days=FRESHNESS_TTL_DAYS)
+
+    total = 0
+    fresh = 0
+    school_totals: dict[str, int] = {}
+    school_fresh: dict[str, int] = {}
+    for profile in profiles.values():
+        verified_at = _parse_verified_at(profile.get("last_verified"))
+        school = profile.get("school")
+        if not isinstance(school, str) or verified_at is None:
+            # _valid_previous_state / update_tracking_state never store such a
+            # profile; a hand-edited artifact counts it as stale, not fresh.
+            is_fresh = False
+            school = school if isinstance(school, str) and school else "?"
+        else:
+            is_fresh = now - verified_at <= ttl
+        total += 1
+        school_totals[school] = school_totals.get(school, 0) + 1
+        if is_fresh:
+            fresh += 1
+            school_fresh[school] = school_fresh.get(school, 0) + 1
+
+    freshness_pct = (100.0 * fresh / total) if total else None
+    fully_stale = sorted(
+        school for school, n in school_totals.items()
+        if n > 0 and school_fresh.get(school, 0) == 0
+    )
+    events_valid = all(validate_tracking_event_evidence(event) for event in events)
+
+    checks = {
+        "schema_v2": True,
+        "events_valid": events_valid,
+        "freshness_min_pct": freshness_pct is not None
+        and freshness_pct >= FRESHNESS_MIN_PCT,
+        "no_fully_stale_school": not fully_stale,
+        "refresh_ok": bool(refresh_ok),
+    }
+    return {
+        "computed_at": now.isoformat(),
+        "freshness_ttl_days": FRESHNESS_TTL_DAYS,
+        "freshness_min_pct": FRESHNESS_MIN_PCT,
+        "freshness_pct": round(freshness_pct, 2) if freshness_pct is not None else None,
+        "fresh_profiles": fresh,
+        "total_profiles": total,
+        "schools_tracked": len(school_totals),
+        "fully_stale_school_count": len(fully_stale),
+        "fully_stale_schools": fully_stale[:_MAX_FULLY_STALE_SCHOOLS_LISTED],
+        "checks": checks,
+        "release_ready": all(checks.values()),
+    }
+
+
+def artifact_release_ready(state: object) -> bool:
+    """True iff ``state`` is a v2 artifact whose stored release block passed
+    every check.  v1 artifacts (no release block) are never release-ready."""
+
+    if not isinstance(state, dict) or state.get("schema_version") != TRACKING_SCHEMA_VERSION:
+        return False
+    release = state.get("release")
+    return isinstance(release, dict) and release.get("release_ready") is True
+
+
 def _profile_observation(profile: object) -> bool:
     return (
         isinstance(profile, dict)
@@ -490,16 +609,25 @@ def _valid_previous_state(previous_state: object) -> dict:
     """Salvage everything valid from a prior artifact; drop only what isn't.
 
     A single corrupt event must not erase the verified history of every other
-    professor — invalid entries are dropped individually and logged.
+    professor — invalid entries are dropped individually and logged.  v1
+    artifacts are explicitly read-migrated here (profile and event shapes are
+    identical; every entry re-validates individually either way) so bumping
+    the schema never erases verified history — but the WRITE side is always
+    v2, so no production path can re-emit v1.
     """
 
     if (
         not isinstance(previous_state, dict)
-        or previous_state.get("schema_version") != TRACKING_SCHEMA_VERSION
+        or previous_state.get("schema_version") not in _READABLE_SCHEMA_VERSIONS
         or not isinstance(previous_state.get("profiles"), dict)
         or not isinstance(previous_state.get("events"), list)
     ):
         return _empty_state()
+    if previous_state.get("schema_version") != TRACKING_SCHEMA_VERSION:
+        logger.info(
+            "professor tracking: migrating stored artifact from schema v%s to v%s",
+            previous_state.get("schema_version"), TRACKING_SCHEMA_VERSION,
+        )
 
     profiles: dict[str, dict] = {}
     for professor_id, profile in previous_state["profiles"].items():
@@ -637,8 +765,19 @@ def load_tracking_state(path: str | Path) -> dict | None:
     return payload if isinstance(payload, dict) else None
 
 
-def update_tracking_file(opportunities: list[dict], path: str | Path) -> dict:
+def update_tracking_file(
+    opportunities: list[dict],
+    path: str | Path,
+    *,
+    refresh_ok: bool = False,
+    now: datetime | None = None,
+) -> dict:
     """Refresh the on-disk tracking artifact from the assembled corpus.
+
+    ``refresh_ok`` is the caller's honest verdict on the producing refresh run
+    (refresh_all: no collector reported an error).  It deliberately defaults
+    to False — release readiness must be asserted from the run's real recorded
+    statuses, never assumed because this function happened to execute.
 
     Returns run stats for the refresh summary.  Written compact (no indent):
     the artifact is machine-read only and the baseline grows with the
@@ -657,6 +796,9 @@ def update_tracking_file(opportunities: list[dict], path: str | Path) -> dict:
         }
 
     state = update_tracking_state(opportunities, previous)
+    state["release"] = compute_release_status(
+        state["profiles"], state["events"], refresh_ok=refresh_ok, now=now,
+    )
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(path, state, indent=None, separators=(",", ":"))
 
@@ -667,4 +809,7 @@ def update_tracking_file(opportunities: list[dict], path: str | Path) -> dict:
         "profiles": len(state["profiles"]),
         "events": len(state["events"]),
         "new_events": new_events,
+        "release_ready": state["release"]["release_ready"],
+        "freshness_pct": state["release"]["freshness_pct"],
+        "fully_stale_school_count": state["release"]["fully_stale_school_count"],
     }

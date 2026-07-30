@@ -251,3 +251,80 @@ class TestRankerBonus:
         boosted = rank_all(_profile(), opps, responsiveness=_SIGNALS)
         base = rank_all(_profile(), opps)
         assert boosted[0].final_score > base[0].final_score
+
+
+class TestNoNegativeJudgments:
+    """Missing/sparse interaction data must never become a professor-level
+    judgment: no signal (null) instead of a zero score, and no zero-reply
+    aggregate ever leaves the public endpoint (no public 红黑榜)."""
+
+    def test_verified_send_creates_signal_input(self, monkeypatch):
+        # Three devices explicitly reported sending (applied) and one a reply:
+        # the aggregate exists and reflects exactly those verified reports.
+        _set_env(monkeypatch)
+        rows = [
+            _row("opp-v", "d1", "applied"),
+            _row("opp-v", "d2", "applied"),
+            _row("opp-v", "d3", "applied"),
+            _row("opp-v", "d1", "replied"),
+        ]
+        _install_httpx_stub(monkeypatch, rows)
+        signals = client.get("/api/opportunities/responsiveness").json()["signals"]
+        assert signals["opp-v"] == {"contacted_n": 3, "replied_n": 1}
+
+    def test_no_interaction_rows_yield_no_signal_not_zero(self, monkeypatch):
+        # A professor merely existing (no interaction rows at all) produces
+        # NO aggregate — absent from the map, not {contacted: 0, replied: 0}.
+        _set_env(monkeypatch)
+        _install_httpx_stub(monkeypatch, [])
+        signals = client.get("/api/opportunities/responsiveness").json()["signals"]
+        assert signals == {}
+
+    def test_aggregate_never_fabricates_entries(self):
+        # Direct aggregation contract: only opportunities with real rows and
+        # >= MIN_N distinct contacting devices appear at all.
+        assert resp_mod._aggregate([]) == {}
+        few = [_row("opp-a", "d1", "applied")]
+        assert resp_mod._aggregate(few) == {}
+
+    def test_zero_reply_aggregate_is_not_public(self, monkeypatch):
+        # contacted_n >= MIN_N with replied_n == 0 stays server-side: "N
+        # contacted, nobody heard back" is a negative reputation claim the
+        # public API must not emit.
+        _set_env(monkeypatch)
+        rows = [
+            _row("opp-quiet", "d1", "applied"),
+            _row("opp-quiet", "d2", "applied"),
+            _row("opp-quiet", "d3", "applied"),
+            _row("opp-loud", "d1", "applied"),
+            _row("opp-loud", "d2", "applied"),
+            _row("opp-loud", "d3", "replied"),
+        ]
+        _install_httpx_stub(monkeypatch, rows)
+        body = client.get("/api/opportunities/responsiveness").json()
+        assert "opp-quiet" not in body["signals"]
+        assert body["signals"]["opp-loud"]["replied_n"] == 1
+        # The internal aggregate (ranker input) still carries the full
+        # counts; only the public boundary filters.
+        assert resp_mod._aggregate(rows)["opp-quiet"] == {"contacted_n": 3, "replied_n": 0}
+
+    def test_no_ranking_or_score_fields_emitted(self, monkeypatch):
+        # The public payload is factual counts only — no ranks, scores, tiers,
+        # or orderings that would constitute a red/black list.
+        _set_env(monkeypatch)
+        _install_httpx_stub(monkeypatch, _rows_default())
+        body = client.get("/api/opportunities/responsiveness").json()
+        assert set(body) == {"signals", "min_n"}
+        for sig in body["signals"].values():
+            assert set(sig) == {"contacted_n", "replied_n"}
+            assert sig["replied_n"] >= 1
+
+    def test_missing_reply_data_is_never_a_zero_responsiveness_score(self, monkeypatch):
+        # Ranker: an opportunity absent from the map gets NO penalty — the
+        # bonus is 0 (neutral), identical to disabling the feature, never a
+        # negative or zero *score*.
+        monkeypatch.setattr(ranker, "RESPONSIVENESS_BONUS", 3.0)
+        opps = [_opp("opp-unknown")]
+        with_map = rank_all(_profile(), opps, responsiveness={"other": {"contacted_n": 9, "replied_n": 9}})
+        without = rank_all(_profile(), opps)
+        assert with_map[0].final_score == without[0].final_score

@@ -6,6 +6,7 @@ evidence validates, and responses never contain contact details.
 """
 
 import json
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +16,7 @@ from backend.routes import opportunities as opportunities_route
 from backend.routes import professors
 from src.tracking.professor_profiles import (
     canonical_professor_id,
+    compute_release_status,
     update_tracking_state,
 )
 
@@ -73,6 +75,7 @@ class TestArtifactAvailability:
         assert res.status_code == 200
         assert res.json() == {
             "available": False,
+            "release_ready": False,
             "events": [],
             "requested": 1,
             "has_more": False,
@@ -86,16 +89,45 @@ class TestArtifactAvailability:
 
     def test_empty_state_is_available_with_no_events(self, tracking_file):
         tracking_file.write_text(
-            json.dumps({"schema_version": 1, "profiles": {}, "events": []}),
+            json.dumps({"schema_version": 2, "profiles": {}, "events": []}),
             encoding="utf-8",
         )
         res = post_updates(["prof:v1:uiuc:" + "a" * 20])
         assert res.json() == {
             "available": True,
+            "release_ready": False,
             "events": [],
             "requested": 1,
             "has_more": False,
         }
+
+    def test_schema_v1_artifact_is_not_served_and_never_release_ready(self, tracking_file):
+        """v2-only serving: a leftover v1 artifact is an honest empty response
+        (the producer migrates it on its next write) and can never present as
+        release-ready."""
+        state = state_with_event()
+        state["schema_version"] = 1
+        tracking_file.write_text(json.dumps(state), encoding="utf-8")
+        res = post_updates([state["events"][0]["professor_id"]])
+        assert res.status_code == 200
+        body = res.json()
+        assert body["available"] is False
+        assert body["release_ready"] is False
+        assert body["events"] == []
+
+    def test_v2_artifact_with_passing_release_block_serves_release_ready(self, tracking_file):
+        state = state_with_event()
+        state["release"] = compute_release_status(
+            state["profiles"], state["events"], refresh_ok=True,
+            now=datetime(2026, 7, 20, tzinfo=UTC),
+        )
+        assert state["release"]["release_ready"] is True
+        tracking_file.write_text(json.dumps(state), encoding="utf-8")
+        res = post_updates([state["events"][0]["professor_id"]])
+        body = res.json()
+        assert body["available"] is True
+        assert body["release_ready"] is True
+        assert len(body["events"]) == 1
 
 
 class TestEventServing:
@@ -137,6 +169,7 @@ class TestEventServing:
         res = post_updates([state["events"][0]["professor_id"]])
         assert res.json() == {
             "available": True,
+            "release_ready": False,
             "events": [],
             "requested": 1,
             "has_more": False,
