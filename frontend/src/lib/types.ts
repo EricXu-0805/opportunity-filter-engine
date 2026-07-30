@@ -196,10 +196,18 @@ export interface MatchResult {
   // One concrete, student-specific sentence from the LLM rerank — the card's
   // lead line for top-K results; absent outside the reranked window.
   ai_reason?: string | null;
+  // Canonical unknown-semantics trace: dotted "profile.*" / "opportunity.*"
+  // names of inputs whose missing/unknown state made this decision less
+  // certain. Backend-computed; surfaces may render "verify" hints from these
+  // but must never reinterpret an unknown as eligible/ineligible.
+  unknowns?: string[];
   opportunity: Opportunity;
 }
 
 export interface MatchesResponse {
+  // The pageable universe: unique visible (non-low_fit) results. Invariant:
+  // total == high_priority + good_match + reach. low_fit is counted but never
+  // included in `results`.
   total: number;
   high_priority: number;
   good_match: number;
@@ -211,6 +219,9 @@ export interface MatchesResponse {
   // plain total). `thin_inventory` true → the field has few openings right now.
   field_relevant_count?: number;
   thin_inventory?: boolean;
+  // Version of the matching logic + tunables that produced this response.
+  // Cache keys include it so two matcher generations can never coexist.
+  matcher_version?: string;
 }
 
 // ── Cold Email ───────────────────────────────────────────────────────

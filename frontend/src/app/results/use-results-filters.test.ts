@@ -100,3 +100,73 @@ describe('useResultsFilters — filter-aware tab counts', () => {
     expect(counts.high_priority).toBe(0);
   });
 });
+
+describe('useResultsFilters — canonical consistency guards', () => {
+  it('minScore filters on the DISPLAYED (rounded) score', () => {
+    // A 79.6 renders as "80%" on the card, so it must survive minScore=80 —
+    // filtering the raw value made labeled-80 cards vanish.
+    const edge = mr('edge-1', 'ucb_eecs_faculty', 'high_priority');
+    edge.final_score = 79.6;
+    const data: MatchesResponse = { ...DATA, results: [...RESULTS, edge] };
+    const { filtered } = renderHook(() =>
+      useResultsFilters({
+        data,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS, minScore: 80 },
+        favs: new Set<string>(),
+        sortBy: 'score',
+        interactions: new Map(),
+        showDismissed: true,
+        page: 1,
+        pageSize: 50,
+        homeSchool: 'ucb',
+      }),
+    ).result.current;
+    expect(filtered.map((m) => m.opportunity_id)).toContain('edge-1');
+  });
+
+  it('a cached row without an eligibility object does not crash the intl filter', () => {
+    const bare = mr('bare-1', 'ucb_eecs_faculty', 'good_match');
+    delete (bare.opportunity as unknown as Record<string, unknown>).eligibility;
+    const data: MatchesResponse = { ...DATA, results: [...RESULTS, bare] };
+    const { filtered } = renderHook(() =>
+      useResultsFilters({
+        data,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS, intl: 'yes' },
+        favs: new Set<string>(),
+        sortBy: 'score',
+        interactions: new Map(),
+        showDismissed: true,
+        page: 1,
+        pageSize: 50,
+        homeSchool: 'ucb',
+      }),
+    ).result.current;
+    // The row is simply not intl-confirmed — excluded, never a thrown render.
+    expect(filtered.map((m) => m.opportunity_id)).not.toContain('bare-1');
+  });
+
+  it('effectivePage clamps into [1, totalPages] when the set shrinks under the cursor', () => {
+    const { effectivePage, paginated, totalPages } = renderHook(() =>
+      useResultsFilters({
+        data: DATA,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS },
+        favs: new Set<string>(),
+        sortBy: 'score',
+        interactions: new Map(),
+        showDismissed: true,
+        page: 9, // stale cursor far past the end
+        pageSize: 2,
+        homeSchool: 'ucb',
+      }),
+    ).result.current;
+    expect(totalPages).toBe(3);
+    expect(effectivePage).toBe(3);
+    expect(paginated.length).toBeGreaterThan(0); // never a blank grid
+  });
+});

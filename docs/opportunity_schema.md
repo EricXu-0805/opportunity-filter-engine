@@ -107,6 +107,14 @@ This is a first-order concern for our target users. The `international_friendly`
 
 ## Deduplication
 
-Primary dedup key: `url` (UNIQUE constraint)
+Canonical identity is the record's `id` string.
 
-Secondary dedup: fuzzy match on `title + organization` for cross-source duplicates (e.g., same position posted on OUR blog and department page).
+- **Serving layer (enforced):** `backend/data_loader._canonicalize_corpus`
+  deduplicates by `id` at corpus load — first occurrence wins, a warning is
+  logged — so the ranked list and the by-id lookup are always the same
+  records even if a shard upsert ever leaves the same id in two shards.
+- **Pipeline (enforced per collector):** `src/collectors/refresh_all.py`
+  merges by id and runs the joint-appointment / same-person collapse passes.
+- The url-UNIQUE constraint and fuzzy `title + organization` matching that an
+  earlier revision of this document described were never implemented; they
+  remain future work, not a property of the current system.

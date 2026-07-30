@@ -69,8 +69,13 @@ function getBucketLabel(
       return { label: t('results.tabs.goodMatch'), variant: 'blue' };
     case 'reach':
       return { label: t('results.tabs.reach'), variant: 'yellow' };
-    default:
+    case 'low_fit':
       return { label: t('results.tabs.lowFit'), variant: 'gray' };
+    default:
+      // An unrecognized bucket (future vocabulary, corrupted cache) renders as
+      // an explicit dash, never as an asserted "Low Fit" — the canonical
+      // policy forbids silently converting unknown into a verdict.
+      return { label: '—', variant: 'gray' };
   }
 }
 

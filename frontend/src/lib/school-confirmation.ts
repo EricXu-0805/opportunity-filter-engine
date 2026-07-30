@@ -5,7 +5,9 @@
 // IS confirming, so every write path records the same receipt and the gate
 // never asks again.
 
+import { clearMatchCache } from './match-cache';
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from './storage-keys';
+import { writeLocalStorageJSON } from './use-local-storage-json';
 
 export interface SchoolConfirmation {
   slug: string;
@@ -61,8 +63,17 @@ export function persistHomeSchool(slug: string): void {
     const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
     const parsed = raw ? JSON.parse(raw) : null;
     const base = parsed && typeof parsed === 'object' ? parsed : {};
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ ...base, home_school: slug }));
+    // writeLocalStorageJSON (not raw setItem): it dispatches the synthetic
+    // storage event same-tab readers subscribe to — the confirm gate can
+    // render ON TOP of /results, and a raw write left that page showing the
+    // previous campus's matches until a manual reload.
+    writeLocalStorageJSON(STORAGE_KEYS.PROFILE, { ...base, home_school: slug });
   } catch { /* storage unavailable */ }
+  // Switching campus changes the matcher's candidate pool; the cached match
+  // set is for the OLD school and must not be served on the next /results
+  // visit. (hashProfile also covers home_school — this just frees the ~3 MB
+  // immediately and keeps hasMatchCache() honest for the header link.)
+  clearMatchCache();
   try {
     window.dispatchEvent(new CustomEvent(HOME_SCHOOL_EVENT, { detail: slug }));
   } catch { /* SSR / no window */ }

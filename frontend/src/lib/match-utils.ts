@@ -94,6 +94,12 @@ export function matchesToCSV(matches: MatchResult[]): string {
   return [header, ...rows].map(r => r.map(escape).join(',')).join('\n');
 }
 
+// EVERY profile field toProfileRequest sends to the matcher must participate
+// here (api.ts toProfileRequest is the source of truth): a field the matcher
+// scores but the hash omits means editing it silently serves the stale cached
+// match set. The 2026-07 consistency audit found five such omissions
+// (additional_majors, coursework, experience_level, resume presence,
+// exploring) — exploring alone reorders the whole top band.
 export function hashProfile(profile: {
   major: string;
   college: string;
@@ -105,6 +111,11 @@ export function hashProfile(profile: {
   search_weight?: number;
   home_school?: string;
   include_cross_school?: boolean;
+  additional_majors?: string[];
+  coursework?: string[];
+  experience_level?: string;
+  resume_text?: string;
+  exploring?: boolean;
 }): string {
   const key = JSON.stringify({
     major: profile.major,
@@ -120,6 +131,17 @@ export function hashProfile(profile: {
     home: profile.home_school ?? 'uiuc',
     // Same reason: flipping the cross-school toggle changes the pool.
     cross: profile.include_cross_school ?? false,
+    // → secondary_interests: secondary-major + keyword matching signal.
+    addl: profile.additional_majors ?? [],
+    // → coursework: scored in the readiness layer.
+    courses: profile.coursework ?? [],
+    // → experience_level: scored in the readiness layer.
+    exp: profile.experience_level ?? 'beginner',
+    // → resume_ready (only presence matters to the matcher, so hash presence —
+    // resume text edits that keep it non-empty don't need a re-match).
+    resume: !!profile.resume_text,
+    // → exploring: widens matching + diversity-samples the top buckets.
+    exploring: profile.exploring ?? false,
   });
   let h = 0;
   for (let i = 0; i < key.length; i++) {
