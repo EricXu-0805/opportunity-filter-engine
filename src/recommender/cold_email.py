@@ -1,6 +1,7 @@
 import re
 
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS, _tokenize
+from src.publication_trust import verified_recent_works
 
 # Tokenizer for skill matching: a letter followed by letters/digits/+/#/. so
 # "c++", "c#", "node.js" stay whole. Used to match a skill as a WHOLE token in a
@@ -350,7 +351,10 @@ def _common_parts(
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
         coursework=coursework, lab_type=lab_type,
-        recent_works=meta.get("recent_works") or [],
+        # Publication trust boundary: only works with explicitly verified
+        # attribution may personalize output — name-matched/legacy/unknown
+        # works never reach the template cite or the AI professor brief.
+        recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         # The student's real resume experience bullets (from /tailor/extract-
         # bullets, already grounded). Only the AI pipeline supplies these; the
@@ -654,9 +658,13 @@ def _p1_research_hook(p: dict) -> str:
 def _recent_work_cite(p: dict) -> str:
     """One sentence citing the professor's newest usable paper — the template
     path's counterpart to the AI prompt's recent-works block, so the free tier
-    also shows the student did their homework. Honest by construction: "caught
-    my attention" claims only that they saw the title (they did — it is on the
-    profile they are emailing from), never that they read the paper. OpenAlex
+    also shows the student did their homework. ``p["recent_works"]`` comes
+    through the publication trust gate (``_common_parts`` →
+    ``verified_recent_works``), so "Your recent paper" is only ever said of a
+    work with explicitly verified attribution; name-matched/legacy candidates
+    never reach this sentence. "Caught my attention" claims only that they saw
+    the title (they did — it is on the profile they are emailing from), never
+    that they read the paper. OpenAlex
     titles can carry markup (``[<sup>18</sup>F]FDG``) and can run to hundreds
     of characters, so tags are stripped and only a 10-110 char title is cited;
     none qualifying → no sentence."""

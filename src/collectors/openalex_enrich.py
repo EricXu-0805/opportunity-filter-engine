@@ -39,6 +39,12 @@ import time
 
 import requests
 
+from ..publication_trust import (
+    NAME_MATCH as ATTRIBUTION_NAME_MATCH,
+)
+from ..publication_trust import (
+    VERIFIED_AUTHOR_ID as ATTRIBUTION_VERIFIED,
+)
 from .ucb_common import PROCESSED_FILE
 
 logger = logging.getLogger(__name__)
@@ -56,9 +62,11 @@ _TITLE_CAP = 200
 # works were fetched through (the gated _match_author resolution). name_match:
 # the entry is a bare title list (the pre-provenance WORKS_STORE format) whose
 # only person linkage is the name-derived key. Records enriched before this
-# stamp existed simply lack the field — downstream treats absent as unknown.
-ATTRIBUTION_VERIFIED = "verified_author_id"
-ATTRIBUTION_NAME_MATCH = "name_match"
+# stamp existed simply lack the field. The value literals live in
+# src.publication_trust (the shared fail-closed gate every serving path uses,
+# imported above as ATTRIBUTION_VERIFIED / ATTRIBUTION_NAME_MATCH); downstream
+# treats anything but verified_author_id as unverified and excludes it from
+# professor-specific output.
 
 # The committed "works library": the durable url -> [{title, year}] master record
 # of every OpenAlex paper we ever paid the metered API to harvest. recent_works is

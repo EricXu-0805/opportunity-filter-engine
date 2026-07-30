@@ -29,7 +29,7 @@ describe('RecentWorksSection', () => {
     expect(empty).toBeEmptyDOMElement();
   });
 
-  it('renders title, year, and a quoted Scholar search link per work', () => {
+  it('renders title, year, and a quoted Scholar search link per verified work', () => {
     render(
       <RecentWorksSection
         opp={opp({
@@ -37,6 +37,7 @@ describe('RecentWorksSection', () => {
             { title: 'Deep Learning for Auditory Cortex Mapping', year: 2026 },
             { title: 'A Study Without a Year', year: null },
           ],
+          publication_attribution_status: 'verified_author_id',
         })}
         t={tFn}
       />,
@@ -53,24 +54,23 @@ describe('RecentWorksSection', () => {
     expect(screen.getByRole('link', { name: 'A Study Without a Year' })).toBeInTheDocument();
   });
 
-  it('labels unverified attribution honestly without hiding the works', () => {
+  it('renders nothing for unverified attribution (fail closed)', () => {
     const works = [{ title: 'A Borderline Paper', year: 2026 }];
-    // name_match and legacy-absent both get the subdued hint + honest note
+    // Publication trust boundary: name_match, legacy-absent, and unknown
+    // statuses must not present the works as this professor's publications —
+    // the whole section stays hidden, no label fallback.
     for (const metadata of [
       { recent_works: works, publication_attribution_status: 'name_match' as const },
       { recent_works: works },
+      { recent_works: works, publication_attribution_status: 'trust_me' as never },
     ]) {
-      const { unmount } = render(<RecentWorksSection opp={opp(metadata)} t={tFn} />);
-      expect(screen.getByText('detail.recentWorksNameMatch')).toBeInTheDocument();
-      expect(screen.getByText('detail.recentWorksNoteUnverified')).toBeInTheDocument();
-      expect(screen.queryByText('detail.recentWorksNote')).not.toBeInTheDocument();
-      // never hidden: the work still renders
-      expect(screen.getByRole('link', { name: 'A Borderline Paper' })).toBeInTheDocument();
+      const { container, unmount } = render(<RecentWorksSection opp={opp(metadata)} t={tFn} />);
+      expect(container).toBeEmptyDOMElement();
       unmount();
     }
   });
 
-  it('shows no attribution hint for verified works', () => {
+  it('renders verified works with the publication-record note', () => {
     render(
       <RecentWorksSection
         opp={opp({
@@ -80,9 +80,8 @@ describe('RecentWorksSection', () => {
         t={tFn}
       />,
     );
-    expect(screen.queryByText('detail.recentWorksNameMatch')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'A Verified Paper' })).toBeInTheDocument();
     expect(screen.getByText('detail.recentWorksNote')).toBeInTheDocument();
-    expect(screen.queryByText('detail.recentWorksNoteUnverified')).not.toBeInTheDocument();
   });
 
   it('caps the list at 5 works', () => {
@@ -93,6 +92,7 @@ describe('RecentWorksSection', () => {
             title: `Paper ${i + 1}`,
             year: 2026 - i,
           })),
+          publication_attribution_status: 'verified_author_id',
         })}
         t={tFn}
       />,

@@ -31,7 +31,7 @@ from backend.lib.grounding import (
 )
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
-from backend.lib.publication_attribution import works_are_verified
+from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.supabase_auth import authenticated_uid
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.matcher.ranker import _is_grad_year
@@ -324,8 +324,12 @@ def _format_recent_works(opp: dict, limit: int = 3) -> str:
     """Up to ``limit`` of the professor's recent OpenAlex works as
     '"<title>" (<year>)' separated by '; ', or "" when none are stored. Offering
     a few lets the model cite whichever is most relevant to the sender's interest
-    rather than always the newest. Sanitized like every other scraped field."""
-    works = (opp.get("metadata") or {}).get("recent_works") or []
+    rather than always the newest. Sanitized like every other scraped field.
+
+    Publication trust boundary: reads through ``verified_recent_works`` — a
+    record whose attribution is name-matched, legacy, or unknown formats as ""
+    (fail closed), so no prompt built from this helper can cite it."""
+    works = verified_recent_works(opp)
     out = []
     for w in works[:limit]:
         title = _sanitize_field(str(w.get("title", "")), max_len=200)
@@ -394,16 +398,11 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
     research_areas_raw = _sanitize_field(p.get("research_areas_raw", ""), max_len=600) or "(none provided)"
     required_str = _sanitize_field(", ".join(p["opp_skills_required"][:5]), max_len=200) or "(none specified)"
     opp_desc = _sanitize_field(p["opp_desc"], max_len=600) or "(no description)"
+    # Publication trust boundary: _format_recent_works serves only works with
+    # explicitly verified attribution, so this line is always honestly "the
+    # professor's own"; unverified/legacy candidates format as "(none)" and
+    # the model never sees them (excluded, not labeled).
     recent_works = _format_recent_works(opp) or "(none)"
-    # Truthful attribution: only pipeline-verified works are presented as the
-    # professor's own; name-matched/legacy works get an honest label instead
-    # of suppression (they are usually correct — the model may still cite one).
-    works_label = (
-        "Recent publications by this professor"
-        if recent_works == "(none)" or works_are_verified(opp)
-        else "Recent publications matched to this professor by name, not "
-             "independently verified"
-    )
     return (
         f"PROFESSOR / OPPORTUNITY:\n"
         f"- Recipient: {recipient}\n"
@@ -414,7 +413,7 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
         f"- Research area: {research_area}\n"
         f"- Specific topic signal: {research_topic}\n"
         f"- Professor's stated research areas: {research_areas_raw}\n"
-        f"- {works_label} (cite at most ONE, whichever "
+        f"- Recent publications by this professor (cite at most ONE, whichever "
         f"is most relevant): {recent_works}\n"
         f"- Required skills: {required_str}\n"
         f"- Description excerpt: {opp_desc}\n"
@@ -543,7 +542,10 @@ def _professor_anchors(p: dict, opp: dict) -> list[str]:
         w = w.strip()
         if len(w) >= 5:
             anchors.append(w)
-    for wk in (opp.get("metadata") or {}).get("recent_works") or []:
+    # Trust boundary: only verified-attribution paper titles count as proof
+    # the draft engaged with THIS professor — an unverified title must not
+    # earn a draft credit for "referencing the professor's work".
+    for wk in verified_recent_works(opp):
         for word in re.findall(r"[a-z][a-z0-9-]{5,}", str(wk.get("title", "")).lower()):
             anchors.append(word)
     pi = str(p.get("pi_name") or "").strip().lower().split()
@@ -843,10 +845,13 @@ def _build_email_corpus(p: dict, opp: dict) -> str:
     parts.append(str(opp.get("department", "")))
     parts.append(str(opp.get("pi_name", "")))
     parts.extend(str(k) for k in (opp.get("keywords") or []))
-    # Real paper titles/years offered to the prompt are legitimate vocabulary;
-    # without them here the anti-fabrication gate would reject a draft for
-    # citing the very publication we told it about.
-    for w in (opp.get("metadata") or {}).get("recent_works") or []:
+    # Verified paper titles/years offered to the prompt are legitimate
+    # vocabulary; without them here the anti-fabrication gate would reject a
+    # draft for citing the very publication we told it about. Unverified /
+    # legacy works stay OUT of the corpus on purpose: they were never offered
+    # to the model, so a draft that names one anyway is fabricating an
+    # authorship claim and the gate must reject it (fail closed, enforced).
+    for w in verified_recent_works(opp):
         parts.append(str(w.get("title", "")))
         parts.append(str(w.get("year", "")))
     return " ".join(parts).lower()

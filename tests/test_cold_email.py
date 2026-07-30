@@ -450,11 +450,12 @@ class TestSkillLevelThreading:
 
 
 class TestRecentWorkGrounding:
-    """metadata.recent_works (OpenAlex paper titles) must reach the AI prompt
-    (up to three, so the model can cite whichever is most relevant) AND the
-    evidence corpus, so a draft citing a real title passes the anti-fabrication
-    gate — while the same citation with no stored works is still rejected as a
-    fabricated claim."""
+    """VERIFIED metadata.recent_works (OpenAlex paper titles) must reach the AI
+    prompt (up to three, so the model can cite whichever is most relevant) AND
+    the evidence corpus, so a draft citing a real title passes the
+    anti-fabrication gate — while the same citation with no stored works OR
+    with unverified works is rejected as a fabricated authorship claim
+    (publication trust boundary: exclusion, not labeling)."""
 
     _WORKS = [
         {"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026},
@@ -468,7 +469,7 @@ class TestRecentWorkGrounding:
             "research_interests_text": "brain-computer interfaces",
         }
 
-    def _opp(self, works=None):
+    def _opp(self, works=None, status="verified_author_id"):
         opp = {
             "opportunity_type": "research", "title": "Undergraduate Research",
             "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Group",
@@ -479,6 +480,8 @@ class TestRecentWorkGrounding:
         }
         if works is not None:
             opp["metadata"] = {"recent_works": works}
+            if status is not None:
+                opp["metadata"]["publication_attribution_status"] = status
         return opp
 
     def _capture_prompt(self, monkeypatch, opp):
@@ -508,20 +511,20 @@ class TestRecentWorkGrounding:
         user_msg = self._capture_prompt(monkeypatch, self._opp())
         assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
 
-    def test_prompt_states_attribution_truthfully(self, monkeypatch):
-        # Pipeline-verified works are presented as the professor's own; a
-        # legacy record (no stamp) gets the honest name-match label — with the
-        # titles still offered either way, never suppressed.
-        opp = self._opp(self._WORKS)
-        opp["metadata"]["publication_attribution_status"] = "verified_author_id"
-        user_msg = self._capture_prompt(monkeypatch, opp)
+    def test_prompt_excludes_unverified_works(self, monkeypatch):
+        # Publication trust boundary: pipeline-verified works are presented as
+        # the professor's own; name-matched / legacy / junk-status works are
+        # EXCLUDED from the prompt entirely — "(none)" is offered instead of a
+        # labeled candidate list.
+        user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
         assert "Recent publications by this professor (cite at most ONE" in user_msg
         assert "matched to this professor by name" not in user_msg
 
-        user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
-        assert ("Recent publications matched to this professor by name, not "
-                "independently verified (cite at most ONE") in user_msg
-        assert '"NeuroFlow: Decoding Imagined Speech from ECoG Arrays" (2026)' in user_msg
+        for status in ("name_match", None, "pending", "definitely_verified"):
+            user_msg = self._capture_prompt(
+                monkeypatch, self._opp(self._WORKS, status=status))
+            assert "NeuroFlow" not in user_msg
+            assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
 
     def _validate_draft(self, opp):
         from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
@@ -538,7 +541,7 @@ class TestRecentWorkGrounding:
             draft, corpus, extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
         )
 
-    def test_draft_citing_stored_title_passes(self):
+    def test_draft_citing_verified_title_passes(self):
         passed, fabricated = self._validate_draft(self._opp(self._WORKS))
         assert passed, f"grounded citation flagged as fabrication: {fabricated}"
 
@@ -547,19 +550,35 @@ class TestRecentWorkGrounding:
         assert not passed
         assert "neuroflow" in fabricated
 
+    def test_same_citation_with_unverified_works_is_rejected(self):
+        # ACTIVE enforcement of the trust boundary: unverified works stay out
+        # of the grounding corpus, so a draft naming one (however it got the
+        # title) is rejected as a fabricated authorship claim — for name_match,
+        # legacy-absent, and junk statuses alike.
+        for status in ("name_match", None, "definitely_verified"):
+            passed, fabricated = self._validate_draft(
+                self._opp(self._WORKS, status=status))
+            assert not passed, f"unverified works leaked into corpus ({status})"
+            assert "neuroflow" in fabricated
+
 
 class TestTemplateRecentWorkCitation:
-    """The template path cites the professor's newest usable paper — the free
-    tier's counterpart to the AI prompt's recent-works block."""
+    """The template path cites the professor's newest usable VERIFIED paper —
+    the free tier's counterpart to the AI prompt's recent-works block. The
+    "Your recent paper" possessive asserts authorship, so it is allowed only
+    behind the publication trust gate."""
 
     _profile = {"name": "Eric", "year": "sophomore", "major": "CompE",
                 "hard_skills": ["Python"], "research_interests_text": "machine learning"}
 
-    def _opp(self, works):
+    def _opp(self, works, status="verified_author_id"):
+        md = {"recent_works": works}
+        if status is not None:
+            md["publication_attribution_status"] = status
         return {"pi_name": "Ada Lovelace", "title": "Research with Prof. Ada Lovelace — CS",
                 "lab_or_program": "Prof. Ada Lovelace's Research Group",
                 "keywords": ["machine learning"], "source_type": "faculty_research",
-                "metadata": {"recent_works": works}}
+                "metadata": md}
 
     def test_balanced_and_skills_cite_newest_clean_title(self):
         works = [{"title": "Efficient Sparse Training at Scale", "year": 2026}]
@@ -583,6 +602,18 @@ class TestTemplateRecentWorkCitation:
     def test_no_works_no_citation(self):
         text = generate_cold_email(self._profile, self._opp([]))
         assert "caught my attention" not in text
+
+    def test_unverified_works_never_cited(self):
+        # name_match, legacy-absent, and junk statuses all fail closed: the
+        # template must not say "Your recent paper" of a work whose
+        # attribution to this professor was never verified.
+        works = [{"title": "Efficient Sparse Training at Scale", "year": 2026}]
+        for status in ("name_match", None, "pending", "trust_me"):
+            text = generate_cold_email(self._profile, self._opp(works, status=status))
+            assert "caught my attention" not in text
+            assert "Efficient Sparse Training at Scale" not in text
+            for v in generate_variants(self._profile, self._opp(works, status=status)):
+                assert "Efficient Sparse Training at Scale" not in v["text"]
 
 
 class TestColdEmailPipeline:
@@ -609,6 +640,7 @@ class TestColdEmailPipeline:
                 "recent_works": [
                     {"title": "Segmenting Tumors with Vision Transformers", "year": 2025}
                 ],
+                "publication_attribution_status": "verified_author_id",
             },
         }
 

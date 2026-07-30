@@ -101,8 +101,11 @@ export interface OpportunityApplication {
 
 // Pipeline-stamped provenance for recent_works: 'verified_author_id' when the
 // works were fetched through a resolved OpenAlex author id, 'name_match' when
-// only a name-based association exists. Absent/null on records enriched
-// before the stamp existed — treated as unverified, never as an error.
+// only a name-based association exists. Publication trust boundary: the
+// backend serves works ONLY with 'verified_author_id'; 'name_match' stays in
+// the union for tolerance of stale cached payloads, and every render site
+// fails closed — anything but 'verified_author_id' (including absent/null)
+// must not be displayed as the professor's publications.
 export type PublicationAttributionStatus = 'verified_author_id' | 'name_match';
 
 export interface OpportunityMetadata {

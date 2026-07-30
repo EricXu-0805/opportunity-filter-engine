@@ -178,16 +178,15 @@ export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
 export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   const works = opp.metadata?.recent_works;
   if (!works?.length) return null;
-  // Honest labeling only — publications are never hidden or reordered by
-  // attribution status; unverified ones are usually correct.
+  // Publication trust boundary: only works with explicitly verified
+  // attribution may be presented as this professor's publications. The
+  // backend already strips unverified works from the detail payload; this
+  // gate fails closed on stale caches / older payloads too (name_match,
+  // absent, or unknown status → the section does not render at all).
   const verified = opp.metadata?.publication_attribution_status === 'verified_author_id';
+  if (!verified) return null;
   return (
     <Section title={t('detail.sections.recentWorks')}>
-      {!verified && (
-        <p className="-mt-2 mb-3 text-[11px] text-gray-400">
-          {t('detail.recentWorksNameMatch')}
-        </p>
-      )}
       <ul className="space-y-2.5">
         {works.slice(0, 5).map((w) => (
           <li key={w.title} className="flex items-baseline gap-2.5 text-[13px] leading-snug">
@@ -206,7 +205,7 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         ))}
       </ul>
       <p className="mt-4 text-[11px] text-gray-400">
-        {t(verified ? 'detail.recentWorksNote' : 'detail.recentWorksNoteUnverified')}
+        {t('detail.recentWorksNote')}
       </p>
     </Section>
   );

@@ -21,7 +21,7 @@ from backend.lib.llm import (
     chat_model_slug,
 )
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
-from backend.lib.publication_attribution import attribution_status, works_are_verified
+from backend.lib.publication_attribution import works_are_verified
 from backend.lib.supabase_auth import authenticated_uid
 from backend.routes.cold_email import _format_recent_works
 from backend.schemas import ProfileRequest
@@ -37,15 +37,25 @@ _stats_cache_time: float = 0
 _STATS_TTL = 300
 
 
+_UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status")
+
+
 def _redact(opp: dict) -> dict:
     out = {k: v for k, v in opp.items() if k not in REDACTED_FIELDS}
-    # Serve only known attribution values; junk normalizes to null. Copy-on-
-    # write — the metadata dict is shared with the in-process corpus cache.
+    # Publication trust boundary: works whose attribution is anything but
+    # explicitly verified (name_match, absent, junk) are internal candidates
+    # for the recollection/verification effort, not the professor's
+    # publications — never served. Copy-on-write — the metadata dict is
+    # shared with the in-process corpus cache.
     md = out.get("metadata")
-    if isinstance(md, dict) and "publication_attribution_status" in md:
-        status = attribution_status(opp)
-        if status != md["publication_attribution_status"]:
-            out["metadata"] = {**md, "publication_attribution_status": status}
+    if (
+        isinstance(md, dict)
+        and any(k in md for k in _UNVERIFIED_PUBLICATION_KEYS)
+        and not works_are_verified(opp)
+    ):
+        out["metadata"] = {
+            k: v for k, v in md.items() if k not in _UNVERIFIED_PUBLICATION_KEYS
+        }
     return out
 
 
@@ -419,17 +429,16 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
         f"- Apply URL: {app.get('application_url') or opp.get('url') or opp.get('source_url') or '—'}",
         f"- Keywords: {', '.join(opp.get('keywords') or []) or '(none)'}",
     ]
-    # Publications enter the chat context with their attribution stated
-    # truthfully: only pipeline-verified works may be described as the
-    # professor's own; name-matched/legacy works are labeled, never hidden.
+    # Publication trust boundary: only works with explicitly verified
+    # attribution may enter the Ask-AI context (_format_recent_works reads
+    # through the fail-closed gate). Name-matched / legacy / unknown-status
+    # works are excluded BEFORE prompt construction — the model never sees
+    # them, so it cannot present them as this professor's papers. When no
+    # verified works exist the prompt simply carries no publications line and
+    # the model's own no-invention rule keeps it from claiming any.
     works_str = _format_recent_works(opp)
     if works_str:
-        lines.append(
-            f"- Recent publications by this professor: {works_str}"
-            if works_are_verified(opp)
-            else "- Publications matched to this professor by name (not "
-                 f"independently verified — say so if asked about them): {works_str}"
-        )
+        lines.append(f"- Recent publications by this professor: {works_str}")
     if desc:
         lines.append(f"- Description: {desc}")
 

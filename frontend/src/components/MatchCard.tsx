@@ -240,18 +240,17 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           </p>
         )}
 
-        {opp.recent_works?.[0]?.title && (
+        {/* Publication trust boundary: a paper renders only with explicitly
+            verified attribution. The backend already serves verified-only,
+            but stale caches / older payloads must fail closed here too. */}
+        {opp.publication_attribution_status === 'verified_author_id' &&
+          opp.recent_works?.[0]?.title && (
           <p className="flex items-center gap-1.5 mb-4 text-[12px] text-gray-400 min-w-0">
             <FileText className="w-3 h-3 shrink-0 text-gray-300" />
             <span className="truncate">
               {t('card.recentWork')}: {opp.recent_works[0].title}
               {opp.recent_works[0].year ? ` (${opp.recent_works[0].year})` : ''}
             </span>
-            {opp.publication_attribution_status !== 'verified_author_id' && (
-              <span className="shrink-0 text-[11px] text-gray-300">
-                · {t('card.recentWorkNameMatch')}
-              </span>
-            )}
           </p>
         )}
 
