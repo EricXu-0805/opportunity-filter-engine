@@ -351,9 +351,10 @@ class TestLLMRerank:
         assert by_id["a"].ai_reason == "Their vision-transformer work matches your CV interest."
         assert by_id["b"].ai_reason is None  # empty reason → not attached
 
-    def test_candidate_context_includes_recent_works(self, monkeypatch):
+    def test_candidate_context_includes_verified_recent_works(self, monkeypatch):
         # The rerank judges "why THIS professor" — the concrete material (paper
-        # titles, stated areas) must reach the prompt, not just keywords.
+        # titles, stated areas) must reach the prompt, not just keywords. Works
+        # qualify only through the publication trust gate (verified stamp).
         from backend.routes import matches
         captured = {}
         monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
@@ -368,6 +369,7 @@ class TestLLMRerank:
             "metadata": {
                 "research_areas_raw": "medical imaging, vision transformers",
                 "recent_works": [{"title": "Segmenting Tumors with ViTs", "year": 2025}],
+                "publication_attribution_status": "verified_author_id",
             },
         }}
         matches.llm_rerank({"research_interests_text": "works-context-query"},
@@ -376,10 +378,11 @@ class TestLLMRerank:
         assert "Segmenting Tumors with ViTs" in area
         assert "medical imaging" in area
 
-    def test_candidate_works_carry_truthful_attribution_marker(self, monkeypatch):
-        # Works the pipeline never verified are labeled in the rerank prompt so
-        # the model's reason line can't assert authorship; verified works carry
-        # no marker (and are still fully present either way — never hidden).
+    def test_candidate_context_excludes_unverified_works(self, monkeypatch):
+        # Publication trust boundary: works the pipeline never verified are
+        # EXCLUDED from the rerank candidate text — they cannot move the score
+        # or the model's reason line, and no "name-matched" labeling survives
+        # (exclusion, not annotation). Verified works still flow.
         from backend.routes import matches
         captured = {}
         monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
@@ -393,15 +396,24 @@ class TestLLMRerank:
         lookup = {
             "legacy": {"id": "legacy", "title": "Lab L",
                        "metadata": {"recent_works": works}},
+            "named": {"id": "named", "title": "Lab N",
+                      "metadata": {"recent_works": works,
+                                   "publication_attribution_status": "name_match"}},
+            "junk": {"id": "junk", "title": "Lab J",
+                     "metadata": {"recent_works": works,
+                                  "publication_attribution_status": "definitely_verified"}},
             "verified": {"id": "verified", "title": "Lab V",
                          "metadata": {"recent_works": works,
                                       "publication_attribution_status": "verified_author_id"}},
         }
-        matches.llm_rerank({"research_interests_text": "attribution-marker-query"},
-                           self._results([("legacy", 80), ("verified", 70)]), lookup)
-        assert "name-matched, unverified" in captured["cand"]["legacy"]
-        assert "Segmenting Tumors with ViTs" in captured["cand"]["legacy"]
-        assert "name-matched" not in captured["cand"]["verified"]
+        matches.llm_rerank(
+            {"research_interests_text": "attribution-exclusion-query"},
+            self._results([("legacy", 80), ("named", 75), ("junk", 72), ("verified", 70)]),
+            lookup,
+        )
+        for unverified in ("legacy", "named", "junk"):
+            assert "Segmenting Tumors with ViTs" not in captured["cand"][unverified]
+            assert "name-matched" not in captured["cand"][unverified]
         assert "Segmenting Tumors with ViTs" in captured["cand"]["verified"]
 
     def test_route_llm_true_is_graceful_without_key(self):
@@ -1346,7 +1358,11 @@ class TestOpportunityChatHardening:
             in system
         )
 
-    def test_chat_prompt_states_publication_attribution_truthfully(self):
+    def test_chat_prompt_excludes_unverified_publications(self):
+        # Publication trust boundary: only verified-attribution works enter
+        # the Ask-AI context. Unverified works are excluded BEFORE prompt
+        # construction (not labeled), so the model cannot cite them as the
+        # professor's papers at all.
         import backend.routes.opportunities as op_module
 
         works = [{"title": "Sparse Attention at Scale", "year": 2026}]
@@ -1358,15 +1374,16 @@ class TestOpportunityChatHardening:
                 '"Sparse Attention at Scale" (2026)') in system
         assert "matched to this professor by name" not in system
 
-        # name_match, legacy-absent, and junk statuses all get the honest label
+        # name_match, legacy-absent, and junk statuses all fail closed: the
+        # title never reaches the model and no publications line renders.
         for status in ("name_match", None, "definitely_verified"):
             md: dict = {"recent_works": works}
             if status:
                 md["publication_attribution_status"] = status
             opp = {"title": "T", "eligibility": {}, "application": {}, "metadata": md}
             system = op_module._build_chat_system_prompt(opp, None)
-            assert "matched to this professor by name (not independently verified" in system
-            assert '"Sparse Attention at Scale" (2026)' in system  # never hidden
+            assert "Sparse Attention at Scale" not in system
+            assert "publications" not in system.casefold()
 
         no_works = {"title": "T", "eligibility": {}, "application": {}}
         system = op_module._build_chat_system_prompt(no_works, None)
@@ -3557,10 +3574,10 @@ class TestResponsePayloadTrim:
         })
         assert card["source_type"] == "faculty_research"
 
-    def test_card_projects_attribution_status_with_recent_works(self):
-        """The card carries publication_attribution_status alongside the works
-        it labels — normalized to null for legacy/junk values, absent entirely
-        when the record has no works to attribute."""
+    def test_card_serves_works_only_with_verified_attribution(self):
+        """Publication trust boundary at the card projection: verified works
+        ride with their status; name_match / legacy / junk statuses fail
+        closed — the card carries neither the works nor the status field."""
         from backend.routes.matches import _match_card
 
         def opp(md):
@@ -3569,34 +3586,47 @@ class TestResponsePayloadTrim:
         works = [{"title": "P", "year": 2026}]
         card = _match_card(opp({"recent_works": works,
                                 "publication_attribution_status": "verified_author_id"}))
+        assert card["recent_works"] == [{"title": "P", "year": 2026}]
         assert card["publication_attribution_status"] == "verified_author_id"
-        card = _match_card(opp({"recent_works": works,
-                                "publication_attribution_status": "name_match"}))
-        assert card["publication_attribution_status"] == "name_match"
-        # legacy (no stamp) and junk both normalize to null — works stay
         for md in ({"recent_works": works},
-                   {"recent_works": works, "publication_attribution_status": "trust_me"}):
+                   {"recent_works": works, "publication_attribution_status": "name_match"},
+                   {"recent_works": works, "publication_attribution_status": "trust_me"},
+                   {"recent_works": works, "publication_attribution_status": "pending"}):
             card = _match_card(opp(md))
-            assert card["recent_works"]
-            assert card["publication_attribution_status"] is None
+            assert "recent_works" not in card
+            assert "publication_attribution_status" not in card
         assert "publication_attribution_status" not in _match_card(opp({}))
 
-    def test_detail_redact_normalizes_junk_attribution_status(self):
-        """/opportunities/{id} passes metadata through — junk stamp values
-        normalize to null in the response WITHOUT mutating the shared
-        in-process corpus object; known values pass through untouched."""
+    def test_detail_redact_strips_unverified_works(self):
+        """/opportunities/{id} (and batch/similar via the same _redact) must
+        not serve unverified works: name_match / legacy / junk stamps are
+        stripped together with the status field, WITHOUT mutating the shared
+        in-process corpus object. Verified metadata passes through untouched
+        (same object — no needless copy)."""
         from backend.routes.opportunities import _redact
 
-        junk = {"id": "x", "metadata": {"recent_works": [{"title": "P", "year": 2026}],
-                                        "publication_attribution_status": "trust_me"}}
-        out = _redact(junk)
-        assert out["metadata"]["publication_attribution_status"] is None
-        assert junk["metadata"]["publication_attribution_status"] == "trust_me"
+        works = [{"title": "P", "year": 2026}]
+        for status in ("trust_me", "name_match", None):
+            md = {"recent_works": list(works), "extra": "keep"}
+            if status:
+                md["publication_attribution_status"] = status
+            raw = {"id": "x", "metadata": md}
+            out = _redact(raw)
+            assert "recent_works" not in out["metadata"]
+            assert "publication_attribution_status" not in out["metadata"]
+            assert out["metadata"]["extra"] == "keep"
+            # copy-on-write: the shared corpus object keeps its candidates
+            assert raw["metadata"]["recent_works"] == works
 
-        clean = {"id": "x", "metadata": {"publication_attribution_status": "name_match"}}
-        assert _redact(clean)["metadata"] is clean["metadata"]  # no needless copy
-        legacy = {"id": "x", "metadata": {"recent_works": []}}
-        assert "publication_attribution_status" not in _redact(legacy)["metadata"]
+        verified = {"id": "x", "metadata": {
+            "recent_works": list(works),
+            "publication_attribution_status": "verified_author_id"}}
+        out = _redact(verified)
+        assert out["metadata"] is verified["metadata"]  # no needless copy
+        assert out["metadata"]["recent_works"] == works
+
+        plain = {"id": "x", "metadata": {"is_active": True}}
+        assert _redact(plain)["metadata"] is plain["metadata"]
 
 
 class TestAdminFeedback:

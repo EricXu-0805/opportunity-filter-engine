@@ -2989,7 +2989,6 @@ export const en = {
     recLetterNeeded: 'Rec. letter needed',
     renovateResume: 'Renovate Resume',
     recentWork: 'Recent work',
-    recentWorkNameMatch: 'matched by name',
     heardBack: 'Students recently heard back',
     feedback: {
       prompt: 'Accurate?',
@@ -3045,8 +3044,6 @@ export const en = {
       contact: 'Contact',
     },
     recentWorksNote: 'From this professor’s public publication record — skim one before you reach out.',
-    recentWorksNameMatch: 'Matched by name — not independently verified',
-    recentWorksNoteUnverified: 'Matched from public publication records by author name — skim one before you reach out.',
     contactSignInPrompt: 'A verified email address is on file for this professor. Sign in to reveal it.',
     contactSignInCta: 'Sign in to reveal',
     contactVerifyHint: 'Harvested from the professor’s public page — double-check it there before sending.',
@@ -7021,7 +7018,6 @@ export const zh = {
     recLetterNeeded: '需要推荐信',
     renovateResume: '简历翻新',
     recentWork: '近作',
-    recentWorkNameMatch: '按姓名匹配',
     heardBack: '近期有学生收到回复',
     feedback: {
       prompt: '推荐准吗？',
@@ -7077,8 +7073,6 @@ export const zh = {
       contact: '联系方式',
     },
     recentWorksNote: '来自这位教授的公开发表记录 —— 联系前先翻一篇,套磁信会具体得多。',
-    recentWorksNameMatch: '按姓名匹配 —— 未独立核验',
-    recentWorksNoteUnverified: '按作者姓名从公开发表记录匹配 —— 联系前先翻一篇,套磁信会具体得多。',
     contactSignInPrompt: '这位教授有一个经核实的邮箱地址。登录后即可查看。',
     contactSignInCta: '登录查看',
     contactVerifyHint: '采集自教授的公开主页 —— 发送前请到页面上再核对一次。',

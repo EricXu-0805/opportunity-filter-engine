@@ -103,7 +103,7 @@ describe('MatchCard', () => {
       expect(screen.queryByText(/card.recentWork/)).toBeNull();
     });
 
-    it('renders the first recent-work title with year', () => {
+    it('renders the first recent-work title with year when attribution is verified', () => {
       render(
         <MatchCard
           match={makeMatch({
@@ -111,6 +111,7 @@ describe('MatchCard', () => {
               { title: 'Segmenting Tumors with Vision Transformers', year: 2025 },
               { title: 'Second Paper', year: 2024 },
             ],
+            publication_attribution_status: 'verified_author_id',
           })}
           onDraftEmail={() => {}}
         />,
@@ -121,18 +122,22 @@ describe('MatchCard', () => {
       expect(screen.queryByText(/Second Paper/)).toBeNull();
     });
 
-    it('shows the matched-by-name hint unless attribution is verified', () => {
+    it('hides works entirely unless attribution is explicitly verified (fail closed)', () => {
       const works = [{ title: 'A Borderline Paper', year: 2025 }];
-      // name_match and absent (legacy) both get the subdued hint
-      for (const status of ['name_match', undefined] as const) {
+      // name_match, absent (legacy), and junk statuses must all fail closed:
+      // no paper line, no label — the work simply does not render.
+      for (const status of ['name_match', undefined, 'trust_me'] as const) {
         const { unmount } = render(
           <MatchCard
-            match={makeMatch({ recent_works: works, publication_attribution_status: status })}
+            match={makeMatch({
+              recent_works: works,
+              publication_attribution_status: status as never,
+            })}
             onDraftEmail={() => {}}
           />,
         );
-        expect(screen.getByText(/card.recentWorkNameMatch/)).toBeInTheDocument();
-        expect(screen.getByText(/A Borderline Paper \(2025\)/)).toBeInTheDocument();
+        expect(screen.queryByText(/A Borderline Paper/)).toBeNull();
+        expect(screen.queryByText(/card.recentWork/)).toBeNull();
         unmount();
       }
       render(
@@ -144,7 +149,6 @@ describe('MatchCard', () => {
           onDraftEmail={() => {}}
         />,
       );
-      expect(screen.queryByText(/card.recentWorkNameMatch/)).toBeNull();
       expect(screen.getByText(/A Borderline Paper \(2025\)/)).toBeInTheDocument();
     });
   });

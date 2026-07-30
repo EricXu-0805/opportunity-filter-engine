@@ -145,15 +145,28 @@ describe('dictionary parity', () => {
     expect(missing).toEqual([]);
   });
 
-  it('publication attribution strings resolve in both locales', () => {
+  it('publication strings resolve in both locales', () => {
+    for (const key of [
+      'card.recentWork',
+      'detail.sections.recentWorks',
+      'detail.recentWorksNote',
+    ]) {
+      expect(translate('en', key)).not.toBe(key);
+      expect(translate('zh', key)).not.toBe(key);
+      expect(translate('en', key)).not.toBe(translate('zh', key));
+    }
+  });
+
+  it('retired unverified-publication labels stay gone (trust boundary)', () => {
+    // The publication trust boundary EXCLUDES unverified works instead of
+    // labeling them; resurrecting a label key would signal a fail-open UI.
     for (const key of [
       'card.recentWorkNameMatch',
       'detail.recentWorksNameMatch',
       'detail.recentWorksNoteUnverified',
     ]) {
-      expect(translate('en', key)).not.toBe(key);
-      expect(translate('zh', key)).not.toBe(key);
-      expect(translate('en', key)).not.toBe(translate('zh', key));
+      expect(translate('en', key)).toBe(key);
+      expect(translate('zh', key)).toBe(key);
     }
   });
 
