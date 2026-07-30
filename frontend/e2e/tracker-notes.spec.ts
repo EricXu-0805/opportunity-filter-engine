@@ -15,6 +15,18 @@ async function waitForSaved(page: Page) {
   ).toBeVisible({ timeout: 5_000 });
 }
 
+// Notes/reminders attach to a tracked status — saving without one would have
+// to invent an 'applied' (a send event the user never reported), so the panel
+// only autosaves once a status exists. Tests that exercise persistence first
+// set one explicitly, the way a real user does.
+async function ensureTracked(page: Page) {
+  const appliedButton = page.getByRole('button', { name: 'Applied' });
+  if (await appliedButton.getAttribute('aria-pressed') !== 'true') {
+    await appliedButton.click();
+    await expect(appliedButton).toHaveAttribute('aria-pressed', 'true');
+  }
+}
+
 test.describe('Application tracker notes & reminder', () => {
   test('notes panel toggles open and closed', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
@@ -28,6 +40,7 @@ test.describe('Application tracker notes & reminder', () => {
 
   test('typing notes shows Saving and then Saved', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
+    await ensureTracked(page);
     await page.getByRole('button', { name: /notes or reminder/i }).click();
     const textarea = page.getByPlaceholder(/Private notes/i);
     await textarea.fill('Prep: review their recent NeurIPS paper');
@@ -37,6 +50,7 @@ test.describe('Application tracker notes & reminder', () => {
 
   test('setting remind_at persists across reload', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
+    await ensureTracked(page);
     await page.getByRole('button', { name: /notes or reminder/i }).click();
     const dateInput = page.locator('input[type="date"]');
     await dateInput.fill('2026-05-01');
@@ -65,6 +79,7 @@ test.describe('Application tracker notes & reminder', () => {
 
   test('clear reminder button removes the date', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
+    await ensureTracked(page);
     await page.getByRole('button', { name: /notes or reminder/i }).click();
     const dateInput = page.locator('input[type="date"]');
     await dateInput.fill('2026-05-01');
@@ -76,7 +91,7 @@ test.describe('Application tracker notes & reminder', () => {
     await expect(dateInput).toHaveValue('');
   });
 
-  test('auto-sets applied status when adding a note on untracked opp', async ({ page }) => {
+  test('does NOT auto-set applied when adding a note on untracked opp', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
 
     const appliedButton = page.getByRole('button', { name: 'Applied' });
@@ -86,16 +101,23 @@ test.describe('Application tracker notes & reminder', () => {
     }
 
     await page.getByRole('button', { name: /notes or reminder/i }).click();
-    await page.getByPlaceholder(/Private notes/i).fill('Test auto-apply');
-    await waitForSaved(page);
-
-    await expect(appliedButton).toHaveAttribute('aria-pressed', 'true');
+    // The panel asks for a status instead of fabricating an 'applied'
+    // interaction (a send event the user never reported).
+    await expect(page.getByText(/Pick a status above first/i)).toBeVisible();
+    await page.getByPlaceholder(/Private notes/i).fill('Test no auto-apply');
+    // Give the (gated) 600ms debounce ample time to prove it never fires.
+    await page.waitForTimeout(1_500);
+    await expect(appliedButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(
+      page.locator('[aria-live="polite"]').filter({ hasText: /Saving|Saved/ }),
+    ).not.toBeVisible();
   });
 });
 
 test.describe('Dashboard reminders widget', () => {
   async function hasRemindAtColumn(page: import('@playwright/test').Page): Promise<boolean> {
     await page.goto(`/opportunities/${KNOWN_ID}`);
+    await ensureTracked(page);
     await page.getByRole('button', { name: /notes or reminder/i }).click();
     await page.locator('input[type="date"]').fill('2030-05-01');
     await waitForSaved(page);
