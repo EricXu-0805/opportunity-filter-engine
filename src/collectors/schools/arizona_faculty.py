@@ -98,12 +98,26 @@ _FACULTY_GATE = {
 }
 
 
+# Most az_quickstart profiles carry research in a dedicated element: SBS &
+# Humanities as atomic "research-areas" taxonomy chips, the College of Engineering
+# as a single comma/semicolon "field-research-interests" line. One combined
+# profile pass covers both (chips win where present; the line is the fallback);
+# depts with neither yield nothing. Env-gated research-only per-profile pass
+# (listing already supplies title + email).
+_RESEARCH_ENRICH = {
+    "research_items_selector": "div.field--name-field-sbs-person-research-areas .field__item",
+    "research_selector": "div.field-research-interests",
+    "throttle": 0.2,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared az_quickstart person-card component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SELECTORS,
-                   "field_filter": _FACULTY_GATE},
+                   "field_filter": _FACULTY_GATE,
+                   "profile_enrich": _RESEARCH_ENRICH},
     }
 
 

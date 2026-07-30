@@ -125,6 +125,10 @@ _ENG_SECTION = {"heading": "h2",
 _ENG_ENRICH = {
     "email_selector": "a[href^='mailto:']",
     "email_drop": r"^(?:info|webmaster|contact|department|dept|engineering)@",
+    # SSOE profiles DO carry a clean research-interests taxonomy: each area is an
+    # <a> under .field--name-field-research-interests .field__item (contradicts
+    # the old docstring deferral). Rides the existing email pass.
+    "research_items_selector": ".field--name-field-research-interests .field__item a",
     "throttle": 0.2,
 }
 

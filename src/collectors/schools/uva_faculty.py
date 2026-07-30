@@ -134,10 +134,16 @@ _TEASER_ENRICH = {
     "email_drop": _EMAIL_DROP,
     "title_selector": ".field-field_title",
     "ladder_recheck": _LADDER_DROP,
-    # A&S profiles that carry a research-areas taxonomy publish one chip per area
-    # (Psychology, Political Science, …); depts without it yield nothing (mixed).
+    # A&S profiles carry research in per-dept Drupal fields. Chips (one per area):
+    # Psychology field_research_areas, History field_fields_specialties, the
+    # Romance-language depts field_subject. Delimited LINE (fallback): Chemistry
+    # field_research_interesdt, the Specialties-line depts field_specialties.
+    # Depts with none yield nothing (mixed). Chips win over the line when present.
     "research_items_selector": (".field-field_research_areas a, "
-                                ".field-field_research_interesdt > div:nth-of-type(2) div"),
+                                ".field-field_fields_specialties > div:nth-of-type(2) > div, "
+                                ".field-field_subject a"),
+    "research_selector": (".field-field_research_interesdt > div:nth-of-type(2), "
+                          ".field-field_specialties > div:nth-of-type(2)"),
     "throttle": 0.2,
 }
 
@@ -244,6 +250,8 @@ def _mcintire(offset: int) -> dict:
             "email_field": "attributes.field_email",
             "link_field": "attributes.path.alias",
             "link_base": "https://www.commerce.virginia.edu/faculty",
+            # Clean "areas of expertise" list straight off the JSON:API feed.
+            "research_field": "attributes.field_areas_of_expertise[]",
             "ladder_filter": _MCI_LADDER,
         },
     }

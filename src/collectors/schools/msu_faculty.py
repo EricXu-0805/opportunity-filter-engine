@@ -125,6 +125,14 @@ def _eng(short: str, name: str, majors: list[str], dept_text: str) -> dict:
             "ladder_filter": _ENG_LADDER,
             "field_filter": {"selector": ".primary-dept-info",
                              "include": dept_text, "require_present": True},
+            # Listing carries no research; each profile has an
+            # "<h3>Research Interests</h3>" + item-list of atomic <li> chips.
+            "profile_enrich": {
+                "always": True,
+                "research_items_selector":
+                    'h3.mt-4:-soup-contains("Research Interests") + div.item-list li',
+                "throttle": 0.2,
+            },
         },
     }
 
