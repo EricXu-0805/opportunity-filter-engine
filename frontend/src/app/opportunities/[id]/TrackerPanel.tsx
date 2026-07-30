@@ -41,6 +41,11 @@ export function TrackerPanel({
   }, [detail?.notes, detail?.remind_at]);
 
   useEffect(() => {
+    // Notes/reminders persist on the interactions row, so saving with no
+    // status would have to invent one ('applied' = a send event the user
+    // never reported). No status yet → no auto-save; the statusFirst hint
+    // below asks the user to pick one instead.
+    if (!hasInteraction) return;
     if (notes === (detail?.notes ?? '') && remindAt === (detail?.remind_at ?? '')) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced save side effect; setSaveStatus must run sync to show 'saving…' before the 600ms timer fires
     setSaveStatus('saving');
@@ -54,7 +59,7 @@ export function TrackerPanel({
     }, 600);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, remindAt]);
+  }, [notes, remindAt, hasInteraction]);
 
   const hasContent = !!(notes || remindAt);
 
@@ -88,6 +93,11 @@ export function TrackerPanel({
       </button>
       {open && (
         <div className="mt-3 space-y-3 animate-in">
+          {!hasInteraction && (
+            <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
+              {t('detail.tracker.statusFirst')}
+            </p>
+          )}
           {detail?.type && detail?.updated_at && (
             <StatusTimeline
               opportunityId={opportunityId}

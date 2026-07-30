@@ -84,11 +84,13 @@ export function useOpportunityDetail(opp: { id: string; title: string }): UseOpp
 
   const saveDetails = useCallback(
     async (patch: { notes?: string | null; remind_at?: string | null }) => {
-      if (!interaction) {
-        await trackInteraction(opp.id, 'applied').catch(() => {});
-      }
+      // Notes/reminders attach to an existing status the user chose. Never
+      // fabricate an 'applied' here — that would record an outreach event
+      // (a "send") the user did not report. The TrackerPanel disables
+      // auto-save and shows a pick-a-status hint until one exists.
+      if (!interaction) return;
       setInteractionDetail((prev) => {
-        const base: InteractionRecord = prev ?? { type: 'applied' };
+        const base: InteractionRecord = prev ?? { type: interaction };
         return {
           ...base,
           notes: patch.notes === null ? undefined : patch.notes ?? base.notes,

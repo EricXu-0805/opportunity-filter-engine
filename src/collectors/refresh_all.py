@@ -435,21 +435,44 @@ def write_status(summary: dict) -> None:
         logger.warning("Failed to append collector status history: %s", e)
 
 
+def refresh_run_ok(summary: dict) -> bool:
+    """True iff no source in this run's summary reported an error.
+
+    This is the release-gate's honest "refresh_ok" input: pipeline execution
+    alone is not a successful refresh — any failed fetch/merge in the run
+    (status "error") disqualifies it, while sources this shard simply did not
+    attempt write nothing into the summary and are judged by the tracking
+    freshness TTL instead.
+    """
+    return not any(
+        isinstance(info, dict) and info.get("status") == "error"
+        for info in (summary.get("sources") or {}).values()
+    )
+
+
 def _update_professor_tracking(all_opps: list[dict], summary: dict) -> None:
     """Append verified professor change events derived from this refresh.
 
     Never raises: professor tracking is an additive artifact and a failure
     here must not fail the refresh or block the corpus write that already
     happened. Errors are logged and surfaced in the summary only.
+
+    Runs after every collector has reported, so the artifact's release block
+    is computed from this run's real per-source statuses.
     """
     try:
         from src.tracking.professor_profiles import update_tracking_file
 
-        stats = update_tracking_file(all_opps, TRACKING_FILE)
+        stats = update_tracking_file(
+            all_opps, TRACKING_FILE, refresh_ok=refresh_run_ok(summary),
+        )
         summary["sources"]["professor_tracking"] = {**stats, "status": "ok"}
         logger.info(
-            "professor_tracking: %d profile baseline(s), %d event(s) (%d new)",
+            "professor_tracking: %d profile baseline(s), %d event(s) (%d new), "
+            "release_ready=%s (freshness %s%%, %d fully-stale school(s))",
             stats["profiles"], stats["events"], stats["new_events"],
+            stats["release_ready"], stats["freshness_pct"],
+            stats["fully_stale_school_count"],
         )
     except Exception as e:
         logger.error(f"Professor tracking update failed (non-fatal): {e}")

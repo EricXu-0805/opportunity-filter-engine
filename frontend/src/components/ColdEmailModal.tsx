@@ -204,10 +204,12 @@ export default function ColdEmailModal({
   // derive from whether an address arrived.
   const [recipientStatus, setRecipientStatus] = useState<ContactEmailStatus>('unavailable');
   const [copied, setCopied] = useState(false);
-  // After the user copies/opens the email we treat the lab as contacted: record
-  // last_contacted_at (and create an 'applied' interaction if none exists yet, so
-  // it shows up in the tracker) and offer a one-tap follow-up reminder.
+  // Copying/opening a draft only REVEALS the follow-up strip — it is not
+  // evidence the email was sent (the user may close the compose window), so
+  // nothing is recorded yet. Only the explicit "I sent it" confirmation below
+  // creates the 'applied' interaction; the reminder chips then follow.
   const [contacted, setContacted] = useState(false);
+  const [sendConfirmed, setSendConfirmed] = useState(false);
   const [followUpDate, setFollowUpDate] = useState<string | null>(null);
 
   const allVariants: EmailVariant[] = aiVariant ? [...variants, aiVariant] : variants;
@@ -604,8 +606,16 @@ export default function ColdEmailModal({
     } catch { /* best-effort */ }
   }, [opportunityId]);
 
+  // Reveal the strip without recording anything — a draft opened/copied is
+  // not a verified send. No evidence = no tracking event.
   const markContacted = useCallback(() => {
     setContacted(true);
+  }, []);
+
+  // The user's explicit attestation that the email went out — this is the
+  // only path that records the contact.
+  const confirmSent = useCallback(() => {
+    setSendConfirmed(true);
     recordContact();
   }, [recordContact]);
 
@@ -940,10 +950,28 @@ export default function ColdEmailModal({
               </div>
             </div>
 
-            {/* Follow-up reminder strip — appears once the email is copied/opened */}
+            {/* Post-draft strip — appears once the email is copied/opened.
+                First asks for explicit confirmation that the email was
+                actually sent (copying/opening a draft is not a send); only
+                after the user confirms is the contact recorded and the
+                follow-up reminder offered. */}
             {contacted && (
               <div className="flex flex-wrap items-center gap-2 px-6 py-2.5 border-t border-gray-100 bg-amber-50/60 shrink-0 text-sm">
-                {followUpDate ? (
+                {!sendConfirmed ? (
+                  <>
+                    <span className="inline-flex items-center gap-1.5 text-gray-600">
+                      <Send className="w-4 h-4 text-amber-500" />
+                      {t('coldEmail.sentQuestion')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={confirmSent}
+                      className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      {t('coldEmail.confirmSent')}
+                    </button>
+                  </>
+                ) : followUpDate ? (
                   <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
                     <BellRing className="w-4 h-4" />
                     {t('coldEmail.reminderSet', { date: followUpDate })}

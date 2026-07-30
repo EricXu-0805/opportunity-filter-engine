@@ -442,6 +442,13 @@ export interface ProfessorUpdateEvent {
 export interface ProfessorUpdatesResponse {
   /** false only when the tracking artifact is absent/unreadable server-side. */
   available: boolean;
+  /**
+   * Artifact-level release marker (schema v2 + freshness >= 95% + zero
+   * fully-stale schools + error-free producing refresh run). Informational —
+   * events are still individually evidence-validated server-side either way.
+   * Optional so responses from a pre-v2 backend still type-check.
+   */
+  release_ready?: boolean;
   events: ProfessorUpdateEvent[];
   requested: number;
   has_more: boolean;

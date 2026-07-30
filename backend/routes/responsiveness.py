@@ -5,6 +5,15 @@ Rolls the append-only interaction_status_changes log up into per-opportunity
 scopes that table to each device's own rows. Privacy guarantees enforced HERE,
 not in the client: only aggregates with contacted_n >= RESPONSIVENESS_MIN_N
 ever leave the endpoint, and no device-level data is exposed anywhere.
+
+Absence of evidence is never a judgment: an opportunity with no (or too few)
+tracked contacts is simply absent from the map — never scored 0, never ranked
+down. The public endpoint additionally serves POSITIVE aggregates only
+(replied_n >= 1): "N contacted, zero replies" is a reputation-shaped negative
+claim built from self-reported statuses, which stays internal per
+docs/REPUTATION_BOARD.md. Both consumers (the "heard back" badge and the
+ranker bonus) already require replied_n >= 1, so nothing user-visible changes;
+the raw zero-reply aggregate just no longer leaves the backend.
 """
 
 from __future__ import annotations
@@ -106,4 +115,15 @@ async def signals_map() -> dict[str, dict[str, int]]:
 
 @router.get("/opportunities/responsiveness")
 async def get_responsiveness():
-    return {"signals": await signals_map(), "min_n": RESPONSIVENESS_MIN_N}
+    """Public boundary: positive signals only.
+
+    Zero-reply aggregates stay server-side — sparse self-reported tracking
+    data must not become a public "no one heard back here" judgment on a
+    named professor's lab.
+    """
+    signals = {
+        opp: sig
+        for opp, sig in (await signals_map()).items()
+        if sig.get("replied_n", 0) >= 1
+    }
+    return {"signals": signals, "min_n": RESPONSIVENESS_MIN_N}

@@ -3,16 +3,23 @@
 Covers the W8 contract: content-derived idempotent event ids, events only on
 real tracked-field change between profile-verified snapshots, legacy records
 (no verification_scope) as silent non-participants, contact-detail exclusion,
-and the never-fail refresh wiring.
+and the never-fail refresh wiring — plus the schema-v2 release gate: freshness
+from real verified timestamps only, fully-stale-school detection, and
+release_ready never true on a failed/unvalidated run.
 """
 
 import json
+from datetime import UTC, datetime
 
 from src.collectors import refresh_all
 from src.tracking.professor_profiles import (
+    FRESHNESS_MIN_PCT,
     MAX_EVENTS_PER_PROFESSOR,
     PROFESSOR_ID_PATTERN,
+    TRACKING_SCHEMA_VERSION,
+    artifact_release_ready,
     canonical_professor_id,
+    compute_release_status,
     load_tracking_state,
     update_tracking_file,
     update_tracking_state,
@@ -22,6 +29,11 @@ from src.tracking.professor_profiles import (
 T0 = "2026-07-01T00:00:00"
 T1 = "2026-07-08T00:00:00"
 T2 = "2026-07-15T00:00:00"
+# Fixed release-block clock: T0/T1/T2 all sit inside the 60-day TTL, so the
+# freshness assertions stay deterministic regardless of when the suite runs.
+NOW = datetime(2026, 7, 20, tzinfo=UTC)
+# Far enough past T0..T2 that every baseline above is beyond the 60-day TTL.
+LATER = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def record(
@@ -191,14 +203,26 @@ class TestPreviousStateSalvage:
         state = update_tracking_state([record()])
         return update_tracking_state([record(last_verified=T1, keywords=("new",))], state)
 
-    def test_wrong_schema_version_starts_fresh(self):
+    def test_unknown_schema_version_starts_fresh(self):
         state = self._state_with_event()
         state["schema_version"] = 99
         assert update_tracking_state([], state) == {
-            "schema_version": 1,
+            "schema_version": TRACKING_SCHEMA_VERSION,
             "profiles": {},
             "events": [],
         }
+
+    def test_v1_artifact_is_migrated_not_discarded(self):
+        """The deployed v1 ledger's verified history survives the v2 bump —
+        every entry still re-validates individually, and the rewritten
+        artifact is v2 (no production path re-emits v1)."""
+        state = self._state_with_event()
+        state["schema_version"] = 1
+        migrated = update_tracking_state([], state)
+        assert migrated["schema_version"] == TRACKING_SCHEMA_VERSION == 2
+        assert len(migrated["profiles"]) == 1
+        assert len(migrated["events"]) == 1
+        assert validate_tracking_event_evidence(migrated["events"][0])
 
     def test_single_corrupt_event_is_dropped_not_fatal(self):
         state = self._state_with_event()
@@ -229,17 +253,26 @@ class TestEventCap:
 class TestTrackingFile:
     def test_update_writes_compact_valid_artifact(self, tmp_path):
         path = tmp_path / "professor_tracking.json"
-        stats = update_tracking_file([record()], path)
-        assert stats == {"profiles": 1, "events": 0, "new_events": 0}
+        stats = update_tracking_file([record()], path, refresh_ok=True, now=NOW)
+        assert stats == {
+            "profiles": 1,
+            "events": 0,
+            "new_events": 0,
+            "release_ready": True,
+            "freshness_pct": 100.0,
+            "fully_stale_school_count": 0,
+        }
 
         stats = update_tracking_file(
-            [record(last_verified=T1, keywords=("new",))], path
+            [record(last_verified=T1, keywords=("new",))], path,
+            refresh_ok=True, now=NOW,
         )
-        assert stats == {"profiles": 1, "events": 1, "new_events": 1}
+        assert stats["events"] == 1 and stats["new_events"] == 1
 
         state = load_tracking_state(path)
-        assert state["schema_version"] == 1
+        assert state["schema_version"] == TRACKING_SCHEMA_VERSION == 2
         assert validate_tracking_event_evidence(state["events"][0])
+        assert state["release"]["release_ready"] is True
         # Compact form: machine-read artifact, no pretty-print inflation.
         assert "\n  " not in path.read_text(encoding="utf-8")
 
@@ -256,6 +289,21 @@ class TestTrackingFile:
         path.write_text("{not json", encoding="utf-8")
         stats = update_tracking_file([record()], path)
         assert stats["profiles"] == 1
+
+    def test_v1_file_upgrades_to_v2_on_next_write(self, tmp_path):
+        """No production path re-emits v1: the deployed v1 artifact becomes
+        v2 (history intact) on the very next refresh write."""
+        path = tmp_path / "professor_tracking.json"
+        v1 = update_tracking_state([record()])
+        v1 = update_tracking_state([record(last_verified=T1, keywords=("new",))], v1)
+        v1["schema_version"] = 1
+        path.write_text(json.dumps(v1), encoding="utf-8")
+
+        update_tracking_file([], path, refresh_ok=True, now=NOW)
+        state = load_tracking_state(path)
+        assert state["schema_version"] == 2
+        assert len(state["events"]) == 1
+        assert len(state["profiles"]) == 1
 
 
 class TestRefreshWiring:
@@ -274,11 +322,175 @@ class TestRefreshWiring:
         path = tmp_path / "professor_tracking.json"
         monkeypatch.setattr(refresh_all, "TRACKING_FILE", path)
         summary = {"sources": {}}
-        refresh_all._update_professor_tracking([record()], summary)
+        # The production path uses the real clock, so the fixture's
+        # last_verified must be genuinely recent for freshness to hold.
+        fresh = record(last_verified=datetime.now(UTC).replace(tzinfo=None).isoformat())
+        refresh_all._update_professor_tracking([fresh], summary)
         assert summary["sources"]["professor_tracking"] == {
             "profiles": 1,
             "events": 0,
             "new_events": 0,
+            "release_ready": True,
+            "freshness_pct": 100.0,
+            "fully_stale_school_count": 0,
             "status": "ok",
         }
         assert path.exists()
+
+    def test_run_with_source_error_is_never_release_ready(self, monkeypatch, tmp_path):
+        """Pipeline execution != successful refresh: one failed collector in
+        the producing run blocks release_ready even with 100% freshness."""
+        path = tmp_path / "professor_tracking.json"
+        monkeypatch.setattr(refresh_all, "TRACKING_FILE", path)
+        summary = {"sources": {"uiuc_faculty": {"status": "error", "error": "boom"}}}
+        fresh = record(last_verified=datetime.now(UTC).replace(tzinfo=None).isoformat())
+        refresh_all._update_professor_tracking([fresh], summary)
+        entry = summary["sources"]["professor_tracking"]
+        assert entry["status"] == "ok"
+        assert entry["release_ready"] is False
+        assert entry["freshness_pct"] == 100.0
+        state = load_tracking_state(path)
+        assert state["release"]["checks"]["refresh_ok"] is False
+
+    def test_refresh_run_ok_semantics(self):
+        assert refresh_all.refresh_run_ok({"sources": {}}) is True
+        assert refresh_all.refresh_run_ok(
+            {"sources": {"a": {"status": "ok"}, "b": {"status": "ok"}}}
+        ) is True
+        assert refresh_all.refresh_run_ok(
+            {"sources": {"a": {"status": "ok"}, "b": {"status": "error"}}}
+        ) is False
+
+
+def _profiles(*records):
+    """Baseline map from profile-verified records via the real derivation."""
+    return update_tracking_state(list(records))["profiles"]
+
+
+class TestReleaseGate:
+    """Schema-v2 release block: real-data gates only, fail-closed everywhere."""
+
+    def test_fresh_valid_run_is_release_ready(self):
+        release = compute_release_status(
+            _profiles(record()), [], refresh_ok=True, now=NOW,
+        )
+        assert release["freshness_pct"] == 100.0
+        assert release["fully_stale_school_count"] == 0
+        assert release["release_ready"] is True
+        assert all(release["checks"].values())
+
+    def test_freshness_below_95_blocks_release(self):
+        # 21 baselines, 2 beyond the TTL -> 90.48% < 95%.
+        records = [
+            record(record_id=f"faculty-uiuc-ece-{i:08d}", pi_name=f"P{i} Fresh")
+            for i in range(19)
+        ] + [
+            record(
+                record_id=f"faculty-uiuc-ece-old{i:05d}",
+                pi_name=f"P{i} Stale",
+                last_verified="2026-01-01T00:00:00",
+            )
+            for i in range(2)
+        ]
+        release = compute_release_status(_profiles(*records), [], refresh_ok=True, now=NOW)
+        assert release["total_profiles"] == 21
+        assert release["freshness_pct"] < FRESHNESS_MIN_PCT
+        assert release["checks"]["freshness_min_pct"] is False
+        assert release["release_ready"] is False
+
+    def test_one_fully_stale_school_blocks_despite_high_aggregate(self):
+        # 39 fresh uiuc baselines + 1 stale-only "mit" baseline: aggregate
+        # freshness 97.5% >= 95, but the whole-school outage must still block.
+        records = [
+            record(record_id=f"faculty-uiuc-ece-{i:08d}", pi_name=f"P{i} Fresh")
+            for i in range(39)
+        ]
+        stale_mit = record(
+            record_id="faculty-mit-eecs-00000001",
+            pi_name="Ada Stale",
+            last_verified="2026-01-01T00:00:00",
+        )
+        stale_mit["school"] = "mit"
+        release = compute_release_status(
+            _profiles(*records, stale_mit), [], refresh_ok=True, now=NOW,
+        )
+        assert release["freshness_pct"] >= FRESHNESS_MIN_PCT
+        assert release["fully_stale_school_count"] == 1
+        assert release["fully_stale_schools"] == ["mit"]
+        assert release["release_ready"] is False
+
+    def test_failed_fetch_does_not_advance_freshness(self):
+        """A record absent from the run (failed fetch) keeps its old verified
+        timestamp; once past the TTL it is honestly stale — the pipeline
+        having run again cannot make it fresh."""
+        state = update_tracking_state([record()])
+        state = update_tracking_state([], state)  # the "failed fetch" run
+        (profile,) = state["profiles"].values()
+        assert profile["last_verified"] == "2026-07-01T00:00:00+00:00"
+        release = compute_release_status(state["profiles"], [], refresh_ok=True, now=LATER)
+        assert release["freshness_pct"] == 0.0
+        assert release["release_ready"] is False
+
+    def test_unverified_fetch_does_not_advance_freshness(self):
+        """A listing-only (directory-scope) re-sighting is not a successful
+        profile check: the baseline timestamp must not move."""
+        state = update_tracking_state([record()])
+        state = update_tracking_state(
+            [record(scope="directory", last_verified=T2)], state,
+        )
+        (profile,) = state["profiles"].values()
+        assert profile["last_verified"] == "2026-07-01T00:00:00+00:00"
+
+    def test_successful_recheck_without_changes_stays_fresh(self):
+        """data_changed=false + genuinely re-verified source IS a successful
+        refresh: the timestamp advances and freshness holds, with no event."""
+        state = update_tracking_state([record()])
+        state = update_tracking_state([record(last_verified=T2)], state)
+        (profile,) = state["profiles"].values()
+        assert profile["last_verified"] == "2026-07-15T00:00:00+00:00"
+        assert state["events"] == []
+        release = compute_release_status(state["profiles"], [], refresh_ok=True, now=NOW)
+        assert release["freshness_pct"] == 100.0
+
+    def test_pipeline_execution_alone_is_not_release_ready(self, tmp_path):
+        """update_tracking_file ran to completion, but nothing vouched for the
+        run (refresh_ok defaults False) -> not release-ready."""
+        path = tmp_path / "professor_tracking.json"
+        stats = update_tracking_file([record()], path, now=NOW)
+        assert stats["freshness_pct"] == 100.0
+        assert stats["release_ready"] is False
+        state = load_tracking_state(path)
+        assert state["release"]["checks"]["refresh_ok"] is False
+        assert artifact_release_ready(state) is False
+
+    def test_empty_artifact_is_not_release_ready(self):
+        release = compute_release_status({}, [], refresh_ok=True, now=NOW)
+        assert release["freshness_pct"] is None
+        assert release["checks"]["freshness_min_pct"] is False
+        assert release["release_ready"] is False
+
+    def test_invalid_stored_event_blocks_release(self):
+        state = update_tracking_state([record()])
+        state = update_tracking_state([record(last_verified=T1, keywords=("new",))], state)
+        tampered = json.loads(json.dumps(state["events"][0]))
+        tampered["evidence"]["after"]["research_focus"] = ["forged"]
+        release = compute_release_status(
+            state["profiles"], [tampered], refresh_ok=True, now=NOW,
+        )
+        assert release["checks"]["events_valid"] is False
+        assert release["release_ready"] is False
+
+    def test_v1_artifact_is_never_release_ready(self):
+        v1 = update_tracking_state([record()])
+        v1["schema_version"] = 1
+        assert artifact_release_ready(v1) is False
+        # ...even if someone hand-stamps a release block onto it.
+        v1["release"] = {"release_ready": True}
+        assert artifact_release_ready(v1) is False
+
+    def test_v2_artifact_without_passing_checks_is_not_release_ready(self):
+        state = update_tracking_state([record()])
+        state["release"] = compute_release_status(
+            state["profiles"], state["events"], refresh_ok=False, now=NOW,
+        )
+        assert artifact_release_ready(state) is False
