@@ -10,6 +10,22 @@ async function goToResults(page: Page) {
   await expect(page.locator('[id^="match-card-"]').first()).toBeVisible({ timeout: 30_000 });
 }
 
+// Below the sm breakpoint the FilterRail collapses its selects behind a
+// "Filters" toggle (aria-controls=filter-rail-chips). Desktop viewports render
+// the chips row directly, so the toggle simply isn't there. Same canonical
+// filters either way — only the disclosure differs (mobile-chrome project).
+async function openFiltersIfCollapsed(page: Page) {
+  const toggle = page.getByRole('button', { name: /^Filters$/ }).or(
+    page.locator('button[aria-controls="filter-rail-chips"]'),
+  ).first();
+  if (await toggle.isVisible().catch(() => false)) {
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+      await toggle.click();
+    }
+    await expect(page.locator('#filter-rail-chips select').first()).toBeVisible();
+  }
+}
+
 test.describe('Filters, search, sort', () => {
   test('search box narrows results and updates URL', async ({ page }) => {
     await goToResults(page);
@@ -45,8 +61,9 @@ test.describe('Filters, search, sort', () => {
 
   test('paid filter reduces visible result count', async ({ page }) => {
     await goToResults(page);
+    await openFiltersIfCollapsed(page);
     const before = await page.locator('[id^="match-card-"]').count();
-    const paidSelect = page.locator('select').first();
+    const paidSelect = page.locator('#filter-rail-chips select').first();
     await paidSelect.selectOption({ label: 'Paid only' });
     // URL sync happens with the same state update that filters the list,
     // so it marks the moment the filtered render has been committed.
@@ -57,6 +74,7 @@ test.describe('Filters, search, sort', () => {
 
   test('deadline-passed opportunities hidden under 7-day filter', async ({ page }) => {
     await goToResults(page);
+    await openFiltersIfCollapsed(page);
     const deadlineSelect = page.locator('select', { hasText: /Any deadline/i });
     await deadlineSelect.selectOption({ value: '7' });
     await expect(page).toHaveURL(/dl=7/);
@@ -64,15 +82,17 @@ test.describe('Filters, search, sort', () => {
 
   test('clear filters button restores state', async ({ page }) => {
     await goToResults(page);
-    await page.locator('select').first().selectOption({ label: 'Paid only' });
+    await openFiltersIfCollapsed(page);
+    await page.locator('#filter-rail-chips select').first().selectOption({ label: 'Paid only' });
     await page.getByRole('button', { name: /^Clear \d+ filters?$/i }).click();
     await expect(page).not.toHaveURL(/paid=yes/);
   });
 
   test('filter preset save + apply + delete', async ({ page }) => {
     await goToResults(page);
+    await openFiltersIfCollapsed(page);
 
-    await page.locator('select').first().selectOption({ label: 'Paid only' });
+    await page.locator('#filter-rail-chips select').first().selectOption({ label: 'Paid only' });
 
     page.on('dialog', dialog => dialog.accept('My Paid Preset'));
     await page.getByRole('button', { name: /Save preset/i }).click();
