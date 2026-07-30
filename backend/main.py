@@ -56,6 +56,14 @@ _rate_buckets: dict[str, list[float]] = defaultdict(list)
 CHAT_RATE_KEY = "/api/opportunities/*/chat"
 
 RATE_LIMITS: dict[str, tuple[int, int]] = {
+    # Search, filters, favorites and cursor pages are cheap reads over one
+    # cached snapshot. Give this interactive view its own budget; longest-
+    # prefix resolution keeps the expensive snapshot-creation route below at
+    # its tighter scorer limit.
+    # A complete exact export can traverse up to 50 pages (5,000 capped
+    # favorites / 100 rows). Keep a small margin for the on-screen page while
+    # the scorer itself remains protected by its separate single-worker belt.
+    "/api/matches/view": (60, 60),
     "/api/matches": (10, 60),
     "/api/cold-email": (15, 60),
     "/api/cold-email/refine": (20, 60),

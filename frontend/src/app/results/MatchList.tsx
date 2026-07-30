@@ -43,6 +43,7 @@ export interface MatchListProps {
   positionOffset: number;
   page: number;
   totalPages: number;
+  paginationReady: boolean;
   onPageChange: (next: number) => void;
   t: TFunc;
 }
@@ -62,6 +63,7 @@ export function MatchList({
   positionOffset,
   page,
   totalPages,
+  paginationReady,
   onPageChange,
   t,
 }: MatchListProps) {
@@ -124,7 +126,7 @@ export function MatchList({
         <div className="flex items-center justify-center gap-2 pt-4">
           <button
             type="button"
-            disabled={page <= 1}
+            disabled={!paginationReady || page <= 1}
             onClick={() => { onPageChange(page - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
@@ -135,7 +137,7 @@ export function MatchList({
           </span>
           <button
             type="button"
-            disabled={page >= totalPages}
+            disabled={!paginationReady || page >= totalPages}
             onClick={() => { onPageChange(page + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >

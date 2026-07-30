@@ -15,6 +15,7 @@ from typing import Literal
 
 ReleaseFeature = Literal[
     "match_ai_refine",
+    "cross_school_matching",
     "compare",
     "fellowships",
     "resume_renovate",
@@ -27,6 +28,7 @@ ReleaseFeature = Literal[
 RELEASE_SCOPE = MappingProxyType(
     {
         "match_ai_refine": False,
+        "cross_school_matching": False,
         "compare": False,
         "fellowships": False,
         "resume_renovate": False,

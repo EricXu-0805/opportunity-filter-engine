@@ -21,7 +21,7 @@ function renderHeader(fieldRelevantCount: number) {
       loading={false}
       showSlowHint={false}
       data={data}
-      filtered={[]}
+      filteredTotal={0}
       counts={{ all: 5 }}
       favs={new Set<string>()}
       activeTab="all"
@@ -29,6 +29,7 @@ function renderHeader(fieldRelevantCount: number) {
       onSemanticChange={() => {}}
       onOpenHelp={() => {}}
       onExport={() => {}}
+      loadEmailMatches={async () => []}
       t={t}
     />,
   );

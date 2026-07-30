@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
+import { ApiError } from '@/lib/api';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
@@ -66,7 +67,10 @@ export default function EmailMeButton({
     } catch (err) {
       setState('error');
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('503')) setMessage(t('email.notConfigured'));
+      if (err instanceof ApiError && err.status === 503) setMessage(t('email.notConfigured'));
+      else if (err instanceof ApiError && err.status === 429) setMessage(t('email.rateLimit'));
+      // Tolerate older/custom callers that still throw a status-bearing string.
+      else if (msg.includes('503')) setMessage(t('email.notConfigured'));
       else if (msg.includes('429')) setMessage(t('email.rateLimit'));
       else setMessage(t('email.sendFailed'));
     }

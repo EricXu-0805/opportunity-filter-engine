@@ -80,15 +80,20 @@ class TestHealthEndpoint:
 
 
 class TestMatchesPagination:
-    def test_default_returns_all_visible_buckets(self, sample_profile_req):
-        # Default (no limit) returns every non-low_fit result so all advertised
-        # buckets are browsable — previously capped at 500, hiding most of Reach.
+    def test_default_returns_bounded_first_page_with_complete_counts(self, sample_profile_req):
+        # The first response is bounded; complete bucket counts plus the cursor
+        # make the entire non-low-fit universe browsable without one multi-MB
+        # response.
         resp = client.post("/api/matches", json=sample_profile_req)
         assert resp.status_code == 200
         body = resp.json()
         assert "total" in body and "results" in body
         visible = body["high_priority"] + body["good_match"] + body["reach"]
-        assert len(body["results"]) == visible
+        assert body["total"] == visible
+        assert len(body["results"]) <= 100
+        assert body["returned_count"] == len(body["results"])
+        assert body["has_more"] is (visible > len(body["results"]))
+        assert bool(body["next_cursor"]) is body["has_more"]
 
     def test_limit_clamps_page_size(self, sample_profile_req):
         resp = client.post("/api/matches?limit=5", json=sample_profile_req)
@@ -612,6 +617,208 @@ class TestOpportunityLookupCache:
         first = data_loader.load_opportunities_by_id()
         second = data_loader.load_opportunities_by_id()
         assert first is second
+
+    def test_cached_corpus_does_not_reenter_ranker_prepare(self, monkeypatch):
+        cached = data_loader.load_opportunities()
+
+        def unexpected_prepare(*_args, **_kwargs):
+            raise AssertionError("cache hit must not wait on the scorer generation lock")
+
+        monkeypatch.setattr(
+            data_loader,
+            "_prepare_ranker_corpus",
+            unexpected_prepare,
+        )
+        assert data_loader.load_opportunities() is cached
+
+    def test_concurrent_cold_load_is_single_flight(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        corpus_path = tmp_path / "opportunities.json"
+        corpus_path.write_text(
+            json.dumps([
+                {"id": "cold-a", "title": "Cold A"},
+                {"id": "cold-b", "title": "Cold B"},
+            ]),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(data_loader, "DATA_DIR", tmp_path)
+        monkeypatch.setattr(data_loader, "_opp_cache", [])
+        monkeypatch.setattr(data_loader, "_opp_cache_by_id", {})
+        monkeypatch.setattr(data_loader, "_opp_cache_mtime", 0)
+        monkeypatch.setattr(data_loader, "_tfidf_fitted_mtime", -1)
+
+        counts = {"read": 0, "canonicalize": 0, "prepare": 0}
+        counts_lock = threading.Lock()
+        original_json_load = data_loader.json.load
+        original_canonicalize = data_loader._canonicalize_corpus
+
+        def counted_json_load(file):
+            with counts_lock:
+                counts["read"] += 1
+            return original_json_load(file)
+
+        def counted_canonicalize(raw):
+            with counts_lock:
+                counts["canonicalize"] += 1
+            time.sleep(0.03)
+            return original_canonicalize(raw)
+
+        def counted_prepare(_opportunities, _mtime):
+            with counts_lock:
+                counts["prepare"] += 1
+            time.sleep(0.03)
+
+        monkeypatch.setattr(data_loader.json, "load", counted_json_load)
+        monkeypatch.setattr(
+            data_loader,
+            "_canonicalize_corpus",
+            counted_canonicalize,
+        )
+        monkeypatch.setattr(
+            data_loader,
+            "_prepare_ranker_corpus",
+            counted_prepare,
+        )
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            generations = list(
+                executor.map(
+                    lambda _index: data_loader.load_opportunities_generation(),
+                    range(4),
+                )
+            )
+
+        assert counts == {"read": 1, "canonicalize": 1, "prepare": 1}
+        first_corpus, first_token = generations[0]
+        assert all(corpus is first_corpus for corpus, _token in generations)
+        assert all(token == first_token for _corpus, token in generations)
+
+    def test_failed_candidate_keeps_old_generation_and_retries(
+        self,
+        monkeypatch,
+    ):
+        old = [{"id": "old", "title": "Old"}]
+        old_by_id = {"old": old[0]}
+        monkeypatch.setattr(data_loader, "_opp_cache", old)
+        monkeypatch.setattr(data_loader, "_opp_cache_by_id", old_by_id)
+        monkeypatch.setattr(data_loader, "_opp_cache_mtime", 1.0)
+        monkeypatch.setattr(data_loader, "_opp_cache_generation", 7)
+
+        should_fail = {"value": True}
+        calls = {"count": 0}
+
+        def prepare(_candidate, _mtime):
+            calls["count"] += 1
+            if should_fail["value"]:
+                raise RuntimeError("simulated fit failure")
+
+        monkeypatch.setattr(data_loader, "_prepare_ranker_corpus", prepare)
+        raw = [
+            {"id": "new-a", "title": "New A"},
+            {"id": "new-b", "title": "New B"},
+        ]
+
+        assert data_loader._try_publish_corpus(raw, 2.0, "test") is False
+        assert data_loader._opp_cache is old
+        assert data_loader._opp_cache_by_id is old_by_id
+        assert data_loader._opp_cache_mtime == 1.0
+        assert data_loader._opp_cache_generation == 7
+
+        should_fail["value"] = False
+        assert data_loader._try_publish_corpus(raw, 2.0, "test") is True
+        assert data_loader._opp_cache is not old
+        assert set(data_loader._opp_cache_by_id) == {"new-a", "new-b"}
+        assert data_loader._opp_cache_mtime == 2.0
+        assert data_loader._opp_cache_generation == 8
+        assert calls["count"] == 2
+
+    def test_fit_failure_never_registers_new_records(self, monkeypatch):
+        from src.matcher import embeddings, ranker
+
+        old_vectorizer = embeddings._tfidf_vectorizer
+        old_fitted = embeddings._tfidf_fitted
+        old_corpus = ranker._corpus_ref
+        old_matrix = ranker._sim_matrix
+        old_mtime = data_loader._tfidf_fitted_mtime
+        register_calls = {"count": 0}
+
+        monkeypatch.setattr(
+            embeddings,
+            "fit_tfidf_corpus",
+            lambda _texts: False,
+        )
+
+        def unexpected_register(_candidate):
+            register_calls["count"] += 1
+
+        monkeypatch.setattr(ranker, "register_corpus", unexpected_register)
+
+        with pytest.raises(RuntimeError, match="did not produce"):
+            data_loader._prepare_ranker_corpus(
+                [
+                    {"id": "fit-a", "title": "alpha research"},
+                    {"id": "fit-b", "title": "beta research"},
+                ],
+                old_mtime + 10,
+            )
+
+        assert register_calls["count"] == 0
+        assert embeddings._tfidf_vectorizer is old_vectorizer
+        assert embeddings._tfidf_fitted is old_fitted
+        assert ranker._corpus_ref is old_corpus
+        assert ranker._sim_matrix is old_matrix
+        assert data_loader._tfidf_fitted_mtime == old_mtime
+
+    def test_register_failure_rolls_back_new_vectorizer(self, monkeypatch):
+        from src.matcher import embeddings, ranker
+
+        old_vectorizer = embeddings._tfidf_vectorizer
+        old_fitted = embeddings._tfidf_fitted
+        old_corpus = ranker._corpus_ref
+        old_rows = ranker._corpus_rows
+        old_matrix = ranker._sim_matrix
+        old_mtime = data_loader._tfidf_fitted_mtime
+        replacement_vectorizer = object()
+
+        def fit_then_publish(_texts):
+            embeddings._tfidf_vectorizer = replacement_vectorizer
+            embeddings._tfidf_fitted = True
+            return True
+
+        monkeypatch.setattr(
+            embeddings,
+            "fit_tfidf_corpus",
+            fit_then_publish,
+        )
+        monkeypatch.setattr(
+            ranker,
+            "register_corpus",
+            lambda _candidate: (_ for _ in ()).throw(
+                RuntimeError("simulated matrix failure")
+            ),
+        )
+
+        with pytest.raises(RuntimeError, match="matrix failure"):
+            data_loader._prepare_ranker_corpus(
+                [
+                    {"id": "register-a", "title": "alpha research"},
+                    {"id": "register-b", "title": "beta research"},
+                ],
+                old_mtime + 20,
+            )
+
+        assert embeddings._tfidf_vectorizer is old_vectorizer
+        assert embeddings._tfidf_fitted is old_fitted
+        assert ranker._corpus_ref is old_corpus
+        assert ranker._corpus_rows is old_rows
+        assert ranker._sim_matrix is old_matrix
+        assert data_loader._tfidf_fitted_mtime == old_mtime
 
 
 class TestLocalRefineCumulative:
@@ -1772,7 +1979,11 @@ class TestTfidfCorpusFit:
         embeddings._tfidf_fitted = False
         embeddings._tfidf_vectorizer = None
         data_loader._tfidf_fitted_mtime = -1
-        data_loader.load_opportunities()
+        opportunities = data_loader.load_opportunities()
+        data_loader._prepare_ranker_corpus(
+            opportunities,
+            data_loader._opp_cache_mtime,
+        )
         if len(data_loader._opp_cache) >= 2:
             assert embeddings._tfidf_fitted is True
 
@@ -3106,6 +3317,14 @@ class TestRateLimitResolution:
     dedicated sub-route buckets aren't shadowed and the paid chat endpoint
     isn't left on the loose default."""
 
+    def test_match_view_has_its_own_interaction_budget(self):
+        from backend.main import RATE_LIMITS, _rate_limit_key
+
+        key = _rate_limit_key("/api/matches/view")
+        assert key == "/api/matches/view"
+        assert RATE_LIMITS[key] == (60, 60)
+        assert RATE_LIMITS[key] != RATE_LIMITS["/api/matches"]
+
     def test_cold_email_subroutes_get_own_buckets(self):
         from backend.main import RATE_LIMITS, _rate_limit_key
         # SEC-4: /refine and /variants must NOT be shadowed by /api/cold-email.
@@ -3411,7 +3630,18 @@ class TestMatchesHomeSchool:
             self._opp("ucb-campus", "ucb", "campus"),
             self._opp("national-open", None, "open"),
         ]
-        monkeypatch.setattr("backend.routes.matches.load_opportunities", lambda: corpus)
+        monkeypatch.setattr(
+            "backend.routes.matches.load_opportunities_generation",
+            lambda: (corpus, "home-school-fixture"),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity_nowait",
+            lambda: id(corpus),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity",
+            lambda: id(corpus),
+        )
         monkeypatch.setattr(
             "backend.routes.matches.load_opportunities_by_id",
             lambda: {o["id"]: o for o in corpus},
@@ -3443,11 +3673,8 @@ class TestMatchesHomeSchool:
 
 
 class TestMatchesCrossSchoolToggle:
-    """include_cross_school (default False) flows through
-    ProfileRequest.model_dump() into rank_all: another school's non-campus
-    records are opt-in, while national records and summer programs always
-    show. ProfileRequest always stamps home_school (default 'uiuc'), so every
-    API profile takes the toggle path."""
+    """Dormant implementation coverage: when the release gate is patched on by
+    tests, the cross-school matcher still preserves its intended opt-in rules."""
 
     @pytest.fixture
     def cross_corpus(self, monkeypatch):
@@ -3459,7 +3686,18 @@ class TestMatchesCrossSchoolToggle:
              "opportunity_type": "summer_program"},
             _opp("national-open", None, "open"),
         ]
-        monkeypatch.setattr("backend.routes.matches.load_opportunities", lambda: corpus)
+        monkeypatch.setattr(
+            "backend.routes.matches.load_opportunities_generation",
+            lambda: (corpus, "cross-school-fixture"),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity_nowait",
+            lambda: id(corpus),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity",
+            lambda: id(corpus),
+        )
         monkeypatch.setattr(
             "backend.routes.matches.load_opportunities_by_id",
             lambda: {o["id"]: o for o in corpus},

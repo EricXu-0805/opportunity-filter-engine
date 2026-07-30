@@ -56,7 +56,17 @@ test.describe('Interaction tracking (dismiss)', () => {
     await page.getByRole('menuitemradio', { name: 'Not interested' }).click();
     await expect(page.locator('h3', { hasText: title }).first()).not.toBeVisible();
 
-    await page.getByRole('button', { name: /Show.*dismissed/i }).click();
+    const showDismissed = page.getByRole('button', { name: /Show.*dismissed/i });
+    const showFilters = page.getByRole('button', { name: /Show filters/i });
+    // Dismissing changes the canonical server view, so both controls briefly
+    // disappear behind the loading state. Wait for the responsive UI to settle
+    // before deciding whether the filter rail is collapsed.
+    await expect(showDismissed.or(showFilters)).toBeVisible({ timeout: 30_000 });
+    if (await showFilters.isVisible()) {
+      // On mobile the dismissed toggle lives in the collapsed filter rail.
+      await showFilters.click();
+    }
+    await showDismissed.click();
     await expect(page.locator('h3', { hasText: title })).toBeVisible();
   });
 });

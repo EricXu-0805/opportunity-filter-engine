@@ -232,6 +232,25 @@ export interface MatchesResponse {
   // Version of the matching logic + tunables that produced this response.
   // Cache keys include it so two matcher generations can never coexist.
   matcher_version?: string;
+  // Bounded, generation-safe paging metadata.
+  returned_count?: number;
+  has_more?: boolean;
+  next_cursor?: string | null;
+  result_set_id?: string;
+  contract_version?: string;
+  view_start?: number;
+  // Exact server-side view metadata. Present on /matches/view.
+  filtered_total?: number;
+  view_counts?: {
+    all: number;
+    high_priority: number;
+    good_match: number;
+    reach: number;
+    starred: number;
+  };
+  source_facets?: Array<{ source: string; count: number }>;
+  scope_available?: boolean;
+  view_id?: string;
 }
 
 // ── Cold Email ───────────────────────────────────────────────────────

@@ -24,7 +24,7 @@ from backend.routes import roadmap as roadmap_module
 from backend.routes import saved_searches as saved_searches_module
 from backend.routes import tailor as tailor_module
 from backend.schemas import ProfileRequest
-from src.matcher.ranker import MatchResult
+from src.matcher.ranker import MatchResult, RankedMatchUniverse
 
 RELEASE_CONTRACT_TESTS = True
 
@@ -36,6 +36,18 @@ def test_unaccepted_server_features_fail_closed(monkeypatch):
 
     assert all(value is False for value in RELEASE_SCOPE.values())
     assert feature_enabled("payments") is False
+
+
+def test_cross_school_profile_flag_fails_closed_at_match_boundary():
+    profile = ProfileRequest(
+        home_school="uiuc",
+        include_cross_school=True,
+    )
+
+    normalized = matches_module._normalized_profile(profile)
+
+    assert normalized["include_cross_school"] is False
+    assert feature_enabled("cross_school_matching") is False
 
 
 def test_unaccepted_routes_return_404_before_any_handler():
@@ -154,7 +166,7 @@ def test_hidden_fellowship_records_never_enter_match_ranking(monkeypatch):
 
     def rank_every_received_record(_profile, opportunities, **_kwargs):
         ranked_ids.extend(opportunity["id"] for opportunity in opportunities)
-        return [
+        visible = [
             MatchResult(
                 opportunity_id=opportunity["id"],
                 eligibility_score=80,
@@ -168,10 +180,38 @@ def test_hidden_fellowship_records_never_enter_match_ranking(monkeypatch):
             )
             for opportunity in opportunities
         ]
+        return RankedMatchUniverse(
+            visible=visible,
+            buckets={
+                "high_priority": 0,
+                "good_match": len(visible),
+                "reach": 0,
+                "low_fit": 0,
+            },
+            field_relevant_count=0,
+        )
 
-    monkeypatch.setattr(matches_module, "load_opportunities", lambda: corpus)
+    monkeypatch.setattr(
+        matches_module,
+        "load_opportunities_generation",
+        lambda: (corpus, "release-scope-fixture"),
+    )
+    monkeypatch.setattr(
+        matches_module,
+        "registered_corpus_identity_nowait",
+        lambda: id(corpus),
+    )
+    monkeypatch.setattr(
+        matches_module,
+        "registered_corpus_identity",
+        lambda: id(corpus),
+    )
     monkeypatch.setattr(matches_module, "load_opportunities_by_id", lambda: lookup)
-    monkeypatch.setattr(matches_module, "rank_all", rank_every_received_record)
+    monkeypatch.setattr(
+        matches_module,
+        "rank_visible_universe",
+        rank_every_received_record,
+    )
     matches_module._match_snapshots.clear()
     try:
         response = client.post(

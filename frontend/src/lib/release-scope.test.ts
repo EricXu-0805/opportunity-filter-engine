@@ -7,6 +7,7 @@ describe('MVP public release scope', () => {
   it('fails closed for every unaccepted MTP or external-dependency feature', () => {
     expect(RELEASE_SCOPE).toEqual({
       matchAiRefine: false,
+      crossSchoolMatching: false,
       compare: false,
       resumeRenovate: false,
       fellowships: false,
@@ -51,6 +52,18 @@ describe('MVP public release scope', () => {
       }),
     ).toEqual({
       seeking_types: ['research'],
+      major: 'Computer Science',
+    });
+  });
+
+  it('removes stale cross-school matching preferences at profile boundaries', () => {
+    expect(
+      normalizeProfileForRelease({
+        include_cross_school: true,
+        major: 'Computer Science',
+      }),
+    ).toEqual({
+      include_cross_school: false,
       major: 'Computer Science',
     });
   });

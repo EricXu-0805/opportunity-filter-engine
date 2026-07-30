@@ -1,9 +1,18 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function expectMatchNav(page: Page, name: RegExp) {
+  const link = page.getByRole('link', { name }).first();
+  if (!(await link.isVisible())) {
+    // The same navigation is intentionally collapsed behind a menu on mobile.
+    await page.getByRole('button', { name: /Open menu|打开菜单/ }).click();
+  }
+  await expect(link).toBeVisible();
+}
 
 test.describe('i18n: language switcher', () => {
   test('default English renders "Find Matches" and "Generate Matches"', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('link', { name: /Find Matches|^Match$/ }).first()).toBeVisible();
+    await expectMatchNav(page, /Find Matches|^Match$/);
     await expect(page.getByRole('button', { name: /Generate Matches/i })).toBeVisible();
   });
 
@@ -11,7 +20,7 @@ test.describe('i18n: language switcher', () => {
     await page.goto('/');
     const switcher = page.getByRole('button', { name: /Switch to Chinese/i });
     await switcher.click();
-    await expect(page.getByRole('link', { name: /匹配机会|^匹配$/ }).first()).toBeVisible();
+    await expectMatchNav(page, /匹配机会|^匹配$/);
     await expect(page.getByRole('button', { name: /生成匹配/ })).toBeVisible();
   });
 
@@ -25,10 +34,10 @@ test.describe('i18n: language switcher', () => {
   test('language preference persists across navigations via cookie', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /Switch to Chinese/i }).click();
-    await expect(page.getByRole('link', { name: /匹配机会|^匹配$/ }).first()).toBeVisible();
+    await expectMatchNav(page, /匹配机会|^匹配$/);
 
     await page.goto('/about');
-    await expect(page.getByRole('link', { name: /匹配机会|^匹配$/ }).first()).toBeVisible();
+    await expectMatchNav(page, /匹配机会|^匹配$/);
 
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: '仪表盘' })).toBeVisible();

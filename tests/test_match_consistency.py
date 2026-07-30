@@ -19,8 +19,10 @@ matcher version, llm flag):
 import json
 import os
 import sys
+from datetime import date
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -121,8 +123,20 @@ def snapshot_env(monkeypatch):
     """
     corpus = _varied_corpus()
     by_id = {o["id"]: o for o in corpus}
-    monkeypatch.setattr(m_module, "load_opportunities", lambda: corpus)
+    ranker_state = (
+        ranker._corpus_ref,
+        ranker._corpus_rows,
+        ranker._static_cache,
+        ranker._sim_matrix,
+        dict(ranker._kw_word_res),
+    )
+    monkeypatch.setattr(
+        m_module,
+        "load_opportunities_generation",
+        lambda: (corpus, "snapshot-fixture"),
+    )
     monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+    ranker.register_corpus(corpus)
 
     calls = {"count": 0}
 
@@ -146,6 +160,16 @@ def snapshot_env(monkeypatch):
     m_module._match_snapshots.clear()
     m_module._llm_rerank_cache.clear()
     m_module._explain_cache.clear()
+    with ranker.corpus_generation_lock:
+        (
+            ranker._corpus_ref,
+            ranker._corpus_rows,
+            ranker._static_cache,
+            ranker._sim_matrix,
+            old_keyword_res,
+        ) = ranker_state
+        ranker._kw_word_res.clear()
+        ranker._kw_word_res.update(old_keyword_res)
 
 
 class TestExplainServesTheListConclusion:
@@ -210,7 +234,12 @@ class TestExplainServesTheListConclusion:
             _opp("other-campus", school="ucb", audience="campus")
         ]
         by_id = {o["id"]: o for o in corpus}
-        monkeypatch.setattr(m_module, "load_opportunities", lambda: corpus)
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module,
+            "load_opportunities_generation",
+            lambda: (corpus, "excluded-fixture"),
+        )
         monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
         m_module._match_snapshots.clear()
 
@@ -262,6 +291,86 @@ class TestSnapshotPagination:
             offset += 4
         assert seen == expected, "traversal must return every result exactly once, in order"
 
+    def test_cursor_traversal_is_complete_and_generation_bound(self, snapshot_env):
+        profile = _profile()
+        expected = [
+            result["opportunity_id"]
+            for result in client.post("/api/matches", json=profile).json()["results"]
+        ]
+        seen: list[str] = []
+        cursor = None
+        result_set_id = None
+        while True:
+            suffix = "?limit=4" if cursor is None else f"?limit=4&cursor={cursor}"
+            response = client.post(f"/api/matches{suffix}", json=profile)
+            assert response.status_code == 200
+            page = response.json()
+            if result_set_id is None:
+                result_set_id = page["result_set_id"]
+            assert page["result_set_id"] == result_set_id
+            assert page["returned_count"] == len(page["results"])
+            seen.extend(result["opportunity_id"] for result in page["results"])
+            if not page["has_more"]:
+                assert page["next_cursor"] is None
+                break
+            assert page["next_cursor"]
+            cursor = page["next_cursor"]
+        assert seen == expected
+        assert len(seen) == len(set(seen))
+
+    def test_tampered_cursor_fails_closed(self, snapshot_env):
+        first = client.post("/api/matches?limit=3", json=_profile()).json()
+        cursor = first["next_cursor"]
+        assert cursor
+        replacement = "A" if cursor[-1] != "A" else "B"
+        response = client.post(
+            f"/api/matches?limit=3&cursor={cursor[:-1]}{replacement}",
+            json=_profile(),
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"]["code"] == "MATCH_CURSOR_INVALID"
+
+    def test_cursor_rejects_new_corpus_generation(
+        self, snapshot_env, monkeypatch
+    ):
+        versions = {"value": "generation-a"}
+        monkeypatch.setattr(
+            m_module,
+            "load_opportunities_generation",
+            lambda: (snapshot_env["corpus"], versions["value"]),
+        )
+        first = client.post("/api/matches?limit=3", json=_profile()).json()
+        assert first["next_cursor"]
+        versions["value"] = "generation-b"
+        response = client.post(
+            f"/api/matches?limit=3&cursor={first['next_cursor']}",
+            json=_profile(),
+        )
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
+
+    def test_cursor_rejects_evicted_snapshot_even_when_inputs_match(
+        self,
+        snapshot_env,
+    ):
+        first = client.post(
+            "/api/matches?limit=3",
+            json=_profile(),
+        ).json()
+        assert first["next_cursor"]
+
+        # Simulate TTL eviction, process restart, or capacity eviction. The
+        # profile/corpus/matcher key is unchanged, but a newly materialized
+        # snapshot is a new generation and must not accept the old offset.
+        m_module._match_snapshots.clear()
+        response = client.post(
+            f"/api/matches?limit=3&cursor={first['next_cursor']}",
+            json=_profile(),
+        )
+
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
+
     def test_total_equals_visible_bucket_sum(self, snapshot_env):
         body = client.post("/api/matches", json=_profile()).json()
         assert body["total"] == body["high_priority"] + body["good_match"] + body["reach"]
@@ -293,6 +402,29 @@ class TestSnapshotPagination:
         )
         assert key_a != key_b
 
+    def test_non_scoring_identity_fields_do_not_fragment_snapshot_key(
+        self,
+        snapshot_env,
+    ):
+        from backend.schemas import ProfileRequest
+
+        first = m_module._normalized_profile(ProfileRequest(**{
+            **_profile(),
+            "name": "Alex",
+            "linkedin_url": "https://example.com/alex",
+        }))
+        second = m_module._normalized_profile(ProfileRequest(**{
+            **_profile(),
+            "name": "Different display name",
+            "linkedin_url": "https://example.com/different",
+            "github_url": "https://github.com/different",
+        }))
+
+        assert m_module._snapshot_key(first, False) == m_module._snapshot_key(
+            second,
+            False,
+        )
+
     def test_corpus_swap_invalidates_snapshot(self, snapshot_env, monkeypatch):
         import asyncio
 
@@ -304,13 +436,57 @@ class TestSnapshotPagination:
         # A NEW corpus list object (a reload) must recompute even when the
         # mtime-based corpus_version did not move (the identity belt).
         swapped = [dict(o) for o in snapshot_env["corpus"]]
-        monkeypatch.setattr(m_module, "load_opportunities", lambda: swapped)
+        ranker.register_corpus(swapped)
+        monkeypatch.setattr(
+            m_module,
+            "load_opportunities_generation",
+            lambda: (swapped, "swapped-fixture"),
+        )
         monkeypatch.setattr(
             m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in swapped}
         )
         snap2 = asyncio.run(m_module._get_or_compute_snapshot(profile_dict, False))
         assert snap2 is not snap1
-        assert snap2.corpus_ref is swapped
+        assert snap2.corpus_identity == id(swapped)
+        assert snap1 not in m_module._match_snapshots.values()
+        assert all(
+            snap2.opportunities_by_id[opportunity_id] is not opportunity
+            for opportunity_id, opportunity in {
+                opportunity["id"]: opportunity for opportunity in swapped
+            }.items()
+            if opportunity_id in snap2.opportunities_by_id
+        )
+
+    def test_stale_loader_result_never_rebinds_ranker_backwards(
+        self,
+        snapshot_env,
+        monkeypatch,
+    ):
+        import asyncio
+
+        import src.matcher.ranker as rk
+        from backend.schemas import ProfileRequest
+
+        stale = snapshot_env["corpus"]
+        current = [dict(opportunity) for opportunity in stale]
+        rk.register_corpus(current)
+        monkeypatch.setattr(
+            m_module,
+            "load_opportunities_generation",
+            lambda: (stale, "stale-generation"),
+        )
+        profile_dict = m_module._normalized_profile(
+            ProfileRequest(**_profile())
+        )
+
+        with pytest.raises(HTTPException) as error:
+            asyncio.run(
+                m_module._get_or_compute_snapshot(profile_dict, False)
+            )
+
+        assert error.value.status_code == 409
+        assert error.value.detail["code"] == "MATCH_DATA_CHANGED"
+        assert rk._corpus_ref is current
 
     def test_matcher_version_participates_in_snapshot_key(self, snapshot_env, monkeypatch):
         profile_dict = m_module._normalized_profile(
@@ -331,6 +507,317 @@ class TestSnapshotPagination:
         assert m_module._snapshot_key(profile_dict, True) != m_module._snapshot_key(
             profile_dict, False
         )
+
+    def test_same_key_concurrent_miss_is_single_flight(self, snapshot_env, monkeypatch):
+        import asyncio
+        import time
+
+        from backend.schemas import ProfileRequest
+        from src.matcher.ranker import rank_visible_universe as real_rank
+
+        calls = {"count": 0}
+
+        def slow_rank(profile, opportunities, responsiveness=None):
+            calls["count"] += 1
+            time.sleep(0.05)
+            return real_rank(profile, opportunities, responsiveness)
+
+        monkeypatch.setattr(m_module, "rank_visible_universe", slow_rank)
+        m_module._match_snapshots.clear()
+        profile_dict = m_module._normalized_profile(ProfileRequest(**_profile()))
+
+        async def run_concurrently():
+            return await asyncio.gather(*[
+                m_module._get_or_compute_snapshot(profile_dict, False)
+                for _ in range(4)
+            ])
+
+        snapshots = asyncio.run(run_concurrently())
+        assert calls["count"] == 1
+        assert all(snapshot is snapshots[0] for snapshot in snapshots)
+
+    def test_different_key_queue_is_hard_bounded(self, snapshot_env, monkeypatch):
+        import asyncio
+        import threading
+
+        from backend.schemas import ProfileRequest
+        from src.matcher.ranker import RankedMatchUniverse
+
+        release = threading.Event()
+
+        def blocked_rank(_profile, _opportunities, responsiveness=None):
+            assert release.wait(timeout=2)
+            return RankedMatchUniverse(
+                visible=[],
+                buckets={
+                    "high_priority": 0,
+                    "good_match": 0,
+                    "reach": 0,
+                    "low_fit": 0,
+                },
+                field_relevant_count=0,
+            )
+
+        monkeypatch.setattr(m_module, "rank_visible_universe", blocked_rank)
+        m_module._match_snapshots.clear()
+        profiles = [
+            m_module._normalized_profile(
+                ProfileRequest(**_profile(coursework=[f"CS {course}"]))
+            )
+            for course in (101, 102, 103, 104)
+        ]
+
+        async def exercise_capacity():
+            pending = [
+                asyncio.create_task(
+                    m_module._get_or_compute_snapshot(profile, False)
+                )
+                for profile in profiles[:3]
+            ]
+            await asyncio.sleep(0.05)
+            with pytest.raises(HTTPException) as error:
+                await m_module._get_or_compute_snapshot(profiles[3], False)
+            assert error.value.status_code == 503
+            assert error.value.detail["code"] == "MATCH_BUSY"
+            release.set()
+            await asyncio.gather(*pending)
+
+        asyncio.run(exercise_capacity())
+
+    def test_low_fit_explain_is_not_reported_as_listed(
+        self, snapshot_env, monkeypatch
+    ):
+        corpus = snapshot_env["corpus"] + [
+            _opp(
+                "weak-low-fit",
+                title="Unrelated archive",
+                paid="no",
+                on_campus=False,
+                contact_email="",
+                keywords=["medieval history"],
+                description_raw="Archive cataloging.",
+                description_clean="Archive cataloging.",
+                eligibility={
+                    "preferred_year": ["senior"],
+                    "majors": ["History"],
+                    "skills_required": ["Latin"],
+                    "international_friendly": "unknown",
+                },
+                application={},
+            )
+        ]
+        by_id = {o["id"]: o for o in corpus}
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module,
+            "load_opportunities_generation",
+            lambda: (corpus, "low-fit-fixture"),
+        )
+        monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+        m_module._match_snapshots.clear()
+        profile = _profile(
+            preferences={
+                "min_match_threshold": 0,
+                "show_reach_opportunities": True,
+                "prioritize_paid": True,
+                "exclude_citizenship_restricted": True,
+            }
+        )
+        baseline = ranker.rank_all(profile, corpus)
+        low_fit_ids = {
+            result.opportunity_id for result in baseline if result.bucket == "low_fit"
+        }
+        assert low_fit_ids
+        opportunity_id = sorted(low_fit_ids)[0]
+
+        listing = client.post("/api/matches", json=profile).json()
+        assert opportunity_id not in {
+            result["opportunity_id"] for result in listing["results"]
+        }
+        explanation = client.post(
+            f"/api/matches/{opportunity_id}/explain",
+            json=profile,
+        ).json()
+        assert explanation["in_results"] is False
+        assert explanation["excluded_reason"] == "below_threshold"
+
+
+class TestServerMatchView:
+    @staticmethod
+    def _request(profile, **view_overrides):
+        view = {
+            "tab": "all",
+            "search_query": "",
+            "paid": "",
+            "intl": "",
+            "source": "",
+            "on_campus": "",
+            "deadline": "",
+            "min_score": 0,
+            "scope": "",
+            "sort_by": "score",
+            "show_dismissed": False,
+            "favorite_ids": [],
+            "dismissed_ids": [],
+            "today": date.today().isoformat(),
+        }
+        view.update(view_overrides)
+        return {"profile": profile, "view": view, "page_size": 4}
+
+    def test_unfiltered_cursor_walk_equals_canonical_visible_universe(
+        self, snapshot_env
+    ):
+        profile = _profile()
+        expected = [
+            result.opportunity_id
+            for result in ranker.rank_all(profile, snapshot_env["corpus"])
+            if result.bucket != "low_fit"
+        ]
+        request = self._request(profile)
+        seen: list[str] = []
+        response_pages = []
+        while True:
+            response = client.post("/api/matches/view", json=request)
+            assert response.status_code == 200
+            page = response.json()
+            response_pages.append(page)
+            seen.extend(result["opportunity_id"] for result in page["results"])
+            if not page["has_more"]:
+                break
+            request["cursor"] = page["next_cursor"]
+
+        assert seen == expected
+        assert len(seen) == len(set(seen))
+        first = response_pages[0]
+        assert first["filtered_total"] == len(expected)
+        assert first["view_counts"]["all"] == len(expected)
+        assert first["contract_version"] == "match-view-v1"
+        assert all(page["result_set_id"] == first["result_set_id"] for page in response_pages)
+        assert all(page["view_id"] == first["view_id"] for page in response_pages)
+
+    def test_favorites_dismissals_and_tab_counts_are_complete(self, snapshot_env):
+        profile = _profile()
+        canonical = [
+            result.opportunity_id
+            for result in ranker.rank_all(profile, snapshot_env["corpus"])
+            if result.bucket != "low_fit"
+        ]
+        assert len(canonical) >= 4
+        favorites = canonical[:4]
+        request = self._request(
+            profile,
+            tab="starred",
+            favorite_ids=favorites,
+            dismissed_ids=[favorites[0]],
+        )
+        body = client.post("/api/matches/view", json=request).json()
+        assert body["filtered_total"] == 3
+        assert body["view_counts"]["starred"] == 3
+        assert [result["opportunity_id"] for result in body["results"]] == favorites[1:]
+        assert (
+            body["view_counts"]["all"]
+            == body["view_counts"]["high_priority"]
+            + body["view_counts"]["good_match"]
+            + body["view_counts"]["reach"]
+        )
+
+    def test_view_cursor_rejects_filter_change(self, snapshot_env):
+        profile = _profile()
+        request = self._request(profile)
+        request["page_size"] = 1
+        first = client.post("/api/matches/view", json=request).json()
+        assert first["next_cursor"]
+
+        changed = self._request(profile, paid="yes")
+        changed["page_size"] = 1
+        changed["cursor"] = first["next_cursor"]
+        response = client.post("/api/matches/view", json=changed)
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
+
+    def test_paid_filter_and_bucket_counts_match_full_snapshot(self, snapshot_env):
+        profile = _profile()
+        request = self._request(profile, paid="yes")
+        body = client.post("/api/matches/view", json=request).json()
+        baseline = [
+            result
+            for result in ranker.rank_all(profile, snapshot_env["corpus"])
+            if result.bucket != "low_fit"
+            and snapshot_env["by_id"][result.opportunity_id].get("paid")
+            in {"yes", "stipend"}
+        ]
+        assert body["filtered_total"] == len(baseline)
+        assert body["view_counts"]["all"] == len(baseline)
+        assert body["view_counts"]["high_priority"] == sum(
+            result.bucket == "high_priority" for result in baseline
+        )
+
+    def test_view_predicates_match_browser_rounding_alias_and_facets(self):
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        results = [
+            MatchResult(
+                opportunity_id="ml-stipend",
+                eligibility_score=80,
+                readiness_score=80,
+                upside_score=80,
+                final_score=79.5,
+                bucket="good_match",
+                reasons_fit=["Machine learning fit"],
+                reasons_gap=[],
+                next_steps=[],
+            ),
+            MatchResult(
+                opportunity_id="history",
+                eligibility_score=80,
+                readiness_score=80,
+                upside_score=80,
+                final_score=79.4,
+                bucket="good_match",
+                reasons_fit=["Archive fit"],
+                reasons_gap=[],
+                next_steps=[],
+            ),
+        ]
+        opportunities = {
+            "ml-stipend": _opp(
+                "ml-stipend",
+                title="Machine Learning Lab",
+                paid="stipend",
+                source="source-a",
+                deadline="2026-08-01",
+            ),
+            "history": _opp(
+                "history",
+                title="Medieval Archive",
+                paid="yes",
+                source="source-b",
+                deadline="2026-08-20",
+            ),
+        }
+        view = MatchViewState(
+            tab="all",
+            search_query="ml",
+            paid="yes",
+            min_score=80,
+            deadline="7",
+            today="2026-07-31",
+        )
+        filtered, counts, facets, scope_available = m_module._apply_match_view(
+            results,
+            opportunities,
+            view,
+            "uiuc",
+        )
+        assert [result.opportunity_id for result in filtered] == ["ml-stipend"]
+        assert counts["all"] == 1
+        # Facets describe the complete canonical universe, not the filtered row.
+        assert facets == [
+            {"source": "source-a", "count": 1},
+            {"source": "source-b", "count": 1},
+        ]
+        assert scope_available is True
 
 
 class TestUnknownPolicy:
@@ -438,10 +925,21 @@ class TestUnknownPolicy:
 class TestCorpusDedup:
     @pytest.fixture
     def _reset_loader(self):
+        from src.matcher import embeddings
+
         saved = (
             data_loader._opp_cache,
             data_loader._opp_cache_by_id,
             data_loader._opp_cache_mtime,
+            data_loader._opp_cache_generation,
+            data_loader._tfidf_fitted_mtime,
+            embeddings._tfidf_vectorizer,
+            embeddings._tfidf_fitted,
+            ranker._corpus_ref,
+            ranker._corpus_rows,
+            ranker._static_cache,
+            ranker._sim_matrix,
+            dict(ranker._kw_word_res),
         )
         data_loader._opp_cache = []
         data_loader._opp_cache_by_id = {}
@@ -451,7 +949,18 @@ class TestCorpusDedup:
             data_loader._opp_cache,
             data_loader._opp_cache_by_id,
             data_loader._opp_cache_mtime,
+            data_loader._opp_cache_generation,
+            data_loader._tfidf_fitted_mtime,
+            embeddings._tfidf_vectorizer,
+            embeddings._tfidf_fitted,
+            ranker._corpus_ref,
+            ranker._corpus_rows,
+            ranker._static_cache,
+            ranker._sim_matrix,
+            old_keyword_res,
         ) = saved
+        ranker._kw_word_res.clear()
+        ranker._kw_word_res.update(old_keyword_res)
 
     def test_duplicate_id_across_shards_loads_once(self, tmp_path, monkeypatch, _reset_loader):
         shards = tmp_path / "shards"
@@ -476,7 +985,12 @@ class TestCorpusDedup:
     def test_corpus_version_tracks_load(self, tmp_path, monkeypatch, _reset_loader):
         shards = tmp_path / "shards"
         shards.mkdir()
-        (shards / "a.json").write_text(json.dumps([_opp("v-1")]))
+        (shards / "a.json").write_text(
+            json.dumps([
+                _opp("v-1", title="Machine learning laboratory"),
+                _opp("v-2", title="Quantum materials laboratory"),
+            ])
+        )
         monkeypatch.setattr(data_loader, "DATA_DIR", tmp_path)
         data_loader.load_opportunities()
         assert data_loader.corpus_version() != "0.000000"

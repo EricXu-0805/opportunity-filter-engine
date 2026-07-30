@@ -86,10 +86,18 @@ type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
 // The backend 422s every cold-email entry point with this error code when the
 // profile has no name (emails must never go out addressed from "Student").
-// `request()` throws `Error("API 422: {detail json}")`, so the code survives
-// in the message.
+// Structured API errors retain the Pydantic error code without exposing the
+// full validation body to the UI. Legacy/custom callers are tolerated too.
 function isStudentNameRequiredError(err: unknown): boolean {
-  return err instanceof Error && err.message.includes('student_name_required');
+  return (
+    typeof err === 'object'
+    && err !== null
+    && 'code' in err
+    && err.code === 'student_name_required'
+  ) || (
+    err instanceof Error
+    && err.message.includes('student_name_required')
+  );
 }
 
 // R72-A: pick the right fallback hint. 'fabrication' (the AI invented an

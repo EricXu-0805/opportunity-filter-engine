@@ -12,7 +12,7 @@ export interface ResultsHeaderProps {
   loading: boolean;
   showSlowHint: boolean;
   data: MatchesResponse | null;
-  filtered: MatchResult[];
+  filteredTotal: number;
   counts: { all: number };
   favs: Set<string>;
   activeTab: Tab;
@@ -20,6 +20,7 @@ export interface ResultsHeaderProps {
   onSemanticChange: (v: boolean) => void;
   onOpenHelp: () => void;
   onExport: () => void;
+  loadEmailMatches: () => Promise<MatchResult[]>;
   loadingMessage?: string;
   t: TFunc;
 }
@@ -28,7 +29,7 @@ export function ResultsHeader({
   loading,
   showSlowHint,
   data,
-  filtered,
+  filteredTotal,
   counts,
   favs,
   activeTab,
@@ -36,6 +37,7 @@ export function ResultsHeader({
   onSemanticChange,
   onOpenHelp,
   onExport,
+  loadEmailMatches,
   loadingMessage,
   t,
 }: ResultsHeaderProps) {
@@ -100,24 +102,24 @@ export function ResultsHeader({
             ?
           </button>
         )}
-        {!loading && data && filtered.length > 0 && (
+        {!loading && data && filteredTotal > 0 && (
           // R69-D: the sendMatchesEmail path silently caps at the top 50
           // by match score. When the filtered list exceeds that cap the
           // label and tooltip now say so explicitly, so users aren't
           // surprised by a clipped email.
           <EmailMeButton
             label={
-              filtered.length > 50
+              filteredTotal > 50
                 ? t('email.sendMatchesTop', { count: 50 })
                 : t('email.sendMatches')
             }
             title={
-              filtered.length > 50
+              filteredTotal > 50
                 ? `${t('email.matchesCapNote')} — ${t('email.subtitle')}`
                 : t('email.subtitle')
             }
             onSend={async (emailAddr) => {
-              const top = filtered.slice(0, 50);
+              const top = (await loadEmailMatches()).slice(0, 50);
               const items = top.map((m) => ({
                 title: m.opportunity.title,
                 url: m.opportunity.url || m.opportunity.source_url || '',

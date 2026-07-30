@@ -1,12 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getMatches } from '@/lib/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ApiError,
+  getMatchView,
+  type MatchViewRequestState,
+} from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
 import { hashProfile } from '@/lib/match-utils';
 import { readMatchCache, writeMatchCache } from '@/lib/match-cache';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
+
+const MATCH_VIEW_PAGE_SIZE = 50;
+const MATCH_VIEW_CONTRACT = 'match-view-v1';
 
 interface UseResultsDataResult {
   data: MatchesResponse | null;
@@ -14,29 +21,51 @@ interface UseResultsDataResult {
   loading: boolean;
   error: string | null;
   showSlowHint: boolean;
+  paginationReady: boolean;
 }
 
-// Hydrate-from-durable-cache, fetch on miss. The cache (see lib/match-cache)
-// is keyed by { hash(profile), semanticRerank } and lives in localStorage as a
-// compact, self-contained projection of each result; a hit performs no network
-// lookup or re-match, so returning to /results is instant. Because those
-// projections can preserve old release behavior, storage-key version bumps are
-// mandatory whenever the public record/ranking contract changes. The semantic
-// key remains for a future accepted AI-refine path; this release always passes
-// false.
+interface CursorState {
+  requestKey: string;
+  byPage: Map<number, string | null>;
+}
+
+function isAbort(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
+/** One exact server-side results page.
+ *
+ * The cursor map is page-local and generation-bound. Changing any profile or
+ * view predicate creates a fresh request key, drops every old cursor and starts
+ * at page one. AbortController stops obsolete browser requests instead of only
+ * suppressing their React state updates.
+ */
 export function useResultsData(
   profile: ProfileData | null,
   semanticRerank: boolean,
+  view: MatchViewRequestState,
+  page: number,
   t: TFunc,
 ): UseResultsDataResult {
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSlowHint, setShowSlowHint] = useState(false);
+  const [paginationReady, setPaginationReady] = useState(false);
+  const requestKey = useMemo(
+    () => profile
+      ? `${hashProfile(profile)}:${semanticRerank ? '1' : '0'}:${JSON.stringify(view)}`
+      : '',
+    [profile, semanticRerank, view],
+  );
+  const cursorsRef = useRef<CursorState>({
+    requestKey: '',
+    byPage: new Map([[1, null]]),
+  });
 
   useEffect(() => {
     if (!loading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the "slow loading…" hint the instant loading finishes; the setTimeout that would have shown it is also cancelled in cleanup
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the slow hint as soon as the active request finishes
       setShowSlowHint(false);
       return;
     }
@@ -45,41 +74,107 @@ export function useResultsData(
   }, [loading]);
 
   useEffect(() => {
-    if (!profile || data) return;
-
-    const hash = hashProfile(profile);
-
-    /* eslint-disable react-hooks/set-state-in-effect -- the cache read is a
-       synchronous localStorage parse; setting data/loading from it in the same
-       commit is what makes the return to /results instant (no skeleton, no
-       network). The fetch-on-miss branch sets state from async callbacks. */
-    const cached = readMatchCache(hash, semanticRerank);
-    if (cached) {
-      setData(cached);
+    if (!profile || !requestKey) return;
+    if (cursorsRef.current.requestKey !== requestKey) {
+      cursorsRef.current = {
+        requestKey,
+        byPage: new Map([[1, null]]),
+      };
+    }
+    const cursor = cursorsRef.current.byPage.get(page);
+    if (page > 1 && !cursor) {
+      // Every reachable page must have been minted by the preceding response.
+      // Showing the previous page under a new page number would be a silent
+      // duplicate, so fail closed if parent state ever gets ahead of the
+      // cursor chain.
+      setData(null);
       setLoading(false);
-      trackOnce('matches_generated', { llm: semanticRerank, cached: true });
+      setError(t('results.loadFailed'));
+      setPaginationReady(false);
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
+    let active = true;
+    const cacheKey = requestKey;
+
+    /* eslint-disable react-hooks/set-state-in-effect -- page/profile/view changes intentionally enter a new request state */
     setLoading(true);
     setError(null);
+    setPaginationReady(false);
+    if (page === 1) {
+      const cached = readMatchCache(cacheKey, semanticRerank);
+      if (cached?.contract_version === MATCH_VIEW_CONTRACT) {
+        setData(cached);
+        // Cached metadata paints immediately, but the network request below is
+        // still mandatory generation validation. Its cursor is deliberately
+        // NOT trusted: local cache lives seven days while the server snapshot
+        // lives minutes, so pagination stays locked until the live response.
+        setLoading(false);
+        trackOnce('matches_generated', {
+          llm: semanticRerank,
+          cached: true,
+          validated: false,
+        });
+      } else {
+        setData(null);
+      }
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+
     (async () => {
       try {
-        const result = await getMatches(profile!, { llm: semanticRerank });
-        if (cancelled) return;
+        const result = await getMatchView(profile, view, {
+          cursor: cursor ?? null,
+          pageSize: MATCH_VIEW_PAGE_SIZE,
+          signal: controller.signal,
+        });
+        if (!active) return;
+        if (
+          result.contract_version !== MATCH_VIEW_CONTRACT
+          || typeof result.filtered_total !== 'number'
+          || !result.view_counts
+          || typeof result.view_start !== 'number'
+        ) {
+          throw new ApiError(
+            502,
+            'MATCH_CONTRACT_MISMATCH',
+            'Match results need to be refreshed. Please retry.',
+            true,
+          );
+        }
         setData(result);
-        writeMatchCache(hash, semanticRerank, result);
-        trackOnce('matches_generated', { llm: semanticRerank });
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : t('results.loadFailed'));
+        if (result.has_more && result.next_cursor) {
+          cursorsRef.current.byPage.set(page + 1, result.next_cursor);
+        } else {
+          cursorsRef.current.byPage.delete(page + 1);
+        }
+        if (page === 1) {
+          writeMatchCache(cacheKey, semanticRerank, result);
+        }
+        setPaginationReady(true);
+        trackOnce('matches_generated', {
+          llm: semanticRerank,
+          page,
+          validated: true,
+        });
+      } catch (caught) {
+        if (!active || isAbort(caught)) return;
+        setError(
+          caught instanceof ApiError
+            ? caught.message
+            : t('results.loadFailed'),
+        );
       } finally {
-        if (!cancelled) setLoading(false);
+        if (active) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [profile, data, semanticRerank, t]);
 
-  return { data, setData, loading, error, showSlowHint };
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [profile, semanticRerank, view, page, requestKey, t]);
+
+  return { data, setData, loading, error, showSlowHint, paginationReady };
 }

@@ -1,19 +1,28 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import hashlib
 import json
 import logging
 import math
 import os
 import re
+import secrets
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import date
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.data_loader import corpus_version, load_opportunities, load_opportunities_by_id
+from backend.data_loader import (
+    corpus_version,
+    load_opportunities_by_id,
+    load_opportunities_generation,
+)
 from backend.lib.blocking import (
     MULTI_LLM_TIMEOUT_SECONDS,
     SINGLE_LLM_TIMEOUT_SECONDS,
@@ -33,6 +42,8 @@ from backend.routes.responsiveness import signals_map
 from backend.schemas import (
     MatchesResponse,
     MatchResultResponse,
+    MatchViewRequest,
+    MatchViewState,
     ProfileRequest,
 )
 from src.matcher.config import (
@@ -52,9 +63,13 @@ from src.matcher.ranker import (
     _filter_context,
     _profile_query_text,
     canonical_sort_key,
+    corpus_generation_lock,
     hard_exclusion,
     rank_all,
     rank_opportunity,
+    rank_visible_universe,
+    registered_corpus_identity,
+    registered_corpus_identity_nowait,
 )
 from src.recommender.resume_advisor import analyze_gaps
 
@@ -127,9 +142,60 @@ def _match_card(opp: dict) -> dict:
     return out
 
 
-# Upper bound for an *explicit* limit param. The default (limit unset) returns
-# every visible result so all advertised buckets are browsable — see below.
-MAX_RESULTS_PER_REQUEST = 2000
+# First response is deliberately bounded. Complete counts still describe the
+# canonical universe, and the opaque cursor traverses every visible result.
+DEFAULT_RESULTS_PER_PAGE = 100
+MAX_RESULTS_PER_REQUEST = 100
+MATCH_CONTRACT_VERSION = "match-page-v1"
+MATCH_VIEW_CONTRACT_VERSION = "match-view-v1"
+
+# Only fields consumed by ranker.py participate in a snapshot key. Contact
+# identity/signature fields do not change ranking; including them let trivial
+# name/URL edits fragment the cache and repeatedly occupy the bounded scorer.
+_SCORING_PROFILE_FIELDS = frozenset({
+    "year",
+    "major",
+    "college",
+    "secondary_interests",
+    "international_student",
+    "seeking_type",
+    "desired_fields",
+    "hard_skills",
+    "coursework",
+    "experience_level",
+    "resume_ready",
+    "can_cold_email",
+    "research_interests_text",
+    "search_weight",
+    "exploring",
+    "include_cross_school",
+    "home_school",
+    "preferences",
+})
+
+_SEARCH_ALIASES: dict[str, tuple[str, ...]] = {
+    "ml": ("machine learning",),
+    "ai": ("artificial intelligence",),
+    "nlp": ("natural language processing",),
+    "cv": ("computer vision",),
+    "dl": ("deep learning",),
+    "hci": ("human computer interaction", "human-computer interaction"),
+    "rl": ("reinforcement learning",),
+    "ds": ("data science",),
+    "se": ("software engineering",),
+    "pl": ("programming languages",),
+    "os": ("operating systems",),
+    "db": ("database",),
+    "ece": ("electrical", "computer engineering"),
+    "cs": ("computer science",),
+    "ee": ("electrical engineering",),
+    "me": ("mechanical engineering",),
+    "ce": ("civil engineering",),
+    "cheme": ("chemical engineering",),
+    "matsci": ("materials science",),
+    "neuro": ("neuroscience",),
+    "bioinfo": ("bioinformatics",),
+}
 
 # ── LLM rerank (default-on, OpenRouter-routed) ────────────────────────────
 # A bounded, batched LLM pass over the top rule-ranked results that does two
@@ -374,20 +440,40 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
 # bonus arriving mid-session).
 _SNAPSHOT_TTL_SECONDS = int(os.environ.get("OFE_MATCH_SNAPSHOT_TTL", "600"))
 _SNAPSHOT_MAX_ENTRIES = int(os.environ.get("OFE_MATCH_SNAPSHOT_MAX", "8"))
+_MATCH_MAX_WORKERS = 1
+_MATCH_MAX_PENDING = 2
+try:
+    _match_timeout_config = float(os.environ.get("OFE_MATCH_TIMEOUT_SECONDS", "60"))
+except (TypeError, ValueError):
+    _match_timeout_config = 60.0
+_MATCH_TIMEOUT_SECONDS = min(120.0, max(5.0, _match_timeout_config))
 
 
 @dataclass
 class _MatchSnapshot:
     created_at: float
-    corpus_ref: list                    # identity guard — a reload builds a new list
-    results: list[MatchResult]          # full ranked list, canonical order
-    by_id: dict[str, MatchResult]       # opportunity_id → entry (ids are unique)
+    corpus_identity: int                # identity guard without retaining the full list
+    result_set_id: str
     visible: list[MatchResult]          # non-low_fit slice, same order (the pageable universe)
+    by_id: dict[str, MatchResult]       # visible opportunity_id → entry (ids are unique)
+    opportunities_by_id: dict[str, dict]  # compact visible cards, same generation
     buckets: dict[str, int]
     field_relevant_count: int
 
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
+_active_corpus_identity: int | None = None
+_match_executor = ThreadPoolExecutor(
+    max_workers=_MATCH_MAX_WORKERS,
+    thread_name_prefix="ofe-match",
+)
+_match_capacity = threading.BoundedSemaphore(_MATCH_MAX_WORKERS + _MATCH_MAX_PENDING)
+_match_inflight_lock = threading.RLock()
+_match_inflight: dict[tuple[str, int], object] = {}
+
+
+class _MatchGenerationChanged(RuntimeError):
+    """Queued work no longer matches the active ranker/corpus generation."""
 
 
 def _normalized_profile(profile: ProfileRequest) -> dict:
@@ -400,6 +486,12 @@ def _normalized_profile(profile: ProfileRequest) -> dict:
             if value != "fellowship"
         ]
         profile_dict["seeking_type"] = seeking or ["research", "summer_program"]
+    # Cross-school recommendation currently expands one normal profile to
+    # ~126k visible records and a ~31s first request. Keep the dormant matcher
+    # code for MTP, but fail closed at the server boundary so stale clients or
+    # crafted JSON cannot reopen an unaccepted, memory-heavy universe.
+    if not feature_enabled("cross_school_matching"):
+        profile_dict["include_cross_school"] = False
     if profile_dict.get("preferences") is None:
         profile_dict["preferences"] = {
             "min_match_threshold": 25,
@@ -410,10 +502,150 @@ def _normalized_profile(profile: ProfileRequest) -> dict:
     return profile_dict
 
 
-def _snapshot_key(profile_dict: dict, llm: bool) -> str:
-    payload = json.dumps(profile_dict, sort_keys=True, default=str, separators=(",", ":"))
-    raw = f"{payload}|llm={llm}|corpus={corpus_version()}|matcher={MATCHER_VERSION}"
+def _snapshot_key(
+    profile_dict: dict,
+    llm: bool,
+    corpus_generation: str | None = None,
+) -> str:
+    scoring_profile = {
+        field: profile_dict.get(field)
+        for field in sorted(_SCORING_PROFILE_FIELDS)
+    }
+    payload = json.dumps(
+        scoring_profile,
+        sort_keys=True,
+        default=str,
+        separators=(",", ":"),
+    )
+    raw = (
+        f"{payload}|llm={llm}|corpus={corpus_generation or corpus_version()}"
+        f"|matcher={MATCHER_VERSION}"
+        f"|contract={MATCH_CONTRACT_VERSION}"
+    )
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _cursor_signature(result_set_id: str, offset: int) -> str:
+    return hashlib.sha256(
+        f"{MATCH_CONTRACT_VERSION}|{result_set_id}|{offset}".encode()
+    ).hexdigest()[:16]
+
+
+def _encode_match_cursor(result_set_id: str, offset: int) -> str:
+    payload = json.dumps(
+        {
+            "v": MATCH_CONTRACT_VERSION,
+            "r": result_set_id,
+            "o": offset,
+            "s": _cursor_signature(result_set_id, offset),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return base64.urlsafe_b64encode(payload).decode().rstrip("=")
+
+
+def _decode_match_cursor(cursor: str) -> tuple[str, int]:
+    if not cursor or len(cursor) > 512:
+        raise ValueError("invalid cursor")
+    try:
+        padded = cursor + "=" * (-len(cursor) % 4)
+        raw = base64.b64decode(padded, altchars=b"-_", validate=True)
+        payload = json.loads(raw)
+    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError, TypeError):
+        raise ValueError("invalid cursor") from None
+    if not isinstance(payload, dict) or set(payload) != {"v", "r", "o", "s"}:
+        raise ValueError("invalid cursor")
+    result_set_id = payload.get("r")
+    offset = payload.get("o")
+    if (
+        payload.get("v") != MATCH_CONTRACT_VERSION
+        or not isinstance(result_set_id, str)
+        or len(result_set_id) != 64
+        or not isinstance(offset, int)
+        or isinstance(offset, bool)
+        or offset < 0
+        or payload.get("s") != _cursor_signature(result_set_id, offset)
+    ):
+        raise ValueError("invalid cursor")
+    return result_set_id, offset
+
+
+def _normalized_view_payload(view: MatchViewState) -> dict:
+    payload = view.model_dump()
+    # Set semantics: insertion order from local storage must not mint a new
+    # view generation for the same favorites/dismissals.
+    payload["favorite_ids"] = sorted(payload["favorite_ids"])
+    payload["dismissed_ids"] = sorted(payload["dismissed_ids"])
+    return payload
+
+
+def _match_view_id(view: MatchViewState) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            _normalized_view_payload(view),
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+
+
+def _view_cursor_signature(result_set_id: str, view_id: str, offset: int) -> str:
+    return hashlib.sha256(
+        (
+            f"{MATCH_VIEW_CONTRACT_VERSION}|{result_set_id}|"
+            f"{view_id}|{offset}"
+        ).encode()
+    ).hexdigest()[:16]
+
+
+def _encode_match_view_cursor(
+    result_set_id: str,
+    view_id: str,
+    offset: int,
+) -> str:
+    payload = json.dumps(
+        {
+            "v": MATCH_VIEW_CONTRACT_VERSION,
+            "r": result_set_id,
+            "w": view_id,
+            "o": offset,
+            "s": _view_cursor_signature(result_set_id, view_id, offset),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return base64.urlsafe_b64encode(payload).decode().rstrip("=")
+
+
+def _decode_match_view_cursor(cursor: str) -> tuple[str, str, int]:
+    if not cursor or len(cursor) > 768:
+        raise ValueError("invalid view cursor")
+    try:
+        padded = cursor + "=" * (-len(cursor) % 4)
+        raw = base64.b64decode(padded, altchars=b"-_", validate=True)
+        payload = json.loads(raw)
+    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError, TypeError):
+        raise ValueError("invalid view cursor") from None
+    if not isinstance(payload, dict) or set(payload) != {"v", "r", "w", "o", "s"}:
+        raise ValueError("invalid view cursor")
+    result_set_id = payload.get("r")
+    view_id = payload.get("w")
+    offset = payload.get("o")
+    if (
+        payload.get("v") != MATCH_VIEW_CONTRACT_VERSION
+        or not isinstance(result_set_id, str)
+        or len(result_set_id) != 64
+        or not isinstance(view_id, str)
+        or len(view_id) != 64
+        or not isinstance(offset, int)
+        or isinstance(offset, bool)
+        or offset < 0
+        or payload.get("s")
+        != _view_cursor_signature(result_set_id, view_id, offset)
+    ):
+        raise ValueError("invalid view cursor")
+    return result_set_id, view_id, offset
 
 
 async def _responsiveness_for_matching() -> dict | None:
@@ -428,26 +660,276 @@ async def _responsiveness_for_matching() -> dict | None:
     return await signals_map()
 
 
+def _store_snapshot(key: str, snap: _MatchSnapshot) -> _MatchSnapshot:
+    with _match_inflight_lock:
+        # A scorer for generation A may finish just after a hot reload activated
+        # generation B. Its caller may still receive that internally consistent
+        # A response, but caching it would retain stale cards and let a later
+        # request reuse the wrong result set.
+        if snap.corpus_identity != _active_corpus_identity:
+            return snap
+        if len(_match_snapshots) >= _SNAPSHOT_MAX_ENTRIES:
+            now = time.time()
+            for stale_key in [
+                stale_key
+                for stale_key, cached in _match_snapshots.items()
+                if now - cached.created_at > _SNAPSHOT_TTL_SECONDS
+            ]:
+                _match_snapshots.pop(stale_key, None)
+            while len(_match_snapshots) >= _SNAPSHOT_MAX_ENTRIES:
+                _match_snapshots.pop(next(iter(_match_snapshots)))
+        _match_snapshots[key] = snap
+    return snap
+
+
+def _activate_corpus_generation(corpus: list[dict]) -> int:
+    """Activate one loader list identity and release older snapshot cards.
+
+    Snapshots keep only compact card projections, never the full corpus list.
+    Clearing the previous generation as soon as a reload is observed prevents
+    the ten-minute snapshot TTL from amplifying hot-refresh memory pressure.
+    """
+    global _active_corpus_identity
+    corpus_identity = id(corpus)
+    with _match_inflight_lock:
+        if corpus_identity != _active_corpus_identity:
+            _active_corpus_identity = corpus_identity
+            _match_snapshots.clear()
+    return corpus_identity
+
+
+def _compute_rule_snapshot(
+    key: str,
+    profile_dict: dict,
+    corpus_identity: int,
+    opportunities: list[dict],
+    responsiveness: dict | None,
+) -> _MatchSnapshot:
+    # A one-worker executor can still have old-generation requests queued when
+    # a hot reload wins the lock between jobs. Validate both the route's active
+    # token and the ranker's registered TF-IDF generation while holding the
+    # generation lock, then keep it for the complete traversal. Otherwise an
+    # A request could score A records with B's freshly fitted IDF/matrix.
+    with corpus_generation_lock:
+        with _match_inflight_lock:
+            active_identity = _active_corpus_identity
+        if (
+            active_identity != corpus_identity
+            or registered_corpus_identity() != corpus_identity
+        ):
+            raise _MatchGenerationChanged
+        universe = rank_visible_universe(
+            profile_dict,
+            opportunities,
+            responsiveness=responsiveness,
+        )
+    visible_ids = {result.opportunity_id for result in universe.visible}
+    snap = _MatchSnapshot(
+        created_at=time.time(),
+        corpus_identity=corpus_identity,
+        # A result-set id identifies this concrete materialized snapshot, not
+        # merely its input key. If the entry expires/is evicted (or the process
+        # restarts), an old cursor must fail closed: calendar- and accepted
+        # responsiveness-based signals can legitimately reorder an otherwise
+        # identical profile+corpus+matcher key.
+        result_set_id=secrets.token_hex(32),
+        visible=universe.visible,
+        by_id={result.opportunity_id: result for result in universe.visible},
+        opportunities_by_id={
+            opportunity["id"]: _match_card(opportunity)
+            for opportunity in opportunities
+            if opportunity.get("id") in visible_ids
+        },
+        buckets=universe.buckets,
+        field_relevant_count=universe.field_relevant_count,
+    )
+    return _store_snapshot(key, snap)
+
+
+def _rank_all_for_generation(
+    profile_dict: dict,
+    opportunities: list[dict],
+    responsiveness: dict | None,
+    corpus_identity: int,
+) -> list[MatchResult]:
+    """Run the dormant full-retention path against one coherent generation."""
+    with corpus_generation_lock:
+        with _match_inflight_lock:
+            active_identity = _active_corpus_identity
+        if (
+            active_identity != corpus_identity
+            or registered_corpus_identity() != corpus_identity
+        ):
+            raise _MatchGenerationChanged
+        return rank_all(
+            profile_dict,
+            opportunities,
+            responsiveness=responsiveness,
+        )
+
+
+def _remove_inflight(inflight_key: tuple[str, int], future) -> None:
+    with _match_inflight_lock:
+        if _match_inflight.get(inflight_key) is future:
+            _match_inflight.pop(inflight_key, None)
+    _match_capacity.release()
+
+
+async def _get_or_compute_rule_snapshot(
+    key: str,
+    profile_dict: dict,
+    corpus_identity: int,
+    opportunities: list[dict],
+    responsiveness: dict | None,
+) -> _MatchSnapshot:
+    inflight_key = (key, corpus_identity)
+    with _match_inflight_lock:
+        concurrent_future = _match_inflight.get(inflight_key)
+        if concurrent_future is None:
+            if not _match_capacity.acquire(blocking=False):
+                raise HTTPException(
+                    status_code=503,
+                    detail={
+                        "code": "MATCH_BUSY",
+                        "message": "Matching is busy. Please retry shortly.",
+                        "retryable": True,
+                    },
+                    headers={"Retry-After": "5"},
+                )
+            try:
+                concurrent_future = _match_executor.submit(
+                    _compute_rule_snapshot,
+                    key,
+                    profile_dict,
+                    corpus_identity,
+                    opportunities,
+                    responsiveness,
+                )
+            except BaseException:
+                _match_capacity.release()
+                raise
+            _match_inflight[inflight_key] = concurrent_future
+            concurrent_future.add_done_callback(
+                lambda finished, generation_key=inflight_key: _remove_inflight(
+                    generation_key,
+                    finished,
+                )
+            )
+
+    wrapped = asyncio.wrap_future(concurrent_future)
+    try:
+        # One impatient/disconnected caller must not cancel the shared
+        # calculation for other waiters. The underlying worker owns the
+        # capacity slot until it really finishes.
+        return await asyncio.wait_for(
+            asyncio.shield(wrapped),
+            timeout=_MATCH_TIMEOUT_SECONDS,
+        )
+    except TimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail={
+                "code": "MATCH_TIMEOUT",
+                "message": "Matching took too long. Please retry.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "5"},
+        ) from exc
+    except _MatchGenerationChanged as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "MATCH_DATA_CHANGED",
+                "message": "Match data changed while this request was queued. Please retry.",
+                "retryable": True,
+            },
+        ) from exc
+
+
 async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnapshot:
     # Load FIRST: load_opportunities() is what advances corpus_version() on a
-    # reload, so the key must be derived after it, never before.
-    corpus = load_opportunities()
-    opportunities = release_visible_opportunities(corpus)
-    key = _snapshot_key(profile_dict, llm)
-    snap = _match_snapshots.get(key)
-    if (
-        snap is not None
-        and _SNAPSHOT_TTL_SECONDS > 0
-        and snap.corpus_ref is corpus  # belt: identity, like register_corpus
-        and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
-    ):
-        return snap
-
-    responsiveness = await _responsiveness_for_matching()
-    results = await asyncio.to_thread(
-        rank_all, profile_dict, opportunities, responsiveness=responsiveness
+    # reload, so the key must be derived after it, never before. Both real
+    # reload parsing/registration and an ad-hoc missing registration run off
+    # the async event loop; a scorer holding the generation lock must never
+    # freeze unrelated API coroutines.
+    corpus, corpus_generation = await asyncio.to_thread(
+        load_opportunities_generation
     )
-    opp_lookup = load_opportunities_by_id()
+    if not corpus:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "MATCH_DATA_UNAVAILABLE",
+                "message": "Match data is temporarily unavailable.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "30"},
+        )
+    if registered_corpus_identity_nowait() != id(corpus):
+        # data_loader publishes a generation only after fit+register. A
+        # mismatch therefore means a newer reload won after this caller
+        # obtained its list, or generation preparation failed. Never rebind the
+        # global ranker backwards to the stale list.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "MATCH_DATA_CHANGED",
+                "message": "Match data changed while this request was loading. Please retry.",
+                "retryable": True,
+            },
+        )
+    corpus_identity = _activate_corpus_generation(corpus)
+    key = _snapshot_key(profile_dict, llm, corpus_generation)
+    with _match_inflight_lock:
+        snap = _match_snapshots.get(key)
+        if (
+            snap is not None
+            and _SNAPSHOT_TTL_SECONDS > 0
+            and snap.corpus_identity == corpus_identity
+            and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
+        ):
+            return snap
+
+    # Release filtering scans the full corpus and allocates a survivor list.
+    # Cursor/view pages normally hit the snapshot above, so only a true miss
+    # should pay that cost.
+    opportunities = release_visible_opportunities(corpus)
+    responsiveness = await _responsiveness_for_matching()
+    if not llm:
+        return await _get_or_compute_rule_snapshot(
+            key,
+            profile_dict,
+            corpus_identity,
+            opportunities,
+            responsiveness,
+        )
+
+    # Dormant/MTP path: keep the complete result list because a future accepted
+    # LLM blend may move records across percentile buckets. The public release
+    # cannot enter this branch (feature_enabled("match_ai_refine") is
+    # source-controlled false).
+    try:
+        results = await asyncio.to_thread(
+            _rank_all_for_generation,
+            profile_dict,
+            opportunities,
+            responsiveness,
+            corpus_identity,
+        )
+    except _MatchGenerationChanged as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "MATCH_DATA_CHANGED",
+                "message": "Match data changed while this request was queued. Please retry.",
+                "retryable": True,
+            },
+        ) from exc
+    opp_lookup = {
+        opportunity["id"]: opportunity
+        for opportunity in opportunities
+        if opportunity.get("id")
+    }
 
     # LLM rerank (default-on, OpenRouter). Runs after the rule rank; a strict
     # no-op when OpenRouter is unconfigured or any call fails, so the rule
@@ -484,41 +966,236 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
             if getattr(r, "field_relevant", False):
                 field_relevant_count += 1
 
+    visible_ids = {result.opportunity_id for result in visible_results}
     snap = _MatchSnapshot(
         created_at=time.time(),
-        corpus_ref=corpus,
-        results=results,
-        by_id={r.opportunity_id: r for r in results},
+        corpus_identity=corpus_identity,
+        result_set_id=secrets.token_hex(32),
         visible=visible_results,
+        by_id={r.opportunity_id: r for r in visible_results},
+        opportunities_by_id={
+            opportunity_id: _match_card(opportunity)
+            for opportunity_id, opportunity in opp_lookup.items()
+            if opportunity_id in visible_ids
+        },
         buckets=buckets,
         field_relevant_count=field_relevant_count,
     )
-    if len(_match_snapshots) >= _SNAPSHOT_MAX_ENTRIES:
-        now = time.time()
-        for k in [k for k, s in _match_snapshots.items()
-                  if now - s.created_at > _SNAPSHOT_TTL_SECONDS]:
-            _match_snapshots.pop(k, None)
-        while len(_match_snapshots) >= _SNAPSHOT_MAX_ENTRIES:
-            _match_snapshots.pop(next(iter(_match_snapshots)))
-    _match_snapshots[key] = snap
-    return snap
+    return _store_snapshot(key, snap)
+
+
+def _match_result_response(
+    result: MatchResult,
+    opportunities_by_id: dict[str, dict],
+) -> MatchResultResponse:
+    return MatchResultResponse(
+        opportunity_id=result.opportunity_id,
+        eligibility_score=result.eligibility_score,
+        readiness_score=result.readiness_score,
+        upside_score=result.upside_score,
+        final_score=result.final_score,
+        bucket=result.bucket,
+        reasons_fit=result.reasons_fit,
+        reasons_gap=result.reasons_gap,
+        next_steps=result.next_steps,
+        ai_reason=result.ai_reason,
+        unknowns=result.unknowns,
+        opportunity=opportunities_by_id.get(result.opportunity_id, {}),
+    )
+
+
+def _expand_search_aliases(query: str) -> list[str]:
+    query_lower = query.lower()
+    terms = [query_lower]
+    terms.extend(_SEARCH_ALIASES.get(query_lower, ()))
+    tokens = query_lower.split()
+    for abbreviation, expansions in _SEARCH_ALIASES.items():
+        if abbreviation == query_lower or abbreviation not in tokens:
+            continue
+        pattern = re.compile(rf"\b{re.escape(abbreviation)}\b")
+        terms.extend(pattern.sub(expansion, query_lower) for expansion in expansions)
+    return terms
+
+
+def _calendar_days_until(deadline: object, today: date) -> int | None:
+    if not isinstance(deadline, str) or len(deadline) != 10:
+        return None
+    try:
+        return (date.fromisoformat(deadline) - today).days
+    except ValueError:
+        return None
+
+
+def _apply_match_view(
+    results: list[MatchResult],
+    opportunities_by_id: dict[str, dict],
+    view: MatchViewState,
+    home_school: str,
+) -> tuple[
+    list[MatchResult],
+    dict[str, int],
+    list[dict[str, str | int]],
+    bool,
+]:
+    """Apply the former browser predicates to the complete snapshot exactly."""
+    favorite_ids = set(view.favorite_ids)
+    dismissed_ids = set(view.dismissed_ids)
+    today = date.fromisoformat(view.today)
+    search_terms = (
+        _expand_search_aliases(view.search_query)
+        if view.search_query.strip()
+        else []
+    )
+
+    source_counts: dict[str, int] = {}
+    scope_available = False
+    base: list[MatchResult] = []
+    for result in results:
+        opportunity = opportunities_by_id.get(result.opportunity_id, {})
+        source = opportunity.get("source")
+        if isinstance(source, str) and source:
+            source_counts[source] = source_counts.get(source, 0) + 1
+        if "school" in opportunity or "audience" in opportunity:
+            scope_available = True
+
+        if not view.show_dismissed and result.opportunity_id in dismissed_ids:
+            continue
+        paid = opportunity.get("paid")
+        if view.paid == "yes" and paid not in {"yes", "stipend"}:
+            continue
+        if view.paid == "no" and paid not in {"no", "unknown"}:
+            continue
+        if (
+            view.intl == "yes"
+            and (opportunity.get("eligibility") or {}).get(
+                "international_friendly"
+            )
+            != "yes"
+        ):
+            continue
+        if view.source and source != view.source:
+            continue
+        if view.on_campus == "yes" and not opportunity.get("on_campus"):
+            continue
+        if view.on_campus == "no" and opportunity.get("on_campus"):
+            continue
+        if view.deadline:
+            days = _calendar_days_until(opportunity.get("deadline"), today)
+            if view.deadline == "passed":
+                if days is None or days >= 0:
+                    continue
+            elif days is None or days < 0 or days > int(view.deadline):
+                continue
+        if view.min_score > 0 and math.floor(result.final_score + 0.5) < view.min_score:
+            continue
+        if view.scope == "campus" and opportunity.get("school") != home_school:
+            continue
+        if view.scope == "open" and opportunity.get("audience") not in {
+            "open",
+            "unknown",
+        }:
+            continue
+
+        if search_terms:
+            title = str(opportunity.get("title") or "").lower()
+            organization = str(opportunity.get("organization") or "").lower()
+            department = str(opportunity.get("department") or "").lower()
+            keywords = [
+                str(keyword).lower()
+                for keyword in (opportunity.get("keywords") or [])
+            ]
+            description_clean = opportunity.get("description_clean")
+            description = str(
+                description_clean
+                if description_clean is not None
+                else opportunity.get("description_raw") or ""
+            ).lower()
+            reasons = " ".join(result.reasons_fit).lower()
+            if not any(
+                term in title
+                or term in organization
+                or term in department
+                or any(term in keyword for keyword in keywords)
+                or term in description
+                or term in reasons
+                for term in search_terms
+            ):
+                continue
+
+        base.append(result)
+
+    view_counts = {
+        "all": len(base),
+        "high_priority": 0,
+        "good_match": 0,
+        "reach": 0,
+        "starred": 0,
+    }
+    for result in base:
+        if result.bucket in {"high_priority", "good_match", "reach"}:
+            view_counts[result.bucket] += 1
+        if result.opportunity_id in favorite_ids:
+            view_counts["starred"] += 1
+
+    if view.tab == "starred":
+        filtered = [
+            result for result in base if result.opportunity_id in favorite_ids
+        ]
+    elif view.tab == "all":
+        filtered = list(base)
+    else:
+        filtered = [result for result in base if result.bucket == view.tab]
+
+    if view.sort_by == "deadline":
+        filtered.sort(
+            key=lambda result: str(
+                opportunities_by_id.get(result.opportunity_id, {}).get(
+                    "deadline"
+                )
+                or "9999"
+            )
+        )
+    elif view.sort_by == "newest":
+        filtered.sort(
+            key=lambda result: str(
+                opportunities_by_id.get(result.opportunity_id, {}).get(
+                    "posted_date"
+                )
+                or ""
+            ),
+            reverse=True,
+        )
+
+    source_facets = [
+        {"source": source, "count": count}
+        for source, count in sorted(
+            source_counts.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+    ]
+    return filtered, view_counts, source_facets, scope_available
 
 
 @router.post("/matches", response_model=MatchesResponse)
 async def get_matches(
     profile: ProfileRequest,
-    limit: int | None = Query(default=None, ge=1, le=MAX_RESULTS_PER_REQUEST),
+    limit: int = Query(
+        default=DEFAULT_RESULTS_PER_PAGE,
+        ge=1,
+        le=MAX_RESULTS_PER_REQUEST,
+    ),
     offset: int = Query(default=0, ge=0),
+    cursor: str | None = Query(default=None, max_length=512),
     llm: bool = Query(default=False),
 ):
     """Score and rank opportunities for the given profile.
 
-    By default every visible (non-low_fit) result is returned so the client can
-    page through all of them — previously a 500-result cap left most of the
-    'Reach' bucket unreachable even though the counts advertised it. Pass
-    ``limit``/``offset`` for explicit server-side paging: pages slice one
-    snapshot (see _get_or_compute_snapshot), so traversal is stable — no
-    duplicates, no omissions — while the snapshot lives.
+    The first response is capped at 100 results. Follow ``next_cursor`` to
+    traverse the same profile+corpus+matcher generation without duplicates or
+    omissions. A corpus/matcher/profile change fails a stale cursor explicitly
+    instead of silently mixing two generations. ``offset`` remains only for
+    older clients and contract tests; the release client uses the cursor.
 
     ``total`` is the pageable universe: the number of unique visible
     (non-low_fit) results, always equal to high_priority + good_match + reach
@@ -530,34 +1207,51 @@ async def get_matches(
     explicitly sends ``llm=true``. URL manipulation cannot promote the dormant
     feature.
     """
-    opportunities = load_opportunities()
-    if not opportunities:
-        raise HTTPException(status_code=503, detail="No opportunity data available")
+    decoded_cursor: tuple[str, int] | None = None
+    if cursor is not None:
+        if offset != 0:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "MATCH_CURSOR_INVALID",
+                    "message": "Cursor and offset cannot be combined.",
+                    "retryable": False,
+                },
+            )
+        try:
+            decoded_cursor = _decode_match_cursor(cursor)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "MATCH_CURSOR_INVALID",
+                    "message": "This results cursor is invalid.",
+                    "retryable": False,
+                },
+            ) from exc
 
     profile_dict = _normalized_profile(profile)
     use_llm = llm and feature_enabled("match_ai_refine")
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
-    opp_lookup = load_opportunities_by_id()
+    opp_lookup = snap.opportunities_by_id
 
     visible_results = snap.visible
-    page = visible_results[offset:offset + limit] if limit is not None else visible_results[offset:]
-    page_response = [
-        MatchResultResponse(
-            opportunity_id=r.opportunity_id,
-            eligibility_score=r.eligibility_score,
-            readiness_score=r.readiness_score,
-            upside_score=r.upside_score,
-            final_score=r.final_score,
-            bucket=r.bucket,
-            reasons_fit=r.reasons_fit,
-            reasons_gap=r.reasons_gap,
-            next_steps=r.next_steps,
-            ai_reason=r.ai_reason,
-            unknowns=r.unknowns,
-            opportunity=_match_card(opp_lookup.get(r.opportunity_id, {})),
-        )
-        for r in page
-    ]
+    page_offset = offset
+    if decoded_cursor is not None:
+        cursor_result_set_id, page_offset = decoded_cursor
+        if cursor_result_set_id != snap.result_set_id:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "MATCH_CURSOR_EXPIRED",
+                    "message": "Match data changed. Refresh results to continue.",
+                    "retryable": True,
+                },
+            )
+    page = visible_results[page_offset:page_offset + limit]
+    page_response = [_match_result_response(r, opp_lookup) for r in page]
+    next_offset = page_offset + len(page_response)
+    has_more = next_offset < len(visible_results)
 
     return MatchesResponse(
         total=len(visible_results),
@@ -569,6 +1263,99 @@ async def get_matches(
         field_relevant_count=snap.field_relevant_count,
         thin_inventory=snap.field_relevant_count < THIN_INVENTORY_FLOOR,
         matcher_version=MATCHER_VERSION,
+        returned_count=len(page_response),
+        has_more=has_more,
+        next_cursor=(
+            _encode_match_cursor(snap.result_set_id, next_offset)
+            if has_more
+            else None
+        ),
+        result_set_id=snap.result_set_id,
+        contract_version=MATCH_CONTRACT_VERSION,
+        view_start=page_offset,
+    )
+
+
+@router.post("/matches/view", response_model=MatchesResponse)
+async def get_match_view(request: MatchViewRequest):
+    """Return one exact filtered/sorted page over the canonical Match snapshot.
+
+    Counts, facets, empty-state truth and pagination all derive from the
+    complete visible universe. The browser therefore never treats a bounded
+    response page as if it were the full result set.
+    """
+    decoded_cursor: tuple[str, str, int] | None = None
+    if request.cursor is not None:
+        try:
+            decoded_cursor = _decode_match_view_cursor(request.cursor)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "MATCH_CURSOR_INVALID",
+                    "message": "This results cursor is invalid.",
+                    "retryable": False,
+                },
+            ) from exc
+
+    profile_dict = _normalized_profile(request.profile)
+    snap = await _get_or_compute_snapshot(profile_dict, False)
+    opportunities_by_id = snap.opportunities_by_id
+    view_id = _match_view_id(request.view)
+    page_offset = 0
+    if decoded_cursor is not None:
+        cursor_result_set_id, cursor_view_id, page_offset = decoded_cursor
+        if (
+            cursor_result_set_id != snap.result_set_id
+            or cursor_view_id != view_id
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "MATCH_CURSOR_EXPIRED",
+                    "message": "Match data or filters changed. Refresh results to continue.",
+                    "retryable": True,
+                },
+            )
+
+    filtered, view_counts, source_facets, scope_available = _apply_match_view(
+        snap.visible,
+        opportunities_by_id,
+        request.view,
+        profile_dict.get("home_school") or "uiuc",
+    )
+    page = filtered[page_offset:page_offset + request.page_size]
+    page_response = [
+        _match_result_response(result, opportunities_by_id) for result in page
+    ]
+    next_offset = page_offset + len(page_response)
+    has_more = next_offset < len(filtered)
+
+    return MatchesResponse(
+        total=len(snap.visible),
+        high_priority=snap.buckets["high_priority"],
+        good_match=snap.buckets["good_match"],
+        reach=snap.buckets["reach"],
+        low_fit=snap.buckets["low_fit"],
+        results=page_response,
+        field_relevant_count=snap.field_relevant_count,
+        thin_inventory=snap.field_relevant_count < THIN_INVENTORY_FLOOR,
+        matcher_version=MATCHER_VERSION,
+        returned_count=len(page_response),
+        has_more=has_more,
+        next_cursor=(
+            _encode_match_view_cursor(snap.result_set_id, view_id, next_offset)
+            if has_more
+            else None
+        ),
+        result_set_id=snap.result_set_id,
+        contract_version=MATCH_VIEW_CONTRACT_VERSION,
+        view_start=page_offset,
+        filtered_total=len(filtered),
+        view_counts=view_counts,
+        source_facets=source_facets,
+        scope_available=scope_available,
+        view_id=view_id,
     )
 
 
@@ -577,7 +1364,7 @@ async def get_gap_analysis(opportunity_id: str, profile: ProfileRequest):
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
     opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
+        await asyncio.to_thread(load_opportunities_by_id),
         opportunity_id,
     )
     if not opp:
@@ -730,7 +1517,12 @@ async def get_match_explanation(
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     result = snap.by_id.get(opportunity_id)
     excluded_reason = None
-    if result is None:
+    if result is not None:
+        # Render/explain from the exact corpus generation that produced the
+        # visible result, even if a data refresh landed between lookup and
+        # snapshot resolution.
+        opp = snap.opportunities_by_id.get(opportunity_id, opp)
+    else:
         # Not in the profile's result universe. Same shared hard filter the
         # list applied — never a re-derivation — plus an informational
         # standalone score so the surface can still show *why*.

@@ -134,6 +134,63 @@ class ProfileRequest(BaseModel):
     }
 
 
+class MatchViewState(BaseModel):
+    """Exact server-side view of the canonical Match universe.
+
+    The browser previously computed these predicates from one giant response.
+    Keeping them explicit lets a bounded page retain exact search/filter/tab
+    counts instead of treating the first 50 rows as the whole universe.
+    """
+
+    tab: Literal["all", "high_priority", "good_match", "reach", "starred"] = "all"
+    search_query: str = Field(default="", max_length=200)
+    paid: Literal["", "yes", "no"] = ""
+    intl: Literal["", "yes", "no"] = ""
+    source: str = Field(default="", max_length=100)
+    on_campus: Literal["", "yes", "no"] = ""
+    deadline: Literal["", "7", "14", "30", "passed"] = ""
+    min_score: int = Field(default=0, ge=0, le=100)
+    scope: Literal["", "campus", "open"] = ""
+    sort_by: Literal["score", "deadline", "newest"] = "score"
+    show_dismissed: bool = False
+    favorite_ids: list[str] = Field(default_factory=list)
+    dismissed_ids: list[str] = Field(default_factory=list)
+    # Browser-local calendar date. Deadline filters use calendar-day
+    # differences, matching the former client implementation independent of
+    # the Render instance's timezone.
+    today: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+    @field_validator("favorite_ids", "dismissed_ids")
+    @classmethod
+    def cap_view_ids(cls, values: list) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for raw in values[:5000]:
+            value = str(raw)[:100]
+            if value and value not in seen:
+                seen.add(value)
+                out.append(value)
+        return out
+
+    @field_validator("today")
+    @classmethod
+    def valid_calendar_date(cls, value: str) -> str:
+        from datetime import date
+
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("today must be a valid ISO calendar date") from exc
+        return value
+
+
+class MatchViewRequest(BaseModel):
+    profile: ProfileRequest
+    view: MatchViewState
+    page_size: int = Field(default=50, ge=1, le=100)
+    cursor: str | None = Field(default=None, max_length=768)
+
+
 class MatchResultResponse(BaseModel):
     opportunity_id: str
     eligibility_score: float
@@ -174,6 +231,21 @@ class MatchesResponse(BaseModel):
     # (src.matcher.config.MATCHER_VERSION). Clients key their caches on it so
     # results from two matcher generations can never silently coexist.
     matcher_version: str = ""
+    # Bounded paging contract. ``total`` remains the complete visible
+    # universe; these fields describe only this response window.
+    returned_count: int = 0
+    has_more: bool = False
+    next_cursor: str | None = None
+    result_set_id: str = ""
+    contract_version: str = ""
+    view_start: int = 0
+    # Exact server-side view metadata. Optional/defaulted so the canonical
+    # /matches paging endpoint and older clients remain compatible.
+    filtered_total: int | None = None
+    view_counts: dict[str, int] = Field(default_factory=dict)
+    source_facets: list[dict[str, Union[str, int]]] = Field(default_factory=list)
+    scope_available: bool = False
+    view_id: str = ""
 
 
 class ColdEmailRequest(BaseModel):
@@ -567,5 +639,3 @@ class OpportunityListResponse(BaseModel):
     total: int
     opportunities: list[dict]
     sources: dict[str, int]
-
-

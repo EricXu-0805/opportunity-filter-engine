@@ -59,6 +59,34 @@ describe('readInitialFiltersFromUrl', () => {
     expect(result.sortBy).toBe('deadline');
     expect(result.searchQuery).toBe('ml');
   });
+
+  it('sanitizes stale or malformed deep-link values before the strict API boundary', () => {
+    const result = readInitialFiltersFromUrl(new URLSearchParams(
+      `tab=wrong&paid=maybe&intl=wrong&loc=remote&dl=365&min=101.9`
+      + `&scope=global&sort=popular&q=${'q'.repeat(220)}&source=${'s'.repeat(120)}`,
+    ));
+
+    expect(result.activeTab).toBe('high_priority');
+    expect(result.filters).toEqual({
+      paid: '',
+      intl: '',
+      source: 's'.repeat(100),
+      onCampus: '',
+      deadline: '',
+      minScore: 100,
+      scope: '',
+    });
+    expect(result.sortBy).toBe('score');
+    expect(result.searchQuery).toBe('q'.repeat(200));
+  });
+
+  it.each(['abc', 'Infinity', '-1'])(
+    'normalizes invalid min score %s without producing a 422 request',
+    (min) => {
+      const result = readInitialFiltersFromUrl(new URLSearchParams(`min=${min}`));
+      expect(result.filters.minScore).toBe(0);
+    },
+  );
 });
 
 describe('readInitialSemanticRerank', () => {

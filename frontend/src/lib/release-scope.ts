@@ -8,6 +8,7 @@
  */
 export const RELEASE_SCOPE = Object.freeze({
   matchAiRefine: false,
+  crossSchoolMatching: false,
   compare: false,
   resumeRenovate: false,
   fellowships: false,
@@ -32,14 +33,19 @@ export const PUBLIC_RELEASE_CACHE_VERSION = 'mvp-route-freeze-v1';
  * stale invisible preference able to shape later requests.
  */
 export function normalizeProfileForRelease<
-  T extends { seeking_types?: string[] },
+  T extends { seeking_types?: string[]; include_cross_school?: boolean },
 >(profile: T): T {
-  if (RELEASE_SCOPE.fellowships || !Array.isArray(profile.seeking_types)) {
-    return profile;
+  let normalized = profile;
+  if (!RELEASE_SCOPE.fellowships && Array.isArray(profile.seeking_types)) {
+    const seekingTypes = profile.seeking_types.filter(
+      (value) => value !== 'fellowship',
+    );
+    if (seekingTypes.length !== profile.seeking_types.length) {
+      normalized = { ...normalized, seeking_types: seekingTypes };
+    }
   }
-  const seekingTypes = profile.seeking_types.filter(
-    (value) => value !== 'fellowship',
-  );
-  if (seekingTypes.length === profile.seeking_types.length) return profile;
-  return { ...profile, seeking_types: seekingTypes };
+  if (!RELEASE_SCOPE.crossSchoolMatching && normalized.include_cross_school) {
+    normalized = { ...normalized, include_cross_school: false };
+  }
+  return normalized;
 }

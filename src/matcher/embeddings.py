@@ -278,7 +278,7 @@ _tfidf_vectorizer = None
 _tfidf_fitted = False
 
 
-def fit_tfidf_corpus(corpus_texts) -> None:
+def fit_tfidf_corpus(corpus_texts) -> bool:
     """Fit the TF-IDF vectorizer on the opportunity corpus.
 
     Call this once at startup (or when data reloads) so similarity
@@ -294,7 +294,7 @@ def fit_tfidf_corpus(corpus_texts) -> None:
     try:
         from sklearn.feature_extraction.text import TfidfVectorizer
     except ImportError:
-        return
+        return False
     n_docs = 0
 
     def _valid_docs():
@@ -313,12 +313,13 @@ def fit_tfidf_corpus(corpus_texts) -> None:
     try:
         tv.fit(_valid_docs())
     except ValueError:  # empty / all-stopword corpus
-        return
+        return False
     if n_docs < 2:  # degenerate corpus, same guard as before
-        return
+        return False
     _tfidf_vectorizer = tv
     _tfidf_fitted = True
     logger.info("Fitted TF-IDF vectorizer on %d corpus docs", n_docs)
+    return True
 
 
 def precompute_opportunity_embeddings(opportunities: list[dict],

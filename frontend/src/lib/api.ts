@@ -22,14 +22,129 @@ import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly retryable: boolean,
+    public readonly requestId?: string,
+    public readonly detail?: unknown,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+type RequestOptions = RequestInit & { timeoutMs?: number };
+
+function safeHttpMessage(status: number): string {
+  if (status === 429 || status === 503) {
+    return 'The service is busy. Please try again shortly.';
+  }
+  if (status === 504) {
+    return 'The request took too long. Please try again.';
+  }
+  if (status >= 500) {
+    return 'The service is temporarily unavailable. Please try again.';
+  }
+  return 'The request could not be completed.';
+}
+
+async function apiErrorFromResponse(res: Response): Promise<ApiError> {
+  const raw = (await res.text().catch(() => '')).slice(0, 4096);
+  let detail: unknown = null;
+  try {
+    detail = raw ? JSON.parse(raw) : null;
+  } catch {
+    // HTML/text gateway bodies are intentionally ignored.
+  }
+  const fastApiDetail = (
+    detail
+    && typeof detail === 'object'
+    && 'detail' in detail
+  ) ? detail.detail : undefined;
+  const envelope = (
+    detail
+    && typeof detail === 'object'
+    && 'detail' in detail
+    && typeof detail.detail === 'object'
+    && detail.detail !== null
+  ) ? detail.detail as Record<string, unknown> : {};
+  const message = typeof envelope.message === 'string'
+    ? envelope.message.slice(0, 240)
+    : (
+      res.status < 500 && typeof fastApiDetail === 'string'
+        ? fastApiDetail.slice(0, 240)
+        : safeHttpMessage(res.status)
+    );
+  const validationCode = Array.isArray(fastApiDetail)
+    && fastApiDetail.length > 0
+    && fastApiDetail[0]
+    && typeof fastApiDetail[0] === 'object'
+    && typeof (fastApiDetail[0] as Record<string, unknown>).type === 'string'
+    ? String((fastApiDetail[0] as Record<string, unknown>).type).slice(0, 80)
+    : null;
+  const code = typeof envelope.code === 'string'
+    ? envelope.code.slice(0, 80)
+    : validationCode ?? `HTTP_${res.status}`;
+  return new ApiError(
+    res.status,
+    code,
+    message,
+    envelope.retryable === true || res.status >= 500 || res.status === 429,
+    res.headers?.get?.('x-request-id') ?? undefined,
+    fastApiDetail,
+  );
+}
+
+async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {
+  const {
+    timeoutMs = 60_000,
+    signal: callerSignal,
+    headers: callerHeaders,
+    ...fetchOptions
+  } = options;
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(callerSignal?.reason);
+  if (callerSignal?.aborted) abortFromCaller();
+  else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+    timeoutMs,
+  );
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (callerHeaders instanceof Headers) {
+    callerHeaders.forEach((value, key) => { headers[key] = value; });
+  } else if (Array.isArray(callerHeaders)) {
+    for (const [key, value] of callerHeaders) headers[key] = value;
+  } else if (callerHeaders) {
+    Object.assign(headers, callerHeaders);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${url}`, {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted && !callerSignal?.aborted) {
+      throw new ApiError(
+        408,
+        'REQUEST_TIMEOUT',
+        'The request took too long. Please try again.',
+        true,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abortFromCaller);
+  }
   if (!res.ok) {
-    const errBody = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${errBody}`);
+    throw await apiErrorFromResponse(res);
   }
   return res.json() as Promise<T>;
 }
@@ -122,22 +237,73 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     scholar_url: profile.scholar_url ?? '',
     search_weight: profile.search_weight ?? 50,
     exploring: profile.exploring ?? false,
-    include_cross_school: profile.include_cross_school ?? false,
+    include_cross_school:
+      RELEASE_SCOPE.crossSchoolMatching && (profile.include_cross_school ?? false),
   };
 }
 
 /** POST /api/matches — get ranked opportunities for a profile */
 export async function getMatches(
   profile: ProfileData,
-  options: { llm?: boolean } = {},
+  options: {
+    llm?: boolean;
+    limit?: number;
+    cursor?: string | null;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<MatchesResponse> {
   // Deterministic is the release default. Both source-controlled acceptance
   // and an explicit user action are required before the request can opt in.
   const llm = RELEASE_SCOPE.matchAiRefine && options.llm === true;
-  const qs = `?llm=${llm ? 'true' : 'false'}`;
-  return request<MatchesResponse>(`/matches${qs}`, {
+  const params = new URLSearchParams({ llm: llm ? 'true' : 'false' });
+  if (options.limit !== undefined) params.set('limit', String(options.limit));
+  if (options.cursor) params.set('cursor', options.cursor);
+  return request<MatchesResponse>(`/matches?${params.toString()}`, {
     method: 'POST',
     body: JSON.stringify(toProfileRequest(profile)),
+    signal: options.signal,
+    timeoutMs: 70_000,
+  });
+}
+
+export interface MatchViewRequestState {
+  tab: 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
+  search_query: string;
+  paid: '' | 'yes' | 'no';
+  intl: '' | 'yes' | 'no';
+  source: string;
+  on_campus: '' | 'yes' | 'no';
+  deadline: '' | '7' | '14' | '30' | 'passed';
+  min_score: number;
+  scope: '' | 'campus' | 'open';
+  sort_by: 'score' | 'deadline' | 'newest';
+  show_dismissed: boolean;
+  favorite_ids: string[];
+  dismissed_ids: string[];
+  today: string;
+}
+
+/** Exact, bounded results view. Search/filter/count semantics live on the
+ * complete canonical snapshot; `results` contains only the requested page. */
+export async function getMatchView(
+  profile: ProfileData,
+  view: MatchViewRequestState,
+  options: {
+    cursor?: string | null;
+    pageSize?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<MatchesResponse> {
+  return request<MatchesResponse>('/matches/view', {
+    method: 'POST',
+    body: JSON.stringify({
+      profile: toProfileRequest(profile),
+      view,
+      page_size: options.pageSize ?? 50,
+      cursor: options.cursor ?? null,
+    }),
+    signal: options.signal,
+    timeoutMs: 70_000,
   });
 }
 
@@ -297,8 +463,7 @@ export async function chatWithOpportunity(
     body,
   });
   if (!res.ok) {
-    const errBody = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${errBody}`);
+    throw await apiErrorFromResponse(res);
   }
   if (!res.headers.get('content-type')?.includes('text/event-stream') || !res.body) {
     const json = (await res.json()) as ChatResponse;
@@ -865,6 +1030,12 @@ export async function importByUrl(url: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ url }),
     });
   } catch (err) {
+    const structured = err instanceof ApiError
+      ? fastApiDetailText(err.detail)
+      : null;
+    if (structured) {
+      return { ok: false, error: structured, llm_enriched: false };
+    }
     const message = err instanceof Error ? err.message : String(err);
     const detail = parseFastApiDetail(message);
     if (detail) {
@@ -881,6 +1052,12 @@ export async function importByText(text: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ text }),
     });
   } catch (err) {
+    const structured = err instanceof ApiError
+      ? fastApiDetailText(err.detail)
+      : null;
+    if (structured) {
+      return { ok: false, error: structured, llm_enriched: false };
+    }
     const message = err instanceof Error ? err.message : String(err);
     const detail = parseFastApiDetail(message);
     if (detail) {
@@ -888,6 +1065,15 @@ export async function importByText(text: string): Promise<ImportUrlResponse> {
     }
     throw err;
   }
+}
+
+function fastApiDetailText(detail: unknown): string | null {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as { msg?: unknown };
+    if (first && typeof first.msg === 'string') return first.msg;
+  }
+  return null;
 }
 
 function parseFastApiDetail(rawErrorMessage: string): string | null {

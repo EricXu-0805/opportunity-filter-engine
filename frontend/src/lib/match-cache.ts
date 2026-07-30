@@ -8,18 +8,18 @@
 // cached and the header always fell back to the profile form. And re-fetching
 // the bodies by id on return is a visible load.
 //
-// Instead we store a self-contained but COMPACT copy in localStorage: each
-// opportunity is projected to just the fields the results list/filters render
-// (no metadata, no full descriptions ≈ 3 MB for the broadest profile), so the
-// read is a synchronous localStorage parse — instant, no network. The /matches
-// response is already email-redacted, so the projection carries no PII.
+// The v6 contract stores only the bounded first server-view page (max 100
+// cards) plus complete server-derived counts/facets/cursor metadata. A cache
+// hit may paint immediately, but useResultsData always validates it in the
+// background so a seven-day local copy never becomes the authority for corpus
+// or matcher generation.
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = STORAGE_KEYS.MATCH_RESULTS;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // results older than this re-fetch (corpus drift)
-const MAX_RESULTS = 2500; // hard size bound; far past what anyone scrolls/paginates
+const MAX_RESULTS = 100;
 const DESC_CHARS = 200; // keep a snippet so the free-text search still matches bodies
 
 // Exactly the opportunity fields the results list, filters and sort read
@@ -85,6 +85,17 @@ interface MatchCacheShape {
   field_relevant_count?: number;
   thin_inventory?: boolean;
   matcher_version?: string;
+  returned_count?: number;
+  has_more?: boolean;
+  next_cursor?: string | null;
+  result_set_id?: string;
+  contract_version?: string;
+  view_start?: number;
+  filtered_total?: number;
+  view_counts?: MatchesResponse['view_counts'];
+  source_facets?: MatchesResponse['source_facets'];
+  scope_available?: boolean;
+  view_id?: string;
 }
 
 function parse(): MatchCacheShape | null {
@@ -131,6 +142,17 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       field_relevant_count: data.field_relevant_count,
       thin_inventory: data.thin_inventory,
       matcher_version: data.matcher_version,
+      returned_count: data.returned_count,
+      has_more: data.has_more,
+      next_cursor: data.next_cursor,
+      result_set_id: data.result_set_id,
+      contract_version: data.contract_version,
+      view_start: data.view_start,
+      filtered_total: data.filtered_total,
+      view_counts: data.view_counts,
+      source_facets: data.source_facets,
+      scope_available: data.scope_available,
+      view_id: data.view_id,
     };
     localStorage.setItem(KEY, JSON.stringify(payload));
   } catch {
@@ -155,6 +177,17 @@ export function readMatchCache(hash: string, semantic: boolean): MatchesResponse
     field_relevant_count: c.field_relevant_count,
     thin_inventory: c.thin_inventory,
     matcher_version: c.matcher_version,
+    returned_count: c.returned_count,
+    has_more: c.has_more,
+    next_cursor: c.next_cursor,
+    result_set_id: c.result_set_id,
+    contract_version: c.contract_version,
+    view_start: c.view_start,
+    filtered_total: c.filtered_total,
+    view_counts: c.view_counts,
+    source_facets: c.source_facets,
+    scope_available: c.scope_available,
+    view_id: c.view_id,
   };
 }
 

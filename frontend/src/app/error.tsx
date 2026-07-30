@@ -15,7 +15,11 @@ export default function GlobalError({
     console.error('[ofe] unhandled error:', error);
   }, [error]);
 
-  const isApiError = /^API \d+:/.test(error.message ?? '');
+  const status = (error as Error & { status?: unknown }).status;
+  const isApiError = (
+    typeof status === 'number'
+    || /^API \d+:/.test(error.message ?? '')
+  );
   const friendly = isApiError
     ? "We couldn't reach the matching service. It may be waking up — please try again in a few seconds."
     : "Something went wrong on this page.";

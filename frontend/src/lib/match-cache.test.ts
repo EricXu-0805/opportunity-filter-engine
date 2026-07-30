@@ -135,7 +135,7 @@ describe('match-cache', () => {
       }),
     );
 
-    expect(MATCH_KEY).toBe('ofe_match_results_v5');
+    expect(MATCH_KEY).toBe('ofe_match_results_v6');
     expect(hasMatchCache()).toBe(false);
     expect(readMatchCache('h1', false)).toBeNull();
   });
@@ -155,12 +155,12 @@ describe('match-cache', () => {
     expect(readMatchCache('h1', false)).toBeNull();
   });
 
-  it('caps the cached results array but keeps the full counts', () => {
+  it('caps the cached server-view page but keeps complete server counts', () => {
     const big = makeResponse(2700);
     big.total = 2700; big.good_match = 2700;
     writeMatchCache('h1', false, big);
     const out = readMatchCache('h1', false)!;
-    expect(out.results.length).toBe(2500); // capped
+    expect(out.results.length).toBe(100); // one bounded page
     expect(out.good_match).toBe(2700); // counts preserved
   });
 

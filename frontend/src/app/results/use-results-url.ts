@@ -26,19 +26,41 @@ export function readInitialFiltersFromUrl(
   filters: Filters;
   sortBy: SortKey;
 } {
+  const allow = <T extends string>(
+    raw: string | null,
+    values: readonly T[],
+    fallback: T,
+  ): T => (raw !== null && values.includes(raw as T) ? raw as T : fallback);
+  const rawMinScore = Number(searchParams.get('min') || 0);
+  const minScore = Number.isFinite(rawMinScore)
+    ? Math.min(100, Math.max(0, Math.trunc(rawMinScore)))
+    : 0;
+
   return {
-    activeTab: (searchParams.get('tab') as Tab) || 'high_priority',
-    searchQuery: searchParams.get('q') || '',
+    activeTab: allow<Tab>(
+      searchParams.get('tab'),
+      ['all', 'high_priority', 'good_match', 'reach', 'starred'],
+      'high_priority',
+    ),
+    searchQuery: (searchParams.get('q') || '').slice(0, 200),
     filters: {
-      paid: (searchParams.get('paid') || '') as Filters['paid'],
-      intl: (searchParams.get('intl') || '') as Filters['intl'],
-      source: (searchParams.get('source') || '') as Filters['source'],
-      onCampus: (searchParams.get('loc') || '') as Filters['onCampus'],
-      deadline: (searchParams.get('dl') || '') as Filters['deadline'],
-      minScore: Number(searchParams.get('min') || 0),
-      scope: (searchParams.get('scope') || '') as Filters['scope'],
+      paid: allow(searchParams.get('paid'), ['', 'yes', 'no'], ''),
+      intl: allow(searchParams.get('intl'), ['', 'yes', 'no'], ''),
+      source: (searchParams.get('source') || '').slice(0, 100),
+      onCampus: allow(searchParams.get('loc'), ['', 'yes', 'no'], ''),
+      deadline: allow(
+        searchParams.get('dl'),
+        ['', '7', '14', '30', 'passed'],
+        '',
+      ),
+      minScore,
+      scope: allow(searchParams.get('scope'), ['', 'campus', 'open'], ''),
     },
-    sortBy: (searchParams.get('sort') as SortKey) || 'score',
+    sortBy: allow<SortKey>(
+      searchParams.get('sort'),
+      ['score', 'deadline', 'newest'],
+      'score',
+    ),
   };
 }
 

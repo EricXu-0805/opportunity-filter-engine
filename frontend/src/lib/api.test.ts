@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   getMatches,
+  getMatchView,
   getOpportunities,
   getGapAnalysis,
   chatWithOpportunity,
@@ -65,12 +66,14 @@ describe('request<T> (internal helper, exercised through every endpoint)', () =>
     expect(result).toEqual({ total: 0, opportunities: [] });
   });
 
-  it('throws "API {status}: {body}" on non-2xx', async () => {
+  it('does not expose an unstructured 5xx body', async () => {
     fetchMock.mockResolvedValue(badResponse(500, 'server explode'));
-    await expect(getOpportunities()).rejects.toThrow('API 500: server explode');
+    await expect(getOpportunities()).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
   });
 
-  it('throws "API 500: Unknown error" when the error body cannot be read', async () => {
+  it('uses the same safe fallback when the error body cannot be read', async () => {
     /* Response.text() resolves successfully to "" for an empty body — it does
        not reject. So we install a Response stub whose .text() rejects to
        exercise the .catch(() => 'Unknown error') fallback. */
@@ -80,7 +83,9 @@ describe('request<T> (internal helper, exercised through every endpoint)', () =>
       text: () => Promise.reject(new Error('stream gone')),
       json: () => Promise.resolve({}),
     } as unknown as Response);
-    await expect(getOpportunities()).rejects.toThrow('API 500: Unknown error');
+    await expect(getOpportunities()).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
   });
 
   it('sets Content-Type: application/json on every JSON request', async () => {
@@ -128,13 +133,13 @@ describe('getMatches', () => {
     expect(body.exploring).toBe(true);
   });
 
-  it('sends include_cross_school=true when the profile opts in', async () => {
+  it('fails closed when a stale profile opts into unreleased cross-school matching', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile({ include_cross_school: true }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.include_cross_school).toBe(true);
+    expect(body.include_cross_school).toBe(false);
   });
 
   it('removes the dormant fellowship preference before matching', async () => {
@@ -208,6 +213,79 @@ describe('getMatches', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=false');
     await getMatches(makeProfile(), { llm: false });
     expect(fetchMock.mock.calls[1][0]).toBe('/api/matches?llm=false');
+  });
+});
+
+describe('getMatchView', () => {
+  it('POSTs the complete view state and cursor in the body', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({
+        total: 0,
+        high_priority: 0,
+        good_match: 0,
+        reach: 0,
+        low_fit: 0,
+        results: [],
+        filtered_total: 0,
+        view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
+        contract_version: 'match-view-v1',
+      }),
+    );
+    const view = {
+      tab: 'starred' as const,
+      search_query: 'ml',
+      paid: 'yes' as const,
+      intl: '' as const,
+      source: 'uiuc_faculty',
+      on_campus: '' as const,
+      deadline: '30' as const,
+      min_score: 70,
+      scope: 'campus' as const,
+      sort_by: 'score' as const,
+      show_dismissed: false,
+      favorite_ids: ['opp-1'],
+      dismissed_ids: ['opp-2'],
+      today: '2026-07-31',
+    };
+    await getMatchView(makeProfile(), view, {
+      cursor: 'opaque-cursor',
+      pageSize: 50,
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/view');
+    const body = JSON.parse(
+      (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+    );
+    expect(body.profile.major).toBe('CS');
+    expect(body.view).toEqual(view);
+    expect(body.page_size).toBe(50);
+    expect(body.cursor).toBe('opaque-cursor');
+  });
+
+  it('never includes an HTML gateway body in the user-facing error', async () => {
+    fetchMock.mockResolvedValue(
+      badResponse(502, '<html><body>upstream trace and internal host</body></html>'),
+    );
+    const view = {
+      tab: 'all' as const,
+      search_query: '',
+      paid: '' as const,
+      intl: '' as const,
+      source: '',
+      on_campus: '' as const,
+      deadline: '' as const,
+      min_score: 0,
+      scope: '' as const,
+      sort_by: 'score' as const,
+      show_dismissed: false,
+      favorite_ids: [],
+      dismissed_ids: [],
+      today: '2026-07-31',
+    };
+    const promise = getMatchView(makeProfile(), view);
+    await expect(promise).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
+    await expect(promise).rejects.not.toThrow('upstream trace');
   });
 });
 
@@ -442,9 +520,11 @@ describe('import endpoints (FastAPI detail handling)', () => {
     expect(result).toEqual({ ok: false, error: 'too short', llm_enriched: false });
   });
 
-  it('importByUrl re-throws when the error body cannot be parsed as a FastAPI detail', async () => {
+  it('importByUrl re-throws a safe message when the body is not structured detail', async () => {
     fetchMock.mockResolvedValue(badResponse(502, 'bad gateway'));
-    await expect(importByUrl('https://example.com')).rejects.toThrow('API 502: bad gateway');
+    await expect(importByUrl('https://example.com')).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
   });
 
   it('importByText POSTs /import-text with the body field', async () => {
@@ -549,11 +629,23 @@ describe('chatWithOpportunity — SSE streaming (onDelta present)', () => {
     expect(result.reply).toContain('AI chat is not configured');
   });
 
-  it('throws "API {status}" on a non-2xx streaming response', async () => {
+  it('throws a structured safe error on a non-2xx streaming response', async () => {
     fetchMock.mockResolvedValue(badResponse(429, 'slow down'));
-    await expect(
-      chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn()),
-    ).rejects.toThrow('API 429: slow down');
+    const promise = chatWithOpportunity(
+      'opp-1',
+      'Hi',
+      [],
+      null,
+      undefined,
+      vi.fn(),
+    );
+    await expect(promise).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 429,
+      code: 'HTTP_429',
+      retryable: true,
+      message: 'The service is busy. Please try again shortly.',
+    });
   });
 
   it('returns the partial reply as errored when the stream breaks mid-read', async () => {

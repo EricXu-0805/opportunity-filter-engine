@@ -174,23 +174,9 @@ describe('FilterRail — discovery-scope facet', () => {
 });
 
 describe('FilterRail — cross-school toggle', () => {
-  it('renders off by default (aria-pressed=false) with the hint as tooltip', () => {
+  it('stays hidden while cross-school matching is outside the MVP', () => {
     renderRail();
-    const btn = screen.getByRole('button', { name: /crossSchool$/ });
-    expect(btn).toHaveAttribute('aria-pressed', 'false');
-    expect(btn).toHaveAttribute('title', 'results.filters.crossSchoolHint');
-  });
-
-  it('reflects the on state via aria-pressed', () => {
-    renderRail({ includeCrossSchool: true });
-    const btn = screen.getByRole('button', { name: /crossSchool$/ });
-    expect(btn).toHaveAttribute('aria-pressed', 'true');
-  });
-
-  it('clicking fires onIncludeCrossSchoolChange with the flipped value', () => {
-    const { onIncludeCrossSchoolChange } = renderRail();
-    fireEvent.click(screen.getByRole('button', { name: /crossSchool$/ }));
-    expect(onIncludeCrossSchoolChange).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole('button', { name: /crossSchool$/ })).toBeNull();
   });
 });
 
