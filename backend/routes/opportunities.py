@@ -77,7 +77,17 @@ async def list_opportunities(
     limit: int = Query(default=100, le=500),
     offset: int = Query(default=0, ge=0),
 ):
-    opportunities = load_opportunities()
+    # Retired records are excluded from every discovery surface (/matches
+    # applies the same rule inside rank_all) — the browse list and the deadline
+    # calendar previously showed inactive postings the results page had already
+    # dropped. Detail-by-id and /batch still resolve them so saved links work.
+    # The corpus list is id-sorted at load (see data_loader._canonicalize_corpus),
+    # so offset paging here is a deterministic total order: same filters + same
+    # corpus generation → same pages, no duplicates, no omissions.
+    opportunities = [
+        o for o in load_opportunities()
+        if (o.get("metadata") or {}).get("is_active") is not False
+    ]
 
     if opportunity_type:
         opportunities = [o for o in opportunities if o.get("opportunity_type") == opportunity_type]
@@ -86,7 +96,7 @@ async def list_opportunities(
     if international_friendly:
         opportunities = [
             o for o in opportunities
-            if o.get("eligibility", {}).get("international_friendly") == international_friendly
+            if (o.get("eligibility") or {}).get("international_friendly") == international_friendly
         ]
 
     total = len(opportunities)
@@ -179,6 +189,10 @@ async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     cutoff = today + timedelta(days=days)
     upcoming = []
     for o in opportunities:
+        # Same active rule as /matches and the browse list — a retired posting
+        # has no business on the "what's due soon" calendar.
+        if (o.get("metadata") or {}).get("is_active") is False:
+            continue
         deadline = o.get("deadline", "")
         if not deadline or len(deadline) < 10 or deadline[4] != "-":
             continue
@@ -198,7 +212,9 @@ async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
                 "url": o.get("url"),
                 "source": o.get("source"),
             })
-    upcoming.sort(key=lambda o: o["deadline"])
+    # Unique id tie-break: equal deadlines otherwise fall back to corpus order,
+    # which is not part of this endpoint's contract.
+    upcoming.sort(key=lambda o: (o["deadline"], o["id"] or ""))
     return {"total": len(upcoming), "opportunities": upcoming, "days": days}
 
 
@@ -233,7 +249,7 @@ async def get_similar_opportunities(
     for opp in load_opportunities():
         if opp.get("id") == opportunity_id:
             continue
-        if not opp.get("metadata", {}).get("is_active", True):
+        if not (opp.get("metadata") or {}).get("is_active", True):
             continue
 
         kws = {k.lower() for k in (opp.get("keywords") or []) if isinstance(k, str)}
@@ -256,11 +272,15 @@ async def get_similar_opportunities(
             continue
         scored.append((score, opp))
 
-    scored.sort(key=lambda x: x[0], reverse=True)
+    # The 3.0/1.0/0.5-step scorer ties constantly — a unique id tie-break keeps
+    # the "Similar" rail deterministic instead of inheriting corpus order.
+    scored.sort(key=lambda x: (-x[0], x[1].get("id") or ""))
     top = scored[:limit]
     return {
         "source_id": opportunity_id,
-        "total": len(top),
+        # The number of similar records FOUND (pre-slice) — previously this
+        # reported the page size, so "total" could never exceed `limit`.
+        "total": len(scored),
         "opportunities": [
             {**_redact(o), "_similarity": round(s, 2)}
             for s, o in top

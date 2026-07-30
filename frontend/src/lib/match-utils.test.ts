@@ -228,4 +228,27 @@ describe('hashProfile', () => {
     expect(hashProfile(base)).not.toBe(hashProfile({ ...base, include_cross_school: true }));
     expect(hashProfile(base)).toBe(hashProfile({ ...base, include_cross_school: false }));
   });
+
+  // The consistency audit found five matcher inputs the hash omitted —
+  // editing any of them served the stale cached match set for up to 7 days.
+  it('every additional matcher input misses the cache when changed', () => {
+    expect(hashProfile(base)).not.toBe(hashProfile({ ...base, additional_majors: ['Statistics'] }));
+    expect(hashProfile(base)).not.toBe(hashProfile({ ...base, coursework: ['CS 225'] }));
+    expect(hashProfile(base)).not.toBe(hashProfile({ ...base, experience_level: 'strong' }));
+    expect(hashProfile(base)).not.toBe(hashProfile({ ...base, resume_text: 'my resume' }));
+    expect(hashProfile(base)).not.toBe(hashProfile({ ...base, exploring: true }));
+  });
+
+  it('absent new fields hash like their matcher defaults (no spurious miss)', () => {
+    expect(hashProfile(base)).toBe(hashProfile({ ...base, additional_majors: [] }));
+    expect(hashProfile(base)).toBe(hashProfile({ ...base, coursework: [] }));
+    expect(hashProfile(base)).toBe(hashProfile({ ...base, experience_level: 'beginner' }));
+    expect(hashProfile(base)).toBe(hashProfile({ ...base, resume_text: '' }));
+    expect(hashProfile(base)).toBe(hashProfile({ ...base, exploring: false }));
+  });
+
+  it('resume hashes on presence, not content', () => {
+    expect(hashProfile({ ...base, resume_text: 'draft one' }))
+      .toBe(hashProfile({ ...base, resume_text: 'draft two, edited' }));
+  });
 });

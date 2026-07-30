@@ -300,7 +300,7 @@ function ResultsContent() {
     setPage(1);
   }, [rawStoredProfile, setData]);
 
-  const { filtered, paginated, totalPages, counts } = useResultsFilters({
+  const { filtered, paginated, totalPages, effectivePage, counts } = useResultsFilters({
     data,
     activeTab,
     debouncedQuery,
@@ -315,7 +315,7 @@ function ResultsContent() {
   });
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination to page 1 when filter inputs change; key-remount would lose focus on the search box mid-typing, which is worse than the cascading render
-  useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy]);
+  useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy, showDismissed]);
 
   // Hydrate saved verdicts for the cards currently on screen. Fetching per
   // visible page (instead of all 600+ result ids at once) keeps the
@@ -364,7 +364,9 @@ function ResultsContent() {
 
   const activeFilterCount =
     (filters.paid ? 1 : 0) +
-    (filters.intl ? 1 : 0) +
+    // intl='no' is the labeled "Show all" option — it filters nothing, so it
+    // must not light the "Filters · N" badge over an unchanged list.
+    (filters.intl === 'yes' ? 1 : 0) +
     (filters.source ? 1 : 0) +
     (filters.onCampus ? 1 : 0) +
     (filters.deadline ? 1 : 0) +
@@ -638,8 +640,8 @@ function ResultsContent() {
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
               onFeedback={handleFeedback}
-              positionOffset={(page - 1) * PAGE_SIZE}
-              page={page}
+              positionOffset={(effectivePage - 1) * PAGE_SIZE}
+              page={effectivePage}
               totalPages={totalPages}
               onPageChange={setPage}
               t={t}

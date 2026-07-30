@@ -75,6 +75,12 @@ interface MatchCacheShape {
   reach: number;
   low_fit: number;
   results: MatchResult[];
+  // Canonical-matcher metadata (absent on payloads written before _v4):
+  // field_relevant_count previously vanished on every cache hit, silently
+  // hiding the "N strong matches in your field" header line on return visits.
+  field_relevant_count?: number;
+  thin_inventory?: boolean;
+  matcher_version?: string;
 }
 
 function parse(): MatchCacheShape | null {
@@ -118,6 +124,9 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       reach: data.reach,
       low_fit: data.low_fit,
       results,
+      field_relevant_count: data.field_relevant_count,
+      thin_inventory: data.thin_inventory,
+      matcher_version: data.matcher_version,
     };
     localStorage.setItem(KEY, JSON.stringify(payload));
   } catch {
@@ -139,5 +148,15 @@ export function readMatchCache(hash: string, semantic: boolean): MatchesResponse
     reach: c.reach,
     low_fit: c.low_fit,
     results: c.results,
+    field_relevant_count: c.field_relevant_count,
+    thin_inventory: c.thin_inventory,
+    matcher_version: c.matcher_version,
   };
+}
+
+/** The matcher_version of the cached match set (null when no fresh cache or a
+ *  pre-version payload). Other match caches (compare's explain cache) compare
+ *  against this so two matcher generations never render side by side. */
+export function cachedMatcherVersion(): string | null {
+  return parse()?.matcher_version ?? null;
 }

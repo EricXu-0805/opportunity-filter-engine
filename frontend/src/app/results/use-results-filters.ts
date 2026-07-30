@@ -26,6 +26,12 @@ export interface UseResultsFiltersOutput {
   paginated: MatchResult[];
   totalPages: number;
   /**
+   * `page` clamped to [1, totalPages]: hiding dismissed items or un-starring
+   * on a late page can shrink the set below the current page, which used to
+   * render a blank grid with a "5 / 3" pager. Render THIS, not the raw input.
+   */
+  effectivePage: number;
+  /**
    * Per-tab counts that reflect the ACTIVE field filters (source, scope, paid,
    * search, …) — every badge equals exactly what its tab shows when clicked.
    * Computed from the same `base` set as `filtered` (all non-tab filters
@@ -77,9 +83,12 @@ export function useResultsFilters({
       );
     }
     if (filters.intl) {
+      // 'no' is the labeled "Show all (incl. US-only)" option — a deliberate
+      // no-op, same set as ''. Optional-chain: a cached row whose projection
+      // carried no eligibility object must not throw the whole results page.
       results = results.filter((m) =>
         filters.intl === 'yes'
-          ? m.opportunity.eligibility.international_friendly === 'yes'
+          ? m.opportunity.eligibility?.international_friendly === 'yes'
           : true,
       );
     }
@@ -100,7 +109,10 @@ export function useResultsFilters({
       });
     }
     if (filters.minScore > 0) {
-      results = results.filter((m) => m.final_score >= filters.minScore);
+      // Filter on the DISPLAYED (rounded) score: the card shows
+      // Math.round(final_score), so a 79.6 renders as "80%" and must survive
+      // minScore=80 — filtering the raw value made labeled-80 cards vanish.
+      results = results.filter((m) => Math.round(m.final_score) >= filters.minScore);
     }
     if (filters.scope) {
       results = results.filter((m) => matchesScope(m.opportunity, filters.scope, homeSchool));
@@ -171,10 +183,11 @@ export function useResultsFilters({
   }, [base, activeTab, favs, sortBy]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
+  const effectivePage = Math.min(Math.max(1, page), Math.max(1, totalPages));
   const paginated = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize],
+    () => filtered.slice((effectivePage - 1) * pageSize, effectivePage * pageSize),
+    [filtered, effectivePage, pageSize],
   );
 
-  return { filtered, paginated, totalPages, counts };
+  return { filtered, paginated, totalPages, effectivePage, counts };
 }

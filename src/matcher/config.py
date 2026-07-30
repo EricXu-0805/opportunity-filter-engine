@@ -10,6 +10,8 @@ Convention: 0-100 scoring everywhere; 0.0-1.0 only for layer weights.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from dataclasses import dataclass
 
@@ -173,3 +175,54 @@ THIN_INVENTORY_FLOOR = int(_env_float("OFE_THIN_INVENTORY_FLOOR", 8))
 # ties but can never outrank topical fit (interests LEAD is the product law).
 RESPONSIVENESS_MIN_N = 3
 RESPONSIVENESS_BONUS = _env_float("OFE_RESPONSIVENESS_BONUS", 2.0)
+
+# ── LLM rerank knobs (consumed by backend/routes/matches.py) ────────────────
+# Centralized here with every other score-shaping tunable so they participate
+# in the matcher fingerprint below: re-pointing the model or weight via env
+# changes conclusions and must therefore change MATCHER_VERSION.
+LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "anthropic/claude-sonnet-5")
+LLM_RERANK_TOPK = int(_env_float("OFE_LLM_RERANK_TOPK", 20))
+LLM_RERANK_BATCH = int(_env_float("OFE_LLM_RERANK_BATCH", 10))
+LLM_RERANK_WEIGHT = _env_float("OFE_LLM_RERANK_W", 0.35)
+LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
+
+# ── Matcher version ──────────────────────────────────────────────────────────
+# One authoritative version string for the whole matching decision (scoring,
+# bucketing, reasons, unknown semantics, LLM blend). Served on every match
+# response and folded into every match cache key (server snapshots, the
+# frontend localStorage cache, the explain caches) so results computed under
+# different logic can never silently coexist.
+#
+# Bump _MATCHER_VERSION_BASE whenever matching LOGIC changes (new formula,
+# new bucket algorithm, new unknown policy). The fingerprint suffix covers
+# CONFIG drift automatically: every tunable above is hashed, so an env-var
+# override (OFE_BUCKET_HIGH=75, a different rerank weight, …) yields a
+# distinct version without anyone remembering to bump — two processes with
+# different knobs can no longer emit identical-looking results.
+_MATCHER_VERSION_BASE = "3"
+
+
+def _matcher_fingerprint() -> str:
+    knobs = {
+        "weights": (WEIGHTS_DEFAULT.eligibility, WEIGHTS_DEFAULT.readiness, WEIGHTS_DEFAULT.upside),
+        "buckets": BUCKET_THRESHOLDS,
+        "hp_target": HIGH_PRIORITY_TARGET_COUNT,
+        "intl_unknown": (INTL_UNKNOWN_SCORE, INTL_UNKNOWN_INTERNSHIP_SCORE),
+        "coursework": (COURSEWORK_PER_COURSE, COURSEWORK_MAX_FROM_COUNT, COURSEWORK_RELEVANCE_BONUS),
+        "bonuses": (INTEREST_BONUS_CAP, EMPTY_INTEREST_MAJOR_BONUS, INTEREST_BONUS_PER_HIT,
+                    COLLEGE_AFFINITY_MAX, HOME_SCHOOL_AFFINITY_MAX, RESPONSIVENESS_BONUS),
+        "penalties": (DEADLINE_PASSED_PENALTY, GRAD_LEVEL_PENALTY,
+                      TOPIC_UNKNOWN_PENALTY, TOPIC_MISMATCH_PENALTY),
+        "explore": (EXPLORE_MAJOR_MISMATCH_FLOOR, EXPLORE_READINESS_DROP),
+        "stretch": (STRETCH_SIGMOID_K, STRETCH_MIDPOINT, STRETCH_BLEND),
+        "seasonal": (SEASONAL_BOOST_ENABLED, SEASONAL_BOOST_FACTOR, sorted(SEASONAL_BOOST_MONTHS)),
+        "sim_scale": SIMILARITY_SCALE_TFIDF,
+        "implicit_major": (IMPLICIT_MAJOR_KEYWORD_CEILING, IMPLICIT_MAJOR_PER_HIT),
+        "elig_major_w": ELIG_MAJOR_WEIGHT,
+        "llm_rerank": (LLM_RERANK_MODEL, LLM_RERANK_TOPK, LLM_RERANK_WEIGHT),
+    }
+    payload = json.dumps(knobs, sort_keys=True, default=str).encode()
+    return hashlib.sha256(payload).hexdigest()[:8]
+
+
+MATCHER_VERSION = f"{_MATCHER_VERSION_BASE}.{_matcher_fingerprint()}"

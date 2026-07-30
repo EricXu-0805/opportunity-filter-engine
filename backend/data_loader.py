@@ -78,6 +78,30 @@ def _sanitize_opportunity(opp: dict) -> dict:
     return opp
 
 
+def _canonicalize_corpus(raw: list[dict]) -> list[dict]:
+    """One canonical corpus shape at the earliest layer: sanitized, unique by
+    id (first occurrence wins — so the ranked list and the by-id map are the
+    SAME records; the map's old last-wins built from a non-deduped list let a
+    duplicate id render twice in /matches while /opportunities/{id} showed
+    one), and id-sorted so /opportunities offset paging is deterministic and
+    survives shard-refresh reorderings instead of inheriting shard-file order."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    dropped = 0
+    for o in raw:
+        oid = o.get("id")
+        if oid:
+            if oid in seen:
+                dropped += 1
+                continue
+            seen.add(oid)
+        out.append(_sanitize_opportunity(o))
+    if dropped:
+        logger.warning("corpus: dropped %d duplicate-id records at load", dropped)
+    out.sort(key=lambda o: o.get("id") or "")
+    return out
+
+
 def _opportunity_corpus_text(opp: dict) -> str:
     # Must include the same fields the ranker's _similarity_corpus scores, so
     # every term that can appear in a scored record is in the fitted TF-IDF
@@ -131,7 +155,7 @@ def load_opportunities() -> list[dict]:
         if mtime != _opp_cache_mtime or not _opp_cache:
             with open(processed, encoding="utf-8") as f:
                 raw = json.load(f)
-            _opp_cache = [_sanitize_opportunity(o) for o in raw]
+            _opp_cache = _canonicalize_corpus(raw)
             _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
             _opp_cache_mtime = mtime
             _STR_POOL.clear()
@@ -152,7 +176,7 @@ def load_opportunities() -> list[dict]:
                 for p in shards:
                     with open(p, encoding="utf-8") as f:
                         raw.extend(json.load(f))
-                _opp_cache = [_sanitize_opportunity(o) for o in raw]
+                _opp_cache = _canonicalize_corpus(raw)
                 _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
                 _opp_cache_mtime = mtime
                 _STR_POOL.clear()
@@ -162,10 +186,21 @@ def load_opportunities() -> list[dict]:
 
     examples = EXAMPLES_DIR / "sample_opportunities.json"
     if examples.exists():
-        with open(examples, encoding="utf-8") as f:
-            data = json.load(f)
-        _maybe_fit_tfidf(data, 0.0)
-        return data
+        # Same canonical path as the real corpus: previously this branch
+        # skipped _opp_cache/_opp_cache_by_id entirely, so /matches returned
+        # results whose detail lookups 404'd (`opportunity: {}` cards) — two
+        # endpoints disagreeing about the same id on the fallback corpus.
+        mtime = examples.stat().st_mtime
+        if mtime != _opp_cache_mtime or not _opp_cache:
+            with open(examples, encoding="utf-8") as f:
+                raw = json.load(f)
+            _opp_cache = _canonicalize_corpus(raw)
+            _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
+            _opp_cache_mtime = mtime
+            _STR_POOL.clear()
+        _maybe_fit_tfidf(_opp_cache, mtime)
+        _maybe_register_ranker_corpus(_opp_cache)
+        return _opp_cache
 
     return []
 
@@ -173,3 +208,11 @@ def load_opportunities() -> list[dict]:
 def load_opportunities_by_id() -> dict[str, dict]:
     load_opportunities()
     return _opp_cache_by_id
+
+
+def corpus_version() -> str:
+    """Opaque version of the currently-loaded corpus. Participates in every
+    match cache/snapshot key so results computed against different corpus
+    generations can never be served together. mtime-based, same invalidation
+    signal load_opportunities itself uses."""
+    return f"{_opp_cache_mtime:.6f}"

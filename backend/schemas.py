@@ -147,10 +147,18 @@ class MatchResultResponse(BaseModel):
     # One concrete, student-specific sentence from the LLM rerank pass — the
     # card's lead line for top-K results; None outside the reranked window.
     ai_reason: str | None = None
+    # Canonical unknown-semantics trace: dotted "profile.*" / "opportunity.*"
+    # names of inputs whose missing/unknown state made this decision less
+    # certain. Each was scored with its documented neutral policy — surfaces
+    # may render "verify" hints from these but must not reinterpret them.
+    unknowns: list[str] = Field(default_factory=list)
     opportunity: dict
 
 
 class MatchesResponse(BaseModel):
+    # The pageable universe: unique visible (non-low_fit) results. Invariant:
+    # total == high_priority + good_match + reach == the number of items a
+    # full offset traversal returns. low_fit is counted below but never served.
     total: int
     high_priority: int
     good_match: int
@@ -162,6 +170,10 @@ class MatchesResponse(BaseModel):
     # in your field" instead of implying the padded total is all field-relevant.
     field_relevant_count: int = 0
     thin_inventory: bool = False
+    # Version of the matching logic + tunables that produced this response
+    # (src.matcher.config.MATCHER_VERSION). Clients key their caches on it so
+    # results from two matcher generations can never silently coexist.
+    matcher_version: str = ""
 
 
 class ColdEmailRequest(BaseModel):

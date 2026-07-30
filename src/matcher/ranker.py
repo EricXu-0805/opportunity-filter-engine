@@ -9,7 +9,7 @@ data, not policy — moving them to YAML is a separate refactor.
 import math
 import re
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
 
@@ -98,6 +98,22 @@ class MatchResult:
     # card's lead line for top-K results). None outside the reranked window or
     # when the rerank is unavailable — the rule reasons are always the floor.
     ai_reason: str | None = None
+    # Canonical unknown semantics: the inputs whose missing/unknown state left
+    # this decision less certain (dotted "profile.*" / "opportunity.*" names).
+    # Unknown NEVER silently becomes eligible/ineligible — each listed field was
+    # scored with its documented neutral policy (see docs/matching_logic.md),
+    # and this list is the machine-readable trace of that.
+    unknowns: list[str] = field(default_factory=list)
+
+
+def canonical_sort_key(r: "MatchResult"):
+    """THE result ordering: score desc, then actionable-first, then id — a
+    total order (ids are unique), so equal-score bands can never reorder
+    between requests or paginate inconsistently. Every consumer that sorts
+    MatchResults (rank_all, semantic_rerank, the route-level LLM rerank) must
+    use this key; a bare `final_score` sort silently drops the tie-break
+    contract."""
+    return (-r.final_score, not r.actionable, r.opportunity_id)
 
 
 # --- Field matching utilities ---
@@ -766,6 +782,14 @@ def _year_match_score(student_year: str, preferred_years: list[str]) -> float:
         return 40.0  # Unknown year pref = can't tell if it fits
 
     sy = student_year.lower().strip()
+    if not sy or sy == "unknown":
+        # Unknown STUDENT year gets the same neutral treatment as an unknown
+        # opportunity-side preference. It previously fell through to the hard
+        # 0.0 — since ~96% of the corpus lists all four undergrad years, a
+        # profile with no year was silently scored near-ineligible against
+        # essentially everything (unknown → ineligible is exactly the silent
+        # conversion the canonical policy forbids).
+        return 40.0
     prefs = [p.lower().strip() for p in preferred_years]
 
     if sy in prefs:
@@ -854,36 +878,46 @@ def score_eligibility(
     ``skill_map`` is the precomputed _parse_skills(profile hard_skills); rank_all
     passes it so the profile's skills are parsed once per request, not per opp.
     """
-    elig = opportunity.get("eligibility", {})
+    elig = opportunity.get("eligibility") or {}
     reasons_fit = []
     reasons_gap = []
 
     # Year match (30% weight)
+    student_year = (profile.get("year") or "").strip()
     year_score = _year_match_score(
-        profile.get("year", ""),
-        elig.get("preferred_year", [])
+        student_year,
+        elig.get("preferred_year") or []
     )
-    pref_years = elig.get("preferred_year", [])
+    pref_years = elig.get("preferred_year") or []
     if year_score >= 80:
-        reasons_fit.append(f"Accepts {profile['year']} students")
+        reasons_fit.append(f"Accepts {student_year} students")
+    elif not student_year or student_year.lower() == "unknown":
+        # Neutral 40 (see _year_match_score) — the gap names the actual
+        # problem (missing profile data) instead of fabricating a targeting
+        # mismatch from a list the student may perfectly fit.
+        reasons_gap.append("Add your class year to confirm year eligibility")
     elif year_score < 50:
-        if _is_grad_year(profile.get("year", "")) and pref_years and not any(
+        if _is_grad_year(student_year) and pref_years and not any(
             _is_grad_year(p) for p in pref_years
         ):
             reasons_gap.append("For undergraduates — not a graduate-level opening")
         else:
-            reasons_gap.append(f"Typically targets {', '.join(pref_years)}")
+            named_years = [p for p in pref_years if p and p.lower() != "unknown"]
+            if named_years:
+                reasons_gap.append(f"Typically targets {', '.join(named_years)}")
 
     # Major match (20% weight)
-    student_majors = [profile.get("major", "")] + profile.get("secondary_interests", [])
+    student_majors = [profile.get("major", "")] + (profile.get("secondary_interests") or [])
     major_score = _major_match_score(
-        student_majors, elig.get("majors", []), exploring=bool(profile.get("exploring"))
+        student_majors, elig.get("majors") or [], exploring=bool(profile.get("exploring"))
     )
     if major_score >= 100:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
     elif major_score >= 70:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is closely related to requirements")
-    elif major_score < 50:
+    elif major_score < 50 and elig.get("majors"):
+        # Only a REAL preference list earns a gap: an open posting (majors=[])
+        # scores 30 too, and previously emitted the nonsensical gap "Prefers ".
         reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
 
     intl_score = 100.0
@@ -1002,7 +1036,7 @@ def score_eligibility(
 
 def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str], list[str]]:
     """Score readiness (0-100)."""
-    app = opportunity.get("application", {})
+    app = opportunity.get("application") or {}
     reasons_fit = []
     reasons_gap = []
 
@@ -1067,8 +1101,11 @@ def score_upside(
     reasons_gap = []
 
     # Paid (20%)
+    # Canonical unknown policy: null, empty, missing key, and unrecognized
+    # enum all collapse to "unknown" → 40. (Previously an explicit null scored
+    # 50 while a missing key scored 40 — the same unknown fact, two scores.)
     paid_map = {"yes": 100, "stipend": 80, "unknown": 40, "no": 25}
-    paid_score = paid_map.get(opportunity.get("paid", "unknown"), 50)
+    paid_score = paid_map.get(opportunity.get("paid") or "unknown", 40)
     if paid_score >= 70:
         reasons_fit.append("Paid opportunity" if paid_score == 100 else "Includes stipend")
 
@@ -1131,7 +1168,7 @@ def score_upside(
                 min(IMPLICIT_MAJOR_KEYWORD_CEILING, 25.0 + imp_hits * IMPLICIT_MAJOR_PER_HIT),
             )
 
-    research_text = profile.get("research_interests_text", "").lower()
+    research_text = (profile.get("research_interests_text") or "").lower()
 
     specific_kw = st.specific_kw
     lab_label = st.lab_label
@@ -1698,7 +1735,10 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     deadline_date = None
     if deadline and len(deadline) >= 8 and deadline[4] == "-":
         try:
-            deadline_date = date.fromisoformat(deadline)
+            # [:10] matches _seasonal_multiplier's parse: a timestamped deadline
+            # ("2026-05-01T00:00:00") must hit the passed-deadline penalty and
+            # the seasonal boost identically, not one but not the other.
+            deadline_date = date.fromisoformat(deadline[:10])
         except ValueError:
             pass
 
@@ -2054,13 +2094,51 @@ def rank_opportunity(
         next_steps=next_steps,
         field_relevant=field_relevant,
         actionable=_is_actionable(opportunity),
+        unknowns=_decision_unknowns(profile, opportunity),
     )
+
+
+def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
+    """The decision-relevant inputs whose missing/unknown state made this
+    result less certain — the machine-readable trace of the canonical unknown
+    policy. Each listed field was scored with its documented NEUTRAL value
+    (never silently converted to eligible/ineligible); surfaces may render
+    these as "verify"-style hints but must not reinterpret them."""
+    unknowns: list[str] = []
+    elig = opportunity.get("eligibility") or {}
+
+    student_year = (profile.get("year") or "").strip().lower()
+    if not student_year or student_year == "unknown":
+        unknowns.append("profile.year")  # scored neutral 40, see _year_match_score
+    if not (profile.get("major") or "").strip():
+        unknowns.append("profile.major")
+
+    pref_years = elig.get("preferred_year") or []
+    if not pref_years or any((p or "").lower() == "unknown" for p in pref_years):
+        unknowns.append("opportunity.preferred_year")  # scored neutral 40
+    if not (elig.get("majors") or []):
+        unknowns.append("opportunity.majors")  # open posting: 30, no gap reason
+    if profile.get("international_student") and (
+        elig.get("international_friendly", "unknown") or "unknown"
+    ) == "unknown" and elig.get("citizenship_required") is not True:
+        # verify-don't-rule-out: INTL_UNKNOWN_*_SCORE, never a hard exclusion
+        unknowns.append("opportunity.international_friendly")
+    if (opportunity.get("paid") or "unknown") not in ("yes", "stipend", "no"):
+        unknowns.append("opportunity.paid")  # scored 40
+    if not opportunity.get("deadline"):
+        unknowns.append("opportunity.deadline")  # no penalty, no seasonal boost
+    if elig.get("min_gpa") is not None and str(elig.get("min_gpa")).strip():
+        # The corpus records GPA floors but the product never collects the
+        # student's GPA, so it is NOT evaluated (documented policy) — surfaced
+        # here so a GPA requirement is never mistaken for "checked and passed".
+        unknowns.append("profile.gpa")
+    return unknowns
 
 
 def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> list[str]:
     """Generate actionable next steps based on gaps."""
     steps = []
-    app = opportunity.get("application", {})
+    app = opportunity.get("application") or {}
 
     # Deadline urgency
     deadline = opportunity.get("deadline")
@@ -2200,7 +2278,7 @@ def semantic_rerank(
     # order shifts between refreshes. Within a tie, results the student can
     # act on (email / application URL) come first — the audit found dead-end
     # #1 matches while equal-scored contactable peers sat below them.
-    results.sort(key=lambda r: (-r.final_score, not r.actionable, r.opportunity_id))
+    results.sort(key=canonical_sort_key)
     # Buckets were assigned on the pre-blend scores; recompute them so the labels
     # and per-bucket counts match the re-ranked order (semantic=true used to
     # return stale buckets).
@@ -2285,6 +2363,84 @@ def _diversify_explore(
     return out
 
 
+@dataclass(slots=True)
+class _FilterCtx:
+    """Per-request context for the hard eligibility filters — hoisted once so
+    rank_all and the single-record path (explain) apply IDENTICAL rules."""
+    home_school: str
+    hide_cross_school: bool
+    exclude_citizenship_restricted: bool
+    international_student: bool
+    seeking: set[str]
+    student_majors_norm: set[str]
+    related_majors_norm: set[str]
+
+
+def _filter_context(profile: dict) -> _FilterCtx:
+    home_school_raw = str(profile.get("home_school") or "").strip().lower()
+    # Cross-school resources are opt-in (Eric, 2026-07: 正常肯定还是会优先本学校的科研).
+    # Without a home_school there is no "cross-school" to hide, so such
+    # profiles keep the pre-toggle behavior.
+    student_majors_norm = {
+        _normalize_major(m)
+        for m in [profile.get("major", "")] + (profile.get("secondary_interests") or [])
+    }
+    related_majors_norm: set[str] = set()
+    for sm in student_majors_norm:
+        related_majors_norm.update(RELATED_MAJORS.get(sm, []))
+    return _FilterCtx(
+        home_school=home_school_raw or "uiuc",
+        hide_cross_school=not profile.get("include_cross_school") and bool(home_school_raw),
+        exclude_citizenship_restricted=(profile.get("preferences") or {}).get(
+            "exclude_citizenship_restricted", True
+        ),
+        international_student=bool(profile.get("international_student")),
+        seeking=set(profile.get("seeking_type") or []),
+        student_majors_norm=student_majors_norm,
+        related_majors_norm=related_majors_norm,
+    )
+
+
+def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
+    """THE hard eligibility filter: the single reason-coded implementation of
+    every rule that drops a record from a profile's result universe. rank_all
+    and the explain endpoint both consume this, so "in your results" can never
+    mean different things on different surfaces. Returns a stable reason code,
+    or None when the record stays."""
+    if (opp.get("metadata") or {}).get("is_active") is False:
+        return "inactive"
+
+    # Multi-university scope (PR #187 Phase 1): another school's campus-only
+    # posting is not actionable for this user, so it always drops. The rest of
+    # another school's records ('open'/'unknown') are opt-in via
+    # include_cross_school — except summer programs, which recruit nationally
+    # regardless of host (Eric: 暑期科研肯定是无所谓的). National records
+    # (school=None) never enter this branch.
+    opp_school = opp.get("school")
+    if opp_school is not None and opp_school != ctx.home_school:
+        if opp.get("audience") == "campus":
+            return "other_school_campus"
+        if ctx.hide_cross_school and opp.get("opportunity_type") != "summer_program":
+            return "cross_school_hidden"
+
+    if ctx.international_student:
+        elig = opp.get("eligibility") or {}
+        if elig.get("international_friendly") == "no" or elig.get("citizenship_required") is True:
+            if ctx.exclude_citizenship_restricted:
+                return "citizenship_restricted"
+
+    opp_type = opp.get("opportunity_type", "")
+    if ctx.seeking and opp_type and opp_type not in ctx.seeking:
+        opp_majors = (opp.get("eligibility") or {}).get("majors") or []
+        if opp_majors:
+            opp_majors_norm = {_normalize_major(m) for m in opp_majors}
+            if not (ctx.student_majors_norm & opp_majors_norm):
+                if not (ctx.related_majors_norm & opp_majors_norm):
+                    return "seeking_type_mismatch"
+
+    return None
+
+
 def rank_all(
     profile: dict,
     opportunities: list[dict],
@@ -2295,17 +2451,7 @@ def rank_all(
     exploring = bool(profile.get("exploring"))
     weights = _compute_weights(search_weight, exploring=exploring)
 
-    home_school_raw = str(profile.get("home_school") or "").strip().lower()
-    home_school = home_school_raw or "uiuc"
-    # Cross-school resources are opt-in (Eric, 2026-07: 正常肯定还是会优先本学校的科研).
-    # Without a home_school there is no "cross-school" to hide, so such
-    # profiles keep the pre-toggle behavior.
-    hide_cross_school = not profile.get("include_cross_school") and bool(home_school_raw)
-    seeking = set(profile.get("seeking_type", []))
-    student_majors_norm = {_normalize_major(m) for m in [profile.get("major", "")] + profile.get("secondary_interests", [])}
-    related_majors_norm: set[str] = set()
-    for sm in student_majors_norm:
-        related_majors_norm.update(RELATED_MAJORS.get(sm, []))
+    ctx = _filter_context(profile)
 
     # Parse the profile's skills once — it is identical for every opportunity, so
     # parsing it per opp (inside score_eligibility) was ~12% of rank_all's time.
@@ -2344,40 +2490,12 @@ def rank_all(
             sims_by_id = {}
 
     results = []
+    min_threshold = (profile.get("preferences") or {}).get("min_match_threshold", 0)
     for opp in opportunities:
-        if opp.get("metadata", {}).get("is_active") is False:
+        if hard_exclusion(opp, ctx) is not None:
             continue
 
-        # Multi-university scope (PR #187 Phase 1): another school's
-        # campus-only posting is not actionable for this user, so it always
-        # drops. The rest of another school's records ('open'/'unknown') are
-        # opt-in via include_cross_school — except summer programs, which
-        # recruit nationally regardless of host (Eric: 暑期科研肯定是无所谓的).
-        # National records (school=None) never enter this branch.
-        opp_school = opp.get("school")
-        if opp_school is not None and opp_school != home_school:
-            if opp.get("audience") == "campus":
-                continue
-            if hide_cross_school and opp.get("opportunity_type") != "summer_program":
-                continue
-
-        if profile.get("international_student"):
-            elig = opp.get("eligibility", {})
-            if elig.get("international_friendly") == "no" or elig.get("citizenship_required") is True:
-                if profile.get("preferences", {}).get("exclude_citizenship_restricted", True):
-                    continue
-
-        opp_type = opp.get("opportunity_type", "")
-        if seeking and opp_type and opp_type not in seeking:
-            opp_majors = opp.get("eligibility", {}).get("majors", [])
-            if opp_majors:
-                opp_majors_norm = {_normalize_major(m) for m in opp_majors}
-                if not (student_majors_norm & opp_majors_norm):
-                    if not (related_majors_norm & opp_majors_norm):
-                        continue
-
         elig_triple = score_eligibility(profile, opp, skill_map=profile_skill_map)
-        min_threshold = profile.get("preferences", {}).get("min_match_threshold", 0)
         if min_threshold > 0:
             max_possible = (
                 weights["eligibility"] * elig_triple[0]
@@ -2401,7 +2519,7 @@ def rank_all(
     # order shifts between refreshes. Within a tie, results the student can
     # act on (email / application URL) come first — the audit found dead-end
     # #1 matches while equal-scored contactable peers sat below them.
-    results.sort(key=lambda r: (-r.final_score, not r.actionable, r.opportunity_id))
+    results.sort(key=canonical_sort_key)
     _assign_buckets(results)
 
     if exploring:

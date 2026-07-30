@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import {
+  cachedMatcherVersion,
   clearMatchCache,
   hasMatchCache,
   readMatchCache,
@@ -145,5 +146,24 @@ describe('match-cache', () => {
     writeMatchCache('h1', false, makeResponse());
     clearMatchCache();
     expect(hasMatchCache()).toBe(false);
+  });
+
+  it('round-trips field_relevant_count, thin_inventory and matcher_version', () => {
+    // These previously vanished on every cache hit — the "N strong matches in
+    // your field" header line silently disappeared on return visits.
+    const resp = { ...makeResponse(), field_relevant_count: 7, thin_inventory: true, matcher_version: '3.abc12345' };
+    writeMatchCache('h1', false, resp);
+    const out = readMatchCache('h1', false)!;
+    expect(out.field_relevant_count).toBe(7);
+    expect(out.thin_inventory).toBe(true);
+    expect(out.matcher_version).toBe('3.abc12345');
+  });
+
+  it('cachedMatcherVersion exposes the stored version (null when absent)', () => {
+    expect(cachedMatcherVersion()).toBeNull();
+    writeMatchCache('h1', false, { ...makeResponse(), matcher_version: '3.abc12345' });
+    expect(cachedMatcherVersion()).toBe('3.abc12345');
+    clearMatchCache();
+    expect(cachedMatcherVersion()).toBeNull();
   });
 });

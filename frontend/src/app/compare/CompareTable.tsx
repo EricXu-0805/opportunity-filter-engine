@@ -7,6 +7,7 @@ import type { Opportunity, ProfileData } from '@/lib/types';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { useT } from '@/i18n/client';
 import { getMatchExplanation, type MatchExplanationResponse } from '@/lib/api';
+import { cachedMatcherVersion } from '@/lib/match-cache';
 import { hashProfile } from '@/lib/match-utils';
 import {
   computeDecisionFactors,
@@ -32,6 +33,13 @@ function readExplainCache(key: string): MatchExplanationResponse | null {
     const c = JSON.parse(raw) as { savedAt: number; data: MatchExplanationResponse };
     if (!c || typeof c.savedAt !== 'number' || !c.data) return null;
     if (Date.now() - c.savedAt >= EXPLAIN_TTL_MS) return null;
+    // Never mix matcher generations across surfaces: when the /results cache
+    // was written by a different matcher version, a cached explain from the
+    // old generation must miss and re-fetch, not render beside new numbers.
+    const listVersion = cachedMatcherVersion();
+    if (listVersion && c.data.matcher_version && c.data.matcher_version !== listVersion) {
+      return null;
+    }
     return c.data;
   } catch {
     return null;
@@ -43,6 +51,17 @@ function writeExplainCache(key: string, data: MatchExplanationResponse): void {
     sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data }));
   } catch {
     // quota / private mode — skip; the next visit simply re-fetches.
+  }
+}
+
+// The same "AI smart match" preference /results honors (page.tsx writes
+// '1'/'0'; default ON). Compare must request the SAME scoring path, or the two
+// surfaces reach different conclusions for the same opportunity.
+function readAiTogglePreference(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK) !== '0';
+  } catch {
+    return true;
   }
 }
 
@@ -88,17 +107,18 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
         return next;
       });
     };
+    const llm = readAiTogglePreference();
     (async () => {
       await Promise.all(
         ids.map(async (id) => {
-          const cacheKey = `${EXPLAIN_CACHE_PREFIX}${id}_${profileHash}`;
+          const cacheKey = `${EXPLAIN_CACHE_PREFIX}${id}_${profileHash}_${llm ? 'ai1' : 'ai0'}`;
           const cached = readExplainCache(cacheKey);
           if (cached) {
             setOne(id, toCanonicalSummary(cached) ?? 'error');
             return;
           }
           try {
-            const resp = await getMatchExplanation(profile, id);
+            const resp = await getMatchExplanation(profile, id, { llm });
             const summary = toCanonicalSummary(resp);
             if (summary) writeExplainCache(cacheKey, resp);
             setOne(id, summary ?? 'error');

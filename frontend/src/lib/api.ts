@@ -226,6 +226,17 @@ export interface MatchExplanationResponse {
   eligibility_score: number;
   readiness_score: number;
   upside_score: number;
+  /** Echo of the requested id (absent on older backends). */
+  opportunity_id?: string;
+  /** Canonical unknown-semantics trace (see MatchResult.unknowns). */
+  unknowns?: string[];
+  /** False when this opportunity is excluded from the profile's /matches
+   *  universe — the score above is informational, not a listed match. */
+  in_results?: boolean;
+  /** Why it is excluded ('citizenship_restricted', 'cross_school_hidden', …). */
+  excluded_reason?: string | null;
+  /** Matching-logic version — same string /matches serves. */
+  matcher_version?: string;
 }
 
 export interface ChatMessage {
@@ -352,9 +363,14 @@ export async function getChatModels(): Promise<ChatModelOption[]> {
 export async function getMatchExplanation(
   profile: ProfileData,
   opportunityId: string,
+  options: { llm?: boolean } = {},
 ): Promise<MatchExplanationResponse> {
+  // Mirror getMatches: the AI toggle must select the SAME scoring path on the
+  // compare page as on /results, or the two surfaces reach different
+  // conclusions for the same opportunity.
+  const qs = options.llm === false ? '?llm=false' : '';
   return request<MatchExplanationResponse>(
-    `/matches/${encodeURIComponent(opportunityId)}/explain`,
+    `/matches/${encodeURIComponent(opportunityId)}/explain${qs}`,
     {
       method: 'POST',
       body: JSON.stringify(toProfileRequest(profile)),

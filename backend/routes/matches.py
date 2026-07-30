@@ -9,10 +9,11 @@ import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.data_loader import load_opportunities, load_opportunities_by_id
+from backend.data_loader import corpus_version, load_opportunities, load_opportunities_by_id
 from backend.lib.blocking import (
     MULTI_LLM_TIMEOUT_SECONDS,
     SINGLE_LLM_TIMEOUT_SECONDS,
@@ -28,11 +29,24 @@ from backend.schemas import (
     MatchResultResponse,
     ProfileRequest,
 )
-from src.matcher.config import RESPONSIVENESS_BONUS, THIN_INVENTORY_FLOOR
+from src.matcher.config import (
+    LLM_RERANK_BATCH,
+    LLM_RERANK_CACHE_MAX,
+    LLM_RERANK_MODEL,
+    LLM_RERANK_TOPK,
+    LLM_RERANK_WEIGHT,
+    MATCHER_VERSION,
+    RESPONSIVENESS_BONUS,
+    THIN_INVENTORY_FLOOR,
+)
 from src.matcher.ranker import (
+    MatchResult,
     _assign_buckets,
     _diversify_explore,
+    _filter_context,
     _profile_query_text,
+    canonical_sort_key,
+    hard_exclusion,
     rank_all,
     rank_opportunity,
 )
@@ -112,11 +126,14 @@ MAX_RESULTS_PER_REQUEST = 2000
 # configured or any call fails — the rule order is the floor, never a 5xx.
 # Results are cached per (student query, candidate set, model) so a results
 # reload doesn't re-pay. Batches run in parallel to bound first-load latency.
-_LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "anthropic/claude-sonnet-5")
-_LLM_RERANK_TOPK = int(os.environ.get("OFE_LLM_RERANK_TOPK", "20"))
-_LLM_RERANK_BATCH = int(os.environ.get("OFE_LLM_RERANK_BATCH", "10"))
-_LLM_RERANK_WEIGHT = float(os.environ.get("OFE_LLM_RERANK_W", "0.35"))
-_LLM_RERANK_CACHE_MAX = int(os.environ.get("OFE_LLM_RERANK_CACHE_MAX", "1000"))
+# Knobs live in src/matcher/config.py so they participate in MATCHER_VERSION's
+# fingerprint — re-pointing the model/weight via env changes conclusions and
+# must change the served version string.
+_LLM_RERANK_MODEL = LLM_RERANK_MODEL
+_LLM_RERANK_TOPK = LLM_RERANK_TOPK
+_LLM_RERANK_BATCH = LLM_RERANK_BATCH
+_LLM_RERANK_WEIGHT = LLM_RERANK_WEIGHT
+_LLM_RERANK_CACHE_MAX = LLM_RERANK_CACHE_MAX
 _LLM_REASON_MAX_CHARS = 220
 _llm_rerank_cache: dict[str, dict[str, dict]] = {}
 
@@ -319,41 +336,46 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
         if llm.get("r"):
             r.ai_reason = llm["r"]
 
-    results.sort(key=lambda r: r.final_score, reverse=True)
+    # Canonical order: the blend creates/moves ties, and a bare score sort
+    # silently dropped the actionable-first + unique-id tie-break contract
+    # rank_all established — equal-score bands could reorder between requests.
+    results.sort(key=canonical_sort_key)
     _assign_buckets(results)
     return results
 
 
-@router.post("/matches", response_model=MatchesResponse)
-async def get_matches(
-    profile: ProfileRequest,
-    limit: int | None = Query(default=None, ge=1, le=MAX_RESULTS_PER_REQUEST),
-    offset: int = Query(default=0, ge=0),
-    llm: bool = Query(default=True),
-):
-    """Score and rank opportunities for the given profile.
+# ── Canonical match snapshots ────────────────────────────────────────────────
+# THE one place a (profile, corpus, matcher version, llm flag) tuple becomes a
+# ranked, bucketed, LLM-blended result list. /matches pages over a snapshot and
+# /matches/{id}/explain reads the SAME snapshot entry, so the list, its pages,
+# and the per-card modal can never reach different conclusions for the same
+# pair. The key embeds corpus_version + MATCHER_VERSION, so a data refresh or a
+# scoring change can never serve mixed-generation results; the TTL bounds
+# memory and how long a responsiveness-signal flip is deliberately NOT
+# reflected (order stability while a student pages beats a ±2.0 tie-break
+# bonus arriving mid-session).
+_SNAPSHOT_TTL_SECONDS = int(os.environ.get("OFE_MATCH_SNAPSHOT_TTL", "600"))
+_SNAPSHOT_MAX_ENTRIES = int(os.environ.get("OFE_MATCH_SNAPSHOT_MAX", "8"))
 
-    By default every visible (non-low_fit) result is returned so the client can
-    page through all of them — previously a 500-result cap left most of the
-    'Reach' bucket unreachable even though the counts advertised it. Pass
-    ``limit``/``offset`` for explicit server-side paging.
 
-    The full bucket counts are always returned so the client knows the total
-    picture.
+@dataclass
+class _MatchSnapshot:
+    created_at: float
+    corpus_ref: list                    # identity guard — a reload builds a new list
+    results: list[MatchResult]          # full ranked list, canonical order
+    by_id: dict[str, MatchResult]       # opportunity_id → entry (ids are unique)
+    visible: list[MatchResult]          # non-low_fit slice, same order (the pageable universe)
+    buckets: dict[str, int]
+    field_relevant_count: int
 
-    The "AI smart match" pass is ON by default: a bounded OpenRouter rerank of
-    the top results that also writes each card's concrete lead reason (strict
-    no-op when unconfigured; rule order is always the floor). Pass
-    ``llm=false`` to skip it. The retired embedding ``semantic`` blend was
-    removed — it regressed faculty ranking (see memory
-    `ofe-semantic-rerank-regresses`).
-    """
-    opportunities = load_opportunities()
-    if not opportunities:
-        raise HTTPException(status_code=503, detail="No opportunity data available")
 
+_match_snapshots: dict[str, _MatchSnapshot] = {}
+
+
+def _normalized_profile(profile: ProfileRequest) -> dict:
+    """One profile normalization for every match endpoint — /matches and
+    /explain must default the same preferences or their conclusions diverge."""
     profile_dict = profile.model_dump()
-
     if profile_dict.get("preferences") is None:
         profile_dict["preferences"] = {
             "min_match_threshold": 25,
@@ -361,12 +383,33 @@ async def get_matches(
             "prioritize_paid": True,
             "exclude_citizenship_restricted": profile_dict.get("international_student", True),
         }
+    return profile_dict
+
+
+def _snapshot_key(profile_dict: dict, llm: bool) -> str:
+    payload = json.dumps(profile_dict, sort_keys=True, default=str, separators=(",", ":"))
+    raw = f"{payload}|llm={llm}|corpus={corpus_version()}|matcher={MATCHER_VERSION}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnapshot:
+    # Load FIRST: load_opportunities() is what advances corpus_version() on a
+    # reload, so the key must be derived after it, never before.
+    opportunities = load_opportunities()
+    key = _snapshot_key(profile_dict, llm)
+    snap = _match_snapshots.get(key)
+    if (
+        snap is not None
+        and _SNAPSHOT_TTL_SECONDS > 0
+        and snap.corpus_ref is opportunities  # belt: identity, like register_corpus
+        and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
+    ):
+        return snap
 
     responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
     results = await asyncio.to_thread(
         rank_all, profile_dict, opportunities, responsiveness=responsiveness
     )
-
     opp_lookup = load_opportunities_by_id()
 
     # LLM rerank (default-on, OpenRouter). Runs after the rule rank; a strict
@@ -395,7 +438,7 @@ async def get_matches(
             logger.exception("LLM rerank failed; serving the rule order")
 
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
-    visible_results = []
+    visible_results: list[MatchResult] = []
     field_relevant_count = 0
     for r in results:
         buckets[r.bucket] = buckets.get(r.bucket, 0) + 1
@@ -404,6 +447,63 @@ async def get_matches(
             if getattr(r, "field_relevant", False):
                 field_relevant_count += 1
 
+    snap = _MatchSnapshot(
+        created_at=time.time(),
+        corpus_ref=opportunities,
+        results=results,
+        by_id={r.opportunity_id: r for r in results},
+        visible=visible_results,
+        buckets=buckets,
+        field_relevant_count=field_relevant_count,
+    )
+    if len(_match_snapshots) >= _SNAPSHOT_MAX_ENTRIES:
+        now = time.time()
+        for k in [k for k, s in _match_snapshots.items()
+                  if now - s.created_at > _SNAPSHOT_TTL_SECONDS]:
+            _match_snapshots.pop(k, None)
+        while len(_match_snapshots) >= _SNAPSHOT_MAX_ENTRIES:
+            _match_snapshots.pop(next(iter(_match_snapshots)))
+    _match_snapshots[key] = snap
+    return snap
+
+
+@router.post("/matches", response_model=MatchesResponse)
+async def get_matches(
+    profile: ProfileRequest,
+    limit: int | None = Query(default=None, ge=1, le=MAX_RESULTS_PER_REQUEST),
+    offset: int = Query(default=0, ge=0),
+    llm: bool = Query(default=True),
+):
+    """Score and rank opportunities for the given profile.
+
+    By default every visible (non-low_fit) result is returned so the client can
+    page through all of them — previously a 500-result cap left most of the
+    'Reach' bucket unreachable even though the counts advertised it. Pass
+    ``limit``/``offset`` for explicit server-side paging: pages slice one
+    snapshot (see _get_or_compute_snapshot), so traversal is stable — no
+    duplicates, no omissions — while the snapshot lives.
+
+    ``total`` is the pageable universe: the number of unique visible
+    (non-low_fit) results, always equal to high_priority + good_match + reach
+    and to the number of items a full offset traversal returns. low_fit is
+    counted separately and never returned.
+
+    The "AI smart match" pass is ON by default: a bounded OpenRouter rerank of
+    the top results that also writes each card's concrete lead reason (strict
+    no-op when unconfigured; rule order is always the floor). Pass
+    ``llm=false`` to skip it. The retired embedding ``semantic`` blend was
+    removed — it regressed faculty ranking (see memory
+    `ofe-semantic-rerank-regresses`).
+    """
+    opportunities = load_opportunities()
+    if not opportunities:
+        raise HTTPException(status_code=503, detail="No opportunity data available")
+
+    profile_dict = _normalized_profile(profile)
+    snap = await _get_or_compute_snapshot(profile_dict, llm)
+    opp_lookup = load_opportunities_by_id()
+
+    visible_results = snap.visible
     page = visible_results[offset:offset + limit] if limit is not None else visible_results[offset:]
     page_response = [
         MatchResultResponse(
@@ -417,20 +517,22 @@ async def get_matches(
             reasons_gap=r.reasons_gap,
             next_steps=r.next_steps,
             ai_reason=r.ai_reason,
+            unknowns=r.unknowns,
             opportunity=_match_card(opp_lookup.get(r.opportunity_id, {})),
         )
         for r in page
     ]
 
     return MatchesResponse(
-        total=len(results),
-        high_priority=buckets["high_priority"],
-        good_match=buckets["good_match"],
-        reach=buckets["reach"],
-        low_fit=buckets["low_fit"],
+        total=len(visible_results),
+        high_priority=snap.buckets["high_priority"],
+        good_match=snap.buckets["good_match"],
+        reach=snap.buckets["reach"],
+        low_fit=snap.buckets["low_fit"],
         results=page_response,
-        field_relevant_count=field_relevant_count,
-        thin_inventory=field_relevant_count < THIN_INVENTORY_FLOOR,
+        field_relevant_count=snap.field_relevant_count,
+        thin_inventory=snap.field_relevant_count < THIN_INVENTORY_FLOOR,
+        matcher_version=MATCHER_VERSION,
     )
 
 
@@ -512,10 +614,13 @@ _explain_cache: dict[str, tuple[float, str]] = {}
 
 
 def _explain_cache_key(opportunity_id: str, profile: dict) -> str:
+    # corpus_version + MATCHER_VERSION participate: without them a data refresh
+    # or scoring change kept serving hour-old prose written from the OLD record
+    # next to freshly recomputed numbers in the same response.
     profile_hash = hashlib.sha256(
         json.dumps(profile, sort_keys=True, default=str).encode()
     ).hexdigest()[:16]
-    return f"{opportunity_id}:{profile_hash}"
+    return f"{opportunity_id}:{profile_hash}:{corpus_version()}:{MATCHER_VERSION}"
 
 
 def _explain_cache_get(key: str) -> str | None:
@@ -540,10 +645,37 @@ def _explain_cache_put(key: str, text: str) -> None:
     _explain_cache[key] = (time.time(), text)
 
 
+# Human-readable line for each hard_exclusion reason code — prepended to
+# reasons_gap so a surface showing an excluded item (e.g. a cross-school
+# favorite on the compare page) states the CANONICAL conclusion ("not in your
+# results, because…") instead of contradicting the list by omission.
+_EXCLUSION_GAP_TEXT = {
+    "inactive": "No longer active — retired from your results",
+    "other_school_campus": "Restricted to another school's own students — not in your results",
+    "cross_school_hidden": "Hosted at another school — enable cross-school results to include it",
+    "citizenship_restricted": "Requires US citizenship or permanent residency — excluded from your results",
+    "seeking_type_mismatch": "Outside your selected opportunity types — not in your results",
+    "below_threshold": "Below your minimum match threshold — not shown in your results",
+}
+
+
 @router.post("/matches/{opportunity_id}/explain")
-async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
+async def get_match_explanation(
+    opportunity_id: str,
+    profile: ProfileRequest,
+    llm: bool = Query(default=True),
+):
     """Render a personalized fit summary for one opportunity. Lazy / on-demand
     so the bulk /matches call stays fast and LLM cost stays bounded.
+
+    Consistency contract: the numbers come from the SAME snapshot /matches
+    serves (identical score, bucket — including the percentile banding and the
+    LLM blend — reasons, and unknowns), never from a standalone recompute.
+    ``llm`` mirrors the /matches flag so a client that disabled the AI pass
+    compares against the same conclusion it lists. An opportunity the list
+    excluded returns ``in_results: false`` + ``excluded_reason`` with an
+    informational standalone score, so no surface can present an excluded
+    record as a normal match.
     """
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
@@ -551,14 +683,22 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
-    profile_dict = profile.model_dump()
-    # Same responsiveness signals as the /matches list pass (rank_opportunity
-    # already derives the remaining context — weights, implicit steer — from
-    # the profile), so the modal score always equals the list score.
-    responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
-    result = await asyncio.to_thread(
-        rank_opportunity, profile_dict, opp, responsiveness=responsiveness
-    )
+    profile_dict = _normalized_profile(profile)
+    snap = await _get_or_compute_snapshot(profile_dict, llm)
+    result = snap.by_id.get(opportunity_id)
+    excluded_reason = None
+    if result is None:
+        # Not in the profile's result universe. Same shared hard filter the
+        # list applied — never a re-derivation — plus an informational
+        # standalone score so the surface can still show *why*.
+        excluded_reason = hard_exclusion(opp, _filter_context(profile_dict)) or "below_threshold"
+        responsiveness = await signals_map() if RESPONSIVENESS_BONUS > 0 else None
+        result = await asyncio.to_thread(
+            rank_opportunity, profile_dict, opp, responsiveness=responsiveness
+        )
+        result.reasons_gap.insert(
+            0, _EXCLUSION_GAP_TEXT.get(excluded_reason, "Not part of your current results")
+        )
 
     cache_key = _explain_cache_key(opportunity_id, profile_dict)
     llm_text = _explain_cache_get(cache_key)
@@ -578,22 +718,10 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
         if llm_text:
             _explain_cache_put(cache_key, llm_text)
 
-    if llm_text:
-        return {
-            "explanation": llm_text,
-            "method": "llm",
-            "final_score": result.final_score,
-            "bucket": result.bucket,
-            "reasons_fit": result.reasons_fit,
-            "reasons_gap": result.reasons_gap,
-            "eligibility_score": result.eligibility_score,
-            "readiness_score": result.readiness_score,
-            "upside_score": result.upside_score,
-        }
-
     return {
-        "explanation": _local_explanation(result.reasons_fit, result.reasons_gap),
-        "method": "local",
+        "explanation": llm_text or _local_explanation(result.reasons_fit, result.reasons_gap),
+        "method": "llm" if llm_text else "local",
+        "opportunity_id": opportunity_id,
         "final_score": result.final_score,
         "bucket": result.bucket,
         "reasons_fit": result.reasons_fit,
@@ -601,4 +729,8 @@ async def get_match_explanation(opportunity_id: str, profile: ProfileRequest):
         "eligibility_score": result.eligibility_score,
         "readiness_score": result.readiness_score,
         "upside_score": result.upside_score,
+        "unknowns": result.unknowns,
+        "in_results": excluded_reason is None,
+        "excluded_reason": excluded_reason,
+        "matcher_version": MATCHER_VERSION,
     }

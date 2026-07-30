@@ -9,7 +9,12 @@ export const STORAGE_KEYS = {
   // name-matched/unverified recent_works and ai_reason lines derived from
   // them, which must not keep rendering for up to the 7-day TTL. The cache is
   // regenerable (just match results), so invalidating it is safe.
-  MATCH_RESULTS: 'ofe_match_results_v3',
+  // _v4: canonical-matcher consistency — the payload now carries
+  // matcher_version + field_relevant_count, and hashProfile covers five more
+  // matcher inputs, so every pre-_v4 hash is incomparable. From _v4 on,
+  // matcher-generation invalidation is AUTOMATIC (the server's matcher_version
+  // is part of the payload); manual suffix bumps remain only for shape changes.
+  MATCH_RESULTS: 'ofe_match_results_v4',
   SEMANTIC_RERANK: 'ofe_semantic_rerank',
   FILTER_PRESETS: 'ofe_filter_presets',
   CUSTOM_IMPORTS: 'ofe_custom_imports',
