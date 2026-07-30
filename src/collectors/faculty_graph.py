@@ -71,6 +71,7 @@ from .ucb_common import (
     _is_person_name,
     _strip_nav_furniture,
     clear_contact_claim,
+    profile_page_matches_person,
 )
 
 logger = logging.getLogger(__name__)
@@ -1484,18 +1485,19 @@ def _wp_term_map(base: str, tax: str, ua: str | None = None) -> dict[int, str]:
     return out
 
 
-def _fetch_digitalmeasures(url: str, dm: dict) -> str:
+def _fetch_digitalmeasures_profile(url: str, dm: dict) -> tuple[str, str]:
     """Research-expertise text from a Digital Measures (Activity Insight) report.
 
     Many business schools (UT McCombs) render faculty profiles client-side from a
     public Digital Measures JSON report keyed by a campus username carried in the
     listing link (``?username=<u>``). We pull the report, find the configured
-    heading ("Research Expertise"), and join the values of the records block that
-    follows it into a comma/semicolon-split-ready string.
+    heading ("Research Expertise"), and return both its values and the report's
+    personal-details identity block. The caller must match that identity before
+    accepting research text or advancing profile verification.
     """
     m = re.search(r"[?&]username=([A-Za-z0-9._-]+)", url)
     if not m:
-        return ""
+        return ("", "")
     api = (f"https://profiles.digitalmeasures.com/clients/{dm['client']}"
            f"?reportId={dm['report']}&identifierKey=username"
            f"&identifierValue={m.group(1)}")
@@ -1505,11 +1507,44 @@ def _fetch_digitalmeasures(url: str, dm: dict) -> str:
         from .ucb_common import HEADERS
         data = requests.get(api, headers=HEADERS, timeout=20).json()
     except Exception:  # noqa: BLE001
-        return ""
+        return ("", "")
     items = data.get("items") if isinstance(data, dict) else None
     if not isinstance(items, list):
-        return ""
+        return ("", "")
+    identity = ""
+    identity_id = dm.get("identity_id", "personalDetails1")
+    for item in items:
+        if not isinstance(item, dict) or item.get("id") != identity_id:
+            continue
+        block = item.get("data")
+        records = block.get("records") if isinstance(block, dict) else None
+        if isinstance(records, list) and records and isinstance(records[0], dict):
+            # The live McCombs report puts the primary person's name at the
+            # start of the first personalDetails record, before the first <br>.
+            # Do not concatenate later records or role/institution prose: a
+            # wrong person's page can mention the expected name elsewhere.
+            raw_identity = records[0].get("value", "")
+            first_line = re.split(
+                r"<br\s*/?>|[\r\n]+",
+                raw_identity if isinstance(raw_identity, str) else "",
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0]
+            identity = re.sub(
+                r"\s+",
+                " ",
+                html.unescape(_HTML_TAG_RE.sub(" ", first_line)),
+            ).strip()
+            identity = re.split(
+                r"\s*[|—–]\s*|,\s*(?=(?:professor|assistant|associate|"
+                r"lecturer|university|school|department)\b)",
+                identity,
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0].strip()
+        break
     heading = dm.get("heading", "Research Expertise")
+    research = ""
     for i, it in enumerate(items):
         head = it.get("heading") if isinstance(it, dict) else None
         hv = head.get("value") if isinstance(head, dict) else head
@@ -1521,9 +1556,43 @@ def _fetch_digitalmeasures(url: str, dm: dict) -> str:
             if recs:
                 vals = [_HTML_TAG_RE.sub("", r.get("value", ""))
                         for r in recs if isinstance(r, dict)]
-                return "; ".join(v.strip() for v in vals if v and v.strip())
+                research = "; ".join(
+                    v.strip() for v in vals if v and v.strip()
+                )
         break
-    return ""
+    return (research, identity)
+
+
+def _fetch_digitalmeasures(url: str, dm: dict) -> str:
+    """Compatibility wrapper returning only verified-later research text."""
+
+    research, _identity = _fetch_digitalmeasures_profile(url, dm)
+    return research
+
+
+def _digitalmeasures_identity_matches(
+    expected_name: str | None,
+    identity_text: str,
+) -> bool:
+    expected = [
+        token
+        for token in re.findall(r"[a-z]+", (expected_name or "").lower())
+        if len(token) > 1 and token not in _CREDENTIAL_TOKENS
+    ]
+    observed_ordered = [
+        token
+        for token in re.findall(r"[a-z]+", identity_text.lower())
+        if len(token) > 1 and token not in _CREDENTIAL_TOKENS
+    ]
+    if len(expected) < 2 or not 2 <= len(observed_ordered) <= 4:
+        return False
+    return (
+        expected[0] == observed_ordered[0]
+        and expected[-1] == observed_ordered[-1]
+    ) or (
+        expected[0] == observed_ordered[-1]
+        and expected[-1] == observed_ordered[0]
+    )
 
 
 def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
@@ -1563,7 +1632,11 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
         want_title = bool(enr.get("title_selector"))
         if not (want_research or want_email or want_title):
             continue
-        pos, research, items, email, fetched = _enrich_profile(target, enr)
+        pos, research, items, email, fetched = _enrich_profile(
+            target,
+            enr,
+            expected_name=p.get("name"),
+        )
         if fetched:
             p["_verification_scope"] = "profile"
         if items and want_research:
@@ -1590,7 +1663,10 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
 
 
 def _enrich_profile(
-    url: str, enrich: dict,
+    url: str,
+    enrich: dict,
+    *,
+    expected_name: str | None = None,
 ) -> tuple[str, str, list[str], str | None, bool]:
     """Fetch one profile page; extract (position, research-text, research-items,
     email, fetch_succeeded).
@@ -1608,8 +1684,12 @@ def _enrich_profile(
         return ("", "", [], None, False)
     dm = enrich.get("digitalmeasures")
     if dm:
-        research = _fetch_digitalmeasures(url, dm)
-        return ("", research, [], None, bool(research))
+        research, identity = _fetch_digitalmeasures_profile(url, dm)
+        verified = bool(research) and _digitalmeasures_identity_matches(
+            expected_name,
+            identity,
+        )
+        return ("", research if verified else "", [], None, verified)
     if enrich.get("render"):
         # Profile pages sit behind the same bot wall as the listing (Princeton
         # dept subdomains, umich) — a plain GET 403s, so route the per-profile
@@ -1696,7 +1776,32 @@ def _enrich_profile(
             if isinstance(vals, list):
                 raw = "; ".join(v for v in vals if isinstance(v, str) and v.strip())
                 kw = re.sub(r"[\r\n]+", "; ", raw).strip()
-    return (pos, kw, items, email, True)
+    # A parseable HTTP-200 response is not automatically a professor profile:
+    # WAFs and bot challenges commonly return HTML with status 200. Require the
+    # expected person's name in a profile-specific heading/title before
+    # advancing verification_scope/last_verified or accepting extracted fields.
+    try:
+        from .ucb_common import (
+            profile_page_is_denial,
+            profile_page_matches_person,
+        )
+    except Exception:  # noqa: BLE001
+        denial_page = False
+        identity_verified = False
+    else:
+        denial_page = profile_page_is_denial(soup)
+        identity_verified = profile_page_matches_person(
+            soup,
+            expected_name,
+            identity_selectors=enrich.get("identity_selector"),
+        )
+    profile_verified = not denial_page and identity_verified
+    if not profile_verified:
+        # Identity failure invalidates the extracted fields too. Otherwise a
+        # support address or generic page heading from a login/WAF response can
+        # contaminate the professor record even if it no longer advances TTL.
+        return ("", "", [], None, False)
+    return (pos, kw, items, email, profile_verified)
 
 
 def _fetch_wp_api(dept: dict) -> list[dict]:
@@ -1799,7 +1904,11 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
         fetched = False
         email_from_profile = False
         if enrich:
-            pos, extra_kw, extra_items, extra_email, fetched = _enrich_profile(url, enrich)
+            pos, extra_kw, extra_items, extra_email, fetched = _enrich_profile(
+                url,
+                enrich,
+                expected_name=name,
+            )
             if pos:
                 title = pos
             if enrich.get("require_professor") and pos and not re.search(r"profess", pos, re.I):
@@ -3482,7 +3591,11 @@ def _fetch_sitemap_directory(dept: dict) -> list[dict]:
             continue
         n_el = soup.select_one(name_sel) if name_sel else None
         name = re.sub(r"\s+", " ", n_el.get_text(" ", strip=True)).strip() if n_el else ""
-        if not name:
+        if not name or not profile_page_matches_person(
+            soup,
+            name,
+            identity_selectors=name_sel,
+        ):
             continue
         title = ""
         if title_sel:

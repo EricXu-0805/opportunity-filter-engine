@@ -1,15 +1,11 @@
 """Read-only professor updates: verified change events for followed faculty.
 
 Serves the ``data/processed/professor_tracking.json`` artifact the collector
-refresh maintains.  Only schema-v2 artifacts are served — anything else
-(including a leftover v1 file awaiting its migration write) is an honest
-``available: false`` empty response, never an error.  Within a v2 artifact,
-eligibility is strictly PER RECORD: an event is served iff its own stored
-evidence validates (hashes, fingerprint, and event id must deterministically
-reproduce — see ``validate_tracking_event_evidence``).  The artifact-level
-``release.release_ready`` marker (schema valid + freshness >= 95% + zero
-fully-stale schools + error-free producing run) is surfaced to consumers as
-``release_ready`` but deliberately does not gate per-record serving.
+refresh maintains. Only a schema-v2 artifact whose release contract passes is
+served. Anything else (including a partial-school baseline, a leftover v1
+file, or stale/error-producing refresh) is an honest ``available: false`` empty
+response, never an error. Within an available artifact, each event must still
+pass its own stored evidence validation (hashes, fingerprint, and event id).
 
 Events never contain contact details: the pipeline's evidence payload
 excludes them by construction and this layer re-projects a fixed field set.
@@ -19,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -47,17 +44,19 @@ _cache_lock = threading.Lock()
 _cache_signature: tuple | None = None
 _cache_available = False
 _cache_release_ready = False
+_cache_expires_at: datetime | None = None
 # professor_id -> events newest-first, already projected to the serving shape.
 _cache_events_by_professor: dict[str, list[dict]] = {}
 
 
 def reset_tracking_cache() -> None:
     global _cache_signature, _cache_available, _cache_release_ready
-    global _cache_events_by_professor
+    global _cache_expires_at, _cache_events_by_professor
     with _cache_lock:
         _cache_signature = None
         _cache_available = False
         _cache_release_ready = False
+        _cache_expires_at = None
         _cache_events_by_professor = {}
 
 
@@ -66,7 +65,10 @@ def _path_signature() -> tuple:
         stat = TRACKING_PATH.stat()
     except OSError:
         return (None, None)
-    return (stat.st_size, stat.st_mtime_ns)
+    return (
+        stat.st_size,
+        stat.st_mtime_ns,
+    )
 
 
 def _bounded_text(value: object) -> str | None:
@@ -99,22 +101,49 @@ def _project_event(event: dict) -> dict | None:
 
 def _load_events() -> tuple[bool, bool, dict[str, list[dict]]]:
     global _cache_signature, _cache_available, _cache_release_ready
-    global _cache_events_by_professor
+    global _cache_expires_at, _cache_events_by_professor
     signature = _path_signature()
     with _cache_lock:
         if signature == _cache_signature:
+            if (
+                _cache_release_ready
+                and _cache_expires_at is not None
+                and datetime.now(UTC) > _cache_expires_at
+            ):
+                _cache_available = False
+                _cache_release_ready = False
+                _cache_events_by_professor = {}
             return _cache_available, _cache_release_ready, _cache_events_by_professor
 
         available = False
         by_professor: dict[str, list[dict]] = {}
         state = load_tracking_state(TRACKING_PATH)
-        # Schema v2 only: a non-v2 artifact (or one without a valid events
-        # list) is unavailable, not partially served — the producer migrates
-        # v1 history forward on its next write.
+        release_ready = artifact_release_ready(state)
+        expires_at = None
+        if release_ready and isinstance(state, dict):
+            release = state.get("release")
+            if isinstance(release, dict):
+                try:
+                    freshness_expiry = datetime.fromisoformat(
+                        str(release["freshness_valid_until"]).replace("Z", "+00:00")
+                    )
+                    computed_at = datetime.fromisoformat(
+                        str(release["computed_at"]).replace("Z", "+00:00")
+                    )
+                    expires_at = min(
+                        freshness_expiry.astimezone(UTC),
+                        computed_at.astimezone(UTC)
+                        + timedelta(days=int(release["freshness_ttl_days"])),
+                    )
+                except (KeyError, TypeError, ValueError):
+                    release_ready = False
+        # Schema v2 + passing artifact contract only: coverage/freshness gaps
+        # disable the feature instead of serving a misleading partial feed.
         if (
             isinstance(state, dict)
             and state.get("schema_version") == TRACKING_SCHEMA_VERSION
             and isinstance(state.get("events"), list)
+            and release_ready
         ):
             available = True
             skipped = 0
@@ -135,16 +164,23 @@ def _load_events() -> tuple[bool, bool, dict[str, list[dict]]]:
                     "professor tracking: skipped %d invalid event(s) at serve time",
                     skipped,
                 )
-            projected.sort(
-                key=lambda event: (event["verified_at"], event["event_id"]),
-                reverse=True,
-            )
-            for event in projected:
-                by_professor.setdefault(event["professor_id"], []).append(event)
+                # A stored release marker cannot waive serve-time evidence
+                # validation. Any corrupt event invalidates this artifact until
+                # the producer rebuilds it.
+                available = False
+                release_ready = False
+            else:
+                projected.sort(
+                    key=lambda event: (event["verified_at"], event["event_id"]),
+                    reverse=True,
+                )
+                for event in projected:
+                    by_professor.setdefault(event["professor_id"], []).append(event)
 
         _cache_signature = signature
         _cache_available = available
-        _cache_release_ready = artifact_release_ready(state)
+        _cache_release_ready = release_ready
+        _cache_expires_at = expires_at
         _cache_events_by_professor = by_professor
         return available, _cache_release_ready, by_professor
 

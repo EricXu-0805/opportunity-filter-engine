@@ -34,6 +34,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
@@ -69,6 +70,207 @@ HEADERS = {
 _TIMEOUT = 30
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = 2.0  # seconds; doubles each attempt
+
+_PROFILE_DENIAL_RE = re.compile(
+    r"\b(?:access denied|request blocked|verify you are human|"
+    r"attention required|captcha|cloudflare ray id|forbidden|"
+    r"(?:401|403)\s*(?:[-:]\s*)?unauthorized|"
+    r"(?:you\s+are\s+)?not\s+authori[sz]ed|"
+    r"access\s+(?:is\s+)?restricted|restricted\s+access)\b",
+    re.IGNORECASE,
+)
+_PROFILE_LOGIN_WALL_RE = re.compile(
+    r"\b(?:"
+    # Authentication/login walls.
+    r"authentication\s+(?:is\s+)?required|"
+    r"(?:sign|log)[\s-]*in\s+(?:is\s+)?required|"
+    r"must\s+be\s+(?:logged|signed)[\s-]+in|"
+    r"(?:sign|log)[\s-]*in\s*(?:to)?\s+(?:your\s+)?account|"
+    r"(?:sign|log)[\s-]*in\s+(?:to\s+)?(?:continue|view|access)|"
+    # JavaScript challenge/interstitial families.
+    r"(?:please\s+)?(?:enable|turn\s+on)\s+(?:javascript|js)|"
+    r"(?:javascript|js)\s+(?:(?:is\s+)?required(?:\s+to\s+"
+    r"(?:continue|view|access))?|must\s+be\s+enabled|is\s+disabled)|"
+    r"(?:this\s+)?site\s+requires\s+(?:javascript|js)|"
+    # Cookie challenge/interstitial families.
+    r"cookies?\s+(?:(?:are|is)\s+required|(?:are\s+)?disabled|"
+    r"must\s+be\s+enabled)(?:\s+to\s+(?:continue|view|access))?|"
+    r"(?:your\s+)?browser\s+(?:must|needs?\s+to)\s+"
+    r"(?:accept|allow)\s+cookies|"
+    r"(?:please\s+)?(?:enable|allow|accept)\s+(?:browser\s+)?cookies"
+    r")\b",
+    re.IGNORECASE,
+)
+_PROFILE_BARE_LOGIN_RE = re.compile(
+    r"\b(?:sign[\s-]?in|log[\s-]?in|login)\b",
+    re.IGNORECASE,
+)
+_NAME_NOISE = frozenset(
+    {"prof", "professor", "dr", "phd", "md", "jr", "sr", "ii", "iii"}
+)
+_NON_PERSON_IDENTITY_TOKENS = frozenset(
+    {
+        "about",
+        "academic",
+        "contact",
+        "department",
+        "directory",
+        "engineering",
+        "faculty",
+        "group",
+        "home",
+        "institute",
+        "laboratory",
+        "lab",
+        "people",
+        "profile",
+        "program",
+        "publications",
+        "research",
+        "school",
+        "teaching",
+        "university",
+    }
+)
+
+
+def _profile_page_text(soup: object) -> str:
+    if soup is None:
+        return ""
+    try:
+        body = soup.get_text(" ", strip=True)
+    except Exception:  # noqa: BLE001
+        return ""
+    return re.sub(r"\s+", " ", body).strip()
+
+
+def profile_page_is_denial(soup: object) -> bool:
+    body = _profile_page_text(soup)
+    if (
+        not body
+        or _PROFILE_DENIAL_RE.search(body) is not None
+        or _PROFILE_LOGIN_WALL_RE.search(body) is not None
+    ):
+        return True
+    try:
+        headings = " ".join(
+            element.get_text(" ", strip=True)
+            for element in soup.select("title, h1")
+        )
+    except Exception:  # noqa: BLE001
+        headings = ""
+    return (
+        _PROFILE_BARE_LOGIN_RE.search(headings) is not None
+        or (
+            len(body) < 1200
+            and _PROFILE_BARE_LOGIN_RE.search(body) is not None
+        )
+    )
+
+
+def profile_page_matches_person(
+    soup: object,
+    expected_name: object,
+    *,
+    identity_selectors: object = None,
+) -> bool:
+    """Return whether an HTTP-200 page contains real identity evidence.
+
+    A WAF/login/challenge response is still valid HTML and often returns 200.
+    It must not advance a professor's 60-day profile-verification TTL merely
+    because BeautifulSoup could parse it.
+    """
+
+    if not isinstance(expected_name, str):
+        return False
+    if profile_page_is_denial(soup):
+        return False
+
+    def tokens(value: str) -> list[str]:
+        normalized = unicodedata.normalize("NFKD", value).casefold()
+        normalized = "".join(
+            char for char in normalized
+            if not unicodedata.combining(char)
+        )
+        return [
+            token
+            for token in re.findall(r"[a-z0-9]+", normalized)
+            if token not in _NAME_NOISE
+        ]
+
+    expected = tokens(expected_name)
+    if not expected:
+        return False
+    default_strong_selectors = [
+        "h1",
+        "[itemprop='name']",
+        ".person-name",
+        ".profile-name",
+        ".page-title",
+        ".page--title",
+    ]
+    default_weak_selectors = ["title"]
+    if identity_selectors is not None:
+        if isinstance(identity_selectors, str):
+            selectors = [identity_selectors] if identity_selectors.strip() else []
+        elif isinstance(identity_selectors, (list, tuple)):
+            selectors = [
+                selector
+                for selector in identity_selectors
+                if isinstance(selector, str) and selector.strip()
+            ]
+        else:
+            selectors = []
+        strong_selectors = selectors
+        weak_selectors: list[str] = []
+    else:
+        strong_selectors = default_strong_selectors
+        weak_selectors = default_weak_selectors
+
+    def candidates_for(selectors: list[str]) -> list[str]:
+        return [
+            re.sub(r"\s+", " ", element.get_text(" ", strip=True)).strip()
+            for selector in selectors
+            for element in soup.select(selector)
+            if element.get_text(" ", strip=True)
+        ]
+
+    try:
+        strong_candidates = candidates_for(strong_selectors)
+        weak_candidates = candidates_for(weak_selectors)
+    except Exception:  # noqa: BLE001
+        return False
+
+    def matches(candidate: str) -> bool:
+        observed = set(tokens(candidate))
+        if len(expected) == 1:
+            return len(expected[0]) >= 3 and expected[0] in observed
+        if expected[0] in observed and expected[-1] in observed:
+            # First + last survive middle-initial, credential, and "Last,
+            # First" formatting differences.
+            return True
+        return False
+
+    def clearly_other_person(candidate: str) -> bool:
+        # Headings commonly suffix a real name with role/site furniture
+        # ("Grace Hopper | Faculty Profile"). Remove that decoration before
+        # deciding whether the authoritative node clearly names somebody else;
+        # its presence must not turn a wrong-person page into an ambiguous
+        # generic heading that a weaker <title> can override.
+        observed = [
+            token
+            for token in tokens(candidate)
+            if token not in _NON_PERSON_IDENTITY_TOKENS
+        ]
+        return not matches(candidate) and bool(observed)
+
+    # A strong identity node naming a different person makes the page
+    # ambiguous. Do not let a browser title or other weaker node override it.
+    if any(clearly_other_person(candidate) for candidate in strong_candidates):
+        return False
+    if any(matches(candidate) for candidate in strong_candidates):
+        return True
+    return any(matches(candidate) for candidate in weak_candidates)
 
 # Some university hosts (several InCommon-issued .edu certs — UCLA's Physics and
 # Statistics sites, UW Statistics) ship an *incomplete* certificate chain: they
@@ -560,6 +762,18 @@ def scrape_open_berkeley_faculty(soup: BeautifulSoup, config: dict) -> list[dict
 # non-Open-Berkeley pages they simply match nothing.
 _OPENBERKELEY_EMAIL_SEL = "div.field-name-field-openberkeley-person-email"
 _OPENBERKELEY_TITLE_SEL = "div.field-name-field-openberkeley-person-title"
+_SCRAPED_TITLE_LABEL_RE = re.compile(
+    r"^\s*(?:position\s+)?title\s*:\s*",
+    re.IGNORECASE,
+)
+
+
+def _clean_scraped_title(value: object) -> str:
+    """Remove Open-Berkeley field labels without changing the real title."""
+
+    if not isinstance(value, str):
+        return ""
+    return _SCRAPED_TITLE_LABEL_RE.sub("", value).strip()
 _OPENBERKELEY_RESEARCH_SELS = (
     "div.field-name-field-openberkeley-person-research-interests .field-item",
     "div.field-name-field-resint .field-item",
@@ -643,20 +857,26 @@ def enrich_faculty_from_profiles(faculty: list[dict], config: dict) -> list[dict
             # Provenance hints, not gates: normalize_faculty copies them into
             # metadata when present; a person without them (unenriched
             # collector, listing-supplied email) normalizes exactly as before.
-            person["_verification_scope"] = "profile"
+            profile_verified = profile_page_matches_person(
+                soup,
+                person.get("name"),
+            )
+            if profile_verified:
+                person["_verification_scope"] = "profile"
             email = extract_email_from_profile(soup, config)
-            if email:
+            if email and profile_verified:
                 person["email"] = email
                 person["_email_source"] = "profile_page"
                 found += 1
             interests = extract_research_interests(soup, config)
-            if interests:
+            if interests and profile_verified:
                 person["research_areas"] = interests
                 with_interests += 1
-            if not (person.get("title") or "").strip():
+            if profile_verified and not (person.get("title") or "").strip():
                 field = soup.select_one(_OPENBERKELEY_TITLE_SEL)
-                title = re.sub(r"(?i)^\s*title\s*:\s*", "",
-                               field.get_text(" ", strip=True)).strip() if field else ""
+                title = _clean_scraped_title(
+                    field.get_text(" ", strip=True) if field else ""
+                )
                 if title:
                     person["title"] = title
         if i < total - 1:
@@ -825,8 +1045,13 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     dept_name = config["name"]
     profile_url = person.get("url", "")
     # A missing rank stays missing (truthfulness W11): "" means the directory
-    # stated no rank, and every consumer renders rank-neutrally for it.
-    title = (person.get("title") or "").strip()
+    # stated no rank, and every consumer renders rank-neutrally for it — never
+    # fabricated as "Professor". _clean_scraped_title also normalizes again at
+    # this schema boundary so a missed parser path (listing vs. profile
+    # templates disagree on whether the field label is included in text,
+    # "Title:" vs "Position title:") can never leak the label into the
+    # user-facing description or metadata.
+    title = _clean_scraped_title(person.get("title"))
     if _RETIRED_TITLE_RE.search(title):
         return None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))

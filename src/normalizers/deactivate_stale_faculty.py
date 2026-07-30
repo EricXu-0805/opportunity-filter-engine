@@ -7,8 +7,11 @@ gap conservatively, with three safety gates:
 
   * only sources whose collector reported success in the CURRENT refresh run
     are considered (quick mode leaves the deep-only faculty sources untouched);
-  * a source whose scrape yielded fewer than MIN_SCRAPE_RATIO of its
-    currently-active record count is skipped entirely with a warning — a
+  * deactivation is limited to a source that represents exactly one named
+    academic unit. Aggregate multi-department sources need a per-unit
+    raw/emitted/rejected ledger before absence can safely retire records;
+  * a single-unit source whose scrape yielded fewer than MIN_SCRAPE_RATIO of
+    its currently-active record count is skipped entirely with a warning — a
     partial/broken scrape must never mass-deactivate a department;
   * only records unseen for GRACE_DAYS (≈2 missed weekly deep runs) are
     deactivated, so a single flaky scrape cannot retire anyone.
@@ -257,7 +260,11 @@ FACULTY_SOURCES = frozenset({
 })
 
 GRACE_DAYS = 14
-MIN_SCRAPE_RATIO = 0.7
+# A weekly directory should not lose more than a few percent of its active
+# roster. The former 70% threshold could retire nearly one-third of a school
+# after one broken endpoint. This ratio is only meaningful after the source is
+# proven to contain one named unit; aggregate sources are held below.
+MIN_SCRAPE_RATIO = 0.95
 
 
 def _seen_date(opp: dict) -> date | None:
@@ -280,8 +287,8 @@ def deactivate_stale_faculty(
     ``fetched_counts`` maps each faculty source that completed successfully in
     the current refresh run to the number of records its scrape yielded;
     sources that did not run (or errored) must be omitted and are never
-    touched. Returns counts: {newly_deactivated, kept_fresh, already_inactive,
-    skipped_partial_scrape (list of gated source names)}.
+    touched. Returns counts for newly deactivated/kept/inactive records plus
+    lists of sources held for partial scrapes or missing per-unit lineage.
     """
     today = today or date.today()
     cutoff = today - timedelta(days=GRACE_DAYS)
@@ -290,6 +297,7 @@ def deactivate_stale_faculty(
         "kept_fresh": 0,
         "already_inactive": 0,
         "skipped_partial_scrape": [],
+        "skipped_missing_unit_ledger": [],
     }
 
     by_source: dict[str, list[dict]] = {}
@@ -306,6 +314,33 @@ def deactivate_stale_faculty(
             if (o.get("metadata") or {}).get("is_active") is not False
         ]
         counts["already_inactive"] += len(records) - len(active)
+
+        # A school-wide collector can average 95% while one department is
+        # completely absent (for example, 95 fresh people in department A and
+        # all 5 people in department B missing). Until collectors publish a
+        # trusted per-unit ledger, source-level fetched_counts cannot prove
+        # absence for any individual department. Preserve the old records.
+        units = {
+            unit.strip()
+            for record in active
+            if isinstance((unit := record.get("department")), str)
+            and unit.strip()
+        }
+        has_unnamed_unit = any(
+            not isinstance(record.get("department"), str)
+            or not record["department"].strip()
+            for record in active
+        )
+        if has_unnamed_unit or len(units) != 1:
+            logger.warning(
+                "deactivate_stale_faculty: %s spans %d named unit(s)%s but "
+                "has no trusted per-unit scrape ledger — preserving records",
+                source,
+                len(units),
+                " plus unnamed records" if has_unnamed_unit else "",
+            )
+            counts["skipped_missing_unit_ledger"].append(source)
+            continue
 
         if fetched_counts[source] < MIN_SCRAPE_RATIO * len(active):
             logger.warning(

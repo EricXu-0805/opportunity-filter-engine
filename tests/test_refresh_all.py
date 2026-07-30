@@ -23,6 +23,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.collectors.refresh_all as refresh_all
+from src.collectors import ucsb_urca_projects
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 
 # All Berkeley faculty collectors wired into refresh_all's deep block. Derived
@@ -36,11 +37,57 @@ def _stub_all_collectors(monkeypatch, tmp_path):
         if attr.startswith("fetch_"):
             monkeypatch.setattr(refresh_all, attr, lambda *a, **k: [])
         elif attr.startswith("merge_"):
-            monkeypatch.setattr(refresh_all, attr, lambda opps: (0, 0))
+            monkeypatch.setattr(
+                refresh_all,
+                attr,
+                lambda opps, **kwargs: (0, 0),
+            )
     monkeypatch.setattr(refresh_all, "PROCESSED_FILE", tmp_path / "missing.json")
     # The post-write tracking pass must never touch the repo's real artifact
     # from a test run.
     monkeypatch.setattr(refresh_all, "TRACKING_FILE", tmp_path / "professor_tracking.json")
+    live_evidence = {
+        "deep": True,
+        "crawl_sources_expected": 1,
+        "crawl_sources_loaded": 1,
+        "live_pages_attempted": 1,
+        "live_pages_loaded": 1,
+        "seed_records": 0,
+        "discovered_records": 0,
+        "crawl_errors": [],
+    }
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_campus_graph_with_evidence",
+        lambda *args, **kwargs: ([], live_evidence),
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_ucb_campus_with_evidence",
+        lambda *args, **kwargs: ([], live_evidence),
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "merge_ucsb_urca_projects",
+        lambda *args, **kwargs: (0, 0, 0),
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_ucsb_urca_projects_with_evidence",
+        lambda: (
+            [],
+            {
+                "sitemap_complete": False,
+                "sitemaps_expected": 2,
+                "sitemaps_loaded": 0,
+                "locations_seen": 0,
+                "recognized_locations": 0,
+                "unexpected_location_count": 0,
+                "unexpected_location_samples": [],
+                "empty_confirmed": False,
+            },
+        ),
+    )
 
 
 def test_deep_run_registers_all_ucb_collectors(monkeypatch, tmp_path):
@@ -154,6 +201,7 @@ def _seed_faculty(source, ident, days_ago):
         "id": ident,
         "source": source,
         "source_type": "faculty_research",
+        "department": "Test Department",
         "title": f"Research with Prof. {ident}",
         "deadline": None,
         "metadata": {
@@ -177,17 +225,142 @@ def _stub_with_processed_file(monkeypatch, tmp_path, seeded):
     return processed
 
 
+def _stub_successful_uiuc_deep_components(monkeypatch):
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_js_faculty",
+        lambda: [{"id": "js-one"}],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_json_faculty",
+        lambda: [{"id": "json-one"}],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_html_faculty",
+        lambda: [{"id": "html-one"}],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "faculty_missing_departments",
+        lambda _records: [],
+    )
+
+
+def test_discovery_quarantine_preserves_verified_seed_and_urca_records(
+    monkeypatch,
+    tmp_path,
+):
+    def row(ident, *, metadata):
+        record = ucsb_urca_projects.normalize_project({
+            "id": ident,
+            "title": f"Project {ident}",
+            "url": f"https://ucsb.example.edu/{ident}",
+        })
+        record["id"] = ident
+        record["metadata"].update(metadata)
+        return record
+
+    legacy_crawl = row(
+        "legacy-crawl",
+        metadata={
+            "collector_source": "ucb_ours_hub",
+            "discovered": True,
+            "discovered_page_verified": False,
+            "urca_record_id": None,
+        },
+    )
+    verified_crawl = row(
+        "verified-crawl",
+        metadata={
+            "collector_source": "ucb_ours_hub",
+            "discovered": True,
+            "discovered_page_verified": True,
+            "urca_record_id": None,
+        },
+    )
+    curated_seed = row(
+        "curated-seed",
+        metadata={
+            "collector_source": "ucb_summer_programs",
+            "discovered": False,
+            "discovered_page_verified": False,
+            "urca_record_id": None,
+        },
+    )
+    urca_sitemap = row(
+        "urca-sitemap",
+        metadata={
+            "discovered": True,
+            "discovered_page_verified": False,
+            "collector_source": None,
+            "urca_record_id": "urca-sitemap",
+        },
+    )
+    static_discovery = row(
+        "static-discovery",
+        metadata={
+            "collector_source": "ucb_summer_programs",
+            "discovered": True,
+            "discovered_page_verified": False,
+            "urca_record_id": None,
+        },
+    )
+    other_school_legacy = row(
+        "uw-legacy-crawl",
+        metadata={
+            "collector_source": "uw_our_hub",
+            "discovered": True,
+            "discovered_page_verified": False,
+            "urca_record_id": None,
+        },
+    )
+    processed = _stub_with_processed_file(
+        monkeypatch,
+        tmp_path,
+        [
+            legacy_crawl,
+            verified_crawl,
+            curated_seed,
+            urca_sitemap,
+            static_discovery,
+            other_school_legacy,
+        ],
+    )
+
+    summary = refresh_all.refresh_all(deep=False, schools={"ucb"})
+
+    saved = {
+        record["id"]: record
+        for record in json.loads(processed.read_text(encoding="utf-8"))
+    }
+    assert summary["sources"]["campus_discovery_quarantine"]["quarantined"] == 1
+    assert saved["legacy-crawl"]["metadata"]["is_active"] is False
+    assert saved["legacy-crawl"]["metadata"]["quarantined_unverified_discovery"] is True
+    for ident in (
+        "verified-crawl",
+        "curated-seed",
+        "urca-sitemap",
+        "static-discovery",
+        "uw-legacy-crawl",
+    ):
+        assert saved[ident]["metadata"]["is_active"] is True
+
+
 def test_deep_run_deactivates_stale_faculty(monkeypatch, tmp_path):
     seeded = [
-        _seed_faculty("uiuc_faculty", "fac-stale", days_ago=30),
-        _seed_faculty("uiuc_faculty", "fac-fresh", days_ago=1),
+        _seed_faculty("umich_faculty", "fac-stale", days_ago=30),
+        _seed_faculty("umich_faculty", "fac-fresh", days_ago=1),
     ]
     processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
-    # uiuc_faculty collector "succeeds" with a full-size scrape this run.
-    monkeypatch.setattr(refresh_all, "fetch_faculty",
-                        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_umich_faculty",
+        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)],
+    )
 
-    summary = refresh_all.refresh_all(deep=True)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
 
     pass_info = summary["sources"]["deactivate_stale_faculty"]
     assert pass_info["status"] == "ok"
@@ -242,6 +415,56 @@ def test_js_faculty_runs_in_deep_and_folds_into_uiuc_faculty_count(monkeypatch, 
     assert quick["fetched"] == 2
 
 
+def test_uiuc_deep_component_failure_blocks_source_and_stale_deactivation(
+    monkeypatch,
+    tmp_path,
+):
+    processed = _stub_with_processed_file(
+        monkeypatch,
+        tmp_path,
+        [_seed_faculty("uiuc_faculty", "uiuc-stale", days_ago=60)],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_faculty",
+        lambda *a, **k: [{"id": "static-one"}],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_json_faculty",
+        lambda: [{"id": "json-one"}],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_html_faculty",
+        lambda: [{"id": "html-one"}],
+    )
+
+    def js_failure():
+        raise RuntimeError("browser unavailable")
+
+    monkeypatch.setattr(refresh_all, "fetch_js_faculty", js_failure)
+
+    summary = refresh_all.refresh_all(
+        deep=True,
+        schools={"uiuc"},
+    )
+
+    faculty = summary["sources"]["uiuc_faculty"]
+    assert faculty["status"] == "error"
+    assert faculty["components"]["js"] == {
+        "status": "error",
+        "fetched": 0,
+        "error": "browser unavailable",
+    }
+    assert summary["release"]["ready"] is False
+    assert summary["sources"]["deactivate_stale_faculty"][
+        "newly_deactivated"
+    ] == 0
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert saved[0]["metadata"]["is_active"] is True
+
+
 def test_errored_faculty_collector_never_deactivates(monkeypatch, tmp_path):
     seeded = [_seed_faculty("uiuc_faculty", "fac-stale", days_ago=60)]
     processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
@@ -260,18 +483,101 @@ def test_errored_faculty_collector_never_deactivates(monkeypatch, tmp_path):
 
 
 def test_partial_scrape_gate_surfaces_in_summary(monkeypatch, tmp_path):
-    seeded = [_seed_faculty("uiuc_faculty", f"fac-{i}", days_ago=60)
+    seeded = [_seed_faculty("umich_faculty", f"fac-{i}", days_ago=60)
               for i in range(10)]
     processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
-    # Collector "succeeds" but yields only 3 of 10 active records (< 70%).
-    monkeypatch.setattr(refresh_all, "fetch_faculty",
-                        lambda *a, **k: [{"id": f"f{i}"} for i in range(3)])
+    # Collector "succeeds" but yields only 3 of 10 active records (< 95%).
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_umich_faculty",
+        lambda *a, **k: [{"id": f"f{i}"} for i in range(3)],
+    )
 
-    summary = refresh_all.refresh_all(deep=True)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
 
     pass_info = summary["sources"]["deactivate_stale_faculty"]
     assert pass_info["newly_deactivated"] == 0
-    assert pass_info["skipped_partial_scrape"] == ["uiuc_faculty"]
+    assert pass_info["skipped_partial_scrape"] == ["umich_faculty"]
+
+
+def test_missing_unit_ledger_surfaces_for_aggregate_faculty_source(
+    monkeypatch,
+    tmp_path,
+):
+    seeded = [
+        _seed_faculty("umich_faculty", f"cs-{i}", days_ago=1)
+        for i in range(95)
+    ]
+    seeded += [
+        _seed_faculty("umich_faculty", f"stats-{i}", days_ago=60)
+        for i in range(5)
+    ]
+    for record in seeded[:95]:
+        record["department"] = "Computer Science"
+    for record in seeded[95:]:
+        record["department"] = "Statistics"
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_umich_faculty",
+        lambda *a, **k: [{"id": f"f{i}"} for i in range(95)],
+    )
+
+    summary = refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    pass_info = summary["sources"]["deactivate_stale_faculty"]
+    assert pass_info["newly_deactivated"] == 0
+    assert pass_info["skipped_missing_unit_ledger"] == ["umich_faculty"]
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert all(record["metadata"]["is_active"] is True for record in saved)
+
+
+def test_nonzero_uiuc_component_collapse_cannot_retire_old_faculty(
+    monkeypatch,
+    tmp_path,
+):
+    seeded = [
+        _seed_faculty("uiuc_faculty", f"fac-{index}", days_ago=60)
+        for index in range(122)
+    ]
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, seeded)
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_faculty",
+        lambda enrich: seeded[:100],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_js_faculty",
+        lambda: seeded[100:101],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_json_faculty",
+        lambda: seeded[101:102],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_html_faculty",
+        lambda: seeded[102:103],
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "faculty_missing_departments",
+        lambda _records: [],
+    )
+
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"})
+
+    faculty = summary["sources"]["uiuc_faculty"]
+    stale = summary["sources"]["deactivate_stale_faculty"]
+    assert faculty["status"] == "ok"
+    assert faculty["components"]["js"]["fetched"] == 1
+    assert faculty["stale_deactivation_authorized"] is False
+    assert stale["newly_deactivated"] == 0
+    assert stale["deactivation_not_authorized"] == ["uiuc_faculty"]
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert all(row["metadata"]["is_active"] for row in saved)
     saved = json.loads(processed.read_text(encoding="utf-8"))
     assert all(o["metadata"]["is_active"] is True for o in saved)
 
@@ -318,12 +624,169 @@ def test_national_shard_runs_exactly_national_sources(monkeypatch, tmp_path):
     assert summary["shard"] == {"schools": [], "national": True}
 
 
+@pytest.mark.parametrize("structure_complete", [True, False])
+def test_ucsb_empty_urca_is_never_a_publishable_single_snapshot(
+    monkeypatch,
+    tmp_path,
+    structure_complete,
+):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        refresh_all,
+        "fetch_ucsb_urca_projects_with_evidence",
+        lambda: (
+            [],
+            {
+                "sitemap_complete": False,
+                "sitemap_structure_complete": structure_complete,
+                "sitemaps_expected": 1,
+                "sitemaps_loaded": 1 if structure_complete else 0,
+                "locations_seen": 0,
+                "recognized_locations": 0,
+                "unexpected_location_count": 0,
+                "unexpected_location_samples": [],
+                "empty_confirmed": False,
+            },
+        ),
+    )
+
+    summary = refresh_all.refresh_all(deep=True, schools={"ucsb"})
+    info = summary["sources"]["ucsb_urca_projects"]
+    assert info["status"] == "error"
+    assert info["empty_confirmed"] is False
+
+
 def test_unknown_or_empty_shard_raises(monkeypatch, tmp_path):
     _stub_all_collectors(monkeypatch, tmp_path)
     with pytest.raises(ValueError, match="unknown school slug"):
         refresh_all.refresh_all(deep=True, schools={"uw", "notaschool"})
     with pytest.raises(ValueError, match="at least one school"):
         refresh_all.refresh_all(deep=True, schools=set())
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        refresh_all.refresh_all(
+            deep=True,
+            schools={"uw"},
+            national=True,
+        )
+
+
+def test_release_contract_drives_tracking_refresh_ok(monkeypatch, tmp_path):
+    """A process that finishes with empty mandatory sources is not a
+    successful producing refresh for the tracking artifact."""
+
+    _stub_with_processed_file(
+        monkeypatch,
+        tmp_path,
+        [_seed_faculty("uw_faculty", "uw-existing", days_ago=1)],
+    )
+    captured: dict[str, bool] = {}
+
+    def fake_tracking(_opps, summary, *, refresh_ok):
+        captured["refresh_ok"] = refresh_ok
+        summary["sources"]["professor_tracking"] = {
+            "status": "ok",
+            "release_ready": False,
+        }
+
+    monkeypatch.setattr(
+        refresh_all,
+        "_update_professor_tracking",
+        fake_tracking,
+    )
+    summary = refresh_all.refresh_all(deep=True, schools={"uw"})
+
+    assert captured["refresh_ok"] is False
+    assert summary["release"]["ready"] is False
+    assert any(
+        "emitted zero records" in reason
+        for reason in summary["release"]["reasons"]
+    )
+
+
+def test_cli_returns_two_after_writing_blocked_diagnostics(monkeypatch):
+    summary = {
+        "timestamp": "2026-07-31T00:00:00",
+        "sources": {},
+        "total_new": 0,
+        "total_updated": 0,
+        "total_in_file": 1,
+        "release": {
+            "ready": False,
+            "reasons": ["required source missing: uw_faculty"],
+        },
+    }
+    written: list[dict] = []
+    monkeypatch.setattr(refresh_all, "refresh_all", lambda **_kwargs: summary)
+    monkeypatch.setattr(refresh_all, "write_status", written.append)
+    monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
+
+    assert refresh_all.main(["--schools", "uw"]) == 2
+    assert written == [summary]
+
+
+def test_refresh_summary_preserves_trusted_run_provenance(
+    monkeypatch,
+    tmp_path,
+):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    provenance = {
+        "base_sha": "a" * 40,
+        "run_id": "123",
+        "run_attempt": "1",
+    }
+
+    summary = refresh_all.refresh_all(
+        deep=True,
+        schools={"uw"},
+        provenance=provenance,
+    )
+
+    assert summary["provenance"] == provenance
+
+
+def test_cli_cannot_reuse_old_green_status_when_snapshot_write_fails(
+    monkeypatch,
+    tmp_path,
+):
+    status_path = tmp_path / "collector_status.json"
+    old_green = '{"release":{"ready":true},"run":"old"}'
+    status_path.write_text(old_green, encoding="utf-8")
+    monkeypatch.setattr(refresh_all, "STATUS_FILE", status_path)
+    monkeypatch.setattr(
+        refresh_all,
+        "STATUS_HISTORY_FILE",
+        tmp_path / "collector_status_history.jsonl",
+    )
+    monkeypatch.setattr(
+        refresh_all,
+        "refresh_all",
+        lambda **_kwargs: {
+            "timestamp": "2026-07-31T00:00:00",
+            "request": {
+                "schools": ["uw"],
+                "national": False,
+                "deep": True,
+            },
+            "sources": {},
+            "total_new": 0,
+            "total_updated": 0,
+            "total_in_file": 1,
+            "release": {
+                "ready": True,
+                "reasons": [],
+            },
+        },
+    )
+    monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
+
+    def fail_snapshot(*_args, **_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(refresh_all, "atomic_write_json", fail_snapshot)
+
+    with pytest.raises(OSError, match="disk full"):
+        refresh_all.main(["--schools", "uw"])
+    assert status_path.read_text(encoding="utf-8") == old_green
 
 
 # --- Shard deactivation scoping ------------------------------------------------
@@ -352,17 +815,16 @@ def test_uiuc_shard_leaves_other_schools_byte_identical(monkeypatch, tmp_path):
                 for o in json.loads(processed.read_text(encoding="utf-8"))}
     assert json.loads(baseline["uiuc-stale"])["metadata"]["is_active"] is True
 
-    # uiuc shard with a full-size uiuc_faculty scrape (2 fetched vs 2 active
-    # passes the MIN_SCRAPE_RATIO gate).
+    # UIUC currently has no component-level lineage, so even a full-size
+    # aggregate scrape is deliberately not authorized to retire old rows.
     monkeypatch.setattr(refresh_all, "fetch_faculty",
                         lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+    _stub_successful_uiuc_deep_components(monkeypatch)
     summary = refresh_all.refresh_all(deep=True, schools={"uiuc"})
 
-    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 1
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
     saved = {o["id"]: o for o in json.loads(processed.read_text(encoding="utf-8"))}
-    assert saved["uiuc-stale"]["metadata"]["is_active"] is False
-    assert saved["uiuc-stale"]["metadata"]["deactivation_reason"] == \
-        "absent_from_directory_rescrape"
+    assert saved["uiuc-stale"]["metadata"]["is_active"] is True
     assert saved["uiuc-fresh"]["metadata"]["is_active"] is True
     # ucb/uw are both past GRACE_DAYS, yet must come out byte-identical —
     # active flags, keywords, emails, everything.

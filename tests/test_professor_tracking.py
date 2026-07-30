@@ -19,11 +19,13 @@ from src.tracking.professor_profiles import (
     TRACKING_SCHEMA_VERSION,
     artifact_release_ready,
     canonical_professor_id,
-    compute_release_status,
     load_tracking_state,
     update_tracking_file,
     update_tracking_state,
     validate_tracking_event_evidence,
+)
+from src.tracking.professor_profiles import (
+    compute_release_status as _raw_compute_release_status,
 )
 
 T0 = "2026-07-01T00:00:00"
@@ -261,6 +263,10 @@ class TestTrackingFile:
             "release_ready": True,
             "freshness_pct": 100.0,
             "fully_stale_school_count": 0,
+            "missing_school_count": 0,
+            "active_profile_coverage_pct": 100.0,
+            "missing_profile_count": 0,
+            "untrackable_active_count": 0,
         }
 
         stats = update_tracking_file(
@@ -315,7 +321,9 @@ class TestRefreshWiring:
             "src.tracking.professor_profiles.update_tracking_file", boom
         )
         summary = {"sources": {}}
-        refresh_all._update_professor_tracking([record()], summary)
+        refresh_all._update_professor_tracking(
+            [record()], summary, refresh_ok=False
+        )
         assert summary["sources"]["professor_tracking"]["status"] == "error"
 
     def test_success_path_writes_summary_and_file(self, monkeypatch, tmp_path):
@@ -325,7 +333,9 @@ class TestRefreshWiring:
         # The production path uses the real clock, so the fixture's
         # last_verified must be genuinely recent for freshness to hold.
         fresh = record(last_verified=datetime.now(UTC).replace(tzinfo=None).isoformat())
-        refresh_all._update_professor_tracking([fresh], summary)
+        refresh_all._update_professor_tracking(
+            [fresh], summary, refresh_ok=True
+        )
         assert summary["sources"]["professor_tracking"] == {
             "profiles": 1,
             "events": 0,
@@ -333,7 +343,12 @@ class TestRefreshWiring:
             "release_ready": True,
             "freshness_pct": 100.0,
             "fully_stale_school_count": 0,
+            "missing_school_count": 0,
+            "active_profile_coverage_pct": 100.0,
+            "missing_profile_count": 0,
+            "untrackable_active_count": 0,
             "status": "ok",
+            "publication_status": "local_only_not_in_refresh_artifact",
         }
         assert path.exists()
 
@@ -344,7 +359,9 @@ class TestRefreshWiring:
         monkeypatch.setattr(refresh_all, "TRACKING_FILE", path)
         summary = {"sources": {"uiuc_faculty": {"status": "error", "error": "boom"}}}
         fresh = record(last_verified=datetime.now(UTC).replace(tzinfo=None).isoformat())
-        refresh_all._update_professor_tracking([fresh], summary)
+        refresh_all._update_professor_tracking(
+            [fresh], summary, refresh_ok=False
+        )
         entry = summary["sources"]["professor_tracking"]
         assert entry["status"] == "ok"
         assert entry["release_ready"] is False
@@ -367,8 +384,56 @@ def _profiles(*records):
     return update_tracking_state(list(records))["profiles"]
 
 
+def compute_release_status(profiles, events, **kwargs):
+    """Tests must exercise the same explicit active-professor denominator as
+    the production writer; never rely on the legacy tracked-subset fallback."""
+
+    kwargs.setdefault(
+        "expected_professors",
+        {
+            professor_id: profile["school"]
+            for professor_id, profile in profiles.items()
+        },
+    )
+    return _raw_compute_release_status(profiles, events, **kwargs)
+
+
 class TestReleaseGate:
     """Schema-v2 release block: real-data gates only, fail-closed everywhere."""
+
+    def test_legacy_v2_release_block_without_coverage_check_is_not_ready(self):
+        state = {
+            "schema_version": 2,
+            "profiles": {},
+            "events": [],
+            "release": {
+                "release_ready": True,
+                "checks": {
+                    "schema_v2": True,
+                    "events_valid": True,
+                    "freshness_min_pct": True,
+                    "no_fully_stale_school": True,
+                    "refresh_ok": True,
+                },
+            },
+        }
+
+        assert artifact_release_ready(state) is False
+
+    def test_stored_release_ready_cannot_waive_a_false_current_check(self):
+        release = compute_release_status(
+            _profiles(record()), [], refresh_ok=True, now=NOW,
+        )
+        assert release["release_ready"] is True
+        release["checks"]["events_valid"] = False
+        state = {
+            "schema_version": 2,
+            "profiles": _profiles(record()),
+            "events": [],
+            "release": release,
+        }
+
+        assert artifact_release_ready(state) is False
 
     def test_fresh_valid_run_is_release_ready(self):
         release = compute_release_status(
@@ -378,6 +443,48 @@ class TestReleaseGate:
         assert release["fully_stale_school_count"] == 0
         assert release["release_ready"] is True
         assert all(release["checks"].values())
+
+    def test_stored_green_release_expires_without_new_refresh(self):
+        release = compute_release_status(
+            _profiles(record()),
+            [],
+            refresh_ok=True,
+            now=NOW,
+        )
+        state = {
+            "schema_version": TRACKING_SCHEMA_VERSION,
+            "profiles": _profiles(record()),
+            "events": [],
+            "release": release,
+        }
+
+        assert artifact_release_ready(state, now=NOW) is True
+        assert artifact_release_ready(state, now=LATER) is False
+
+    def test_profile_ttl_expires_from_observation_not_release_computation(self):
+        observed_at = "2026-01-01T00:00:00"
+        computed_at = datetime(2026, 3, 1, tzinfo=UTC)
+        expires_at = datetime(2026, 3, 2, tzinfo=UTC)
+        profile = record(last_verified=observed_at)
+        release = compute_release_status(
+            _profiles(profile),
+            [],
+            refresh_ok=True,
+            now=computed_at,
+        )
+        state = {
+            "schema_version": TRACKING_SCHEMA_VERSION,
+            "profiles": _profiles(profile),
+            "events": [],
+            "release": release,
+        }
+
+        assert release["freshness_valid_until"] == expires_at.isoformat()
+        assert artifact_release_ready(state, now=expires_at) is True
+        assert artifact_release_ready(
+            state,
+            now=datetime(2026, 3, 2, 0, 0, 1, tzinfo=UTC),
+        ) is False
 
     def test_freshness_below_95_blocks_release(self):
         # 21 baselines, 2 beyond the TTL -> 90.48% < 95%.
@@ -417,6 +524,72 @@ class TestReleaseGate:
         assert release["freshness_pct"] >= FRESHNESS_MIN_PCT
         assert release["fully_stale_school_count"] == 1
         assert release["fully_stale_schools"] == ["mit"]
+        assert release["release_ready"] is False
+
+    def test_active_school_missing_from_tracking_denominator_blocks_release(self):
+        """A partial baseline cannot call its tracked subset 100% complete."""
+
+        uiuc = record()
+        mit_unverified = record(
+            record_id="faculty-mit-eecs-00000001",
+            pi_name="Ada Unverified",
+            scope="directory",
+        )
+        mit_unverified["school"] = "mit"
+
+        state = update_tracking_state([uiuc, mit_unverified])
+        release = compute_release_status(
+            state["profiles"],
+            state["events"],
+            refresh_ok=True,
+            now=NOW,
+            expected_schools={"uiuc", "mit"},
+        )
+
+        assert release["schools_tracked"] == 1
+        assert release["expected_school_count"] == 2
+        assert release["missing_school_count"] == 1
+        assert release["missing_schools"] == ["mit"]
+        assert release["checks"]["all_active_schools_tracked"] is False
+        assert release["release_ready"] is False
+
+    def test_one_profile_per_school_cannot_mask_low_professor_coverage(self):
+        active = [
+            record(
+                record_id=f"faculty-uiuc-ece-{index:08d}",
+                pi_name=f"UIUC {index}",
+                scope="profile" if index == 0 else "directory",
+            )
+            for index in range(5)
+        ]
+        active.extend(
+            record(
+                record_id=f"faculty-mit-eecs-{index:08d}",
+                pi_name=f"MIT {index}",
+                scope="profile" if index == 0 else "directory",
+            )
+            for index in range(5)
+        )
+        for opportunity in active[5:]:
+            opportunity["school"] = "mit"
+        state = update_tracking_state(active)
+        expected_professors = {
+            canonical_professor_id(opportunity): opportunity["school"]
+            for opportunity in active
+        }
+        release = compute_release_status(
+            state["profiles"],
+            state["events"],
+            refresh_ok=True,
+            now=NOW,
+            expected_professors=expected_professors,
+        )
+
+        assert release["missing_school_count"] == 0
+        assert release["checks"]["all_active_schools_tracked"] is True
+        assert release["active_profile_coverage_pct"] == 20.0
+        assert release["missing_profile_count"] == 8
+        assert release["checks"]["active_professor_coverage_min_pct"] is False
         assert release["release_ready"] is False
 
     def test_failed_fetch_does_not_advance_freshness(self):

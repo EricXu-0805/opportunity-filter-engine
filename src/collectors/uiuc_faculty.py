@@ -1216,6 +1216,24 @@ def _demote_shared_keyword_pollution(opps: list[dict]) -> int:
     return demoted
 
 
+def enforce_final_shared_keyword_invariant(opps: list[dict]) -> dict[str, int]:
+    """Re-apply DQ-1 after every corpus-wide keyword transformation.
+
+    ``_run_faculty_dq`` cleans a freshly scraped UIUC batch, but the later
+    corpus-wide faculty hygiene pass can normalize previously distinct keyword
+    strings into one identical department-wide set. This final fixed-point
+    guard runs after that pass, demotes any newly-collided sets, and rebuilds
+    the user-facing title/description from the honest broad field.
+    """
+
+    demoted = _demote_shared_keyword_pollution(opps)
+    retitled = _rebuild_faculty_title_and_desc(opps) if demoted else 0
+    return {
+        "shared_keyword_demoted": demoted,
+        "retitled": retitled,
+    }
+
+
 # DQ-2: recover real per-professor keywords from research_areas_raw for faculty
 # stuck on the broad-field fallback. The text is already stored (no re-scrape);
 # the fixed KEYWORD_BANK simply never matched niche areas ("nanophotonics",

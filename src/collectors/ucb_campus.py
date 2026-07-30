@@ -13,12 +13,13 @@ Two layers:
      when a page is unreachable — and the data-generation/test paths never
      touch the network.
 
-  2. **Crawl layer (deep mode, best-effort).** When ``deep=True`` the collector
+  2. **Crawl layer (deep mode).** When ``deep=True`` the collector
      fetches each source's seed pages to (a) refine open/closed status and pull
      a fresh description excerpt onto the matching seed record, and (b) for
      ``recursive`` sources, run a depth-limited, keyword-prioritized BFS to
      *discover* additional opportunity postings and emit them as lower-
-     confidence records. Any network failure degrades silently to the seed.
+     confidence records. Every configured seed must load for publication;
+     recursively discovered pages may fail with explicit degraded evidence.
 
 The HTTP/HTML deps (``requests``/``bs4``) are imported lazily inside the crawl
 functions so importing this module — and running the seed path — needs nothing
@@ -46,6 +47,7 @@ from urllib.parse import urljoin, urlsplit
 from src.normalizers.ucb_dedup import dedupe_against_existing
 
 from . import ucb_sources as reg
+from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
 from .ucb_common import _readable_excerpt
 
@@ -64,11 +66,6 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
 }
-
-OPEN_KEYWORDS = ("applications open", "apply now", "now accepting",
-                 "application open", "now recruiting", "now hiring")
-CLOSED_KEYWORDS = ("applications closed", "application closed",
-                   "no longer accepting", "deadline has passed")
 
 # Emit bucket -> (source value, school, audience). MUST stay in lockstep with
 # src/normalizers/school_audience.SOURCE_DEFAULTS or the data-quality gate
@@ -94,8 +91,14 @@ def _hash_id(source: str, key: str) -> str:
     return "ucb-" + hashlib.md5(f"{source}::{key}".encode()).hexdigest()[:14]
 
 
-def _normalize_program(source: dict, program: dict, *, status: str = "unknown",
-                       extra_desc: str = "") -> dict:
+def _normalize_program(
+    source: dict,
+    program: dict,
+    *,
+    status: str = "unknown",
+    extra_desc: str = "",
+    seed_page_verified: bool = False,
+) -> dict:
     """Convert one curated program spec into the normalized opportunity schema.
 
     Pure data transform — no network. Sets ``school``/``audience`` directly from
@@ -105,6 +108,7 @@ def _normalize_program(source: dict, program: dict, *, status: str = "unknown",
     emit = source["emit"]
     src_value, school, audience = EMIT_TO_SCHOOL_AUDIENCE[emit]
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
+    last_verified = now if seed_page_verified else None
 
     description = program["description"]
     if extra_desc:
@@ -187,16 +191,20 @@ def _normalize_program(source: dict, program: dict, *, status: str = "unknown",
         "audience": audience,
         "metadata": {
             "confidence_score": 0.7,
-            "last_verified": now,
+            "last_verified": last_verified,
             "first_seen_at": now,
             "last_seen_at": now,
-            "is_active": True,
+            "is_active": status != "closed",
             "manually_reviewed": False,
             "notes": f"Auto-imported from {source['source_name']} ({source['source_type']})",
             "collector_key": program["key"],
             "collector_source": source["source_name"],
             "status": status,
             "deadline_note": program.get("deadline_note", ""),
+            # Distinguish a loaded page with no status marker from a seed that
+            # was never fetched. Merge must not let the latter reactivate a
+            # record closed by an earlier live crawl.
+            "seed_page_verified": seed_page_verified,
         },
     }
 
@@ -262,14 +270,16 @@ def _normalize_discovered(source: dict, title: str, url: str, snippet: str) -> d
         "audience": audience,
         "metadata": {
             "confidence_score": 0.4,
-            "last_verified": now,
+            "last_verified": None,
             "first_seen_at": now,
             "last_seen_at": now,
-            "is_active": True,
+            "is_active": False,
             "manually_reviewed": False,
             "notes": f"Crawl-discovered from {source['source_name']}",
             "collector_source": source["source_name"],
             "discovered": True,
+            "discovered_page_verified": False,
+            "status": "unknown",
         },
     }
 
@@ -298,12 +308,7 @@ def _fetch(url: str):
 
 
 def _detect_status(page_text: str) -> str:
-    low = page_text.lower()
-    if any(k in low for k in OPEN_KEYWORDS):
-        return "open"
-    if any(k in low for k in CLOSED_KEYWORDS):
-        return "closed"
-    return "unknown"
+    return detect_application_status(page_text)
 
 
 def _looks_like_opportunity(text: str) -> bool:
@@ -378,7 +383,7 @@ def _same_site(seed: str, candidate: str) -> bool:
 _NAV_TITLE_RE = re.compile(r"^(home|menu|skip to|search|login|apply now|contact|about)$", re.IGNORECASE)
 
 
-def _crawl_source(source: dict) -> tuple[dict, list[dict]]:
+def _crawl_source(source: dict) -> tuple[dict, list[dict], dict]:
     """Best-effort crawl of one source.
 
     Returns ``(status_by_url, discovered)`` where ``status_by_url`` maps a seed
@@ -387,7 +392,8 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict]]:
     keyword-prioritized BFS (only for ``recursive`` sources)."""
     status_by_url: dict[str, dict] = {}
     discovered: list[dict] = []
-    seeds = source.get("seeds", [])
+    seeds = list(dict.fromkeys(source.get("seeds", [])))
+    seed_urls = set(seeds)
     depth_limit = source.get("crawl_depth", 1)
     recursive = source.get("crawl") == reg.RECURSIVE
 
@@ -395,6 +401,9 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict]]:
     # Queue of (url, depth). Seeds at depth 0.
     queue: deque[tuple[str, int]] = deque((s, 0) for s in seeds)
     discovered_urls: set[str] = set()
+    seed_page_errors: list[str] = []
+    degraded_page_errors: list[str] = []
+    discovery_truncated = False
 
     while queue and len(visited) < _MAX_PAGES_PER_SOURCE:
         url, depth = queue.popleft()
@@ -403,8 +412,20 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict]]:
         visited.add(url)
         soup = _fetch(url)
         if soup is None:
+            if url in seed_urls:
+                seed_page_errors.append(url)
+            else:
+                degraded_page_errors.append(url)
             continue
-        page_text = soup.get_text(" ", strip=True)
+        try:
+            page_text = soup.get_text(" ", strip=True)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("parse failed for %s: %s", url, e)
+            if url in seed_urls:
+                seed_page_errors.append(url)
+            else:
+                degraded_page_errors.append(url)
+            continue
 
         # Refinement for a seed page that backs a curated program. Status reads
         # the whole page (a "closed" banner can live in the header), but the
@@ -439,43 +460,134 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict]]:
             queue.append((href, depth + 1))
             # Emit a discovered record when the anchor itself reads like a
             # concrete posting (not just a section link).
-            if (
-                len(discovered) < _MAX_DISCOVERED_PER_SOURCE
-                and href not in discovered_urls
-                and _is_specific_opportunity(anchor)
-            ):
+            if href in discovered_urls or not _is_specific_opportunity(anchor):
+                continue
+            if len(discovered) < _MAX_DISCOVERED_PER_SOURCE:
                 discovered_urls.add(href)
                 discovered.append(
                     _normalize_discovered(source, anchor, href, anchor)
                 )
+            else:
+                discovery_truncated = True
 
-    return status_by_url, discovered
+    # Seeing an anchor on a parent page is not enough to publish or reactivate
+    # a dynamic posting. Its own detail page must load, and only an explicit
+    # open signal makes the record active.
+    verified_discovered: list[dict] = []
+    verified_at = datetime.now(UTC).replace(tzinfo=None).isoformat()
+    for record in discovered:
+        observation = status_by_url.get(record["url"])
+        if not isinstance(observation, dict):
+            continue
+        status = observation.get("status", "unknown")
+        metadata = record["metadata"]
+        metadata["discovered_page_verified"] = True
+        metadata["status"] = status
+        metadata["last_verified"] = verified_at
+        metadata["is_active"] = status == "open"
+        verified_discovered.append(record)
+
+    seed_pages_loaded = sum(url in status_by_url for url in seed_urls)
+    queue_truncated = any(url not in visited for url, _depth in queue)
+    return status_by_url, verified_discovered, {
+        "live_pages_attempted": len(visited),
+        "live_pages_loaded": len(status_by_url),
+        "seed_pages_expected": len(seed_urls),
+        "seed_pages_loaded": seed_pages_loaded,
+        "seed_pages_failed": len(seed_urls) - seed_pages_loaded,
+        "seed_page_errors": seed_page_errors,
+        "degraded_page_errors": degraded_page_errors,
+        "crawl_complete": not (
+            seed_page_errors
+            or degraded_page_errors
+            or queue_truncated
+            or discovery_truncated
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-def fetch_and_normalize(deep: bool = False) -> list[dict]:
+def fetch_and_normalize_with_evidence(
+    deep: bool = False,
+) -> tuple[list[dict], dict]:
     """Return normalized campus opportunity records.
 
     ``deep=False`` (default): seed records only, no network.
-    ``deep=True``: best-effort crawl refines seed status/description and adds
-    discovered records. Always degrades to seeds on any failure."""
+    ``deep=True``: crawl refines seed status/description and adds discovered
+    records. Evidence distinguishes mandatory configured-seed failures from
+    optional recursive-page degradation."""
     errors = reg.validate_registry()
     if errors:
         # Fail loud: a malformed registry should not silently drop sources.
         raise ValueError("ucb_sources registry invalid: " + "; ".join(errors))
 
     records: list[dict] = []
+    evidence = {
+        "deep": deep,
+        "crawl_sources_expected": len(reg.UCB_SOURCES) if deep else 0,
+        "crawl_sources_loaded": 0,
+        "live_pages_attempted": 0,
+        "live_pages_loaded": 0,
+        "seed_pages_expected": 0,
+        "seed_pages_loaded": 0,
+        "seed_pages_failed": 0,
+        "seed_records": 0,
+        "discovered_records": 0,
+        "complete_recursive_sources": [],
+        "crawl_errors": [],
+        "degraded_page_errors": [],
+    }
     for source in reg.UCB_SOURCES:
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
         if deep:
             try:
-                status_by_url, discovered = _crawl_source(source)
+                status_by_url, discovered, crawl_evidence = _crawl_source(
+                    source
+                )
+                evidence["live_pages_attempted"] += crawl_evidence[
+                    "live_pages_attempted"
+                ]
+                evidence["live_pages_loaded"] += crawl_evidence[
+                    "live_pages_loaded"
+                ]
+                evidence["seed_pages_expected"] += crawl_evidence[
+                    "seed_pages_expected"
+                ]
+                evidence["seed_pages_loaded"] += crawl_evidence[
+                    "seed_pages_loaded"
+                ]
+                evidence["seed_pages_failed"] += crawl_evidence[
+                    "seed_pages_failed"
+                ]
+                evidence["crawl_errors"].extend(
+                    f"{source['source_name']}: seed fetch failed: {url}"
+                    for url in crawl_evidence["seed_page_errors"]
+                )
+                evidence["degraded_page_errors"].extend(
+                    f"{source['source_name']}: discovered-page fetch failed: {url}"
+                    for url in crawl_evidence["degraded_page_errors"]
+                )
+                if crawl_evidence["live_pages_loaded"] > 0:
+                    evidence["crawl_sources_loaded"] += 1
+                if (
+                    source.get("crawl") == reg.RECURSIVE
+                    and crawl_evidence["crawl_complete"] is True
+                ):
+                    evidence["complete_recursive_sources"].append(
+                        source["source_name"]
+                    )
             except Exception as e:  # noqa: BLE001
                 logger.warning("crawl failed for %s: %s", source["source_name"], e)
+                source_seed_count = len(set(source.get("seeds", [])))
+                evidence["seed_pages_expected"] += source_seed_count
+                evidence["seed_pages_failed"] += source_seed_count
+                evidence["crawl_errors"].append(
+                    f"{source['source_name']}: crawl failed: {e}"
+                )
 
         for program in source.get("programs", []):
             refine = status_by_url.get(program["url"], {})
@@ -483,8 +595,11 @@ def fetch_and_normalize(deep: bool = False) -> list[dict]:
                 source, program,
                 status=refine.get("status", "unknown"),
                 extra_desc=refine.get("excerpt", ""),
+                seed_page_verified=program["url"] in status_by_url,
             ))
+            evidence["seed_records"] += 1
         records.extend(discovered)
+        evidence["discovered_records"] += len(discovered)
 
     # Collapse within-batch duplicates (a discovered URL that matches a seed, a
     # lab listed under two sources, ...). Existing list is empty here so this is
@@ -492,18 +607,48 @@ def fetch_and_normalize(deep: bool = False) -> list[dict]:
     records, dropped = dedupe_against_existing(records, [])
     if dropped:
         logger.info("ucb_campus: dropped %d intra-batch duplicate(s)", dropped)
+    return records, evidence
+
+
+def fetch_and_normalize(deep: bool = False) -> list[dict]:
+    records, _evidence = fetch_and_normalize_with_evidence(deep=deep)
     return records
 
 
-def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
+def merge_into_processed(
+    new_opps: list[dict],
+    *,
+    complete_recursive_sources: set[str] | frozenset[str] = frozenset(),
+) -> tuple[int, int]:
     """Upsert campus records into processed/opportunities.json.
 
     Upserts by id, and suppresses different-id near-duplicates (same canonical
-    URL / normalized title) already in the corpus so re-runs never flood."""
+    URL / normalized title) already in the corpus so re-runs never flood.
+    Old verified discoveries are retired only for explicitly authorized,
+    completely crawled recursive sources; the default empty set holds them."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
+    if any(
+        not isinstance(source, str) or not source.strip()
+        for source in complete_recursive_sources
+    ):
+        raise ValueError("complete recursive source names must be nonempty strings")
     with PROCESSED_FILE.open("r", encoding="utf-8") as f:
         existing = json.load(f)
+    observed_discovered_ids = {
+        opp.get("id")
+        for opp in new_opps
+        if (
+            opp.get("id")
+            and opp.get("school") == "ucb"
+            and isinstance(opp.get("source_type"), str)
+            and opp["source_type"].startswith("ucb_")
+            and isinstance(opp.get("metadata"), dict)
+            and opp["metadata"].get("discovered") is True
+            and opp["metadata"].get("collector_source")
+            in complete_recursive_sources
+        )
+    }
 
     new_opps, dropped = dedupe_against_existing(new_opps, existing)
     if dropped:
@@ -513,14 +658,67 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
     added = updated = 0
     for opp in new_opps:
         if opp["id"] in index:
-            opp["metadata"]["first_seen_at"] = index[opp["id"]].get(
+            existing_opp = index[opp["id"]]
+            opp["metadata"]["first_seen_at"] = existing_opp.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
-            index[opp["id"]].update(opp)
+            unverified_seed = (
+                not opp["metadata"].get("discovered")
+                and opp["metadata"].get("seed_page_verified") is not True
+            )
+            ambiguous_status = opp["metadata"].get("status") == "unknown"
+            if unverified_seed or ambiguous_status:
+                # A loaded page with no explicit status signal is not evidence
+                # that a previously closed opportunity reopened.
+                existing_metadata = existing_opp.get("metadata", {})
+                for key in ("status", "is_active"):
+                    if key in existing_metadata:
+                        opp["metadata"][key] = existing_metadata[key]
+                if unverified_seed:
+                    if "last_verified" in existing_metadata:
+                        opp["metadata"]["last_verified"] = existing_metadata[
+                            "last_verified"
+                        ]
+                if (
+                    existing_metadata.get("status") in {"open", "closed"}
+                    or existing_metadata.get("is_active") is False
+                ):
+                    opp["title"] = existing_opp.get("title", opp["title"])
+            existing_opp.update(opp)
             updated += 1
         else:
             existing.append(opp)
             index[opp["id"]] = opp
             added += 1
+    retired = 0
+    if complete_recursive_sources:
+        deactivated_at = datetime.now(UTC).replace(tzinfo=None).isoformat()
+        for opp in existing:
+            metadata = opp.get("metadata")
+            if (
+                opp.get("id") in observed_discovered_ids
+                or opp.get("school") != "ucb"
+                or not isinstance(opp.get("source_type"), str)
+                or not opp["source_type"].startswith("ucb_")
+                or not isinstance(metadata, dict)
+                or metadata.get("discovered") is not True
+                or metadata.get("discovered_page_verified") is not True
+                or metadata.get("collector_source")
+                not in complete_recursive_sources
+                or metadata.get("is_active") is False
+            ):
+                continue
+            metadata["is_active"] = False
+            metadata["status"] = "unknown"
+            metadata["deactivated_at"] = deactivated_at
+            metadata["deactivation_reason"] = (
+                "absent_from_complete_recursive_crawl"
+            )
+            retired += 1
+    if retired:
+        logger.info(
+            "ucb_campus: retired %d absent verified discovery record(s)",
+            retired,
+        )
     atomic_write_json(PROCESSED_FILE, existing)
     return (added, updated)
 

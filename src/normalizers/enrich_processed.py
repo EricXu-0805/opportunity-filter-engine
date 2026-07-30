@@ -17,6 +17,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from src.collectors.atomic_json import atomic_write_json
+from src.collectors.uiuc_faculty import enforce_final_shared_keyword_invariant
 from src.normalizers.enricher import enrich_all
 
 DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
@@ -44,12 +46,12 @@ def _print_audit(title: str, audit: dict) -> None:
         print(f"{src:<20s} {c['total']:>6d} {c['empty_majors']:>14d} {c['empty_kw']:>10d}")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--path", type=Path, default=DEFAULT_PATH)
     parser.add_argument("--save", action="store_true", help="Write changes back to file")
     parser.add_argument("--dry-run", action="store_true", help="Show diff without writing")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if not args.path.exists():
         print(f"ERROR: file not found: {args.path}", file=sys.stderr)
@@ -62,13 +64,18 @@ def main() -> int:
     _print_audit("BEFORE:", _audit(opps))
 
     majors_added, kws_added = enrich_all(opps)
+    uiuc_fixed_point = enforce_final_shared_keyword_invariant(opps)
 
     _print_audit("AFTER:", _audit(opps))
     print(f"\nEnriched: +{majors_added} majors, +{kws_added} keywords (out of {len(opps)} total)")
+    print(
+        "UIUC final keyword invariant: "
+        f"{uiuc_fixed_point['shared_keyword_demoted']} demoted, "
+        f"{uiuc_fixed_point['retitled']} retitled"
+    )
 
     if args.save and not args.dry_run:
-        with args.path.open("w", encoding="utf-8") as f:
-            json.dump(opps, f, indent=2, ensure_ascii=False, default=str)
+        atomic_write_json(args.path, opps)
         print(f"Saved to {args.path}")
     else:
         print("(dry-run — pass --save to persist)")

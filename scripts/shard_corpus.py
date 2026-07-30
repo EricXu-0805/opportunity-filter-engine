@@ -31,7 +31,9 @@ frontend prebuild) fall back to reading the shards directory directly.
 """
 from __future__ import annotations
 
+import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -64,17 +66,21 @@ SHRINK_GUARD_FLOOR = 100
 def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
           keep_ratio: float = SHRINK_KEEP_RATIO,
           guard_floor: int = SHRINK_GUARD_FLOOR,
-          prune: bool = False) -> dict[str, int]:
+          prune: bool = False,
+          only_shards: set[str] | None = None) -> dict[str, int]:
     """Work file -> minified per-school shard files. Returns {shard: count}.
 
     Upsert-only by default: writes/updates a shard for every school PRESENT in
-    the work file and LEAVES every other on-disk shard untouched. This is the
-    safe mode for the weekly refresh, whose work file is assembled from its
-    run-start checkout and therefore omits any school onboarded to main *after*
-    the run began — deleting those "absent" shards is exactly how auto-refresh
-    #614/#630 wiped freshly-landed schools (Yale, then the Wave-3 six). A shard
-    is removed ONLY when ``prune=True`` (a deliberate full rebuild), never on a
-    partial/scheduled run.
+    the work file and LEAVES every other on-disk shard untouched. Passing
+    ``only_shards`` narrows that further to the exact schools authorized by a
+    scheduled refresh. This is the safe publication mode for a long-running
+    scrape: its work file contains stale run-start copies of non-target schools,
+    so those copies must never be replayed over a newer default branch.
+
+    A shard is removed ONLY when ``prune=True`` (a deliberate full rebuild),
+    never on a partial/scheduled run. ``prune`` and ``only_shards`` are mutually
+    exclusive because a target-scoped release is never authorized to infer
+    global deletion.
 
     Shrink guard: if a school's new shard would be < ``keep_ratio`` of the
     already-committed shard (and that shard has >= ``guard_floor`` records), the
@@ -86,12 +92,44 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
     from minify_corpus import prune_duplicate_raw
 
+    if prune and only_shards is not None:
+        raise ValueError("prune cannot be combined with target-only shard output")
+    if only_shards is not None and not only_shards:
+        raise ValueError("only_shards must name at least one target")
+    if only_shards is not None:
+        invalid = sorted(
+            slug
+            for slug in only_shards
+            if re.fullmatch(r"[a-z0-9-]{1,64}", slug) is None
+        )
+        if invalid:
+            raise ValueError(f"invalid target shard slug(s): {invalid}")
+
     with open(work_file, encoding="utf-8") as f:
         records = json.load(f)
     prune_duplicate_raw(records)
     by_school: dict[str, list] = {}
     for r in records:
         by_school.setdefault(_slug(r), []).append(r)
+    invalid_record_slugs = sorted(
+        slug
+        for slug in by_school
+        if re.fullmatch(r"[a-z0-9-]{1,64}", slug) is None
+    )
+    if invalid_record_slugs:
+        raise ValueError(
+            f"work file contains unsafe school slug(s): {invalid_record_slugs}"
+        )
+    if only_shards is not None:
+        missing = sorted(only_shards - set(by_school))
+        if missing:
+            raise ValueError(
+                f"target shard(s) absent from refresh work file: {missing}"
+            )
+        by_school = {
+            slug: by_school[slug]
+            for slug in sorted(only_shards)
+        }
     shards_dir.mkdir(parents=True, exist_ok=True)
     # Only a deliberate full rebuild (prune=True) removes shards for schools
     # absent from the work file. A partial/scheduled split leaves them alone so
@@ -103,6 +141,7 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
                 print(f"shard_corpus: pruned absent shard {stale.name}", file=sys.stderr)
     counts: dict[str, int] = {}
     kept: list[tuple[str, int, int]] = []
+    old_counts: dict[str, int] = {}
     for slug, recs in sorted(by_school.items()):
         shard_path = shards_dir / f"{slug}.json"
         if shard_path.exists():
@@ -111,11 +150,31 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
                     old_n = len(json.load(f))
             except (OSError, ValueError):
                 old_n = 0
-            if old_n >= guard_floor and len(recs) < keep_ratio * old_n:
-                # Leave the committed shard in place; report its real count.
-                kept.append((slug, len(recs), old_n))
-                counts[slug] = old_n
-                continue
+        else:
+            old_n = 0
+        old_counts[slug] = old_n
+        if old_n >= guard_floor and len(recs) < keep_ratio * old_n:
+            kept.append((slug, len(recs), old_n))
+
+    # A scheduled target refresh must never report success while silently
+    # retaining an old target. Block the release before writing any target so
+    # the operator sees the partial/shrunk source and the artifact is not built.
+    if kept and only_shards is not None:
+        details = ", ".join(
+            f"{slug}:{new_n}/{old_n}" for slug, new_n, old_n in kept
+        )
+        raise ValueError(
+            f"target refresh hit the shrink guard and cannot publish: {details}"
+        )
+
+    kept_slugs = {slug for slug, _new_n, _old_n in kept}
+    for slug, recs in sorted(by_school.items()):
+        shard_path = shards_dir / f"{slug}.json"
+        if slug in kept_slugs:
+            # Non-release/manual split retains the prior shard for backwards
+            # compatibility; target-only release mode failed above.
+            counts[slug] = old_counts[slug]
+            continue
         atomic_write_json(shard_path, recs, indent=None, separators=(",", ":"))
         counts[slug] = len(recs)
     if kept:
@@ -150,23 +209,46 @@ def assemble(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
     return len(records)
 
 
-def main() -> int:
-    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    if cmd == "split":
-        prune = "--prune" in sys.argv
-        counts = split(prune=prune)
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    split_parser = subparsers.add_parser("split")
+    split_parser.add_argument("--prune", action="store_true")
+    split_parser.add_argument(
+        "--only-shards",
+        help="Comma-separated committed shard slugs authorized for this release",
+    )
+    assemble_parser = subparsers.add_parser("assemble")
+    assemble_parser.add_argument("--force", action="store_true")
+    args = parser.parse_args(argv)
+
+    if args.command == "split":
+        only_shards = None
+        if args.only_shards is not None:
+            values = args.only_shards.split(",")
+            if any(not value for value in values) or len(values) != len(set(values)):
+                parser.error("--only-shards must contain unique non-empty slugs")
+            only_shards = set(values)
+        try:
+            counts = split(
+                prune=args.prune,
+                only_shards=only_shards,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
         total = sum(counts.values())
-        print(f"split{' --prune' if prune else ''}: {total} records -> {len(counts)} shards "
+        mode = " --prune" if args.prune else (
+            " --only-shards" if only_shards is not None else ""
+        )
+        print(f"split{mode}: {total} records -> {len(counts)} shards "
               f"({', '.join(f'{s}:{n}' for s, n in counts.items())})")
         return 0
-    if cmd == "assemble":
-        n = assemble(force="--force" in sys.argv)
+    if args.command == "assemble":
+        n = assemble(force=args.force)
         print("assemble: work file already present — skipped (use --force to rebuild)"
               if n < 0 else f"assemble: {n} records -> {WORK_FILE.name}")
         return 0
-    print(__doc__)
-    print("usage: shard_corpus.py {split [--prune]|assemble [--force]}")
-    return 2
+    raise AssertionError(f"unhandled command: {args.command}")
 
 
 if __name__ == "__main__":

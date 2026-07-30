@@ -405,6 +405,176 @@ class TestOpenBerkeleyTemplateFallback:
         assert "_verification_scope" not in person
         assert "_email_source" not in person
 
+    def test_http_200_denial_page_does_not_stamp_profile_scope(
+        self,
+        monkeypatch,
+    ):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+
+        denial = BeautifulSoup(
+            "<html><title>Access denied</title>"
+            "<body>Please enable JavaScript and verify you are human.</body></html>",
+            "html.parser",
+        )
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda _url: denial)
+        person = {
+            "name": "David Ackerly",
+            "url": "https://x/people/david-ackerly",
+        }
+
+        ucb_common.enrich_faculty_from_profiles([person], _CONFIG)
+
+        assert "_verification_scope" not in person
+        assert "_email_source" not in person
+
+    def test_sign_in_page_echoing_name_is_not_identity_evidence(
+        self,
+        monkeypatch,
+    ):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+
+        denial = BeautifulSoup(
+            "<html><title>Authentication required</title><h1>Sign in</h1>"
+            "<p>Sign in to view David Ackerly</p>"
+            "<p>dackerly@berkeley.edu</p></html>",
+            "html.parser",
+        )
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda _url: denial)
+        person = {
+            "name": "David Ackerly",
+            "url": "https://x/people/david-ackerly",
+        }
+
+        ucb_common.enrich_faculty_from_profiles([person], _CONFIG)
+
+        assert "_verification_scope" not in person
+        assert "email" not in person
+
+
+class TestProfileIdentityGate:
+    def _soup(self, html):
+        from bs4 import BeautifulSoup
+
+        return BeautifulSoup(html, "html.parser")
+
+    def test_strong_login_wall_phrases_ignore_body_length(self):
+        from src.collectors.ucb_common import profile_page_is_denial
+
+        filler = "substantive faculty biography " * 100
+        for phrase in (
+            "Authentication required",
+            "Authentication is required",
+            "Sign-in required",
+            "Login required",
+            "You must be logged in",
+            "You must be signed-in",
+            "Sign into account",
+            "Log into your account",
+            "Sign in to continue",
+            "Log in to view this profile",
+            "Sign in to access this profile",
+            "Please enable JavaScript",
+            "JavaScript is required to view this page",
+            "JavaScript must be enabled",
+            "Please turn on JavaScript",
+            "This site requires JS",
+            "Cookies are required to continue",
+            "Cookies are disabled",
+            "Browser must accept cookies",
+            "Your browser must allow cookies",
+            "Please allow cookies",
+            "Enable browser cookies",
+            "401 Unauthorized",
+            "403: Unauthorized",
+            "You are not authorized",
+            "Access is restricted",
+        ):
+            soup = self._soup(
+                f"<html><h1>Ada Lovelace</h1><p>{filler}</p>"
+                f"<div class='overlay'>{phrase}</div></html>"
+            )
+
+            assert len(soup.get_text(" ", strip=True)) > 1200
+            assert profile_page_is_denial(soup) is True, phrase
+
+    def test_bare_navigation_sign_in_does_not_block_a_long_profile(self):
+        from src.collectors.ucb_common import profile_page_is_denial
+
+        filler = "substantive faculty biography " * 100
+        soup = self._soup(
+            f"<html><nav>Sign in</nav><h1>Ada Lovelace</h1>"
+            f"<p>{filler}</p>"
+            "<footer>This site uses cookies for analytics.</footer></html>"
+        )
+
+        assert len(soup.get_text(" ", strip=True)) > 1200
+        assert profile_page_is_denial(soup) is False
+
+    def test_explicit_identity_selector_disables_default_fallbacks(self):
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        soup = self._soup(
+            "<html><title>Ada Lovelace</title><h1>Ada Lovelace</h1>"
+            "<div class='canonical-name'>Grace Hopper</div></html>"
+        )
+
+        assert profile_page_matches_person(
+            soup,
+            "Ada Lovelace",
+            identity_selectors=".canonical-name",
+        ) is False
+
+    def test_decorated_wrong_h1_and_related_h2_cannot_be_bypassed(self):
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        soup = self._soup(
+            "<html><title>Ada Lovelace | Faculty</title>"
+            "<h1>Grace Hopper | Faculty Profile</h1>"
+            "<h2>Related faculty: Ada Lovelace</h2></html>"
+        )
+
+        assert profile_page_matches_person(soup, "Ada Lovelace") is False
+
+    def test_long_wrong_strong_identity_blocks_matching_weak_title(self):
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        suffix = (
+            "Distinguished Chair in Computational Science, Electrical Systems, "
+            "Applied Mathematics, Biomedical Innovation, and Public Policy, "
+            "Department of Advanced Interdisciplinary Engineering"
+        )
+        soup = self._soup(
+            "<html><title>Ada Lovelace | Faculty</title>"
+            f"<h1>Grace Hopper | {suffix}</h1></html>"
+        )
+
+        assert len(soup.h1.get_text(" ", strip=True)) > 80
+        assert profile_page_matches_person(soup, "Ada Lovelace") is False
+
+    def test_any_non_generic_strong_identity_blocks_matching_weak_title(self):
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        soup = self._soup(
+            "<html><title>Ada Lovelace | Faculty</title>"
+            "<h1>Grace</h1></html>"
+        )
+
+        assert profile_page_matches_person(soup, "Ada Lovelace") is False
+
+    def test_generic_heading_allows_matching_browser_title(self):
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        soup = self._soup(
+            "<html><title>Ada Lovelace | Faculty</title>"
+            "<h1>Faculty Profile</h1></html>"
+        )
+
+        assert profile_page_matches_person(soup, "Ada Lovelace") is True
+
 
 # --- Additive contact provenance (W7a) ---------------------------------------
 

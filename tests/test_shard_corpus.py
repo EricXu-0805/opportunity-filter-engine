@@ -14,6 +14,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
@@ -118,3 +120,74 @@ def test_split_prune_removes_absent_shards(tmp_path):
     counts = split(wf, sd, prune=True)
     assert counts == {"ucb": 100}
     assert not (sd / "oldname.json").exists(), "prune=True removes absent shards"
+
+
+def test_target_only_split_never_replays_stale_non_target_over_new_main(tmp_path):
+    """A long scrape starts with A+B, main updates B, and this run refreshes A.
+
+    Publication may replace A only. The newer main copy of B must remain
+    byte-identical even though the refresh work file still contains stale B.
+    """
+
+    wf, sd = tmp_path / "run-start-work.json", tmp_path / "latest-main-shards"
+    sd.mkdir()
+    (sd / "alpha.json").write_text(
+        json.dumps(_recs("alpha", 2)),
+        encoding="utf-8",
+    )
+    latest_beta = json.dumps(
+        [{"school": "beta", "id": "beta-new-main", "title": "Newest"}],
+        separators=(",", ":"),
+    )
+    (sd / "beta.json").write_text(latest_beta, encoding="utf-8")
+
+    # alpha is fresh from this run; beta is the stale run-start copy.
+    _write(
+        wf,
+        _recs("alpha", 3)
+        + [{"school": "beta", "id": "beta-run-start", "title": "Stale"}],
+    )
+    counts = split(wf, sd, only_shards={"alpha"})
+
+    assert counts == {"alpha": 3}
+    assert _shard_count(sd, "alpha") == 3
+    assert (sd / "beta.json").read_text(encoding="utf-8") == latest_beta
+
+
+def test_target_only_split_rejects_missing_targets_and_prune(tmp_path):
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    _write(wf, _recs("alpha", 3))
+
+    with pytest.raises(ValueError, match="absent"):
+        split(wf, sd, only_shards={"beta"})
+    with pytest.raises(ValueError, match="prune"):
+        split(wf, sd, prune=True, only_shards={"alpha"})
+
+
+def test_target_only_shrink_blocks_before_any_target_is_written(tmp_path):
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    alpha_before = json.dumps(_recs("alpha", 200))
+    beta_before = json.dumps(_recs("beta", 200))
+    (sd / "alpha.json").write_text(alpha_before, encoding="utf-8")
+    (sd / "beta.json").write_text(beta_before, encoding="utf-8")
+    _write(wf, _recs("alpha", 180) + _recs("beta", 10))
+
+    with pytest.raises(ValueError, match="shrink guard"):
+        split(wf, sd, only_shards={"alpha", "beta"})
+
+    assert (sd / "alpha.json").read_text(encoding="utf-8") == alpha_before
+    assert (sd / "beta.json").read_text(encoding="utf-8") == beta_before
+
+
+def test_record_school_slug_cannot_escape_shards_directory(tmp_path):
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    _write(
+        wf,
+        [{"school": "../escape", "id": "bad", "title": "Traversal"}],
+    )
+
+    with pytest.raises(ValueError, match="unsafe school slug"):
+        split(wf, sd)
+
+    assert not (tmp_path / "escape.json").exists()
