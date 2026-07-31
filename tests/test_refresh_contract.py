@@ -486,6 +486,26 @@ def test_ucd_zero_is_explicitly_degraded_and_blocked():
     assert any("UC Davis" in warning for warning in verdict["warnings"])
 
 
+def test_ucd_quick_mode_cannot_skip_faculty_and_report_ready():
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"ucd"},
+            {"campus_graph:ucd": _ok(4)},
+            deep=False,
+        ),
+        schools={"ucd"},
+        national=False,
+        deep=False,
+    )
+
+    assert verdict["ready"] is False
+    assert verdict["status"] == "blocked"
+    assert any(
+        "UC Davis publication requires deep mode" in reason
+        for reason in verdict["reasons"]
+    )
+
+
 def test_tracking_not_ready_warns_but_does_not_block_corpus_release():
     summary = _summary(
         {"uw"},

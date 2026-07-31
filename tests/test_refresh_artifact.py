@@ -316,6 +316,34 @@ def test_target_artifact_contains_and_applies_only_authorized_shards(tmp_path):
     assert latest_wisc.read_bytes() == before_wisc
 
 
+def test_apply_succeeds_on_descendant_main_with_unrelated_commit(tmp_path):
+    context = _setup(
+        tmp_path,
+        source_markers={"uw": "fresh"},
+        base_markers={"uw": "old", "wisc": "base-wisc"},
+    )
+    _build(context)
+
+    latest = tmp_path / "latest-main"
+    _clone_base_repository(context, latest)
+    latest_wisc = latest / "data/processed/shards/wisc.json"
+    _write_json(latest_wisc, _records("wisc", "new-main"))
+    _run_git(latest, "config", "user.name", "Latest Main Test")
+    _run_git(latest, "config", "user.email", "latest@example.invalid")
+    _run_git(latest, "add", "data/processed/shards/wisc.json")
+    _run_git(latest, "commit", "-qm", "unrelated main data change")
+    assert _run_git(latest, "rev-parse", "HEAD") != context["base_sha"]
+    before_wisc = latest_wisc.read_bytes()
+
+    _apply(context, latest)
+
+    assert latest_wisc.read_bytes() == before_wisc
+    saved = json.loads(
+        (latest / "data/processed/shards/uw.json").read_text(encoding="utf-8")
+    )
+    assert saved[0]["title"] == "fresh"
+
+
 def test_digest_tamper_and_unexpected_files_fail_closed(tmp_path):
     context = _setup(tmp_path)
     _build(context)
@@ -353,6 +381,16 @@ def test_non_ready_status_and_untrusted_base_are_rejected(tmp_path):
             base_sha="a" * 40,
             output=tmp_path / "bad-base",
         )
+
+
+def test_ucd_quick_artifact_is_rejected_even_when_graph_is_green(tmp_path):
+    context = _setup(tmp_path, shard="ucd", deep=False)
+    with pytest.raises(
+        ValueError,
+        match="release contract is blocked",
+    ):
+        _build(context)
+    assert not context["artifact"].exists()
 
 
 def test_full_refresh_artifact_is_explicitly_disallowed(tmp_path):

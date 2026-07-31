@@ -54,10 +54,17 @@ WEEKLY_ROTATION: dict[int, tuple[str, ...]] = {
     6: (
         "gatech", "uchicago", "uci", "ucsb", "umich", "upenn", "caltech",
         "osu", "umass", "neu", "sbu", "casewestern", "colostate", "utk",
-        "lsu", "utdallas", "ucd", "pomona", "colby", "swarthmore",
+        "lsu", "utdallas", "pomona", "colby", "swarthmore",
         "barnard", "bates", "brynmawr",
     ),
     7: (NATIONAL_SHARD,),
+}
+
+# UCD is deliberately isolated because its render-heavy collector has a
+# materially different runtime and failure profile. Keep isolated batches
+# serialized with the primary rotation; collector_status is a global CAS input.
+ISOLATED_WEEKLY_SHARDS: dict[int, tuple[str, ...]] = {
+    6: ("ucd",),
 }
 
 
@@ -73,11 +80,17 @@ def validate_rotation() -> None:
     if WEEKLY_ROTATION[7] != (NATIONAL_SHARD,):
         raise ValueError("UTC day 7 must be the national-only shard")
 
-    scheduled = [
+    primary = [
         slug
         for day in range(1, 7)
         for slug in WEEKLY_ROTATION[day]
     ]
+    isolated = [
+        slug
+        for day in sorted(ISOLATED_WEEKLY_SHARDS)
+        for slug in ISOLATED_WEEKLY_SHARDS[day]
+    ]
+    scheduled = [*primary, *isolated]
     duplicates = sorted({slug for slug in scheduled if scheduled.count(slug) > 1})
     if duplicates:
         raise ValueError(f"school slugs scheduled more than once: {duplicates}")
@@ -92,11 +105,16 @@ def validate_rotation() -> None:
         )
 
 
-def scheduled_shard(utc_weekday: int) -> str:
+def scheduled_shard(utc_weekday: int, *, isolated: bool = False) -> str:
     validate_rotation()
+    rotation = ISOLATED_WEEKLY_SHARDS if isolated else WEEKLY_ROTATION
     try:
-        return ",".join(WEEKLY_ROTATION[utc_weekday])
+        return ",".join(rotation[utc_weekday])
     except KeyError as exc:
+        if isolated:
+            raise ValueError(
+                "no isolated refresh batch is registered for that UTC weekday"
+            ) from exc
         raise ValueError("UTC weekday must be an integer from 1 through 7") from exc
 
 
@@ -121,11 +139,32 @@ def normalize_requested_shard(raw: str, *, allow_full: bool = False) -> str:
         raise ValueError("national cannot be combined with school slugs")
     if len(slugs) != len(set(slugs)):
         raise ValueError("school shard contains duplicate slugs")
+    if "ucd" in slugs and len(slugs) != 1:
+        raise ValueError("ucd must run as an isolated single-school shard")
     invalid = sorted(slug for slug in slugs if _SLUG_RE.fullmatch(slug) is None)
     unknown = sorted(set(slugs) - registered_school_slugs())
     if invalid or unknown:
         raise ValueError(f"invalid or unknown school slugs: {invalid or unknown}")
     return ",".join(slugs)
+
+
+def normalize_publication_unit(raw: str) -> str:
+    """Validate one canonical unit that automation may publish or replay."""
+
+    normalized = normalize_requested_shard(raw, allow_full=False)
+    canonical_units = {
+        ",".join(WEEKLY_ROTATION[day])
+        for day in range(1, 8)
+    } | {
+        ",".join(shard)
+        for shard in ISOLATED_WEEKLY_SHARDS.values()
+    }
+    if normalized in canonical_units or "," not in normalized:
+        return normalized
+    raise ValueError(
+        "manual refresh must select national, one school, or one canonical "
+        "scheduled shard"
+    )
 
 
 def target_shards(shard: str) -> tuple[str, ...]:
@@ -154,16 +193,35 @@ def main() -> int:
         action="store_true",
         help="Print the authorized committed shard names",
     )
+    parser.add_argument(
+        "--isolated",
+        action="store_true",
+        help="Select the isolated batch registered for --day",
+    )
+    parser.add_argument(
+        "--publication-unit",
+        action="store_true",
+        help="Require a bounded canonical publication unit for --schools",
+    )
     args = parser.parse_args()
 
     try:
         if args.day is not None:
-            shard = scheduled_shard(args.day)
+            shard = scheduled_shard(args.day, isolated=args.isolated)
         else:
-            shard = normalize_requested_shard(
-                args.schools or "",
-                allow_full=args.allow_full,
-            )
+            if args.isolated:
+                raise ValueError("--isolated requires --day")
+            if args.publication_unit:
+                if args.allow_full:
+                    raise ValueError(
+                        "--publication-unit cannot be combined with --allow-full"
+                    )
+                shard = normalize_publication_unit(args.schools or "")
+            else:
+                shard = normalize_requested_shard(
+                    args.schools or "",
+                    allow_full=args.allow_full,
+                )
         print(",".join(target_shards(shard)) if args.targets else shard)
     except ValueError as exc:
         parser.error(str(exc))

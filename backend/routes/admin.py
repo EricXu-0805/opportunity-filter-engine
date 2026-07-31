@@ -571,50 +571,15 @@ async def trigger_refresh(
     mode: str = Query(default="quick", pattern="^(quick|deep)$"),
     x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
 ):
-    """Dispatch the refresh-data.yml workflow on GitHub Actions.
-
-    Requires GITHUB_REFRESH_PAT (fine-grained PAT with actions:write on the
-    repo) and GITHUB_REPO (e.g. 'EricXu-0805/opportunity-filter-engine').
-    Returns 503 when either is unset so the UI can render a setup hint.
-    """
+    """Fail closed while target-only refresh publication is not authorized."""
     _authenticate(x_admin_token)
-
-    pat = os.environ.get("GITHUB_REFRESH_PAT")
-    repo = os.environ.get("GITHUB_REPO", "EricXu-0805/opportunity-filter-engine")
-    if not pat:
-        raise HTTPException(
-            status_code=503,
-            detail="Refresh trigger disabled (set GITHUB_REFRESH_PAT on the backend)",
-        )
-
-    workflow_url = f"https://api.github.com/repos/{repo}/actions/workflows/refresh-data.yml/dispatches"
-    payload = {"ref": "main", "inputs": {"deep": "true" if mode == "deep" else "false"}}
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0, trust_env=False, follow_redirects=False) as client:
-            resp = await client.post(
-                workflow_url,
-                json=payload,
-                headers={
-                    "Accept": "application/vnd.github+json",
-                    "Authorization": f"Bearer {pat}",
-                    "X-GitHub-Api-Version": "2022-11-28",
-                },
-            )
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"GitHub API unreachable: {e}") from e
-
-    if resp.status_code == 204:
-        return {
-            "ok": True,
-            "mode": mode,
-            "dispatched_at": datetime.now(UTC).isoformat(),
-            "workflow": "refresh-data.yml",
-            "note": "Watch GitHub Actions tab for run status; commits land on main when complete.",
-        }
-
-    detail = resp.text[:300] if resp.text else f"GitHub returned {resp.status_code}"
-    raise HTTPException(status_code=resp.status_code, detail=detail)
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "Data refresh publication is paused pending explicit authorization "
+            "of the target-only publisher."
+        ),
+    )
 
 
 @router.get("/admin/feedback")

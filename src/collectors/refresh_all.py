@@ -526,6 +526,11 @@ def refresh_all(
     reporting "ok" in this run's summary, so a shard run provably cannot
     deactivate another school's records.
 
+    The no-selector full run remains a local maintenance mode; the publication
+    workflow and artifact boundary require an explicit bounded shard. UCD's
+    singleton rule therefore applies to explicit publication shards without
+    removing the local diagnostic full-run path.
+
     Returns a summary dict with counts per source and totals.
     """
     if national and schools is not None:
@@ -533,6 +538,8 @@ def refresh_all(
     if schools is not None:
         if not schools:
             raise ValueError("schools shard must name at least one school slug")
+        if "ucd" in schools and len(schools) != 1:
+            raise ValueError("ucd must run as an isolated single-school shard")
         known = {school for school, _ in SOURCE_DEFAULTS.values() if school}
         unknown = set(schools) - known
         if unknown:

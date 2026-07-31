@@ -139,10 +139,16 @@ def evaluate_refresh_summary(
     warnings: list[str] = []
     if national and schools is not None:
         policies: dict[str, SourcePolicy] = {}
+        targets = frozenset()
         reasons.append("national and school shards are mutually exclusive")
     else:
         policies = expected_sources(schools, national=national, deep=deep)
         targets = _target_schools(schools, national=national)
+        if "ucd" in targets and not deep:
+            reasons.append(
+                "UC Davis publication requires deep mode so ucd_faculty "
+                "cannot be skipped"
+            )
         for target in sorted(targets):
             if not any(policy.school == target for policy in policies.values()):
                 reasons.append(

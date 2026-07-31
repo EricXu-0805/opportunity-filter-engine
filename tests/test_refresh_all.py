@@ -662,6 +662,8 @@ def test_unknown_or_empty_shard_raises(monkeypatch, tmp_path):
         refresh_all.refresh_all(deep=True, schools={"uw", "notaschool"})
     with pytest.raises(ValueError, match="at least one school"):
         refresh_all.refresh_all(deep=True, schools=set())
+    with pytest.raises(ValueError, match="isolated single-school"):
+        refresh_all.refresh_all(deep=True, schools={"ucd", "uw"})
     with pytest.raises(ValueError, match="mutually exclusive"):
         refresh_all.refresh_all(
             deep=True,

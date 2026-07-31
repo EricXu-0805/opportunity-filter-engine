@@ -2518,57 +2518,8 @@ class TestEmailRenderers:
         assert "&lt;script&gt;" in html
 
 
-def _install_fake_dispatch(
-    monkeypatch,
-    *,
-    status_code: int = 204,
-    text: str = "",
-    raise_error: Exception | None = None,
-    calls: list | None = None,
-):
-    """Swap admin.httpx.AsyncClient for a stub that records the dispatch call.
-
-    The real trigger_refresh fires a GitHub Actions workflow_dispatch over the
-    network; tests must never reach api.github.com. This stub honours the
-    ``async with httpx.AsyncClient() as c: await c.post(...)`` shape the route
-    uses and lets each test pin the simulated GitHub response (or a transport
-    error) while capturing the outbound url/json/headers for assertions.
-    """
-    from backend.routes import admin as admin_mod
-
-    class _Resp:
-        def __init__(self):
-            self.status_code = status_code
-            self.text = text
-
-    class _Client:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *exc):
-            return False
-
-        async def post(self, url, **kwargs):
-            if calls is not None:
-                calls.append({"url": url, **kwargs})
-            if raise_error is not None:
-                raise raise_error
-            return _Resp()
-
-    monkeypatch.setattr(admin_mod.httpx, "AsyncClient", _Client)
-
-
 class TestAdminTriggerRefresh:
-    """Contract lock for ``POST /admin/trigger-refresh``.
-
-    The admin dashboard's "Refresh now" button dispatches refresh-data.yml on
-    GitHub Actions. These tests pin the auth gate, the GITHUB_REFRESH_PAT setup
-    gate, the quick/deep input mapping, GitHub error pass-through, and the
-    network-failure 502 — all without touching the real GitHub API.
-    """
+    """The admin trigger stays authenticated and fail-closed."""
 
     def test_503_when_token_unset(self, monkeypatch):
         monkeypatch.delenv("ADMIN_TOKEN", raising=False)
@@ -2585,133 +2536,59 @@ class TestAdminTriggerRefresh:
         r = client.post("/api/admin/trigger-refresh")
         assert r.status_code == 401
 
-    def test_503_when_pat_unset(self, monkeypatch):
+    def test_503_while_publication_is_paused(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.delenv("GITHUB_REFRESH_PAT", raising=False)
         r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 503
-        assert "GITHUB_REFRESH_PAT" in r.json()["detail"]
+        assert "publication is paused" in r.json()["detail"]
 
     def test_422_invalid_mode(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
         r = client.post("/api/admin/trigger-refresh?mode=sideways", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 422
 
-    def test_200_quick_mode_dispatches_with_deep_false(self, monkeypatch):
+    def test_configured_pat_cannot_dispatch(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
         monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh?mode=quick", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        body = r.json()
-        assert body["ok"] is True
-        assert body["mode"] == "quick"
-        assert body["workflow"] == "refresh-data.yml"
-        assert "dispatched_at" in body
-        assert len(calls) == 1
-        assert calls[0]["json"]["ref"] == "main"
-        assert calls[0]["json"]["inputs"]["deep"] == "false"
-
-    def test_200_deep_mode_sets_deep_true(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh?mode=deep", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert r.json()["mode"] == "deep"
-        assert calls[0]["json"]["inputs"]["deep"] == "true"
-
-    def test_quick_is_the_default_mode(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert r.json()["mode"] == "quick"
-        assert calls[0]["json"]["inputs"]["deep"] == "false"
-
-    def test_sends_bearer_auth_and_api_version_headers(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-xyz")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        headers = calls[0]["headers"]
-        assert headers["Authorization"] == "Bearer pat-xyz"
-        assert headers["Accept"] == "application/vnd.github+json"
-        assert headers["X-GitHub-Api-Version"] == "2022-11-28"
-
-    def test_uses_default_repo_when_env_unset(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        monkeypatch.delenv("GITHUB_REPO", raising=False)
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert "EricXu-0805/opportunity-filter-engine" in calls[0]["url"]
-        assert calls[0]["url"].endswith("refresh-data.yml/dispatches")
-
-    def test_uses_custom_repo_from_env(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        monkeypatch.setenv("GITHUB_REPO", "acme/other-repo")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert "acme/other-repo" in calls[0]["url"]
-
-    def test_accepts_token_via_header(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "hdr-secret")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        _install_fake_dispatch(monkeypatch, status_code=204)
 
         r = client.post(
-            "/api/admin/trigger-refresh",
-            headers={"X-Admin-Token": "hdr-secret"},
+            "/api/admin/trigger-refresh?mode=deep",
+            headers={"X-Admin-Token": "ok"},
         )
-        assert r.status_code == 200
+        assert r.status_code == 503
 
-    def test_propagates_github_error_status_and_detail(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "bad-pat")
-        _install_fake_dispatch(
-            monkeypatch, status_code=401, text='{"message":"Bad credentials"}'
+    def test_route_body_is_exact_auth_then_fail_closed_contract(self):
+        import ast
+        import inspect
+        import textwrap
+
+        from backend.routes import admin as admin_mod
+
+        source = textwrap.dedent(
+            inspect.getsource(admin_mod.trigger_refresh)
         )
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 401
-        assert "Bad credentials" in r.json()["detail"]
-
-    def test_github_error_without_body_uses_fallback_detail(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        _install_fake_dispatch(monkeypatch, status_code=500, text="")
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 500
-        assert "GitHub returned 500" in r.json()["detail"]
-
-    def test_502_when_github_unreachable(self, monkeypatch):
-        import httpx
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        _install_fake_dispatch(monkeypatch, raise_error=httpx.ConnectError("boom"))
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 502
-        assert "GitHub API unreachable" in r.json()["detail"]
+        tree = ast.parse(source)
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef)
+        )
+        assert len(function.body) == 3
+        assert (
+            isinstance(function.body[0], ast.Expr)
+            and isinstance(function.body[0].value, ast.Constant)
+            and isinstance(function.body[0].value.value, str)
+        )
+        authenticate = function.body[1]
+        assert isinstance(authenticate, ast.Expr)
+        assert isinstance(authenticate.value, ast.Call)
+        assert isinstance(authenticate.value.func, ast.Name)
+        assert authenticate.value.func.id == "_authenticate"
+        failure = function.body[2]
+        assert isinstance(failure, ast.Raise)
+        assert isinstance(failure.exc, ast.Call)
+        assert isinstance(failure.exc.func, ast.Name)
+        assert failure.exc.func.id == "HTTPException"
 
 
 def _install_saved_search_rows(monkeypatch, *, rows=None, raise_error=None, calls=None):
