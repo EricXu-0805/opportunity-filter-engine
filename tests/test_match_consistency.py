@@ -691,7 +691,7 @@ class TestServerMatchView:
         first = response_pages[0]
         assert first["filtered_total"] == len(expected)
         assert first["view_counts"]["all"] == len(expected)
-        assert first["contract_version"] == "match-view-v1"
+        assert first["contract_version"] == "match-view-v2-contact-trust"
         assert all(page["result_set_id"] == first["result_set_id"] for page in response_pages)
         assert all(page["view_id"] == first["view_id"] for page in response_pages)
 

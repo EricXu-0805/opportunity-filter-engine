@@ -310,6 +310,7 @@ export default function ColdEmailModal({
       setRecommendedStyle(null);
       setSubject('');
       setBody('');
+      setRecipient('');
       setRecipientStatus('unavailable');
       setCopied(false);
       setError(null);
@@ -422,7 +423,11 @@ export default function ColdEmailModal({
     const aiIdx = variants.length;
     setSelectedStyle(style);
 
-    const applyResponse = (resp: ColdEmailResponse, select: boolean) => {
+    const applyResponse = (
+      resp: ColdEmailResponse,
+      select: boolean,
+      contactIsCurrent = true,
+    ) => {
       const v: EmailVariant = {
         id: AI_VARIANT_ID,
         label: t('coldEmail.aiVariantLabel'),
@@ -435,19 +440,26 @@ export default function ColdEmailModal({
         fallback_reason: resp.fallback_reason,
       };
       setAiVariant(v);
-      setRecipientStatus(statusOf(resp.recipient_status, resp.recipient_email));
+      if (contactIsCurrent) {
+        setRecipientStatus(statusOf(resp.recipient_status, resp.recipient_email));
+      }
       if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
       if (select) {
         setActiveVariant(aiIdx);
         setSubject(v.subject);
         setBody(v.body);
-        setRecipient((prev) => v.recipient_email || prev);
+        if (contactIsCurrent) {
+          setRecipient((prev) => v.recipient_email || prev);
+        }
       }
     };
 
     const cached = aiCacheRef.current.get(`${opportunityId}|${style}`);
     if (cached) {
-      applyResponse(cached, true);
+      // Cache only the AI writing value. Recipient truth was refreshed by
+      // getEmailVariants for the current auth session and must never be
+      // overwritten by a reveal cached before logout/token expiry.
+      applyResponse(cached, true, false);
       setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.aiGenerated') }]);
       return;
     }
@@ -496,7 +508,12 @@ export default function ColdEmailModal({
         resp = await generateColdEmail(profile, opportunityId, opts);
       }
       if (resp.method === 'ai') {
-        aiCacheRef.current.set(`${opportunityId}|${style}`, resp);
+        aiCacheRef.current.set(`${opportunityId}|${style}`, {
+          ...resp,
+          recipient_email: '',
+          recipient_status: 'unavailable',
+          mailto_link: '',
+        });
       }
       if (auto && resp.method !== 'ai') return; // silent — the user never asked
       applyResponse(resp, !auto || bodyRef.current === baselineBody);

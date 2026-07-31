@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import {
+  MATCH_VIEW_CONTRACT_VERSION,
   cachedMatcherVersion,
   clearMatchCache,
   hasMatchCache,
@@ -11,7 +12,9 @@ import { STORAGE_KEYS } from './storage-keys';
 import type { MatchResult, MatchesResponse } from './types';
 
 const MATCH_KEY = STORAGE_KEYS.MATCH_RESULTS;
+const ORIGINAL_MATCH_KEY = 'ofe_match_results';
 const LEGACY_RELEASE_SCOPE_KEY = 'ofe_match_results_v4';
+const PRE_CONTACT_TRUST_KEY = 'ofe_match_results_v6';
 
 function makeResult(id: string, bucket: MatchResult['bucket'] = 'good_match'): MatchResult {
   return {
@@ -32,6 +35,7 @@ function makeResponse(n = 3): MatchesResponse {
   return {
     total: n, high_priority: 0, good_match: n, reach: 0, low_fit: 0,
     results: Array.from({ length: n }, (_, i) => makeResult(`o${i}`)),
+    contract_version: MATCH_VIEW_CONTRACT_VERSION,
   };
 }
 
@@ -41,6 +45,7 @@ describe('match-cache', () => {
   it('projects opportunities to display fields (drops metadata, raw desc, truncates clean)', () => {
     writeMatchCache('h1', false, makeResponse(1));
     const raw = localStorage.getItem(MATCH_KEY)!;
+    expect(JSON.parse(raw).version).toBe('contact-trust-v1');
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');
     expect(raw).not.toContain('x'.repeat(500)); // full description not stored
@@ -120,6 +125,7 @@ describe('match-cache', () => {
   });
 
   it('does not read the pre-release-scope v4 cache', () => {
+    localStorage.setItem(ORIGINAL_MATCH_KEY, '{"contact":"legacy@example.edu"}');
     localStorage.setItem(
       LEGACY_RELEASE_SCOPE_KEY,
       JSON.stringify({
@@ -135,9 +141,62 @@ describe('match-cache', () => {
       }),
     );
 
-    expect(MATCH_KEY).toBe('ofe_match_results_v6');
+    expect(MATCH_KEY).toBe('ofe_match_results_v7');
     expect(hasMatchCache()).toBe(false);
     expect(readMatchCache('h1', false)).toBeNull();
+    expect(localStorage.getItem(ORIGINAL_MATCH_KEY)).toBeNull();
+    expect(localStorage.getItem(LEGACY_RELEASE_SCOPE_KEY)).toBeNull();
+  });
+
+  it('does not read the pre-contact-trust v6 cache', () => {
+    localStorage.setItem(
+      PRE_CONTACT_TRUST_KEY,
+      JSON.stringify({
+        hash: 'h1',
+        semantic: false,
+        savedAt: Date.now(),
+        total: 1,
+        high_priority: 0,
+        good_match: 1,
+        reach: 0,
+        low_fit: 0,
+        results: [makeResult('contact-bearing')],
+      }),
+    );
+
+    expect(hasMatchCache()).toBe(false);
+    expect(readMatchCache('h1', false)).toBeNull();
+    expect(localStorage.getItem(PRE_CONTACT_TRUST_KEY)).toBeNull();
+  });
+
+  it('rejects and removes an unversioned payload under the current key', () => {
+    localStorage.setItem(
+      MATCH_KEY,
+      JSON.stringify({
+        hash: 'h1',
+        semantic: false,
+        savedAt: Date.now(),
+        total: 1,
+        high_priority: 0,
+        good_match: 1,
+        reach: 0,
+        low_fit: 0,
+        results: [makeResult('contact-bearing')],
+      }),
+    );
+
+    expect(hasMatchCache()).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it('does not re-stamp a pre-contact-trust backend response as a v7 cache', () => {
+    writeMatchCache('h1', false, {
+      ...makeResponse(1),
+      contract_version: 'match-view-v1',
+    });
+
+    expect(hasMatchCache()).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
   });
 
   it('misses on a different profile hash or semantic mode', () => {

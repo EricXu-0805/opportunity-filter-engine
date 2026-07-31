@@ -56,7 +56,7 @@ export default function Header() {
   // previous behavior — always routing to / — meant tab-switching away
   // and back made the matches appear to "disappear", because the user
   // was looking at the profile form, not their results. The cache
-  // itself in `ofe_match_results` is never invalidated by navigation;
+  // itself in the versioned match-results cache is never invalidated by navigation;
   // it only invalidates on profile-hash mismatch inside useResultsData.
   //
   // We re-check on every pathname change so the link target stays in

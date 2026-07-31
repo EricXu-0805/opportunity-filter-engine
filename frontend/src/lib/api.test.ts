@@ -228,7 +228,7 @@ describe('getMatchView', () => {
         results: [],
         filtered_total: 0,
         view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
-        contract_version: 'match-view-v1',
+        contract_version: 'match-view-v2-contact-trust',
       }),
     );
     const view = {

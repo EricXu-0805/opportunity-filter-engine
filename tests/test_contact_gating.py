@@ -1,10 +1,10 @@
-"""W10b contact tightening: verified-only send targets + auth-gated reveal.
+"""Contact trust: identity-bound send targets + auth-gated reveal.
 
 Pins the two-bar contract in backend.lib.contact_visibility and its wiring:
 
-  * provenance bar — constructed/synthesized ``metadata.email_source`` is
-    NEVER offered as a send target; harvested stamps and unstamped legacy
-    scrapes pass
+  * evidence bar — only a fresh, identity-bound collector observation with a
+    matching address and safe source URL is eligible; legacy, merely harvested,
+    inferred, stale, and mismatched rows all fail closed
   * session bar — the detail + cold-email routes reveal the address only to a
     signed-in (non-anonymous) Supabase account, resolved server-side from the
     opportunity id (the request carries no address)
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -26,7 +27,12 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from backend.lib.contact_visibility import contact_email_status, verified_send_target
+from backend.lib.contact_visibility import (
+    CONTACT_VERIFICATION_TTL_DAYS,
+    _has_identity_bound_contact_evidence,
+    contact_email_status,
+    verified_send_target,
+)
 from backend.lib.supabase_auth import authenticated_uid
 from backend.main import app
 
@@ -36,10 +42,27 @@ UID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 AUTH = {"Authorization": "Bearer user-jwt"}
 
 
-def _opp(opp_id: str, email, email_source: str | None = None) -> dict:
+def _opp(
+    opp_id: str,
+    email,
+    email_source: str | None = None,
+    *,
+    verified: bool = False,
+    metadata_overrides: dict | None = None,
+) -> dict:
     metadata = {"is_active": True}
     if email_source is not None:
         metadata["email_source"] = email_source
+    if verified:
+        metadata.update({
+            "identity_bound": True,
+            "email_source": email_source or "bound_profile_container",
+            "contact_verified_email": email,
+            "contact_source_url": "https://cs.example.edu/people/jane-doe",
+            "contact_verified_at": datetime.now(UTC).isoformat(),
+        })
+    if metadata_overrides:
+        metadata.update(metadata_overrides)
     return {
         "id": opp_id,
         "title": "Undergraduate Research Assistant — ML Lab",
@@ -62,6 +85,12 @@ def _opp(opp_id: str, email, email_source: str | None = None) -> dict:
 
 
 CORPUS = {
+    "verified": _opp(
+        "verified",
+        "jdoe@example.edu",
+        "bound_profile_container",
+        verified=True,
+    ),
     "harvested": _opp("harvested", "jdoe@example.edu", "profile_page"),
     "wayback": _opp("wayback", "jdoe@example.edu", "wayback"),
     "legacy": _opp("legacy", "jdoe@example.edu"),
@@ -108,15 +137,29 @@ def sample_profile_req():
 
 
 class TestVerifiedSendTarget:
-    def test_harvested_stamps_pass(self):
-        for source in ("profile_page", "wayback", "digitalmeasures_profile"):
-            assert verified_send_target(_opp("x", "a@b.edu", source)) == "a@b.edu"
+    def test_reviewed_identity_bound_sources_pass_with_complete_evidence(self):
+        for source in (
+            "bound_directory_card",
+            "bound_directory_name_join",
+            "bound_profile_container",
+            "bound_profile_custom_obfuscated",
+            "bound_profile_obfuscated",
+        ):
+            assert verified_send_target(
+                _opp("x", "a@b.edu", source, verified=True)
+            ) == "a@b.edu"
 
-    def test_legacy_unstamped_passes(self):
-        assert verified_send_target(_opp("x", "a@b.edu")) == "a@b.edu"
-
-    def test_constructed_never_offered(self):
-        for source in ("constructed_sunetid", "constructed_netid", "constructed"):
+    def test_legacy_harvested_and_constructed_sources_fail_closed(self):
+        for source in (
+            None,
+            "profile_page",
+            "wayback",
+            "digitalmeasures_profile",
+            "constructed_sunetid",
+            "constructed_netid",
+            "constructed",
+            "unknown_future_collector",
+        ):
             assert verified_send_target(_opp("x", "a@b.edu", source)) == ""
 
     def test_missing_or_null_email(self):
@@ -124,11 +167,87 @@ class TestVerifiedSendTarget:
         assert verified_send_target(_opp("x", "")) == ""
         assert verified_send_target(_opp("x", "   ")) == ""
 
+    @pytest.mark.parametrize(
+        ("override", "expected"),
+        [
+            ({"identity_bound": False}, ""),
+            ({"identity_bound": None}, ""),
+            ({"contact_verified_email": "other@b.edu"}, ""),
+            ({"contact_verified_email": None}, ""),
+            ({"contact_source_url": None}, ""),
+            ({"contact_source_url": "mailto:a@b.edu"}, ""),
+            ({"contact_source_url": "https://a@b.edu/profile"}, ""),
+            ({"contact_verified_at": None}, ""),
+            ({"contact_verified_at": "not-a-date"}, ""),
+            ({"contact_verified_at": "2026-07-31T12:00:00"}, ""),
+        ],
+    )
+    def test_every_identity_evidence_field_is_required(self, override, expected):
+        opp = _opp(
+            "x",
+            "a@b.edu",
+            "bound_profile_container",
+            verified=True,
+            metadata_overrides=override,
+        )
+        assert verified_send_target(opp) == expected
+
+    @pytest.mark.parametrize(
+        "email",
+        [
+            "missing-at.example.edu",
+            "a@localhost",
+            "a b@example.edu",
+            "@example.edu",
+            ".a@example.edu",
+            "a.@example.edu",
+            "a..b@example.edu",
+            f"{'a' * 65}@example.edu",
+            f"{'a' * 245}@example.edu",
+        ],
+    )
+    def test_invalid_recipient_syntax_fails_closed(self, email):
+        assert verified_send_target(
+            _opp(
+                "x",
+                email,
+                "bound_profile_container",
+                verified=True,
+            )
+        ) == ""
+
+    def test_verification_age_and_clock_skew_boundaries(self):
+        now = datetime(2026, 7, 31, 12, 0, tzinfo=UTC)
+        email = "a@b.edu"
+
+        def has_evidence(verified_at: datetime) -> bool:
+            opp = _opp(
+                "x",
+                email,
+                "bound_profile_container",
+                verified=True,
+                metadata_overrides={"contact_verified_at": verified_at.isoformat()},
+            )
+            return _has_identity_bound_contact_evidence(opp, email, now=now)
+
+        ttl = timedelta(days=CONTACT_VERIFICATION_TTL_DAYS)
+        assert has_evidence(now - ttl + timedelta(microseconds=1))
+        assert has_evidence(now - ttl)
+        assert not has_evidence(now - ttl - timedelta(microseconds=1))
+        assert has_evidence(now + timedelta(minutes=5))
+        assert not has_evidence(now + timedelta(minutes=5, microseconds=1))
+
     def test_status_matrix(self):
-        assert contact_email_status(_opp("x", "a@b.edu"), authenticated=True) == (
+        verified = _opp(
+            "x",
+            "a@b.edu",
+            "bound_profile_container",
+            verified=True,
+        )
+        assert contact_email_status(verified, authenticated=True) == (
             "revealed", "a@b.edu",
         )
-        assert contact_email_status(_opp("x", "a@b.edu"), authenticated=False) == (
+        assert contact_email_status(verified, authenticated=False) == (
             "sign_in_required", "",
         )
         assert contact_email_status(
@@ -219,19 +338,29 @@ class TestAuthenticatedUid:
 
 class TestDetailRevealGate:
     def test_anonymous_hidden_with_flag(self, fake_corpus, authed):
-        body = client.get("/api/opportunities/harvested").json()
+        response = client.get("/api/opportunities/verified")
+        body = response.json()
         assert "contact_email" not in body
         assert body["contact_email_status"] == "sign_in_required"
+        assert response.headers["Vary"] == "Authorization"
+        assert "no-store" not in response.headers.get("Cache-Control", "")
 
     def test_authed_revealed(self, fake_corpus, authed):
-        body = client.get("/api/opportunities/harvested", headers=AUTH).json()
+        response = client.get("/api/opportunities/verified", headers=AUTH)
+        body = response.json()
         assert body["contact_email"] == "jdoe@example.edu"
         assert body["contact_email_status"] == "revealed"
+        assert response.headers["Vary"] == "Authorization"
+        assert response.headers["Cache-Control"] == (
+            "private, no-store, max-age=0"
+        )
+        assert response.headers["Pragma"] == "no-cache"
 
-    def test_authed_legacy_unstamped_revealed(self, fake_corpus, authed):
-        body = client.get("/api/opportunities/legacy", headers=AUTH).json()
-        assert body["contact_email"] == "jdoe@example.edu"
-        assert body["contact_email_status"] == "revealed"
+    def test_legacy_and_harvested_looking_rows_are_unavailable(self, fake_corpus, authed):
+        for oid in ("legacy", "harvested", "wayback"):
+            body = client.get(f"/api/opportunities/{oid}", headers=AUTH).json()
+            assert "contact_email" not in body
+            assert body["contact_email_status"] == "unavailable"
 
     def test_constructed_unavailable_even_authed(self, fake_corpus, authed):
         for oid in ("constructed", "constructed-netid"):
@@ -250,18 +379,18 @@ class TestDetailRevealGate:
         _set_env(monkeypatch)
         _install_gotrue(monkeypatch, status=401)
         resp = client.get(
-            "/api/opportunities/harvested",
+            "/api/opportunities/verified",
             headers={"Authorization": "Bearer expired"},
         )
         assert resp.status_code == 200
         body = resp.json()
         assert "contact_email" not in body
         assert body["contact_email_status"] == "sign_in_required"
-        anon = client.get("/api/opportunities/harvested").json()
+        anon = client.get("/api/opportunities/verified").json()
         assert body["contact_email_status"] == anon["contact_email_status"]
 
     def test_pi_email_stays_redacted(self, fake_corpus, authed):
-        body = client.get("/api/opportunities/harvested", headers=AUTH).json()
+        body = client.get("/api/opportunities/verified", headers=AUTH).json()
         assert "pi_email" not in body
 
 
@@ -279,14 +408,14 @@ class TestColdEmailSendTargetGate:
         return resp.json()
 
     def test_anonymous_gets_draft_without_target(self, fake_corpus, authed, sample_profile_req):
-        body = self._post("harvested", sample_profile_req)
+        body = self._post("verified", sample_profile_req)
         assert body["subject"] and body["body"]  # the draft is the value
         assert body["recipient_email"] == ""
         assert body["recipient_status"] == "sign_in_required"
         assert "jdoe@example.edu" not in body["mailto_link"]
 
     def test_authed_gets_verified_target(self, fake_corpus, authed, sample_profile_req):
-        body = self._post("harvested", sample_profile_req, headers=AUTH)
+        body = self._post("verified", sample_profile_req, headers=AUTH)
         assert body["recipient_email"] == "jdoe@example.edu"
         assert body["recipient_status"] == "revealed"
         assert "jdoe%40example.edu" in body["mailto_link"]
@@ -315,7 +444,7 @@ class TestColdEmailSendTargetGate:
             "/api/cold-email",
             json={
                 "profile": sample_profile_req,
-                "opportunity_id": "harvested",
+                "opportunity_id": "verified",
                 "engine": "template",
             },
             headers={"Authorization": "Bearer expired"},
@@ -330,7 +459,7 @@ class TestVariantsSendTargetGate:
     def test_anonymous_hidden(self, fake_corpus, authed, sample_profile_req):
         resp = client.post(
             "/api/cold-email/variants",
-            json={"profile": sample_profile_req, "opportunity_id": "harvested"},
+            json={"profile": sample_profile_req, "opportunity_id": "verified"},
         )
         assert resp.status_code == 200, resp.text
         body = resp.json()
@@ -342,7 +471,7 @@ class TestVariantsSendTargetGate:
     def test_authed_revealed(self, fake_corpus, authed, sample_profile_req):
         resp = client.post(
             "/api/cold-email/variants",
-            json={"profile": sample_profile_req, "opportunity_id": "harvested"},
+            json={"profile": sample_profile_req, "opportunity_id": "verified"},
             headers=AUTH,
         )
         body = resp.json()

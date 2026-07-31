@@ -8,12 +8,15 @@ import {
 } from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
 import { hashProfile } from '@/lib/match-utils';
-import { readMatchCache, writeMatchCache } from '@/lib/match-cache';
+import {
+  MATCH_VIEW_CONTRACT_VERSION,
+  readMatchCache,
+  writeMatchCache,
+} from '@/lib/match-cache';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
 
 const MATCH_VIEW_PAGE_SIZE = 50;
-const MATCH_VIEW_CONTRACT = 'match-view-v1';
 
 interface UseResultsDataResult {
   data: MatchesResponse | null;
@@ -104,7 +107,7 @@ export function useResultsData(
     setPaginationReady(false);
     if (page === 1) {
       const cached = readMatchCache(cacheKey, semanticRerank);
-      if (cached?.contract_version === MATCH_VIEW_CONTRACT) {
+      if (cached?.contract_version === MATCH_VIEW_CONTRACT_VERSION) {
         setData(cached);
         // Cached metadata paints immediately, but the network request below is
         // still mandatory generation validation. Its cursor is deliberately
@@ -131,7 +134,7 @@ export function useResultsData(
         });
         if (!active) return;
         if (
-          result.contract_version !== MATCH_VIEW_CONTRACT
+          result.contract_version !== MATCH_VIEW_CONTRACT_VERSION
           || typeof result.filtered_total !== 'number'
           || !result.view_counts
           || typeof result.view_start !== 'number'

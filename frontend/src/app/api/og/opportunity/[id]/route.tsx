@@ -170,7 +170,7 @@ export async function GET(
       width: OG_WIDTH,
       height: OG_HEIGHT,
       headers: {
-        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+        'Cache-Control': 'public, max-age=0, s-maxage=3600, must-revalidate',
       },
     },
   );

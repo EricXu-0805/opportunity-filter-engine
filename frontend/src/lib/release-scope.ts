@@ -23,7 +23,8 @@ export const RELEASE_SCOPE = Object.freeze({
 // Included in every server-side cached discovery URL. Bump whenever the public
 // record-visibility contract changes so a new Vercel deployment cannot reuse
 // an older deployment's Data Cache entries.
-export const PUBLIC_RELEASE_CACHE_VERSION = 'mvp-route-freeze-v1';
+export const PUBLIC_RELEASE_CACHE_VERSION =
+  'mvp-route-freeze-v2-contact-trust-v1';
 
 /**
  * Remove preferences for feature families that are outside the public release.

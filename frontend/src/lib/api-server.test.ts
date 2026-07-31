@@ -83,7 +83,7 @@ describe('server-side API base URL resolution', () => {
 
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toBe(
-      'https://backend.example.com/api/opportunities/x?_release_scope=mvp-route-freeze-v1',
+      'https://backend.example.com/api/opportunities/x?_release_scope=mvp-route-freeze-v2-contact-trust-v1',
     );
   });
 });
@@ -104,7 +104,7 @@ describe('fetchOpportunityServer', () => {
     await fetchOpportunityServer('uiuc/cs:101');
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toBe(
-      'https://api.test/api/opportunities/uiuc%2Fcs%3A101?_release_scope=mvp-route-freeze-v1',
+      'https://api.test/api/opportunities/uiuc%2Fcs%3A101?_release_scope=mvp-route-freeze-v2-contact-trust-v1',
     );
   });
 
@@ -166,7 +166,7 @@ describe('fetchSimilarServer', () => {
     fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
     await fetchSimilarServer('seed');
     expect(fetchMock.mock.calls[0][0]).toContain(
-      'limit=5&_release_scope=mvp-route-freeze-v1',
+      'limit=5&_release_scope=mvp-route-freeze-v2-contact-trust-v1',
     );
   });
 });
@@ -215,7 +215,7 @@ describe('fetchOpportunityIdsServer', () => {
     fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
     await fetchOpportunityIdsServer();
     expect(fetchMock.mock.calls[0][0]).toContain(
-      'limit=200&_release_scope=mvp-route-freeze-v1',
+      'limit=200&_release_scope=mvp-route-freeze-v2-contact-trust-v1',
     );
   });
 });

@@ -7,7 +7,7 @@ from collections import Counter
 from collections.abc import Iterator
 from datetime import UTC, date, timedelta
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -22,6 +22,10 @@ from backend.lib.llm import (
 )
 from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.public_projection import (
+    redact_embedded_emails,
+    sanitize_public_urls,
+)
 from backend.lib.publication_attribution import works_are_verified
 from backend.lib.release_scope import (
     release_visible_opportunities,
@@ -55,6 +59,11 @@ def _tri_state(value: object) -> str:
     return "unknown"
 
 
+def _public_payload(value):
+    """Copy one response through the shared contact and URL boundary."""
+    return redact_embedded_emails(sanitize_public_urls(value))
+
+
 def _redact(opp: dict) -> dict:
     out = {k: v for k, v in opp.items() if k not in REDACTED_FIELDS}
     # Position truthfulness (W11): strip an unsupported "Prof." honorific
@@ -77,7 +86,7 @@ def _redact(opp: dict) -> dict:
         out["metadata"] = {
             k: v for k, v in md.items() if k not in _UNVERIFIED_PUBLICATION_KEYS
         }
-    return out
+    return _public_payload(out)
 
 
 # Heavy fields the browse-list cards never render — the raw HTML scrape and the
@@ -91,7 +100,7 @@ def _list_card(opp: dict) -> dict:
     honest = displayed_title(opp)
     if honest != out.get("title"):
         out["title"] = honest
-    return out
+    return _public_payload(out)
 
 
 @router.get("/opportunities")
@@ -240,7 +249,11 @@ async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     # Unique id tie-break: equal deadlines otherwise fall back to corpus order,
     # which is not part of this endpoint's contract.
     upcoming.sort(key=lambda o: (o["deadline"], o["id"] or ""))
-    return {"total": len(upcoming), "opportunities": upcoming, "days": days}
+    return _public_payload({
+        "total": len(upcoming),
+        "opportunities": upcoming,
+        "days": days,
+    })
 
 
 @router.get("/opportunities/{opportunity_id}/similar")
@@ -316,8 +329,18 @@ async def get_similar_opportunities(
 @router.get("/opportunities/{opportunity_id}")
 async def get_opportunity(
     opportunity_id: str,
+    response: Response,
     authorization: str | None = Header(default=None),
 ):
+    # The same GET has an anonymous public shape and an identity-bound reveal
+    # shape. Keep shared caches honest about that distinction, and never allow
+    # a request carrying credentials (valid, anonymous, stale, or otherwise)
+    # to persist a recipient-bearing response after sign-out.
+    response.headers["Vary"] = "Authorization"
+    if authorization:
+        response.headers["Cache-Control"] = "private, no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
 
@@ -377,7 +400,7 @@ async def get_stats():
             data_path.stat().st_mtime, tz=UTC
         ).isoformat()
 
-    result = {
+    result = _public_payload({
         "total": len(opportunities),
         "active": active,
         "paid_total": paid_total,
@@ -387,7 +410,7 @@ async def get_stats():
         "by_paid": paid_counts,
         "by_international": intl_counts,
         "last_updated_at": last_updated_at,
-    }
+    })
     _stats_cache = result
     _stats_cache_time = now
     return result
@@ -576,21 +599,28 @@ def _chat_sse_events(
     message: str,
     opportunity_id: str,
 ) -> Iterator[str]:
-    emitted = False
+    # Buffer the bounded model reply before emitting it. Sanitizing each token
+    # independently is not safe: ``jane@`` and ``example.edu`` can arrive in
+    # separate chunks and become an address only after the browser joins them.
+    # Ask AI is currently release-hidden; safety takes precedence over
+    # token-by-token paint until a stateful streaming redactor is reviewed.
+    chunks: list[str] = []
     try:
         for delta in _llm_chat_stream(messages, model_id):
-            emitted = True
-            yield _sse({"delta": delta})
+            chunks.append(delta)
     except Exception:
         logger.exception("chat LLM stream failed for opportunity %s", opportunity_id)
-        if emitted:
+        if chunks:
+            safe_partial = redact_embedded_emails("".join(chunks))
+            yield _sse({"delta": safe_partial})
             yield _sse({"error": True})
             yield _sse({"done": True, "method": "llm"})
             return
-    if not emitted:
+    if not chunks:
         yield _sse({"delta": _local_chat_fallback(opp, message), "method": "local"})
         yield _sse({"done": True, "method": "local"})
         return
+    yield _sse({"delta": redact_embedded_emails("".join(chunks))})
     yield _sse({"done": True, "method": "llm"})
 
 
@@ -610,7 +640,12 @@ async def chat_with_opportunity(
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
-    system_prompt = _build_chat_system_prompt(opp, body.profile)
+    # Ask AI is currently outside the release scope, but its dormant route must
+    # already obey the same contact boundary before it can ever be enabled.
+    # Keep the raw record only for lookup; neither the provider nor the local
+    # fallback receives hidden contact-bearing fields.
+    public_opp = _redact(opp)
+    system_prompt = _build_chat_system_prompt(public_opp, body.profile)
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
     # SEC-5: unlike the cold-email / tailor prompts, chat content is NOT routed
     # through prompt_safety.sanitize_field — and intentionally so. Those handlers
@@ -629,7 +664,13 @@ async def chat_with_opportunity(
         # blocking SDK stream never sits on the event loop. X-Accel-Buffering
         # defeats proxy buffering on Render's edge.
         return StreamingResponse(
-            _chat_sse_events(opp, messages, body.model, body.message, opportunity_id),
+            _chat_sse_events(
+                public_opp,
+                messages,
+                body.model,
+                body.message,
+                opportunity_id,
+            ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
@@ -646,8 +687,14 @@ async def chat_with_opportunity(
         logger.exception("chat LLM call failed for opportunity %s", opportunity_id)
         reply = None
     if reply:
-        return {"reply": reply, "method": "llm"}
-    return {"reply": _local_chat_fallback(opp, body.message), "method": "local"}
+        return {
+            "reply": redact_embedded_emails(reply),
+            "method": "llm",
+        }
+    return {
+        "reply": _local_chat_fallback(public_opp, body.message),
+        "method": "local",
+    }
 
 
 @router.get("/chat/models")

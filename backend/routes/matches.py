@@ -32,6 +32,10 @@ from backend.lib.blocking import (
 from backend.lib.llm import _resolve, chat_completion
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.public_projection import (
+    redact_embedded_emails,
+    sanitize_public_urls,
+)
 from backend.lib.publication_attribution import attribution_status, verified_recent_works
 from backend.lib.release_scope import (
     feature_enabled,
@@ -104,6 +108,11 @@ _CARD_APP_FIELDS = frozenset({
 })
 
 
+def _public_match_payload(value):
+    """Apply the shared contact and URL boundary to a match response."""
+    return redact_embedded_emails(sanitize_public_urls(value))
+
+
 def _match_card(opp: dict) -> dict:
     """Project an opportunity to the minimal card shape the results UI renders
     (email-redacted by construction — no email field is in the kept sets)."""
@@ -139,15 +148,15 @@ def _match_card(opp: dict) -> dict:
         # Always "verified_author_id" by construction of the gate above;
         # served so the client renders provenance without re-deriving it.
         out["publication_attribution_status"] = attribution_status(opp)
-    return out
+    return _public_match_payload(out)
 
 
 # First response is deliberately bounded. Complete counts still describe the
 # canonical universe, and the opaque cursor traverses every visible result.
 DEFAULT_RESULTS_PER_PAGE = 100
 MAX_RESULTS_PER_REQUEST = 100
-MATCH_CONTRACT_VERSION = "match-page-v1"
-MATCH_VIEW_CONTRACT_VERSION = "match-view-v1"
+MATCH_CONTRACT_VERSION = "match-page-v2-contact-trust"
+MATCH_VIEW_CONTRACT_VERSION = "match-view-v2-contact-trust"
 
 # Only fields consumed by ranker.py participate in a snapshot key. Contact
 # identity/signature fields do not change ranking; including them let trivial
@@ -359,7 +368,11 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
     top = results[:min(top_k, len(results))]
     cand: list[tuple[str, str]] = []
     for r in top:
-        o = opportunities_by_id.get(r.opportunity_id, {})
+        # Match AI is release-hidden, but its future provider boundary must not
+        # receive an address copied into scraped title/keywords/metadata.
+        o = _public_match_payload(
+            opportunities_by_id.get(r.opportunity_id, {})
+        )
         md = o.get("metadata") or {}
         # Publication trust boundary: only verified-attribution works may act
         # as a match signal or appear in the model's reason line. Unverified /
@@ -988,20 +1001,21 @@ def _match_result_response(
     result: MatchResult,
     opportunities_by_id: dict[str, dict],
 ) -> MatchResultResponse:
-    return MatchResultResponse(
-        opportunity_id=result.opportunity_id,
-        eligibility_score=result.eligibility_score,
-        readiness_score=result.readiness_score,
-        upside_score=result.upside_score,
-        final_score=result.final_score,
-        bucket=result.bucket,
-        reasons_fit=result.reasons_fit,
-        reasons_gap=result.reasons_gap,
-        next_steps=result.next_steps,
-        ai_reason=result.ai_reason,
-        unknowns=result.unknowns,
-        opportunity=opportunities_by_id.get(result.opportunity_id, {}),
-    )
+    payload = _public_match_payload({
+        "opportunity_id": result.opportunity_id,
+        "eligibility_score": result.eligibility_score,
+        "readiness_score": result.readiness_score,
+        "upside_score": result.upside_score,
+        "final_score": result.final_score,
+        "bucket": result.bucket,
+        "reasons_fit": result.reasons_fit,
+        "reasons_gap": result.reasons_gap,
+        "next_steps": result.next_steps,
+        "ai_reason": result.ai_reason,
+        "unknowns": result.unknowns,
+        "opportunity": opportunities_by_id.get(result.opportunity_id, {}),
+    })
+    return MatchResultResponse(**payload)
 
 
 def _expand_search_aliases(query: str) -> list[str]:
@@ -1371,7 +1385,7 @@ async def get_gap_analysis(opportunity_id: str, profile: ProfileRequest):
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     gaps = analyze_gaps(profile.model_dump(), opp)
-    return gaps
+    return _public_match_payload(gaps)
 
 
 def _local_explanation(reasons_fit: list[str], reasons_gap: list[str]) -> str:
@@ -1537,14 +1551,17 @@ async def get_match_explanation(
 
     cache_key = _explain_cache_key(opportunity_id, profile_dict)
     llm_text = _explain_cache_get(cache_key)
+    public_opp = _public_match_payload(opp)
+    public_reasons_fit = redact_embedded_emails(result.reasons_fit)
+    public_reasons_gap = redact_embedded_emails(result.reasons_gap)
     if llm_text is None:
         try:
             llm_text = await run_blocking(
                 _llm_explanation,
                 profile_dict,
-                opp,
-                result.reasons_fit,
-                result.reasons_gap,
+                public_opp,
+                public_reasons_fit,
+                public_reasons_gap,
                 timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
             )
         except BlockingWorkTimeout:
@@ -1553,14 +1570,15 @@ async def get_match_explanation(
         if llm_text:
             _explain_cache_put(cache_key, llm_text)
 
-    return {
-        "explanation": llm_text or _local_explanation(result.reasons_fit, result.reasons_gap),
+    return _public_match_payload({
+        "explanation": llm_text
+        or _local_explanation(public_reasons_fit, public_reasons_gap),
         "method": "llm" if llm_text else "local",
         "opportunity_id": opportunity_id,
         "final_score": result.final_score,
         "bucket": result.bucket,
-        "reasons_fit": result.reasons_fit,
-        "reasons_gap": result.reasons_gap,
+        "reasons_fit": public_reasons_fit,
+        "reasons_gap": public_reasons_gap,
         "eligibility_score": result.eligibility_score,
         "readiness_score": result.readiness_score,
         "upside_score": result.upside_score,
@@ -1568,4 +1586,4 @@ async def get_match_explanation(
         "in_results": excluded_reason is None,
         "excluded_reason": excluded_reason,
         "matcher_version": MATCHER_VERSION,
-    }
+    })

@@ -8,16 +8,27 @@
 // cached and the header always fell back to the profile form. And re-fetching
 // the bodies by id on return is a visible load.
 //
-// The v6 contract stores only the bounded first server-view page (max 100
+// The v7 contract stores only the bounded first server-view page (max 100
 // cards) plus complete server-derived counts/facets/cursor metadata. A cache
 // hit may paint immediately, but useResultsData always validates it in the
 // background so a seven-day local copy never becomes the authority for corpus
-// or matcher generation.
+// or matcher generation. v7 is also the contact-trust boundary: pre-v7
+// payloads may contain an address copied into a public text or URL field.
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = STORAGE_KEYS.MATCH_RESULTS;
+const CACHE_VERSION = 'contact-trust-v1';
+export const MATCH_VIEW_CONTRACT_VERSION = 'match-view-v2-contact-trust';
+const OBSOLETE_MATCH_KEYS = [
+  'ofe_match_results',
+  'ofe_match_results_v2',
+  'ofe_match_results_v3',
+  'ofe_match_results_v4',
+  'ofe_match_results_v5',
+  'ofe_match_results_v6',
+] as const;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // results older than this re-fetch (corpus drift)
 const MAX_RESULTS = 100;
 const DESC_CHARS = 200; // keep a snippet so the free-text search still matches bodies
@@ -70,6 +81,7 @@ function projectOpportunity(opp: Opportunity): Opportunity {
 }
 
 interface MatchCacheShape {
+  version: typeof CACHE_VERSION;
   hash: string;
   semantic: boolean;
   savedAt: number;
@@ -89,7 +101,7 @@ interface MatchCacheShape {
   has_more?: boolean;
   next_cursor?: string | null;
   result_set_id?: string;
-  contract_version?: string;
+  contract_version: typeof MATCH_VIEW_CONTRACT_VERSION;
   view_start?: number;
   filtered_total?: number;
   view_counts?: MatchesResponse['view_counts'];
@@ -98,12 +110,27 @@ interface MatchCacheShape {
   view_id?: string;
 }
 
+function removeObsoleteMatchCaches(): void {
+  for (const key of OBSOLETE_MATCH_KEYS) {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+  }
+}
+
 function parse(): MatchCacheShape | null {
   try {
+    removeObsoleteMatchCaches();
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const c = JSON.parse(raw) as MatchCacheShape;
-    if (!c || typeof c.savedAt !== 'number') return null;
+    if (!c || c.version !== CACHE_VERSION) {
+      localStorage.removeItem(KEY);
+      return null;
+    }
+    if (c.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
+      localStorage.removeItem(KEY);
+      return null;
+    }
+    if (typeof c.savedAt !== 'number') return null;
     if (Date.now() - c.savedAt >= TTL_MS) return null;
     return c;
   } catch {
@@ -119,17 +146,23 @@ export function hasMatchCache(): boolean {
 
 export function clearMatchCache(): void {
   try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  removeObsoleteMatchCaches();
 }
 
 /** Persist a compact, self-contained copy of the match set (opportunities
  *  projected to display fields). */
 export function writeMatchCache(hash: string, semantic: boolean, data: MatchesResponse): void {
   try {
+    if (data.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
+      clearMatchCache();
+      return;
+    }
     const results = data.results.slice(0, MAX_RESULTS).map((r) => ({
       ...r,
       opportunity: projectOpportunity(r.opportunity),
     }));
     const payload: MatchCacheShape = {
+      version: CACHE_VERSION,
       hash,
       semantic,
       savedAt: Date.now(),
@@ -146,7 +179,7 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       has_more: data.has_more,
       next_cursor: data.next_cursor,
       result_set_id: data.result_set_id,
-      contract_version: data.contract_version,
+      contract_version: MATCH_VIEW_CONTRACT_VERSION,
       view_start: data.view_start,
       filtered_total: data.filtered_total,
       view_counts: data.view_counts,

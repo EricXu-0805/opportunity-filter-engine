@@ -480,6 +480,41 @@ class TestLLMRerank:
         area = captured["cand"][0][1]
         assert "\n" not in area  # flattened — cannot inject a fake numbered line
 
+    def test_candidate_context_redacts_hidden_contact_before_provider(self, monkeypatch):
+        from backend.lib.public_projection import contains_embedded_email
+        from backend.routes import matches
+
+        captured = {}
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+
+        def fake_score(query, cand):
+            captured["cand"] = cand
+            return {candidate[0]: {"s": 50.0, "r": ""} for candidate in cand}
+
+        monkeypatch.setattr(matches, "_llm_score_candidates", fake_score)
+        lookup = {
+            "a": {
+                "id": "a",
+                "title": "Email jane@example.edu",
+                "keywords": ["machine learning"],
+                "metadata": {
+                    "research_areas_raw": (
+                        "vision; jane\u2060at\u2060example"
+                        "\u2060dot\u2060edu"
+                    ),
+                },
+            },
+        }
+        matches.llm_rerank(
+            {"research_interests_text": "privacy-provider-boundary-query"},
+            self._results([("a", 80)]),
+            lookup,
+        )
+
+        area = captured["cand"][0][1]
+        assert not contains_embedded_email(area)
+        assert "jane" not in area
+
     def test_route_exploring_with_llm_is_graceful(self):
         # exploring=True + llm=true exercises the re-diversify-after-rerank path;
         # llm no-ops without a key, so this guards the wiring doesn't 5xx.
@@ -1202,6 +1237,34 @@ class TestColdEmailRefineGrounding:
         assert out["method"] == "llm"
         assert "fallback_reason" not in out
 
+    def test_refine_redacts_pre_boundary_address_before_provider(self, monkeypatch):
+        import backend.routes.cold_email as ce_module
+        from backend.lib.public_projection import contains_embedded_email
+
+        captured: dict = {}
+
+        def capture(messages, **_kwargs):
+            captured["prompt"] = messages[-1]["content"]
+            return self._BODY
+
+        monkeypatch.setattr(ce_module, "is_configured", lambda: True)
+        monkeypatch.setattr(ce_module, "chat_completion", capture)
+        resp = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    self._BODY
+                    + "\nPlease contact jane\u2060at\u2060example"
+                    "\u2060dot\u2060edu."
+                ),
+                "instruction": "make it formal",
+            },
+        )
+
+        assert resp.status_code == 200
+        assert not contains_embedded_email(captured["prompt"])
+        assert "jane" not in captured["prompt"]
+
     def test_refine_rejects_instruction_injected_skill(
         self, monkeypatch, sample_profile_req, opp_id
     ):
@@ -1519,6 +1582,25 @@ class TestOpportunityChatHardening:
         assert body["method"] == "llm"
         assert body["reply"] == "Yes, it is paid."
 
+    def test_chat_redacts_address_reintroduced_by_model(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+
+        monkeypatch.setattr(
+            op_module,
+            "_llm_chat_call",
+            lambda _messages, _model_id=None: "Email jane at example dot edu",
+        )
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat",
+            json={"message": "How do I apply?"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "reply": "[email redacted]",
+            "method": "llm",
+        }
+
     def test_chat_prompt_has_injection_guard_and_flattens_profile(
         self, opp_id, sample_profile_req, monkeypatch
     ):
@@ -1662,7 +1744,26 @@ class TestOpportunityChatStreaming:
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
         events = self._events(resp.text)
-        assert [e["delta"] for e in events if "delta" in e] == ["Hel", "lo"]
+        assert [e["delta"] for e in events if "delta" in e] == ["Hello"]
+        assert events[-1] == {"done": True, "method": "llm"}
+
+    def test_cross_chunk_address_is_redacted_before_any_delta(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+
+        def fake_stream(_messages, _model_id=None):
+            yield "Email jane@"
+            yield "example.edu"
+
+        monkeypatch.setattr(op_module, "_llm_chat_stream", fake_stream)
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat?stream=1",
+            json={"message": "How do I apply?"},
+        )
+        events = self._events(resp.text)
+
+        assert [event["delta"] for event in events if "delta" in event] == [
+            "[email redacted]"
+        ]
         assert events[-1] == {"done": True, "method": "llm"}
 
     def test_accept_header_alone_triggers_streaming(self, opp_id, monkeypatch):
@@ -3717,7 +3818,8 @@ class TestResponsePayloadTrim:
         not serve unverified works: name_match / legacy / junk stamps are
         stripped together with the status field, WITHOUT mutating the shared
         in-process corpus object. Verified metadata passes through untouched
-        (same object — no needless copy)."""
+        by value; the public projection still copies it so later recursive
+        contact/URL sanitization can never mutate the shared corpus."""
         from backend.routes.opportunities import _redact
 
         works = [{"title": "P", "year": 2026}]
@@ -3737,11 +3839,14 @@ class TestResponsePayloadTrim:
             "recent_works": list(works),
             "publication_attribution_status": "verified_author_id"}}
         out = _redact(verified)
-        assert out["metadata"] is verified["metadata"]  # no needless copy
+        assert out["metadata"] == verified["metadata"]
+        assert out["metadata"] is not verified["metadata"]
         assert out["metadata"]["recent_works"] == works
 
         plain = {"id": "x", "metadata": {"is_active": True}}
-        assert _redact(plain)["metadata"] is plain["metadata"]
+        plain_out = _redact(plain)
+        assert plain_out["metadata"] == plain["metadata"]
+        assert plain_out["metadata"] is not plain["metadata"]
 
 
 class TestAdminFeedback:

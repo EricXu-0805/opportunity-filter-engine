@@ -16,13 +16,28 @@ vi.mock('next/navigation', () => ({
 }));
 
 import Header from './Header';
-import { STORAGE_KEYS } from '@/lib/storage-keys';
+import {
+  MATCH_VIEW_CONTRACT_VERSION,
+  writeMatchCache,
+} from '@/lib/match-cache';
 
 beforeEach(() => {
   pathnameRef.current = '/';
   try { sessionStorage.clear(); } catch { /* private mode */ }
   try { localStorage.clear(); } catch { /* private mode */ }
 });
+
+function seedMatchCache(): void {
+  writeMatchCache('x', false, {
+    total: 0,
+    high_priority: 0,
+    good_match: 0,
+    reach: 0,
+    low_fit: 0,
+    results: [],
+    contract_version: MATCH_VIEW_CONTRACT_VERSION,
+  });
+}
 
 describe('Header', () => {
   it('renders all nav labels in both desktop and mobile panels plus a language switcher', () => {
@@ -198,7 +213,7 @@ describe('Header', () => {
   });
 
   it('routes "Find Matches" to /results when a match cache is present', async () => {
-    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    seedMatchCache();
     render(<Header />);
     // Wait for the useEffect that reads sessionStorage to run.
     await new Promise((r) => setTimeout(r, 0));
@@ -212,7 +227,7 @@ describe('Header', () => {
   });
 
   it('keeps active styling on "Find Matches" when on /results, even when href has switched to /results', async () => {
-    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    seedMatchCache();
     pathnameRef.current = '/results';
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
@@ -224,7 +239,7 @@ describe('Header', () => {
   });
 
   it('only swaps the Find Matches link — other nav items keep their hrefs', async () => {
-    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    seedMatchCache();
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
     const favoritesLinks = screen

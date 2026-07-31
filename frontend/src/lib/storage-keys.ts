@@ -19,7 +19,10 @@ export const STORAGE_KEYS = {
   // responsiveness influence, so it must be regenerated deterministically.
   // _v6: bounded server-view paging. Older payloads claimed a complete total
   // while silently truncating the locally cached array at 2,500 rows.
-  MATCH_RESULTS: 'ofe_match_results_v6',
+  // _v7: contact-trust boundary. Pre-_v7 payloads may retain an address copied
+  // into a public description, reason, recent-work, or URL field. They are
+  // regenerable and must not survive the stricter server projection.
+  MATCH_RESULTS: 'ofe_match_results_v7',
   // Versioned opt-in key: the legacy `ofe_semantic_rerank` defaulted on and
   // cannot prove active consent under the deterministic-default contract.
   SEMANTIC_RERANK: 'ofe_semantic_rerank_opt_in_v1',

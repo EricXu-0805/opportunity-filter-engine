@@ -31,6 +31,10 @@ from backend.lib.grounding import (
 )
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.public_projection import (
+    redact_embedded_emails,
+    sanitize_public_urls,
+)
 from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.supabase_auth import authenticated_uid
@@ -46,6 +50,24 @@ from src.recommender.cold_email import (
 logger = logging.getLogger("ofe.cold_email")
 
 router = APIRouter()
+
+_INTERNAL_CONTACT_FIELDS = frozenset({"contact_email", "pi_email"})
+
+
+def _contact_safe_opportunity(opp: dict) -> dict:
+    """Copy corpus evidence into a contact-free generation context.
+
+    Recipient resolution keeps using the raw record through
+    ``contact_email_status``. Templates, providers, variants, and refinement
+    never see the hidden address or a copy embedded in another field.
+    """
+    public = {
+        key: value
+        for key, value in opp.items()
+        if key not in _INTERNAL_CONTACT_FIELDS
+    }
+    return redact_embedded_emails(sanitize_public_urls(public))
+
 
 # Salutation / closing / connective vocabulary that legitimately appears in
 # a cold email but isn't a *skill claim*. Allow-listed (on top of the shared
@@ -917,6 +939,7 @@ def _run_engine(
     subject = ""
     body = ""
     fallback_reason: str | None = None
+    safe_opp = _contact_safe_opportunity(opp)
 
     if request.engine == "ai":
         if not is_configured():
@@ -927,7 +950,10 @@ def _run_engine(
             # degrades to the template — never a 5xx.
             try:
                 ai_text = _pipeline_generate(
-                    profile_dict, opp, request.style, request.resume_bullets,
+                    profile_dict,
+                    safe_opp,
+                    request.style,
+                    request.resume_bullets,
                     on_stage=on_stage,
                 )
             except Exception:
@@ -941,7 +967,12 @@ def _run_engine(
                 # the student never listed (same guarantee as the resume
                 # tailor) and fall back to the grounded template.
                 corpus = _build_email_corpus(
-                    _common_parts(profile_dict, opp, resume_bullets=request.resume_bullets), opp
+                    _common_parts(
+                        profile_dict,
+                        safe_opp,
+                        resume_bullets=request.resume_bullets,
+                    ),
+                    safe_opp,
                 )
                 passed, fabricated = validate_no_fabrication(
                     f"{ai_subject}\n{ai_body}", corpus,
@@ -958,8 +989,14 @@ def _run_engine(
                     )
 
     if method != "ai":
-        email_text = generate_cold_email(profile_dict, opp)
+        email_text = generate_cold_email(profile_dict, safe_opp)
         subject, body = _extract_subject_and_body(email_text)
+
+    # Last output belt: a provider or a legacy template must not synthesize or
+    # preserve a recipient address in the draft body. The dedicated recipient
+    # field below is the only allowed reveal channel.
+    subject = redact_embedded_emails(subject)
+    body = redact_embedded_emails(body)
 
     # W10b: the send target obeys the shared contact bar — verified provenance
     # AND a signed-in session — while the draft itself stays available to
@@ -968,7 +1005,7 @@ def _run_engine(
         opp, authenticated=authenticated,
     )
     mailto_link = _build_mailto_link(recipient_email, subject, body)
-    lab_type = _detect_lab_type(opp)
+    lab_type = _detect_lab_type(safe_opp)
 
     return ColdEmailResponse(
         subject=subject,
@@ -1092,16 +1129,17 @@ async def generate_email_variants(
 
     authed = await authenticated_uid(authorization) is not None
     profile_dict = request.profile.model_dump()
+    safe_opp = _contact_safe_opportunity(opp)
     try:
         raw_variants = await run_blocking(
             generate_variants,
             profile_dict,
-            opp,
+            safe_opp,
             timeout_seconds=LOCAL_WORK_TIMEOUT_SECONDS,
         )
     except BlockingWorkTimeout as exc:
         raise HTTPException(status_code=503, detail="Email variants timed out") from exc
-    lab_type = _detect_lab_type(opp)
+    lab_type = _detect_lab_type(safe_opp)
 
     # W10b: same contact bar as /cold-email — status is per-response (top
     # level) because it is a property of the opportunity + session, not of a
@@ -1113,6 +1151,8 @@ async def generate_email_variants(
     results = []
     for v in raw_variants:
         subject, body = _extract_subject_and_body(v["text"])
+        subject = redact_embedded_emails(subject)
+        body = redact_embedded_emails(body)
         results.append({
             "id": v["id"],
             "label": v["label"],
@@ -1176,10 +1216,13 @@ def _refine_evidence_corpus(request: EmailRefineRequest) -> str:
             request.opportunity_id,
         )
         if opp:
+            safe_opp = _contact_safe_opportunity(opp)
             parts = _common_parts(
-                request.profile.model_dump(), opp, resume_bullets=request.resume_bullets
+                request.profile.model_dump(),
+                safe_opp,
+                resume_bullets=request.resume_bullets,
             )
-            corpus = _build_email_corpus(parts, opp)
+            corpus = _build_email_corpus(parts, safe_opp)
     return corpus
 
 
@@ -1193,8 +1236,15 @@ async def refine_email(request: EmailRefineRequest):
         if opp is None:
             raise HTTPException(status_code=404, detail="Opportunity not found")
 
+    # A browser can still hold a pre-contact-trust draft. Never send that raw
+    # text to a provider: remove any visible/encoded/obfuscated address before
+    # both the remote editor and every local fallback path see it.
+    safe_body = redact_embedded_emails(request.current_body)
+
     if not is_configured():
-        return _local_refine(request.current_body, request.instruction)
+        result = _local_refine(safe_body, request.instruction)
+        result["body"] = redact_embedded_emails(result["body"])
+        return result
 
     messages = [
         {"role": "system", "content": (
@@ -1205,7 +1255,7 @@ async def refine_email(request: EmailRefineRequest):
             "Return ONLY the edited email body, no explanations."
         )},
         {"role": "user", "content": (
-            f"Current email:\n\n{request.current_body[:3000]}\n\n"
+            f"Current email:\n\n{safe_body[:3000]}\n\n"
             f"Edit instruction: {_sanitize_field(request.instruction, max_len=300)}\n\n"
             "Return the edited email body only."
         )},
@@ -1223,18 +1273,21 @@ async def refine_email(request: EmailRefineRequest):
         logger.warning("cold-email refine: model call timed out; using local edit")
         edited = None
     if edited is None:
-        return _local_refine(request.current_body, request.instruction)
+        result = _local_refine(safe_body, request.instruction)
+        result["body"] = redact_embedded_emails(result["body"])
+        return result
 
     corpus = _refine_evidence_corpus(request)
     passed, _fabricated = validate_no_fabrication(
         edited, corpus, extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
     )
     if not passed:
-        result = _local_refine(request.current_body, request.instruction)
+        result = _local_refine(safe_body, request.instruction)
+        result["body"] = redact_embedded_emails(result["body"])
         result["fallback_reason"] = "fabrication"
         return result
     _log_grounding_shadow(edited, corpus)
-    return {"body": edited, "method": "llm"}
+    return {"body": redact_embedded_emails(edited), "method": "llm"}
 
 
 def _local_refine(body: str, instruction: str) -> dict:

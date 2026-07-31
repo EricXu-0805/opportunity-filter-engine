@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import CompareTable from './CompareTable';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { hashProfile } from '@/lib/match-utils';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { CompareRow } from './scores';
 
@@ -162,6 +163,32 @@ describe('CompareTable', () => {
       expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
     });
     expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not serve an unversioned pre-contact-trust explain cache', async () => {
+    setStorage(true, profile);
+    const oldKey = `ofe_explain_a_${hashProfile(profile)}_ai0`;
+    sessionStorage.setItem(
+      oldKey,
+      JSON.stringify({
+        savedAt: Date.now(),
+        data: {
+          ...EXPLANATION,
+          explanation: 'Write jane@example.edu',
+          reasons_fit: ['Contact jane@example.edu'],
+        },
+      }),
+    );
+    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    expect(lastBucketRows?.find((row) => row.opp.id === 'a')?.match?.explanation)
+      .toBe('Great topical fit.');
   });
 
   it('failed calls are not cached — a later visit retries', async () => {

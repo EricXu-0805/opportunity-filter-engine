@@ -669,6 +669,38 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
       expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
     });
+
+    it('cached AI writing never restores a recipient after auth loses reveal', async () => {
+      mockGetVariants
+        .mockResolvedValueOnce({
+          variants: [makeVariant({ recipient_email: 'p@x.edu' })],
+          recipient_status: 'revealed',
+        })
+        .mockResolvedValueOnce({
+          variants: [makeVariant({ recipient_email: '' })],
+          recipient_status: 'unavailable',
+        });
+      mockGenerateColdEmailStream.mockReset().mockResolvedValue(AI_RESP);
+      const profile = makeProfile();
+      const { rerender } = render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-auth-cache" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
+      expect(screen.getByPlaceholderText('coldEmail.toPlaceholder')).toHaveValue('p@x.edu');
+
+      rerender(
+        <ColdEmailModal isOpen={false} onClose={vi.fn()} profile={profile} opportunityId="opp-auth-cache" opportunityTitle="REU" />,
+      );
+      rerender(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-auth-cache" opportunityTitle="REU" />,
+      );
+
+      await waitFor(() =>
+        expect(screen.getByPlaceholderText('coldEmail.toPlaceholder')).toHaveValue(''),
+      );
+      expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('coldEmail.openInEmail').closest('button')).toBeDisabled();
+    });
   });
 
   describe('send buttons (FE-2)', () => {

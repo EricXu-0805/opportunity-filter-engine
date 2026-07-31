@@ -16,6 +16,7 @@ vi.mock('@/lib/api', async () => {
   return { ...actual, getMatchView: mocks.getMatchView };
 });
 vi.mock('@/lib/match-cache', () => ({
+  MATCH_VIEW_CONTRACT_VERSION: 'match-view-v2-contact-trust',
   readMatchCache: mocks.readMatchCache,
   writeMatchCache: mocks.writeMatchCache,
 }));
@@ -100,7 +101,7 @@ function response(
     has_more: false,
     next_cursor: null,
     result_set_id: `set-${id}`,
-    contract_version: 'match-view-v1',
+    contract_version: 'match-view-v2-contact-trust',
     view_start: 0,
     filtered_total: 1,
     view_counts: {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { fetchOpportunityServer, fetchSimilarServer } from '@/lib/api-server';
+import { PUBLIC_RELEASE_CACHE_VERSION } from '@/lib/release-scope';
 import OpportunityDetail from './OpportunityDetail';
 
 interface PageProps {
@@ -19,7 +20,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = (opp.description_clean || opp.description_raw || '').slice(0, 160);
   const keywords = opp.keywords?.slice(0, 10) ?? [];
 
-  const ogImage = `/api/og/opportunity/${encodeURIComponent(opp.id)}`;
+  const ogImage = (
+    `/api/og/opportunity/${encodeURIComponent(opp.id)}`
+    + `?v=${encodeURIComponent(PUBLIC_RELEASE_CACHE_VERSION)}`
+  );
 
   return {
     title: `${title} — JoinALab`,
