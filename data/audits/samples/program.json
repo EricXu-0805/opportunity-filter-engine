@@ -1,0 +1,219 @@
+{
+ "category": "program",
+ "generated_at": "2026-07-31T02:03:42.607252+00:00",
+ "seed": 20260731,
+ "corpus_records": 131952,
+ "risk_pool_gaps": [],
+ "samples": [
+  {
+   "sample_id": "program-001",
+   "entity_type": "program",
+   "entity_id": "stanford-f352c27ee600",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Chappell Lougee Scholarship",
+    "status": "unknown"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://undergradresearch.stanford.edu/fund-your-project/explore-student-grants/chappell-lougee",
+   "source_evidence": "Chappell Lougee Scholarship — Application Opens: October 1, 2026; Application Deadline: December 1, 2026 (undergradresearch.stanford.edu)",
+   "manual_expected_value": "active; next cycle opens 2026-10-01, deadline 2026-12-01",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "System status 'unknown' is safe; page states the current cycle — a capture opportunity for the campus collector (deadline_note).",
+   "risk_case": "status_unknown"
+  },
+  {
+   "sample_id": "program-002",
+   "entity_type": "program",
+   "entity_id": "ucsb-urca-proj-0bd40809bc3e",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Infection Prevention Of Biomaterials With Extracellular Vesicles",
+    "status": null
+   },
+   "verification_status": "unverified",
+   "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000gOVH2UAO/infection-prevention-of-biomaterials-with-extracellular-vesicles",
+   "source_evidence": "Record id a0W4X00000gOVH2UAO present in official URCA sitemap (sitemap-outfunds__funding_program__c-1.xml, lastmod 2026-07-31)",
+   "manual_expected_value": "currently listed on the official URCA board",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Detail page is a client-side Salesforce app; the collector's documented official channel is the public sitemap, which lists the record as of today.",
+   "risk_case": "discovered"
+  },
+  {
+   "sample_id": "program-003",
+   "entity_type": "program",
+   "entity_id": "ucsb-urca-proj-e5cbe0e218a7",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "2022 Academic Worker Strike Conflict Research Project",
+    "status": null
+   },
+   "verification_status": "unverified",
+   "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000g8VGiUAM/2022-academic-worker-strike-conflict-research-project",
+   "source_evidence": "Record id a0W4X00000g8VGiUAM present in official URCA sitemap (lastmod 2026-07-31)",
+   "manual_expected_value": "currently listed on the official URCA board",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Stale-year-title risk case: '2022' names the research SUBJECT (the 2022 academic-worker strike), not the posting cycle; the official board lists the project today.",
+   "risk_case": "stale_year_title"
+  },
+  {
+   "sample_id": "program-004",
+   "entity_type": "program",
+   "entity_id": "duke-5281f147f388",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Duke Climate+ Summer Research Program",
+    "status": "unknown"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://nicholasinstitute.duke.edu/climate-plus",
+   "source_evidence": "nicholasinstitute.duke.edu/climate-plus lands on the institute homepage (1.2k chars); Climate+ program content not present server-side",
+   "manual_expected_value": "program page with Climate+ content",
+   "review_result": "source_mismatch",
+   "error_type": "evidence_page_moved_or_js",
+   "severity": "minor",
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "System status 'unknown' remains safe; the stored source link no longer evidences the program server-side.",
+   "risk_case": "status_unknown"
+  },
+  {
+   "sample_id": "program-005",
+   "entity_type": "program",
+   "entity_id": "stanford-9169a30d950a",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Research-Related National Fellowships",
+    "status": null
+   },
+   "verification_status": "unverified",
+   "source_url": "https://undergradresearch.stanford.edu/fund-your-project/research-fellowships",
+   "source_evidence": "Research Fellowships | Undergraduate Research and Independent Projects (page live; carries stale '2020-21 academic year' copy)",
+   "manual_expected_value": "resource page exists at Stanford UR",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Record asserts existence only (no cycle claim); the stale copy is the source's own.",
+   "risk_case": null
+  },
+  {
+   "sample_id": "program-006",
+   "entity_type": "program",
+   "entity_id": "barnard-259ecc779e2f",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Beckman Scholars Program (Barnard)",
+    "status": "unknown"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://barnard.edu/beckman-scholars",
+   "source_evidence": "Beckman Scholars | Barnard College — program described; 2015–2024 scholar history; no explicit current-cycle open/closed statement extracted",
+   "manual_expected_value": "program exists; current-cycle status not stated plainly",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "program-007",
+   "entity_type": "program",
+   "entity_id": "jhu-20d49b24fa6d",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "REAL Showcase (formerly DREAMS) — Johns Hopkins University",
+    "status": "unknown"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://hour.jhu.edu/present/real/",
+   "source_evidence": "Cloudflare challenge ('Just a moment...') on hour.jhu.edu",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "waf_challenge",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "program-008",
+   "entity_type": "program",
+   "entity_id": "ucsb-urca-proj-cfd6a4611d02",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Milpa Mexican Indigenous Languages Promotion And Advocacy Project",
+    "status": null
+   },
+   "verification_status": "unverified",
+   "source_url": "https://ucsb.my.site.com/urca/s/funding-program/a0W4X00000eIcHHUA0/milpa-mexican-indigenous-languages-promotion-and-advocacy-project",
+   "source_evidence": "Record id a0W4X00000eIcHHUA0 present in official URCA sitemap (lastmod 2026-07-31)",
+   "manual_expected_value": "currently listed on the official URCA board",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "program-009",
+   "entity_type": "program",
+   "entity_id": "hamilton-3b3579dcc2cc",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Kirkland Summer Associates (Hamilton)",
+    "status": "unknown"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.hamilton.edu/academics/student-research/programs",
+   "source_evidence": "Kirkland Summer Associates listed among programs: 'Levitt Summer Research Fellowship … Kirkland Summer Associates NY6 Summer Research Fellowship' (hamilton.edu)",
+   "manual_expected_value": "program listed on Hamilton student-research programs page",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "program-010",
+   "entity_type": "program",
+   "entity_id": "uchicago-509e2a6c6f27",
+   "field_name": "title+metadata.status",
+   "system_value": {
+    "title": "Macro Finance Research Program",
+    "status": null
+   },
+   "verification_status": "unverified",
+   "source_url": "https://bfi.uchicago.edu/centers-programs/macro-finance-research-program/",
+   "source_evidence": "Macro Finance Research Program | Becker Friedman Institute — upcoming: 2026 Summer Session for Young Scholars, August 4-7, 2026",
+   "manual_expected_value": "active program at UChicago BFI",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  }
+ ]
+}

@@ -199,7 +199,9 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # override (OFE_BUCKET_HIGH=75, a different rerank weight, …) yields a
 # distinct version without anyone remembering to bump — two processes with
 # different knobs can no longer emit identical-looking results.
-_MATCHER_VERSION_BASE = "3"
+# 4: truthfulness W11 — the actionability tie-break now uses the shared
+# harvested-provenance email bar (a synthesized address no longer counts).
+_MATCHER_VERSION_BASE = "4"
 
 
 def _matcher_fingerprint() -> str:

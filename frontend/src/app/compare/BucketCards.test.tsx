@@ -107,4 +107,43 @@ describe('BucketCards — canonical match truth', () => {
     expect(screen.getByText(/2026-08-01/)).toBeInTheDocument();
     expect(screen.queryByText(/estimated|verify date/)).toBeNull();
   });
+
+  it('does not claim "Rolling" from the blanket is_rolling default alone', () => {
+    const row = readyRow();
+    row.opp = { ...row.opp, is_rolling: true } as Opportunity;
+
+    render(<BucketCards rows={[row]} />);
+
+    expect(screen.getByText(/No fixed deadline/)).toBeInTheDocument();
+    expect(screen.queryByText(/Rolling/)).toBeNull();
+  });
+
+  it('claims "Rolling" only with scraped rolling evidence', () => {
+    const row = readyRow();
+    row.opp = {
+      ...row.opp,
+      is_rolling: true,
+      metadata: { is_active: true, confidence_score: 0.9, deadline_note: 'Rolling admissions' },
+    } as Opportunity;
+
+    render(<BucketCards rows={[row]} />);
+
+    expect(screen.getByText(/Rolling/)).toBeInTheDocument();
+    expect(screen.queryByText(/No fixed deadline/)).toBeNull();
+  });
+
+  it('a listed date wins over the is_rolling flag', () => {
+    const row = readyRow();
+    row.opp = {
+      ...row.opp,
+      is_rolling: true,
+      deadline: '2026-08-01',
+      deadline_is_estimate: false,
+    } as Opportunity;
+
+    render(<BucketCards rows={[row]} />);
+
+    expect(screen.getByText(/2026-08-01/)).toBeInTheDocument();
+    expect(screen.queryByText(/Rolling|No fixed deadline/)).toBeNull();
+  });
 });

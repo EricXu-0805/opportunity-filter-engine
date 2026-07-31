@@ -35,7 +35,8 @@ import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
-import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
+import { getDeadlineUrgency } from '@/lib/match-utils';
+import { allowsProfessorFraming, cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
 // to keep this card a server-cheap leaf until the user opens the panel).
@@ -97,16 +98,8 @@ function isNewPosting(opp: MatchResult['opportunity']): boolean {
   return diff < 14 * 86400000;
 }
 
-function getDeadlineUrgency(deadline: string | undefined): 'passed' | 'urgent' | 'soon' | 'later' | null {
-  if (!deadline) return null;
-  const dl = new Date(deadline + 'T00:00:00');
-  if (isNaN(dl.getTime())) return null;
-  const days = Math.ceil((dl.getTime() - Date.now()) / 86400000);
-  if (days < 0) return 'passed';
-  if (days <= 7) return 'urgent';
-  if (days <= 30) return 'soon';
-  return 'later';
-}
+// Deadline urgency comes from `lib/match-utils.getDeadlineUrgency` (the card
+// previously kept a drifted inline copy that ignored `deadline_is_estimate`).
 
 function scopeChipText(chip: ScopeChip, t: (key: string, vars?: Record<string, string | number>) => string): string {
   if (chip.kind === 'foreignCampus') return t('card.scope.campusOnly', { host: chip.host! });
@@ -143,7 +136,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   // Home-campus records get no chip (the majority — avoid noise); only
   // open/unknown/foreign-campus records carry the host+audience chip.
   const scopeChip = scopeChipFor(opp, homeSchoolOf(profile ?? null));
-  const urgency = getDeadlineUrgency(opp.deadline);
+  const urgency = getDeadlineUrgency(opp.deadline, undefined, opp.deadline_is_estimate);
   const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';
 
   // Faculty "Research with Prof. X" records set application_url to the
@@ -229,6 +222,12 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             </Badge>
           )}
           {opp.deadline && (() => {
+            // An estimated date (NSF projected deadlines) must never yield a
+            // confident "Deadline passed" / countdown claim — always the
+            // neutral gray date with an explicit estimate marker.
+            if (opp.deadline_is_estimate) {
+              return <Badge variant="gray"><Clock className="w-3 h-3" />{`${opp.deadline} · ${t('badges.estimated')}`}</Badge>;
+            }
             const dl = new Date(opp.deadline + 'T00:00:00');
             const now = new Date();
             const daysLeft = Math.ceil((dl.getTime() - now.getTime()) / 86400000);
@@ -344,7 +343,12 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             }`}
           >
             <Mail className="w-3.5 h-3.5" />
-            {isFaculty ? t('card.emailProfessor') : t('card.draftEmail')}
+            {/* "Email Professor" only when the scraped rank is a stated
+                professor rank — unknown ranks and known non-professor ranks
+                ("Senior Lecturer") get the rank-neutral "Draft Email". */}
+            {isFaculty && allowsProfessorFraming(opp.faculty_title)
+              ? t('card.emailProfessor')
+              : t('card.draftEmail')}
           </button>
           {profile && (
             <button

@@ -1,0 +1,188 @@
+{
+  "generated_at": "2026-07-31T07:16:42.625488+00:00",
+  "categories": {
+    "school": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 10,
+        "correctly_unknown": 0,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 0,
+        "pending": 0
+      }
+    },
+    "department": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 5,
+        "correctly_unknown": 2,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 1,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 2,
+        "pending": 0
+      }
+    },
+    "professor": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 7,
+        "correctly_unknown": 0,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 3,
+        "pending": 0
+      }
+    },
+    "position": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 5,
+        "correctly_unknown": 0,
+        "incorrect_value": 2,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 3,
+        "pending": 0
+      }
+    },
+    "program": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 6,
+        "correctly_unknown": 2,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 1,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 1,
+        "pending": 0
+      }
+    },
+    "deadline": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 0,
+        "correctly_unknown": 9,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 1,
+        "pending": 0
+      }
+    },
+    "international": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 1,
+        "correctly_unknown": 6,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 3,
+        "pending": 0
+      }
+    },
+    "email": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 6,
+        "correctly_unknown": 1,
+        "incorrect_value": 0,
+        "unsupported_value": 1,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 2,
+        "pending": 0
+      }
+    },
+    "research_area": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 5,
+        "correctly_unknown": 5,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 0,
+        "pending": 0
+      }
+    },
+    "publication": {
+      "present": true,
+      "sample_count": 10,
+      "reviewed_count": 10,
+      "complete": true,
+      "results": {
+        "verified_correct": 1,
+        "correctly_unknown": 8,
+        "incorrect_value": 0,
+        "unsupported_value": 0,
+        "source_mismatch": 0,
+        "entity_mismatch": 0,
+        "conflicting": 0,
+        "stale": 0,
+        "blocked": 1,
+        "pending": 0
+      }
+    }
+  },
+  "critical_open": [],
+  "truthfulness_approved": true,
+  "decision": "GO"
+}

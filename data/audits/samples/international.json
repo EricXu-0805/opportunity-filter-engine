@@ -1,0 +1,219 @@
+{
+ "category": "international",
+ "generated_at": "2026-07-31T02:03:44.370517+00:00",
+ "seed": 20260731,
+ "corpus_records": 131952,
+ "risk_pool_gaps": [],
+ "samples": [
+  {
+   "sample_id": "international-001",
+   "entity_type": "international",
+   "entity_id": "nsf-reu-2546334",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "no",
+    "citizenship_required": true
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2546334",
+   "source_evidence": "NSF REU solicitation (NSF 22-601 §V) limits REU participation to US citizens/nationals/permanent residents; award page shows no contradicting welcome",
+   "manual_expected_value": "no / citizenship_required true (program-family policy)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Policy-derived, now stamped policy:nsf_reu_solicitation and cited in work_auth_notes (W11).",
+   "risk_case": "policy_no_nsf_reu"
+  },
+  {
+   "sample_id": "international-002",
+   "entity_type": "international",
+   "entity_id": "faculty-architecture-557222c2",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "yes",
+    "citizenship_required": false
+   },
+   "verification_status": "unverified",
+   "source_url": "https://arch.illinois.edu/people/profiles/nmadili-okwumabua/",
+   "source_evidence": "TLS handshake failure to arch.illinois.edu from review vantage (curl + requests)",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "tls_handshake_failure",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "The drawn explicit-'yes' risk case could not be verified this round — flagged for the next sampling pass.",
+   "risk_case": "explicit_yes_claim"
+  },
+  {
+   "sample_id": "international-003",
+   "entity_type": "international",
+   "entity_id": "sro-d2f19790",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "no",
+    "citizenship_required": true
+   },
+   "verification_status": "unverified",
+   "source_url": "https://researchops.web.illinois.edu/?page=4",
+   "source_evidence": "TLS handshake failure to researchops.web.illinois.edu from review vantage",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "tls_handshake_failure",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": "citizenship_required"
+  },
+  {
+   "sample_id": "international-004",
+   "entity_type": "international",
+   "entity_id": "faculty-bu-clas-92c3e6a0",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "unknown",
+    "citizenship_required": false
+   },
+   "verification_status": "unknown",
+   "source_url": "https://www.bu.edu/classics/faculty-profiles/leah-kronenberg/",
+   "source_evidence": "BU Classical Studies profile has no citizenship/international statement",
+   "manual_expected_value": "unknown",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "No-mention correctly stays unknown; faculty citizenship_required=False is the documented product-policy claim.",
+   "risk_case": "stays_unknown"
+  },
+  {
+   "sample_id": "international-005",
+   "entity_type": "international",
+   "entity_id": "faculty-vt-cee-c9641f9c",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "unknown",
+    "citizenship_required": false
+   },
+   "verification_status": "unknown",
+   "source_url": "https://www.webapps.cee.vt.edu/index.php?category=people&pagetype=bio&do=getprofile&user=rakha.html",
+   "source_evidence": "VT CEE bio page has no citizenship/international statement",
+   "manual_expected_value": "unknown",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "international-006",
+   "entity_type": "international",
+   "entity_id": "faculty-jhu-chem-e4568b88",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "unknown",
+    "citizenship_required": false
+   },
+   "verification_status": "unknown",
+   "source_url": "https://krieger.jhu.edu/people/faculty-directory/",
+   "source_evidence": "Cloudflare challenge on krieger.jhu.edu",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "waf_challenge",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "international-007",
+   "entity_type": "international",
+   "entity_id": "faculty-osu-mae-321fe92a",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "unknown",
+    "citizenship_required": false
+   },
+   "verification_status": "unknown",
+   "source_url": "https://mae.osu.edu/people/bons.2",
+   "source_evidence": "OSU MAE profile has no citizenship/international statement",
+   "manual_expected_value": "unknown",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "international-008",
+   "entity_type": "international",
+   "entity_id": "faculty-clemson-biosci-64454373",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "unknown",
+    "citizenship_required": false
+   },
+   "verification_status": "unknown",
+   "source_url": "https://www.clemson.edu/science/academics/departments/biosci/about/profiles/dmoulto",
+   "source_evidence": "Clemson Biological Sciences profile has no citizenship/international statement",
+   "manual_expected_value": "unknown",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "international-009",
+   "entity_type": "international",
+   "entity_id": "faculty-uga-hist-230496e3",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "unknown",
+    "citizenship_required": false
+   },
+   "verification_status": "unknown",
+   "source_url": "https://history.uga.edu/directory/people/stephen-berry",
+   "source_evidence": "UGA History profile has no citizenship/international statement (only nav-chrome matches)",
+   "manual_expected_value": "unknown",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "international-010",
+   "entity_type": "international",
+   "entity_id": "faculty-bu-met-6593c8a5",
+   "field_name": "eligibility.international_friendly",
+   "system_value": {
+    "international_friendly": "unknown",
+    "citizenship_required": false
+   },
+   "verification_status": "unknown",
+   "source_url": "https://www.bu.edu/met/profile/marcus-goncalves/",
+   "source_evidence": "BU MET profile has no citizenship/international statement (only admissions-nav matches)",
+   "manual_expected_value": "unknown",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  }
+ ]
+}

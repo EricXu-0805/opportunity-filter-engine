@@ -43,6 +43,10 @@ export const en = {
     pastDeadline: 'Past deadline',
     deadlinePassed: 'Deadline passed',
     dueInDays: 'Due in {count}d',
+    // Short estimate marker appended to date badges when
+    // deadline_is_estimate (NSF projected dates) — an estimated date must
+    // never yield a confident "passed"/countdown assertion.
+    estimated: 'est.',
     new: 'New',
   },
   auth: {
@@ -2751,7 +2755,9 @@ export const en = {
     filters: {
       paidAll: 'Paid / Unpaid',
       paidYes: 'Paid only',
-      paidNo: 'Unpaid',
+      // The 'no' branch also matches paid='unknown' (undisclosed pay) — the
+      // label must not assert "Unpaid" for records nobody collected pay for.
+      paidNo: 'Unpaid / not disclosed',
       intlAll: 'International status',
       intlYes: 'Intl friendly only',
       intlNo: 'Show all (incl. US-only)',
@@ -2844,7 +2850,9 @@ export const en = {
     sourceBoulderFaculty: 'CU Boulder Faculty (Research Labs)',
     scopeAll: 'All opportunities',
     scopeMySchool: 'My school',
-    scopeOpen: 'Open to all',
+    // The 'open' scope filter also matches audience='unknown'
+    // (lib/discovery-scope.ts) — the label must say so.
+    scopeOpen: 'Open to all (incl. unconfirmed)',
     crossSchool: "Include other schools' opportunities",
     crossSchoolHint: 'National programs and summer programs are always shown.',
     locAll: 'Any location',
@@ -3044,13 +3052,23 @@ export const en = {
       contact: 'Contact',
     },
     recentWorksNote: 'From this professor’s public publication record — skim one before you reach out.',
+    // Rank-neutral variant when metadata.faculty_title is a known
+    // non-professor rank ("Senior Lecturer") — no "professor" framing.
+    recentWorksNoteNeutral: 'From their public publication record — skim one before you reach out.',
     contactSignInPrompt: 'A verified email address is on file for this professor. Sign in to reveal it.',
     contactSignInCta: 'Sign in to reveal',
     contactVerifyHint: 'Harvested from the professor’s public page — double-check it there before sending.',
     fields: {
       deadline: 'Deadline',
       deadlineEstimate: '(estimated)',
+      // "Rolling" renders only with scraped rolling evidence
+      // (metadata.deadline_note) — is_rolling alone is a collector default.
       rollingBasis: 'Rolling — no fixed deadline',
+      // Faculty records: emailing the PI works year-round, but "rolling
+      // admissions" was never scraped — this is the honest claim.
+      acceptsInquiries: 'Accepts inquiries year-round',
+      // Non-faculty records without rolling evidence: all we know.
+      noDeadlineListed: 'No fixed deadline listed',
       startDate: 'Start date',
       duration: 'Duration',
       compensation: 'Compensation',
@@ -3215,6 +3233,9 @@ export const en = {
     viewFaculty: 'View faculty profile',
     viewSource: 'View source',
     rolling: 'Rolling',
+    // No-deadline records without scraped rolling evidence — "Rolling" would
+    // overclaim, this is all we actually know.
+    noDeadline: 'No fixed deadline',
     deadlineEstimated: 'estimated',
     deadlineVerify: 'verify date',
     show: 'Show',
@@ -4075,6 +4096,9 @@ export const zh = {
     pastDeadline: '已过截止',
     deadlinePassed: '已过截止',
     dueInDays: '还剩 {count} 天',
+    // deadline_is_estimate（NSF 预测日期）时附在日期徽章后的简短标记 ——
+    // 估算日期绝不能给出确定的"已过截止"/倒计时断言。
+    estimated: '预估',
     new: '新',
   },
   auth: {
@@ -6783,7 +6807,9 @@ export const zh = {
     filters: {
       paidAll: '付费 / 无酬',
       paidYes: '仅付费',
-      paidNo: '无酬',
+      // 'no' 分支同时匹配 paid='unknown'（薪酬未公开）—— 标签不能把
+      // 没采集到薪酬的记录断言为"无报酬"。
+      paidNo: '无报酬/未说明',
       intlAll: '国际生状态',
       intlYes: '仅国际友好',
       intlNo: '显示全部（含仅限美国）',
@@ -6876,7 +6902,9 @@ export const zh = {
     sourceBoulderFaculty: 'CU Boulder 教授（研究实验室）',
     scopeAll: '全部机会',
     scopeMySchool: '我的学校',
-    scopeOpen: '对外开放',
+    // 'open' 筛选同时匹配 audience='unknown'（lib/discovery-scope.ts）——
+    // 标签必须如实说明。
+    scopeOpen: '面向所有人（含未确认）',
     crossSchool: '包含其他学校的机会',
     crossSchoolHint: '全国性项目和暑期项目始终会显示。',
     locAll: '任意地点',
@@ -7073,13 +7101,23 @@ export const zh = {
       contact: '联系方式',
     },
     recentWorksNote: '来自这位教授的公开发表记录 —— 联系前先翻一篇,套磁信会具体得多。',
+    // metadata.faculty_title 为已知非教授职称（如"高级讲师"）时的中性表述
+    // —— 不使用"教授"框架。
+    recentWorksNoteNeutral: '来自其公开发表记录 —— 联系前先翻一篇,套磁信会具体得多。',
     contactSignInPrompt: '这位教授有一个经核实的邮箱地址。登录后即可查看。',
     contactSignInCta: '登录查看',
     contactVerifyHint: '采集自教授的公开主页 —— 发送前请到页面上再核对一次。',
     fields: {
       deadline: '截止日期',
       deadlineEstimate: '（估算）',
+      // 只有采集到滚动招生证据（metadata.deadline_note）才显示"滚动招生"
+      // —— is_rolling 本身只是采集器默认值。
       rollingBasis: '滚动招生 —— 无固定截止',
+      // 教授记录：随时可以邮件联系 PI,但"滚动招生"从未被采集到 ——
+      // 这才是诚实的说法。
+      acceptsInquiries: '全年接受咨询',
+      // 非教授记录且无滚动招生证据：我们只知道这些。
+      noDeadlineListed: '未列出明确截止日期',
       startDate: '开始日期',
       duration: '时长',
       compensation: '薪酬',
@@ -7244,6 +7282,9 @@ export const zh = {
     viewFaculty: '查看教师主页',
     viewSource: '查看来源',
     rolling: '滚动招生',
+    // 无截止日期且无滚动招生证据的记录 —— "滚动招生"是过度断言,
+    // 我们实际知道的只有这些。
+    noDeadline: '无固定截止日期',
     deadlineEstimated: '估算日期',
     deadlineVerify: '请核实日期',
     show: '展开',

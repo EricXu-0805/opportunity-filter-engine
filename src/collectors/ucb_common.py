@@ -41,6 +41,7 @@ from urllib.parse import urljoin, urlsplit
 import requests
 from bs4 import BeautifulSoup
 
+from ..evidence import is_professor_rank
 from .atomic_json import atomic_write_json
 
 logger = logging.getLogger(__name__)
@@ -823,7 +824,9 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     dept_short = config["short"]
     dept_name = config["name"]
     profile_url = person.get("url", "")
-    title = person.get("title", "Professor")
+    # A missing rank stays missing (truthfulness W11): "" means the directory
+    # stated no rank, and every consumer renders rank-neutrally for it.
+    title = (person.get("title") or "").strip()
     if _RETIRED_TITLE_RE.search(title):
         return None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
@@ -841,15 +844,18 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     # enricher/llm_tagger skill backfills are likewise faculty-gated.
     skills: list[str] = []
 
+    professor_rank = is_professor_rank(title)
     desc_parts = [
-        f"Research opportunity with {title} {name} in the {dept_name} "
+        f"Research opportunity with {title + ' ' if title else ''}{name} in the {dept_name} "
         f"at UC Berkeley.",
     ]
     if research_areas:
         desc_parts.append(f"Research areas: {research_areas[:200]}")
     desc_parts.append(
         "Contact the professor directly to inquire about undergraduate "
-        "research positions in their lab."
+        "research positions in their lab." if professor_rank else
+        "Contact them directly to inquire about undergraduate "
+        "research opportunities."
     )
     description = " ".join(desc_parts)
     # Defensive second pass: strip nav-furniture from the FULLY ASSEMBLED
@@ -860,7 +866,10 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     description = _strip_nav_furniture(description)
 
     research_summary = f" ({', '.join(keywords[:3])})" if keywords else ""
-    opp_title = f"Research with Prof. {name} — {dept_short}{research_summary}"
+    # "Prof." is a rank claim, earned only by a source-stated professor rank
+    # (truthfulness W11); the actual rank ships in metadata.faculty_title.
+    honorific = "Prof. " if professor_rank else ""
+    opp_title = f"Research with {honorific}{name} — {dept_short}{research_summary}"
 
     paid, compensation_details = _detect_funding(f"{research_areas} {description} {title}")
 
@@ -894,7 +903,9 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "title": opp_title,
         "organization": "University of California, Berkeley",
         "department": dept_name,
-        "lab_or_program": f"Prof. {name}'s Research Group",
+        # No fabricated lab entity (truthfulness W11): a lab name only ever
+        # comes from source text; none is scraped here, so none is asserted.
+        "lab_or_program": "",
         "pi_name": name,
         "contact_email": email or None,
         "url": profile_url,

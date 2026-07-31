@@ -217,6 +217,31 @@ describe('MatchCard', () => {
       render(<MatchCard match={makeMatch({ deadline: far })} onDraftEmail={() => {}} />);
       expect(screen.getByText(far)).toBeInTheDocument();
     });
+
+    it('estimated past deadline renders the est marker, never "Deadline passed"', () => {
+      // NSF projected dates: a confident red "passed" assertion on an
+      // estimated date would be an overclaim.
+      render(
+        <MatchCard
+          match={makeMatch({ deadline: '2020-01-01', deadline_is_estimate: true })}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.getByText('2020-01-01 · badges.estimated')).toBeInTheDocument();
+      expect(screen.queryByText('badges.deadlinePassed')).toBeNull();
+    });
+
+    it('estimated near deadline renders the est marker, never a countdown', () => {
+      const soon = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+      render(
+        <MatchCard
+          match={makeMatch({ deadline: soon, deadline_is_estimate: true })}
+          onDraftEmail={() => {}}
+        />,
+      );
+      expect(screen.getByText(`${soon} · badges.estimated`)).toBeInTheDocument();
+      expect(screen.queryByText(/^badges\.dueInDays:\d+$/)).toBeNull();
+    });
   });
 
   describe('isNew prop (R19/R20 highlight ring + pill)', () => {
@@ -405,6 +430,7 @@ describe('MatchCard', () => {
       const match = makeMatch({
         source_type: 'faculty_research',
         url: 'https://faculty.example/prof',
+        faculty_title: 'Professor',
         application: {
           application_effort: 'medium',
           requires_resume: 'no',
@@ -424,6 +450,7 @@ describe('MatchCard', () => {
       const match = makeMatch({
         id: 'fac-1',
         source_type: 'faculty_research',
+        faculty_title: 'Professor',
         application: {
           application_effort: 'low',
           requires_resume: 'no',
@@ -434,6 +461,27 @@ describe('MatchCard', () => {
       render(<MatchCard match={match} onDraftEmail={handler} />);
       fireEvent.click(screen.getByText('card.emailProfessor'));
       expect(handler).toHaveBeenCalledWith('fac-1');
+    });
+
+    it('faculty record with a non-professor rank gets "Draft Email", not "Email Professor"', () => {
+      // faculty_title is the scraped rank — "Senior Lecturer" must not be
+      // framed as a professor on the CTA.
+      const match = makeMatch({
+        source_type: 'faculty_research',
+        faculty_title: 'Senior Lecturer',
+      });
+      render(<MatchCard match={match} onDraftEmail={() => {}} />);
+      expect(screen.queryByText('card.emailProfessor')).toBeNull();
+      expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
+    });
+
+    it('faculty record with a professor-like rank keeps "Email Professor"', () => {
+      const match = makeMatch({
+        source_type: 'faculty_research',
+        faculty_title: 'Assistant Professor',
+      });
+      render(<MatchCard match={match} onDraftEmail={() => {}} />);
+      expect(screen.getByText('card.emailProfessor')).toBeInTheDocument();
     });
   });
 

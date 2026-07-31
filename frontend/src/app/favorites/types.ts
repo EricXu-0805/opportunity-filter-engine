@@ -15,6 +15,9 @@ export interface Opp {
   school?: string;
   on_campus?: boolean;
   deadline?: string;
+  // NSF-style projected date marker — DeadlineBadge must not assert a
+  // confident "passed"/countdown on an estimated date.
+  deadline_is_estimate?: boolean;
   description_clean?: string;
   description_raw?: string;
   keywords?: string[];

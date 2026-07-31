@@ -1,0 +1,241 @@
+{
+ "category": "deadline",
+ "generated_at": "2026-07-31T02:03:43.677936+00:00",
+ "seed": 20260731,
+ "corpus_records": 131952,
+ "risk_pool_gaps": [
+  "past_deadline"
+ ],
+ "samples": [
+  {
+   "sample_id": "deadline-001",
+   "entity_type": "deadline",
+   "entity_id": "nsf-reu-2624028",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": "2027-02-15",
+    "is_rolling": null,
+    "deadline_is_estimate": true,
+    "deadline_note": null
+   },
+   "verification_status": "inferred",
+   "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2624028",
+   "source_evidence": "NSF award page (client-rendered stub) states no program deadline; system value is flagged deadline_is_estimate",
+   "manual_expected_value": "no stated deadline; estimate labeled",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Estimate is system-labeled inferred (estimate:award_start_date); W11 also stops lifecycle decisions firing on estimates. No contradicting evidence.",
+   "risk_case": "estimated_deadline"
+  },
+  {
+   "sample_id": "deadline-002",
+   "entity_type": "deadline",
+   "entity_id": "amherst-c8caa671d3d4",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": "By faculty nomination of graduating seniors."
+   },
+   "verification_status": "unknown",
+   "source_url": "https://www.amherst.edu/academiclife/student-faculty-research/post-baccalaureate-fellowship",
+   "source_evidence": "Amherst post-baccalaureate fellowship page shows no application deadline; nomination-based ('By faculty nomination of graduating seniors' preserved in deadline_note)",
+   "manual_expected_value": "no public deadline",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": "rolling_with_note"
+  },
+  {
+   "sample_id": "deadline-003",
+   "entity_type": "deadline",
+   "entity_id": "faculty-neu-dmsb-13045bc9",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": null
+   },
+   "verification_status": "policy_default",
+   "source_url": "https://damore-mckim.northeastern.edu/people/nirajana-mishra/",
+   "source_evidence": "Faculty profile page (damore-mckim.northeastern.edu) carries no posting deadline; the only 'Deadlines' text is admissions site chrome",
+   "manual_expected_value": "no deadline (faculty inquiry record)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "is_rolling=true is the documented faculty-record premise; W11 renders it as 'Accepts inquiries year-round', not 'Rolling admissions'.",
+   "risk_case": "rolling_faculty_default"
+  },
+  {
+   "sample_id": "deadline-004",
+   "entity_type": "deadline",
+   "entity_id": "nsf-reu-2619699",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": "2027-02-15",
+    "is_rolling": null,
+    "deadline_is_estimate": true,
+    "deadline_note": null
+   },
+   "verification_status": "inferred",
+   "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=2619699",
+   "source_evidence": "NSF award page stub; no deadline stated; system value labeled estimate",
+   "manual_expected_value": "no stated deadline; estimate labeled",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": "estimated_deadline"
+  },
+  {
+   "sample_id": "deadline-005",
+   "entity_type": "deadline",
+   "entity_id": "faculty-jhu-som-4786823a",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": null
+   },
+   "verification_status": "policy_default",
+   "source_url": "https://profiles.hopkinsmedicine.org/provider/gregory-j-riggins/2777595",
+   "source_evidence": "Hopkins Medicine provider profile carries no application deadline",
+   "manual_expected_value": "no deadline (faculty inquiry record)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "deadline-006",
+   "entity_type": "deadline",
+   "entity_id": "faculty-utdallas-econ-63cdad8a",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": null
+   },
+   "verification_status": "policy_default",
+   "source_url": "https://profiles.utdallas.edu/darce",
+   "source_evidence": "UT Dallas profile page carries no application deadline",
+   "manual_expected_value": "no deadline (faculty inquiry record)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "deadline-007",
+   "entity_type": "deadline",
+   "entity_id": "faculty-jhu-wse-cs-dc6e6032",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": null
+   },
+   "verification_status": "policy_default",
+   "source_url": "https://www.cs.jhu.edu/faculty/lydia-zakynthinou/",
+   "source_evidence": "JHU CS faculty page carries no application deadline",
+   "manual_expected_value": "no deadline (faculty inquiry record)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "deadline-008",
+   "entity_type": "deadline",
+   "entity_id": "faculty-stanford-ealc-ff8f6e90",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": null
+   },
+   "verification_status": "policy_default",
+   "source_url": "https://profiles.stanford.edu/55384",
+   "source_evidence": "Stanford Profiles page carries no application deadline",
+   "manual_expected_value": "no deadline (faculty inquiry record)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "deadline-009",
+   "entity_type": "deadline",
+   "entity_id": "faculty-northwestern-math-e383e0fd",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": null
+   },
+   "verification_status": "policy_default",
+   "source_url": "https://www.math.northwestern.edu/people/faculty/gabor-szekelyhidi.html",
+   "source_evidence": "Northwestern Math faculty page carries no application deadline",
+   "manual_expected_value": "no deadline (faculty inquiry record)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "deadline-010",
+   "entity_type": "deadline",
+   "entity_id": "faculty-upenn-vet-csam-47cbc806",
+   "field_name": "deadline/is_rolling",
+   "system_value": {
+    "deadline": null,
+    "is_rolling": true,
+    "deadline_is_estimate": false,
+    "deadline_note": null
+   },
+   "verification_status": "policy_default",
+   "source_url": "https://www.vet.upenn.edu/directory/kimberlyagnello/",
+   "source_evidence": "HTTP 403 Forbidden (vet.upenn.edu — known Imperva WAF)",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "waf_403",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  }
+ ]
+}

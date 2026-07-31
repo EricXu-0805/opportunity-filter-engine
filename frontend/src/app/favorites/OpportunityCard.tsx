@@ -144,7 +144,7 @@ export function OpportunityCard({
               </Badge>
             )}
             {opp.source && !opp._customId && <Badge variant="gray">{opp.source}</Badge>}
-            <DeadlineBadge deadline={opp.deadline} t={t} />
+            <DeadlineBadge deadline={opp.deadline} isEstimate={opp.deadline_is_estimate} t={t} />
           </div>
 
           {!selectionMode && (

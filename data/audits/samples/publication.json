@@ -1,0 +1,239 @@
+{
+ "category": "publication",
+ "generated_at": "2026-07-31T02:03:46.064392+00:00",
+ "seed": 20260731,
+ "corpus_records": 131952,
+ "risk_pool_gaps": [
+  "verified_author_id"
+ ],
+ "samples": [
+  {
+   "sample_id": "publication-001",
+   "entity_type": "publication",
+   "entity_id": "faculty-wisc-eps-45cdabd8",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 3,
+    "recent_work_titles": [
+     "Holocaust education in transition from live to virtual survivor testimony: pedagogical and ethical dilemmas",
+     "What We Can Learn about Learning from Holocaust Education",
+     "Curricular Imprints or the Presence of Curricular Pasts: A Study of One Third Grader’s Holocaust Education 12 Years Later"
+    ]
+   },
+   "verification_status": "unverified",
+   "source_url": "https://eps.education.wisc.edu/staff/schweber-simone/",
+   "source_evidence": "Staff page lists no publications; stored works are name-matched Holocaust-education papers, topically consistent with her field; no attribution stamp",
+   "manual_expected_value": "internal candidates only — not product facts",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Product-dark by the fail-closed gate (#699): unstamped works never serve. Awaiting verified OpenAlex re-harvest.",
+   "risk_case": "works_without_status"
+  },
+  {
+   "sample_id": "publication-002",
+   "entity_type": "publication",
+   "entity_id": "faculty-tufts-cee-7b0718fa",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://engineering.tufts.edu/cee/node/3146",
+   "source_evidence": "No works stored for this initials-name record; page lists none extractable",
+   "manual_expected_value": "(none)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Initials-ambiguity risk case: system stores nothing — nothing to misattribute.",
+   "risk_case": "initials_only_name"
+  },
+  {
+   "sample_id": "publication-003",
+   "entity_type": "publication",
+   "entity_id": "faculty-northwestern-anth-e8ddb062",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 3,
+    "recent_work_titles": [
+     "Recovering a substantive landscape of mobility",
+     "Water in the Caribbean in the Colonial Period",
+     "A Tale of Two Maps: Archaeological Consideration of Two Danish Colonial Enclaves During the Long Eighteenth Century"
+    ]
+   },
+   "verification_status": "unverified",
+   "source_url": "https://anthropology.northwestern.edu/people/faculty/hauser.html",
+   "source_evidence": "2 of 3 stored titles appear on Mark Hauser's own Northwestern page ('Recovering a substantive landscape of mobility'; 'A Tale of Two Maps…')",
+   "manual_expected_value": "works are his (per own profile)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Attribution supported by his own page, yet still correctly product-dark (no verified_author_id stamp) — the gate fails closed as designed.",
+   "risk_case": "works_without_status"
+  },
+  {
+   "sample_id": "publication-004",
+   "entity_type": "publication",
+   "entity_id": "faculty-economics-bbea148b",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://economics.illinois.edu/profile/billw",
+   "source_evidence": "TLS handshake failure to economics.illinois.edu from review vantage",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "tls_handshake_failure",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": "initials_only_name"
+  },
+  {
+   "sample_id": "publication-005",
+   "entity_type": "publication",
+   "entity_id": "faculty-tufts-ilcs-58717950",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://as.tufts.edu/ilcs/node/811",
+   "source_evidence": "No works stored; nothing asserted",
+   "manual_expected_value": "(none)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "publication-006",
+   "entity_type": "publication",
+   "entity_id": "faculty-uw-amath-c0d64c22",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://amath.washington.edu/people/eli-shlizerman",
+   "source_evidence": "No works stored; nothing asserted",
+   "manual_expected_value": "(none)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "publication-007",
+   "entity_type": "publication",
+   "entity_id": "faculty-emory-gbs-c22ee0ff",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://goizueta.emory.edu/faculty/profiles/marat-ibragimov",
+   "source_evidence": "No works stored; nothing asserted",
+   "manual_expected_value": "(none)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "publication-008",
+   "entity_type": "publication",
+   "entity_id": "faculty-vanderbilt-math-62ebf5a9",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://as.vanderbilt.edu/math/bio/dan-margalit",
+   "source_evidence": "No works stored; nothing asserted (page confirms Dan Margalit, Stevenson Professor)",
+   "manual_expected_value": "(none)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "publication-009",
+   "entity_type": "publication",
+   "entity_id": "faculty-osu-hist-7d27feef",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://history.osu.edu/people/frank.152",
+   "source_evidence": "No works stored; nothing asserted",
+   "manual_expected_value": "(none)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "publication-010",
+   "entity_type": "publication",
+   "entity_id": "faculty-dartmouth-cs-e2da5658",
+   "field_name": "metadata.recent_works",
+   "system_value": {
+    "publication_attribution_status": null,
+    "recent_works_count": 0,
+    "recent_work_titles": []
+   },
+   "verification_status": "unverified",
+   "source_url": "https://web.cs.dartmouth.edu/people/sean-w-smith",
+   "source_evidence": "No works stored; nothing asserted",
+   "manual_expected_value": "(none)",
+   "review_result": "correctly_unknown",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  }
+ ]
+}

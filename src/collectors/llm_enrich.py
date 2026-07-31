@@ -36,6 +36,7 @@ import sys
 import time
 from collections import Counter, defaultdict
 
+from ..evidence import stamp_inferred
 from .ucb_common import PROCESSED_FILE, fetch_soup
 from .uiuc_faculty import _is_junk_keyword, _llm_research_keywords
 
@@ -147,6 +148,10 @@ def apply_llm_keywords(opps: list[dict], mapping: dict[str, list[str]]) -> int:
         kws = mapping.get(_record_url(o))
         if kws:
             o["keywords"] = kws
+            # Keyword-provenance debt fix (W11): an LLM-derived keyword set is
+            # grounded against the profile page at harvest, but at rest it was
+            # indistinguishable from a scraped one. Stamp the producer.
+            stamp_inferred(o.setdefault("metadata", {}), "keywords", "llm:bio_extraction")
             n += 1
     return n
 

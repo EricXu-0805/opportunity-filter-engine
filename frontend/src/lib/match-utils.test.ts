@@ -51,6 +51,19 @@ describe('getDeadlineUrgency', () => {
     expect(getDeadlineUrgency('2026-05-16', NOW)).toBe('soon');
     expect(getDeadlineUrgency('2026-05-17', NOW)).toBe('later');
   });
+
+  it('estimated deadlines never produce a passed/red-urgent verdict', () => {
+    // Past estimate: no confident 'passed' claim, no urgency at all.
+    expect(getDeadlineUrgency('2026-04-10', NOW, true)).toBeNull();
+    // Near estimate: capped at the amber 'soon' band, never red 'urgent'.
+    expect(getDeadlineUrgency('2026-04-20', NOW, true)).toBe('soon');
+    // Farther estimates keep their neutral bands.
+    expect(getDeadlineUrgency('2026-05-01', NOW, true)).toBe('soon');
+    expect(getDeadlineUrgency('2026-06-15', NOW, true)).toBe('later');
+    // Confirmed dates behave exactly as before with an explicit false.
+    expect(getDeadlineUrgency('2026-04-10', NOW, false)).toBe('passed');
+    expect(getDeadlineUrgency('2026-04-20', NOW, false)).toBe('urgent');
+  });
 });
 
 describe('expandSearchAliases', () => {

@@ -15,6 +15,7 @@ import os
 import re
 from pathlib import Path
 
+from src.evidence import stamp_inferred
 from src.normalizers.enricher import _combined_text, _extract_skills_from_text
 
 logger = logging.getLogger(__name__)
@@ -271,7 +272,11 @@ def rule_based_tag(opp: dict) -> dict:
             intl = _detect_intl_from_title(opp.get("title", ""))
         if intl != "unknown":
             updates["international_friendly"] = intl
-            updates["citizenship_required"] = intl == "no"
+            # An inferred restriction may be asserted; the ABSENCE of a
+            # restriction is never inferred (truthfulness W11) — a "yes"
+            # leaves citizenship_required alone.
+            if intl == "no":
+                updates["citizenship_required"] = True
 
     # ── Paid status detection ──
     if opp.get("paid") == "unknown":
@@ -301,23 +306,36 @@ def _detect_intl_from_text(text: str) -> str:
         "restricted to u.s. citizens",
         "green card holders",
     ]
+    # Only phrases that EXPLICITLY establish international eligibility. The
+    # dropped ones either never addressed citizenship ("open to all",
+    # "all students") or flip meaning under negation / a trailing condition
+    # ("international applicants must already hold work authorization",
+    # "non-us citizens" in "non-US citizens are not eligible") — absence of a
+    # restriction is not eligibility (truthfulness W11).
     yes_keywords = [
-        "international students welcome", "open to all",
-        "international students eligible", "all students",
-        "no citizenship requirement", "international students are encouraged",
+        "international students welcome",
+        "international students eligible",
+        "no citizenship requirement",
+        "international students are encouraged",
         "open to international", "regardless of citizenship",
-        "all nationalities", "international applicants",
         "international students are eligible",
         "open to students from any country",
         "no citizenship or residency requirement",
         "we welcome international",
         "students of all nationalities",
         "non-u.s. citizens are welcome",
-        "non-us citizens",
     ]
     if any(kw in lower for kw in no_keywords):
         return "no"
-    if any(kw in lower for kw in yes_keywords):
+    for kw in yes_keywords:
+        idx = lower.find(kw)
+        if idx < 0:
+            continue
+        # Negation guard: "not open to international students" must not read
+        # as a welcome.
+        prefix = lower[max(0, idx - 24):idx]
+        if re.search(r"\b(?:not|no|never|isn't|aren't|is not|are not)\s*$", prefix.strip() + " "):
+            continue
         return "yes"
     return "unknown"
 
@@ -329,7 +347,6 @@ def _detect_paid_from_text(text: str) -> str:
         "stipend", "paid position", "salary", "compensation provided",
         "paid internship", "funded", "receive a stipend", "financial support",
         "weekly stipend", "hourly pay", "hourly rate", "per hour",
-        "$",  # dollar amounts suggest paid
         "competitive salary", "monthly stipend", "living allowance",
         "housing provided", "travel reimbursement", "tuition waiver",
         "award amount", "grant amount", "funding provided", "fully funded",
@@ -338,10 +355,12 @@ def _detect_paid_from_text(text: str) -> str:
         "unpaid", "unfunded", "volunteer", "no compensation", "not paid",
         "credit only", "for credit", "course credit only",
     ]
-    if any(kw in lower for kw in paid_keywords):
-        return "yes"
+    # Explicit unpaid evidence first: "unfunded" contains "funded", so the
+    # paid check must never get first look (truthfulness W11).
     if any(kw in lower for kw in unpaid_keywords):
         return "no"
+    if any(kw in lower for kw in paid_keywords):
+        return "yes"
     return "unknown"
 
 
@@ -352,9 +371,11 @@ def _detect_intl_from_org(opp: dict) -> str:
     source = (opp.get("source", "") or "").lower()
     combined = f"{org} {title} {source}"
 
-    # Federal agencies / national labs → almost always US only
+    # Federal agencies / national labs → almost always US only. Word-bounded:
+    # a bare substring test tagged "Transfer Student Research Program" as
+    # federal via the "nsf" inside "transfer" (truthfulness W11).
     for fed_org in FEDERAL_ORGS:
-        if fed_org in combined:
+        if re.search(rf"\b{re.escape(fed_org)}\b", combined):
             return "no"
 
     # University programs are generally open to international students
@@ -481,27 +502,41 @@ Opportunities:
         return [rule_based_tag(o) for o in opps]
 
 
-def apply_updates(opp: dict, updates: dict) -> bool:
-    """Apply extracted fields to an opportunity. Returns True if any changes made."""
+def apply_updates(opp: dict, updates: dict, *, method: str = "rule:llm_tagger") -> bool:
+    """Apply extracted fields to an opportunity. Returns True if any changes made.
+
+    Fill-only (a stated value is never overwritten), and every field written
+    here is a derivation, not a source statement — so each write stamps
+    ``metadata.inferred_fields`` (truthfulness W11) to keep stated-vs-inferred
+    distinguishable at rest. ``method`` names the producer ("rule:llm_tagger"
+    or "llm:llm_tagger").
+    """
     changed = False
+    meta = opp.setdefault("metadata", {})
 
     if "paid" in updates and opp.get("paid") == "unknown":
         opp["paid"] = updates["paid"]
+        stamp_inferred(meta, "paid", method)
         changed = True
 
     elig = opp.get("eligibility", {})
 
     if "international_friendly" in updates and elig.get("international_friendly") == "unknown":
         elig["international_friendly"] = updates["international_friendly"]
-        elig["citizenship_required"] = updates.get("citizenship_required", updates["international_friendly"] == "no")
+        stamp_inferred(meta, "eligibility.international_friendly", method)
+        if updates.get("citizenship_required") is True:
+            elig["citizenship_required"] = True
+            stamp_inferred(meta, "eligibility.citizenship_required", method)
         changed = True
 
     if "skills_required" in updates and not elig.get("skills_required"):
         elig["skills_required"] = updates["skills_required"]
+        stamp_inferred(meta, "eligibility.skills_required", method)
         changed = True
 
     if "skills_preferred" in updates and not elig.get("skills_preferred"):
         elig["skills_preferred"] = updates["skills_preferred"]
+        stamp_inferred(meta, "eligibility.skills_preferred", method)
         changed = True
 
     # Faculty are cold-email research contacts, not postings with a class-year
@@ -515,6 +550,7 @@ def apply_updates(opp: dict, updates: dict) -> bool:
         current = elig.get("preferred_year", [])
         if current == ["freshman", "sophomore", "junior", "senior"] and updates["preferred_year"] != current:
             elig["preferred_year"] = updates["preferred_year"]
+            stamp_inferred(meta, "eligibility.preferred_year", method)
             changed = True
 
     return changed
@@ -546,7 +582,7 @@ def tag_all(use_llm: bool = True, dry_run: bool = False) -> dict:
 
             for (_idx, opp), updates in zip(batch, updates_list, strict=False):
                 if updates and not dry_run:
-                    if apply_updates(opp, updates):
+                    if apply_updates(opp, updates, method="llm:llm_tagger"):
                         tagged_count += 1
                 elif updates and dry_run:
                     tagged_count += 1

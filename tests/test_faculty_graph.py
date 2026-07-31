@@ -1614,7 +1614,7 @@ class TestJsonDirSource:
             {"person": {"first": "Ret", "last": "Ired"},
              "titleInfo": {"standardTitle": "Professor Emeritus"},
              "contact": {"email": "ri@ucsd.edu"}},
-            # missing nested hop → title falls back to default, ladder-kept
+            # missing nested hop → rank stays unknown ("" — W11), ladder-kept
             {"person": {"first": "Flat", "last": "Record"}, "titleInfo": None},
         ]
 
@@ -1668,14 +1668,15 @@ class TestTitleRe:
         }, "https://x.edu/")
         assert people[0]["title"] == "Associate Professor, Chair"
 
-    def test_title_re_miss_keeps_default(self):
+    def test_title_re_miss_stays_unknown(self):
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(
             "<li class='card'><a href='/a.html'>Ada Prof</a></li>", "html.parser")
         people = fg._parse_cards(soup, {
             "card": "li.card", "name": ":self", "title_re": r"(Regius Chair)"},
             "https://x.edu/")
-        assert people[0]["title"] == "Professor"
+        # W11: a rank the page never stated is unknown, not "Professor".
+        assert people[0]["title"] == ""
 
 
 class TestDepartmentField:
@@ -2079,8 +2080,8 @@ class TestFullCoverageEngineAdditions:
         assert [p["name"] for p in people] == ["Amin Shiri", "No Acf"]
         assert people[0]["title"] == "Assistant Professor"
         assert people[0]["email"] == "amin@x.edu"
-        # ACF miss degrades to the engine default, never raises.
-        assert people[1]["title"] == "Professor"
+        # ACF miss leaves the rank unknown (W11) — never raises, never fabricates.
+        assert people[1]["title"] == ""
         assert people[1]["email"] is None
 
     def test_faculty180_paginates_filters_and_keeps_ladder(self, monkeypatch):

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Check, X, ChevronDown } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { useT } from '@/i18n/client';
-import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
+import { cleanCompensation, noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
@@ -29,7 +29,10 @@ const FIELDS: FieldSpec[] = [
   { key: 'paid', labelKey: 'compare.fields.paid', value: (o) => o.paid },
   { key: 'international', labelKey: 'compare.fields.international', value: (o) => o.eligibility?.international_friendly },
   { key: 'citizenship', labelKey: 'compare.fields.citizenship', value: (o) => truthValue(o.eligibility?.citizenship_required) },
-  { key: 'deadline', labelKey: 'compare.fields.deadline', value: (o) => (o.is_rolling ? 'rolling' : o.deadline), kind: 'deadline' },
+  // A listed date beats the `is_rolling` flag (a blanket collector default,
+  // not scraped evidence); the 'rolling' sentinel is emitted only on actual
+  // rolling evidence, otherwise the honest 'no_deadline' sentinel.
+  { key: 'deadline', labelKey: 'compare.fields.deadline', value: (o) => o.deadline ?? (o.is_rolling ? (noDeadlineKind(o) === 'rolling' ? 'rolling' : 'no_deadline') : undefined), kind: 'deadline' },
   { key: 'effort', labelKey: 'compare.fields.applicationEffort', value: (o) => o.application?.application_effort },
   { key: 'skills', labelKey: 'compare.fields.skills', value: (o) => o.eligibility?.skills_required, kind: 'skills' },
   { key: 'majors', labelKey: 'compare.fields.majors', value: (o) => o.eligibility?.majors },
@@ -57,7 +60,7 @@ function normalizeForComparison(v: ComparisonValue): string {
 
 function normalizeFieldForComparison(field: FieldSpec, opp: Opportunity): string {
   const value = normalizeForComparison(field.value(opp));
-  if (field.kind !== 'deadline' || !value || value === 'rolling') return value;
+  if (field.kind !== 'deadline' || !value || value === 'rolling' || value === 'no_deadline') return value;
   const precision = opp.deadline_is_estimate === false
     ? 'confirmed'
     : opp.deadline_is_estimate === true
@@ -289,6 +292,7 @@ function CellContent({
   if (value === 'no') return <span>{t('common.no')}</span>;
   if (value === 'unknown') return <span className="text-gray-400">{t('common.notSpecified')}</span>;
   if (value === 'rolling') return <span>{t('compare.rolling')}</span>;
+  if (value === 'no_deadline') return <span className="text-gray-400">{t('compare.noDeadline')}</span>;
   if (kind === 'deadline' && deadlineIsEstimate !== false) {
     return (
       <span>

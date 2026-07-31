@@ -13,8 +13,23 @@ import {
   Users,
 } from 'lucide-react';
 import type { Opportunity } from '@/lib/types';
-import { cleanCompensation, friendlyLabel } from './detail-utils';
+import {
+  allowsProfessorFraming,
+  cleanCompensation,
+  friendlyLabel,
+  noDeadlineKind,
+  type NoDeadlineKind,
+} from './detail-utils';
 import type { TFunc } from './types';
+
+// Evidence-gated wording for records without a fixed deadline — see
+// `noDeadlineKind` in detail-utils.ts. "Rolling" renders only with actual
+// scraped rolling evidence; the blanket `is_rolling` default never does.
+const NO_DEADLINE_KEYS: Record<NoDeadlineKind, string> = {
+  inquiries: 'detail.fields.acceptsInquiries',
+  rolling: 'detail.fields.rollingBasis',
+  none: 'detail.fields.noDeadlineListed',
+};
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -78,7 +93,7 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           <DetailRow
             icon={<Calendar />}
             label={t('detail.fields.deadline')}
-            value={t('detail.fields.rollingBasis')}
+            value={t(NO_DEADLINE_KEYS[noDeadlineKind(opp)])}
           />
         )}
         {opp.start_date && (
@@ -205,7 +220,12 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         ))}
       </ul>
       <p className="mt-4 text-[11px] text-gray-400">
-        {t('detail.recentWorksNote')}
+        {/* "this professor's record" only when the scraped rank actually is
+            professor-like (or unknown — legacy records); a known non-professor
+            rank (e.g. "Senior Lecturer") gets the neutral wording. */}
+        {t(allowsProfessorFraming(opp.metadata?.faculty_title)
+          ? 'detail.recentWorksNote'
+          : 'detail.recentWorksNoteNeutral')}
       </p>
     </Section>
   );

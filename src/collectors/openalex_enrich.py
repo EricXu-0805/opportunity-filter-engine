@@ -39,6 +39,7 @@ import time
 
 import requests
 
+from ..evidence import stamp_inferred
 from ..publication_trust import (
     NAME_MATCH as ATTRIBUTION_NAME_MATCH,
 )
@@ -610,6 +611,11 @@ def apply_openalex(opps: list[dict], mapping: dict[str, list[str]]) -> int:
             kws = mapping.get(_record_url(o))
         if kws:
             o["keywords"] = kws
+            # W11: publication-derived topics are a derivation from the
+            # author-matched OpenAlex record, not text scraped off the
+            # professor's page — stamp the producer so serving/audits can
+            # tell the difference at rest.
+            stamp_inferred(o.setdefault("metadata", {}), "keywords", "derived:openalex_topics")
             n += 1
     return n
 

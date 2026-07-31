@@ -37,6 +37,10 @@ const OPP_FIELDS = [
   'duration', 'compensation_details', 'keywords', 'lab_or_program', 'pi_name',
   'school', 'audience', 'source_type', 'recent_works',
   'publication_attribution_status',
+  // W11: dropping these on a cache-hit would silently change what the card
+  // claims — faculty_title gates the "Email Professor" framing and
+  // deadline_is_estimate keeps an estimated date from rendering as hard.
+  'faculty_title', 'deadline_is_estimate',
 ] as const;
 const ELIG_FIELDS = ['international_friendly', 'skills_required', 'skills_preferred'] as const;
 const APP_FIELDS = [

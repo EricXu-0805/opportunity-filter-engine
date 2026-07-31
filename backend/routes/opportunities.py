@@ -20,6 +20,7 @@ from backend.lib.llm import (
     chat_model_options,
     chat_model_slug,
 )
+from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.publication_attribution import works_are_verified
 from backend.lib.supabase_auth import authenticated_uid
@@ -40,8 +41,24 @@ _STATS_TTL = 300
 _UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status")
 
 
+def _tri_state(value: object) -> str:
+    """Render a nullable boolean honestly: only real True/False claim yes/no;
+    None/absent is "unknown" — never coerced to a confident False (W11)."""
+    if value is True:
+        return "yes"
+    if value is False:
+        return "no"
+    return "unknown"
+
+
 def _redact(opp: dict) -> dict:
     out = {k: v for k, v in opp.items() if k not in REDACTED_FIELDS}
+    # Position truthfulness (W11): strip an unsupported "Prof." honorific
+    # baked into legacy titles when the record's own stated rank contradicts
+    # it. Copy-on-write on the fresh dict; the corpus object is untouched.
+    honest = displayed_title(opp)
+    if honest != out.get("title"):
+        out["title"] = honest
     # Publication trust boundary: works whose attribution is anything but
     # explicitly verified (name_match, absent, junk) are internal candidates
     # for the recollection/verification effort, not the professor's
@@ -66,7 +83,11 @@ _LIST_DROP = REDACTED_FIELDS | {"description_raw", "metadata"}
 
 
 def _list_card(opp: dict) -> dict:
-    return {k: v for k, v in opp.items() if k not in _LIST_DROP}
+    out = {k: v for k, v in opp.items() if k not in _LIST_DROP}
+    honest = displayed_title(opp)
+    if honest != out.get("title"):
+        out["title"] = honest
+    return out
 
 
 @router.get("/opportunities")
@@ -435,7 +456,7 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
         f"- Organization: {opp.get('organization', '')} {('(' + opp.get('department', '') + ')') if opp.get('department') else ''}".strip(),
         f"- Type: {opp.get('opportunity_type', 'unknown')}",
         f"- PI / Lab: {opp.get('pi_name') or '—'} / {opp.get('lab_or_program') or '—'}",
-        f"- Location: {opp.get('location', 'unspecified')} (on-campus: {opp.get('on_campus')})",
+        f"- Location: {opp.get('location', 'unspecified')} (on-campus: {_tri_state(opp.get('on_campus'))})",
         f"- Remote: {opp.get('remote_option', 'unknown')}",
         f"- Paid: {opp.get('paid', 'unknown')}; compensation: {opp.get('compensation_details') or '—'}",
         f"- Deadline: {opp.get('deadline') or '—'} (rolling: {bool(opp.get('is_rolling'))})",
@@ -444,7 +465,7 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
         f"- Preferred years: {', '.join(elig.get('preferred_year') or []) or '(unspecified)'}",
         f"- Required skills: {', '.join(elig.get('skills_required') or []) or '(none specified)'}",
         f"- International friendly: {elig.get('international_friendly', 'unknown')}",
-        f"- Citizenship required: {bool(elig.get('citizenship_required'))}",
+        f"- Citizenship required: {_tri_state(elig.get('citizenship_required'))}",
         f"- Application: requires_resume={app.get('requires_resume', 'unknown')}, cover_letter={app.get('requires_cover_letter', 'unknown')}, recommendation={app.get('requires_recommendation', 'unknown')}, effort={app.get('application_effort', 'unknown')}",
         f"- Apply URL: {app.get('application_url') or opp.get('url') or opp.get('source_url') or '—'}",
         f"- Keywords: {', '.join(opp.get('keywords') or []) or '(none)'}",
@@ -530,7 +551,7 @@ def _local_chat_fallback(opp: dict, message: str) -> str:
         f"- Type: {opp.get('opportunity_type', 'unknown')}; paid: {opp.get('paid', 'unknown')}; deadline: {opp.get('deadline') or 'not specified'}.",
         f"- Eligible majors: {', '.join(elig.get('majors') or []) or 'unspecified'}.",
         f"- Required skills: {', '.join(elig.get('skills_required') or []) or 'none listed'}.",
-        f"- International-friendly: {elig.get('international_friendly', 'unknown')}; citizenship required: {bool(elig.get('citizenship_required'))}.",
+        f"- International-friendly: {elig.get('international_friendly', 'unknown')}; citizenship required: {_tri_state(elig.get('citizenship_required'))}.",
         f"- Apply at: {app.get('application_url') or opp.get('url') or 'see source'}.",
         "Set OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY on the backend to enable AI chat.",
     ]

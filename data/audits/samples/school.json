@@ -1,0 +1,219 @@
+{
+ "category": "school",
+ "generated_at": "2026-07-31T02:03:41.572199+00:00",
+ "seed": 20260731,
+ "corpus_records": 131952,
+ "risk_pool_gaps": [],
+ "samples": [
+  {
+   "sample_id": "school-001",
+   "entity_type": "school",
+   "entity_id": "faculty-purdue-vcs-deacffb8",
+   "field_name": "school",
+   "system_value": {
+    "school": "purdue",
+    "organization": "Purdue University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://vet.purdue.edu/directory/ilya-slizovskiy",
+   "source_evidence": "Ilya Slizovskiy | Purdue Veterinary Medicine — Department of Veterinary Clinical Sciences, Purdue University College of Veterinary Medicine, 625 Harrison Street West Lafayette, IN",
+   "manual_expected_value": "purdue / Purdue University (West Lafayette)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Multi-campus risk case: page confirms main West Lafayette campus.",
+   "risk_case": "multi_campus_org"
+  },
+  {
+   "sample_id": "school-002",
+   "entity_type": "school",
+   "entity_id": "faculty-psu-cse-5f48eed5",
+   "field_name": "school",
+   "system_value": {
+    "school": "psu",
+    "organization": "Penn State University Park"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.eecs.psu.edu/departments/directory-detail-g.aspx?q=mps6990",
+   "source_evidence": "EECS Directory | Penn State Engineering (eecs.psu.edu)",
+   "manual_expected_value": "psu / Penn State University Park",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Similar-name risk case: domain + branding confirm Penn State Engineering (University Park).",
+   "risk_case": "similar_org_name"
+  },
+  {
+   "sample_id": "school-003",
+   "entity_type": "school",
+   "entity_id": "faculty-purdue-chem-1e61ad21",
+   "field_name": "school",
+   "system_value": {
+    "school": "purdue",
+    "organization": "Purdue University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.chem.purdue.edu/people/profile/lipton.html",
+   "source_evidence": "James Tarpo Jr. and Margaret Tarpo Department of Chemistry - Purdue University; © 2026 Purdue University",
+   "manual_expected_value": "purdue / Purdue University",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": "multi_campus_org"
+  },
+  {
+   "sample_id": "school-004",
+   "entity_type": "school",
+   "entity_id": "faculty-washu-gen-56da132d",
+   "field_name": "school",
+   "system_value": {
+    "school": "washu",
+    "organization": "Washington University in St. Louis"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://genetics.wustl.edu/people/tim-schedl-phd/",
+   "source_evidence": "Tim Schedl, PhD - Genetics; ©2026 Washington University in St. Louis (genetics.wustl.edu)",
+   "manual_expected_value": "washu / Washington University in St. Louis",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Similar-name risk (WashU vs UW): wustl.edu domain + branding confirm.",
+   "risk_case": "similar_org_name"
+  },
+  {
+   "sample_id": "school-005",
+   "entity_type": "school",
+   "entity_id": "faculty-uw-bioe-537b7e8c",
+   "field_name": "school",
+   "system_value": {
+    "school": "uw",
+    "organization": "University of Washington"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://bioe.uw.edu/portfolio-items/amy-orsborn/",
+   "source_evidence": "Amy Orsborn – UW Bioengineering; Copyright 2026 University of Washington – Seattle (bioe.uw.edu)",
+   "manual_expected_value": "uw / University of Washington",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Counterpart similar-name risk confirmed on uw.edu domain.",
+   "risk_case": null
+  },
+  {
+   "sample_id": "school-006",
+   "entity_type": "school",
+   "entity_id": "faculty-lehigh-bioe-b9d0f37f",
+   "field_name": "school",
+   "system_value": {
+    "school": "lehigh",
+    "organization": "Lehigh University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://engineering.lehigh.edu/bioe/faculty/172989",
+   "source_evidence": "Juan Aceros is an Associate Professor in the Department of Bioengineering at Lehigh University",
+   "manual_expected_value": "lehigh / Lehigh University",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "school-007",
+   "entity_type": "school",
+   "entity_id": "faculty-coloradocollege-span-9ff4f1cf",
+   "field_name": "school",
+   "system_value": {
+    "school": "coloradocollege",
+    "organization": "Colorado College"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.coloradocollege.edu/basics/contact/directory/people/wood_naomi_pueo-backson.html",
+   "source_evidence": "Naomi Wood · Colorado College (coloradocollege.edu campus directory)",
+   "manual_expected_value": "coloradocollege / Colorado College",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "school-008",
+   "entity_type": "school",
+   "entity_id": "faculty-uchicago-oba-e79a25a2",
+   "field_name": "school",
+   "system_value": {
+    "school": "uchicago",
+    "organization": "University of Chicago"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://profiles.uchicago.edu/profiles/profile/2119198",
+   "source_evidence": "Nipam Patel — Title Professor, Institution University of Chicago, Department Organismal Biology and Anatomy",
+   "manual_expected_value": "uchicago / University of Chicago",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "school-009",
+   "entity_type": "school",
+   "entity_id": "faculty-osu-anth-37b42db7",
+   "field_name": "school",
+   "system_value": {
+    "school": "osu",
+    "organization": "Ohio State University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://anthropology.osu.edu/people/moore.4540",
+   "source_evidence": "Erin Moore | Department of Anthropology — The Ohio State University (anthropology.osu.edu)",
+   "manual_expected_value": "osu / Ohio State University",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "school-010",
+   "entity_type": "school",
+   "entity_id": "faculty-tamu-inta-be825726",
+   "field_name": "school",
+   "system_value": {
+    "school": "tamu",
+    "organization": "Texas A&M University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://bush.tamu.edu/inta/faculty/",
+   "source_evidence": "Faculty | The Bush School of Government & Public Service · Texas A&M University (bush.tamu.edu)",
+   "manual_expected_value": "tamu / Texas A&M University",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Source is the school's faculty listing page (listing-level evidence).",
+   "risk_case": null
+  }
+ ]
+}
