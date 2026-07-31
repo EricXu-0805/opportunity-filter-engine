@@ -22,9 +22,10 @@ degrade, never a 401 that breaks the page.
 
 from __future__ import annotations
 
-# Any email_source starting with one of these was synthesized, not observed.
-# Prefix match so future variants (e.g. "constructed_<campus>") stay covered.
-_SYNTHESIZED_PREFIXES = ("constructed", "inferred", "guessed", "pattern")
+# The synthesized-vs-observed provenance predicate is shared with the ranker's
+# actionability tie-break (src.matcher.ranker._is_actionable) via src.evidence
+# so the two bars cannot drift apart.
+from src.evidence import is_synthesized_email_source
 
 STATUS_REVEALED = "revealed"
 STATUS_SIGN_IN_REQUIRED = "sign_in_required"
@@ -36,8 +37,7 @@ def verified_send_target(opp: dict) -> str:
     email = opp.get("contact_email") or ""
     if not isinstance(email, str) or not email.strip():
         return ""
-    source = (opp.get("metadata") or {}).get("email_source") or ""
-    if isinstance(source, str) and source.startswith(_SYNTHESIZED_PREFIXES):
+    if is_synthesized_email_source((opp.get("metadata") or {}).get("email_source") or ""):
         return ""
     return email.strip()
 

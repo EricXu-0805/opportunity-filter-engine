@@ -1,5 +1,6 @@
 import re
 
+from src.evidence import is_professor_rank
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS, _tokenize
 from src.publication_trust import verified_recent_works
 
@@ -320,11 +321,26 @@ def _common_parts(
     opp_skills_required = opportunity.get("eligibility", {}).get("skills_required", [])
     matching_skills = _match_skills_to_tasks(skills, opportunity)
 
+    meta = opportunity.get("metadata") or {}
+    stated_rank = meta.get("faculty_title") or ""
+
     # CE-6: reuse the matcher's junk-name set (adds "n/a" and "") as the single
     # source of truth, so a non-faculty source emitting "N/A" can't render
     # "Dear Professor N/A".
+    #
+    # Truthfulness W11: "Professor <name>" is a rank claim made on the
+    # student's behalf — earned only by a stated professor rank (legacy
+    # records whose rank was never scraped carry the historical "Professor"
+    # stamp and keep the convention). A stated non-professor rank (Lecturer,
+    # Research Scientist) or an explicitly-unknown rank ("") gets the neutral
+    # full-name greeting — never a wrong honorific.
     if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES:
-        recipient = f"Professor {pi_name}" if not pi_name.lower().startswith(("prof", "dr")) else pi_name
+        if pi_name.lower().startswith(("prof", "dr")):
+            recipient = pi_name
+        elif is_professor_rank(stated_rank):
+            recipient = f"Professor {pi_name}"
+        else:
+            recipient = pi_name
     elif opp_type == "summer_program":
         recipient = "Program Coordinator"
     else:
@@ -333,11 +349,10 @@ def _common_parts(
     coursework = profile.get("coursework", [])
     lab_type = _detect_lab_type(opportunity)
 
-    meta = opportunity.get("metadata") or {}
     # The professor's own free-text research areas (the substantive signal) and
     # academic title — real data, surfaced for the multi-stage AI pipeline's
     # professor brief. Both may be empty; callers must tolerate that.
-    faculty_title = meta.get("faculty_title") or ""
+    faculty_title = stated_rank
     research_areas_raw = meta.get("research_areas_raw") or ""
 
     return dict(

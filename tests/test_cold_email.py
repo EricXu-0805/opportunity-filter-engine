@@ -242,8 +242,20 @@ class TestRecipientJunkNameCE6:
                 assert junk.strip() not in p["recipient"]
 
     def test_real_pi_name_still_used(self):
+        # W11: the "Professor" honorific is a rank claim — earned only by a
+        # stated professor rank. Unknown rank gets the neutral full name.
         p = _common_parts({}, {"pi_name": "Jane Doe", "opportunity_type": "research"})
+        assert p["recipient"] == "Jane Doe"
+
+    def test_professor_rank_earns_honorific(self):
+        p = _common_parts({}, {"pi_name": "Jane Doe", "opportunity_type": "research",
+                               "metadata": {"faculty_title": "Associate Professor"}})
         assert p["recipient"] == "Professor Jane Doe"
+
+    def test_non_professor_rank_never_upgraded(self):
+        p = _common_parts({}, {"pi_name": "Jane Doe", "opportunity_type": "research",
+                               "metadata": {"faculty_title": "Senior Lecturer"}})
+        assert p["recipient"] == "Jane Doe"
 
 
 class TestShortInterestCE_C1:

@@ -208,7 +208,10 @@ def _normalize_program(school: dict, source: dict, program_spec: dict, *,
             "majors": program_spec.get("eligibility_majors", []),
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": intl == "no",
+            # Tri-state (truthfulness W11): an explicit "no" implies a
+            # citizenship bar; an explicit "yes" implies none; unknown stays
+            # None — never asserted False without evidence.
+            "citizenship_required": True if intl == "no" else (False if intl == "yes" else None),
             "international_friendly": intl,
             "work_auth_notes": "",
             "eligibility_text_raw": (program_spec.get("deadline_note", "") or "")[:300],
@@ -276,7 +279,7 @@ def _normalize_discovered(school: dict, source: dict, title: str, url: str, snip
         "eligibility": {
             "preferred_year": ["freshman", "sophomore", "junior", "senior"],
             "min_gpa": None, "majors": [], "skills_required": [], "skills_preferred": [],
-            "citizenship_required": False, "international_friendly": "unknown",
+            "citizenship_required": None, "international_friendly": "unknown",
             "work_auth_notes": "", "eligibility_text_raw": desc[:300],
         },
         "application": {

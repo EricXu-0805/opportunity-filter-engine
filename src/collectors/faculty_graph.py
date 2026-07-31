@@ -64,6 +64,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
+from ..evidence import is_professor_rank
 from .ucb_common import (
     _RETIRED_TITLE_RE,
     _detect_funding,
@@ -87,7 +88,7 @@ _PROFILE_ENRICH = os.environ.get("OFE_ENRICH_PROFILES") == "1"
 def faculty(
     name: str,
     *,
-    title: str = "Professor",
+    title: str = "",
     url: str = "",
     email: str | None = None,
     research_areas: str = "",
@@ -391,9 +392,15 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # entity decode the name above already gets — otherwise a student reads
     # "Research opportunity with Professor of Materials Science &amp; Engineering
     # ...". 245 records across 30+ schools were shipping raw entities.
+    #
+    # A missing rank stays missing (truthfulness W11): the historical
+    # "Professor" fallback asserted an unverified rank on every row whose
+    # directory stated none. title == "" means "the source stated no rank";
+    # prose, the record title, and metadata.faculty_title all render
+    # rank-neutrally for it.
     title = re.sub(r"^\s*(?:position\s+title|title)\s*:\s*", "",
-                   html.unescape(person.get("title") or "Professor"),
-                   flags=re.IGNORECASE).strip() or "Professor"
+                   html.unescape(person.get("title") or ""),
+                   flags=re.IGNORECASE).strip()
     if _RETIRED_TITLE_RE.search(title):
         return None
 
@@ -430,15 +437,21 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     name_hash = hashlib.md5(f"{short}-{name}".encode()).hexdigest()[:8]
     opp_id = f"faculty-{school['id_prefix']}-{short.lower()}-{name_hash}"
 
+    # Rank-neutral prose when the source stated no rank or a non-professor
+    # rank: "Research opportunity with Jane Doe", "Contact them directly".
+    # Only a source-stated professor rank earns "the professor" phrasing.
+    professor_rank = is_professor_rank(title)
     desc_parts = [
-        f"Research opportunity with {title} {name} in the {dept_name} "
+        f"Research opportunity with {title + ' ' if title else ''}{name} in the {dept_name} "
         f"at {school['organization']}."
     ]
     if research_areas:
         desc_parts.append(f"Research areas: {research_areas[:200]}")
     desc_parts.append(
         "Contact the professor directly to inquire about undergraduate "
-        "research positions in their lab."
+        "research positions in their lab." if professor_rank else
+        "Contact them directly to inquire about undergraduate "
+        "research opportunities."
     )
     description = " ".join(desc_parts)
     # Defensive second pass on the fully assembled description (mirrors
@@ -448,7 +461,11 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     description = _strip_nav_furniture(description)
 
     research_summary = f" ({', '.join(keywords[:3])})" if keywords else ""
-    opp_title = f"Research with Prof. {name} — {short}{research_summary}"
+    # "Prof." is a rank claim, not decoration — earned only by a source-stated
+    # professor rank (truthfulness W11). Unknown/non-professor ranks get the
+    # bare name; the actual rank ships in metadata.faculty_title.
+    honorific = "Prof. " if professor_rank else ""
+    opp_title = f"Research with {honorific}{name} — {short}{research_summary}"
     paid, compensation_details = _detect_funding(f"{research_areas} {description} {title}")
 
     metadata = {
@@ -483,7 +500,11 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "title": opp_title,
         "organization": school["organization"],
         "department": dept_name,
-        "lab_or_program": f"Prof. {name}'s Research Group",
+        # No fabricated lab entity: a directory row is evidence of a person,
+        # not of a named research group (truthfulness W11). A real lab name
+        # only ever comes from source text; none is scraped here, so none is
+        # asserted.
+        "lab_or_program": "",
         "pi_name": name,
         "contact_email": email,
         "url": profile_url,
@@ -512,6 +533,10 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
             "majors": dept.get("majors", []),
             "skills_required": skills[:3],
             "skills_preferred": skills[3:],
+            # Documented policy, not a scraped fact: inquiring with a professor
+            # about research as an enrolled student carries no citizenship bar
+            # (docs/international_logic.md). Funding-specific work-auth limits
+            # ride international_friendly, which stays "unknown".
             "citizenship_required": False,
             "international_friendly": "unknown",
             "work_auth_notes": school.get("work_auth_notes", ""),
@@ -550,6 +575,13 @@ def _passes_ladder(title: str, lf: dict | None) -> bool:
     if not lf:
         return True
     t = title or ""
+    # An ABSENT rank passes (W11): pre-W11 these rows carried the "Professor"
+    # default and passed `require`; now that a missing rank stays "" the
+    # lenient absent-field-passes convention keeps them — dropping rank-less
+    # rows is the explicit opt-in `field_filter.require_present`, not an
+    # accident of the honorific fix.
+    if not t:
+        return not lf.get("require_present")
     if lf.get("require") and not re.search(lf["require"], t, re.I):
         return False
     return not (lf.get("drop") and re.search(lf["drop"], t, re.I))
@@ -915,7 +947,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             # in the card's FOLLOWING sibling (<dt>name</dt><dd>title</dd>) —
             # unreachable by a descendant selector from the card.
             title_el = card.find_next_sibling(sel["title_sibling"])
-        title = title_el.get_text(" ", strip=True) if title_el else "Professor"
+        title = title_el.get_text(" ", strip=True) if title_el else ""
         if sel.get("title_re"):
             # Hand-edited CMS cards sometimes keep the rank as loose text with no
             # stable element path (UCSD Communication/Urban Studies); a regex over
@@ -927,7 +959,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         if sel.get("title_strip_after"):
             # Some directories cram rank + office + phone into one cell; keep only
             # the text before the first contact marker (e.g. "Office"/"Phone").
-            title = re.split(sel["title_strip_after"], title)[0].strip() or "Professor"
+            title = re.split(sel["title_strip_after"], title)[0].strip() or ""
         if sel.get("title_html_re"):
             # Ranks that live as bare text between markup with no element of
             # their own (UGA Law's "<a>Name</a><br>Title<br><a mailto>") need
@@ -1685,7 +1717,7 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
     cat_inc = cfg.get("category_include") or {}
     cat_exc = cfg.get("category_exclude") or {}
     name_flip = cfg.get("name_flip", False)
-    default_title = cfg.get("title", "Professor")
+    default_title = cfg.get("title", "")
     enrich = cfg.get("profile_enrich")
     # Some person post types keep the rank + public email on the WP "meta box"
     # (e.g. UW COM's `person` type: meta_box.job_title / meta_box.email_address)
@@ -1905,7 +1937,7 @@ def _fetch_seas_ajax(dept: dict) -> list[dict]:
             if url:
                 seen_urls.add(url)
             ti = card.select_one(".card_description p i")
-            title = ti.get_text(strip=True) if ti else "Professor"
+            title = ti.get_text(strip=True) if ti else ""
             mail = card.select_one("a.mailto-link, a[href^='mailto:']")
             email = None
             if mail and mail.has_attr("href"):
@@ -1997,7 +2029,7 @@ def _fetch_futurevu_ajax(dept: dict) -> list[dict]:
             seen.add(slug)
         email = (rec.get("email") or "").strip() or None
         url = f"{profile_base}{slug}" if slug else ""
-        specs.append(faculty(name, title=_clean_titles(rec.get("titles", "")) or "Professor",
+        specs.append(faculty(name, title=_clean_titles(rec.get("titles", "")) or "",
                              url=url, email=email))
     return specs
 
@@ -2058,7 +2090,7 @@ def _fetch_worx_ajax(dept: dict) -> list[dict]:
             name = (rec.get("name") or "").strip()
             if not name or not _is_person_name(name):
                 continue
-            title = (rec.get("fullTitle") or rec.get("title") or "").strip() or "Professor"
+            title = (rec.get("fullTitle") or rec.get("title") or "").strip() or ""
             if req_re and not req_re.search(title):
                 continue
             if drop_re and drop_re.search(title):
@@ -2125,7 +2157,7 @@ def _fetch_algolia(dept: dict) -> list[dict]:
         ).strip()
         if not _is_person_name(name):
             continue
-        title = str(hit.get(cfg.get("title_field", "titles_general"), "") or "Professor")
+        title = str(hit.get(cfg.get("title_field", "titles_general"), "") or "")
         if drop_re and re.search(drop_re, title, re.I):
             continue
         research_raw = hit.get(cfg.get("research_field", "areas_of_research"), "")
@@ -2189,7 +2221,7 @@ def _fetch_cola(dept: dict) -> list[dict]:
         name = f"{(attrs.get('first') or '').strip()} {(attrs.get('last') or '').strip()}".strip()
         if not _is_person_name(name):
             continue
-        title = (attrs.get("display_title") or "").strip() or "Professor"
+        title = (attrs.get("display_title") or "").strip() or ""
         if require_re and not re.search(require_re, title, re.I):
             continue
         if drop_re and re.search(drop_re, title, re.I):
@@ -2390,9 +2422,9 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
                           if isinstance(e, dict) and e.get(tfl["match_field"]) == tfl["match_value"]), None)
             if not title:
                 title = (str(lst[0].get(tfl["value_field"], "")) if lst and isinstance(lst[0], dict)
-                         else "") or "Professor"
+                         else "") or ""
         else:
-            title = _dig(x, cfg.get("title_field", "title")) or "Professor"
+            title = _dig(x, cfg.get("title_field", "title")) or ""
         # WordPress renders post fields as {"rendered": "..."}, and a person
         # CPT's post title is the person's NAME, not an academic rank. Without
         # an explicit title_field the bare dict used to str() straight into
@@ -2403,7 +2435,7 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
             title = title.get("rendered", "") if "title_field" in cfg else ""
         if isinstance(title, list):
             title = ", ".join(str(t) for t in title)
-        title = str(title).strip() or "Professor"
+        title = str(title).strip() or ""
         if "<" in title or "&" in title:
             # Some JSON feeds carry <br>-joined multi-role titles and HTML
             # entities (Rice MCLC / Art History / Sport Mgmt / EEPS) — flatten
@@ -2412,16 +2444,21 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
             import html as _html
             title = _BR_RE.sub("; ", title)
             title = re.sub(r"\s+", " ", _html.unescape(_HTML_TAG_RE.sub("", title))).strip()
-            title = re.sub(r"(?:\s*;\s*)+", "; ", title).strip(" ;") or "Professor"
+            title = re.sub(r"(?:\s*;\s*)+", "; ", title).strip(" ;") or ""
         tm = cfg.get("title_map")
         if tm:
             # Feeds that carry a rank CODE, not a rank (HR job codes) — map it;
             # unmapped codes fall back to the map's "_default" (or "Professor").
-            title = tm.get(title, tm.get("_default", "Professor"))
-        if require_re and not re.search(require_re, title, re.I):
-            continue
-        if drop_re and re.search(drop_re, title, re.I):
-            continue
+            title = tm.get(title, tm.get("_default", ""))
+        # An ABSENT rank passes the require/drop gates (W11): pre-W11 these
+        # rows carried the "Professor" default and passed; a missing rank now
+        # stays "" and the lenient absent-field-passes convention keeps the
+        # row (mirrors _passes_ladder).
+        if title:
+            if require_re and not re.search(require_re, title, re.I):
+                continue
+            if drop_re and re.search(drop_re, title, re.I):
+                continue
         email = str(_dig(x, cfg.get("email_field", "email")) or "").strip() or None
         ll = cfg.get("link_list")
         if ll:
@@ -2451,6 +2488,13 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
             # why A&S stayed research-blind while Engineering (absolute links)
             # populated. The "/"-prefixed and absolute forms are handled above.
             url_v = urljoin(cfg["link_base"].rstrip("/") + "/", url_v)
+        elif url_v and not url_v.startswith(("http://", "https://")):
+            # A schemeless value with no link_base (MSU NatSci fed the bare
+            # numeric person id) is not a resolvable evidence link — storing
+            # it fabricates a source_url that leads nowhere (truthfulness
+            # W11; 395 corpus records). Drop it so _normalize falls back to
+            # the department directory_url, which IS the observed source.
+            url_v = ""
         research = ""
         keywords: list[str] = []
         for rf in ([cfg["research_field"]] if isinstance(cfg.get("research_field"), str)
@@ -2557,7 +2601,7 @@ def _fetch_faculty180(dept: dict) -> list[dict]:
             # ``position`` carries payroll/admin cruft ("Physician Asst-Adv Rn
             # Pract<br />Teaching Professor", "Health Services Manager (E S 10)")
             # so the ladder filter — and the stored title — key on rank.
-            title = (u.get("rank") or u.get("position") or "Professor").strip()
+            title = (u.get("rank") or u.get("position") or "").strip()
             if not _passes_ladder(title, lf):
                 continue
             name = " ".join(p for p in (u.get("firstname"), u.get("lastname")) if p).strip()
@@ -3093,7 +3137,7 @@ def _fetch_coa_api(dept: dict) -> list[dict]:
                                      (rec.get("LastName") or "").strip()) if p)
         if not name:
             continue
-        title = _wp_text(rec.get("Title") or "") or "Professor"
+        title = _wp_text(rec.get("Title") or "") or ""
         if not _passes_ladder(title, lf):
             continue
         alias = (rec.get("stralias") or "").strip()
@@ -3193,7 +3237,7 @@ def _fetch_poly_jsonapi(dept: dict) -> list[dict]:
                                             (a.get("field_last_name") or "").strip()) if p))
             if not name:
                 continue
-            title = _wp_text(a.get("field_job_title") or "") or "Professor"
+            title = _wp_text(a.get("field_job_title") or "") or ""
             if not _passes_ladder(title, lf):
                 continue
             alias = (a.get("path") or {}).get("alias") or ""
@@ -3291,7 +3335,7 @@ def _fetch_krieger_table(dept: dict) -> list[dict]:
         if cell(row[1]) != want:
             continue
         name = _flip_name(re.sub(r"\s+", " ", cell(row[0])))
-        title = cell(row[2]) or "Professor"
+        title = cell(row[2]) or ""
         if not _passes_ladder(title, lf):
             continue
         email = _clean_email(row[3] or "") or _clean_email(cell(row[3]))
@@ -3440,7 +3484,7 @@ def _fetch_sitemap_directory(dept: dict) -> list[dict]:
         name = re.sub(r"\s+", " ", n_el.get_text(" ", strip=True)).strip() if n_el else ""
         if not name:
             continue
-        title = "Professor"
+        title = ""
         if title_sel:
             t_el = soup.select_one(title_sel)
             if t_el and t_el.get_text(strip=True):

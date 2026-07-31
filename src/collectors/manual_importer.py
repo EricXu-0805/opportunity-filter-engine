@@ -100,7 +100,8 @@ def create_opportunity(
             "majors": majors or [],
             "skills_required": skills_required or [],
             "skills_preferred": skills_preferred or [],
-            "citizenship_required": kwargs.get("citizenship_required", False),
+            # None = curator did not state it — explicit unknown (truthfulness W11).
+            "citizenship_required": kwargs.get("citizenship_required"),
             "international_friendly": international_friendly,
             "work_auth_notes": kwargs.get("work_auth_notes", ""),
             "eligibility_text_raw": kwargs.get("eligibility_text", ""),

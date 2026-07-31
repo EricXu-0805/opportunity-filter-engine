@@ -1,0 +1,229 @@
+{
+ "category": "professor",
+ "generated_at": "2026-07-31T02:03:42.102110+00:00",
+ "seed": 20260731,
+ "corpus_records": 131952,
+ "risk_pool_gaps": [],
+ "samples": [
+  {
+   "sample_id": "professor-001",
+   "entity_type": "professor",
+   "entity_id": "faculty-carleton-ents-97bfc1eb",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "David Lefkowitz",
+    "department": "Program in Environmental Studies",
+    "organization": "Carleton College"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.carleton.edu/directory/dlefkowi/",
+   "source_evidence": "David Lefkowitz '85 Professor of Art, Art and Art History (Carleton campus directory)",
+   "manual_expected_value": "David Lefkowitz, current Carleton faculty (Professor of Art)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Same-name risk resolved: this is Carleton's Lefkowitz. Record dept = ENTS program (cross-listed affiliate; scraped from the program's people page); corpus faculty_title correctly says 'Professor of Art'.",
+   "risk_case": "same_name_multi_school"
+  },
+  {
+   "sample_id": "professor-002",
+   "entity_type": "professor",
+   "entity_id": "faculty-nyu-stern-c56965ec",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Andre de Souza",
+    "department": "Leonard N. Stern School of Business",
+    "organization": "New York University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.stern.nyu.edu/faculty/bio/andre-de-souza",
+   "source_evidence": "Andre de Souza — Visiting Assistant Professor of Finance, Joined Stern 2015 (stern.nyu.edu)",
+   "manual_expected_value": "Andre de Souza, current NYU Stern (Visiting Assistant Professor)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Visiting-status risk case: corpus faculty_title preserves 'Visiting Assistant Professor of Finance' — status not upgraded; rank now served to the card (W11).",
+   "risk_case": "emeritus_or_visiting"
+  },
+  {
+   "sample_id": "professor-003",
+   "entity_type": "professor",
+   "entity_id": "faculty-udel-math-a2bd715c",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Jinfa Cai",
+    "department": "Department of Mathematical Sciences",
+    "organization": "University of Delaware"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://www.udel.edu/academics/colleges/cas/units/departments/mathematical-sciences/our-people/jinfa-cai/",
+   "source_evidence": "Jinfa Cai | Our People | Mathematical Sciences | University of Delaware",
+   "manual_expected_value": "Jinfa Cai, current UDel Mathematical Sciences",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Same-name risk case: identity + school + dept all confirmed on official page.",
+   "risk_case": "same_name_multi_school"
+  },
+  {
+   "sample_id": "professor-004",
+   "entity_type": "professor",
+   "entity_id": "faculty-uiowa-sjmc-d7433687",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Wayne Drehs",
+    "department": "School of Journalism and Mass Communication",
+    "organization": "University of Iowa"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://journalism.uiowa.edu/people/wayne-drehs",
+   "source_evidence": "Wayne Drehs — Visiting Associate Professor of Practice; Drop-in hours Fall 2026 (journalism.uiowa.edu)",
+   "manual_expected_value": "Wayne Drehs, current UIowa SJMC (Visiting Associate Professor of Practice)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Visiting-status preserved in corpus faculty_title ('Visiting Associate Professor'); current (Fall 2026 hours).",
+   "risk_case": "emeritus_or_visiting"
+  },
+  {
+   "sample_id": "professor-005",
+   "entity_type": "professor",
+   "entity_id": "faculty-princeton-soc-cd91088b",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Frederick Wherry",
+    "department": "Department of Sociology",
+    "organization": "Princeton University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://sociology.princeton.edu/people/frederick-wherry",
+   "source_evidence": "Cloudflare challenge ('Just a moment...')",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "waf_challenge",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Princeton sociology behind Cloudflare; not evaded.",
+   "risk_case": null
+  },
+  {
+   "sample_id": "professor-006",
+   "entity_type": "professor",
+   "entity_id": "faculty-usc-engl-b74c9be2",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Andrew Stott",
+    "department": "Department of English",
+    "organization": "University of Southern California"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://dornsife.usc.edu/profile/andrew-stott/",
+   "source_evidence": "Andrew Stott — Professor of English and Vice Provost for Academic Programs (dornsife.usc.edu)",
+   "manual_expected_value": "Andrew Stott, current USC English",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "professor-007",
+   "entity_type": "professor",
+   "entity_id": "faculty-nd-rom-c4a9c64d",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Rachel Parroquin",
+    "department": "Department of Romance Languages and Literatures",
+    "organization": "University of Notre Dame"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://romancelanguages.nd.edu/people/faculty/rachel-parroquin",
+   "source_evidence": "Rachel Parroquin — Teaching Professor of Spanish, Office 317 Decio Faculty Hall (romancelanguages.nd.edu)",
+   "manual_expected_value": "Rachel Parroquin, current ND Romance Languages (Teaching Professor)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "professor-008",
+   "entity_type": "professor",
+   "entity_id": "faculty-georgetown-msbs-857bad45",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Arthur Dong",
+    "department": "McDonough School of Business — Strategy, Economics, Ethics, and Public Policy",
+    "organization": "Georgetown University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://gufaculty360.georgetown.edu/s/contact/00336000014RWVmAAO",
+   "source_evidence": "gufaculty360.georgetown.edu is a client-side Salesforce app (86 chars server HTML)",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "js_rendered",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "",
+   "risk_case": null
+  },
+  {
+   "sample_id": "professor-009",
+   "entity_type": "professor",
+   "entity_id": "faculty-ncsu-chass-b97af1fe",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Sung-Ju Kim",
+    "department": "College of Humanities and Social Sciences",
+    "organization": "North Carolina State University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://chass.ncsu.edu/people/skim67/",
+   "source_evidence": "Sung-Ju Kim — Assoc Professor, School of Social Work (chass.ncsu.edu person page)",
+   "manual_expected_value": "Sung-Ju Kim, current NCSU (School of Social Work within CHASS)",
+   "review_result": "verified_correct",
+   "error_type": null,
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "Record dept is college-level (CHASS pool) — coarse but accurate containment; page shows School of Social Work.",
+   "risk_case": null
+  },
+  {
+   "sample_id": "professor-010",
+   "entity_type": "professor",
+   "entity_id": "faculty-asu-chem-9a6f4b28",
+   "field_name": "pi_name",
+   "system_value": {
+    "pi_name": "Alberto Rascon",
+    "department": "School of Molecular Sciences",
+    "organization": "Arizona State University"
+   },
+   "verification_status": "unverified",
+   "source_url": "https://sms.asu.edu/People/Faculty",
+   "source_evidence": "sms.asu.edu/People/Faculty is a client-side directory list (834 chars server HTML); person not verifiable",
+   "manual_expected_value": null,
+   "review_result": "blocked",
+   "error_type": "js_rendered",
+   "severity": null,
+   "reviewer": "claude-fable-5-audit",
+   "reviewed_at": "2026-07-31T07:16:42.552706",
+   "notes": "source_url is listing-level (whole directory), a weaker evidence pointer — noted for the report.",
+   "risk_case": null
+  }
+ ]
+}

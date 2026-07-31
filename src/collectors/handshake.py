@@ -319,7 +319,9 @@ def normalize_posting(raw: dict, sch: dict) -> dict:
             "majors": [],
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": False,
+            # External postings carry no citizenship evidence here — None is
+            # the explicit unknown, never an optimistic False (truthfulness W11).
+            "citizenship_required": None,
             "international_friendly": raw.get("international_friendly", "unknown"),
             "work_auth_notes": "",
             "eligibility_text_raw": desc[:500],

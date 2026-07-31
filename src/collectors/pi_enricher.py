@@ -18,6 +18,7 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
+from src.evidence import stamp_inferred
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 
 from .ucb_common import _is_person_name
@@ -415,6 +416,13 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
                 info = extract(soup, domains)
                 if info.get("contact_email"):
                     opp["contact_email"] = info["contact_email"]
+                    # W11: this address was found by scanning the posting page
+                    # (first school-domain hit / heading sibling), not read off
+                    # the person's own profile — a weaker binding than
+                    # "profile_page". The stamp records that; it does NOT put
+                    # the address behind the synthesized-provenance bar
+                    # (the page is still official source text).
+                    opp.setdefault("metadata", {})["email_source"] = "page_scan"
                     enriched = True
                 # Guard with _is_person_name: a scraped/derived "name" that is
                 # really an institution/place ("Berkeley", "UC Berkeley") must
@@ -430,6 +438,10 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
             # e.g. "Berkeley Lab SULI" -> "Berkeley"; reject institution/place names.
             if pi and _is_person_name(pi):
                 opp["pi_name"] = pi
+                # W11: a surname derived from the lab title is an inference
+                # about an identity field — stamp it so "Dear Prof. Smith"
+                # generators and audits can see it was never read off a page.
+                stamp_inferred(opp.setdefault("metadata", {}), "pi_name", "rule:lab_title_surname")
                 stats["inferred_pi"] += 1
 
         if enriched:

@@ -1,7 +1,46 @@
+import type { Opportunity } from '@/lib/types';
 import type { TFunc } from './types';
 
 export function formatType(t: string): string {
   return t.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+/**
+ * Truthful no-deadline classification. `is_rolling=true` is a blanket
+ * collector default on all faculty records and most campus programs — NOT
+ * scraped evidence of rolling admissions — so displays must never read it as
+ * a fact on its own:
+ *   - 'inquiries' — faculty records: the honest claim is "accepts inquiries
+ *     year-round" (you email the PI whenever), not "rolling admissions";
+ *   - 'rolling'   — actual scraped evidence: metadata.deadline_note mentions
+ *     rolling;
+ *   - 'none'      — everything else: we only know no deadline was listed.
+ * Shared by the detail page and the compare surfaces so the evidence gate
+ * lives in exactly one place.
+ */
+export type NoDeadlineKind = 'inquiries' | 'rolling' | 'none';
+
+export function noDeadlineKind(
+  opp: Pick<Opportunity, 'source_type' | 'metadata'>,
+): NoDeadlineKind {
+  if (opp.source_type === 'faculty_research') return 'inquiries';
+  const note = opp.metadata?.deadline_note;
+  if (note && /rolling/i.test(note)) return 'rolling';
+  return 'none';
+}
+
+/**
+ * Whether a record's scraped faculty rank supports "Professor" framing
+ * ("Email Professor" CTA, "this professor's publication record"). A rank
+ * claim is EARNED by a stated professor rank ("Professor", "Assistant
+ * Professor", "Prof.", …) — an unknown rank ('' / absent) gets the neutral
+ * framing, and a stated non-professor rank ("Senior Lecturer", "Research
+ * Scientist") must never be framed as a professor. Mirrors the backend's
+ * src/evidence.is_professor_rank, including rejecting "Professional …".
+ */
+export function allowsProfessorFraming(facultyTitle?: string | null): boolean {
+  const rank = (facultyTitle ?? '').trim();
+  return /\bprof(?:essor|\.|\b)/i.test(rank);
 }
 
 /**

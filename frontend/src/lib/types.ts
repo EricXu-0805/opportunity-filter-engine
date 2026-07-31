@@ -116,6 +116,13 @@ export interface OpportunityMetadata {
   // without a confident OpenAlex match.
   recent_works?: { title: string; year?: number | null }[];
   publication_attribution_status?: PublicationAttributionStatus | null;
+  // Scraped deadline prose (e.g. "Rolling admissions"). The ONLY accepted
+  // evidence of genuinely rolling admissions — `is_rolling` alone is a blanket
+  // collector default and must never be presented as a scraped fact.
+  deadline_note?: string;
+  // Scraped faculty rank ("Senior Lecturer", "Assistant Professor", …).
+  // Empty/absent = unknown; legacy records commonly carry "Professor".
+  faculty_title?: string;
 }
 
 // Multi-university discovery scope (PR #187 / #189). `school` is the
@@ -161,6 +168,9 @@ export interface Opportunity {
   // (null/absent = unverified).
   recent_works?: { title: string; year?: number | string | null }[];
   publication_attribution_status?: PublicationAttributionStatus | null;
+  // Match-card projection of metadata.faculty_title (scraped rank). Absent or
+  // empty = unknown rank; gates "Professor" framing on card CTAs.
+  faculty_title?: string;
   // Record-scoped follow/tracking id (W8) — present on faculty detail
   // payloads only; the key for professor_follows and /professors/updates.
   professor_id?: string;

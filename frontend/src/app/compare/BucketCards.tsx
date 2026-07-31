@@ -3,6 +3,7 @@
 import { ExternalLink, Sparkles, Star, Shield, Mountain } from 'lucide-react';
 import type { CompareRow } from './scores';
 import { useT } from '@/i18n/client';
+import { noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 
 interface Props {
   rows: CompareRow[];
@@ -117,18 +118,22 @@ export default function BucketCards({ rows }: Props) {
             : opp.application?.application_url
               ? t('compare.apply')
               : t('compare.viewSource');
-          const deadlineSummary = opp.is_rolling
-            ? t('compare.rolling')
-            : opp.deadline
-              ? `${opp.deadline}${
-                  opp.deadline_is_estimate === false
-                    ? ''
-                    : ` · ${t(
-                        opp.deadline_is_estimate === true
-                          ? 'compare.deadlineEstimated'
-                          : 'compare.deadlineVerify',
-                      )}`
-                }`
+          // A listed date always beats the `is_rolling` flag (a blanket
+          // collector default, not scraped evidence); without a date,
+          // "Rolling" renders only on actual rolling evidence — otherwise
+          // the honest claim is just "no fixed deadline".
+          const deadlineSummary = opp.deadline
+            ? `${opp.deadline}${
+                opp.deadline_is_estimate === false
+                  ? ''
+                  : ` · ${t(
+                      opp.deadline_is_estimate === true
+                        ? 'compare.deadlineEstimated'
+                        : 'compare.deadlineVerify',
+                    )}`
+              }`
+            : opp.is_rolling
+              ? t(noDeadlineKind(opp) === 'rolling' ? 'compare.rolling' : 'compare.noDeadline')
               : null;
 
           return (

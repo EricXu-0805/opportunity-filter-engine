@@ -39,6 +39,7 @@ def deactivate_past(opps: list[dict], today: date | None = None) -> dict:
         "kept_active": 0,
         "skipped_rolling": 0,
         "skipped_no_deadline": 0,
+        "skipped_estimate": 0,
         "skipped_invalid": 0,
     }
 
@@ -52,6 +53,13 @@ def deactivate_past(opps: list[dict], today: date | None = None) -> dict:
         raw_deadline = opp.get("deadline")
         if not raw_deadline:
             counts["skipped_no_deadline"] += 1
+            continue
+
+        # An ESTIMATED deadline (nsf_reu derives one from the award start
+        # date) is a labeled guess — the hard is_active flip must not fire on
+        # it (truthfulness W11); the UI still shows the estimate as such.
+        if opp.get("deadline_is_estimate"):
+            counts["skipped_estimate"] += 1
             continue
 
         parsed = _parse_deadline(raw_deadline)

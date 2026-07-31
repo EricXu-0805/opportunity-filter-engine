@@ -133,7 +133,10 @@ def _detect_international(abstract: str) -> str:
         "regardless of citizenship", "all students regardless",
     ]):
         return "yes"
-    # NSF-funded REU programs typically require US citizenship/permanent residency
+    # NSF REU Site participation is limited to US citizens/nationals/permanent
+    # residents by the REU solicitation itself (NSF 22-601 §V) — a program-
+    # family policy, not a per-page observation; normalize_award stamps the
+    # derivation and cites it in work_auth_notes.
     return "no"
 
 
@@ -192,8 +195,12 @@ def fetch_reu_awards(max_results: int = 500) -> list[dict]:
 
 
 def _is_reu_site(award: dict) -> bool:
+    """Only genuine REU Site awards — a supplement or an unrelated award that
+    merely surfaced in the keyword search must not ship with REU-specific
+    stipend/eligibility claims (truthfulness W11; the old ``or`` admitted
+    every non-supplement award)."""
     title = award.get("title", "").lower()
-    return "reu site" in title or "reu supplement" not in title
+    return "reu site" in title or ("reu:" in title and "supplement" not in title)
 
 
 def normalize_award(award: dict) -> dict:
@@ -249,7 +256,9 @@ def normalize_award(award: dict) -> dict:
         "compensation_details": "NSF-funded stipend (typically $6,000-$7,000 for 10 weeks)",
         "deadline": estimated_deadline,
         "deadline_is_estimate": bool(estimated_deadline),
-        "posted_date": start[:10] if start else None,
+        # No posted_date: the only date the award record carries is the award
+        # START date; presenting it as a posting date fabricated freshness.
+        "posted_date": None,
         "start_date": start[:10] if start else None,
         "duration": "Summer (8-10 weeks)",
         "eligibility": {
@@ -258,9 +267,14 @@ def normalize_award(award: dict) -> dict:
             "majors": majors,
             "skills_required": skills[:3],
             "skills_preferred": skills[3:],
-            "citizenship_required": intl == "no",
+            # True only from the REU-solicitation citizenship policy ("no");
+            # otherwise explicit unknown, never an optimistic False (W11).
+            "citizenship_required": True if intl == "no" else None,
             "international_friendly": intl,
-            "work_auth_notes": "",
+            "work_auth_notes": (
+                "NSF REU solicitation limits participation to US citizens, "
+                "nationals, or permanent residents — verify on the program page."
+                if intl == "no" else ""),
             "eligibility_text_raw": abstract[:500],
         },
         "application": {
@@ -285,6 +299,20 @@ def normalize_award(award: dict) -> dict:
             "notes": f"Auto-imported from NSF Awards API (Award #{nsf_id})",
             "nsf_award_id": nsf_id,
             "nsf_end_date": end,
+            # Stated-vs-derived at rest (truthfulness W11): these fields are
+            # derived from the award record / the REU solicitation, not read
+            # off a program page.
+            "inferred_fields": {
+                k: v for k, v in {
+                    "deadline": "estimate:award_start_date" if estimated_deadline else None,
+                    "eligibility.international_friendly":
+                        "policy:nsf_reu_solicitation" if intl == "no" else None,
+                    "eligibility.citizenship_required":
+                        "policy:nsf_reu_solicitation" if intl == "no" else None,
+                    "eligibility.majors": "rule:keyword_bank",
+                    "paid": "policy:nsf_reu_solicitation",
+                }.items() if v
+            },
         },
     }
 

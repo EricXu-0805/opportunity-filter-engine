@@ -54,7 +54,7 @@ export function OpportunityHeader({
   t: TFunc;
 }) {
   const applyUrl = opp.application?.application_url || opp.url || opp.source_url;
-  const urgency = getDeadlineUrgency(opp.deadline);
+  const urgency = getDeadlineUrgency(opp.deadline, undefined, opp.deadline_is_estimate);
   const days = daysUntil(opp.deadline);
 
   const deadlineBadge = useMemo(() => {

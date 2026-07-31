@@ -12,11 +12,15 @@ export function daysUntil(deadline: string | undefined, now: Date = new Date()):
 export function getDeadlineUrgency(
   deadline: string | undefined,
   now: Date = new Date(),
+  isEstimate?: boolean,
 ): DeadlineUrgency {
   const days = daysUntil(deadline, now);
   if (days === null) return null;
-  if (days < 0) return 'passed';
-  if (days <= 7) return 'urgent';
+  // An estimated deadline (NSF projected dates) must never produce a
+  // confident 'passed' verdict or a red 'urgent' band: past estimates carry
+  // no urgency at all, near estimates cap at the amber 'soon' band.
+  if (days < 0) return isEstimate ? null : 'passed';
+  if (days <= 7) return isEstimate ? 'soon' : 'urgent';
   if (days <= 30) return 'soon';
   return 'later';
 }

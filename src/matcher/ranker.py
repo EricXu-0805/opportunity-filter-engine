@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
 
+from ..evidence import harvested_contact_email
 from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
@@ -65,8 +66,12 @@ def _is_actionable(opportunity: dict) -> bool:
     (contact_method='email' — every faculty record) is actionable only with an
     actual address: faculty collectors stamp the PROFILE url into
     application_url, so that field proves nothing for them. For real
-    application flows (website/form) the URL is the action."""
-    if opportunity.get("contact_email") or opportunity.get("pi_email"):
+    application flows (website/form) the URL is the action.
+
+    The email bar is the harvested-provenance one shared with the reveal flow
+    (backend.lib.contact_visibility): an address the product refuses to reveal
+    because it was synthesized must not win ranking ties as "actionable"."""
+    if harvested_contact_email(opportunity):
         return True
     app = opportunity.get("application") or {}
     if app.get("contact_method") == "email":

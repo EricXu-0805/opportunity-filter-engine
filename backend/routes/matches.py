@@ -21,6 +21,7 @@ from backend.lib.blocking import (
     run_blocking,
 )
 from backend.lib.llm import _resolve, chat_completion
+from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.publication_attribution import attribution_status, verified_recent_works
 from backend.routes.responsiveness import signals_map
@@ -72,6 +73,9 @@ _CARD_OPP_FIELDS = frozenset({
     "deadline", "source", "on_campus", "posted_date", "location", "url",
     "duration", "compensation_details", "keywords", "lab_or_program", "pi_name",
     "school", "audience", "description_clean", "source_type",
+    # W11: an estimated deadline must carry its estimate flag onto the card —
+    # without it the UI renders a guessed date as a hard one.
+    "deadline_is_estimate",
 })
 _CARD_ELIG_FIELDS = frozenset({"international_friendly", "skills_required", "skills_preferred"})
 _CARD_APP_FIELDS = frozenset({
@@ -84,6 +88,15 @@ def _match_card(opp: dict) -> dict:
     """Project an opportunity to the minimal card shape the results UI renders
     (email-redacted by construction — no email field is in the kept sets)."""
     out = {k: opp[k] for k in _CARD_OPP_FIELDS if k in opp}
+    # Position truthfulness (W11): the card must not carry an unsupported
+    # "Prof." honorific, and it serves the stated rank so the UI can frame
+    # its faculty CTA honestly ("" / absent = rank unknown).
+    honest = displayed_title(opp)
+    if honest != out.get("title"):
+        out["title"] = honest
+    rank = stated_rank(opp)
+    if rank:
+        out["faculty_title"] = rank
     elig = opp.get("eligibility")
     if isinstance(elig, dict):
         out["eligibility"] = {k: elig[k] for k in _CARD_ELIG_FIELDS if k in elig}
