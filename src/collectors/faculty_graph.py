@@ -71,6 +71,7 @@ from .ucb_common import (
     _is_person_name,
     _strip_nav_furniture,
     clear_contact_claim,
+    clear_contact_evidence,
     profile_page_matches_person,
 )
 
@@ -2814,11 +2815,12 @@ def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
     dropped duplicate, so collapsing never loses a usable address or URL."""
     if not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip():
         survivor["contact_email"] = loser["contact_email"]
-        # The provenance stamp travels with the address it describes (same rule
-        # as _carry_forward_enrichment); a loser email without one is adopted
-        # just the same — provenance is never a condition.
+        # This cross-record dedup is weaker than the stable-id carry path. Move
+        # the address as legacy data, but never move a verified five-field claim
+        # across records unless a future collector proves canonical identity.
+        clear_contact_evidence(survivor)
         src = (loser.get("metadata") or {}).get("email_source")
-        if src:
+        if isinstance(src, str) and not src.startswith("bound_"):
             survivor.setdefault("metadata", {})["email_source"] = src
     for f in ("url", "source_url"):
         if not (survivor.get(f) or "").strip() and (loser.get(f) or "").strip():

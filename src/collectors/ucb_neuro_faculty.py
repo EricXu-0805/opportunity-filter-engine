@@ -42,6 +42,8 @@ from .ucb_common import (
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,7 +66,10 @@ def _scrape_table(soup: BeautifulSoup, base: str) -> list[dict]:
     interests, and the inline mailto email straight from each row."""
     out: list[dict] = []
     for row in soup.select("table tbody tr"):
-        link = row.select_one("td.views-field-title a[href]") or row.select_one("td.views-field-title a, a[href]")
+        # Evidence-producing rows require the reviewed faculty-name cell.
+        # Falling back to any link can turn "Learn More" / support furniture
+        # into a professor identity and bind the row email to it.
+        link = row.select_one("td.views-field-title a[href]")
         if not link:
             continue
         name = clean_name(link.get_text(" ", strip=True))
@@ -73,14 +78,25 @@ def _scrape_table(soup: BeautifulSoup, base: str) -> list[dict]:
             continue
         resint_cell = row.select_one("td.views-field-field-openberkeley-person-resint")
         research = resint_cell.get_text(" ", strip=True) if resint_cell else ""
-        mail = row.select_one("td.views-field-field-openberkeley-person-email a[href^='mailto:']")
-        email = mail.get("href", "")[len("mailto:"):].strip() if mail else ""
-        out.append({
+        email = unique_bound_container_contact(
+            row,
+            NEURO_CONFIG,
+            nested_record_selector="tr",
+        )
+        person = {
             "name": name,
             "url": urljoin(base, href),
-            "email": email,
             "research_areas": research,
-        })
+        }
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                NEURO_CONFIG,
+                source_soup=soup,
+                requested_url=NEURO_CONFIG["url"],
+            )
+        out.append(person)
     return out
 
 

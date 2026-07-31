@@ -19,7 +19,12 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors.ucb_common import dedup_by_profile_url, normalize_faculty
+from backend.lib.contact_visibility import verified_send_target
+from src.collectors.ucb_common import (
+    _mark_fetched_soup_observation,
+    dedup_by_profile_url,
+    normalize_faculty,
+)
 from src.collectors.ucb_journalism_faculty import (
     JOURNALISM_CONFIG,
     _scrape_journalism_faculty_list,
@@ -64,6 +69,11 @@ LISTING_HTML = f"""
 
 def _scrape():
     soup = BeautifulSoup(LISTING_HTML, "html.parser")
+    _mark_fetched_soup_observation(
+        soup,
+        requested_url=JOURNALISM_CONFIG["url"],
+        final_url=JOURNALISM_CONFIG["url"],
+    )
     return _scrape_journalism_faculty_list(soup, JOURNALISM_CONFIG["base"])
 
 
@@ -72,7 +82,7 @@ def test_parses_name_title_email_and_strips_parenthetical():
     geeta = next(p for p in people if p["name"] == "Geeta Anand")
     assert geeta["title"] == "Professor"  # "(On sabbatical ...)" stripped
     assert geeta["url"] == "https://journalism.berkeley.edu/person/geeta-anand/"
-    assert geeta["email"] == "geeta_anand@berkeley.edu"
+    assert geeta["_contact_claim"]["contact_email"] == "geeta_anand@berkeley.edu"
 
 
 def test_lecturer_role_has_no_prefix_and_no_email_ships_lite():
@@ -118,6 +128,7 @@ def test_output_shape_matches_other_faculty_collectors():
     assert opp["organization"] == "University of California, Berkeley"
     assert opp["id"].startswith("faculty-ucb-jour-")
     assert opp["contact_email"] == "geeta_anand@berkeley.edu"
+    assert verified_send_target(opp) == "geeta_anand@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
     assert opp["eligibility"]["majors"] == JOURNALISM_CONFIG["majors"]
     assert opp["on_campus"] is False

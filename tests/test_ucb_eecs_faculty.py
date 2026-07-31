@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from backend.lib.contact_visibility import verified_send_target
 from src.collectors import ucb_common
 from src.collectors.ucb_common import fetch_soup, normalize_faculty
 from src.collectors.ucb_eecs_faculty import (
@@ -79,6 +80,11 @@ FIXTURE_HTML = """
 
 def _scrape():
     soup = BeautifulSoup(FIXTURE_HTML, "html.parser")
+    ucb_common._mark_fetched_soup_observation(
+        soup,
+        requested_url=EECS_CONFIG["url"],
+        final_url=EECS_CONFIG["url"],
+    )
     return _scrape_eecs_faculty_list(soup, EECS_CONFIG["base"])
 
 
@@ -93,7 +99,7 @@ def test_parser_extracts_only_homepages_faculty():
 
 def test_parser_pulls_email_title_and_research_areas():
     abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
-    assert abbeel["email"] == "pabbeel@cs.berkeley.edu"
+    assert abbeel["_contact_claim"]["contact_email"] == "pabbeel@cs.berkeley.edu"
     assert abbeel["title"] == "Professor"
     assert "Robotics" in abbeel["research_areas"]
     assert abbeel["url"].startswith("https://www2.eecs.berkeley.edu/Faculty/Homepages/")
@@ -114,6 +120,7 @@ def test_normalize_produces_berkeley_schema():
     assert opp["location"] == "Berkeley, CA"
     assert opp["pi_name"] == "Pieter Abbeel"
     assert opp["contact_email"] == "pabbeel@cs.berkeley.edu"
+    assert verified_send_target(opp) == "pabbeel@cs.berkeley.edu"
     assert opp["id"].startswith("faculty-ucb-eecs-")
     # research areas drove real keywords, not just the broad fallback.
     assert "robotics" in opp["keywords"]
@@ -187,7 +194,8 @@ def test_metadata_keys_are_canonical():
     assert set(opp["metadata"]) == {
         "confidence_score", "last_verified", "first_seen_at", "last_seen_at",
         "is_active", "manually_reviewed", "notes", "faculty_title",
-        "research_areas_raw",
+        "research_areas_raw", "identity_bound", "email_source",
+        "contact_verified_email", "contact_source_url", "contact_verified_at",
     }
     assert set(opp) == {
         "id", "source", "source_url", "source_type", "title", "organization",

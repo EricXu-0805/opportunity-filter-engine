@@ -30,11 +30,12 @@ from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
-    NOISE_EMAILS,
     clean_name,
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -92,11 +93,19 @@ def _scrape_ib_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
                 person["title"] = title
 
         # Email: the row's mailto: cell (skip shared/admin mailboxes).
-        mail = row.select_one("a[href^='mailto:']")
-        if mail:
-            email = mail.get("href", "").replace("mailto:", "").split("?")[0].strip().lower()
-            if email and email not in NOISE_EMAILS:
-                person["email"] = email
+        email = unique_bound_container_contact(
+            row,
+            IB_CONFIG,
+            nested_record_selector="tr",
+        )
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                IB_CONFIG,
+                source_soup=soup,
+                requested_url=IB_CONFIG["url"],
+            )
 
         faculty.append(person)
 

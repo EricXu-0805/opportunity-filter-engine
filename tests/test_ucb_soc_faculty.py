@@ -16,7 +16,12 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors.ucb_common import dedup_by_profile_url, normalize_faculty
+from backend.lib.contact_visibility import verified_send_target
+from src.collectors.ucb_common import (
+    _mark_fetched_soup_observation,
+    dedup_by_profile_url,
+    normalize_faculty,
+)
 from src.collectors.ucb_soc_faculty import SOC_CONFIG, _scrape_soc_faculty_list
 
 
@@ -47,6 +52,11 @@ LISTING_HTML = f"""
 
 def _scrape():
     soup = BeautifulSoup(LISTING_HTML, "html.parser")
+    _mark_fetched_soup_observation(
+        soup,
+        requested_url=SOC_CONFIG["url"],
+        final_url=SOC_CONFIG["url"],
+    )
     return _scrape_soc_faculty_list(soup, SOC_CONFIG["base"])
 
 
@@ -55,7 +65,7 @@ def test_parses_name_title_email_research_and_link():
     braun = next(p for p in people if p["name"] == "Robert Braun")
     assert braun["title"] == "Associate Professor"
     assert braun["url"] == "https://sociology.berkeley.edu/faculty/robert-braun"
-    assert braun["email"] == "robert.braun@berkeley.edu"
+    assert braun["_contact_claim"]["contact_email"] == "robert.braun@berkeley.edu"
     assert "social movements" in braun["research_areas"].lower()
 
 
@@ -91,6 +101,7 @@ def test_output_shape_with_email():
     assert opp["organization"] == "University of California, Berkeley"
     assert opp["id"].startswith("faculty-ucb-soc-")
     assert opp["contact_email"] == "robert.braun@berkeley.edu"
+    assert verified_send_target(opp) == "robert.braun@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
     assert opp["eligibility"]["majors"] == SOC_CONFIG["majors"]
     assert opp["on_campus"] is False

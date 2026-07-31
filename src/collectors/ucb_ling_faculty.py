@@ -28,12 +28,12 @@ from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
-    EMAIL_RE,
-    NOISE_EMAILS,
     clean_name,
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,8 +69,13 @@ def _scrape_ling_faculty_list(soup: BeautifulSoup, base: str, listing_url: str) 
         text = table.get_text(" ", strip=True)
         if "Email:" not in text and "Research" not in text:
             continue
-        heading = table.find_previous(["h2", "h3", "h4"])
-        if not heading:
+        # The real template places each person's heading immediately before
+        # their one-cell table. Skip formatting whitespace only; any intervening
+        # element means this table is not that professor's explicit container.
+        heading = table.previous_sibling
+        while isinstance(heading, str) and not heading.strip():
+            heading = heading.previous_sibling
+        if getattr(heading, "name", None) not in {"h2", "h3", "h4"}:
             continue
         name = clean_name(heading.get_text(" ", strip=True))
         if not name or len(name) < 3:
@@ -84,9 +89,19 @@ def _scrape_ling_faculty_list(soup: BeautifulSoup, base: str, listing_url: str) 
         if title:
             person["title"] = title
 
-        match = EMAIL_RE.search(text)
-        if match and match.group(0).lower() not in NOISE_EMAILS:
-            person["email"] = match.group(0).lower()
+        email = unique_bound_container_contact(
+            table,
+            LING_CONFIG,
+            nested_record_selector="table",
+        )
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                LING_CONFIG,
+                source_soup=soup,
+                requested_url=listing_url,
+            )
 
         if "Research and teaching:" in text:
             research = text.split("Research and teaching:", 1)[1].strip()

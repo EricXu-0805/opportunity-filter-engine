@@ -17,7 +17,12 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors.ucb_common import dedup_by_profile_url, normalize_faculty
+from backend.lib.contact_visibility import verified_send_target
+from src.collectors.ucb_common import (
+    _mark_fetched_soup_observation,
+    dedup_by_profile_url,
+    normalize_faculty,
+)
 from src.collectors.ucb_ib_faculty import IB_CONFIG, _scrape_ib_faculty_list
 
 
@@ -50,6 +55,11 @@ LISTING_HTML = f"""
 
 def _scrape():
     soup = BeautifulSoup(LISTING_HTML, "html.parser")
+    _mark_fetched_soup_observation(
+        soup,
+        requested_url=IB_CONFIG["url"],
+        final_url=IB_CONFIG["url"],
+    )
     return _scrape_ib_faculty_list(soup, IB_CONFIG["base"])
 
 
@@ -63,7 +73,8 @@ def test_parses_only_faculty_table():
 def test_name_title_email_and_absolute_link():
     ackerly = next(p for p in _scrape() if p["name"] == "David Ackerly")
     assert ackerly["title"] == "Dean and Professor"
-    assert ackerly["email"] == "dackerly@berkeley.edu"
+    assert "email" not in ackerly  # trusted email stays in one internal bundle
+    assert ackerly["_contact_claim"]["contact_email"] == "dackerly@berkeley.edu"
     assert ackerly["url"] == "https://ib.berkeley.edu/people/directory/detail/5436/"
 
 
@@ -85,6 +96,9 @@ def test_output_shape_with_email():
     assert opp["organization"] == "University of California, Berkeley"
     assert opp["id"].startswith("faculty-ucb-ib-")
     assert opp["contact_email"] == "dackerly@berkeley.edu"
+    assert verified_send_target(opp) == "dackerly@berkeley.edu"
+    assert opp["metadata"]["email_source"] == "bound_directory_card"
+    assert opp["metadata"]["contact_source_url"] == IB_CONFIG["url"]
     assert opp["metadata"]["confidence_score"] == 0.7  # has email
     assert opp["eligibility"]["majors"] == IB_CONFIG["majors"]
     assert opp["on_campus"] is False
@@ -92,6 +106,28 @@ def test_output_shape_with_email():
     assert opp["eligibility"]["work_auth_notes"] == IB_CONFIG["work_auth_notes"]
     # No research from the listing -> broad department keyword.
     assert opp["keywords"] == ["integrative biology"]
+
+
+def test_nested_child_row_email_cannot_bind_to_parent_faculty():
+    html = """
+    <h2>Faculty</h2>
+    <table>
+      <tr>
+        <td><a href="/people/directory/detail/1/"><strong>Ada Lovelace</strong></a></td>
+        <td><table><tr><td><a href="mailto:grace@berkeley.edu">grace@berkeley.edu</a></td></tr></table></td>
+      </tr>
+    </table>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    _mark_fetched_soup_observation(
+        soup,
+        requested_url=IB_CONFIG["url"],
+        final_url=IB_CONFIG["url"],
+    )
+    people = _scrape_ib_faculty_list(soup, IB_CONFIG["base"])
+    ada = next(person for person in people if person["name"] == "Ada Lovelace")
+    assert "_contact_claim" not in ada
+    assert normalize_faculty(ada, IB_CONFIG)["contact_email"] is None
 
 
 def test_known_record_id_is_byte_stable():

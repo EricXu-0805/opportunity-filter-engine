@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import pytest
 
+from backend.lib.contact_visibility import verified_send_target
 from src.collectors import ucb_neuro_faculty as nf
+from src.collectors.ucb_common import _mark_fetched_soup_observation
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 
 TABLE_FIXTURE = """
@@ -36,7 +38,12 @@ TABLE_FIXTURE = """
 
 def _soup(html):
     bs4 = pytest.importorskip("bs4")
-    return bs4.BeautifulSoup(html, "html.parser")
+    soup = bs4.BeautifulSoup(html, "html.parser")
+    return _mark_fetched_soup_observation(
+        soup,
+        requested_url=nf.NEURO_CONFIG["url"],
+        final_url=nf.NEURO_CONFIG["url"],
+    )
 
 
 class TestScrapeTable:
@@ -44,16 +51,29 @@ class TestScrapeTable:
         rows = {r["name"]: r for r in nf._scrape_table(_soup(TABLE_FIXTURE), nf.NEURO_CONFIG["base"])}
         assert set(rows) == {"Hillel Adesnik", "Pat Lite"}
         a = rows["Hillel Adesnik"]
-        assert a["email"] == "hadesnik@berkeley.edu"
+        assert a["_contact_claim"]["contact_email"] == "hadesnik@berkeley.edu"
         assert a["url"].endswith("/people/hillel-adesnik")
         assert "sensation" in a["research_areas"].lower()
 
     def test_missing_email_ships_lite(self):
         rows = {r["name"]: r for r in nf._scrape_table(_soup(TABLE_FIXTURE), nf.NEURO_CONFIG["base"])}
-        assert rows["Pat Lite"]["email"] == ""
+        assert "_contact_claim" not in rows["Pat Lite"]
 
     def test_no_table_yields_empty(self):
         assert nf._scrape_table(_soup("<html><body><p>nothing</p></body></html>"), nf.NEURO_CONFIG["base"]) == []
+
+    def test_non_title_link_cannot_become_professor_identity(self):
+        html = """
+        <table><tbody><tr>
+          <td><a href="/support">Learn More</a></td>
+          <td class="views-field-field-openberkeley-person-email">
+            <a href="mailto:helper.person@berkeley.edu">
+              helper.person@berkeley.edu
+            </a>
+          </td>
+        </tr></tbody></table>
+        """
+        assert nf._scrape_table(_soup(html), nf.NEURO_CONFIG["base"]) == []
 
 
 class TestNormalize:
@@ -64,6 +84,7 @@ class TestNormalize:
         assert o["source"] == "ucb_neuro_faculty"
         assert o["source_type"] == "faculty_research"
         assert o["contact_email"] == "hadesnik@berkeley.edu"
+        assert verified_send_target(o) == "hadesnik@berkeley.edu"
         assert o["pi_name"] == "Hillel Adesnik"
 
     def test_source_default_registered(self):

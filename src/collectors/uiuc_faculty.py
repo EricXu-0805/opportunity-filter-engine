@@ -26,7 +26,12 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from .ucb_common import clear_contact_claim
+from .ucb_common import (
+    apply_record_contact_claim,
+    clear_contact_claim,
+    clear_contact_evidence,
+    record_contact_claim,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1120,15 +1125,38 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     # college's ciwebmanager@ box). Let those decay instead of resurrecting them.
     if email and _ROLE_MAILBOX.match(email) and incoming.get("pi_name"):
         email = None
-    if email and not incoming.get("contact_email"):
-        incoming["contact_email"] = email
-        # The provenance flag travels with the address it describes (a
-        # constructed/wayback-recovered email without its flag would read as
-        # observed). Metadata is replaced wholesale by both merge styles, so
-        # it needs the same unconditional carry as the email itself.
-        src = (existing.get("metadata") or {}).get("email_source")
-        if src:
-            incoming.setdefault("metadata", {})["email_source"] = src
+    incoming_email = incoming.get("contact_email")
+    same_email = bool(
+        email
+        and isinstance(incoming_email, str)
+        and incoming_email.strip().casefold() == email.strip().casefold()
+    )
+    if email and (not incoming_email or same_email):
+        if not incoming_email:
+            incoming["contact_email"] = email
+        incoming_claim = record_contact_claim(incoming)
+        # A verified address and all five evidence fields are one claim. Carry
+        # the original bundle only for the exact same stable-id email and never
+        # refresh its observation time. Expired/partial evidence is not carried.
+        # When this scrape independently produced a complete fresh claim for
+        # the same address, it is stronger and keeps its newer observation.
+        if incoming_claim is None:
+            trusted_claim = record_contact_claim(existing)
+            if trusted_claim is not None:
+                apply_record_contact_claim(incoming, trusted_claim)
+            else:
+                clear_contact_evidence(incoming)
+                # Preserve legacy provenance with a legacy address, but never
+                # launder an incomplete bound_* tuple into a trusted source.
+                src = (existing.get("metadata") or {}).get("email_source")
+                if isinstance(src, str) and not src.startswith("bound_"):
+                    incoming.setdefault("metadata", {})["email_source"] = src
+    elif incoming_email:
+        # A genuinely new email wins, but an old or partial proof tuple must not
+        # remain attached to it. A fresh collector-produced tuple has already
+        # been validated on ``incoming`` and is preserved.
+        if record_contact_claim(incoming) is None:
+            clear_contact_evidence(incoming)
 
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:

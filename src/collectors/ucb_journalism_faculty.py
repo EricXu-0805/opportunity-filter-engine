@@ -35,11 +35,12 @@ from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
-    NOISE_EMAILS,
     clean_name,
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -99,11 +100,19 @@ def _scrape_journalism_faculty_list(soup: BeautifulSoup, base: str) -> list[dict
         if title:
             person["title"] = title
 
-        mail = block.select_one("p.contact-me a[href^='mailto:']")
-        if mail:
-            email = mail.get("href", "").replace("mailto:", "").split("?")[0].strip().lower()
-            if email and email not in NOISE_EMAILS:
-                person["email"] = email
+        email = unique_bound_container_contact(
+            block,
+            JOURNALISM_CONFIG,
+            nested_record_selector="div.faculty-profile",
+        )
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                JOURNALISM_CONFIG,
+                source_soup=soup,
+                requested_url=JOURNALISM_CONFIG["url"],
+            )
 
         faculty.append(person)
 

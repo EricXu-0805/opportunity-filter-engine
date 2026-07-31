@@ -27,11 +27,12 @@ from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
-    NOISE_EMAILS,
     clean_name,
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,11 +80,19 @@ def _scrape_geog_faculty_list(soup: BeautifulSoup) -> list[dict]:
         if rank:
             person["title"] = rank.group(1)
 
-        mail = table.select_one("a[href^='mailto:']")
-        if mail:
-            email = mail.get("href", "").replace("mailto:", "").split("?")[0].strip().lower()
-            if email and email not in NOISE_EMAILS:
-                person["email"] = email
+        email = unique_bound_container_contact(
+            table,
+            GEOG_CONFIG,
+            nested_record_selector="table",
+        )
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                GEOG_CONFIG,
+                source_soup=soup,
+                requested_url=GEOG_CONFIG["url"],
+            )
 
         research = table.select_one("em")
         if research and research.get_text(strip=True):

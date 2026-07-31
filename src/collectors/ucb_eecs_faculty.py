@@ -22,13 +22,18 @@ Usage:
 from __future__ import annotations
 
 import logging
-import re
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
 from . import ucb_common
-from .ucb_common import NOISE_EMAILS, clean_name, fetch_soup, normalize_faculty
+from .ucb_common import (
+    clean_name,
+    fetch_soup,
+    normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +111,6 @@ def _scrape_eecs_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
         person: dict = {"name": name, "url": urljoin(base, name_el.get("href", ""))}
 
         p = block.find("p")
-        p_text = p.get_text(" ", strip=True) if p else ""
 
         # Title: first <strong> that isn't a "Label:" header (e.g. "Professor").
         if p:
@@ -116,13 +120,21 @@ def _scrape_eecs_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
                     person["title"] = t
                     break
 
-        # Email: inline in the <p>; keep only Berkeley addresses.
-        emails = re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", p_text)
-        berkeley = [e for e in emails
-                    if e.lower().endswith("berkeley.edu")
-                    and e.lower() not in NOISE_EMAILS]
-        if berkeley:
-            person["email"] = berkeley[0]
+        # Email: every visible/mailto address in this explicit faculty block
+        # must canonicalize to the same personal contact.
+        email = unique_bound_container_contact(
+            block,
+            EECS_CONFIG,
+            nested_record_selector="div.cc-image-list__item__content",
+        )
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                EECS_CONFIG,
+                source_soup=soup,
+                requested_url=EECS_CONFIG["url"],
+            )
 
         # Research areas: the linked topic tags.
         areas = [a.get_text(strip=True)

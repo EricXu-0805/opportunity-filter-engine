@@ -35,6 +35,11 @@ def test_is_person_name_rejects_institution_labels():
         "University of California",
         "Department of Statistics",
         "School of Information",
+        "Contact Us",
+        "Learn More",
+        "Read More",
+        "Support",
+        "Research Areas",
         "  ",
         "",
     ]:

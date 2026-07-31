@@ -21,8 +21,10 @@ degrade, never a 401 that breaks the page.
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
 from backend.lib.public_projection import safe_public_http_url
 # The synthesized-vs-observed provenance predicate is shared with the ranker's
@@ -36,18 +38,32 @@ from src.evidence import is_synthesized_email_source
 # binding was observed. New collector methods must be reviewed and added
 # explicitly; unknown, legacy, constructed, inferred, and guessed sources all
 # fail closed.
-_IDENTITY_BOUND_EMAIL_SOURCES = frozenset({
+IDENTITY_BOUND_EMAIL_SOURCES = frozenset({
     "bound_directory_card",
     "bound_directory_name_join",
     "bound_profile_container",
     "bound_profile_custom_obfuscated",
     "bound_profile_obfuscated",
 })
+_IDENTITY_BOUND_EMAIL_SOURCES = IDENTITY_BOUND_EMAIL_SOURCES
+
+CONTACT_EVIDENCE_FIELDS = frozenset({
+    "identity_bound",
+    "email_source",
+    "contact_verified_email",
+    "contact_source_url",
+    "contact_verified_at",
+})
 
 _EMAIL_TARGET_RE = re.compile(
     r"^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@"
     r"[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?"
     r"(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$",
+    flags=re.IGNORECASE,
+)
+_NONSTANDARD_NUMERIC_HOST_RE = re.compile(
+    r"^(?:0x[0-9a-f]+|0[0-7]+|[0-9]+)"
+    r"(?:\.(?:0x[0-9a-f]+|0[0-7]+|[0-9]+)){0,3}$",
     flags=re.IGNORECASE,
 )
 
@@ -76,6 +92,114 @@ def _valid_email_target(email: str) -> bool:
     )
 
 
+def safe_contact_source_url(value: object) -> str | None:
+    """Return an HTTPS, externally routable URL suitable as contact evidence.
+
+    ``safe_public_http_url`` is the browser-link boundary and intentionally
+    permits HTTP and local hosts. Contact evidence is a stronger claim: it must
+    point to the actual public response where the identity/email binding was
+    observed, never localhost, a private address, or a downgrade to cleartext.
+    """
+
+    safe = safe_public_http_url(value)
+    if safe is None:
+        return None
+    try:
+        parsed = urlsplit(safe)
+        hostname = (parsed.hostname or "").rstrip(".").casefold()
+    except ValueError:
+        return None
+    if "%" in hostname or not hostname.isascii():
+        # Browser URL parsers decode percent/full-width host spellings before
+        # navigation, which can turn them into loopback/private literals.
+        return None
+    if parsed.scheme.casefold() != "https" or "." not in hostname:
+        return None
+    if hostname == "localhost" or hostname.endswith((
+        ".localhost",
+        ".local",
+        ".internal",
+        ".home",
+        ".lan",
+        ".test",
+        ".invalid",
+        ".example",
+    )):
+        return None
+    if _NONSTANDARD_NUMERIC_HOST_RE.fullmatch(hostname) is not None:
+        return None
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        return safe
+    # A reviewed academic directory should have a stable DNS identity. Reject
+    # raw IP literals entirely, including globally routed ones.
+    return None
+
+
+def build_identity_bound_contact_evidence(
+    *,
+    email: object,
+    email_source: object,
+    contact_source_url: object,
+    contact_verified_at: datetime | str | None = None,
+) -> dict[str, object] | None:
+    """Build the five-field evidence tuple, or fail without partial output.
+
+    Collectors call this only after one reviewed extraction event has bound an
+    address to a person. The returned dict is complete and canonical, so a
+    caller can attach it with one ``dict.update`` rather than writing evidence
+    fields piecemeal.
+    """
+
+    if not isinstance(email, str):
+        return None
+    canonical_email = email.strip().casefold()
+    if not canonical_email or not _valid_email_target(canonical_email):
+        return None
+
+    if not isinstance(email_source, str):
+        return None
+    canonical_source = email_source.strip().casefold()
+    if (
+        canonical_source != email_source
+        or canonical_source not in IDENTITY_BOUND_EMAIL_SOURCES
+    ):
+        return None
+
+    safe_source_url = safe_contact_source_url(contact_source_url)
+    if safe_source_url is None:
+        return None
+
+    # A proof timestamp comes from the fetch event. Defaulting a missing value
+    # to "now" would let a later apply/carry step impersonate an observation.
+    observed = contact_verified_at
+    if isinstance(observed, str):
+        try:
+            observed = datetime.fromisoformat(
+                observed.strip().replace("Z", "+00:00")
+            )
+        except ValueError:
+            return None
+    if (
+        not isinstance(observed, datetime)
+        or observed.tzinfo is None
+        or observed.utcoffset() is None
+    ):
+        return None
+    observed_utc = observed.astimezone(UTC)
+    if observed_utc > datetime.now(UTC) + _CLOCK_SKEW_GRACE:
+        return None
+
+    return {
+        "identity_bound": True,
+        "email_source": canonical_source,
+        "contact_verified_email": canonical_email,
+        "contact_source_url": safe_source_url,
+        "contact_verified_at": observed_utc.isoformat(),
+    }
+
+
 def _has_identity_bound_contact_evidence(
     opp: dict,
     email: str,
@@ -89,9 +213,12 @@ def _has_identity_bound_contact_evidence(
         return False
 
     source = metadata.get("email_source")
+    if not isinstance(source, str):
+        return False
+    canonical_source = source.strip().casefold()
     if (
-        not isinstance(source, str)
-        or source.strip().casefold() not in _IDENTITY_BOUND_EMAIL_SOURCES
+        source != canonical_source
+        or canonical_source not in IDENTITY_BOUND_EMAIL_SOURCES
     ):
         return False
 
@@ -102,7 +229,7 @@ def _has_identity_bound_contact_evidence(
     ):
         return False
 
-    if safe_public_http_url(metadata.get("contact_source_url")) is None:
+    if safe_contact_source_url(metadata.get("contact_source_url")) is None:
         return False
 
     verified_at = metadata.get("contact_verified_at")
@@ -117,7 +244,10 @@ def _has_identity_bound_contact_evidence(
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
         return False
     checked_at = timestamp.astimezone(UTC)
-    current = (now or datetime.now(UTC)).astimezone(UTC)
+    current = now or datetime.now(UTC)
+    if current.tzinfo is None or current.utcoffset() is None:
+        return False
+    current = current.astimezone(UTC)
     return (
         checked_at <= current + _CLOCK_SKEW_GRACE
         and current - checked_at <= timedelta(days=CONTACT_VERIFICATION_TTL_DAYS)

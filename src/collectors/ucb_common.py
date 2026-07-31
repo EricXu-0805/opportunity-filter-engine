@@ -37,10 +37,17 @@ import time
 import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import parse_qsl, urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
+
+from backend.lib.contact_visibility import (
+    CONTACT_EVIDENCE_FIELDS,
+    IDENTITY_BOUND_EMAIL_SOURCES,
+    build_identity_bound_contact_evidence,
+    verified_send_target,
+)
 
 from ..evidence import is_professor_rank
 from .atomic_json import atomic_write_json
@@ -579,6 +586,29 @@ def _retry_after_seconds(resp) -> float | None:
     return min(val, _RETRY_AFTER_CAP) if val >= 0 else None
 
 
+def _mark_fetched_soup_observation(
+    soup: BeautifulSoup,
+    *,
+    requested_url: str,
+    final_url: str,
+    observed_at: datetime | str | None = None,
+) -> BeautifulSoup:
+    """Attach fetch-scoped facts used by reviewed parser fixtures and callers."""
+
+    observed = datetime.now(UTC) if observed_at is None else observed_at
+    if isinstance(observed, datetime):
+        if observed.tzinfo is not None and observed.utcoffset() is not None:
+            observed = observed.astimezone(UTC).isoformat()
+        else:
+            # Keep a naive fixture naive so the evidence builder rejects it.
+            # Treating local wall time as UTC would silently manufacture proof.
+            observed = observed.isoformat()
+    soup._ofe_requested_url = requested_url
+    soup._ofe_final_url = final_url
+    soup._ofe_observed_at = observed
+    return soup
+
+
 def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
                timeout: int | None = None, max_retries: int | None = None) -> BeautifulSoup | None:
     """Fetch a URL with browser-like headers, retrying transient failures.
@@ -625,7 +655,16 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
             # Parse bytes, not resp.text: the EECS server omits a charset
             # header, so requests falls back to ISO-8859-1 and mangles UTF-8
             # names ("Björn" -> "BjÃ¶rn"). BeautifulSoup detects the encoding.
-            return BeautifulSoup(resp.content, "html.parser")
+            soup = BeautifulSoup(resp.content, "html.parser")
+            # Trusted contact evidence must cite the response that was actually
+            # parsed, not the pre-redirect request URL. Keep this fetch-scoped
+            # observation off the normalized record; reviewed parsers consume it
+            # only when name and email share one explicit row/card.
+            return _mark_fetched_soup_observation(
+                soup,
+                requested_url=url,
+                final_url=str(resp.url),
+            )
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout) as e:
             last_err = e
@@ -689,6 +728,13 @@ _INSTITUTION_PREFIX_RE = re.compile(
     r"(?i)^\s*(department|school|college|division|office|center|institute|"
     r"university|faculty|directory)\b"
 )
+_NON_PERSON_NAME_PREFIX_RE = re.compile(
+    r"(?i)^\s*(?:contact(?:\s+us)?|email(?:\s+us)?|get\s+in\s+touch|"
+    r"learn\s+more|read\s+more|view\s+(?:profile|details|bio|more)|"
+    r"click\s+here|find\s+out\s+more|support|help(?:\s+desk)?|"
+    r"research\s+areas?|publications?|teaching|biograph(?:y|ies)|"
+    r"news|events|resources?)\s*$"
+)
 
 
 def _is_person_name(name: str) -> bool:
@@ -716,7 +762,7 @@ def _is_person_name(name: str) -> bool:
         "n/a", "na", "null", "none", "undefined", "unknown", "not available",
     }:
         return False
-    if _INSTITUTION_PREFIX_RE.match(name):
+    if _INSTITUTION_PREFIX_RE.match(name) or _NON_PERSON_NAME_PREFIX_RE.match(name):
         return False
     tokens = re.findall(r"[a-z]+", name.lower())
     return bool(tokens) and any(t not in _INSTITUTION_WORDS for t in tokens)
@@ -809,6 +855,370 @@ def extract_email_from_profile(soup: BeautifulSoup, config: dict) -> str | None:
         return None
     berkeley = [e for e in cleaned if e.endswith("berkeley.edu")]
     return (berkeley or cleaned)[0]
+
+
+def _allowed_contact_domains(config: dict) -> tuple[str, ...]:
+    return tuple(config.get("allowed_email_domains") or (
+        "berkeley.edu",
+        "lbl.gov",
+        "msri.org",
+        "slmath.org",
+    ))
+
+
+_BOUND_ROLE_LOCALPART_RE = re.compile(
+    r"(?:office|admin|administrator|support|help|helpdesk|webmaster|"
+    r"webmanager|noreply|donotreply|inquiries|reception|frontdesk|"
+    r"mailbox|chair|info|contact|advising|staff|hr|undergrad|"
+    r"undergraduate|graduate|grad|admissions|communications|outreach|"
+    r"media|press|events|alumni|development|coordinator|recruitment|"
+    r"jobs|careers|assistant|manager|secretary|faculty|directory|team|"
+    r"group|lab)$",
+    flags=re.IGNORECASE,
+)
+
+
+def _department_contact_markers(config: dict) -> set[str]:
+    structural = {
+        "department",
+        "school",
+        "college",
+        "division",
+        "program",
+        "institute",
+        "center",
+        "and",
+        "the",
+        "for",
+        "of",
+    }
+    return {
+        token
+        for token in re.findall(
+            r"[a-z]+",
+            str(config.get("name") or "").casefold(),
+        )
+        if len(token) >= 3 and token not in structural
+    }
+
+
+def _clean_bound_contact(email: object, config: dict) -> str | None:
+    if not isinstance(email, str):
+        return None
+    cleaned = email.strip().casefold().removeprefix("mailto:")
+    cleaned = cleaned.split("?", 1)[0]
+    if not EMAIL_RE.fullmatch(cleaned) or cleaned in NOISE_EMAILS:
+        return None
+    local_part = re.sub(r"[^a-z]", "", cleaned.partition("@")[0])
+    department_markers = _department_contact_markers(config)
+    short_marker = re.sub(r"[^a-z]", "", str(config.get("short") or "").casefold())
+    if (
+        local_part in _UNIT_MAILBOX_LOCALPARTS
+        or local_part in department_markers
+        or (short_marker and local_part == short_marker)
+        or _BOUND_ROLE_LOCALPART_RE.search(local_part) is not None
+    ):
+        return None
+    domain = cleaned.partition("@")[2]
+    if not any(
+        domain == allowed or domain.endswith(f".{allowed}")
+        for allowed in _allowed_contact_domains(config)
+    ):
+        return None
+    return cleaned
+
+
+def unique_bound_contact(candidates: object, config: dict) -> str | None:
+    """Return one canonical personal address, or fail on ambiguity.
+
+    Repeated renderings of the same address are harmless. Two distinct usable
+    addresses inside one row/card are not enough to prove which belongs to the
+    selected person, so reviewed producers must not choose the first one.
+    """
+
+    raw_candidates = (
+        [candidates]
+        if isinstance(candidates, str)
+        else list(candidates)
+        if isinstance(candidates, (list, tuple, set, frozenset))
+        else []
+    )
+    cleaned = {
+        candidate
+        for raw in raw_candidates
+        if (candidate := _clean_bound_contact(raw, config)) is not None
+    }
+    return next(iter(cleaned)) if len(cleaned) == 1 else None
+
+
+def unique_bound_mailto_contact(elements: object, config: dict) -> str | None:
+    """Validate mailto hrefs and visible addresses as one unambiguous claim."""
+
+    if not isinstance(elements, (list, tuple)):
+        return None
+    candidates: list[str] = []
+    for element in elements:
+        href = element.get("href") if hasattr(element, "get") else None
+        if (
+            not isinstance(href, str)
+            or href != href.strip()
+            or any(character.isspace() for character in href)
+            or re.search(r"%0[ad]", href, flags=re.IGNORECASE)
+        ):
+            return None
+        try:
+            parsed = urlsplit(href)
+        except ValueError:
+            return None
+        if parsed.scheme.casefold() != "mailto" or parsed.fragment:
+            return None
+        try:
+            query = parse_qsl(
+                parsed.query,
+                keep_blank_values=True,
+                strict_parsing=False,
+            )
+        except ValueError:
+            return None
+        if any(
+            key.strip().casefold() in {"to", "cc", "bcc"}
+            for key, _value in query
+        ):
+            return None
+        href_email = _clean_bound_contact(parsed.path, config)
+        if href_email is None:
+            return None
+
+        visible_raw = EMAIL_RE.findall(
+            element.get_text(" ", strip=True)
+            if hasattr(element, "get_text")
+            else ""
+        )
+        if visible_raw:
+            visible = [
+                _clean_bound_contact(value, config)
+                for value in visible_raw
+            ]
+            if any(value is None for value in visible) or set(visible) != {
+                href_email
+            }:
+                return None
+        candidates.append(href_email)
+    return unique_bound_contact(candidates, config)
+
+
+def unique_bound_container_contact(
+    container: object,
+    config: dict,
+    *,
+    nested_record_selector: str,
+) -> str | None:
+    """Return one address only when visible text and mailto hrefs agree."""
+
+    if not hasattr(container, "get_text") or not hasattr(container, "select"):
+        return None
+    if (
+        not nested_record_selector
+        or container.select_one(nested_record_selector) is not None
+    ):
+        # A descendant record container makes name/email scope ambiguous:
+        # descendant selectors could otherwise bind the child email to parent.
+        return None
+    visible_raw = EMAIL_RE.findall(container.get_text(" ", strip=True))
+    visible = [_clean_bound_contact(value, config) for value in visible_raw]
+    if any(value is None for value in visible):
+        return None
+
+    mailto_elements = []
+    for element in container.select("a[href]"):
+        href = element.get("href")
+        if not isinstance(href, str):
+            continue
+        try:
+            is_mailto = urlsplit(href).scheme.casefold() == "mailto"
+        except ValueError:
+            is_mailto = False
+        if is_mailto:
+            mailto_elements.append(element)
+    candidates = [value for value in visible if value is not None]
+    if mailto_elements:
+        mailto_email = unique_bound_mailto_contact(mailto_elements, config)
+        if mailto_email is None:
+            return None
+        candidates.append(mailto_email)
+    return unique_bound_contact(candidates, config)
+
+
+def _fetch_contact_observation(
+    soup: BeautifulSoup,
+    requested_url: str,
+) -> tuple[str, str] | None:
+    """Return ``(final_url, observed_at)`` from this exact fetch event.
+
+    Synthetic/legacy soups have no observation metadata and therefore cannot
+    mint contact evidence. Redirects across hosts fail closed; a reviewed
+    listing parser may follow a same-host canonical redirect and cites the
+    final response URL.
+    """
+
+    observed_request = getattr(soup, "_ofe_requested_url", None)
+    final_url = getattr(soup, "_ofe_final_url", None)
+    observed_at = getattr(soup, "_ofe_observed_at", None)
+    if not all(
+        isinstance(value, str) and value
+        for value in (observed_request, final_url, observed_at, requested_url)
+    ):
+        return None
+    if observed_request != requested_url:
+        return None
+    try:
+        requested_host = (urlsplit(requested_url).hostname or "").casefold()
+        final_host = (urlsplit(final_url).hostname or "").casefold()
+    except ValueError:
+        return None
+    if not requested_host or requested_host != final_host:
+        return None
+    return final_url, observed_at
+
+
+def stamp_bound_directory_contact(
+    person: dict,
+    email: object,
+    config: dict,
+    *,
+    source_soup: BeautifulSoup,
+    requested_url: str,
+    email_source: str = "bound_directory_card",
+) -> bool:
+    """Attach one complete, same-row/card contact observation to ``person``.
+
+    The caller must invoke this inside the parser boundary where the person's
+    name and the address were read from the same explicit record container.
+    The claim is stored under one internal key and normalized later as the
+    six-field ``contact_email`` + evidence bundle. No partial evidence fields
+    are written when validation fails.
+    """
+
+    if not _is_person_name(str(person.get("name") or "")):
+        return False
+    cleaned = unique_bound_contact(email, config)
+    observation = _fetch_contact_observation(source_soup, requested_url)
+    if (
+        cleaned is None
+        or observation is None
+        or email_source not in IDENTITY_BOUND_EMAIL_SOURCES
+        or not email_source.startswith("bound_directory_")
+    ):
+        return False
+    final_url, observed_at = observation
+    evidence = build_identity_bound_contact_evidence(
+        email=cleaned,
+        email_source=email_source,
+        contact_source_url=final_url,
+        contact_verified_at=observed_at,
+    )
+    if evidence is None:
+        return False
+    person["_contact_claim"] = {
+        "contact_email": cleaned,
+        "metadata": evidence,
+    }
+    return True
+
+
+def _trusted_person_contact(person: dict, config: dict) -> dict | None:
+    """Return a collector claim only when its complete bundle revalidates."""
+
+    claim = person.get("_contact_claim")
+    if not isinstance(claim, dict):
+        return None
+    email = _clean_bound_contact(claim.get("contact_email"), config)
+    metadata = claim.get("metadata")
+    if email is None or not isinstance(metadata, dict):
+        return None
+    rebuilt = build_identity_bound_contact_evidence(
+        email=email,
+        email_source=metadata.get("email_source"),
+        contact_source_url=metadata.get("contact_source_url"),
+        contact_verified_at=metadata.get("contact_verified_at"),
+    )
+    if rebuilt is None or any(
+        metadata.get(field) != value for field, value in rebuilt.items()
+    ):
+        return None
+    verified_email = metadata.get("contact_verified_email")
+    if (
+        not isinstance(verified_email, str)
+        or verified_email.casefold() != email
+    ):
+        return None
+    return {
+        "contact_email": email,
+        "metadata": rebuilt,
+    }
+
+
+def record_contact_claim(record: dict) -> dict | None:
+    """Return a fresh normalized claim, preserving its original timestamp."""
+
+    email = verified_send_target(record)
+    metadata = record.get("metadata")
+    if not email or not isinstance(metadata, dict):
+        return None
+    return {
+        "contact_email": email,
+        "metadata": {
+            field: metadata[field]
+            for field in CONTACT_EVIDENCE_FIELDS
+        },
+    }
+
+
+def clear_contact_evidence(record: dict) -> None:
+    """Remove all five proof fields while preserving the current email."""
+
+    metadata = record.get("metadata")
+    if not isinstance(metadata, dict):
+        return
+    cleaned = {
+        key: value
+        for key, value in metadata.items()
+        if key not in CONTACT_EVIDENCE_FIELDS
+    }
+    record["metadata"] = cleaned
+
+
+def apply_record_contact_claim(record: dict, claim: dict) -> bool:
+    """Commit a previously validated claim to a normalized record in one update."""
+
+    email = claim.get("contact_email") if isinstance(claim, dict) else None
+    metadata = claim.get("metadata") if isinstance(claim, dict) else None
+    if not isinstance(email, str) or not isinstance(metadata, dict):
+        return False
+    rebuilt = build_identity_bound_contact_evidence(
+        email=email,
+        email_source=metadata.get("email_source"),
+        contact_source_url=metadata.get("contact_source_url"),
+        contact_verified_at=metadata.get("contact_verified_at"),
+    )
+    if rebuilt is None or any(
+        metadata.get(field) != value for field, value in rebuilt.items()
+    ):
+        return False
+    base_metadata = record.get("metadata")
+    clean_metadata = {
+        key: value
+        for key, value in (
+            base_metadata.items() if isinstance(base_metadata, dict) else ()
+        )
+        if key not in CONTACT_EVIDENCE_FIELDS
+    }
+    clean_metadata.update(rebuilt)
+    record.update({
+        "contact_email": rebuilt["contact_verified_email"],
+        "metadata": clean_metadata,
+    })
+    return True
 
 
 def extract_research_interests(soup: BeautifulSoup, config: dict) -> str:
@@ -1040,7 +1450,12 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     if not _is_person_name(name):
         return None
 
-    email = person.get("email", "")
+    trusted_contact = _trusted_person_contact(person, config)
+    email = (
+        trusted_contact["contact_email"]
+        if trusted_contact is not None
+        else person.get("email", "")
+    )
     dept_short = config["short"]
     dept_name = config["name"]
     profile_url = person.get("url", "")
@@ -1116,9 +1531,12 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     # condition for keeping the email.
     if person.get("_verification_scope") == "profile":
         metadata["verification_scope"] = "profile"
-    email_source = person.get("_email_source")
-    if email and isinstance(email_source, str) and email_source:
-        metadata["email_source"] = email_source
+    if trusted_contact is not None:
+        metadata.update(trusted_contact["metadata"])
+    else:
+        email_source = person.get("_email_source")
+        if email and isinstance(email_source, str) and email_source:
+            metadata["email_source"] = email_source
 
     return {
         "id": opp_id,
@@ -1249,7 +1667,9 @@ _UNIT_MAILBOX_LOCALPARTS = frozenset({
     "administration", "advising", "gradoffice", "undergrad", "undergraduate",
     "hr", "reception", "frontdesk", "dept", "department", "inquiries",
     "generalinquiries", "mailbox", "webmaster", "help", "support", "boxoffice",
-    "chair", "staff",
+    "chair", "staff", "webmanager", "helpdesk", "noreply", "donotreply",
+    "communications", "graduate", "grad", "admissions", "outreach", "media",
+    "press", "events", "alumni", "development",
 })
 
 
@@ -1259,13 +1679,10 @@ def _is_ucb_faculty(opp: dict) -> bool:
 
 
 def clear_contact_claim(opp: dict) -> None:
-    """Null a rejected contact_email together with its ``email_source``
-    provenance — a stale source stamp left behind would misattribute whatever
-    address a later pass writes."""
+    """Null a rejected address and remove its five proof fields atomically."""
+
+    clear_contact_evidence(opp)
     opp["contact_email"] = None
-    metadata = opp.get("metadata")
-    if isinstance(metadata, dict):
-        metadata.pop("email_source", None)
 
 
 def _null_shared_contact_emails(opps: list[dict]) -> int:
