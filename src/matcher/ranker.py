@@ -14,7 +14,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
 
-from ..evidence import harvested_contact_email
+from backend.lib.contact_visibility import verified_send_target
+
 from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
@@ -69,10 +70,14 @@ def _is_actionable(opportunity: dict) -> bool:
     application_url, so that field proves nothing for them. For real
     application flows (website/form) the URL is the action.
 
-    The email bar is the harvested-provenance one shared with the reveal flow
-    (backend.lib.contact_visibility): an address the product refuses to reveal
-    because it was synthesized must not win ranking ties as "actionable"."""
-    if harvested_contact_email(opportunity):
+    The email bar is the SAME authoritative predicate the reveal/send flow
+    uses (backend.lib.contact_visibility.verified_send_target): non-
+    synthesized source AND exact identity-bound evidence AND exact verified
+    email AND a safe, matching source URL AND a fresh timestamp. A record the
+    product would refuse to reveal must never win a ranking tie as
+    "actionable" — imported directly rather than re-approximated here, so the
+    two bars can never drift apart again."""
+    if verified_send_target(opportunity):
         return True
     app = opportunity.get("application") or {}
     if app.get("contact_method") == "email":

@@ -27,9 +27,11 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
 from backend.lib.public_projection import safe_public_http_url
-# The synthesized-vs-observed provenance predicate is shared with the ranker's
-# actionability tie-break (src.matcher.ranker._is_actionable) via src.evidence
-# so the two bars cannot drift apart.
+# The synthesized-vs-observed provenance predicate lives in src.evidence,
+# shared with the Match ranker's actionability tie-break
+# (src.matcher.ranker._is_actionable), which imports and calls
+# verified_send_target directly below — the two bars cannot drift apart
+# because there is only one bar.
 from src.evidence import is_synthesized_email_source
 
 # A harvested-looking string is not enough evidence that it belongs to the

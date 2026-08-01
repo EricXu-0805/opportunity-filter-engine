@@ -6,8 +6,13 @@ keeps re-answering ad hoc:
 1. **Was this value observed or synthesized?** Collectors stamp
    ``metadata.email_source`` (W7a); anything synthesized from a naming
    convention rather than observed on a page must never be treated as a real
-   address by ranking or reveal flows. The prefix tuple lives here so
-   ``src.matcher.ranker`` and ``backend.lib.contact_visibility`` cannot drift.
+   address anywhere. ``is_synthesized_email_source`` is the one predicate for
+   that question. It is a necessary but not sufficient condition for "may
+   this address be sent to or revealed" — that stronger authority is
+   ``backend.lib.contact_visibility.verified_send_target`` (non-synthesized
+   source AND identity-bound evidence AND format AND source-URL safety AND
+   freshness), which ``src.matcher.ranker._is_actionable`` imports and calls
+   directly rather than keeping a second, looser approximation here.
 
 2. **Was this value stated by the source or inferred by us?** Rule/LLM
    taggers historically wrote into ``eligibility``/top-level fields with no
@@ -48,7 +53,13 @@ def is_synthesized_email_source(source: object) -> bool:
 
 
 def harvested_contact_email(opp: dict) -> str:
-    """The record's contact email when its provenance passes the harvested bar.
+    """The record's contact email when its provenance passes the OBSERVED
+    (non-synthesized) bar — this is a provenance-labeling helper only, NOT
+    the send/reveal/actionability bar. It does not check identity-binding,
+    address format, source-URL safety, or evidence freshness; see
+    ``backend.lib.contact_visibility.verified_send_target`` for the
+    authoritative "may this be sent to or revealed" predicate, which both
+    the reveal endpoint and the Match ranker's actionability tie-break use.
 
     Returns ``""`` for missing addresses and for synthesized-provenance ones.
     The legacy unstamped majority (real scrapes predating provenance stamps)

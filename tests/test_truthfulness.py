@@ -13,7 +13,7 @@ suites (test_publication_trust.py, test_grounding.py).
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
 from backend.lib.contact_visibility import contact_email_status, verified_send_target
 from backend.lib.position_truth import displayed_title, stated_rank
@@ -234,6 +234,33 @@ class TestReuSiteFilter:
 # Email: synthesized provenance never ranks, reveals, or actions
 # ---------------------------------------------------------------------------
 
+_BOUND_URL = "https://cs.example.edu/people/jane-doe"
+
+
+def _bound_metadata(email: str, *, source: str = "bound_profile_container") -> dict:
+    """A complete, fresh identity-bound evidence tuple for `email`."""
+    return {
+        "identity_bound": True,
+        "email_source": source,
+        "contact_verified_email": email,
+        "contact_source_url": _BOUND_URL,
+        "contact_verified_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _bound_opp(email: str) -> dict:
+    """A complete opp: identity-bound evidence + matching url/source_url/
+    application_url — a bound_profile_* source additionally requires every
+    profile-identity projection to agree with the evidence's source URL."""
+    return {
+        "contact_email": email,
+        "url": _BOUND_URL,
+        "source_url": _BOUND_URL,
+        "metadata": _bound_metadata(email),
+        "application": {"contact_method": "email", "application_url": _BOUND_URL},
+    }
+
+
 class TestEmailProvenance:
     def test_synthesized_prefixes(self):
         assert is_synthesized_email_source("constructed_netid")
@@ -242,24 +269,76 @@ class TestEmailProvenance:
         assert not is_synthesized_email_source("")
         assert not is_synthesized_email_source(None)
 
-    def test_actionable_requires_harvested_provenance(self):
+    def test_harvested_contact_email_is_a_loose_observed_helper_not_the_actionability_bar(self):
+        # harvested_contact_email only screens out synthesized provenance —
+        # it is NOT the send/reveal/actionability predicate (that's
+        # verified_send_target). profile_page and bare-legacy (unstamped)
+        # sources both pass here even though neither is actionable or
+        # revealable without a full identity-bound evidence tuple.
+        assert harvested_contact_email(
+            {"contact_email": "jdoe@test.edu", "metadata": {"email_source": "profile_page"}}
+        ) == "jdoe@test.edu"
+        assert harvested_contact_email(
+            {"contact_email": "jdoe@test.edu", "metadata": {}}
+        ) == "jdoe@test.edu"
+        assert harvested_contact_email(
+            {"contact_email": "jdoe@test.edu", "metadata": {"email_source": "constructed_netid"}}
+        ) == ""
+
+    def test_actionable_requires_verified_send_target_evidence(self):
         synth = {"contact_email": "jdoe@test.edu",
                  "metadata": {"email_source": "constructed_netid"},
                  "application": {"contact_method": "email"}}
         assert not _is_actionable(synth)
-        harvested = {"contact_email": "jdoe@test.edu",
-                     "metadata": {"email_source": "profile_page"},
-                     "application": {"contact_method": "email"}}
-        assert _is_actionable(harvested)
+        # profile_page / bare-legacy / wayback sources are OBSERVED
+        # (non-synthesized) but carry no identity-bound evidence tuple — the
+        # ranker's actionability bar now equals the reveal bar, so none of
+        # these may win a ranking tie as actionable.
+        profile_page = {"contact_email": "jdoe@test.edu",
+                         "metadata": {"email_source": "profile_page"},
+                         "application": {"contact_method": "email"}}
+        assert not _is_actionable(profile_page)
         legacy = {"contact_email": "jdoe@test.edu", "metadata": {},
                   "application": {"contact_method": "email"}}
-        assert _is_actionable(legacy)
+        assert not _is_actionable(legacy)
+        wayback = {"contact_email": "jdoe@test.edu",
+                   "metadata": {"email_source": "wayback"},
+                   "application": {"contact_method": "email"}}
+        assert not _is_actionable(wayback)
+        complete = _bound_opp("jdoe@test.edu")
+        assert _is_actionable(complete)
 
     def test_ranker_and_reveal_bars_agree(self):
-        for source in ("constructed_netid", "profile_page", "", "wayback"):
-            opp = {"contact_email": "jdoe@test.edu", "metadata": {"email_source": source},
-                   "application": {"contact_method": "email"}}
-            assert bool(harvested_contact_email(opp)) == bool(verified_send_target(opp))
+        # The real invariant: _is_actionable (ranker tie-break) and
+        # verified_send_target (reveal/send) must return the same
+        # truthy/falsy verdict for every contact_method='email' record — a
+        # record the product won't reveal must never win a ranking tie as
+        # actionable. harvested_contact_email is deliberately excluded from
+        # this comparison; it's a looser, unrelated provenance helper (see
+        # the dedicated test above).
+        stale = _bound_opp("jdoe@test.edu")
+        stale["metadata"] = dict(stale["metadata"])
+        stale["metadata"]["contact_verified_at"] = (
+            datetime.now(UTC) - timedelta(days=61)
+        ).isoformat()
+        mismatched = _bound_opp("jdoe@test.edu")
+        mismatched["metadata"] = dict(mismatched["metadata"])
+        mismatched["metadata"]["contact_verified_email"] = "someoneelse@test.edu"
+        cases = [
+            {"contact_email": "jdoe@test.edu", "metadata": {"email_source": "constructed_netid"},
+             "application": {"contact_method": "email"}},
+            {"contact_email": "jdoe@test.edu", "metadata": {"email_source": "profile_page"},
+             "application": {"contact_method": "email"}},
+            {"contact_email": "jdoe@test.edu", "metadata": {},
+             "application": {"contact_method": "email"}},
+            {"contact_email": "jdoe@test.edu", "metadata": {"email_source": "wayback"},
+             "application": {"contact_method": "email"}},
+            _bound_opp("jdoe@test.edu"),
+            stale,  # past the 60-day TTL
+            mismatched,  # verified-email mismatch
+        ]
+        for opp in cases:
+            assert bool(_is_actionable(opp)) == bool(verified_send_target(opp)), opp
 
     def test_missing_email_is_unavailable_not_guessed(self):
         status, email = contact_email_status({"contact_email": None, "metadata": {}}, authenticated=True)

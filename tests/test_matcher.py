@@ -10,7 +10,7 @@ import functools
 import json
 import os
 import sys
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -2469,15 +2469,35 @@ class TestActionableTieBreak:
     ordered by record id — the audit found #1 matches with no email while
     equal-scored contactable peers sat below. Within a tie, actionable first."""
 
-    def _opp(self, oid, email=None, app_url=None, method="email"):
+    def _opp(self, oid, email=None, app_url=None, method="email", email_verified=False):
         # the faculty shape: contact_method='email' and application_url stamped
-        # with the PROFILE url — that url must not count as actionability
-        return {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
-                "title": f"Research with Prof. P {oid}", "keywords": ["robotics"],
-                "contact_email": email,
-                "eligibility": {},
-                "application": {"contact_method": method,
-                                "application_url": app_url or f"https://x.edu/{oid}"}}
+        # with the PROFILE url — that url must not count as actionability.
+        # email_verified=True attaches the complete, fresh identity-bound
+        # evidence tuple verified_send_target requires (including url/
+        # source_url matching the evidence's source URL, since a
+        # bound_profile_* source ties evidence to the record's own profile
+        # identity) — a bare `email` alone (the profile_page/legacy shape)
+        # is deliberately NOT actionable since it carries no such evidence.
+        url = app_url or f"https://x.edu/{oid}"
+        metadata = {}
+        if email and email_verified:
+            metadata = {
+                "identity_bound": True,
+                "email_source": "bound_profile_container",
+                "contact_verified_email": email,
+                "contact_source_url": url,
+                "contact_verified_at": datetime.now(UTC).isoformat(),
+            }
+        opp = {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
+               "title": f"Research with Prof. P {oid}", "keywords": ["robotics"],
+               "contact_email": email,
+               "eligibility": {},
+               "metadata": metadata,
+               "application": {"contact_method": method, "application_url": url}}
+        if email and email_verified:
+            opp["url"] = url
+            opp["source_url"] = url
+        return opp
 
     def test_tied_scores_prefer_actionable(self):
         from src.matcher.ranker import rank_all
@@ -2485,7 +2505,7 @@ class TestActionableTieBreak:
                    "research_interests_text": "robotics"}
         opps = [
             self._opp("a-dead-end"),
-            self._opp("b-email", email="p@x.edu"),
+            self._opp("b-email", email="p@x.edu", email_verified=True),
             self._opp("c-app-url", app_url="https://x.edu/apply", method="website"),
         ]
         results = rank_all(profile, opps)
@@ -2493,16 +2513,38 @@ class TestActionableTieBreak:
         assert len(scores) == 1  # identical records = a true tie wall
         assert [r.opportunity_id for r in results] == ["b-email", "c-app-url", "a-dead-end"]
 
+    def test_legacy_email_never_outranks_verified_bound_email_in_tie(self):
+        # Equal-score counterfactual for the ranker/reveal parity fix: a
+        # legacy/unverified email (profile_page shape — real address, no
+        # identity-bound evidence) must not win the actionable tie-break
+        # over a fully verified-bound one, and must not be treated as
+        # actionable itself — it ties with the true dead-end instead.
+        from src.matcher.ranker import rank_all
+        profile = {"year": "junior", "major": "Computer Science",
+                   "research_interests_text": "robotics"}
+        opps = [
+            self._opp("a-dead-end"),
+            self._opp("b-legacy-email", email="p@x.edu"),
+            self._opp("c-verified-email", email="q@x.edu", email_verified=True),
+        ]
+        results = rank_all(profile, opps)
+        scores = {r.final_score for r in results}
+        assert len(scores) == 1  # true tie wall
+        assert results[0].opportunity_id == "c-verified-email"
+        # a-dead-end and b-legacy-email are both non-actionable — tied,
+        # falling back to stable id order.
+        assert [r.opportunity_id for r in results[1:]] == ["a-dead-end", "b-legacy-email"]
+
     def test_score_still_dominates_actionability(self):
         from src.matcher.ranker import rank_all
         profile = {"year": "junior", "major": "Computer Science",
                    "research_interests_text": "robotics"}
         strong = self._opp("z-strong")
         strong["keywords"] = ["robotics", "robot manipulation", "motion planning"]
-        weak = self._opp("a-weak", email="p@x.edu")
+        weak = self._opp("a-weak", email="p@x.edu", email_verified=True)
         weak["keywords"] = ["ceramics"]
         results = rank_all(profile, [strong, weak])
-        assert results[0].opportunity_id == "z-strong"  # no email, still first
+        assert results[0].opportunity_id == "z-strong"  # actionable weak still loses on score
 
 
 class TestEmptyInterestMajorBonus:
