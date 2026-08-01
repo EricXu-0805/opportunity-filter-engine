@@ -3009,6 +3009,18 @@ export const en = {
     favoriteRemove: 'Remove from favorites',
     source: 'Source: {source}',
     lastVerified: 'Last verified: {date}',
+    loading: 'Loading opportunity...',
+    unavailable: {
+      title: 'This opportunity is temporarily unavailable',
+      message: "We couldn't load this listing right now. Nothing was lost — please try again in a moment.",
+      retrying: 'Retrying…',
+    },
+    favorite: {
+      loading: 'Checking your favorite status…',
+      loadError: "Couldn't load your favorite status.",
+      saving: 'Saving…',
+      saveError: "Couldn't save your change. Please retry.",
+    },
     professorFollow: {
       title: 'Follow this professor',
       body: 'Get verified updates — research focus, lab moves, project openings — on your dashboard.',
@@ -3137,6 +3149,8 @@ export const en = {
   favorites: {
     title: 'Favorites',
     loading: 'Loading favorites...',
+    loadError: "Couldn't load your favorites. Please retry.",
+    unavailableWarning: '{count} saved item(s) could not be loaded right now.',
     empty: "You haven't starred any opportunities yet.",
     emptyHint: 'Star any opportunity from the matches page to save it here.',
     emptyHintImport: 'You can also import an opportunity from a URL or description.',
@@ -7044,6 +7058,18 @@ export const zh = {
     favoriteRemove: '从收藏移除',
     source: '来源：{source}',
     lastVerified: '上次校验：{date}',
+    loading: '正在加载机会…',
+    unavailable: {
+      title: '该机会暂时无法加载',
+      message: '暂时无法加载这条信息，你的数据没有丢失 —— 请稍后重试。',
+      retrying: '重试中…',
+    },
+    favorite: {
+      loading: '正在检查收藏状态…',
+      loadError: '未能加载收藏状态。',
+      saving: '保存中…',
+      saveError: '未能保存更改，请重试。',
+    },
     professorFollow: {
       title: '关注这位教授',
       body: '研究方向、实验室变动、项目招人等经核实的更新会出现在你的仪表盘上。',
@@ -7172,6 +7198,8 @@ export const zh = {
   favorites: {
     title: '我的收藏',
     loading: '加载收藏中...',
+    loadError: '未能加载你的收藏，请重试。',
+    unavailableWarning: '有 {count} 条收藏暂时无法加载。',
     empty: '你还没有收藏任何机会。',
     emptyHint: '在匹配页面点击星标即可保存到这里。',
     emptyHintImport: '也可以从链接或描述粘贴导入一个机会。',

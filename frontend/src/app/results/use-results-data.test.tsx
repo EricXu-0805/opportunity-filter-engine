@@ -15,11 +15,15 @@ vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return { ...actual, getMatchView: mocks.getMatchView };
 });
-vi.mock('@/lib/match-cache', () => ({
-  MATCH_VIEW_CONTRACT_VERSION: 'match-view-v2-contact-trust',
-  readMatchCache: mocks.readMatchCache,
-  writeMatchCache: mocks.writeMatchCache,
-}));
+vi.mock('@/lib/match-cache', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/match-cache')>('@/lib/match-cache');
+  return {
+    MATCH_VIEW_CONTRACT_VERSION: 'match-view-v2-contact-trust',
+    hasValidMatchResultIdentity: actual.hasValidMatchResultIdentity,
+    readMatchCache: mocks.readMatchCache,
+    writeMatchCache: mocks.writeMatchCache,
+  };
+});
 vi.mock('@/lib/analytics', () => ({ trackOnce: mocks.trackOnce }));
 
 const profile: ProfileData = {
@@ -224,5 +228,33 @@ describe('useResultsData', () => {
     });
 
     unmount();
+  });
+
+  it('rejects a live response whose nested opportunity id drifted from the top-level id, and never caches it', async () => {
+    const bad = response('bad');
+    (bad.results[0].opportunity as unknown as Record<string, unknown>).id = 'drifted-id';
+    mocks.getMatchView.mockResolvedValueOnce(bad);
+
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t));
+
+    await waitFor(() => expect(result.current.error).toBe('Match results need to be refreshed. Please retry.'));
+    expect(result.current.data).toBeNull();
+    expect(mocks.writeMatchCache).not.toHaveBeenCalled();
+  });
+
+  it('rejects a live response with duplicate result ids, and never caches it', async () => {
+    const bad = response('dup', {
+      results: [
+        response('dup').results[0],
+        response('dup').results[0],
+      ],
+    });
+    mocks.getMatchView.mockResolvedValueOnce(bad);
+
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t));
+
+    await waitFor(() => expect(result.current.error).toBe('Match results need to be refreshed. Please retry.'));
+    expect(result.current.data).toBeNull();
+    expect(mocks.writeMatchCache).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  ApiError,
   getMatches,
   getMatchView,
   getOpportunities,
@@ -8,6 +9,7 @@ import {
   getMatchExplanation,
   getOpportunityById,
   getOpportunitiesByIds,
+  getShortlistOpportunities,
   generateColdEmail,
   getEmailVariants,
   refineEmail,
@@ -375,6 +377,161 @@ describe('getOpportunitiesByIds (batching)', () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     const body = JSON.parse(init.body as string);
     expect(body.ids).toEqual(['a']);
+  });
+});
+
+describe('getShortlistOpportunities (fail-closed accounting)', () => {
+  function batchBody(ids: string[]): { opportunities: { id: string }[]; requested: number; found: number } {
+    const opportunities = ids.map((id) => ({ id }));
+    return { opportunities, requested: ids.length, found: opportunities.length };
+  }
+
+  it('returns [] / [] without hitting fetch when ids is empty', async () => {
+    const result = await getShortlistOpportunities([]);
+    expect(result).toEqual({ opportunities: [], unavailableIds: [] });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts a valid payload: ordered opportunities, no unavailable', async () => {
+    fetchMock.mockResolvedValue(okJson(batchBody(['a', 'b'])));
+    const result = await getShortlistOpportunities(['a', 'b']);
+    expect(result).toEqual({ opportunities: [{ id: 'a' }, { id: 'b' }], unavailableIds: [] });
+  });
+
+  it('normalizes/dedupes requested ids while preserving first-request order', async () => {
+    fetchMock.mockResolvedValue(okJson(batchBody(['b', 'a'])));
+    await getShortlistOpportunities(['b', 'a', 'b', 'a']);
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body.ids).toEqual(['b', 'a']);
+  });
+
+  it('chunks requests at 200 and preserves overall first-seen order across chunks', async () => {
+    const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+    fetchMock
+      .mockResolvedValueOnce(okJson(batchBody(ids.slice(0, 200))))
+      .mockResolvedValueOnce(okJson(batchBody(ids.slice(200))));
+    const result = await getShortlistOpportunities(ids);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.opportunities.map((o) => o.id)).toEqual(ids);
+    expect(result.unavailableIds).toEqual([]);
+  });
+
+  it('returns missing (backend-skipped) ids as unavailableIds, in request order, without dropping found rows', async () => {
+    fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: 'a' }], requested: 3, found: 1 }));
+    const result = await getShortlistOpportunities(['a', 'missing-1', 'missing-2']);
+    expect(result.opportunities).toEqual([{ id: 'a' }]);
+    expect(result.unavailableIds).toEqual(['missing-1', 'missing-2']);
+  });
+
+  it('never auto-drops a requested id that IS found — round-trips extra fields untouched', async () => {
+    fetchMock.mockResolvedValue(okJson({
+      opportunities: [{ id: 'a', title: 'Research Assistant' }],
+      requested: 1,
+      found: 1,
+    }));
+    const result = await getShortlistOpportunities(['a']);
+    expect(result.opportunities).toEqual([{ id: 'a', title: 'Research Assistant' }]);
+  });
+
+  describe('fail-closed on the request side (before any fetch)', () => {
+    it('rejects a non-string id (e.g. 123) and never calls fetch', async () => {
+      await expect(getShortlistOpportunities([123 as unknown as string]))
+        .rejects.toMatchObject({ name: 'ApiError', code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects a null id and never calls fetch', async () => {
+      await expect(getShortlistOpportunities([null as unknown as string]))
+        .rejects.toBeInstanceOf(ApiError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty-string id and never calls fetch', async () => {
+      await expect(getShortlistOpportunities(['']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects a whitespace-only id and never calls fetch', async () => {
+      await expect(getShortlistOpportunities(['   ']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects an id over 100 chars and never calls fetch', async () => {
+      await expect(getShortlistOpportunities(['x'.repeat(101)]))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('accepts an id at exactly 100 chars and uses it raw, untrimmed', async () => {
+      const id = 'x'.repeat(100);
+      fetchMock.mockResolvedValue(okJson(batchBody([id])));
+      const result = await getShortlistOpportunities([id]);
+      expect(result.opportunities).toEqual([{ id }]);
+    });
+
+    it('fails closed on the whole call when only ONE id among many is malformed — no partial fetch', async () => {
+      await expect(getShortlistOpportunities(['good-1', '   ', 'good-2']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fail-closed on the response side', () => {
+    it('rejects an unknown id (not among the requested chunk) as a safe ApiError', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: 'not-requested' }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ name: 'ApiError', code: 'SHORTLIST_UNKNOWN_ID', retryable: true });
+    });
+
+    it('rejects a duplicate returned id as a safe ApiError', async () => {
+      fetchMock.mockResolvedValue(okJson({
+        opportunities: [{ id: 'a' }, { id: 'a' }],
+        requested: 2,
+        found: 2,
+      }));
+      await expect(getShortlistOpportunities(['a', 'b']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_DUPLICATE_ID' });
+    });
+
+    it('rejects an incoherent requested/found count as a safe ApiError', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: 'a' }], requested: 5, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_CONTRACT_MISMATCH' });
+    });
+
+    it('rejects a malformed result missing an id', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ title: 'no id' }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_RESULT' });
+    });
+
+    it('rejects a result whose id is whitespace-only', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: '   ' }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_RESULT' });
+    });
+
+    it('rejects a result item that is itself an array', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [['a']], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_RESULT' });
+    });
+
+    it('rejects a non-array opportunities field', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: 'not-an-array', requested: 1, found: 0 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_CONTRACT_MISMATCH' });
+    });
+
+    it('does not repair or trim a mismatched id — fails closed instead', async () => {
+      const id = 'exact-id';
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: ` ${id} ` }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities([id]))
+        .rejects.toMatchObject({ code: 'SHORTLIST_UNKNOWN_ID' });
+    });
   });
 });
 

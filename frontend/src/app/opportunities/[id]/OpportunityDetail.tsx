@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { Opportunity, ProfileData } from '@/lib/types';
@@ -45,13 +45,13 @@ export default function OpportunityDetail({
 }) {
   const { t } = useT();
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
-  // R71 PR-3: tailor modal is local to this page — it has no callers
-  // outside OpportunityDetail, so we keep state here rather than bloat
-  // useOpportunityDetail. Matches PR-2's MatchCard-local pattern.
-  const [tailorOpen, setTailorOpen] = useState(false);
-  const [renovationOpen, setRenovationOpen] = useState(false);
   const {
     isFavorited,
+    favoriteLoading,
+    favoriteError,
+    retryFavoriteHydration,
+    favoriteSaving,
+    favoriteSaveError,
     interactionDetail,
     interaction,
     emailModalOpen,
@@ -59,6 +59,10 @@ export default function OpportunityDetail({
     shareCopied,
     chatDrawerOpen,
     setChatDrawerOpen,
+    tailorOpen,
+    setTailorOpen,
+    renovationOpen,
+    setRenovationOpen,
     suggestion,
     handleStar,
     handleTrack,
@@ -80,6 +84,8 @@ export default function OpportunityDetail({
         {t('detail.backToMatches')}
       </Link>
 
+      <StorageStatusBanner />
+
       <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
         <main className="flex-1 min-w-0 lg:max-w-3xl">
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden mb-6">
@@ -87,6 +93,8 @@ export default function OpportunityDetail({
               opp={opp}
               profile={profile}
               isFavorited={isFavorited}
+              favoriteDisabled={favoriteLoading || favoriteSaving || favoriteError}
+              favoriteBusy={favoriteLoading || favoriteSaving}
               shareCopied={shareCopied}
               onStar={handleStar}
               onOpenEmailModal={() => setEmailModalOpen(true)}
@@ -97,6 +105,20 @@ export default function OpportunityDetail({
               onShare={handleShare}
               t={t}
             />
+            {(favoriteError || favoriteSaveError) && (
+              <div className="px-5 sm:px-8 pb-3 -mt-2" role="alert">
+                <p className="flex items-center gap-2 text-xs text-red-700">
+                  {favoriteError ? t('detail.favorite.loadError') : t('detail.favorite.saveError')}
+                  <button
+                    type="button"
+                    onClick={favoriteError ? retryFavoriteHydration : () => { void handleStar(); }}
+                    className="font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                  >
+                    {t('common.retry')}
+                  </button>
+                </p>
+              </div>
+            )}
             <InteractionPills
               interaction={interaction}
               suggestion={suggestion}

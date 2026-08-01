@@ -28,6 +28,8 @@ export function OpportunityHeader({
   opp,
   profile,
   isFavorited,
+  favoriteDisabled,
+  favoriteBusy,
   shareCopied,
   onStar,
   onOpenEmailModal,
@@ -39,6 +41,14 @@ export function OpportunityHeader({
   opp: Opportunity;
   profile: ProfileData | null;
   isFavorited: boolean;
+  /**
+   * True whenever the star control must not be clicked: hydration/save in
+   * flight, OR a hydration failure (isFavorited is a fabricated default
+   * then, not a fact — Retry is the only recovery path).
+   */
+  favoriteDisabled: boolean;
+  /** True only while hydration/save is actually in flight — an error is not "busy". */
+  favoriteBusy: boolean;
   shareCopied: boolean;
   onStar: () => void;
   onOpenEmailModal: () => void;
@@ -114,7 +124,9 @@ export function OpportunityHeader({
         <button
           type="button"
           onClick={onStar}
-          className="shrink-0 p-2 -mr-2 rounded-xl hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          disabled={favoriteDisabled}
+          aria-busy={favoriteBusy}
+          className="shrink-0 p-2 -mr-2 rounded-xl hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-wait disabled:opacity-60"
           aria-label={isFavorited ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
           aria-pressed={isFavorited}
         >

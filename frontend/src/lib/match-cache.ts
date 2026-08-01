@@ -110,6 +110,36 @@ interface MatchCacheShape {
   view_id?: string;
 }
 
+/**
+ * Boundary check for match-target identity: every result must carry a
+ * non-empty top-level `opportunity_id`, its nested `opportunity.id` must be
+ * non-empty and exactly equal that id, and no id may repeat. A stale/cached
+ * payload, a duplicate row, or an id that drifted between the top-level and
+ * nested shape must never let the Detail → Shortlist → reopen journey land
+ * on the wrong record. Applied to both live results (before they enter
+ * state/cache) and cached results (before they render).
+ */
+export function hasValidMatchResultIdentity(results: unknown): results is MatchResult[] {
+  if (!Array.isArray(results)) return false;
+  const seen = new Set<string>();
+  for (const r of results) {
+    if (!r || typeof r !== 'object') return false;
+    const topId = (r as { opportunity_id?: unknown }).opportunity_id;
+    if (typeof topId !== 'string' || topId.trim().length === 0) return false;
+    const nested = (r as { opportunity?: unknown }).opportunity;
+    const nestedId = nested && typeof nested === 'object'
+      ? (nested as { id?: unknown }).id
+      : undefined;
+    // Strict raw equality — a whitespace-only id fails the trim() check above,
+    // but two present ids that merely differ in surrounding whitespace are
+    // NOT normalized into a match; that would silently repair drifted data.
+    if (typeof nestedId !== 'string' || nestedId.trim().length === 0 || nestedId !== topId) return false;
+    if (seen.has(topId)) return false;
+    seen.add(topId);
+  }
+  return true;
+}
+
 function removeObsoleteMatchCaches(): void {
   for (const key of OBSOLETE_MATCH_KEYS) {
     try { localStorage.removeItem(key); } catch { /* ignore */ }
@@ -132,6 +162,10 @@ function parse(): MatchCacheShape | null {
     }
     if (typeof c.savedAt !== 'number') return null;
     if (Date.now() - c.savedAt >= TTL_MS) return null;
+    if (!hasValidMatchResultIdentity(c.results)) {
+      localStorage.removeItem(KEY);
+      return null;
+    }
     return c;
   } catch {
     return null;

@@ -596,6 +596,97 @@ export async function getOpportunitiesByIds(ids: string[]): Promise<Record<strin
   return responses.flatMap(r => r.opportunities);
 }
 
+export interface ShortlistFetchResult {
+  opportunities: Record<string, unknown>[];
+  unavailableIds: string[];
+}
+
+// ids arrive from Supabase rows / localStorage — external, unvalidated data
+// the TS `string[]` parameter type does not actually guarantee at runtime.
+function isValidShortlistRequestId(id: unknown): id is string {
+  return typeof id === 'string' && id.length <= 100 && id.trim().length > 0;
+}
+
+function normalizeShortlistIds(ids: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of ids) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+function shortlistContractError(code: string): ApiError {
+  return new ApiError(502, code, 'Your shortlist could not be verified. Please retry.', true);
+}
+
+/**
+ * Fail-closed sibling of getOpportunitiesByIds for the shortlist journey:
+ * a stale/duplicate/mismatched batch response must never render as another
+ * opportunity or a silently-shrunk list. Validates every returned id belongs
+ * to what was requested, is unique, and that the batch's own requested/found
+ * accounting is internally coherent — any violation rejects the whole call
+ * as a safe ApiError instead of returning a partially-trusted result.
+ */
+export async function getShortlistOpportunities(ids: string[]): Promise<ShortlistFetchResult> {
+  // Fail closed before any network request — a malformed id (not a real
+  // string, too long, or whitespace-only) never partially resolves; raw ids
+  // that pass are used exactly as given, never trimmed/rewritten.
+  for (const id of ids) {
+    if (!isValidShortlistRequestId(id)) throw shortlistContractError('SHORTLIST_MALFORMED_REQUEST_ID');
+  }
+  const uniq = normalizeShortlistIds(ids);
+  if (uniq.length === 0) return { opportunities: [], unavailableIds: [] };
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < uniq.length; i += 200) chunks.push(uniq.slice(i, i + 200));
+
+  const responses = await Promise.all(chunks.map(async (chunk) => ({
+    chunk,
+    body: await request<{ opportunities: Record<string, unknown>[]; requested?: number; found?: number }>(
+      '/opportunities/batch',
+      { method: 'POST', body: JSON.stringify({ ids: chunk }) },
+    ),
+  })));
+
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const { chunk, body } of responses) {
+    if (
+      !body
+      || !Array.isArray(body.opportunities)
+      || typeof body.requested !== 'number'
+      || typeof body.found !== 'number'
+      || body.requested !== chunk.length
+      || body.found !== body.opportunities.length
+    ) {
+      throw shortlistContractError('SHORTLIST_CONTRACT_MISMATCH');
+    }
+    const chunkSet = new Set(chunk);
+    for (const opp of body.opportunities) {
+      if (!opp || typeof opp !== 'object' || Array.isArray(opp)) {
+        throw shortlistContractError('SHORTLIST_MALFORMED_RESULT');
+      }
+      const id = (opp as Record<string, unknown>).id;
+      if (typeof id !== 'string' || id.trim().length === 0) throw shortlistContractError('SHORTLIST_MALFORMED_RESULT');
+      if (!chunkSet.has(id)) throw shortlistContractError('SHORTLIST_UNKNOWN_ID');
+      if (byId.has(id)) throw shortlistContractError('SHORTLIST_DUPLICATE_ID');
+      byId.set(id, opp);
+    }
+  }
+
+  const opportunities: Record<string, unknown>[] = [];
+  const unavailableIds: string[] = [];
+  for (const id of uniq) {
+    const opp = byId.get(id);
+    if (opp) opportunities.push(opp);
+    else unavailableIds.push(id);
+  }
+  return { opportunities, unavailableIds };
+}
+
 /** POST /api/cold-email — generate a cold email draft */
 export async function generateColdEmail(
   profile: ProfileData,

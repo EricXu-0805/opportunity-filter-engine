@@ -5,6 +5,7 @@ import {
   cachedMatcherVersion,
   clearMatchCache,
   hasMatchCache,
+  hasValidMatchResultIdentity,
   readMatchCache,
   writeMatchCache,
 } from './match-cache';
@@ -246,5 +247,95 @@ describe('match-cache', () => {
     expect(cachedMatcherVersion()).toBe('3.abc12345');
     clearMatchCache();
     expect(cachedMatcherVersion()).toBeNull();
+  });
+
+  describe('hasValidMatchResultIdentity', () => {
+    it('accepts a well-formed result set (top-level id === nested id, no dupes)', () => {
+      expect(hasValidMatchResultIdentity(makeResponse(3).results)).toBe(true);
+    });
+
+    it('accepts an empty result set', () => {
+      expect(hasValidMatchResultIdentity([])).toBe(true);
+    });
+
+    it('rejects a non-array', () => {
+      expect(hasValidMatchResultIdentity(null)).toBe(false);
+      expect(hasValidMatchResultIdentity(undefined)).toBe(false);
+      expect(hasValidMatchResultIdentity('not-an-array')).toBe(false);
+    });
+
+    it('rejects a missing top-level opportunity_id', () => {
+      const results = makeResponse(1).results;
+      delete (results[0] as unknown as Record<string, unknown>).opportunity_id;
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+
+    it('rejects an empty-string top-level opportunity_id', () => {
+      const results = makeResponse(1).results;
+      results[0].opportunity_id = '';
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+
+    it('rejects a whitespace-only top-level opportunity_id, even when the nested id matches it raw', () => {
+      const results = makeResponse(1).results;
+      results[0].opportunity_id = '   ';
+      (results[0].opportunity as unknown as Record<string, unknown>).id = '   ';
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+
+    it('rejects a whitespace-only nested opportunity.id', () => {
+      const results = makeResponse(1).results;
+      (results[0].opportunity as unknown as Record<string, unknown>).id = '   ';
+      // top-level id is untouched (non-whitespace), so this isolates the nested check.
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+
+    it('does not normalize whitespace: ids differing only by surrounding whitespace still fail raw equality', () => {
+      const results = makeResponse(1).results;
+      const id = results[0].opportunity_id;
+      (results[0].opportunity as unknown as Record<string, unknown>).id = ` ${id} `;
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+
+    it('rejects a missing nested opportunity.id', () => {
+      const results = makeResponse(1).results;
+      delete (results[0].opportunity as unknown as Record<string, unknown>).id;
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+
+    it('rejects a nested opportunity.id that does not match the top-level opportunity_id', () => {
+      const results = makeResponse(1).results;
+      (results[0].opportunity as unknown as Record<string, unknown>).id = 'drifted-id';
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+
+    it('rejects duplicate opportunity_id across results', () => {
+      const results = makeResponse(2).results;
+      results[1].opportunity_id = results[0].opportunity_id;
+      (results[1].opportunity as unknown as Record<string, unknown>).id = results[0].opportunity_id;
+      expect(hasValidMatchResultIdentity(results)).toBe(false);
+    });
+  });
+
+  it('readMatchCache fails closed and clears a cache whose nested id drifted from the top-level id', () => {
+    writeMatchCache('h1', false, makeResponse(1));
+    const raw = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    raw.results[0].opportunity.id = 'drifted-id';
+    localStorage.setItem(MATCH_KEY, JSON.stringify(raw));
+
+    expect(readMatchCache('h1', false)).toBeNull();
+    expect(hasMatchCache()).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it('readMatchCache fails closed and clears a cache with duplicate result ids', () => {
+    writeMatchCache('h1', false, makeResponse(2));
+    const raw = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    raw.results[1].opportunity_id = raw.results[0].opportunity_id;
+    raw.results[1].opportunity.id = raw.results[0].opportunity_id;
+    localStorage.setItem(MATCH_KEY, JSON.stringify(raw));
+
+    expect(readMatchCache('h1', false)).toBeNull();
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
   });
 });

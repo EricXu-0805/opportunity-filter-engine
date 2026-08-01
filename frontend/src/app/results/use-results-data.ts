@@ -10,6 +10,7 @@ import { trackOnce } from '@/lib/analytics';
 import { hashProfile } from '@/lib/match-utils';
 import {
   MATCH_VIEW_CONTRACT_VERSION,
+  hasValidMatchResultIdentity,
   readMatchCache,
   writeMatchCache,
 } from '@/lib/match-cache';
@@ -138,6 +139,7 @@ export function useResultsData(
           || typeof result.filtered_total !== 'number'
           || !result.view_counts
           || typeof result.view_start !== 'number'
+          || !hasValidMatchResultIdentity(result.results)
         ) {
           throw new ApiError(
             502,

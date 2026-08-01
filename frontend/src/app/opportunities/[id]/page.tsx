@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { fetchOpportunityServer, fetchSimilarServer } from '@/lib/api-server';
+import { fetchOpportunityDetail, fetchSimilarServer } from '@/lib/api-server';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '@/lib/release-scope';
 import OpportunityDetail from './OpportunityDetail';
+import OpportunityUnavailable from './OpportunityUnavailable';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -10,10 +11,16 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const opp = await fetchOpportunityServer(id);
-  if (!opp) {
+  const result = await fetchOpportunityDetail(id);
+  if (result.status === 'not-found') {
     return { title: 'Opportunity not found — JoinALab' };
   }
+  // An infrastructure failure is not "not found" — a generic title avoids
+  // telling search engines / link previews the record doesn't exist.
+  if (result.status === 'unavailable') {
+    return { title: 'Opportunity — JoinALab' };
+  }
+  const opp = result.opportunity;
 
   const org = opp.organization ? ` at ${opp.organization}` : '';
   const title = `${opp.title}${org}`;
@@ -51,11 +58,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function OpportunityPage({ params }: PageProps) {
   const { id } = await params;
-  const [opp, similar] = await Promise.all([
-    fetchOpportunityServer(id),
-    fetchSimilarServer(id, 5),
-  ]);
-  if (!opp) notFound();
+  // Both requests fire concurrently, but the primary detail outcome is what
+  // decides notFound()/unavailable() — it must not sit behind the optional
+  // "similar opportunities" rail. fetchSimilarServer carries its own bounded
+  // timeout and fails open to [], so it only ever adds latency to the ok path.
+  const detailPromise = fetchOpportunityDetail(id);
+  const similarPromise = fetchSimilarServer(id, 5);
+  const result = await detailPromise;
+  if (result.status === 'not-found') notFound();
+  if (result.status === 'unavailable') return <OpportunityUnavailable />;
+  const opp = result.opportunity;
+  const similar = await similarPromise;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -94,7 +107,14 @@ export default async function OpportunityPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
-      <OpportunityDetail opp={opp} similar={similar} />
+      {/*
+        Forces a full remount on every distinct target — client-side
+        navigation between two /opportunities/[id] routes would otherwise
+        reuse this component instance (React reconciles by position, not by
+        route param), leaking Tailor/Renovation modal state and everything
+        inside useOpportunityDetail across an opportunity switch.
+      */}
+      <OpportunityDetail key={opp.id} opp={opp} similar={similar} />
     </>
   );
 }
