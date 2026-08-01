@@ -137,6 +137,60 @@ def safe_contact_source_url(value: object) -> str | None:
     return None
 
 
+def canonical_profile_evidence_url(value: object) -> tuple[str, int, str, str] | None:
+    """Return the strict identity tuple used by profile-bound contact proof.
+
+    A trailing slash is the only path canonicalization accepted. In
+    particular, a same-host redirect from ``/people/ada`` to ``/directory`` is
+    not proof about Ada, and a query-bearing profile must keep the same query.
+    """
+
+    safe = safe_contact_source_url(value)
+    if safe is None:
+        return None
+    try:
+        parsed = urlsplit(safe)
+        hostname = (parsed.hostname or "").rstrip(".").casefold()
+        port = parsed.port or 443
+    except ValueError:
+        return None
+    if parsed.fragment:
+        return None
+    path = parsed.path or "/"
+    if len(path) > 1 and path.endswith("/"):
+        path = path[:-1]
+    return hostname, port, path, parsed.query
+
+
+def _profile_evidence_matches_record(opp: dict, source_url: object) -> bool:
+    expected = canonical_profile_evidence_url(source_url)
+    if expected is None:
+        return False
+    application = opp.get("application")
+    # Profile proof is anchored to the two authoritative normalized profile
+    # projections. An optional application URL may corroborate them, but must
+    # never establish identity by itself after the primary fields disappear.
+    if not opp.get("url") or not opp.get("source_url"):
+        return False
+    candidates = [
+        opp.get("url"),
+        opp.get("source_url"),
+        application.get("application_url")
+        if isinstance(application, dict)
+        else None,
+    ]
+    present = [candidate for candidate in candidates if candidate]
+    if not present:
+        return False
+    # url/source_url/application_url are duplicate projections of the same
+    # profile identity in normalized records. A stale alternate field must not
+    # rescue a changed primary URL, so every present projection must agree.
+    return all(
+        canonical_profile_evidence_url(candidate) == expected
+        for candidate in present
+    )
+
+
 def build_identity_bound_contact_evidence(
     *,
     email: object,
@@ -229,7 +283,13 @@ def _has_identity_bound_contact_evidence(
     ):
         return False
 
-    if safe_contact_source_url(metadata.get("contact_source_url")) is None:
+    contact_source_url = metadata.get("contact_source_url")
+    if safe_contact_source_url(contact_source_url) is None:
+        return False
+    if (
+        canonical_source.startswith("bound_profile_")
+        and not _profile_evidence_matches_record(opp, contact_source_url)
+    ):
         return False
 
     verified_at = metadata.get("contact_verified_at")

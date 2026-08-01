@@ -104,6 +104,113 @@ def test_duplicate_id_and_person_identity_are_audited_independently():
     assert report["duplicate_record_ids"] == ["shared-id"]
 
 
+def test_same_name_different_profile_urls_are_distinct_identities():
+    ada = _record("ada-one", "shared@berkeley.edu")
+    grace = _record("ada-two", "shared@berkeley.edu")
+    for record, profile_url in (
+        (ada, "https://statistics.berkeley.edu/people/ada"),
+        (grace, "https://statistics.berkeley.edu/people/grace"),
+    ):
+        record.update({
+            "organization": "University of California, Berkeley",
+            "url": profile_url,
+            "source_url": f"{profile_url}/",
+            "application": {"application_url": profile_url},
+        })
+
+    report = audit_records([ada, grace], now=NOW)
+
+    assert report["evidence_status"]["fresh"] == 2
+    assert report["duplicate_fresh_emails"] == [{
+        "email": "shared@berkeley.edu",
+        "identities": [
+            (
+                "university of california, berkeley|ada lovelace|"
+                "profile:https://statistics.berkeley.edu/people/ada"
+            ),
+            (
+                "university of california, berkeley|ada lovelace|"
+                "profile:https://statistics.berkeley.edu/people/grace"
+            ),
+        ],
+    }]
+
+
+def test_same_person_profile_url_projections_canonicalize_without_false_alarm():
+    first = _record("ada-one", "shared@berkeley.edu")
+    second = _record("ada-two", "shared@berkeley.edu")
+    first.update({
+        "organization": "University of California, Berkeley",
+        "url": "https://statistics.berkeley.edu/people/ada",
+        "source_url": "https://statistics.berkeley.edu/people/ada/",
+        "application": {
+            "application_url": "https://statistics.berkeley.edu/people/ada"
+        },
+    })
+    second.update({
+        "organization": "University of California, Berkeley",
+        "url": "https://statistics.berkeley.edu/people/ada/",
+    })
+
+    report = audit_records([first, second], now=NOW)
+
+    assert report["evidence_status"]["fresh"] == 2
+    assert report["duplicate_fresh_emails"] == []
+    assert report["person_identity_issues"] == []
+
+
+def test_conflicting_or_invalid_profile_identity_fails_closed(
+    tmp_path,
+    capsys,
+):
+    first = _record("ada-one", "shared@berkeley.edu")
+    second = _record("ada-two", "shared@berkeley.edu")
+    for record in (first, second):
+        record.update({
+            "organization": "University of California, Berkeley",
+            "url": "https://statistics.berkeley.edu/people/ada",
+            "source_url": "https://statistics.berkeley.edu/people/grace",
+        })
+
+    report = audit_records([first, second], now=NOW)
+
+    assert report["evidence_status"]["fresh"] == 2
+    assert [issue["reason"] for issue in report["person_identity_issues"]] == [
+        "conflicting_profile_urls",
+        "conflicting_profile_urls",
+    ]
+    assert len(report["duplicate_fresh_emails"]) == 1
+
+    invalid = _record("invalid-profile", "other@berkeley.edu")
+    invalid["url"] = "http://statistics.berkeley.edu/people/ada"
+    report = audit_records([invalid], now=NOW)
+    assert report["person_identity_issues"] == [{
+        "record_id": "invalid-profile",
+        "organization": None,
+        "pi_name": "ada lovelace",
+        "reason": "invalid_profile_url",
+        "profile_urls": [
+            "http://statistics.berkeley.edu/people/ada"
+        ],
+    }]
+
+    wrong_type = _record("wrong-type-profile", "typed@berkeley.edu")
+    wrong_type["application"] = {"application_url": 123}
+    report = audit_records([wrong_type], now=NOW)
+    assert report["person_identity_issues"] == [{
+        "record_id": "wrong-type-profile",
+        "organization": None,
+        "pi_name": "ada lovelace",
+        "reason": "invalid_profile_url",
+        "profile_urls": ["<non-string:int>"],
+    }]
+
+    corpus = tmp_path / "identity-issue.json"
+    corpus.write_text(json.dumps([invalid]), encoding="utf-8")
+    assert main([str(corpus), "--fail-on-invalid"]) == 1
+    assert "identity_issues=1" in capsys.readouterr().out
+
+
 def test_load_and_cli_are_read_only_and_enforce_thresholds(tmp_path, capsys):
     corpus = tmp_path / "fixture.json"
     payload = [_record("fresh", "ada@berkeley.edu")]
@@ -132,6 +239,13 @@ def test_cli_fail_on_invalid(tmp_path):
     corpus.write_text(json.dumps([stale]), encoding="utf-8")
     assert main([str(corpus), "--fail-on-invalid"]) == 1
 
+    first = _record("ada-one", "shared@berkeley.edu")
+    second = _record("ada-two", "shared@berkeley.edu")
+    first["url"] = "https://statistics.berkeley.edu/people/ada"
+    second["url"] = "https://statistics.berkeley.edu/people/grace"
+    corpus.write_text(json.dumps([first, second]), encoding="utf-8")
+    assert main([str(corpus), "--fail-on-invalid"]) == 1
+
 
 def test_bound_source_without_rest_of_bundle_is_partial():
     report = audit_records([{
@@ -141,6 +255,26 @@ def test_bound_source_without_rest_of_bundle_is_partial():
     }], now=NOW)
     assert report["evidence_status"]["partial"] == 1
     assert report["legacy_email_source"] == 0
+
+
+def test_profile_evidence_url_must_match_current_record_profile_url():
+    evidence = build_identity_bound_contact_evidence(
+        email="ada@berkeley.edu",
+        email_source="bound_profile_container",
+        contact_source_url="https://statistics.berkeley.edu/people/ada",
+        contact_verified_at=NOW,
+    )
+    assert evidence is not None
+    record = {
+        "id": "ada",
+        "pi_name": "Ada Lovelace",
+        "contact_email": "ada@berkeley.edu",
+        "url": "https://statistics.berkeley.edu/people/grace",
+        "metadata": evidence,
+    }
+    report = audit_records([record], now=NOW)
+    assert report["evidence_status"]["invalid"] == 1
+    assert report["evidence_status"]["fresh"] == 0
 
 
 def test_default_path_mirrors_runtime_assembled_precedence(tmp_path, monkeypatch):

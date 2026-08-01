@@ -33,6 +33,7 @@ from backend.lib.contact_visibility import (
     IDENTITY_BOUND_EMAIL_SOURCES,
     _has_identity_bound_contact_evidence,
     _valid_email_target,
+    canonical_profile_evidence_url,
     safe_contact_source_url,
 )
 
@@ -96,20 +97,79 @@ def _parse_aware_timestamp(value: object) -> datetime | None:
     return timestamp.astimezone(UTC)
 
 
-def _canonical_person_identity(record: dict) -> str:
+def _canonical_person_identity(
+    record: dict,
+    *,
+    ordinal: int,
+) -> tuple[str, dict[str, object] | None]:
     """Best available person key, independent of a possibly duplicated row id."""
 
     organization = " ".join(
         str(record.get("organization") or "").split()
     ).casefold()
     name = " ".join(str(record.get("pi_name") or "").split()).casefold()
-    if name:
-        return f"{organization}|{name}" if organization else name
-    source_url = str(record.get("source_url") or record.get("url") or "").strip()
-    if source_url:
-        return f"url:{source_url.casefold()}"
+    application = record.get("application")
+    profile_candidates = [
+        record.get("url"),
+        record.get("source_url"),
+        application.get("application_url")
+        if isinstance(application, dict)
+        else None,
+    ]
+    profile_identities: set[str] = set()
+    invalid_profile_urls: set[str] = set()
+    for candidate in profile_candidates:
+        if candidate is None or (
+            isinstance(candidate, str) and not candidate.strip()
+        ):
+            continue
+        if not isinstance(candidate, str):
+            invalid_profile_urls.add(
+                f"<non-string:{type(candidate).__name__}>"
+            )
+            continue
+        canonical = canonical_profile_evidence_url(candidate)
+        if canonical is None:
+            invalid_profile_urls.add(
+                " ".join(candidate.split())
+            )
+            continue
+        hostname, port, path, query = canonical
+        authority = hostname if port == 443 else f"{hostname}:{port}"
+        suffix = f"?{query}" if query else ""
+        profile_identities.add(f"https://{authority}{path}{suffix}")
     stable_id = str(record.get("id") or "").strip()
-    return f"id:{stable_id}" if stable_id else "unknown"
+    person = f"{organization}|{name}" if organization and name else name
+    if invalid_profile_urls or len(profile_identities) > 1:
+        record_ref = f"id:{stable_id}" if stable_id else f"row:{ordinal}"
+        issue = {
+            "record_id": stable_id or None,
+            "organization": organization or None,
+            "pi_name": name or None,
+            "reason": (
+                "invalid_profile_url"
+                if invalid_profile_urls
+                else "conflicting_profile_urls"
+            ),
+            "profile_urls": sorted(
+                [*profile_identities, *invalid_profile_urls]
+            ),
+        }
+        identity_prefix = person or "unknown"
+        return f"{identity_prefix}|ambiguous-profile:{record_ref}", issue
+    profile_identity = "&".join(sorted(profile_identities))
+    if name:
+        return (
+            (
+                f"{person}|profile:{profile_identity}"
+                if profile_identity
+                else person
+            ),
+            None,
+        )
+    if profile_identity:
+        return f"profile:{profile_identity}", None
+    return (f"id:{stable_id}" if stable_id else "unknown"), None
 
 
 def _classify_claim(record: dict, *, now: datetime) -> tuple[str, str | None]:
@@ -178,11 +238,12 @@ def audit_records(
     statuses: Counter[str] = Counter()
     fresh_by_source: Counter[str] = Counter()
     identities_by_email: dict[str, set[str]] = defaultdict(set)
+    person_identity_issues: list[dict[str, object]] = []
     record_id_counts: Counter[str] = Counter()
     records_with_email = 0
     legacy_email_source = 0
 
-    for record in records:
+    for ordinal, record in enumerate(records):
         record_id = record.get("id")
         if isinstance(record_id, str) and record_id.strip():
             record_id_counts[record_id.strip()] += 1
@@ -204,9 +265,13 @@ def audit_records(
         if status == "fresh" and canonical_email is not None:
             source = str(metadata["email_source"])
             fresh_by_source[source] += 1
-            identities_by_email[canonical_email].add(
-                _canonical_person_identity(record)
+            identity, identity_issue = _canonical_person_identity(
+                record,
+                ordinal=ordinal,
             )
+            identities_by_email[canonical_email].add(identity)
+            if identity_issue is not None:
+                person_identity_issues.append(identity_issue)
 
     duplicates = sorted(
         {
@@ -234,6 +299,7 @@ def audit_records(
             for record_id, count in record_id_counts.items()
             if count > 1
         ),
+        "person_identity_issues": person_identity_issues,
     }
 
 
@@ -284,13 +350,18 @@ def main(argv: list[str] | None = None) -> int:
             f"partial={statuses['partial']} mismatch={statuses['mismatch']} "
             f"invalid={statuses['invalid']} "
             f"duplicates={len(report['duplicate_fresh_emails'])} "
-            f"duplicate_ids={len(report['duplicate_record_ids'])}"
+            f"duplicate_ids={len(report['duplicate_record_ids'])} "
+            f"identity_issues={len(report['person_identity_issues'])}"
         )
 
     statuses = report["evidence_status"]
     invalid_count = sum(
         statuses[key] for key in ("stale", "partial", "mismatch", "invalid")
-    ) + len(report["duplicate_fresh_emails"]) + len(report["duplicate_record_ids"])
+    ) + (
+        len(report["duplicate_fresh_emails"])
+        + len(report["duplicate_record_ids"])
+        + len(report["person_identity_issues"])
+    )
     if args.fail_on_invalid and invalid_count:
         return 1
     return 0 if statuses["fresh"] >= args.min_fresh else 1

@@ -74,7 +74,12 @@ def _opp(
         "pi_name": "Jane Doe",
         "lab_or_program": "ML Lab",
         "contact_email": email,
-        "url": "https://cs.example.edu/lab",
+        # Profile-bound evidence is valid only for the profile URL currently
+        # carried by the record. Directory-bound sources do not use this
+        # equality, but keeping one honest profile URL makes the shared fixture
+        # suitable for both source families.
+        "url": "https://cs.example.edu/people/jane-doe",
+        "source_url": "https://cs.example.edu/people/jane-doe",
         "paid": "unknown",
         "keywords": ["machine learning"],
         "eligibility": {"majors": ["CS"], "international_friendly": "yes"},
@@ -161,6 +166,54 @@ class TestVerifiedSendTarget:
             "unknown_future_collector",
         ):
             assert verified_send_target(_opp("x", "a@b.edu", source)) == ""
+
+    def test_profile_bound_source_must_match_current_record_profile_url(self):
+        opp = _opp(
+            "x",
+            "a@b.edu",
+            "bound_profile_container",
+            verified=True,
+        )
+        opp["url"] = "https://cs.example.edu/people/grace-hopper"
+        assert verified_send_target(opp) == ""
+
+        # A stale duplicate projection cannot rescue a changed primary URL.
+        opp["source_url"] = "https://cs.example.edu/people/jane-doe"
+        opp["application"]["application_url"] = (
+            "https://cs.example.edu/people/jane-doe"
+        )
+        assert verified_send_target(opp) == ""
+
+        # A trailing slash is the only redirect/canonicalization difference
+        # accepted by the first reviewed profile producer.
+        opp["url"] = "https://cs.example.edu/people/jane-doe/"
+        assert verified_send_target(opp) == "a@b.edu"
+        opp["url"] = "https://cs.example.edu/people/jane-doe////"
+        assert verified_send_target(opp) == ""
+
+        # An application URL may only corroborate the authoritative profile
+        # fields; it cannot resurrect proof after both of them disappear.
+        opp["url"] = None
+        opp["source_url"] = None
+        opp["application"]["application_url"] = (
+            "https://cs.example.edu/people/jane-doe"
+        )
+        assert verified_send_target(opp) == ""
+
+    def test_directory_bound_source_does_not_use_profile_url_equality(self):
+        opp = _opp(
+            "x",
+            "a@b.edu",
+            "bound_directory_card",
+            verified=True,
+            metadata_overrides={
+                "contact_source_url": (
+                    "https://cs.example.edu/faculty-directory"
+                ),
+            },
+        )
+        assert opp["url"] == "https://cs.example.edu/people/jane-doe"
+        assert verified_send_target(opp) == "a@b.edu"
 
     def test_missing_or_null_email(self):
         assert verified_send_target(_opp("x", None)) == ""

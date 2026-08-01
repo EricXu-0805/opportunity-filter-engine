@@ -154,7 +154,11 @@ def _html_display_text(value: str) -> str | None:
         # Public projection is a safety boundary. A future parser exception
         # must redact the field rather than return uninspected markup.
         return None
-    return "".join(parser.parts)
+    # HTMLParser treats the browser-tolerated ``--!>`` comment closer as data
+    # rather than ``handle_comment``. Drop that exact comment-shaped fragment
+    # too, otherwise ``jane<!-- guard --!>@example.edu`` stays split in the
+    # detection view and can escape public redaction.
+    return re.sub(r"<!--.*?--!?>", "", "".join(parser.parts), flags=re.DOTALL)
 
 
 def _contact_detection_view(

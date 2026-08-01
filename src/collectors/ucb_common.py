@@ -46,6 +46,7 @@ from backend.lib.contact_visibility import (
     CONTACT_EVIDENCE_FIELDS,
     IDENTITY_BOUND_EMAIL_SOURCES,
     build_identity_bound_contact_evidence,
+    canonical_profile_evidence_url,
     verified_send_target,
 )
 
@@ -220,7 +221,7 @@ def profile_page_matches_person(
     if identity_selectors is not None:
         if isinstance(identity_selectors, str):
             selectors = [identity_selectors] if identity_selectors.strip() else []
-        elif isinstance(identity_selectors, (list, tuple)):
+        elif isinstance(identity_selectors, list | tuple):
             selectors = [
                 selector
                 for selector in identity_selectors
@@ -940,7 +941,7 @@ def unique_bound_contact(candidates: object, config: dict) -> str | None:
         [candidates]
         if isinstance(candidates, str)
         else list(candidates)
-        if isinstance(candidates, (list, tuple, set, frozenset))
+        if isinstance(candidates, list | tuple | set | frozenset)
         else []
     )
     cleaned = {
@@ -954,7 +955,7 @@ def unique_bound_contact(candidates: object, config: dict) -> str | None:
 def unique_bound_mailto_contact(elements: object, config: dict) -> str | None:
     """Validate mailto hrefs and visible addresses as one unambiguous claim."""
 
-    if not isinstance(elements, (list, tuple)):
+    if not isinstance(elements, list | tuple):
         return None
     candidates: list[str] = []
     for element in elements:
@@ -1126,6 +1127,160 @@ def stamp_bound_directory_contact(
     return True
 
 
+_PROFILE_LEADING_HONORIFICS = frozenset({"dr", "prof", "professor"})
+
+
+def _strict_profile_name_tokens(value: object) -> list[str]:
+    if not isinstance(value, str):
+        return []
+    normalized = unicodedata.normalize("NFKD", value).casefold()
+    normalized = "".join(
+        character
+        for character in normalized
+        if not unicodedata.combining(character)
+    )
+    # This first producer contract only models Latin-script names. Silently
+    # dropping another script can collapse different people (for example
+    # 王 Ada and 李 Ada) into the same apparent identity, so fail closed until
+    # a reviewed source-specific Unicode contract exists.
+    if any(
+        character.isalpha() and not character.isascii()
+        for character in normalized
+    ):
+        return []
+    tokens = re.findall(r"[a-z0-9]+", normalized)
+    while tokens and tokens[0] in _PROFILE_LEADING_HONORIFICS:
+        tokens.pop(0)
+    # Do not globally drop degree-looking tokens. ``Ma``, ``Ba``, ``Ms`` and
+    # ``Md`` are also real names; deleting them could turn a different strong
+    # heading into an exact match. A reviewed template with credentials in its
+    # name node must model that explicitly in a later source-specific contract.
+    return tokens
+
+
+def _strict_profile_name_matches(observed: object, expected: object) -> bool:
+    observed_tokens = _strict_profile_name_tokens(observed)
+    expected_tokens = _strict_profile_name_tokens(expected)
+    if not observed_tokens or not expected_tokens:
+        return False
+    return (
+        observed_tokens == expected_tokens
+        or observed_tokens == list(reversed(expected_tokens))
+    )
+
+
+def _fetch_profile_contact_observation(
+    soup: BeautifulSoup,
+    *,
+    requested_url: str,
+    record_profile_url: object,
+) -> tuple[str, str] | None:
+    observation = _fetch_contact_observation(soup, requested_url)
+    if observation is None:
+        return None
+    final_url, observed_at = observation
+    requested_identity = canonical_profile_evidence_url(requested_url)
+    record_identity = canonical_profile_evidence_url(record_profile_url)
+    final_identity = canonical_profile_evidence_url(final_url)
+    if (
+        requested_identity is None
+        or requested_identity != record_identity
+        or requested_identity != final_identity
+    ):
+        return None
+    return final_url, observed_at
+
+
+def stamp_bound_profile_contact(
+    person: dict,
+    config: dict,
+    *,
+    source_soup: BeautifulSoup,
+    requested_url: str,
+    container_selector: str,
+    identity_selector: str,
+    contact_selector: str,
+    nested_person_selector: str,
+) -> bool:
+    """Attach proof from one explicitly reviewed individual-profile template.
+
+    Every selector is required and template-specific. This helper deliberately
+    has no page-wide/body/first-mailto fallback: the expected name comes from
+    the listing record, exactly one reviewed person container must carry one
+    strong name node and one contact node, and all visible/mailto values inside
+    that contact node must resolve to one personal address.
+    """
+
+    expected_name = person.get("name")
+    if not _is_person_name(str(expected_name or "")):
+        return False
+    if not all(
+        isinstance(selector, str) and selector.strip()
+        for selector in (
+            container_selector,
+            identity_selector,
+            contact_selector,
+            nested_person_selector,
+        )
+    ):
+        return False
+    if profile_page_is_denial(source_soup):
+        return False
+    try:
+        containers = source_soup.select(container_selector)
+    except Exception:  # noqa: BLE001 - invalid reviewed selector fails closed
+        return False
+    if len(containers) != 1:
+        return False
+    container = containers[0]
+    try:
+        identities = container.select(identity_selector)
+        contacts = container.select(contact_selector)
+    except Exception:  # noqa: BLE001 - invalid reviewed selector fails closed
+        return False
+    if len(identities) != 1 or len(contacts) != 1:
+        return False
+    if identities[0].parent is not container or contacts[0].parent is not container:
+        # The reviewed container is the exact owner scope, not merely an outer
+        # page wrapper. A nested card with an unanticipated tag/class must not
+        # bind its email to the outer person's heading.
+        return False
+    try:
+        if container.select_one(nested_person_selector) is not None:
+            return False
+    except Exception:  # noqa: BLE001 - invalid reviewed selector fails closed
+        return False
+    observed_name = identities[0].get_text(" ", strip=True)
+    if not _strict_profile_name_matches(observed_name, expected_name):
+        return False
+    email = unique_bound_container_contact(
+        contacts[0],
+        config,
+        nested_record_selector=container_selector,
+    )
+    observation = _fetch_profile_contact_observation(
+        source_soup,
+        requested_url=requested_url,
+        record_profile_url=person.get("url"),
+    )
+    if email is None or observation is None:
+        return False
+    final_url, observed_at = observation
+    evidence = build_identity_bound_contact_evidence(
+        email=email,
+        email_source="bound_profile_container",
+        contact_source_url=final_url,
+        contact_verified_at=observed_at,
+    )
+    if evidence is None:
+        return False
+    person["_contact_claim"] = {
+        "contact_email": email,
+        "metadata": evidence,
+    }
+    return True
+
+
 def _trusted_person_contact(person: dict, config: dict) -> dict | None:
     """Return a collector claim only when its complete bundle revalidates."""
 
@@ -1262,6 +1417,27 @@ def enrich_faculty_from_profiles(faculty: list[dict], config: dict) -> list[dict
         url = person.get("url")
         if not url:
             continue
+        profile_contact = config.get("profile_contact")
+        prior_claim = person.get("_contact_claim")
+        prior_metadata = (
+            prior_claim.get("metadata")
+            if isinstance(prior_claim, dict)
+            else None
+        )
+        prior_source = (
+            prior_metadata.get("email_source")
+            if isinstance(prior_metadata, dict)
+            else None
+        )
+        if (
+            isinstance(profile_contact, dict)
+            and isinstance(prior_source, str)
+            and prior_source.startswith("bound_profile_")
+        ):
+            # Each enrichment attempt is a new observation boundary. Remove
+            # old profile proof before the fetch so a failure, denial, wrong
+            # identity, or now-missing contact cannot leave it trusted.
+            person.pop("_contact_claim", None)
         soup = fetch_soup(url)
         if soup:
             # Provenance hints, not gates: normalize_faculty copies them into
@@ -1276,7 +1452,26 @@ def enrich_faculty_from_profiles(faculty: list[dict], config: dict) -> list[dict
             email = extract_email_from_profile(soup, config)
             if email and profile_verified:
                 person["email"] = email
-                person["_email_source"] = "profile_page"
+                if (
+                    isinstance(profile_contact, dict)
+                    and stamp_bound_profile_contact(
+                        person,
+                        config,
+                        source_soup=soup,
+                        requested_url=url,
+                        **profile_contact,
+                    )
+                ):
+                    person["email"] = person["_contact_claim"][
+                        "contact_email"
+                    ]
+                    person.pop("_email_source", None)
+                else:
+                    # Keep the existing product behavior when the stricter
+                    # proof contract cannot be established. The address stays
+                    # visible only as legacy harvested data and never becomes
+                    # a verified send target.
+                    person["_email_source"] = "profile_page"
                 found += 1
             interests = extract_research_interests(soup, config)
             if interests and profile_verified:

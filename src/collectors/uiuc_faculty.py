@@ -18,6 +18,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,6 +26,8 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+
+from backend.lib.contact_visibility import canonical_profile_evidence_url
 
 from .ucb_common import (
     apply_record_contact_claim,
@@ -1081,6 +1084,88 @@ _ROLE_MAILBOX = re.compile(
 )
 
 
+def _stable_contact_identity_matches(
+    existing: dict,
+    incoming: dict,
+    claim: dict,
+) -> bool:
+    """Require an explicit stable identity before carrying verified proof."""
+
+    existing_id = existing.get("id")
+    incoming_id = incoming.get("id")
+    if (
+        not isinstance(existing_id, str)
+        or not existing_id
+        or existing_id != incoming_id
+    ):
+        return False
+
+    def normalized(value: object) -> str:
+        if not isinstance(value, str):
+            return ""
+        return " ".join(
+            unicodedata.normalize("NFKC", value).casefold().split()
+        )
+
+    for field in ("pi_name", "source", "organization"):
+        left = normalized(existing.get(field))
+        right = normalized(incoming.get(field))
+        if not left or left != right:
+            return False
+
+    def profile_identity(record: dict) -> tuple[str, int, str, str] | None:
+        application = record.get("application")
+        # A generic application/contact page is not a person identifier.
+        # Require at least one primary profile projection; application_url may
+        # only corroborate that identity.
+        if not record.get("url") and not record.get("source_url"):
+            return None
+        candidates = [
+            record.get("url"),
+            record.get("source_url"),
+            application.get("application_url")
+            if isinstance(application, dict)
+            else None,
+        ]
+        present = [candidate for candidate in candidates if candidate]
+        if not present:
+            return None
+        canonical = [
+            canonical_profile_evidence_url(candidate) for candidate in present
+        ]
+        first = canonical[0]
+        if (
+            first is None
+            or any(candidate is None or candidate != first for candidate in canonical)
+        ):
+            return None
+        return first
+
+    existing_profile = profile_identity(existing)
+    incoming_profile = profile_identity(incoming)
+    if existing_profile is None or existing_profile != incoming_profile:
+        return False
+
+    metadata = claim.get("metadata")
+    source = metadata.get("email_source") if isinstance(metadata, dict) else None
+    if isinstance(source, str) and source.startswith("bound_profile_"):
+        evidence_url = canonical_profile_evidence_url(
+            metadata.get("contact_source_url")
+        )
+        # Mirror the runtime profile gate: both authoritative projections must
+        # be present before profile-bound proof can survive a refresh.
+        if (
+            evidence_url is None
+            or not existing.get("url")
+            or not existing.get("source_url")
+            or not incoming.get("url")
+            or not incoming.get("source_url")
+            or evidence_url != existing_profile
+        ):
+            return False
+    return True
+
+
 def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     """When a re-scrape upserts over a committed record by stable id, keep the
     committed record's enrichment if it is keyword-richer than the fresh scrape:
@@ -1142,7 +1227,14 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         # the same address, it is stronger and keeps its newer observation.
         if incoming_claim is None:
             trusted_claim = record_contact_claim(existing)
-            if trusted_claim is not None:
+            if (
+                trusted_claim is not None
+                and _stable_contact_identity_matches(
+                    existing,
+                    incoming,
+                    trusted_claim,
+                )
+            ):
                 apply_record_contact_claim(incoming, trusted_claim)
             else:
                 clear_contact_evidence(incoming)
