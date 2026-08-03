@@ -52,9 +52,9 @@ describe('InteractionStatusMenu (R69-C)', () => {
     expect(screen.queryByRole('menu')).toBeNull();
     fireEvent.click(screen.getByText('results.statusMenu.trigger'));
     expect(screen.getByRole('menu')).toBeInTheDocument();
-    // 5 status options carry role=menuitemradio (single-select semantic).
+    // 6 status options carry role=menuitemradio (single-select semantic).
     // Clear is a plain menuitem and only renders when interaction is set.
-    expect(screen.getAllByRole('menuitemradio').length).toBe(5);
+    expect(screen.getAllByRole('menuitemradio').length).toBe(6);
   });
 
   it('clicking a menuitem fires onTrackInteraction(id, type) and closes the menu', () => {

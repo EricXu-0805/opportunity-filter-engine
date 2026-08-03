@@ -1063,7 +1063,7 @@ export async function claimOrderPaid(orderId: string): Promise<boolean> {
   }
 }
 
-export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
+export type InteractionType = 'contacted' | 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
 
 export interface InteractionRecord {
   type: InteractionType;

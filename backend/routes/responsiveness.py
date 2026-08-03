@@ -29,7 +29,9 @@ from src.matcher.config import RESPONSIVENESS_MIN_N
 router = APIRouter()
 logger = logging.getLogger("ofe.responsiveness")
 
-CONTACT_STATUSES = frozenset({"applied", "replied", "interviewing", "rejected"})
+# 'contacted' is the cold-email Confirm-sent attestation (W12) — the purest
+# contact signal; the later funnel stages imply contact too.
+CONTACT_STATUSES = frozenset({"contacted", "applied", "replied", "interviewing", "rejected"})
 REPLIED_STATUSES = frozenset({"replied", "interviewing"})
 
 _CACHE_TTL = 3600

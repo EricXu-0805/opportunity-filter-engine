@@ -7,6 +7,7 @@ import type { InteractionType } from '@/lib/supabase';
 import { useT } from '@/i18n/client';
 
 export const INTERACTION_OPTIONS: InteractionType[] = [
+  'contacted',
   'applied',
   'replied',
   'interviewing',
@@ -15,6 +16,7 @@ export const INTERACTION_OPTIONS: InteractionType[] = [
 ];
 
 const INTERACTION_PILL_CLASS: Record<InteractionType, string> = {
+  contacted: 'bg-sky-50 text-sky-700 border-sky-200',
   applied: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   replied: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   interviewing: 'bg-violet-50 text-violet-700 border-violet-200',
@@ -23,6 +25,7 @@ const INTERACTION_PILL_CLASS: Record<InteractionType, string> = {
 };
 
 const INTERACTION_DOT_CLASS: Record<InteractionType, string> = {
+  contacted: 'bg-sky-500',
   applied: 'bg-indigo-500',
   replied: 'bg-emerald-500',
   interviewing: 'bg-violet-500',

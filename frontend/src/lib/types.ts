@@ -276,6 +276,12 @@ export interface ColdEmailResponse {
   recommended_style?: EmailStyle | null;
   /** R72-A: why the template was served when AI was requested (null on success). */
   fallback_reason?: ColdEmailFallbackReason | null;
+  /** W12 draft provenance: when/what produced this draft and how current the
+   *  source record was. Optional so pre-W12 responses still typecheck. */
+  generated_at?: string | null;
+  corpus_version?: string | null;
+  pipeline_version?: string | null;
+  source_freshness?: 'fresh' | 'stale' | 'inactive' | 'unknown' | null;
 }
 
 export type ColdEmailEngine = 'template' | 'ai';
@@ -302,6 +308,11 @@ export interface EmailVariantsResponse {
    *  opportunity + session, not of a variant. */
   recipient_status?: ContactEmailStatus;
   recommended_style?: EmailStyle | null;
+  /** W12 draft provenance (same contract as ColdEmailResponse). */
+  generated_at?: string | null;
+  corpus_version?: string | null;
+  pipeline_version?: string | null;
+  source_freshness?: 'fresh' | 'stale' | 'inactive' | 'unknown' | null;
 }
 
 // ── Tailor (resume bullet rewriter, R71) ─────────────────────────────

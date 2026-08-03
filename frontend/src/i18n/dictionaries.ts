@@ -2466,6 +2466,7 @@ export const en = {
     emptyBody: 'Mark an opportunity as Applied, Replied, or Interviewing from your results and it will show up here.',
     emptyCta: 'Go to results',
     status: {
+      contacted: 'Contacted',
       applied: 'Applied',
       replied: 'Replied',
       interviewing: 'Interviewing',
@@ -3111,6 +3112,7 @@ export const en = {
       previewTab: 'Preview',
       previewEmpty: 'Nothing to preview yet. Switch back to the Edit tab to start writing.',
       statusLabels: {
+        contacted: 'Contacted',
         applied: 'Applied',
         replied: 'Got reply',
         interviewing: 'Interviewing',
@@ -6518,6 +6520,7 @@ export const zh = {
     emptyBody: '在结果页把某个机会标为「已申请 / 已回复 / 面试中」，它就会出现在这里。',
     emptyCta: '去结果页',
     status: {
+      contacted: '已联系',
       applied: '已申请',
       replied: '已回复',
       interviewing: '面试中',
@@ -7160,6 +7163,7 @@ export const zh = {
       previewTab: '预览',
       previewEmpty: '还没有可预览的内容。切回"编辑"开始书写。',
       statusLabels: {
+        contacted: '已联系',
         applied: '已申请',
         replied: '已回复',
         interviewing: '面试中',

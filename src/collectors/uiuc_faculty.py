@@ -26,6 +26,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from ..evidence import UNIT_MAILBOX_LOCALPARTS, dept_name_stems
 from .ucb_common import clear_contact_claim
 
 logger = logging.getLogger(__name__)
@@ -1652,27 +1653,13 @@ def _null_shared_admin_emails(opps: list[dict]) -> int:
     return nulled
 
 
-# Generic department/unit/role mailbox local-parts that scrape in place of a
-# professor's personal address (english@, mainoffice@physics, poultry@). A
-# "Dear Prof. X" cold email to a unit inbox misfires, so we null it (the send
-# modal then disables). Distinct from _null_shared_admin_emails, which is
-# frequency-based — these are single-record unit inboxes it never sees.
-_UNIT_MAILBOX_LOCALPARTS = frozenset({
-    "office", "mainoffice", "frontoffice", "dean", "meddean", "info", "contact",
-    "admin", "administration", "advising", "gradoffice", "undergrad",
-    "undergraduate", "hr", "reception", "frontdesk", "ischool", "poultry",
-    "anthro", "dept", "department", "generalinquiries", "mailbox", "webmaster",
-    "help", "support",
-})
-
-
-def _dept_name_stems(department: str) -> set[str]:
-    """Significant lowercased words of a department name (drops structural words),
-    so an email local-part equal to one ("english", "linguistics") is a unit inbox."""
-    return {
-        w for w in re.split(r"[^a-z]+", (department or "").lower())
-        if len(w) >= 4 and w not in {"department", "school", "college", "and", "the", "of"}
-    }
+# The unit-mailbox predicate is shared with the serve-time reveal bar
+# (backend.lib.contact_visibility) via src.evidence so the collector nulling
+# pass and the reveal gate cannot drift (W12). Distinct from
+# _null_shared_admin_emails, which is frequency-based — these are
+# single-record unit inboxes it never sees.
+_UNIT_MAILBOX_LOCALPARTS = UNIT_MAILBOX_LOCALPARTS
+_dept_name_stems = dept_name_stems
 
 
 def _null_unit_inbox_emails(opps: list[dict]) -> int:
