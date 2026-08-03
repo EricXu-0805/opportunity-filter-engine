@@ -117,6 +117,7 @@ export function isReminderDue(date?: string): boolean {
 // The pipeline columns, in order. "dismissed" is intentionally excluded — it is
 // the hide-from-results status, not a stage in the application funnel.
 export const TRACKER_COLUMNS: InteractionType[] = [
+  'contacted',
   'applied',
   'replied',
   'interviewing',

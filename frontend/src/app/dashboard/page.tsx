@@ -31,6 +31,7 @@ type Replier = (key: string, vars?: Record<string, string | number>) => string;
 type LoadStatus = 'loading' | 'ready' | 'error';
 
 const STATUS_CONFIG: Record<InteractionType, { labelKey: string; icon: React.ElementType; color: string; bg: string }> = {
+  contacted: { labelKey: 'tracker.status.contacted', icon: Send, color: 'text-sky-600', bg: 'bg-sky-50' },
   applied: { labelKey: 'tracker.status.applied', icon: Send, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   replied: { labelKey: 'tracker.status.replied', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   rejected: { labelKey: 'tracker.status.rejected', icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },

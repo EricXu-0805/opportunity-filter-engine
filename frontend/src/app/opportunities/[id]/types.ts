@@ -4,6 +4,7 @@ import type { useT } from '@/i18n/client';
 export type TFunc = ReturnType<typeof useT>['t'];
 
 export const INTERACTION_PILL: Record<InteractionType, string> = {
+  contacted: 'bg-sky-50 text-sky-700 border-sky-200',
   applied: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   replied: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   interviewing: 'bg-violet-50 text-violet-700 border-violet-200',
@@ -12,6 +13,7 @@ export const INTERACTION_PILL: Record<InteractionType, string> = {
 };
 
 export const INTERACTION_OPTIONS: InteractionType[] = [
+  'contacted',
   'applied',
   'replied',
   'interviewing',

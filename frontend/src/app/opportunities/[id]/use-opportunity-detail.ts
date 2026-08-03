@@ -69,10 +69,12 @@ export function useOpportunityDetail(opp: { id: string; title: string }): UseOpp
       await removeInteraction(opp.id).catch(() => {});
       return;
     }
+    // Optimistic status only — no fabricated last_contacted_at: a manual
+    // status pick is not a contact timestamp (the upsert never persisted it
+    // anyway, so stamping it locally was dead-but-misleading state).
     setInteractionDetail((d) => ({
       ...(d ?? {}),
       type,
-      last_contacted_at: new Date().toISOString(),
     }));
     await trackInteraction(opp.id, type).catch(() => {});
 

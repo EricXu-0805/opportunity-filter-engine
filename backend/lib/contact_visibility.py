@@ -24,8 +24,9 @@ from __future__ import annotations
 
 # The synthesized-vs-observed provenance predicate is shared with the ranker's
 # actionability tie-break (src.matcher.ranker._is_actionable) via src.evidence
-# so the two bars cannot drift apart.
-from src.evidence import is_synthesized_email_source
+# so the two bars cannot drift apart; likewise the unit-mailbox predicate is
+# shared with the collector nulling pass (W12 cold-email boundary).
+from src.evidence import is_synthesized_email_source, is_unit_mailbox_email
 
 STATUS_REVEALED = "revealed"
 STATUS_SIGN_IN_REQUIRED = "sign_in_required"
@@ -33,11 +34,30 @@ STATUS_UNAVAILABLE = "unavailable"
 
 
 def verified_send_target(opp: dict) -> str:
-    """The opportunity's contact email when it passes the provenance bar, else ``""``."""
+    """The opportunity's contact email when it passes the provenance bar, else ``""``.
+
+    Three bars (W10b + W12):
+    * provenance — a synthesized address is never a send target;
+    * liveness — a deactivated record (departed/retired faculty, expired
+      posting) must not hand out an outreach address: the stored email may be
+      dead and the outreach premise ("I saw your posting/lab") is stale;
+    * recipient type — for a faculty record, a department/unit mailbox is not
+      the professor's address ("Dear Prof. X" to english@ misfires). Program
+      records legitimately use unit/program contacts, so the bar is
+      faculty-only. Collector hygiene nulls most of these at build time; this
+      is the serve-time backstop for page_scan grabs and below-threshold
+      shared inboxes it never sees.
+    """
     email = opp.get("contact_email") or ""
     if not isinstance(email, str) or not email.strip():
         return ""
-    if is_synthesized_email_source((opp.get("metadata") or {}).get("email_source") or ""):
+    md = opp.get("metadata") or {}
+    if is_synthesized_email_source(md.get("email_source") or ""):
+        return ""
+    if md.get("is_active") is False:
+        return ""
+    if (opp.get("source_type") == "faculty_research"
+            and is_unit_mailbox_email(email, opp.get("department") or "")):
         return ""
     return email.strip()
 

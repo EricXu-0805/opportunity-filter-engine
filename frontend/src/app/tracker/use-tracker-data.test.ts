@@ -43,7 +43,7 @@ describe('useTrackerData', () => {
   });
 
   it('excludes dismissed from the pipeline columns', () => {
-    expect(TRACKER_COLUMNS).toEqual(['applied', 'replied', 'interviewing', 'rejected']);
+    expect(TRACKER_COLUMNS).toEqual(['contacted', 'applied', 'replied', 'interviewing', 'rejected']);
     expect(TRACKER_COLUMNS).not.toContain('dismissed');
   });
 

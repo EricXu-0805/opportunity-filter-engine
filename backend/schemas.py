@@ -252,6 +252,13 @@ class ColdEmailResponse(BaseModel):
     # Values: "not_configured" | "unavailable" | "invalid_output" |
     # "fabrication".
     fallback_reason: str | None = None
+    # W12 draft provenance: when/what produced this draft and how current the
+    # source record was. source_freshness: "fresh" | "stale" | "inactive" |
+    # "unknown" — never optimistically "fresh" when last_verified is absent.
+    generated_at: str | None = None
+    corpus_version: str | None = None
+    pipeline_version: str | None = None
+    source_freshness: str | None = None
 
 
 class GapAnalysisResponse(BaseModel):
