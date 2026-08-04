@@ -1173,7 +1173,15 @@ export async function trackInteraction(
   type: InteractionType,
 ): Promise<void> {
   const deviceId = await ensureAnonSession();
-  if (!deviceId) throw new Error('session-unavailable');
+  if (!deviceId) {
+    // Designed local-only mode (unconfigured Supabase): the status lives in
+    // client state for this session and the storage banner discloses that
+    // nothing syncs — a no-op resolve keeps the UI functional, matching the
+    // documented degraded-mode contract. A CONFIGURED environment with no
+    // session is a real failure: throw so callers revert optimistic state.
+    if (!SUPABASE_CONFIGURED) return;
+    throw new Error('session-unavailable');
+  }
 
   const { error } = await supabase.from('interactions').upsert(
     {
@@ -1203,7 +1211,13 @@ export async function updateInteractionDetails(
   patch: { notes?: string | null; remind_at?: string | null; last_contacted_at?: string | null },
 ): Promise<boolean> {
   const deviceId = await ensureAnonSession();
-  if (!deviceId) return false;
+  if (!deviceId) {
+    // Local-only mode (unconfigured): the edit "landed" as far as this mode
+    // can land anything — the banner discloses non-sync, so the panel's
+    // Saved indicator is not a sync claim here. Configured-but-no-session
+    // stays a failed save.
+    return !SUPABASE_CONFIGURED ? true : false;
+  }
 
   const { error } = await supabase
     .from('interactions')
@@ -1249,7 +1263,15 @@ export async function getInteractions(): Promise<Map<string, InteractionType>> {
  */
 export async function getInteractionsFull(): Promise<Map<string, InteractionRecord>> {
   const deviceId = await ensureAnonSession();
-  if (!deviceId) throw new Error('session-unavailable');
+  if (!deviceId) {
+    // Unconfigured Supabase is the DESIGNED local-only mode (disclosed by
+    // the storage banner, which ensureAnonSession just flipped): there are
+    // genuinely zero synced interactions, so an empty Map is the truthful
+    // answer. Only a CONFIGURED environment failing to produce a session is
+    // an error (W14) — that's the false-zero case the throw exists for.
+    if (!SUPABASE_CONFIGURED) return new Map();
+    throw new Error('session-unavailable');
+  }
 
   const { data, error } = await supabase
     .from('interactions')
