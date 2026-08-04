@@ -325,3 +325,89 @@ describe('ResumeRenovationModal', () => {
     );
   });
 });
+
+describe('W13 save truthfulness + staleness', () => {
+  it('shows Saved only when persistence actually succeeded', async () => {
+    mockLoadRenovation.mockResolvedValue({
+      doc: makeDoc() as unknown as Record<string, unknown>,
+      base_snapshot: { sections: [] },
+      method: 'ai',
+      warnings: [],
+      updated_at: '',
+    });
+    mockSaveRenovation.mockResolvedValue(true);
+    renderModal();
+    await waitFor(() => expect(screen.getAllByText('renovate.rollback').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+    await waitFor(() => expect(screen.getByText('renovate.saved')).toBeInTheDocument());
+    expect(screen.queryByTestId('renovation-save-failed')).toBeNull();
+  });
+
+  it('a failed save never shows Saved — it shows the retry state, and retry recovers', async () => {
+    mockLoadRenovation.mockResolvedValue({
+      doc: makeDoc() as unknown as Record<string, unknown>,
+      base_snapshot: { sections: [] },
+      method: 'ai',
+      warnings: [],
+      updated_at: '',
+    });
+    mockSaveRenovation.mockResolvedValue(false);
+    renderModal();
+    await waitFor(() => expect(screen.getAllByText('renovate.rollback').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+
+    await waitFor(() => expect(screen.getByTestId('renovation-save-failed')).toBeInTheDocument());
+    expect(screen.queryByText('renovate.saved')).toBeNull();
+
+    // Retry with a recovered backend → truthful Saved.
+    mockSaveRenovation.mockResolvedValue(true);
+    fireEvent.click(screen.getByText('renovate.retrySave'));
+    await waitFor(() => expect(screen.getByText('renovate.saved')).toBeInTheDocument());
+    expect(screen.queryByTestId('renovation-save-failed')).toBeNull();
+  });
+
+  it('a rejecting save (thrown error) also shows the retry state, not Saved', async () => {
+    mockLoadRenovation.mockResolvedValue({
+      doc: makeDoc() as unknown as Record<string, unknown>,
+      base_snapshot: { sections: [] },
+      method: 'ai',
+      warnings: [],
+      updated_at: '',
+    });
+    mockSaveRenovation.mockRejectedValue(new Error('network down'));
+    renderModal();
+    await waitFor(() => expect(screen.getAllByText('renovate.rollback').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+    await waitFor(() => expect(screen.getByTestId('renovation-save-failed')).toBeInTheDocument());
+    expect(screen.queryByText('renovate.saved')).toBeNull();
+  });
+
+  it('flags a restored doc whose resume_sig no longer matches the profile resume', async () => {
+    const doc = makeDoc() as unknown as Record<string, unknown>;
+    (doc as { resume_sig?: string }).resume_sig = 'sig-of-an-older-resume';
+    mockLoadRenovation.mockResolvedValue({
+      doc,
+      base_snapshot: { sections: [] },
+      method: 'ai',
+      warnings: [],
+      updated_at: '2026-07-17T00:00:00Z',
+    });
+    renderModal();
+    await waitFor(() =>
+      expect(screen.getByTestId('renovation-stale-resume')).toBeInTheDocument(),
+    );
+  });
+
+  it('makes no staleness claim for legacy docs without a resume_sig', async () => {
+    mockLoadRenovation.mockResolvedValue({
+      doc: makeDoc() as unknown as Record<string, unknown>,
+      base_snapshot: { sections: [] },
+      method: 'ai',
+      warnings: [],
+      updated_at: '',
+    });
+    renderModal();
+    await waitFor(() => expect(screen.getByText('renovate.restored')).toBeInTheDocument());
+    expect(screen.queryByTestId('renovation-stale-resume')).toBeNull();
+  });
+});

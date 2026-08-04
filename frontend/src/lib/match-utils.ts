@@ -147,6 +147,12 @@ export function hashProfile(profile: {
     // → exploring: widens matching + diversity-samples the top buckets.
     exploring: profile.exploring ?? false,
   });
+  return hashString(key);
+}
+
+/** Tiny stable string fingerprint (djb2-style). Not cryptographic — used for
+ *  cache keys and staleness signals (W13 résumé sigs), never for security. */
+export function hashString(key: string): string {
   let h = 0;
   for (let i = 0; i < key.length; i++) {
     h = ((h << 5) - h + key.charCodeAt(i)) | 0;

@@ -34,7 +34,7 @@ export const USER_SCOPED_KEYS: readonly string[] = [
 
 // Per-opportunity keys discovered by localStorage key scan.
 export const USER_SCOPED_PREFIXES: readonly string[] = [
-  STORAGE_KEYS.TAILOR_DRAFT_PREFIX, // cold-email drafts — user-written content
+  STORAGE_KEYS.TAILOR_DRAFT_PREFIX, // resume-tailor drafts — user-written content
 ];
 
 // Deliberately NOT cleared (device-scoped, or owned by another flow):

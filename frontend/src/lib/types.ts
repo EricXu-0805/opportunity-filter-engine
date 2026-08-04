@@ -351,6 +351,10 @@ export interface TailorResponse {
   tailored_bullets: TailoredBullet[];
   method: 'ai' | 'fallback';
   warnings: string[];
+  /** W13 target binding echo + provenance (mirrors ColdEmailResponse). */
+  opportunity_id?: string | null;
+  generated_at?: string | null;
+  pipeline_version?: string | null;
 }
 
 // ── Resume renovation (per-opportunity whole-résumé rework) ──────────
@@ -423,6 +427,10 @@ export interface RenovationDoc {
   sections: RenovatedSection[];
   method: 'ai' | 'fallback';
   warnings: string[];
+  /** W13 staleness signal: fingerprint of profile.resume_text at save time.
+   *  Absent on legacy docs — no staleness claim is made for them (unknown
+   *  is not stale, and not fresh). */
+  resume_sig?: string;
 }
 
 // ── Resume ───────────────────────────────────────────────────────────

@@ -66,6 +66,19 @@ const baseProps = {
   opportunityTitle: 'Some research opportunity',
 };
 
+
+/** W13: drafts are stored as {t, s} envelopes (text + resume sig); legacy
+ *  plain strings still load. Tests assert on the TEXT. */
+function storedDraftText(key: string): string | null {
+  const raw = window.localStorage.getItem(key);
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as { t?: unknown };
+    if (parsed && typeof parsed.t === 'string') return parsed.t;
+  } catch { /* legacy */ }
+  return raw;
+}
+
 describe('TailorModal', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -224,9 +237,7 @@ describe('TailorModal', () => {
     fireEvent.change(textarea, { target: { value: 'newly typed bullet' } });
 
     await waitFor(() => {
-      expect(
-        window.localStorage.getItem('ofe_tailor_draft_opp-123'),
-      ).toBe('newly typed bullet');
+      expect(storedDraftText('ofe_tailor_draft_opp-123')).toBe('newly typed bullet');
     });
   });
 
@@ -490,7 +501,7 @@ describe('TailorModal', () => {
       expect(textarea.value).toBe('Dark bullet one with no glyph\nDark bullet two with no glyph');
     });
     // Promoted draft is persisted so it survives a close/reopen.
-    expect(window.localStorage.getItem('ofe_tailor_draft_opp-123')).toBe(
+    expect(storedDraftText('ofe_tailor_draft_opp-123')).toBe(
       'Dark bullet one with no glyph\nDark bullet two with no glyph',
     );
   });
@@ -534,7 +545,7 @@ describe('TailorModal', () => {
     // Draft now holds the tailored text, one bullet per line.
     expect(textarea.value).toBe('Rewritten bullet one\nRewritten bullet two');
     // Storage persisted the promoted draft too.
-    expect(window.localStorage.getItem('ofe_tailor_draft_opp-123')).toBe(
+    expect(storedDraftText('ofe_tailor_draft_opp-123')).toBe(
       'Rewritten bullet one\nRewritten bullet two',
     );
     // Result panel resets — CTA flips back to generate, promote button gone.
@@ -689,5 +700,63 @@ describe('TailorModal', () => {
     await waitFor(() => expect(screen.getByText('tailor.methodFallback')).toBeTruthy());
     expect(screen.queryByRole('button', { name: /tailor\.editBulletAria/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /tailor\.rejectBulletAria/ })).toBeNull();
+  });
+});
+
+describe('W13 target isolation + draft staleness', () => {
+  it('drops a tailor response stamped for a different target', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      opportunity_id: 'opp-SOMEONE-ELSE',
+      tailored_bullets: [
+        { text: 'Leaked bullet', source_evidence: 'Python', source_index: 0 },
+      ],
+    } as TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+    fireEvent.change(textarea, { target: { value: 'orig one' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => expect(mockTailorResume).toHaveBeenCalled());
+    // The mismatched response must never render as this target's result.
+    expect(screen.queryByText(fullText('Leaked bullet'))).toBeNull();
+  });
+
+  it('accepts a tailor response echoing the current target', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      opportunity_id: 'opp-123',
+      tailored_bullets: [
+        { text: 'Correct-target bullet', source_evidence: 'Python', source_index: 0 },
+      ],
+    } as TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+    fireEvent.change(textarea, { target: { value: 'orig one' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() =>
+      expect(screen.getByText(fullText('Correct-target bullet'))).toBeTruthy(),
+    );
+  });
+
+  it('flags a restored draft whose resume sig no longer matches', async () => {
+    window.localStorage.setItem(
+      'ofe_tailor_draft_opp-123',
+      JSON.stringify({ t: 'old bullet draft', s: 'sig-of-old-resume' }),
+    );
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'a brand new resume text' })} />);
+    expect(screen.getByTestId('tailor-stale-draft')).toBeTruthy();
+  });
+
+  it('makes no staleness claim for legacy plain-string drafts', async () => {
+    window.localStorage.setItem('ofe_tailor_draft_opp-123', 'legacy draft line');
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'whatever text' })} />);
+    expect(screen.getByText('tailor.draftRestored')).toBeTruthy();
+    expect(screen.queryByTestId('tailor-stale-draft')).toBeNull();
   });
 });
