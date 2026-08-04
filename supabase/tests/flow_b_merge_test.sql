@@ -588,6 +588,10 @@ BEGIN
     RAISE EXCEPTION 'TEST FAIL s8: orders summary want 2 got %', res#>>'{summary,orders}';
   END IF;
 
+  -- Clean up: orders_rls_test.sql runs later in this same database and
+  -- asserts whole-table row counts — scenario rows must not leak into it.
+  DELETE FROM orders WHERE device_id IN (u, v);
+
   RAISE WARNING 'PASS scenario 8 (orders merge + widened TTL)';
 END $$;
 
