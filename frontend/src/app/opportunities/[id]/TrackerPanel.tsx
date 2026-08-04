@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BellRing, StickyNote } from 'lucide-react';
 import type { InteractionRecord } from '@/lib/supabase';
 import type { TFunc } from './types';
@@ -18,7 +18,9 @@ export function TrackerPanel({
   t,
 }: {
   detail: InteractionRecord | null;
-  onSave: (patch: { notes?: string | null; remind_at?: string | null }) => Promise<void>;
+  /** W14: must resolve true only when the write persisted — the "Saved"
+   *  flash is gated on it, false renders the failed-save + retry state. */
+  onSave: (patch: { notes?: string | null; remind_at?: string | null }) => Promise<boolean>;
   opportunityId: string;
   hasInteraction: boolean;
   t: TFunc;
@@ -26,8 +28,19 @@ export function TrackerPanel({
   const [open, setOpen] = useState(!!(detail?.notes || detail?.remind_at));
   const [notes, setNotes] = useState(detail?.notes ?? '');
   const [remindAt, setRemindAt] = useState(detail?.remind_at ?? '');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   const [notesMode, setNotesMode] = useState<'edit' | 'preview'>('edit');
+
+  // W14 truthful "Saved": flash it only when the write actually landed;
+  // a false result keeps the panel in 'failed' with a retry affordance.
+  const persist = useCallback(async () => {
+    const ok = await onSave({
+      notes: notes.trim() ? notes.trim().slice(0, 2000) : null,
+      remind_at: remindAt || null,
+    });
+    setSaveStatus(ok ? 'saved' : 'failed');
+    if (ok) setTimeout(() => setSaveStatus('idle'), 1500);
+  }, [onSave, notes, remindAt]);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect --
@@ -49,14 +62,7 @@ export function TrackerPanel({
     if (notes === (detail?.notes ?? '') && remindAt === (detail?.remind_at ?? '')) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced save side effect; setSaveStatus must run sync to show 'saving…' before the 600ms timer fires
     setSaveStatus('saving');
-    const timer = setTimeout(async () => {
-      await onSave({
-        notes: notes.trim() ? notes.trim().slice(0, 2000) : null,
-        remind_at: remindAt || null,
-      });
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 1500);
-    }, 600);
+    const timer = setTimeout(() => { void persist(); }, 600);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, remindAt, hasInteraction]);
@@ -91,6 +97,25 @@ export function TrackerPanel({
           {saveStatus === 'saved' && t('common.saved')}
         </span>
       </button>
+      {saveStatus === 'failed' && (
+        // W14: a failed write must never flash "Saved" — amber failure note
+        // with an explicit retry (outside the toggle <button> above, since
+        // nested buttons are invalid HTML).
+        <div
+          data-testid="tracker-save-failed"
+          className="mt-1.5 flex items-center gap-2 text-[11px] font-medium text-amber-600"
+          aria-live="polite"
+        >
+          <span>{t('detail.tracker.saveFailed')}</span>
+          <button
+            type="button"
+            onClick={() => { setSaveStatus('saving'); void persist(); }}
+            className="underline hover:text-amber-700"
+          >
+            {t('detail.tracker.retrySave')}
+          </button>
+        </div>
+      )}
       {open && (
         <div className="mt-3 space-y-3 animate-in">
           {!hasInteraction && (

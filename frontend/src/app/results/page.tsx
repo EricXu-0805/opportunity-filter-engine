@@ -50,6 +50,7 @@ import {
   type InteractionType,
 } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
+import { useAuthUid } from '@/lib/use-auth-uid';
 import { useT } from '@/i18n/client';
 
 import { EmptyState } from './EmptyState';
@@ -206,8 +207,20 @@ function ResultsContent() {
   const favsRef = useRef(favs);
   useEffect(() => { favsRef.current = favs; }, [favs]);
   const [interactions, setInteractions] = useState<Map<string, InteractionType>>(new Map());
+  // Mirror interactions the same way for handleTrackInteraction's revert path.
+  const interactionsRef = useRef(interactions);
+  useEffect(() => { interactionsRef.current = interactions; }, [interactions]);
+  // W14 cross-tab uid isolation: epoch bumps only on a real identity switch,
+  // clearing Account A's stars/statuses and refetching under B.
+  const { epoch: authEpoch } = useAuthUid();
   useEffect(() => {
     let cancelled = false;
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Reset before fetching — a no-op on mount, the isolation clear on an
+       identity switch. */
+    setFavs(new Set());
+    setInteractions(new Map());
+    /* eslint-enable react-hooks/set-state-in-effect */
     getFavorites()
       .then((d) => { if (!cancelled) setFavs(d); })
       .catch(() => {});
@@ -215,7 +228,7 @@ function ResultsContent() {
       .then((d) => { if (!cancelled) setInteractions(d); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [authEpoch]);
 
   const handleToggleFav = useCallback(async (oppId: string) => {
     const wasFaved = favsRef.current.has(oppId);
@@ -234,17 +247,27 @@ function ResultsContent() {
   }, []);
 
   const handleTrackInteraction = useCallback((oppId: string, type: InteractionType) => {
-    setInteractions(prev => {
-      const current = prev.get(oppId);
-      const next = new Map(prev);
-      if (current === type) {
+    const current = interactionsRef.current.get(oppId);
+    if (current === type) {
+      setInteractions(prev => {
+        const next = new Map(prev);
         next.delete(oppId);
-        removeInteraction(oppId).catch(() => {});
-      } else {
-        next.set(oppId, type);
-        trackInteraction(oppId, type).catch(() => {});
-      }
-      return next;
+        return next;
+      });
+      removeInteraction(oppId).catch(() => {});
+      return;
+    }
+    setInteractions(prev => new Map(prev).set(oppId, type));
+    trackInteraction(oppId, type).catch(() => {
+      // W14: the write failed — revert the optimistic status (same revert
+      // discipline as handleToggleFav above) instead of displaying a status
+      // that was never persisted.
+      setInteractions(prev => {
+        const next = new Map(prev);
+        if (current === undefined) next.delete(oppId);
+        else next.set(oppId, current);
+        return next;
+      });
     });
   }, []);
 

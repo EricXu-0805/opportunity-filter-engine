@@ -231,6 +231,22 @@ function SectionContent({
       </div>
     );
   }
+  if (!state.available) {
+    // W14 truthful zero states: the updates feed itself is unavailable
+    // (artifact absent/unpublished) — say so instead of claiming "no
+    // verified updates yet", which would assert a freshness we don't have.
+    return (
+      <div data-testid="professor-updates-unavailable" className="px-6 py-9 text-center">
+        <GraduationCap className="mx-auto h-7 w-7 text-gray-300" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-gray-700">
+          {t('dashboard.professorUpdates.unavailableTitle')}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">
+          {t('dashboard.professorUpdates.unavailableBody')}
+        </p>
+      </div>
+    );
+  }
   if (state.events.length === 0) {
     return (
       <div className="px-6 py-9 text-center">

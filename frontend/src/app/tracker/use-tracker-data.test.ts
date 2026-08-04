@@ -3,16 +3,25 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 
 import { useTrackerData, TRACKER_COLUMNS, dateInDays, isReminderDue } from './use-tracker-data';
 
+// W14 write contracts: trackInteraction resolves only on a persisted write
+// (throws otherwise); updateInteractionDetails resolves true only on success.
 const trackInteraction = vi.fn((_id: string, _type: string) => Promise.resolve());
 const removeInteraction = vi.fn((_id: string) => Promise.resolve());
-const updateInteractionDetails = vi.fn((_id: string, _patch: unknown) => Promise.resolve());
+const updateInteractionDetails = vi.fn((_id: string, _patch: unknown) => Promise.resolve(true));
+const getInteractionsFull = vi.fn(() => Promise.resolve(interactions));
 let interactions: Map<string, { type: string; notes?: string; remind_at?: string }>;
+// Captured so tests can emit auth events (cross-tab uid switches).
+let authCallback: ((s: { user: { id: string } | null }) => void) | null = null;
 
 vi.mock('@/lib/supabase', () => ({
-  getInteractionsFull: () => Promise.resolve(interactions),
+  getInteractionsFull: () => getInteractionsFull(),
   trackInteraction: (id: string, type: string) => trackInteraction(id, type),
   removeInteraction: (id: string) => removeInteraction(id),
   updateInteractionDetails: (id: string, patch: unknown) => updateInteractionDetails(id, patch),
+  onAuthChange: (cb: (s: { user: { id: string } | null }) => void) => {
+    authCallback = cb;
+    return () => { authCallback = null; };
+  },
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -20,17 +29,20 @@ vi.mock('@/lib/api', () => ({
     Promise.resolve(ids.map((id) => ({ id, title: `Opp ${id}`, lab_or_program: `Lab ${id}` }))),
 }));
 
+beforeEach(() => {
+  trackInteraction.mockClear().mockImplementation(() => Promise.resolve());
+  removeInteraction.mockClear();
+  updateInteractionDetails.mockClear().mockImplementation(() => Promise.resolve(true));
+  getInteractionsFull.mockClear().mockImplementation(() => Promise.resolve(interactions));
+  authCallback = null;
+  interactions = new Map([
+    ['o1', { type: 'applied', notes: 'hi' }],
+    ['o2', { type: 'interviewing' }],
+    ['o3', { type: 'dismissed' }],
+  ]);
+});
+
 describe('useTrackerData', () => {
-  beforeEach(() => {
-    trackInteraction.mockClear();
-    removeInteraction.mockClear();
-    updateInteractionDetails.mockClear();
-    interactions = new Map([
-      ['o1', { type: 'applied', notes: 'hi' }],
-      ['o2', { type: 'interviewing' }],
-      ['o3', { type: 'dismissed' }],
-    ]);
-  });
 
   it('joins interactions with opportunity details', async () => {
     const { result } = renderHook(() => useTrackerData());
@@ -71,6 +83,74 @@ describe('useTrackerData', () => {
     expect(updateInteractionDetails).toHaveBeenCalledWith('o2', { notes: 'follow up' });
     act(() => result.current.saveNotes('o2', '   '));
     expect(updateInteractionDetails).toHaveBeenCalledWith('o2', { notes: null });
+  });
+
+  // W14 truthful zero states: a failed load is an error, never an empty board.
+  it('sets loadError on a failed load and retry() refetches', async () => {
+    getInteractionsFull.mockImplementationOnce(() =>
+      Promise.reject(new Error('interactions-load-failed: outage')),
+    );
+    const { result } = renderHook(() => useTrackerData());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.loadError).toBe(true);
+    expect(result.current.items).toHaveLength(0);
+
+    act(() => result.current.retry());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.loadError).toBe(false);
+    expect(result.current.items).toHaveLength(3);
+    expect(getInteractionsFull).toHaveBeenCalledTimes(2);
+  });
+
+  // W14 truthful status writes: a failed persist reverts the optimistic move.
+  it('changeStatus reverts the optimistic column move when the write fails', async () => {
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    trackInteraction.mockImplementationOnce(() =>
+      Promise.reject(new Error('interaction-save-failed: down')),
+    );
+    act(() => result.current.changeStatus('o1', 'interviewing'));
+    // Optimistic first…
+    expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.type).toBe('interviewing');
+    // …then reverted once the write failure lands.
+    await waitFor(() => {
+      expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.type).toBe('applied');
+    });
+  });
+
+  it('saveNotes reverts the optimistic note when the write reports failure', async () => {
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    updateInteractionDetails.mockImplementationOnce(() => Promise.resolve(false));
+    act(() => result.current.saveNotes('o1', 'new note'));
+    expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.notes).toBe('new note');
+    await waitFor(() => {
+      expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.notes).toBe('hi');
+    });
+  });
+
+  // W14 cross-tab uid isolation: an identity switch clears the board and
+  // refetches under the new auth context; the initial null→uid resolution
+  // does not double-fetch.
+  it('refetches on a real uid switch but not on the initial uid resolution', async () => {
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(getInteractionsFull).toHaveBeenCalledTimes(1);
+
+    // Initial resolution (null → anon uid): absorbed, no second fetch.
+    act(() => authCallback?.({ user: { id: 'anon-a' } }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(getInteractionsFull).toHaveBeenCalledTimes(1);
+
+    // Real switch (uid A → uid B): clear + refetch under the new identity.
+    interactions = new Map([['o9', { type: 'contacted' }]]);
+    act(() => authCallback?.({ user: { id: 'account-b' } }));
+    await waitFor(() => expect(getInteractionsFull).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.items.map((i) => i.opp.id)).toEqual(['o9']);
   });
 });
 

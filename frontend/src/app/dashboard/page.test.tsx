@@ -14,6 +14,9 @@ const mockGetOpportunitiesByIds = vi.fn();
 vi.mock('@/lib/supabase', () => ({
   getFavorites: () => mockGetFavorites(),
   getInteractionsFull: () => mockGetInteractionsFull(),
+  // useAuthUid subscribes through this wrapper; never emitting keeps the
+  // identity epoch at 0 so the page loads exactly once per test.
+  onAuthChange: () => () => {},
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -22,6 +25,12 @@ vi.mock('@/lib/api', () => ({
 
 vi.mock('@/components/PushToggle', () => ({
   default: () => <div data-testid="push-toggle" />,
+}));
+
+// W14: the dashboard mounts the storage banner like /favorites and /tracker.
+// It has its own test file — stub it and only assert that it is mounted.
+vi.mock('@/components/StorageStatusBanner', () => ({
+  default: () => <div data-testid="storage-status-banner" />,
 }));
 
 // Owns its own data loads and has a dedicated test file — stub it here so
@@ -190,8 +199,11 @@ describe('DashboardPage — honest empty and error states', () => {
   });
 
   it('surfaces load failures as errors instead of pretending the lists are empty', async () => {
+    // W14: these rejections now drive the REAL lib contract —
+    // getInteractionsFull/getFavorites throw on session/query failure
+    // instead of collapsing into empty collections.
     mockGetFavorites.mockRejectedValue(new Error('offline'));
-    mockGetInteractionsFull.mockRejectedValue(new Error('offline'));
+    mockGetInteractionsFull.mockRejectedValue(new Error('interactions-load-failed: offline'));
 
     render(<DashboardPage />);
 
@@ -200,7 +212,30 @@ describe('DashboardPage — honest empty and error states', () => {
     });
     expect(screen.getByText('dashboard.saved.errorTitle')).toBeInTheDocument();
     expect(screen.getAllByText('dashboard.trackerSection.errorTitle').length).toBeGreaterThan(0);
+    expect(screen.getByText('dashboard.reminders.errorTitle')).toBeInTheDocument();
     expect(screen.queryByText('dashboard.deadlines.noSavesTitle')).toBeNull();
+    // Every metric fed by the failed loads reads '—', never a confident 0.
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('—');
+    expect(screen.getAllByText('—')).toHaveLength(5);
+    // The sync-status banner is mounted so a local-only outage is visible.
+    expect(screen.getByTestId('storage-status-banner')).toBeInTheDocument();
+  });
+
+  it('keeps funnel stat cards at "—" (not zero) when only the tracker load fails', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
+    mockGetOpportunitiesByIds.mockResolvedValue([]);
+    mockGetInteractionsFull.mockRejectedValue(new Error('interactions-load-failed: outage'));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('dashboard.trackerSection.errorTitle').length).toBeGreaterThan(0);
+    });
+    // Saved is real (1); the four funnel cards fed by getInteractionsFull
+    // must show '—', not fabricated zeros.
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('1');
+    expect(screen.getAllByText('—')).toHaveLength(4);
+    expect(screen.getByText('dashboard.reminders.errorTitle')).toBeInTheDocument();
   });
 
   it('keeps the student-recorded statuses and reminder dates when the title lookup fails', async () => {

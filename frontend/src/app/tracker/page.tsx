@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ArrowLeft, ClipboardList, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ClipboardList, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -24,7 +24,7 @@ const COLUMN_ACCENT: Record<InteractionType, string> = {
 export default function TrackerPage() {
   const router = useRouter();
   const { t } = useT();
-  const { items, loading, changeStatus, saveNotes, setReminder } = useTrackerData();
+  const { items, loading, loadError, retry, changeStatus, saveNotes, setReminder } = useTrackerData();
 
   const byColumn = useMemo(() => {
     const map = new Map<InteractionType, typeof items>();
@@ -73,7 +73,24 @@ export default function TrackerPage() {
         </div>
       </div>
 
-      {trackedCount === 0 ? (
+      {loadError ? (
+        // W14 truthful zero states: a failed load renders an error + retry,
+        // never the "nothing tracked yet" empty board.
+        <div
+          data-testid="tracker-load-error"
+          className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-red-100 bg-red-50/40 px-6 py-16 text-center"
+        >
+          <AlertCircle className="h-10 w-10 text-red-500" aria-hidden="true" />
+          <p className="font-medium text-gray-700">{t('tracker.loadError')}</p>
+          <button
+            type="button"
+            onClick={retry}
+            className="text-sm text-indigo-600 underline hover:text-indigo-700"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
+      ) : trackedCount === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
           <p className="text-sm font-medium text-gray-600">{t('tracker.emptyTitle')}</p>
           <p className="mt-1 text-[13px] text-gray-400">{t('tracker.emptyBody')}</p>
