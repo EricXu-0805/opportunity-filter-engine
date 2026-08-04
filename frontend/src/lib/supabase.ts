@@ -1340,9 +1340,12 @@ export async function getAttachmentSignedUrl(
 // snapshot) split: `resume_renovations` holds ONE working doc per
 // (device, opportunity) — the per-bullet rollback history lives INSIDE the
 // doc's variant chains — and `resume_renovation_versions` appends a whole-doc
-// snapshot on every save as the coarse recovery net. All failures degrade to
-// console warnings: persistence is sync-across-devices sugar, the modal keeps
-// its in-memory doc regardless. See supabase/migrations/020_resume_renovations.sql.
+// snapshot on every save as the coarse recovery net. The modal keeps its
+// in-memory doc regardless, but the RESULT is reported truthfully (W13):
+// the UI may only show "Saved" when the working-doc upsert actually
+// succeeded — a swallowed failure flashing "Saved" is a false persistence
+// claim. The version snapshot stays fire-and-forget (recovery sugar).
+// See supabase/migrations/020_resume_renovations.sql.
 
 export async function saveRenovation(
   opportunityId: string,
@@ -1350,9 +1353,9 @@ export async function saveRenovation(
   baseSnapshot: Record<string, unknown>,
   method: string,
   warnings: string[],
-): Promise<void> {
+): Promise<boolean> {
   const deviceId = await ensureAnonSession();
-  if (!deviceId) return;
+  if (!deviceId) return false;
   const now = new Date().toISOString();
 
   const { error } = await supabase
@@ -1369,7 +1372,10 @@ export async function saveRenovation(
       },
       { onConflict: 'device_id,opportunity_id' },
     );
-  if (error) console.warn('[ofe] renovation save failed:', error.message);
+  if (error) {
+    console.warn('[ofe] renovation save failed:', error.message);
+    return false;
+  }
 
   supabase
     .from('resume_renovation_versions')
@@ -1379,6 +1385,7 @@ export async function saveRenovation(
         console.warn('[ofe] renovation version snapshot failed:', vErr.message);
       }
     });
+  return true;
 }
 
 export interface StoredRenovation {

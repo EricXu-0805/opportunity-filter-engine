@@ -363,6 +363,13 @@ class TailorResponse(BaseModel):
     tailored_bullets: list[TailoredBullet]
     method: str = "fallback"  # "ai" | "fallback"
     warnings: list[str] = Field(default_factory=list)
+    # W13 target binding + provenance (mirrors the W12 cold-email stamps):
+    # which target this suggestion set was generated for, when, and by what
+    # pipeline — the client pairs suggestions to targets by the echo instead
+    # of trusting its own bookkeeping.
+    opportunity_id: str | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 class ExtractBulletsRequest(BaseModel):
@@ -546,6 +553,13 @@ class RenovateResponse(BaseModel):
     sections: list[RenovatedSection]
     method: str = "fallback"  # "ai" | "fallback"
     warnings: list[str] = Field(default_factory=list)
+    # W13 target binding + provenance (mirrors the W12 cold-email stamps):
+    # which target this suggestion set was generated for, when, and by what
+    # pipeline — the client pairs suggestions to targets by the echo instead
+    # of trusting its own bookkeeping.
+    opportunity_id: str | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 class BulletOptimizeRequest(BaseModel):
@@ -568,6 +582,13 @@ class BulletOptimizeResponse(BaseModel):
     source_evidence: str = ""
     changed: bool = False
     warnings: list[str] = Field(default_factory=list)
+    # W13 target binding + provenance (mirrors the W12 cold-email stamps):
+    # which target this suggestion set was generated for, when, and by what
+    # pipeline — the client pairs suggestions to targets by the echo instead
+    # of trusting its own bookkeeping.
+    opportunity_id: str | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 class OpportunityListResponse(BaseModel):

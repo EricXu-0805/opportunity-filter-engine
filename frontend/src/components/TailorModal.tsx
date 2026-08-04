@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { tailorResume, getTailorStatus, extractResumeBullets } from '@/lib/api';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { hashString } from '@/lib/match-utils';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
@@ -30,10 +31,27 @@ function draftStorageKey(opportunityId: string): string {
   return `${DRAFT_STORAGE_PREFIX}${opportunityId}`;
 }
 
-function loadSavedDraft(opportunityId: string): string | null {
+// W13: drafts carry a fingerprint of profile.resume_text at save time so a
+// restored draft built against a since-edited résumé is flagged, not
+// silently preferred. Legacy plain-string drafts have no sig — unknown, so
+// no staleness claim is made for them.
+interface StoredDraft {
+  text: string;
+  sig: string | null;
+}
+
+function loadSavedDraft(opportunityId: string): StoredDraft | null {
   if (typeof window === 'undefined') return null;
   try {
-    return window.localStorage.getItem(draftStorageKey(opportunityId));
+    const raw = window.localStorage.getItem(draftStorageKey(opportunityId));
+    if (raw === null) return null;
+    try {
+      const parsed = JSON.parse(raw) as { t?: unknown; s?: unknown };
+      if (parsed && typeof parsed.t === 'string') {
+        return { text: parsed.t, sig: typeof parsed.s === 'string' ? parsed.s : null };
+      }
+    } catch { /* legacy plain-string draft */ }
+    return { text: raw, sig: null };
   } catch {
     // localStorage can throw in private-mode Safari and embedded webviews.
     // Swallow — persistence is a UX nicety, not a correctness requirement.
@@ -41,13 +59,16 @@ function loadSavedDraft(opportunityId: string): string | null {
   }
 }
 
-function saveDraft(opportunityId: string, value: string): void {
+function saveDraft(opportunityId: string, value: string, resumeSig: string | null): void {
   if (typeof window === 'undefined') return;
   try {
     if (value.trim().length === 0) {
       window.localStorage.removeItem(draftStorageKey(opportunityId));
     } else {
-      window.localStorage.setItem(draftStorageKey(opportunityId), value);
+      window.localStorage.setItem(
+        draftStorageKey(opportunityId),
+        JSON.stringify({ t: value, s: resumeSig }),
+      );
     }
   } catch {
     // Same rationale as loadSavedDraft — never crash the modal on quota
@@ -216,6 +237,7 @@ export default function TailorModal({
   // see the open-effect below for the actual loading.
   const [draft, setDraft] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
+  const [draftStale, setDraftStale] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<TailorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -247,6 +269,13 @@ export default function TailorModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  // W13 target isolation: one TailorModal instance serves many opportunities
+  // on the favorites page. A slow /tailor response from target A must never
+  // render under target B after a close→reopen — every open/target change
+  // bumps the generation, and a landing response is dropped unless it
+  // belongs to the current generation AND (when the backend echoes it) the
+  // current target.
+  const generationRef = useRef(0);
 
   // Reset modal-local state every time the modal opens. Splitting this
   // into two effects would race a stale `resp` against the next open's
@@ -257,12 +286,17 @@ export default function TailorModal({
        internal slice on open so the next render starts from a known
        state and clears any leftover AI result. */
     if (isOpen) {
+      generationRef.current += 1;
       // R71-F: prefer saved-per-opportunity draft over heuristic
       // prefill so the user's last typed bullets survive across
       // close→reopen cycles. Empty heuristic + no saved draft → "".
       const saved = loadSavedDraft(opportunityId);
-      setDraft(saved ?? heuristicPrefill);
-      setDraftRestored(saved !== null && saved.length > 0);
+      setDraft(saved?.text ?? heuristicPrefill);
+      setDraftRestored(saved !== null && saved.text.length > 0);
+      setDraftStale(
+        !!saved?.sig && !!profile.resume_text &&
+        saved.sig !== hashString(profile.resume_text),
+      );
       setResp(null);
       setError(null);
       setCopied(false);
@@ -275,7 +309,8 @@ export default function TailorModal({
       setEditDraft('');
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [isOpen, heuristicPrefill, opportunityId]);
+    // profile.resume_text feeds the draft-staleness comparison.
+  }, [isOpen, heuristicPrefill, opportunityId, profile.resume_text]);
 
   // R71-F: persist draft to localStorage as the user types. localStorage
   // is synchronous and cheap enough that per-keystroke writes are fine —
@@ -284,8 +319,9 @@ export default function TailorModal({
   // never break the modal.
   useEffect(() => {
     if (!isOpen) return;
-    saveDraft(opportunityId, draft);
-  }, [isOpen, opportunityId, draft]);
+    saveDraft(opportunityId, draft,
+      profile.resume_text ? hashString(profile.resume_text) : null);
+  }, [isOpen, opportunityId, draft, profile.resume_text]);
 
   // R71-G: probe server AI availability each time the modal opens so the
   // banner reflects current config (a Render env-var change shouldn't need
@@ -310,7 +346,7 @@ export default function TailorModal({
   const handleClearDraft = useCallback(() => {
     setDraft('');
     setDraftRestored(false);
-    saveDraft(opportunityId, '');
+    saveDraft(opportunityId, '', null);
   }, [opportunityId]);
 
   // Focus trap + escape + body-overflow lock. Lifted verbatim from
@@ -372,7 +408,8 @@ export default function TailorModal({
       if (data.bullets.length > 0) {
         const next = data.bullets.join('\n');
         setDraft(next);
-        saveDraft(opportunityId, next);
+        saveDraft(opportunityId, next,
+          profile.resume_text ? hashString(profile.resume_text) : null);
         setDraftRestored(false);
       }
     } catch {
@@ -399,13 +436,20 @@ export default function TailorModal({
     // R71-E: snapshot before the await so a textarea edit during the
     // request can't desync the rendered pairing.
     setSubmittedBullets(bullets);
+    const gen = generationRef.current;
+    const target = opportunityId;
     try {
-      const data = await tailorResume(profile, opportunityId, bullets, { locale });
+      const data = await tailorResume(profile, target, bullets, { locale });
+      // W13: drop a response that outlived its modal session or that the
+      // backend stamped for a different target than the one now open.
+      if (gen !== generationRef.current) return;
+      if (data.opportunity_id && data.opportunity_id !== opportunityId) return;
       setResp(data);
     } catch (err) {
+      if (gen !== generationRef.current) return;
       setError(err instanceof Error ? err.message : t('tailor.failedToTailor'));
     } finally {
-      setLoading(false);
+      if (gen === generationRef.current) setLoading(false);
     }
   }
 
@@ -462,7 +506,8 @@ export default function TailorModal({
     if (kept.length === 0) return;
     const next = kept.join('\n');
     setDraft(next);
-    saveDraft(opportunityId, next);
+    saveDraft(opportunityId, next,
+      profile.resume_text ? hashString(profile.resume_text) : null);
     setDraftRestored(false);
     setResp(null);
     setSubmittedBullets([]);
@@ -595,6 +640,11 @@ export default function TailorModal({
                     </button>
                   </span>
                 )}
+                {draftStale && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full" data-testid="tailor-stale-draft">
+                    {t('tailor.staleDraft')}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-400 mb-2">
                 {t('tailor.bulletsHint')}
@@ -629,6 +679,7 @@ export default function TailorModal({
                   // Any user edit clears the "restored" indicator since
                   // the draft is no longer purely the restored copy.
                   if (draftRestored) setDraftRestored(false);
+                  if (draftStale) setDraftStale(false);
                 }}
                 placeholder={t('tailor.bulletsPlaceholder')}
                 rows={12}
