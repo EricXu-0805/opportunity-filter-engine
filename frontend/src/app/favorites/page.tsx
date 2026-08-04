@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
@@ -40,10 +40,11 @@ export default function FavoritesPage() {
 
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const customImports = useCustomImports();
-  const { serverOpportunities, loading, handleRemove } = useFavoritesData();
+  const { serverOpportunities, loading, loadError, retry, handleRemove } = useFavoritesData();
   const {
     savedSearches,
     digests,
+    loadError: savedSearchesLoadError,
     handleRemove: handleRemoveSavedSearch,
     handleApplyOptimisticClear,
     handleDigestSave,
@@ -137,10 +138,11 @@ export default function FavoritesPage() {
         t={t}
       />
 
-      {!selectionMode && (savedSearches.length > 0 || opportunities.length > 0) && (
+      {!selectionMode && (savedSearches.length > 0 || opportunities.length > 0 || savedSearchesLoadError) && (
         <SavedSearchesSection
           savedSearches={savedSearches}
           digests={digests}
+          loadError={savedSearchesLoadError}
           onApplyOptimisticClear={handleApplyOptimisticClear}
           onRemove={handleRemoveSavedSearch}
           onDigestSave={handleDigestSave}
@@ -148,7 +150,27 @@ export default function FavoritesPage() {
         />
       )}
 
-      {opportunities.length === 0 ? (
+      {/* W14 truthful zero states: a failed server load renders an error +
+          retry, never the empty state. Local custom imports (if any) still
+          render below — they were never at risk. */}
+      {loadError && (
+        <div
+          data-testid="favorites-load-error"
+          className="flex flex-col items-center justify-center py-16 gap-4"
+        >
+          <AlertCircle className="w-10 h-10 text-red-500" />
+          <p className="text-gray-700 font-medium">{t('favorites.loadError')}</p>
+          <button
+            type="button"
+            onClick={retry}
+            className="text-sm text-indigo-600 underline hover:text-indigo-700"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
+      )}
+
+      {!loadError && opportunities.length === 0 ? (
         <FavoritesEmptyState t={t} />
       ) : (
         <div className="space-y-4">

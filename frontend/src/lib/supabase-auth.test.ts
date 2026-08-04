@@ -76,6 +76,7 @@ import {
   signInWithOAuthProvider,
   signOutOfAccount,
 } from './supabase';
+import { STORAGE_KEYS } from './storage-keys';
 
 const REDIRECT = 'https://app.test/auth/callback';
 
@@ -543,5 +544,20 @@ describe('signOutOfAccount', () => {
 
     expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(newId).toBe('new-anon-uid');
+  });
+
+  it('drops a stashed Flow B merge grant — signing out abandons the pending merge (W14)', async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.MERGE_GRANT,
+      JSON.stringify({ token: 'grant-token', minted_at: Date.now() }),
+    );
+    mockSignOut.mockResolvedValueOnce({ error: null });
+    mockGetSession.mockResolvedValueOnce(noSession());
+
+    await signOutOfAccount();
+
+    // If the stash survived, it would defer identity-owner's user-scoped
+    // clear for the NEXT identity on this browser (up to the 60-min expiry).
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 });

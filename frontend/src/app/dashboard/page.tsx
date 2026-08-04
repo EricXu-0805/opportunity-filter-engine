@@ -18,12 +18,14 @@ import {
 import Link from 'next/link';
 
 import PushToggle from '@/components/PushToggle';
+import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import { getOpportunitiesByIds } from '@/lib/api';
 import { daysUntil } from '@/lib/match-utils';
 import { collectReminders, type ReminderInfo } from '@/lib/reminders';
 import { getFavorites, getInteractionsFull } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
+import { useAuthUid } from '@/lib/use-auth-uid';
 
 import { ProfessorUpdatesSection } from './ProfessorUpdatesSection';
 
@@ -91,9 +93,22 @@ export default function DashboardPage() {
     total: 0,
     detailsUnavailable: false,
   });
+  // W14 cross-tab uid isolation: epoch bumps only on a real identity switch,
+  // re-running the load below under the new auth context.
+  const { epoch: authEpoch } = useAuthUid();
 
   useEffect(() => {
     let cancelled = false;
+
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Reset before fetching — a no-op on mount, the isolation clear on an
+       identity switch (stale Account-A metrics must never render for B).
+       Must run synchronously before the async loads below kick off. */
+    setSaved({ status: 'loading', count: 0 });
+    setDeadlines({ status: 'loading', items: [] });
+    setTracker({ status: 'loading', items: [] });
+    setReminders({ status: 'loading', items: [], total: 0, detailsUnavailable: false });
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     async function loadFavorites() {
       let favoriteIds: Set<string>;
@@ -241,7 +256,7 @@ export default function DashboardPage() {
     void loadFavorites();
     void loadTracker();
     return () => { cancelled = true; };
-  }, []);
+  }, [authEpoch]);
 
   const statusCounts: Record<string, number> = { applied: 0, replied: 0, rejected: 0, interviewing: 0 };
   for (const item of tracker.items) {
@@ -259,6 +274,8 @@ export default function DashboardPage() {
           {t('dashboard.subtitle')}
         </p>
       </header>
+
+      <StorageStatusBanner />
 
       <section aria-labelledby="dashboard-summary" className="mb-10">
         <h2 id="dashboard-summary" className="mb-4 text-sm font-semibold text-gray-900">

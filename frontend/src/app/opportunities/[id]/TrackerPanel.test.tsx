@@ -271,7 +271,7 @@ describe('TrackerPanel — reminder date', () => {
 describe('TrackerPanel — debounced save', () => {
   it('shows "saving" immediately, then "saved" after the 600ms debounce + onSave resolves', async () => {
     vi.useFakeTimers();
-    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onSave = vi.fn().mockResolvedValue(true); // W14: onSave resolves true only when the write persisted
 
     render(
       <TrackerPanel
@@ -300,7 +300,7 @@ describe('TrackerPanel — debounced save', () => {
 
   it('debounces rapid keystrokes into a single onSave call', async () => {
     vi.useFakeTimers();
-    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onSave = vi.fn().mockResolvedValue(true); // W14: onSave resolves true only when the write persisted
 
     render(
       <TrackerPanel
@@ -330,7 +330,7 @@ describe('TrackerPanel — debounced save', () => {
 
   it('saves notes as null when the value is whitespace-only (does not persist empty strings)', async () => {
     vi.useFakeTimers();
-    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onSave = vi.fn().mockResolvedValue(true); // W14: onSave resolves true only when the write persisted
 
     render(
       <TrackerPanel
@@ -355,7 +355,7 @@ describe('TrackerPanel — debounced save', () => {
 
   it('never auto-saves when no status is tracked yet (no inferred applied)', async () => {
     vi.useFakeTimers();
-    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onSave = vi.fn().mockResolvedValue(true); // W14: onSave resolves true only when the write persisted
 
     render(
       <TrackerPanel
@@ -404,6 +404,100 @@ describe('TrackerPanel — debounced save', () => {
       />,
     );
     expect(screen.queryByText(/detail.tracker.statusFirst/)).toBeNull();
+  });
+});
+
+describe('TrackerPanel — truthful save state (W14)', () => {
+  it('shows the failed-save state instead of "Saved" when the write does not persist', async () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn().mockResolvedValue(false);
+
+    render(
+      <TrackerPanel
+        detail={null}
+        onSave={onSave}
+        opportunityId={OPP_ID}
+        hasInteraction
+        t={tFn}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
+    fireEvent.change(textarea, { target: { value: 'important note' } });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    expect(onSave).toHaveBeenCalledWith({ notes: 'important note', remind_at: null });
+    expect(screen.getByTestId('tracker-save-failed')).toBeInTheDocument();
+    expect(screen.getByText(/detail.tracker.saveFailed/)).toBeInTheDocument();
+    expect(screen.queryByText(/common.saved/)).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('retry re-runs the save and flashes "Saved" once it succeeds', async () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    render(
+      <TrackerPanel
+        detail={null}
+        onSave={onSave}
+        opportunityId={OPP_ID}
+        hasInteraction
+        t={tFn}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
+    fireEvent.change(textarea, { target: { value: 'try again' } });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+    expect(screen.getByTestId('tracker-save-failed')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText(/detail.tracker.retrySave/));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(onSave).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('tracker-save-failed')).toBeNull();
+    expect(screen.getByText(/common.saved/)).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('flashes "Saved" only after a true result from onSave', async () => {
+    vi.useFakeTimers();
+    const onSave = vi.fn().mockResolvedValue(true);
+
+    render(
+      <TrackerPanel
+        detail={null}
+        onSave={onSave}
+        opportunityId={OPP_ID}
+        hasInteraction
+        t={tFn}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
+    fireEvent.change(textarea, { target: { value: 'persisted' } });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    expect(screen.getByText(/common.saved/)).toBeInTheDocument();
+    expect(screen.queryByTestId('tracker-save-failed')).toBeNull();
+    vi.useRealTimers();
   });
 });
 

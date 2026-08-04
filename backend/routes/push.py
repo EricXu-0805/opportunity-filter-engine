@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import logging
 import os
 from datetime import UTC, date, datetime
 
@@ -19,6 +20,7 @@ from backend.routes.email import (
 )
 
 router = APIRouter()
+logger = logging.getLogger("ofe.push")
 
 
 def _verify_cron_secret(secret: str | None) -> None:
@@ -95,7 +97,8 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     """Invoked by an external scheduler (Vercel Cron / GitHub Actions).
 
     Scans push_subscriptions joined with interactions.remind_at where
-    remind_at <= today and status in ('applied','replied','interviewing'),
+    remind_at <= today and status in
+    ('contacted','applied','replied','interviewing'),
     sends a Web Push notification to each matching subscription. Falls back
     to a reminder email when the device has no working push subscription.
     Delivered reminders get remind_at cleared so they fire once, not daily;
@@ -143,7 +146,10 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
             params={
                 "select": "device_id,opportunity_id,remind_at,interaction_type,notes",
                 "remind_at": f"lte.{today}",
-                "interaction_type": "in.(applied,replied,interviewing)",
+                # 'contacted' joined the status set in W12 (cold-email
+                # confirm-sent + follow-up chips write it) — its reminders
+                # must fire like any other.
+                "interaction_type": "in.(contacted,applied,replied,interviewing)",
             },
             headers=headers,
         )
@@ -171,7 +177,14 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         email_by_device: dict[str, str | None] = {}
         now_iso = datetime.now(UTC).isoformat()
 
+        bookkeeping_failed = 0
+        row_errors = 0
         for row in due:
+          # Per-row isolation (W14): one row's transport/Supabase error must
+          # not abort the batch — remaining reminders still get their shot,
+          # and an already-delivered-but-uncleared row is at worst retried
+          # tomorrow (at-least-once, never lost).
+          try:
             device_id = row["device_id"]
             delivered = False
             for sub in list(subs_by_device.get(device_id, [])):
@@ -202,12 +215,19 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                     )
                     sent += 1
                     delivered = True
-                    await client.patch(
+                    stamp = await client.patch(
                         f"{supabase_url}/rest/v1/push_subscriptions",
                         params=sub_params,
                         headers=headers,
                         json={"last_delivered_at": now_iso},
                     )
+                    if stamp.status_code >= 400:
+                        # Cosmetic stamp — log, don't fail the row.
+                        bookkeeping_failed += 1
+                        logger.error(
+                            "reminders cron: last_delivered_at stamp failed (%s)",
+                            stamp.status_code,
+                        )
                 except UnsafePushEndpointError:
                     # Junk or an SSRF probe — prune so the cron never
                     # re-attempts it. The reason code never includes the URL.
@@ -249,11 +269,19 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         )
                         emailed += 1
                         delivered = True
-                    except HTTPException:
+                    except Exception:
+                        # HTTPException (quota/Resend 4xx) AND transport
+                        # errors (httpx timeout in _send_via_resend or
+                        # _account_email) — the fallback is best-effort and
+                        # must never abort the cron (W14).
                         failed += 1
 
             if delivered:
-                await client.patch(
+                # One-shot semantics live or die on this PATCH: if it fails
+                # silently the user gets the same reminder every day. Verify,
+                # retry once, then log loudly so the operator alert fires on
+                # the response counter (W14).
+                cleared = await client.patch(
                     f"{supabase_url}/rest/v1/interactions",
                     params={
                         "device_id": f"eq.{device_id}",
@@ -262,6 +290,26 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                     headers=headers,
                     json={"remind_at": None},
                 )
+                if cleared.status_code >= 400:
+                    cleared = await client.patch(
+                        f"{supabase_url}/rest/v1/interactions",
+                        params={
+                            "device_id": f"eq.{device_id}",
+                            "opportunity_id": f"eq.{row['opportunity_id']}",
+                        },
+                        headers=headers,
+                        json={"remind_at": None},
+                    )
+                if cleared.status_code >= 400:
+                    bookkeeping_failed += 1
+                    logger.error(
+                        "reminders cron: remind_at clear failed twice (%s) — "
+                        "reminder will refire tomorrow",
+                        cleared.status_code,
+                    )
+          except Exception:
+            row_errors += 1
+            logger.exception("reminders cron: row failed; continuing batch")
 
     return {
         "status": "ok",
@@ -270,6 +318,8 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         "failed": failed,
         "emailed": emailed,
         "pruned": pruned,
+        "bookkeeping_failed": bookkeeping_failed,
+        "row_errors": row_errors,
         "timestamp": datetime.now(UTC).isoformat(),
     }
 

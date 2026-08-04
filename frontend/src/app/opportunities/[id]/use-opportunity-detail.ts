@@ -12,6 +12,7 @@ import {
 import type { InteractionType, InteractionRecord } from '@/lib/supabase';
 import { track } from '@/lib/analytics';
 import { suggestReminderForStatusChange, type ReminderSuggestion } from '@/lib/status-suggestions';
+import { useAuthUid } from '@/lib/use-auth-uid';
 
 export interface UseOpportunityDetailResult {
   isFavorited: boolean;
@@ -25,7 +26,9 @@ export interface UseOpportunityDetailResult {
   suggestion: ReminderSuggestion | null;
   handleStar: () => Promise<void>;
   handleTrack: (type: InteractionType) => Promise<void>;
-  saveDetails: (patch: { notes?: string | null; remind_at?: string | null }) => Promise<void>;
+  /** W14: resolves true only when the write actually persisted — callers
+   *  (TrackerPanel) gate their "Saved" flash on it. */
+  saveDetails: (patch: { notes?: string | null; remind_at?: string | null }) => Promise<boolean>;
   handleUseSuggestion: () => Promise<void>;
   handleDismissSuggestion: () => void;
   handleShare: () => Promise<void>;
@@ -41,15 +44,30 @@ export function useOpportunityDetail(opp: { id: string; title: string }): UseOpp
 
   const interaction = interactionDetail?.type;
 
+  // W14 cross-tab uid isolation: epoch bumps only on a real identity switch.
+  const { epoch: authEpoch } = useAuthUid();
+
+  // Analytics stays keyed on the opportunity only — an identity switch is
+  // not a second "open".
   useEffect(() => {
     track('match_opened', { opportunity_id: opp.id });
+  }, [opp.id]);
+
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Reset before fetching — a no-op on mount, the isolation clear on an
+       identity switch (Account A's star/status must not render for B). */
+    setIsFavorited(false);
+    setInteractionDetail(null);
+    setSuggestion(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
     getFavorites().then((set) => {
       if (set.has(opp.id)) setIsFavorited(true);
     }).catch(() => {});
     getInteractionDetail(opp.id).then((d) => {
       if (d) setInteractionDetail(d);
     }).catch(() => {});
-  }, [opp.id]);
+  }, [opp.id, authEpoch]);
 
   const handleStar = useCallback(async () => {
     const wasFav = isFavorited;
@@ -63,6 +81,7 @@ export function useOpportunityDetail(opp: { id: string; title: string }): UseOpp
 
   const handleTrack = useCallback(async (type: InteractionType) => {
     const prev = interaction;
+    const prevDetail = interactionDetail;
     if (prev === type) {
       setInteractionDetail(null);
       setSuggestion(null);
@@ -76,21 +95,28 @@ export function useOpportunityDetail(opp: { id: string; title: string }): UseOpp
       ...(d ?? {}),
       type,
     }));
-    await trackInteraction(opp.id, type).catch(() => {});
+    try {
+      await trackInteraction(opp.id, type);
+    } catch {
+      // W14: the write failed — revert the optimistic status instead of
+      // displaying a state that was never persisted.
+      setInteractionDetail(prevDetail);
+      return;
+    }
 
     if (!interactionDetail?.remind_at) {
       const next = suggestReminderForStatusChange(prev ?? null, type);
       if (next) setSuggestion(next);
     }
-  }, [opp.id, interaction, interactionDetail?.remind_at]);
+  }, [opp.id, interaction, interactionDetail]);
 
   const saveDetails = useCallback(
-    async (patch: { notes?: string | null; remind_at?: string | null }) => {
+    async (patch: { notes?: string | null; remind_at?: string | null }): Promise<boolean> => {
       // Notes/reminders attach to an existing status the user chose. Never
       // fabricate an 'applied' here — that would record an outreach event
       // (a "send") the user did not report. The TrackerPanel disables
       // auto-save and shows a pick-a-status hint until one exists.
-      if (!interaction) return;
+      if (!interaction) return false;
       setInteractionDetail((prev) => {
         const base: InteractionRecord = prev ?? { type: interaction };
         return {
@@ -99,7 +125,9 @@ export function useOpportunityDetail(opp: { id: string; title: string }): UseOpp
           remind_at: patch.remind_at === null ? undefined : patch.remind_at ?? base.remind_at,
         };
       });
-      await updateInteractionDetails(opp.id, patch).catch(() => {});
+      // W14: propagate the write result — TrackerPanel shows "Saved" only on
+      // true and a failed-save + retry state on false.
+      return updateInteractionDetails(opp.id, patch);
     },
     [opp.id, interaction],
   );

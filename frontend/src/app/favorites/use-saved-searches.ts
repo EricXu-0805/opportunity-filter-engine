@@ -16,6 +16,9 @@ export interface UseSavedSearchesResult {
   /** null while loading or when migration 013 is unapplied — the section
    *  hides all digest UI on null. */
   digests: Map<string, SavedSearchDigest> | null;
+  /** W14: true when the saved-searches list failed to load — the section
+   *  renders an inline error note instead of silently vanishing. */
+  loadError: boolean;
   handleRemove: (search: SavedSearch) => Promise<void>;
   handleApplyOptimisticClear: (id: string) => void;
   handleDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
@@ -28,19 +31,32 @@ export interface UseSavedSearchesResult {
 export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [digests, setDigests] = useState<Map<string, SavedSearchDigest> | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     listSavedSearches()
       .then((data) => {
-        if (!cancelled) setSavedSearches(data);
+        if (!cancelled) {
+          setSavedSearches(data);
+          setLoadError(false);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        // W14 truthful zero states: the user's saved searches exist but
+        // could not be fetched — flag it instead of rendering nothing.
+        if (!cancelled) setLoadError(true);
+      });
     listSavedSearchDigests()
       .then((data) => {
         if (!cancelled) setDigests(data);
       })
-      .catch(() => {});
+      .catch(() => {
+        // digests stay null → all digest UI hides (the documented degraded
+        // mode for an unapplied migration 013 or a failed load). The list
+        // itself still renders, so this is not a false-empty.
+        if (!cancelled) setDigests(null);
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -74,5 +90,5 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
     );
   }, []);
 
-  return { savedSearches, digests, handleRemove, handleApplyOptimisticClear, handleDigestSave };
+  return { savedSearches, digests, loadError, handleRemove, handleApplyOptimisticClear, handleDigestSave };
 }

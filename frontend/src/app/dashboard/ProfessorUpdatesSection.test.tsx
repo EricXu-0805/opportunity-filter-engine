@@ -114,7 +114,7 @@ describe('ProfessorUpdatesSection', () => {
   it('shows the truthful no-verified-updates state for follows without events', async () => {
     mockListProfessorFollows.mockResolvedValue([follow(PROF_A)]);
     mockGetProfessorUpdates.mockResolvedValue({
-      available: false, events: [], requested: 1, has_more: false,
+      available: true, events: [], requested: 1, has_more: false,
     });
 
     render(<ProfessorUpdatesSection />);
@@ -123,6 +123,26 @@ describe('ProfessorUpdatesSection', () => {
       await screen.findByText('dashboard.professorUpdates.noUpdatesTitle'),
     ).toBeInTheDocument();
     expect(mockGetProfessorUpdates).toHaveBeenCalledWith([PROF_A]);
+  });
+
+  it('renders the distinct unavailable state when the feed itself is absent (available: false)', async () => {
+    // W14: this test previously PINNED the conflation of "feed unavailable"
+    // with "no verified updates yet" — an unpublished/unreachable artifact
+    // must never masquerade as a fresh empty feed.
+    mockListProfessorFollows.mockResolvedValue([follow(PROF_A)]);
+    mockGetProfessorUpdates.mockResolvedValue({
+      available: false, events: [], requested: 1, has_more: false,
+    });
+
+    render(<ProfessorUpdatesSection />);
+
+    expect(
+      await screen.findByText('dashboard.professorUpdates.unavailableTitle'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('professor-updates-unavailable')).toBeInTheDocument();
+    expect(
+      screen.queryByText('dashboard.professorUpdates.noUpdatesTitle'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders events with unread state and marks all read', async () => {

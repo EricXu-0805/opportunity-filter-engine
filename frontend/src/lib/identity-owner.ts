@@ -42,7 +42,10 @@ export const USER_SCOPED_PREFIXES: readonly string[] = [
 //   ONBOARDING_SEEN    — UI education; re-running the tour on every account
 //                        switch would punish switching, and it reveals nothing
 //   MERGE_GRANT        — owned by the Flow B merge flow; it must survive the
-//                        anon → account redirect to be redeemed on callback
+//                        anon → account redirect to be redeemed on callback.
+//                        W14: it defers the clear below only while fresh
+//                        (see MERGE_GRANT_MAX_AGE_MS); a stale stash is
+//                        removed and no longer suppresses clears
 //   ofe_auth           — the Supabase session itself; clearing it = sign-out
 //   JUST_SIGNED_OUT, GUEST_BANNER_DISMISSED, OAUTH_LINK_PROVIDER,
 //   ofe_home_save_cta_dismissed — sessionStorage transients (per-tab, die on
@@ -82,17 +85,54 @@ export function syncLocalIdentityOwner(
     // hand-off is in flight: SIGNED_IN fires (and lands here) before
     // /auth/callback can redeem the grant, and clearing now would destroy
     // the guest's local data moments before the redemption proves both
-    // sessions belong to the same human. Defer — the callback consumes the
-    // grant on every sign-in and re-syncs with the definitive claim/clear
-    // decision, so a stale grant can suppress at most one clear cycle.
+    // sessions belong to the same human. Defer — the callback clears the
+    // grant on every definitive redeem verdict (W14) and re-syncs with the
+    // real claim/clear decision. Deferral is time-bounded: a grant older
+    // than MERGE_GRANT_MAX_AGE_MS is an ABANDONED hand-off (the server-side
+    // grant died at 15 minutes), so it is removed and the clear proceeds —
+    // a stale stash must not shield the previous identity's data forever.
     try {
-      if (window.localStorage.getItem(STORAGE_KEYS.MERGE_GRANT) !== null) return;
+      const grant = window.localStorage.getItem(STORAGE_KEYS.MERGE_GRANT);
+      if (grant !== null) {
+        if (!isMergeGrantStale(grant)) return;
+        try {
+          window.localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
+        } catch { /* remove failed — still proceed with the clear */ }
+      }
     } catch { /* unreadable — proceed with the clear */ }
     clearUserScopedStorage();
   }
   try {
     window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, uid);
   } catch { /* private mode — the next uid observation retries */ }
+}
+
+// How long a stashed Flow B merge grant may defer user-scoped clears. The
+// server-side grant is single-use with a 15-minute TTL, so 60 minutes is a
+// generous 4x envelope for magic-link latency + clock skew; beyond it the
+// hand-off is certainly dead and deferring further only leaks the previous
+// identity's local data to the next uid.
+export const MERGE_GRANT_MAX_AGE_MS = 60 * 60 * 1000;
+
+/**
+ * True when the stashed grant is too old to still be redeemable. Shapes
+ * (written by supabase.ts mint helpers):
+ *   - JSON with numeric `minted_at` (W14+) → age check
+ *   - JSON without a usable `minted_at` (pre-W14 {token,secret}) → treated
+ *     as fresh; legacy stashes are consumed by the callback or sign-out
+ *   - bare token string (pre-W14 email path) → treated as fresh, same reason
+ *   - unparseable `{…` garbage → stale; it can never be redeemed, so it
+ *     must not defer clears
+ */
+function isMergeGrantStale(raw: string): boolean {
+  if (!raw.startsWith('{')) return false;
+  try {
+    const parsed = JSON.parse(raw) as { minted_at?: unknown };
+    if (typeof parsed.minted_at !== 'number' || !Number.isFinite(parsed.minted_at)) return false;
+    return Date.now() - parsed.minted_at > MERGE_GRANT_MAX_AGE_MS;
+  } catch {
+    return true;
+  }
 }
 
 function clearUserScopedStorage(): void {
