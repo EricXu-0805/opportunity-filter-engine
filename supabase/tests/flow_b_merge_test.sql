@@ -548,8 +548,11 @@ END $$;
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE
-  u text := '88888888-8888-4888-8888-888888888888';  -- anon source
-  v text := '20202020-2020-4020-8020-202020202020';  -- permanent target
+  -- UUIDs unique to this scenario: the professor-tracking merge test (runs
+  -- later in this same database) mints for '8888…' — a tombstone here would
+  -- break its mint with "device already merged".
+  u text := '40404040-4040-4040-8040-404040404040';  -- anon source
+  v text := '50505050-5050-4050-8050-505050505050';  -- permanent target
   tok uuid;
   res jsonb;
   c int;
