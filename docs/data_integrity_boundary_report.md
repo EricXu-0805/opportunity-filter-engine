@@ -104,6 +104,12 @@ the bookkeeping as truthful as the send:
   storage status); an empty Map *means* zero rows. The dashboard's error
   branches are reachable through the real library for the first time —
   funnel/reminders/tracker render error states, never false zeros.
+  One deliberate carve-out: an UNCONFIGURED Supabase is the documented
+  local-only degraded mode (storage banner discloses it; the E2E environment
+  runs this way) — there, zero synced rows is the truthful state and writes
+  no-op by design. Only a configured environment failing is an error; both
+  halves are unit-pinned (`supabase-localmode.test.ts` vs the configured
+  suites).
 - /favorites, /tracker, and the saved-searches section gained real error +
   retry states (previously `catch {}` → false empty / silent vanish).
 - The favorites email export fails loudly instead of exporting blank
