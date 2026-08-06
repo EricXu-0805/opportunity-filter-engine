@@ -720,6 +720,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       : null;
     let base = DEFAULT_PROFILE;
     if (raw) {
+      // A row — somebody's stored document — is now on screen. From here the
+      // screen is no longer the visitor's own blank page, whoever loaded it.
+      rowEverAcceptedRef.current = true;
       if (Array.isArray(raw.skills) && raw.skills.length > 0 && typeof raw.skills[0] === 'string') {
         raw.skills = (raw.skills as string[]).map((name) => ({ name, level: 'beginner' as const }));
       }
@@ -1458,6 +1461,18 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   applyConflictRefreshRef.current = applyConflictRefresh;
 
   const lastUidRef = useRef<string | null | undefined>(undefined);
+  // Together these answer one question, asked at the identity choke point:
+  // could anything on this screen belong to somebody other than the person
+  // at the keyboard? It can only be someone else's if a row was once
+  // accepted onto it, or if it once belonged to a real account. Until then
+  // the screen is the visitor's own — defaults plus whatever they typed.
+  //
+  // Both are monotonic on purpose. Once either turns true it never returns,
+  // so `null -> U1 -> sign out -> U2` gets the full reset the same as any
+  // other switch: the exemption is available to a screen exactly once, at
+  // the very beginning of its life.
+  const everHadRealUidRef = useRef(false);
+  const rowEverAcceptedRef = useRef(false);
   // Which generation currently has a read in flight — NOT a bare boolean:
   // a new identity must be able to start its own read while the previous
   // one's is still hanging, or a slow U1 read would leave U2 with a form
@@ -1596,6 +1611,20 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         return;
       }
       lastUidRef.current = uid;
+      // Read BEFORE this observation is folded in: the question is what the
+      // screen was up to the instant before, not after.
+      //
+      // The two flags say what THIS hook has seen; the third condition says
+      // who the browser belonged to when the typing happened. They can
+      // disagree: another tab can claim the browser for a real account
+      // without this hook's callback ever firing, and typing done under that
+      // claim is that account's — carrying it into the next identity is the
+      // leak W-identity-owed pins. A genuine first-visit edit's frozen token
+      // names nobody; that is what makes it the visitor's own.
+      const virginScreen = !everHadRealUidRef.current && !rowEverAcceptedRef.current;
+      const editsBelongToNobody =
+        editOriginRef.current !== null && editOriginRef.current.token.uid === null;
+      if (uid) everHadRealUidRef.current = true;
       liveIdentityObservedRef.current = true;
       if (fallbackLoadTimerRef.current) {
         clearTimeout(fallbackLoadTimerRef.current);
@@ -1649,14 +1678,59 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       setGhLoading(false);
       submittingRef.current = false;
       setIsSubmitting(false);
-      if (firstObservation && shareImportedRef.current) {
+      if (virginScreen && shareImportedRef.current) {
         // The visitor's own ?share= import, applied moments ago by the
         // snapshot effect below, which deliberately does not load over it
         // either. The draft stays on screen, so the screen keeps an origin —
-        // this observation's, since this is the first identity it has ever
-        // had. Captured at the choke point itself, which has already
-        // advanced the shared owner before calling us.
+        // this observation's, since no account has ever owned this screen.
+        // Captured at the choke point itself, which has already advanced the
+        // shared owner before calling us.
+        //
+        // NOT `firstObservation`: anonymous sign-in satisfies that once, and
+        // the second observation would fall through and load the visitor's
+        // own empty row over the draft. A share draft is marked hydrated
+        // rather than edited, so it carries no dirty keys and the merge below
+        // would have had nothing to put back.
         loadingOriginRef.current = { token: captureOwnerToken(), generation };
+        return;
+      }
+      if (virginScreen && editsBelongToNobody) {
+        // The browser's FIRST identity landing on a screen that has never
+        // shown anyone's row, carrying edits that were made while the browser
+        // belonged to nobody. Anonymous sign-in arrives as two observations
+        // (INITIAL_SESSION with no user, then SIGNED_IN), and the school
+        // catalog opens the dropdowns before either — so what is on screen
+        // here is what the visitor typed in that window. Wiping it is not
+        // isolation from a previous account; there was none. It is throwing
+        // away the first thing they did.
+        //
+        // Locked for the load all the same, and WITHOUT clearing the dirty
+        // ledger: hydrate() re-applies those keys over the row it loads, the
+        // same treatment an edit made during any other load already gets.
+        // The capability those carried edits were made under was frozen
+        // before this browser had an identity at all. `ownsScreen` refuses it
+        // the moment the epoch advances, and the autosave — which fires under
+        // the EDIT's capability, not one taken at save time — would return
+        // before it ever reached 'saving'. The edit would stay on screen and
+        // never be written, which is worse than visibly losing it: the
+        // student cannot tell. Re-issue it under this identity. Safe for the
+        // same reason the branch itself is: no other account has ever owned
+        // this screen, so nobody else's capability is being handed out.
+        editOriginRef.current = { token: captureOwnerToken(), generation };
+        // Their journal entries went the same way: recorded under the
+        // anonymous namespace, which nothing will ever read again — so at
+        // fire time the save would find zero dirty keys and stage a patch of
+        // nothing ({status:'blocked'}, silently). Marking them unrecorded is
+        // the truth: recordOutstandingIntents re-journals them at fire time
+        // under the accepted view's token, the identity the write belongs to.
+        for (const key of dirtyKeysRef.current) unrecordedRef.current.add(key);
+        if (weightDirtyRef.current) unrecordedRef.current.add('search_weight');
+        // No banner to clear here: it is only ever raised together with the
+        // share import, and that case returned above.
+        hydrationReadyRef.current = false;
+        hydrationStateRef.current = 'loading';
+        setHydrationState('loading');
+        startLoad(generation);
         return;
       }
       // Defaults now, still locked: only the load below settles this form.

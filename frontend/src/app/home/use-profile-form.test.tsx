@@ -512,6 +512,9 @@ function FullHarness() {
     <div>
       <span data-testid="college">{form.profile.college}</span>
       <button data-testid="pick-college" onClick={() => form.update('college', 'Grainger')}>college</button>
+      <span data-testid="hydration">{form.hydrationState}</span>
+      <span data-testid="save-status">{form.saveStatus}</span>
+      <button data-testid="set-weight" onClick={() => form.setSearchWeight(90)}>w</button>
       <span data-testid="interests">{form.profile.research_interests}</span>
       <button data-testid="parseA" onClick={() => form.handleResumeParsed(RESUME('computer vision, machine learning'))}>A</button>
       <button data-testid="parseB" onClick={() => form.handleResumeParsed(RESUME('robotics'))}>B</button>
@@ -572,19 +575,7 @@ describe('useProfileForm — the very first visit is not stranded', () => {
    * and watch it vanish ~300ms later, while the same pick 3s later sticks"
    * was. Two ordinary unit suites and 2892 green tests did not see it.
    */
-  // `it.fails` ON PURPOSE. The body asserts what the product needs and FAILS
-  // on today's source — that is the defect, reproduced. Recording it this way
-  // keeps it in the suite instead of in a document nobody re-reads: the moment
-  // someone fixes it, this line starts failing and forces the flip.
-  //
-  // It is not a one-liner. The narrow fix (exempt a screen no real account has
-  // ever owned) makes FIVE deliberate isolation tests fail, including "resets
-  // profile, search weight, save status and GitHub status in the identity
-  // event's own tick", which asserts the OPPOSITE contract: that an identity
-  // event wipes a pre-auth edit. Whether sign-in is a hard reset boundary or
-  // the visitor's own typing survives it is a product decision, and it belongs
-  // to whoever owns this state machine — not to a drive-by patch.
-  it.fails('FV-0: the second observation of the first sign-in does not wipe what the visitor typed', async () => {
+  it('FV-0: the second observation of the first sign-in does not wipe what the visitor typed', async () => {
     render(<Suspense fallback={null}><FullHarness /></Suspense>);
     // INITIAL_SESSION: a live observation that carries no user at all.
     await emitAuth(null);
@@ -601,6 +592,201 @@ describe('useProfileForm — the very first visit is not stranded', () => {
       screen.getByTestId('college').textContent,
       'a null -> uid transition is not an account switch, and must not discard the visitor\'s work',
     ).toBe('Grainger');
+  });
+
+  /**
+   * FV-4 — the other half of FV-0, and the reason the exemption is safe.
+   *
+   * Carrying a draft through an identity event is only defensible while the
+   * screen has never belonged to anyone. A screen gets that once. After a
+   * real account has owned it, the next identity is an ordinary switch and
+   * takes the full reset — otherwise this exemption would be a way to walk
+   * one person's fields onto the next person's row.
+   */
+  it('FV-4: the exemption is spent by the first identity — a later switch still resets', async () => {
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    await emitAuth(null);
+    fireEvent.click(screen.getByTestId('pick-college'));
+    await emitAuth(HOME_UID);
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+    expect(screen.getByTestId('college').textContent, 'FV-0 still holds').toBe('Grainger');
+
+    // Somebody else signs in on this browser.
+    await emitAuth('fv4-second-account');
+
+    expect(
+      screen.getByTestId('college').textContent,
+      "the first visitor's field must not walk onto the second account's screen",
+    ).toBe('');
+  });
+
+  /**
+   * FV-5 — the same two observations, seen from a shared link.
+   *
+   * Opening a ?share= link imports the sender's draft and promises, in the
+   * banner, to touch nothing of the visitor's own — so that screen NEVER
+   * loads a row. The exemption for it was keyed on `firstObservation`, which
+   * anonymous sign-in satisfies only once: the SECOND observation fell
+   * through and issued a load, and since a share draft is marked hydrated
+   * rather than edited (no dirty keys), the merge had nothing to re-apply.
+   * The sender's draft was replaced by the visitor's own empty row, and the
+   * banner explaining the pre-fill was cleared on the way past.
+   */
+  it('FV-5: a shared draft survives the second observation of the first sign-in', async () => {
+    const share = encodeProfile({ ...DEFAULT_PROFILE, college: 'Shared College' });
+    searchRef.current = `share=${share}`;
+    let loads = 0;
+    mockLoadProfile = () => { loads += 1; return Promise.resolve(absentRow()); };
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('college').textContent).toBe('Shared College'));
+
+    await emitAuth(null);
+    await emitAuth(HOME_UID);
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+
+    expect(
+      screen.getByTestId('college').textContent,
+      'the draft is the whole reason this screen exists',
+    ).toBe('Shared College');
+    expect(
+      loads,
+      "viewing someone else's link reads nothing of the visitor's own",
+    ).toBe(0);
+  });
+
+  /**
+   * FV-6 — carrying the draft is not the same as calling it loaded.
+   *
+   * The exemption skips the reset; it must NOT skip the lock. An edit made
+   * while this identity's row is still in flight has to stay buffered, or
+   * the autosave debounce writes DEFAULT_PROFILE plus that one field over a
+   * row that is about to land — the lost update `resetForPendingLoad` locks
+   * against, reintroduced by the very branch that spares the draft.
+   */
+  it('FV-6: carrying the draft still locks the form until this identity\'s row lands', async () => {
+    let releaseSecond!: (value: LoadedProfile) => void;
+    let calls = 0;
+    mockLoadProfile = () => {
+      calls += 1;
+      if (calls === 1) return Promise.resolve(absentRow());
+      return new Promise<LoadedProfile>((r) => { releaseSecond = r; });
+    };
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    // The mount load settles first, so the form is genuinely UNLOCKED before
+    // the identity arrives — otherwise 'loading' below would be the initial
+    // state and would prove nothing.
+    await waitFor(() => expect(screen.getByTestId('hydration').textContent).toBe('ready'));
+
+    fireEvent.click(screen.getByTestId('pick-college'));
+    await emitAuth(HOME_UID);
+
+    expect(
+      screen.getByTestId('hydration').textContent,
+      'a carried draft is not a hydrated row',
+    ).toBe('loading');
+
+    // A second edit, then well past the autosave debounce.
+    fireEvent.click(screen.getByTestId('set-skill'));
+    await act(async () => { await new Promise((r) => setTimeout(r, 1_200)); });
+    expect(
+      screen.getByTestId('save-status').textContent,
+      'nothing may be written while this identity\'s row is still in flight',
+    ).toBe('idle');
+
+    await act(async () => {
+      releaseSecond(absentRow());
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(screen.getByTestId('college').textContent).toBe('Grainger');
+  });
+
+  /**
+   * FV-7 — surviving on screen is not the same as being saved.
+   *
+   * Found in a browser, not here: with the wipe fixed, the college a visitor
+   * picks before sign-in stays put — and a reload brings back an empty form,
+   * because it was never written. The autosave fires under the capability the
+   * EDIT was made with (editOriginRef), and that one was frozen before this
+   * browser had any identity. Sign-in advances the epoch, `ownsScreen` refuses
+   * it, and the effect returns before it ever reaches 'saving'.
+   *
+   * A value that looks saved and is not is worse than one that visibly
+   * vanishes: the student has no way to tell.
+   */
+  it('FV-7: the carried edit is actually written, not just left on screen', async () => {
+    // A RETURNING user: the row that loads is complete and confirmed, so the
+    // carried pick goes out as an ordinary patch on the debounce — nothing
+    // else has to happen first. (A brand-new user's absent row is FV-8: no
+    // create is allowed until the required fields exist.)
+    commitProfilePatch.mockClear();
+    mockLoadProfile = () => Promise.resolve(absentRow());
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    await emitAuth(null);
+    fireEvent.click(screen.getByTestId('pick-college'));
+    // The slider too: it rides a separate dirty flag (weightDirtyRef), so a
+    // carry that only re-journals the profile keys would save the college and
+    // silently drop this.
+    fireEvent.click(screen.getByTestId('set-weight'));
+
+    mockLoadProfile = () => Promise.resolve(
+      cloudRow({ college: 'Old College', major: 'CS', grade: 'Junior', search_weight: 50 }, 7),
+    );
+    await emitAuth(HOME_UID);
+    await act(async () => { await new Promise((r) => setTimeout(r, 60)); });
+
+    // The carried pick beats the loaded row's value — hydration merges the
+    // dirty keys over it, same as any mid-load edit.
+    expect(screen.getByTestId('college').textContent).toBe('Grainger');
+
+    // Past the debounce, to the commit itself. 'saving' alone is a promise,
+    // not a receipt: the first version of this fix re-armed the capability
+    // but left the journal entries in the anonymous namespace, so fire time
+    // found zero dirty keys and staged a patch of NOTHING — {status:
+    // 'blocked'}, silently, while the screen kept the value. Only the browser
+    // caught it. This assertion is that browser check, pinned in jsdom.
+    await act(async () => { await new Promise((r) => setTimeout(r, 1_700)); });
+    const sent = commitProfilePatch.mock.calls.map((c) => c[0].patch);
+    expect(
+      sent.some((patch) => patch.college === 'Grainger'),
+      `the college pick must be in a committed patch; patches sent: ${JSON.stringify(sent)}`,
+    ).toBe(true);
+    expect(
+      sent.some((patch) => patch.search_weight === 90),
+      `and the slider with it; patches sent: ${JSON.stringify(sent)}`,
+    ).toBe(true);
+  });
+
+  /**
+   * FV-8 — the brand-new user's half of FV-7.
+   *
+   * With no row at all, a one-field create is refused on purpose (the server's
+   * incomplete-create guard; a mutilated row must not become canonical), so
+   * the carried pick waits. What the contract owes the visitor: the moment
+   * they complete the required fields, the create that goes out CARRIES the
+   * college they picked before sign-in — the staged keys union into it.
+   */
+  it('FV-8: a brand-new profile\'s first complete create carries the pre-auth pick', async () => {
+    commitProfilePatch.mockClear();
+    mockLoadProfile = () => Promise.resolve(absentRow());
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    await emitAuth(null);
+    fireEvent.click(screen.getByTestId('pick-college'));
+
+    await emitAuth(HOME_UID);
+    await act(async () => { await new Promise((r) => setTimeout(r, 60)); });
+    expect(screen.getByTestId('college').textContent).toBe('Grainger');
+
+    // The visitor completes the profile. seed-required sets major and grade
+    // but NOT college — if the create includes 'Grainger' it can only have
+    // come from the carried pre-auth pick.
+    fireEvent.click(screen.getByTestId('seed-required'));
+    await act(async () => { await new Promise((r) => setTimeout(r, 1_700)); });
+
+    const sent = commitProfilePatch.mock.calls.map((c) => c[0].patch);
+    expect(
+      sent.some((patch) => patch.college === 'Grainger'),
+      `the first complete create must carry the pick; patches sent: ${JSON.stringify(sent)}`,
+    ).toBe(true);
   });
 
   /**
@@ -1066,6 +1252,12 @@ describe('useProfileForm — cross-device sync via onAuthChange', () => {
     mockLoadProfile = () => Promise.resolve(absentRow());
     await renderIdentityHarness();
     await waitFor(() => expect(authChangeCb).not.toBeNull());
+    // U1 signs in FIRST, so what follows is a real account switch. Without
+    // this the edits below would be the visitor's own on a screen no account
+    // has ever owned, which the choke point deliberately carries through the
+    // first identity instead of resetting (FV-0) — a different contract, and
+    // not the one this test is about.
+    await emitAuth('identity-u1');
     // Let the first load settle so edits actually arm a save (before that
     // they are buffered, by design — see the hydration tests).
     await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
@@ -1695,6 +1887,12 @@ describe('useProfileForm — the live auth stream owns loading', () => {
     mockLoadProfile = () => Promise.resolve(absentRow());
     await renderIdentityHarness();
     await waitFor(() => expect(authChangeCb).not.toBeNull());
+    // U1 first, so the switch below is a real one. Without this the edits are
+    // a visitor's own on a never-owned screen, and the choke point now
+    // deliberately carries them into the first identity AND re-arms their
+    // save under it (FV-0/FV-7) — so the form would legitimately be 'saving'
+    // for its own reasons, and this test is about a STALE save relabeling.
+    await emitAuth('identity-u1');
     await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
     await seedCreatableProfile();
     fireEvent.click(screen.getByTestId('set-college'));
