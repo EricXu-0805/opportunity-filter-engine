@@ -40,11 +40,21 @@ function HomePageInner() {
     dismissSharedBanner,
     shareCopied,
     saveStatus,
+    isSubmitting,
+    retryCloudSave,
+    canRetrySync,
+    conflicts,
+    keepMyChanges,
+    useCloudVersion,
+    hydrationState,
     isValid,
+    identityGeneration,
+    viewSnapshot,
     update,
     handleSubmit,
     handleShare,
     handleResumeParsed,
+    handleResumeRemoved,
     handleGitHubImport,
   } = useProfileForm(t);
 
@@ -60,11 +70,26 @@ function HomePageInner() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7">
-          <AcademicProfileCard profile={profile} update={update} t={t} />
+          <AcademicProfileCard
+            profile={profile}
+            update={update}
+            viewSnapshot={viewSnapshot}
+            t={t}
+          />
         </div>
 
         <div className="lg:col-span-5 space-y-8">
-          <DocumentsCard profile={profile} onResumeParsed={handleResumeParsed} t={t} />
+          {/* Keyed by identity: the uploader keeps the filename and the
+              "resume on file" badge in its OWN state, which nothing else
+              resets — remounting is what stops the previous account's
+              document from being labelled as this one's. */}
+          <DocumentsCard
+            key={identityGeneration}
+            profile={profile}
+            onResumeParsed={handleResumeParsed}
+            onResumeRemoved={handleResumeRemoved}
+            t={t}
+          />
           <OnlineProfilesCard
             profile={profile}
             update={update}
@@ -92,6 +117,13 @@ function HomePageInner() {
         isValid={isValid}
         shareCopied={shareCopied}
         saveStatus={saveStatus}
+        hydrationState={hydrationState}
+        isSubmitting={isSubmitting}
+        hasConflict={conflicts.length > 0}
+        canRetrySync={canRetrySync}
+        onRetrySync={retryCloudSave}
+        onKeepMyChanges={keepMyChanges}
+        onUseCloudVersion={useCloudVersion}
         onSubmit={handleSubmit}
         onShare={handleShare}
         t={t}

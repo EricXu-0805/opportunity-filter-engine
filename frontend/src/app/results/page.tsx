@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
@@ -14,6 +14,9 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from '@/lib/use-local-storage-json';
+import { captureOwnerToken } from '@/lib/identity-owner';
+
+import type { ProfileData } from '@/lib/types';
 import { downloadCSV } from '@/lib/csv-export';
 import { matchesToCSV } from '@/lib/match-utils';
 import {
@@ -47,12 +50,6 @@ import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import {
   getAuthState,
-  getFavorites,
-  getInteractions,
-  removeInteraction,
-  saveProfile,
-  toggleFavorite,
-  trackInteraction,
   type InteractionType,
 } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
@@ -85,6 +82,8 @@ import {
 import { useHighlightSet } from './use-highlight-set';
 import { useSavedSearchAck } from './use-saved-search-ack';
 import { useResultsData } from './use-results-data';
+import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-profile-view';
+import { useResultsInteractions } from './use-results-interactions';
 import { useResultsKeyboardNav } from './use-results-keyboard-nav';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
@@ -140,7 +139,13 @@ function ResultsContent() {
   const { openModal: openAuthModal } = useAuthModal();
 
   const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>(STORAGE_KEYS.PROFILE);
-  const profile = useMemo(() => migrateProfile(rawStoredProfile), [rawStoredProfile]);
+  // The document this page renders AND the snapshot a write from it carries,
+  // as ONE value committed in one step (see use-results-profile-view).
+  const {
+    accepted: { profile, view },
+    accept: acceptProfileView,
+    clear: clearProfileView,
+  } = useAcceptedProfileView();
   const hasStoredProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
 
   const initialUrl = useMemo(() => readInitialFiltersFromUrl(searchParams), [searchParams]);
@@ -172,33 +177,65 @@ function ResultsContent() {
     opportunitySchool: string | null;
   }>({ open: false, opportunityId: '', opportunityTitle: '', opportunitySchool: null });
 
-  const [favs, setFavs] = useState<Set<string>>(new Set());
-  // Mirror favs into a ref so handleToggleFav can read the current set without
-  // depending on `favs` — a [favs] dep made the callback unstable and defeated
-  // MatchCard's memoization, re-rendering all visible cards on every toggle.
-  const favsRef = useRef(favs);
-  useEffect(() => { favsRef.current = favs; }, [favs]);
-  const [interactions, setInteractions] = useState<Map<string, InteractionType>>(new Map());
+  // Close (never leave open) the recipient modal on a REAL identity switch —
+  // it can trigger a write, and a U1-opened modal must not be left able to
+  // present or confirm-send against U2's identity. Also resets pagination:
+  // the private filter set (favorite_ids/dismissed_ids, below) is about to
+  // change out from under whatever page the user was on.
+  // The cross-school toggle is declared below (it needs the data hook's
+  // setter), but the identity transition has to reach it. Held in a ref
+  // rather than reordered: the transition can only fire after mount, so the
+  // effect that fills this has always run by then.
+  const clearCrossSchoolRef = useRef<() => void>(() => {});
+  const handleIdentityChange = useCallback(() => {
+    setEmailModal((m) => (m.open ? { ...m, open: false } : m));
+    // SYNCHRONOUSLY, in the transition itself — not in a passive effect keyed
+    // on identityGeneration, which runs after paint and would leave U1's
+    // document on screen and its view actionable for a full render.
+    clearProfileView();
+    clearCrossSchoolRef.current();
+    setPage(1);
+  }, [clearProfileView]);
+  const {
+    favs,
+    interactions,
+    ownerReady,
+    identityGeneration,
+    ownerScopeKey,
+    favoritesLoadError,
+    retryFavoritesLoad,
+    interactionsLoading,
+    interactionsError,
+    favSaveErrors,
+    trackSaveErrors,
+    pendingFavIds,
+    pendingTrackIds,
+    handleToggleFav: handleToggleFavRaw,
+    handleTrackInteraction: handleTrackInteractionRaw,
+    retryFavSave,
+    retryTrackSave,
+    retryInteractionsLoad,
+  } = useResultsInteractions(handleIdentityChange);
+
+  // Page-level wrappers: preserve the pre-extraction "jump back to page 1"
+  // semantics on every favorite/status mutation attempt — the filtered list
+  // (favorite_ids/dismissed_ids feed matchView below) can shrink out from
+  // under a later page. Reset happens synchronously at click time, same as
+  // before, not gated on whether the hook's own guards let the write proceed.
+  const handleToggleFav = useCallback((oppId: string) => {
+    setPage(1);
+    return handleToggleFavRaw(oppId);
+  }, [handleToggleFavRaw]);
+  const handleTrackInteraction = useCallback((oppId: string, type: InteractionType) => {
+    setPage(1);
+    return handleTrackInteractionRaw(oppId, type);
+  }, [handleTrackInteractionRaw]);
+
   useEffect(() => {
-    let cancelled = false;
-    getFavorites()
-      .then((d) => {
-        if (!cancelled) {
-          setFavs(d);
-          setPage(1);
-        }
-      })
-      .catch(() => {});
-    getInteractions()
-      .then((d) => {
-        if (!cancelled) {
-          setInteractions(d);
-          setPage(1);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+    // Re-accepted only when this page genuinely gets a new snapshot: its
+    // stored profile changed, or the identity did.
+    acceptProfileView();
+  }, [rawStoredProfile, identityGeneration, acceptProfileView]);
 
   const homeSchool = homeSchoolOf(profile);
   const viewToday = useMemo(() => localIsoDate(), []);
@@ -278,39 +315,6 @@ function ResultsContent() {
     { school: homeSchoolEntry?.shortName ?? homeSchool },
   );
 
-  const handleToggleFav = useCallback(async (oppId: string) => {
-    const wasFaved = favsRef.current.has(oppId);
-    const flip = (s: Set<string>) => {
-      const next = new Set(s);
-      if (next.has(oppId)) next.delete(oppId);
-      else next.add(oppId);
-      return next;
-    };
-    setFavs(flip);
-    setPage(1);
-    try {
-      await toggleFavorite(oppId, wasFaved);
-    } catch {
-      setFavs(flip); // revert the optimistic toggle on failure
-    }
-  }, []);
-
-  const handleTrackInteraction = useCallback((oppId: string, type: InteractionType) => {
-    setPage(1);
-    setInteractions(prev => {
-      const current = prev.get(oppId);
-      const next = new Map(prev);
-      if (current === type) {
-        next.delete(oppId);
-        removeInteraction(oppId).catch(() => {});
-      } else {
-        next.set(oppId, type);
-        trackInteraction(oppId, type).catch(() => {});
-      }
-      return next;
-    });
-  }, []);
-
   // Match-accuracy thumbs (Phase 9.6). Optimistic like favorites; the card
   // passes bucket + final_score along so the persisted row stays
   // interpretable after the scorer's weights change.
@@ -344,7 +348,7 @@ function ResultsContent() {
   const toggleSemantic = useCallback((next: boolean) => {
     if (!RELEASE_SCOPE.matchAiRefine) return;
     setSemanticRerank(next);
-    try { localStorage.setItem(STORAGE_KEYS.SEMANTIC_RERANK, next ? '1' : '0'); } catch { /* quota */ }
+    writeLocalStorageJSON(STORAGE_KEYS.SEMANTIC_RERANK, next ? '1' : '0', captureOwnerToken());
     setData(null);
     setPage(1);
   }, [setData]);
@@ -354,15 +358,24 @@ function ResultsContent() {
   // (localStorage + Supabase), then drop the data so useResultsData re-ranks
   // under the new hashProfile key. writeLocalStorageJSON dispatches the
   // synthetic storage event that updates this page's own profile snapshot.
+  //
+  // Displayed FROM the same tuple the click writes against, so the value on
+  // screen and the value in the payload cannot disagree.
   const includeCrossSchool = profile?.include_cross_school ?? false;
-  const toggleCrossSchool = useCallback((next: boolean) => {
-    if (!rawStoredProfile) return;
-    const updated = { ...rawStoredProfile, include_cross_school: next };
-    writeLocalStorageJSON(STORAGE_KEYS.PROFILE, updated);
-    saveProfile(updated as unknown as Record<string, unknown>).catch(() => {});
+  const onCrossSchoolApplied = useCallback(() => {
     setData(null);
     setPage(1);
-  }, [rawStoredProfile, setData]);
+  }, [setData]);
+  const {
+    busy: crossSchoolBusy,
+    failed: crossSchoolFailed,
+    toggle: toggleCrossSchool,
+    retry: retryCrossSchool,
+    clear: clearCrossSchoolFailure,
+  } = useCrossSchoolToggle(view, onCrossSchoolApplied);
+  useEffect(() => {
+    clearCrossSchoolRef.current = clearCrossSchoolFailure;
+  }, [clearCrossSchoolFailure]);
 
   const paginated = useMemo(() => data?.results ?? [], [data?.results]);
   const filteredTotal = data?.filtered_total ?? 0;
@@ -490,8 +503,11 @@ function ResultsContent() {
       sortBy,
       tab: activeTab,
     };
-    savePresets(upsertPreset(presets, preset));
-    setActivePresetId(preset.id);
+    if (savePresets(upsertPreset(presets, preset), captureOwnerToken())) {
+      setActivePresetId(preset.id);
+    } else {
+      window.alert(t('results.presets.saveError'));
+    }
   }, [filters, sortBy, activeTab, presets, t]);
 
   const handleSaveSearchToAccount = useCallback(async () => {
@@ -547,9 +563,12 @@ function ResultsContent() {
   }, []);
 
   const handleDeletePreset = useCallback((id: string) => {
-    savePresets(removePreset(presets, id));
-    if (activePresetId === id) setActivePresetId(null);
-  }, [presets, activePresetId]);
+    if (savePresets(removePreset(presets, id), captureOwnerToken())) {
+      if (activePresetId === id) setActivePresetId(null);
+    } else {
+      window.alert(t('results.presets.deleteError'));
+    }
+  }, [presets, activePresetId, t]);
 
   const fetchCompleteView = useCallback(async (
     requestedView: MatchViewRequestState,
@@ -649,6 +668,30 @@ function ResultsContent() {
 
       <StorageStatusBanner />
 
+      {/*
+        Favorite/status SAVE failures are per-opportunity now (favSaveErrors/
+        trackSaveErrors — see use-results-interactions.ts) and render at the
+        corresponding card via MatchList/MatchCard, not here — a single
+        page-level slot used to let one id's error silently overwrite
+        another's. LOAD failures (favorites, interactions) are still
+        page-level: they aren't about any one card, they mean the whole
+        list's saved state couldn't be confirmed at all.
+      */}
+      {(favoritesLoadError || interactionsError) && (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200" role="alert">
+          <p className="flex items-center gap-2 text-[13px] text-red-700">
+            {interactionsError ? t('results.interactionsLoadError') : t('results.favoritesLoadError')}
+            <button
+              type="button"
+              onClick={interactionsError ? retryInteractionsLoad : retryFavoritesLoad}
+              className="font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+            >
+              {t('common.retry')}
+            </button>
+          </p>
+        </div>
+      )}
+
       <ResultsHeader
         loading={loading}
         showSlowHint={showSlowHint}
@@ -722,6 +765,9 @@ function ResultsContent() {
             sourceOptions={sourceOptions}
             scopeOptions={scopeOptions}
             includeCrossSchool={includeCrossSchool}
+            crossSchoolDisabled={!view || crossSchoolBusy}
+            crossSchoolFailed={crossSchoolFailed}
+            onCrossSchoolRetry={retryCrossSchool}
             onIncludeCrossSchoolChange={toggleCrossSchool}
             t={t}
           />
@@ -773,10 +819,20 @@ function ResultsContent() {
               focusedIdx={focusedIdx}
               favs={favs}
               interactions={interactions}
+              ownerReady={ownerReady}
+              identityGeneration={identityGeneration}
+              ownerScopeKey={ownerScopeKey}
+              pendingFavIds={pendingFavIds}
+              pendingTrackIds={pendingTrackIds}
+              favSaveErrors={favSaveErrors}
+              trackSaveErrors={trackSaveErrors}
+              interactionsUnready={interactionsLoading || interactionsError}
               feedback={feedback}
               onDraftEmail={openEmailModal}
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
+              onRetryFavSave={retryFavSave}
+              onRetryTrackSave={retryTrackSave}
               onFeedback={handleFeedback}
               positionOffset={data.view_start ?? (effectivePage - 1) * PAGE_SIZE}
               page={effectivePage}

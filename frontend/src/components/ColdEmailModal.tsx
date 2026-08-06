@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
 import {
   X,
   Copy,
@@ -24,9 +25,8 @@ import {
   type ColdEmailStage,
 } from '@/lib/api';
 import {
-  getInteractionDetail,
+  confirmInteractionContact,
   onAuthChange,
-  trackInteraction,
   updateInteractionDetails,
 } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
@@ -212,6 +212,7 @@ export default function ColdEmailModal({
   // derive from whether an address arrived.
   const [recipientStatus, setRecipientStatus] = useState<ContactEmailStatus>('unavailable');
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   // Copying/opening a draft only REVEALS the follow-up strip — it is not
   // evidence the email was sent (the user may close the compose window), so
   // nothing is recorded yet. Only the explicit "I sent it" confirmation below
@@ -219,6 +220,12 @@ export default function ColdEmailModal({
   const [contacted, setContacted] = useState(false);
   const [sendConfirmed, setSendConfirmed] = useState(false);
   const [followUpDate, setFollowUpDate] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  // Which persistence failed, so the strip can say the honest thing: a failed
+  // confirmation recorded NOTHING, a failed reminder left a real contact
+  // record in place, and an identity that moved mid-write recorded nothing for
+  // whoever is signed in now. `null` = nothing has failed in this session.
+  const [sendError, setSendError] = useState<'confirm' | 'reminder' | 'owner-changed' | null>(null);
 
   const allVariants: EmailVariant[] = aiVariant ? [...variants, aiVariant] : variants;
 
@@ -244,6 +251,18 @@ export default function ColdEmailModal({
   // are never cached (they retry on the next open). Cleared when the profile
   // prop changes — a draft must not outlive a profile edit.
   const aiCacheRef = useRef<Map<string, ColdEmailResponse>>(new Map());
+  // Which send session an in-flight persistence belongs to. Bumped on every
+  // close and every target change, so a completion that comes back after the
+  // modal moved on can be identified as belonging to a session that no longer
+  // exists. An immutable number, not object identity: the modal stays mounted
+  // across open/close and target switches, so there is no object to compare.
+  const sendSessionRef = useRef(0);
+  // Which confirmation attempt within that session. A retry supersedes the
+  // attempt it retried, so a straggler cannot paint over the newer answer.
+  const confirmAttemptRef = useRef(0);
+  // One atomic call per attestation: held for the duration of the round trip
+  // and released by whoever set it, so a double click cannot open a second.
+  const confirmInFlightRef = useRef(false);
 
   useEffect(() => { bodyRef.current = body; }, [body]);
   useEffect(() => { aiCacheRef.current.clear(); }, [profile]);
@@ -302,6 +321,17 @@ export default function ColdEmailModal({
     if (isOpen) fetchVariants();
     return () => {
       autoFiredRef.current = false;
+      // Close or target change ends the send session. Bumping the id first
+      // means any persistence still in flight can no longer reach this
+      // component's state, so the resets below cannot be undone by a
+      // straggler landing a moment later.
+      sendSessionRef.current += 1;
+      confirmInFlightRef.current = false;
+      setContacted(false);
+      setSendConfirmed(false);
+      setFollowUpDate(null);
+      setConfirming(false);
+      setSendError(null);
       setVariants([]);
       setAiVariant(null);
       setAiLoading(false);
@@ -313,6 +343,7 @@ export default function ColdEmailModal({
       setRecipient('');
       setRecipientStatus('unavailable');
       setCopied(false);
+      setCopyFailed(false);
       setError(null);
       setNameRequired(false);
       setChatMessages([]);
@@ -617,43 +648,92 @@ export default function ColdEmailModal({
     await runRefine(msg);
   }
 
-  // Record the contact without clobbering an existing status: create an
-  // 'applied' row only if none exists, then stamp last_contacted_at (+ remind_at
-  // when a follow-up was chosen). Best-effort — never blocks the email action.
-  const recordContact = useCallback(async (remindAt?: string) => {
-    try {
-      const detail = await getInteractionDetail(opportunityId);
-      if (!detail) await trackInteraction(opportunityId, 'applied');
-      await updateInteractionDetails(opportunityId, {
-        last_contacted_at: new Date().toISOString(),
-        ...(remindAt ? { remind_at: remindAt } : {}),
-      });
-    } catch { /* best-effort */ }
-  }, [opportunityId]);
-
   // Reveal the strip without recording anything — a draft opened/copied is
   // not a verified send. No evidence = no tracking event.
   const markContacted = useCallback(() => {
     setContacted(true);
   }, []);
 
-  // The user's explicit attestation that the email went out — this is the
-  // only path that records the contact.
-  const confirmSent = useCallback(() => {
-    setSendConfirmed(true);
-    recordContact();
-  }, [recordContact]);
+  // The user's explicit attestation that the email went out — the ONLY path
+  // that records the contact, and it records it with one atomic call.
+  //
+  // The old flow read the interaction, conditionally inserted 'applied', then
+  // updated the metadata: three round trips a concurrent status change could
+  // interleave with, and it painted `sent` before any of them had landed.
+  // confirmInteractionContact is one INSERT ... ON CONFLICT DO UPDATE
+  // (migration 025) that creates the row as 'applied' or, when a further-along
+  // status already exists, only refreshes last_contacted_at.
+  const confirmSent = useCallback(async () => {
+    if (confirmInFlightRef.current) return;
+    // Captured at the click, before any await: the capability belongs to the
+    // identity that attested, not to whoever owns the browser by the time the
+    // round trip finishes.
+    const token = captureOwnerToken();
+    const session = sendSessionRef.current;
+    const attempt = (confirmAttemptRef.current += 1);
+    confirmInFlightRef.current = true;
+    setSendError(null);
+    setConfirming(true);
+    // Same session, same attempt: this completion is still the current one.
+    // A newer attempt, a target change or a close all retire it.
+    const stillCurrent = () =>
+      sendSessionRef.current === session && confirmAttemptRef.current === attempt;
+    try {
+      await confirmInteractionContact(opportunityId, token);
+      // The owner check is re-read AFTER the await, against the token captured
+      // BEFORE it. Same uid at a new epoch is a different capability.
+      if (!stillCurrent()) return;
+      if (isTokenOwnerStillCurrent(token)) setSendConfirmed(true);
+      else setSendError('owner-changed');
+    } catch {
+      if (!stillCurrent()) return;
+      // A confirmation whose identity moved is neither this account's success
+      // nor its failure: it is void here. Saying so beats a click that appears
+      // to do nothing — while still painting no U1 outcome into U2's session.
+      setSendError(isTokenOwnerStillCurrent(token) ? 'confirm' : 'owner-changed');
+    } finally {
+      if (stillCurrent()) {
+        confirmInFlightRef.current = false;
+        setConfirming(false);
+      }
+    }
+  }, [opportunityId]);
 
-  const setFollowUp = useCallback((days: number) => {
+  // Reminder-only. It must never call the contact recorder: that would move
+  // last_contacted_at and record a second outreach the student never made.
+  const setFollowUp = useCallback(async (days: number) => {
+    const token = captureOwnerToken();
+    const session = sendSessionRef.current;
     const d = new Date();
     d.setUTCDate(d.getUTCDate() + days);
     const date = d.toISOString().slice(0, 10);
-    setFollowUpDate(date);
-    recordContact(date);
-  }, [recordContact]);
+    const stillCurrent = () =>
+      sendSessionRef.current === session && isTokenOwnerStillCurrent(token);
+    try {
+      await updateInteractionDetails(opportunityId, { remind_at: date }, token);
+    } catch {
+      if (stillCurrent()) setSendError('reminder');
+      return;
+    }
+    if (stillCurrent()) {
+      setSendError(null);
+      setFollowUpDate(date);
+    }
+  }, [opportunityId]);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+    try {
+      await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+    } catch {
+      // The clipboard genuinely refuses in the field: permission denied, the
+      // document not focused, an insecure context. Nothing was copied, so
+      // nothing may report that it was — and with no draft in hand there is
+      // nothing the student could have sent, so the attestation question
+      // stays away too.
+      setCopyFailed(true);
+      return;
+    }
+    setCopyFailed(false);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     markContacted();
@@ -990,34 +1070,59 @@ export default function ColdEmailModal({
                     </span>
                     <button
                       type="button"
-                      onClick={confirmSent}
-                      className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                      onClick={() => { void confirmSent(); }}
+                      disabled={confirming}
+                      data-testid="cold-email-confirm-sent"
+                      className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-60 disabled:cursor-wait"
                     >
-                      {t('coldEmail.confirmSent')}
+                      {confirming
+                        ? t('coldEmail.confirming')
+                        : sendError === 'confirm'
+                          ? t('coldEmail.confirmRetry')
+                          : t('coldEmail.confirmSent')}
                     </button>
+                    {(sendError === 'confirm' || sendError === 'owner-changed') && (
+                      <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
+                        <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                        {t(sendError === 'confirm'
+                          ? 'coldEmail.confirmFailed'
+                          : 'coldEmail.confirmOwnerChanged')}
+                      </span>
+                    )}
                   </>
-                ) : followUpDate ? (
-                  <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
-                    <BellRing className="w-4 h-4" />
-                    {t('coldEmail.reminderSet', { date: followUpDate })}
-                  </span>
                 ) : (
                   <>
-                    <span className="inline-flex items-center gap-1.5 text-gray-600">
-                      <BellRing className="w-4 h-4 text-amber-500" />
-                      {t('coldEmail.remindPrompt')}
-                    </span>
+                    {followUpDate ? (
+                      <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
+                        <BellRing className="w-4 h-4" />
+                        {t('coldEmail.reminderSet', { date: followUpDate })}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-gray-600">
+                        <BellRing className="w-4 h-4 text-amber-500" />
+                        {t('coldEmail.remindPrompt')}
+                      </span>
+                    )}
+                    {/* The chips stay after a date is chosen: a reminder is
+                        changeable, and changing it must go through the same
+                        reminder-only write rather than another confirmation. */}
                     {([['coldEmail.remind3', 3], ['coldEmail.remind7', 7], ['coldEmail.remind14', 14]] as const).map(
                       ([key, days]) => (
                         <button
                           key={days}
                           type="button"
-                          onClick={() => setFollowUp(days)}
+                          onClick={() => { void setFollowUp(days); }}
                           className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
                         >
                           {t(key)}
                         </button>
                       ),
+                    )}
+                    {sendError === 'reminder' && (
+                      <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
+                        <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                        {t('coldEmail.reminderFailed')}
+                      </span>
                     )}
                   </>
                 )}
@@ -1026,6 +1131,12 @@ export default function ColdEmailModal({
 
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
+              {copyFailed && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-red-600" role="status">
+                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {t('coldEmail.copyFailed')}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={handleCopy}

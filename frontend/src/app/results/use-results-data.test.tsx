@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import { useResultsData } from './use-results-data';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 const mocks = vi.hoisted(() => ({
   getMatchView: vi.fn(),
@@ -256,5 +257,34 @@ describe('useResultsData', () => {
     await waitFor(() => expect(result.current.error).toBe('Match results need to be refreshed. Please retry.'));
     expect(result.current.data).toBeNull();
     expect(mocks.writeMatchCache).not.toHaveBeenCalled();
+  });
+
+  it('captures the owner token at REQUEST START: a deferred write lands with the ORIGIN identity even after the owner switches mid-flight', async () => {
+    advanceOwnerEpoch('results-data-cache-token-u1');
+    await syncLocalIdentityOwner('results-data-cache-token-u1');
+    const u1Token = captureOwnerToken();
+
+    let resolveFetch: ((value: MatchesResponse) => void) | undefined;
+    mocks.getMatchView.mockImplementation(
+      () => new Promise<MatchesResponse>((resolve) => { resolveFetch = resolve; }),
+    );
+
+    renderHook(() => useResultsData(profile, false, baseView, 1, t));
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+
+    // The hook's own props (profile/view/page) never change here, so this
+    // in-flight request is not aborted by the switch — its effect instance
+    // keeps running to completion under the identity that was active when
+    // IT started, not whichever identity happens to be current by the time
+    // its network round-trip finally resolves.
+    advanceOwnerEpoch('results-data-cache-token-u2');
+    await syncLocalIdentityOwner('results-data-cache-token-u2');
+
+    await act(async () => {
+      resolveFetch?.(response('deferred'));
+    });
+
+    await waitFor(() => expect(mocks.writeMatchCache).toHaveBeenCalledTimes(1));
+    expect(mocks.writeMatchCache.mock.calls[0]?.[3]).toEqual(u1Token);
   });
 });

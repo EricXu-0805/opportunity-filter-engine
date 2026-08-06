@@ -4,11 +4,11 @@
     "national": 4041
   },
   "arizona": {
-    "campus": 1470,
+    "campus": 1474,
     "national": 4041
   },
   "asu": {
-    "campus": 2432,
+    "campus": 2434,
     "national": 4041
   },
   "barnard": {
@@ -16,15 +16,15 @@
     "national": 4041
   },
   "bates": {
-    "campus": 179,
+    "campus": 177,
     "national": 4041
   },
   "bc": {
-    "campus": 827,
+    "campus": 829,
     "national": 4041
   },
   "boulder": {
-    "campus": 1597,
+    "campus": 1599,
     "national": 4041
   },
   "bowdoin": {
@@ -32,7 +32,7 @@
     "national": 4041
   },
   "brown": {
-    "campus": 1159,
+    "campus": 1164,
     "national": 4041
   },
   "brynmawr": {
@@ -40,7 +40,7 @@
     "national": 4041
   },
   "bu": {
-    "campus": 1941,
+    "campus": 1821,
     "national": 4041
   },
   "buffalo": {
@@ -56,15 +56,15 @@
     "national": 4041
   },
   "casewestern": {
-    "campus": 687,
+    "campus": 697,
     "national": 4041
   },
   "cincinnati": {
-    "campus": 1029,
+    "campus": 1050,
     "national": 4041
   },
   "clemson": {
-    "campus": 901,
+    "campus": 902,
     "national": 4041
   },
   "cmc": {
@@ -72,7 +72,7 @@
     "national": 4041
   },
   "cmu": {
-    "campus": 903,
+    "campus": 908,
     "national": 4041
   },
   "colby": {
@@ -80,7 +80,7 @@
     "national": 4041
   },
   "colgate": {
-    "campus": 322,
+    "campus": 323,
     "national": 4041
   },
   "coloradocollege": {
@@ -92,15 +92,15 @@
     "national": 4041
   },
   "columbia": {
-    "campus": 1070,
+    "campus": 1075,
     "national": 4041
   },
   "cornell": {
-    "campus": 1601,
+    "campus": 1593,
     "national": 4041
   },
   "dartmouth": {
-    "campus": 933,
+    "campus": 914,
     "national": 4041
   },
   "davidson": {
@@ -112,15 +112,15 @@
     "national": 4041
   },
   "duke": {
-    "campus": 1182,
+    "campus": 1167,
     "national": 4041
   },
   "emory": {
-    "campus": 1419,
+    "campus": 1436,
     "national": 4041
   },
   "fsu": {
-    "campus": 636,
+    "campus": 640,
     "national": 4041
   },
   "gatech": {
@@ -140,7 +140,7 @@
     "national": 4041
   },
   "harvard": {
-    "campus": 468,
+    "campus": 471,
     "national": 4041
   },
   "haverford": {
@@ -148,7 +148,7 @@
     "national": 4041
   },
   "houston": {
-    "campus": 1021,
+    "campus": 1024,
     "national": 4041
   },
   "iastate": {
@@ -160,7 +160,7 @@
     "national": 4041
   },
   "jhu": {
-    "campus": 4590,
+    "campus": 4592,
     "national": 4041
   },
   "kenyon": {
@@ -168,11 +168,11 @@
     "national": 4041
   },
   "lehigh": {
-    "campus": 568,
+    "campus": 569,
     "national": 4041
   },
   "lsu": {
-    "campus": 1177,
+    "campus": 1187,
     "national": 4041
   },
   "macalester": {
@@ -196,11 +196,11 @@
     "national": 4041
   },
   "ncsu": {
-    "campus": 2102,
+    "campus": 2271,
     "national": 4041
   },
   "nd": {
-    "campus": 1258,
+    "campus": 1279,
     "national": 4041
   },
   "neu": {
@@ -212,7 +212,7 @@
     "national": 4041
   },
   "northwestern": {
-    "campus": 2797,
+    "campus": 2804,
     "national": 4041
   },
   "nyu": {
@@ -220,7 +220,7 @@
     "national": 4041
   },
   "oregonstate": {
-    "campus": 607,
+    "campus": 605,
     "national": 4041
   },
   "osu": {
@@ -228,7 +228,7 @@
     "national": 4041
   },
   "pitt": {
-    "campus": 1102,
+    "campus": 1127,
     "national": 4041
   },
   "pomona": {
@@ -236,7 +236,7 @@
     "national": 4041
   },
   "princeton": {
-    "campus": 623,
+    "campus": 625,
     "national": 4041
   },
   "psu": {
@@ -244,15 +244,15 @@
     "national": 4041
   },
   "purdue": {
-    "campus": 2220,
+    "campus": 2223,
     "national": 4041
   },
   "rice": {
-    "campus": 982,
+    "campus": 984,
     "national": 4041
   },
   "rochester": {
-    "campus": 853,
+    "campus": 850,
     "national": 4041
   },
   "rpi": {
@@ -260,7 +260,7 @@
     "national": 4041
   },
   "rutgers": {
-    "campus": 1900,
+    "campus": 2004,
     "national": 4041
   },
   "sbu": {
@@ -280,7 +280,7 @@
     "national": 4041
   },
   "swarthmore": {
-    "campus": 237,
+    "campus": 238,
     "national": 4041
   },
   "syracuse": {
@@ -288,11 +288,11 @@
     "national": 4041
   },
   "tamu": {
-    "campus": 3190,
+    "campus": 3192,
     "national": 4041
   },
   "tufts": {
-    "campus": 1695,
+    "campus": 2056,
     "national": 4041
   },
   "ucb": {
@@ -304,7 +304,7 @@
     "national": 4041
   },
   "ucf": {
-    "campus": 795,
+    "campus": 797,
     "national": 4041
   },
   "uchicago": {
@@ -316,7 +316,7 @@
     "national": 4041
   },
   "ucla": {
-    "campus": 2035,
+    "campus": 2038,
     "national": 4041
   },
   "uconn": {
@@ -324,7 +324,7 @@
     "national": 4041
   },
   "ucr": {
-    "campus": 1153,
+    "campus": 1154,
     "national": 4041
   },
   "ucsb": {
@@ -332,11 +332,11 @@
     "national": 4041
   },
   "ucsc": {
-    "campus": 696,
+    "campus": 739,
     "national": 4041
   },
   "ucsd": {
-    "campus": 1510,
+    "campus": 1502,
     "national": 4041
   },
   "udel": {
@@ -344,23 +344,23 @@
     "national": 4041
   },
   "uf": {
-    "campus": 1971,
+    "campus": 1974,
     "national": 4041
   },
   "uga": {
-    "campus": 2058,
+    "campus": 2080,
     "national": 4041
   },
   "uiowa": {
-    "campus": 921,
+    "campus": 922,
     "national": 4041
   },
   "uiuc": {
-    "campus": 3327,
+    "campus": 3384,
     "national": 4041
   },
   "uky": {
-    "campus": 752,
+    "campus": 753,
     "national": 4041
   },
   "umass": {
@@ -368,7 +368,7 @@
     "national": 4041
   },
   "umd": {
-    "campus": 1309,
+    "campus": 1306,
     "national": 4041
   },
   "umich": {
@@ -379,8 +379,12 @@
     "campus": 1432,
     "national": 4041
   },
+  "unc": {
+    "campus": 360,
+    "national": 4041
+  },
   "unl": {
-    "campus": 1154,
+    "campus": 1161,
     "national": 4041
   },
   "upenn": {
@@ -396,7 +400,7 @@
     "national": 4041
   },
   "utah": {
-    "campus": 1087,
+    "campus": 1086,
     "national": 4041
   },
   "utdallas": {
@@ -404,11 +408,11 @@
     "national": 4041
   },
   "utexas": {
-    "campus": 2194,
+    "campus": 2229,
     "national": 4041
   },
   "utk": {
-    "campus": 1027,
+    "campus": 1029,
     "national": 4041
   },
   "uva": {
@@ -416,11 +420,11 @@
     "national": 4041
   },
   "uw": {
-    "campus": 2232,
+    "campus": 2245,
     "national": 4041
   },
   "vanderbilt": {
-    "campus": 1128,
+    "campus": 1141,
     "national": 4041
   },
   "vassar": {
@@ -428,11 +432,11 @@
     "national": 4041
   },
   "vt": {
-    "campus": 1716,
+    "campus": 1853,
     "national": 4041
   },
   "washu": {
-    "campus": 1099,
+    "campus": 1104,
     "national": 4041
   },
   "wellesley": {
@@ -444,7 +448,7 @@
     "national": 4041
   },
   "wisc": {
-    "campus": 1760,
+    "campus": 1769,
     "national": 4041
   },
   "wlu": {
@@ -456,7 +460,7 @@
     "national": 4041
   },
   "yale": {
-    "campus": 1280,
+    "campus": 1281,
     "national": 4041
   }
 }

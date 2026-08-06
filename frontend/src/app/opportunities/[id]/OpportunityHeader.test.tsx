@@ -39,6 +39,7 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof Opportunity
       onStar={noop}
       onOpenEmailModal={noop}
       onOpenTailorModal={noop}
+      tailorDisabled={false}
       onOpenRenovationModal={undefined}
       onShare={noop}
       t={t}

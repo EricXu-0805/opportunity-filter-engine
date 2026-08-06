@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+vi.mock('@/lib/school-confirmation', () => ({
+  persistHomeSchool: vi.fn(async () => ({ ok: true, synced: true, cacheCleared: true })),
+}));
+
+
 vi.mock('@/i18n/client', () => ({
   useLocale: () => 'en',
   useT: () => ({
@@ -10,20 +15,44 @@ vi.mock('@/i18n/client', () => ({
   }),
 }));
 
+import { persistHomeSchool } from '@/lib/school-confirmation';
 import { AcademicProfileCard } from './AcademicProfileCard';
 import { DEFAULT_PROFILE } from './types';
 import { translate } from '@/i18n/translate';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { makeProfileViewSnapshot, type ProfileViewSnapshot } from '@/lib/profile-sync';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { ProfileData } from '@/lib/types';
 
 const t = (key: string, vars?: Record<string, string | number>) =>
   vars ? `${key}:${Object.values(vars).join(',')}` : key;
 
-function renderCard(overrides: Partial<ProfileData> = {}) {
+/** The view the parent would have published from the hydration this card is
+ *  showing. The card takes it as a prop — it never reads storage — so every
+ *  test supplies one exactly as page.tsx does. */
+function viewFor(overrides: Partial<ProfileData> = {}, revision = 1) {
+  const owner = captureOwnerToken();
+  const shown = { ...DEFAULT_PROFILE, ...overrides };
+  return makeProfileViewSnapshot({
+    baseProfile: shown,
+    renderedProfile: shown,
+    revision,
+    token: owner,
+    identityGeneration: owner.epoch,
+    source: 'hydration',
+  });
+}
+
+function renderCard(
+  overrides: Partial<ProfileData> = {},
+  viewSnapshot: ProfileViewSnapshot | null = viewFor(overrides),
+) {
   const update = vi.fn();
   render(
     <AcademicProfileCard
       profile={{ ...DEFAULT_PROFILE, ...overrides }}
       update={update}
+      viewSnapshot={viewSnapshot}
       t={t}
     />,
   );
@@ -55,14 +84,33 @@ describe('AcademicProfileCard — school row + switcher entry', () => {
     expect(document.querySelector('select#college')).toBeTruthy();
   });
 
-  it('opens the switcher modal; select + confirm updates profile.home_school', () => {
+  it('confirm persists the campus through the ordered helper, then closes', async () => {
+    // The card no longer sets the field itself: persistHomeSchool writes the
+    // one-key CAS patch, the confirmation receipt and the broadcast IN THAT
+    // ORDER, and the broadcast is what updates the form. Calling update()
+    // here would mark the field dirty for a save that may never land.
     const { update } = renderCard();
     fireEvent.click(screen.getByText('home.form.changeSchool'));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('university-card-ucb'));
     fireEvent.click(screen.getByText('universitySwitcher.confirm'));
-    expect(update).toHaveBeenCalledWith('home_school', 'ucb');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(persistHomeSchool).toHaveBeenCalledWith(
+      'ucb',
+      expect.objectContaining({ revision: 1, baseProfile: expect.anything() }),
+      { confirm: true },
+    );
+    expect(update).not.toHaveBeenCalledWith('home_school', 'ucb');
+  });
+
+  it('a persist that does not land keeps the modal open and says so', async () => {
+    vi.mocked(persistHomeSchool).mockResolvedValueOnce({ ok: false, reason: 'conflict' });
+    renderCard();
+    fireEvent.click(screen.getByText('home.form.changeSchool'));
+    fireEvent.click(screen.getByTestId('university-card-ucb'));
+    fireEvent.click(screen.getByText('universitySwitcher.confirm'));
+    await waitFor(() => expect(screen.getByTestId('switcher-error')).toBeInTheDocument());
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('cancel closes the modal without updating the profile', () => {
@@ -71,6 +119,86 @@ describe('AcademicProfileCard — school row + switcher entry', () => {
     fireEvent.click(screen.getByText('common.cancel'));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe('AcademicProfileCard — the baseline follows the snapshot on screen', () => {
+  function lastView() {
+    return vi.mocked(persistHomeSchool).mock.calls.at(-1)?.[1];
+  }
+
+  function switchTo(slug: string) {
+    fireEvent.click(screen.getByText('home.form.changeSchool'));
+    fireEvent.click(screen.getByTestId(`university-card-${slug}`));
+    fireEvent.click(screen.getByText('universitySwitcher.confirm'));
+  }
+
+  it('the parent cleared the view (identity switched): the click writes NOTHING and says so', async () => {
+    // useProfileForm drops its published view the instant an identity
+    // transition is observed, before anything re-renders. This card is not
+    // keyed by identity, so it stays on screen with nothing to act against —
+    // and inventing a base at that point is exactly how one account's row
+    // becomes another's.
+    renderCard({ home_school: 'uiuc' }, null);
+    await switchTo('ucb');
+    expect(persistHomeSchool).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('switcher-error')).toBeInTheDocument());
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('U1 -> U2 without unmounting: the click carries U1\'s OWN view, never a fresh U2 token', async () => {
+    advanceOwnerEpoch('card-baseline-u1');
+    await syncLocalIdentityOwner('card-baseline-u1');
+    const u1View = viewFor({ home_school: 'uiuc', major: 'CS' }, 7);
+    renderCard({ home_school: 'uiuc', major: 'CS' }, u1View);
+
+    // U2 takes over the browser while this card is still mounted and still
+    // holding U1's view.
+    advanceOwnerEpoch('card-baseline-u2');
+    await syncLocalIdentityOwner('card-baseline-u2');
+
+    await switchTo('ucb');
+
+    // The card must hand over the view it was given, unaltered. Capturing a
+    // token at click time instead would pair U1's row and revision with a
+    // currently-valid U2 token — a combination every downstream preflight
+    // waves through, because each half looks legitimate on its own.
+    const sent = lastView();
+    expect(sent?.viewId).toBe(u1View.viewId);
+    expect(sent?.token.uid).toBe('card-baseline-u1');
+    expect(sent?.token.epoch).toBe(u1View.token.epoch);
+  });
+
+  it('a background write this card never accepted does not become its baseline', async () => {
+    advanceOwnerEpoch('card-baseline-bg');
+    await syncLocalIdentityOwner('card-baseline-bg');
+    const accepted = viewFor({ home_school: 'uiuc', major: 'CS' }, 7);
+    renderCard({ home_school: 'uiuc', major: 'CS' }, accepted);
+
+    // Same owner, another tab. Nothing on this screen changed, so the pair the
+    // person is choosing against is still revision 7 — a card that re-read
+    // storage here would send their old choice wearing revision 9.
+    localStorage.setItem(
+      STORAGE_KEYS.PROFILE_SYNC,
+      JSON.stringify({
+        v: 1,
+        confirmed: { revision: 9, profile: { major: 'Physics', home_school: 'mit' } },
+      }),
+    );
+
+    await switchTo('ucb');
+
+    const sent = lastView();
+    expect(sent?.revision).toBe(7);
+    expect(sent?.baseProfile).toMatchObject({ major: 'CS', home_school: 'uiuc' });
+  });
+
+  it('the view it hands over is frozen — nothing can edit the baseline it is judged against', () => {
+    const accepted = viewFor({ home_school: 'uiuc', major: 'CS' }, 7);
+    expect(() => {
+      (accepted.baseProfile as unknown as Record<string, unknown>).major = 'tampered';
+    }).toThrow();
+    expect(accepted.baseProfile?.major).toBe('CS');
   });
 });
 
@@ -112,6 +240,7 @@ describe('AcademicProfileCard — catalog vs free-text fallback', () => {
       <AcademicProfileCard
         profile={{ ...DEFAULT_PROFILE, home_school: 'ucb', college: 'College of Engineering' }}
         update={vi.fn()}
+        viewSnapshot={null}
         t={zhT}
       />,
     );

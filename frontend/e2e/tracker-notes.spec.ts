@@ -71,6 +71,9 @@ test.describe('Application tracker notes & reminder', () => {
 
   test('character counter reflects notes length', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
+    // Notes attach to a tracked status, so the box is disabled until one
+    // exists — the same convention the rest of this file already follows.
+    await ensureTracked(page);
     await page.getByRole('button', { name: /notes or reminder/i }).click();
     const textarea = page.getByPlaceholder(/Private notes/i);
     await textarea.fill('hello');
@@ -104,7 +107,10 @@ test.describe('Application tracker notes & reminder', () => {
     // The panel asks for a status instead of fabricating an 'applied'
     // interaction (a send event the user never reported).
     await expect(page.getByText(/Pick a status above first/i)).toBeVisible();
-    await page.getByPlaceholder(/Private notes/i).fill('Test no auto-apply');
+    // Stronger than "typing does not auto-apply": there is nothing to type
+    // into. The box is disabled until a status exists, so the auto-apply this
+    // test guards against is unreachable rather than merely not taken.
+    await expect(page.getByPlaceholder(/Private notes/i)).toBeDisabled();
     // Give the (gated) 600ms debounce ample time to prove it never fires.
     await page.waitForTimeout(1_500);
     await expect(appliedButton).toHaveAttribute('aria-pressed', 'false');
@@ -148,7 +154,12 @@ test.describe('Dashboard reminders widget', () => {
     await page.goto('/dashboard');
     const widget = page.getByRole('heading', { name: /Your reminders/i });
     await expect(widget).toBeVisible();
-    const firstReminder = page.locator('h2:has-text("Your reminders") ~ ul a').first();
+    // Scoped by the section, not by `h2 ~ ul`: the heading lives inside the
+    // card's header row, so it is not a SIBLING of the list and that selector
+    // can never match this markup.
+    const firstReminder = page
+      .locator('section:has(h2:has-text("Your reminders")) ul a')
+      .first();
     const href = await firstReminder.getAttribute('href');
     expect(href).toContain(`/opportunities/${KNOWN_ID}`);
   });

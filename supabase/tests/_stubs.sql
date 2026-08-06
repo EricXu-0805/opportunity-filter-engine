@@ -19,6 +19,14 @@ DO $$ BEGIN CREATE ROLE service_role NOLOGIN;   EXCEPTION WHEN duplicate_object 
 -- auth schema + claim-reading functions.
 CREATE SCHEMA IF NOT EXISTS auth;
 
+-- Supabase grants the browser roles USAGE on `auth` so a SECURITY INVOKER
+-- function (025's confirm_interaction_contact) can call auth.uid() as the
+-- caller. A vanilla cluster grants USAGE on a new schema to nobody, so
+-- without this any `SET ROLE authenticated` test of an invoker-rights
+-- function fails with "permission denied for schema auth" instead of
+-- exercising the guard it is aiming at.
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('test.uid', true), '')::uuid

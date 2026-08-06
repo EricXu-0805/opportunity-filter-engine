@@ -37,6 +37,9 @@ function renderRail(overrides: {
       sourceOptions={overrides.sourceOptions ?? [['', 'All sources'], ['uiuc_faculty', 'UIUC Faculty']]}
       scopeOptions={overrides.scopeOptions ?? []}
       includeCrossSchool={overrides.includeCrossSchool ?? false}
+      crossSchoolDisabled={false}
+      crossSchoolFailed={false}
+      onCrossSchoolRetry={() => {}}
       onIncludeCrossSchoolChange={onIncludeCrossSchoolChange}
       t={t}
     />,

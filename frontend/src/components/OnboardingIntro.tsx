@@ -1,10 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Star, Check, Sparkles, Calendar, Target, Send, MapPin } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { track } from '@/lib/analytics';
-import { persistHomeSchool, recordSchoolConfirmation } from '@/lib/school-confirmation';
+import { isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import {
+  hydrateProfile,
+  makeProfileViewSnapshot,
+  type ProfileViewSnapshot,
+} from '@/lib/profile-sync';
+import type { ProfileData } from '@/lib/types';
+import { persistHomeSchool } from '@/lib/school-confirmation';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { SCHOOLS } from '@/lib/schools';
@@ -309,12 +316,27 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
 // mount to avoid a hydration mismatch.
 export default function OnboardingIntro() {
   const { t, locale } = useT();
+
   const [show, setShow] = useState(false);
+  // The view this tour will confirm against, accepted ONCE from a real
+  // hydration. Not fabricated: "the tour has not been seen on this browser"
+  // does not mean there is no row — storage gets cleared, and people sign in
+  // on a second device. Declaring an unknown baseline here would let a
+  // one-field write claim it was made against nothing while a real row sits
+  // in the cloud.
+  const [view, setView] = useState<ProfileViewSnapshot | null>(null);
+  // Which acceptance is current. An identity switch mid-tour starts a new
+  // one, and the previous hydration's answer must not land on top of it.
+  const acceptSeqRef = useRef(0);
   const [i, setI] = useState(0);
   // Nav direction drives the slide-in transition: +1 = forward (enter from the
   // right), -1 = back (enter from the left).
   const [dir, setDir] = useState<1 | -1>(1);
   const [schoolSlug, setSchoolSlug] = useState('uiuc');
+  const [finishing, setFinishing] = useState(false);
+  const finishInFlightRef = useRef(false);
+  // The tour stays open when the campus could not be saved — see finish().
+  const [finishError, setFinishError] = useState(false);
 
   useEffect(() => {
     try {
@@ -322,6 +344,37 @@ export default function OnboardingIntro() {
       if (localStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN) !== '1') setShow(true);
     } catch { /* storage unavailable */ }
   }, []);
+
+  useEffect(() => {
+    if (!show) return;
+    const accept = () => {
+      acceptSeqRef.current += 1;
+      const seq = acceptSeqRef.current;
+      // Immediately: until THIS identity's own row has been read, there is
+      // nothing to confirm against and the gate stays closed.
+      setView(null);
+      hydrateProfile().then((h) => {
+        if (seq !== acceptSeqRef.current) return;
+        if (!isOwnerTokenValid(h.token, h.token.uid)) return;
+        setView(makeProfileViewSnapshot({
+          baseProfile: h.baseProfile,
+          renderedProfile: h.profile ?? ({} as ProfileData),
+          revision: h.revision,
+          token: h.token,
+          identityGeneration: h.token.epoch,
+          source: 'hydration',
+        }));
+      }).catch(() => {
+        if (seq !== acceptSeqRef.current) return;
+        // A read that FAILED is not "there is no row". Fail closed: the tour
+        // stays open and unconfirmable rather than writing against a baseline
+        // it could not establish.
+        setView(null);
+      });
+    };
+    accept();
+    return onLocalOwnerStateChange(accept);
+  }, [show]);
 
   const gotoSchoolGate = useCallback(() => { setDir(1); setI(SLIDES.length - 1); }, []);
 
@@ -340,18 +393,43 @@ export default function OnboardingIntro() {
   const isLast = i === SLIDES.length - 1;
   const locKey = LOCATIONS[slide];
 
-  const finish = () => {
-    // W10b: choosing a school IS confirming it. Record the receipt BEFORE
-    // persistHomeSchool — its HOME_SCHOOL_EVENT wakes the confirm gate, which
-    // must already see this campus as confirmed.
-    recordSchoolConfirmation(schoolSlug);
-    persistHomeSchool(schoolSlug);
-    track('onboarding_completed', { school: schoolSlug });
-    try { localStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, '1'); } catch { /* ignore */ }
-    setShow(false);
+  // Strictly ordered, and every step gated on the one before it:
+  //   persist the campus (a single-key CAS patch) -> write the confirmation
+  //   receipt -> broadcast -> track -> mark the tour seen -> close.
+  // persistHomeSchool owns the first three (the receipt has to be written
+  // before its own broadcast wakes the confirm gate). If the campus did not
+  // land, NOTHING after it runs: a tour that closes on a failed save leaves
+  // the user matched against a school they were never actually saved as, with
+  // the gate suppressed by an ONBOARDING_SEEN flag they can't undo.
+  const finish = async () => {
+    // The ref, not the state: two clicks in the same tick both read the old
+    // `finishing` and both run — two CAS writes, two receipts, two analytics
+    // events for one decision.
+    if (finishInFlightRef.current) return;
+    // The exact object accepted above, never a fresh capture. Capturing a
+    // token here would hand a choice made under one identity a currently-
+    // valid token belonging to another, and every preflight downstream would
+    // pass it.
+    const accepted = view;
+    if (!accepted) { setFinishError(true); return; }
+    finishInFlightRef.current = true;
+    setFinishing(true);
+    try {
+      const result = await persistHomeSchool(schoolSlug, accepted, { confirm: true });
+      if (!result.ok) {
+        setFinishError(true);
+        return;
+      }
+      track('onboarding_completed', { school: schoolSlug });
+      try { localStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, '1'); } catch { /* ignore */ }
+      setShow(false);
+    } finally {
+      finishInFlightRef.current = false;
+      setFinishing(false);
+    }
   };
   const next = () => {
-    if (isLast) { finish(); return; }
+    if (isLast) { void finish(); return; }
     setDir(1);
     setI((n) => n + 1);
   };
@@ -459,15 +537,23 @@ export default function OnboardingIntro() {
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={next}
-            data-testid="onboarding-primary"
-            className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 text-white text-[14px] font-semibold px-6 py-2.5 hover:bg-gray-800 transition-colors"
-          >
-            {isLast ? t('onboarding.cta') : t('onboarding.next')}
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-3">
+            {finishError && (
+              <span data-testid="onboarding-error" role="alert" className="text-[12px] text-amber-600">
+                {t('onboarding.finishFailed')}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={next}
+              disabled={finishing || (isLast && !view)}
+              data-testid="onboarding-primary"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 text-white text-[14px] font-semibold px-6 py-2.5 hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {isLast ? t(finishing ? 'common.saving' : 'onboarding.cta') : t('onboarding.next')}
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

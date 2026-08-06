@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { readUserScopedRaw } from '@/lib/identity-owner';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { useT } from '@/i18n/client';
@@ -25,6 +27,17 @@ import RadarChart from './RadarChart';
 // a profile edit changes the hash and misses. The contact-trust version in the
 // prefix deliberately strands older entries whose explanation/reason strings
 // may contain an address copied from corpus text.
+//
+// Not owner-epoch scoped, and NOT in USER_SCOPED_PREFIXES — deliberately:
+// the key is content-addressed (opportunity id + full profile hash + AI
+// toggle), not identity-addressed. A collision requires two identities
+// sharing the EXACT SAME profile content for the SAME opportunity, and in
+// that case the LLM explanation these inputs deterministically produce is
+// itself identical regardless of who asks — there is no information a
+// second identity could read here that their own request wouldn't have
+// produced anyway. Cross-account isolation is not a relevant property of
+// a pure function's memoized output; per-tab sessionStorage already bounds
+// the sharing window to the SAME open tab.
 const EXPLAIN_CACHE_PREFIX = 'ofe_explain_contact_trust_v1_';
 const EXPLAIN_TTL_MS = 60 * 60 * 1000;
 
@@ -58,12 +71,12 @@ function writeExplainCache(key: string, data: MatchExplanationResponse): void {
 
 // The same explicit AI-refine opt-in /results honors. Missing, unreadable, or
 // legacy state is deterministic; Compare must never turn AI on by default.
+// Gated on RELEASE_SCOPE.matchAiRefine first, exactly like
+// use-results-url.ts's readInitialSemanticRerank: a stale persisted '1'
+// must never force llm:true while the feature itself is dormant.
 function readAiTogglePreference(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK) === '1';
-  } catch {
-    return false;
-  }
+  if (!RELEASE_SCOPE.matchAiRefine) return false;
+  return readUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK) === '1';
 }
 
 function toCanonicalSummary(resp: MatchExplanationResponse): CanonicalMatchSummary | null {

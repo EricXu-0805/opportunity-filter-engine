@@ -160,13 +160,44 @@ describe('mint (via signInExistingOAuth) — device-secret binding', () => {
 });
 
 describe('redeemPendingMerge', () => {
-  it('returns null and makes no RPC call when there is no pending token', async () => {
+  // B3-B7 hardening: redeemPendingMerge now returns a discriminated outcome
+  // ({kind:'none'|'success'|'failed'}) instead of MergeSummary|null, so a
+  // caller can tell "nothing to merge" apart from "a grant existed but we
+  // could not confirm what happened to it" — the two used to collapse into
+  // the same `null`, and /auth/callback silently treated both as success.
+  // The token is now cleared only once the outcome is CONFIRMED terminal
+  // (a real response from the server, success or a definitive rejection);
+  // a transport-level throw leaves it in place so a retry can safely
+  // re-present it — migration 026 makes that replay idempotent.
+  it('returns {kind:"none"} and makes no RPC call when there is no pending token', async () => {
     const res = await redeemPendingMerge();
-    expect(res).toBeNull();
+    expect(res).toEqual({ kind: 'none' });
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it('redeems a pending token, maps the summary, and clears the token (one-shot)', async () => {
+  it('returns {kind:"failed"} (not "none") when reading the stashed grant itself throws (private-mode storage) — a real pending merge must never be silently discarded as "nothing to merge"', async () => {
+    const original = window.localStorage;
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: () => { throw new Error('SecurityError: storage disabled'); },
+        setItem: () => { throw new Error('SecurityError'); },
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        get length() { return 0; },
+      },
+      configurable: true,
+    });
+    try {
+      const res = await redeemPendingMerge();
+      expect(res).toEqual({ kind: 'failed' });
+      expect(mockRpc).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, 'localStorage', { value: original, configurable: true });
+    }
+  });
+
+  it('redeems a pending token, maps the summary, and clears the token', async () => {
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
     mockRpc.mockResolvedValueOnce({
       data: {
@@ -180,17 +211,19 @@ describe('redeemPendingMerge', () => {
 
     expect(mockRpc).toHaveBeenCalledWith('redeem_merge_grant', { p_token: GRANT });
     expect(res).toEqual({
-      merged: true,
-      favorites: 2,
-      interactions: 1,
-      savedSearches: 3,
-      attachmentsNotMoved: 1,
+      kind: 'success',
+      summary: {
+        merged: true,
+        favorites: 2,
+        interactions: 1,
+        savedSearches: 3,
+        attachmentsNotMoved: 1,
+      },
     });
-    // token consumed even on success
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
-  it('clears the token and returns null when the grant is rejected (expired/used/not-bound)', async () => {
+  it('clears the token and returns {kind:"none"} when the grant is rejected (expired/used/not-bound) — a definitive, non-retryable outcome', async () => {
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
     mockRpc.mockResolvedValueOnce({
       data: null,
@@ -199,19 +232,35 @@ describe('redeemPendingMerge', () => {
 
     const res = await redeemPendingMerge();
 
-    expect(res).toBeNull();
-    // one-shot: a rejected token must not be retried on the next callback land
+    expect(res).toEqual({ kind: 'none' });
+    // Definitive: the grant is dead server-side regardless of retries.
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
-  it('clears the token and returns null when the redeem RPC THROWS (transport failure)', async () => {
+  it('KEEPS the token and returns {kind:"failed"} when the redeem RPC THROWS (transport failure) — unknown whether the server processed it, so a retry must be able to re-present the SAME token', async () => {
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
     mockRpc.mockRejectedValueOnce(new Error('network down'));
 
     const res = await redeemPendingMerge();
 
-    expect(res).toBeNull();
-    // token already cleared before the RPC → a thrown RPC can't cause a retry
+    expect(res).toEqual({ kind: 'failed' });
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(GRANT);
+  });
+
+  it('a retry after a transport failure re-presents the SAME token and succeeds', async () => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
+    mockRpc.mockRejectedValueOnce(new Error('network down'));
+    const first = await redeemPendingMerge();
+    expect(first).toEqual({ kind: 'failed' });
+
+    mockRpc.mockResolvedValueOnce({
+      data: { merged: true, summary: { favorites: 1 } },
+      error: null,
+    });
+    const second = await redeemPendingMerge();
+
+    expect(mockRpc).toHaveBeenLastCalledWith('redeem_merge_grant', { p_token: GRANT });
+    expect(second.kind).toBe('success');
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
@@ -231,26 +280,38 @@ describe('redeemPendingMerge', () => {
       p_token: GRANT,
       p_secret: 'device-secret-hex',
     });
-    expect(res?.merged).toBe(true);
+    expect(res.kind).toBe('success');
+    expect(res.kind === 'success' && res.summary.merged).toBe(true);
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
-  it('returns null, clears the slot, and makes no RPC on a malformed JSON slot', async () => {
+  it('an OAuth-path transport failure also keeps the {token,secret} JSON slot intact for retry', async () => {
+    const stash = JSON.stringify({ token: GRANT, secret: 'device-secret-hex' });
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, stash);
+    mockRpc.mockRejectedValueOnce(new Error('network down'));
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toEqual({ kind: 'failed' });
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(stash);
+  });
+
+  it('returns {kind:"none"}, clears the slot, and makes no RPC on a malformed JSON slot', async () => {
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, '{not-json');
 
     const res = await redeemPendingMerge();
 
-    expect(res).toBeNull();
+    expect(res).toEqual({ kind: 'none' });
     expect(mockRpc).not.toHaveBeenCalled();
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
-  it('returns null and makes no RPC when the JSON slot is missing token/secret strings', async () => {
+  it('returns {kind:"none"} and makes no RPC when the JSON slot is missing token/secret strings', async () => {
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: GRANT }));
 
     const res = await redeemPendingMerge();
 
-    expect(res).toBeNull();
+    expect(res).toEqual({ kind: 'none' });
     expect(mockRpc).not.toHaveBeenCalled();
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
@@ -265,11 +326,14 @@ describe('redeemPendingMerge', () => {
     const res = await redeemPendingMerge();
 
     expect(res).toEqual({
-      merged: false,
-      favorites: 0,
-      interactions: 0,
-      savedSearches: 0,
-      attachmentsNotMoved: 0,
+      kind: 'success',
+      summary: {
+        merged: false,
+        favorites: 0,
+        interactions: 0,
+        savedSearches: 0,
+        attachmentsNotMoved: 0,
+      },
     });
   });
 });

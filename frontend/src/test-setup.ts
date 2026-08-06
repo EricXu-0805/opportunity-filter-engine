@@ -14,7 +14,52 @@ function makeMemoryStorage(): Storage {
   };
 }
 
+/**
+ * jsdom has no Web Locks. Every browser this ships to does (Chrome 69,
+ * Firefox 96, Safari 15.4), and the private-storage authority treats their
+ * absence as "this browser cannot serialize, so it gets no private
+ * persistence at all" — the correct production rule, and a pure environment
+ * artefact here. Supplying a real serial implementation keeps every suite
+ * about its own subject; the fail-closed path has its own fixture that
+ * deliberately removes this again.
+ */
+function installWebLocks(): void {
+  let held = false;
+  const waiting: Array<() => void> = [];
+  const start = (
+    fn: () => unknown,
+    resolve: (v: unknown) => void,
+    reject: (e: unknown) => void,
+  ): void => {
+    held = true;
+    const done = (): void => { held = false; waiting.shift()?.(); };
+    let out: unknown;
+    try {
+      out = fn();
+    } catch (err) {
+      done();
+      reject(err);
+      return;
+    }
+    Promise.resolve(out).then(
+      (v) => { done(); resolve(v); },
+      (e) => { done(); reject(e); },
+    );
+  };
+  Object.defineProperty(navigator, 'locks', {
+    configurable: true,
+    writable: true,
+    value: {
+      request: (_name: string, _opts: unknown, fn: () => unknown) => new Promise((resolve, reject) => {
+        if (held) waiting.push(() => start(fn, resolve, reject));
+        else start(fn, resolve, reject);
+      }),
+    },
+  });
+}
+
 if (typeof window !== 'undefined') {
+  installWebLocks();
   const needsLocal = !window.localStorage || typeof window.localStorage.setItem !== 'function';
   const needsSession = !window.sessionStorage || typeof window.sessionStorage.setItem !== 'function';
   if (needsLocal) {

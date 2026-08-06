@@ -14,6 +14,11 @@ vi.mock('@/i18n/client', () => ({
 vi.mock('@/lib/api', () => ({
   getGapAnalysis: vi.fn(),
   getResponsivenessSignals: vi.fn().mockResolvedValue({}),
+  // TailorModal (rendered for real when the Tailor CTA opens it — see the
+  // "Tailor CTA" describe block below) probes these on open.
+  getTailorStatus: vi.fn().mockResolvedValue({ ai_available: true }),
+  tailorResume: vi.fn(),
+  extractResumeBullets: vi.fn(),
 }));
 
 import MatchCard from './MatchCard';
@@ -325,6 +330,103 @@ describe('MatchCard', () => {
       );
       fireEvent.click(screen.getByLabelText(/favorites/i));
       expect(handler).toHaveBeenCalledWith('opp-xyz');
+    });
+  });
+
+  describe('per-card save failure/retry (favSaveError / trackSaveError)', () => {
+    it('renders no error UI when favSaveError/trackSaveError are unset', () => {
+      render(
+        <MatchCard
+          match={makeMatch()}
+          onDraftEmail={() => {}}
+          onToggleFavorite={() => {}}
+          onTrackInteraction={() => {}}
+        />,
+      );
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('renders a visible favSaveError with a Retry that calls onRetryFavSave with THIS card\'s opportunity id', () => {
+      const onRetryFavSave = vi.fn();
+      render(
+        <MatchCard
+          match={makeMatch({ id: 'opp-xyz' })}
+          onDraftEmail={() => {}}
+          onToggleFavorite={() => {}}
+          favSaveError
+          onRetryFavSave={onRetryFavSave}
+        />,
+      );
+      expect(screen.getByText('results.favSaveError')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('common.retry'));
+      expect(onRetryFavSave).toHaveBeenCalledWith('opp-xyz');
+    });
+
+    it('renders a visible trackSaveError with a Retry that calls onRetryTrackSave with THIS card\'s opportunity id', () => {
+      const onRetryTrackSave = vi.fn();
+      render(
+        <MatchCard
+          match={makeMatch({ id: 'opp-xyz' })}
+          onDraftEmail={() => {}}
+          onTrackInteraction={() => {}}
+          trackSaveError
+          onRetryTrackSave={onRetryTrackSave}
+        />,
+      );
+      expect(screen.getByText('results.trackSaveError')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('common.retry'));
+      expect(onRetryTrackSave).toHaveBeenCalledWith('opp-xyz');
+    });
+
+    it('favSaveError and trackSaveError render independently — one does not imply or hide the other', () => {
+      render(
+        <MatchCard
+          match={makeMatch()}
+          onDraftEmail={() => {}}
+          onToggleFavorite={() => {}}
+          onTrackInteraction={() => {}}
+          favSaveError
+          trackSaveError
+        />,
+      );
+      expect(screen.getByText('results.favSaveError')).toBeInTheDocument();
+      expect(screen.getByText('results.trackSaveError')).toBeInTheDocument();
+    });
+  });
+
+  describe('Tailor CTA — fail-closed on ownerReady (C1-R2B)', () => {
+    it('ownerReady=false (including the unspecified default) disables the Tailor CTA and never opens the modal', () => {
+      const { rerender } = render(
+        <MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={() => {}} />,
+      );
+      let tailorBtn = screen.getByText('card.tailorResume').closest('button')!;
+      expect(tailorBtn).toBeDisabled();
+      fireEvent.click(tailorBtn);
+      expect(screen.queryByText('tailor.title')).toBeNull(); // never opened
+
+      rerender(
+        <MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={() => {}} ownerReady={false} />,
+      );
+      tailorBtn = screen.getByText('card.tailorResume').closest('button')!;
+      expect(tailorBtn).toBeDisabled();
+      fireEvent.click(tailorBtn);
+      expect(screen.queryByText('tailor.title')).toBeNull();
+    });
+
+    it('ownerReady=true enables the Tailor CTA, and a real click actually opens the modal', async () => {
+      render(
+        <MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={() => {}} ownerReady />,
+      );
+      const tailorBtn = screen.getByText('card.tailorResume').closest('button')!;
+      expect(tailorBtn).not.toBeDisabled();
+      fireEvent.click(tailorBtn);
+      // TailorModal is loaded via next/dynamic({ssr:false}) — its content
+      // resolves asynchronously even in this test environment, so a real
+      // click's effect is only observable through an async query. A
+      // synchronous getByText/queryByText here would pass even against an
+      // onClick that does nothing at all (or opens a different modal) —
+      // findByText is what actually proves the click opened THIS modal.
+      expect(await screen.findByText('tailor.title')).toBeInTheDocument();
     });
   });
 

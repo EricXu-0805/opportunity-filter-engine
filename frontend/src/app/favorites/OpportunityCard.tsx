@@ -37,6 +37,12 @@ export interface OpportunityCardProps {
    * times across the saved list.
    */
   onOpenTailorModal?: (opp: Opp) => void;
+  /** True while the owner identity isn't confirmed yet — fail-closed gate
+   *  for the Tailor CTA (see ownerReady in use-favorites-data.ts).
+   *  REQUIRED (no default) so a caller can never forget it and end up
+   *  silently fail-OPEN — every call site must make an explicit,
+   *  considered choice. */
+  tailorDisabled: boolean;
   t: TFunc;
 }
 
@@ -52,6 +58,7 @@ export function OpportunityCard({
   onRemove,
   onOpenEmailModal,
   onOpenTailorModal,
+  tailorDisabled,
   t,
 }: OpportunityCardProps) {
   // R70-E: switched from inline ternaries to the shared badge-utils
@@ -163,7 +170,9 @@ export function OpportunityCard({
                 <button
                   type="button"
                   onClick={() => onOpenTailorModal(opp)}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors duration-200"
+                  disabled={tailorDisabled}
+                  aria-busy={tailorDisabled}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors duration-200"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   {t('card.tailorResume')}

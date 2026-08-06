@@ -153,13 +153,29 @@ BEGIN
   PERFORM 1 FROM merge_grants WHERE token=tok AND consumed_at IS NOT NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s1: grant not consumed'; END IF;
 
-  -- ---- replay: same token again must be rejected ----
+  -- ---- replay: same account, same token -> idempotent (026): returns the
+  -- exact stored result, does not re-run the merge (row counts below still
+  -- reflect exactly one merge's worth of movement) ----
+  DECLARE
+    replay_res jsonb;
+  BEGIN
+    replay_res := redeem_merge_grant(tok);
+    IF replay_res <> res THEN
+      RAISE EXCEPTION 'TEST FAIL s1 replay: expected identical replayed result, got % vs original %', replay_res, res;
+    END IF;
+  END;
+  SELECT count(*) INTO c FROM favorites WHERE device_id = a;
+  IF c <> 2 THEN RAISE EXCEPTION 'TEST FAIL s1 replay: favorites re-merged (want 2 got %)', c; END IF;
+
+  -- ---- replay: a DIFFERENT account (cross-uid) must still be rejected ----
+  PERFORM set_config('test.uid', '12121212-1212-4212-8212-121212121212', false);
+  PERFORM set_config('test.jwt', '{"email":"accountA@ex.com"}', false);
   BEGIN
     PERFORM redeem_merge_grant(tok);
-    RAISE EXCEPTION 'TEST FAIL s1 replay: second redeem should have failed';
+    RAISE EXCEPTION 'TEST FAIL s1 replay cross-uid: should have failed';
   EXCEPTION WHEN others THEN
     IF sqlerrm NOT LIKE '%already used%' THEN
-      RAISE EXCEPTION 'TEST FAIL s1 replay: wrong error %', sqlerrm;
+      RAISE EXCEPTION 'TEST FAIL s1 replay cross-uid: wrong error %', sqlerrm;
     END IF;
   END;
 

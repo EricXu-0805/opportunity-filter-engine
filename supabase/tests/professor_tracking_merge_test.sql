@@ -1,6 +1,10 @@
 -- Professor tracking merge test (migrations 022 + 023). Runs after
--- flow_b_merge_test.sql in the same ephemeral cluster, so it uses fresh
--- actor uids (7/8) that no prior scenario has minted, merged, or tombstoned.
+-- flow_b_merge_test.sql in the same ephemeral cluster, so it needs actor uids
+-- no prior scenario has minted, merged, or tombstoned. The original 7/8 pair
+-- did NOT satisfy that: flow_b scenario 7 already uses 7777… as a merge
+-- SOURCE, which tombstones it — so this file was redeeming INTO a dead
+-- account. 027's target-tombstone guard rejects that, correctly; the actors
+-- below are genuinely unused.
 --
 -- Asserts that redeem_merge_grant (as replaced by 023) claims BOTH new
 -- tables: professor_follows as a set union with target-wins on the
@@ -13,8 +17,8 @@ SET client_min_messages = warning;
 
 DO $$
 DECLARE
-  t text := '77777777-7777-4777-8777-777777777777';  -- target account
-  s text := '88888888-8888-4888-8888-888888888888';  -- anon source device
+  t text := '71717171-7171-4171-8171-717171717171';  -- target account
+  s text := '82828282-8282-4282-8282-828282828282';  -- anon source device
   prof_shared text := 'prof:v1:uiuc:aaaaaaaaaaaaaaaaaaaa';
   prof_target text := 'prof:v1:uiuc:bbbbbbbbbbbbbbbbbbbb';
   prof_source text := 'prof:v1:stanford:cccccccccccccccccccc';
@@ -86,14 +90,14 @@ DO $$
 BEGIN
   BEGIN
     INSERT INTO professor_follows (device_id, professor_id)
-      VALUES ('77777777-7777-4777-8777-777777777777', 'faculty-uiuc-not-a-tracking-id');
+      VALUES ('71717171-7171-4171-8171-717171717171', 'faculty-uiuc-not-a-tracking-id');
     RAISE EXCEPTION 'TEST FAIL prof-merge: malformed professor_id was accepted';
   EXCEPTION WHEN check_violation THEN
     NULL;  -- expected
   END;
   BEGIN
     INSERT INTO professor_update_reads (device_id, professor_id, last_read_event_id)
-      VALUES ('77777777-7777-4777-8777-777777777777',
+      VALUES ('71717171-7171-4171-8171-717171717171',
               'prof:v1:uiuc:dddddddddddddddddddd', 'not-an-event-id');
     RAISE EXCEPTION 'TEST FAIL prof-merge: malformed last_read_event_id was accepted';
   EXCEPTION WHEN check_violation THEN

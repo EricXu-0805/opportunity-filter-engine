@@ -98,6 +98,50 @@ describe('useFavoritesData — loading / true-empty / error+retry', () => {
   });
 });
 
+describe('useFavoritesData — identityGeneration is driven ONLY by a real uid transition, never by retry/ownerReady cycling', () => {
+  it('a manual retry (same owner) re-loads the data but does NOT bump identityGeneration or change ownerScopeKey', async () => {
+    mocks.getAuthState.mockResolvedValueOnce({
+      session: {}, user: { id: 'u1' }, isAnonymous: false, email: 'u1@x.com',
+    });
+    mocks.getFavorites
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(new Set());
+
+    const { result } = renderHook(() => useFavoritesData());
+    await waitFor(() => expect(result.current.error).toBe(true));
+    const genBeforeRetry = result.current.identityGeneration;
+    expect(genBeforeRetry).toBeGreaterThan(0);
+    expect(result.current.ownerScopeKey).toBe('u1');
+
+    act(() => { result.current.retry(); });
+    expect(result.current.loading).toBe(true); // a real, fresh load attempt is in flight
+    expect(result.current.identityGeneration).toBe(genBeforeRetry); // unchanged BEFORE the retry settles
+    expect(result.current.ownerScopeKey).toBe('u1');
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.identityGeneration).toBe(genBeforeRetry); // still unchanged AFTER it settles
+    expect(result.current.ownerScopeKey).toBe('u1');
+  });
+
+  it('ownerReady cycling false->true->false->true across a retry never touches identityGeneration', async () => {
+    mocks.getFavorites.mockResolvedValueOnce(new Set());
+    const { result } = renderHook(() => useFavoritesData());
+    await waitFor(() => expect(result.current.ownerReady).toBe(true));
+    const gen = result.current.identityGeneration;
+
+    mocks.getFavorites.mockRejectedValueOnce(new Error('boom'));
+    act(() => { result.current.retry(); });
+    expect(result.current.ownerReady).toBe(false); // reset for the new attempt
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.identityGeneration).toBe(gen);
+
+    mocks.getFavorites.mockResolvedValueOnce(new Set());
+    act(() => { result.current.retry(); });
+    await waitFor(() => expect(result.current.ownerReady).toBe(true));
+    expect(result.current.identityGeneration).toBe(gen); // still the SAME generation throughout
+  });
+});
+
 describe('useFavoritesData — partial accounting', () => {
   it('a partial response preserves the found rows and reports the unavailable count, without dropping the missing ids anywhere', async () => {
     mocks.getFavorites.mockResolvedValue(new Set(['a', 'missing-1', 'missing-2']));
@@ -135,7 +179,7 @@ describe('useFavoritesData — handleRemove generation guard', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => { await result.current.handleRemove({ id: 'x', title: 'X', _customId: 'x' }); });
-    expect(mocks.removeCustomImport).toHaveBeenCalledWith('x');
+    expect(mocks.removeCustomImport).toHaveBeenCalledWith('x', expect.objectContaining({ uid: null }));
     expect(mocks.toggleFavorite).not.toHaveBeenCalled();
   });
 

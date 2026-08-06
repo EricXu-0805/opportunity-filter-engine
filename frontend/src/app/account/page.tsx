@@ -8,7 +8,7 @@
  * profile they've built.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   BookmarkCheck,
@@ -29,10 +29,10 @@ import {
   getFavorites,
   getInteractionsFull,
   joinWaitlist,
-  loadProfile,
   onAuthChange,
   type AuthState,
 } from '@/lib/supabase';
+import { hydrateProfile } from '@/lib/profile-sync';
 
 interface Snapshot {
   name: string;
@@ -63,6 +63,13 @@ function toSnapshot(raw: Record<string, unknown> | null): Snapshot {
   };
 }
 
+// Sentinel: expectedUidRef starts here before any live auth event has ever
+// fired, meaning "no live-confirmed uid to check a load's result against
+// yet — trust getAuthState()'s own resolution." Once any live event
+// fires, expectedUidRef holds a real uid (or null), never this sentinel
+// again — see the load() commit check below.
+const UNCONSTRAINED = Symbol('unconstrained');
+
 export default function AccountPage() {
   const { t } = useT();
   const { openModal } = useAuthModal();
@@ -71,35 +78,98 @@ export default function AccountPage() {
   const [favCount, setFavCount] = useState<number | null>(null);
   const [trackCount, setTrackCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  // Bumped on EVERY live auth event whose uid differs from the last KNOWN
+  // live uid — including the very first event after subscribing. A first
+  // event that happens to report a DIFFERENT identity than whatever the
+  // mount's own fetch is loading under is a real, authoritative signal
+  // that fetch is already stale; treating "first event" as automatically
+  // harmless (the original design) let a slow mount-time fetch commit
+  // U1's data even after a live switch to U2 arrived before it resolved.
+  const generationRef = useRef(0);
+  const lastUidRef = useRef<string | null | undefined>(undefined);
+  const cancelledRef = useRef(false);
+  // UNCONSTRAINED until the first live event fires — the mount's own load
+  // has no live-confirmed uid to check itself against yet, so it trusts
+  // whatever getAuthState() resolves to. Once ANY live event fires, this
+  // becomes the ground truth every subsequent commit must match — even
+  // WITHIN the same generation, a load's own getAuthState() call could
+  // itself return a stale uid unrelated to this component's generation
+  // counter, which would otherwise let a mismatched auth pair with the
+  // new owner's profile/favorites/interactions in one commit.
+  const expectedUidRef = useRef<string | null | symbol>(UNCONSTRAINED);
+
+  const load = useCallback(async (generation: number) => {
+    try {
+      const [authState, hydration, favs, interactions] = await Promise.all([
+        getAuthState(),
+        hydrateProfile(),
+        getFavorites(),
+        getInteractionsFull(),
+      ]);
+      if (cancelledRef.current || generationRef.current !== generation) return;
+      const expected = expectedUidRef.current;
+      if (expected !== UNCONSTRAINED && (authState.user?.id ?? null) !== expected) {
+        // Internally inconsistent resolution — getAuthState() reported a
+        // DIFFERENT identity than the one this load was triggered for,
+        // even though nothing has superseded this generation. Committing
+        // anyway would pair one identity's auth with another's
+        // profile/favorites/interactions in a single render. Surface as
+        // retryable rather than silently leaving stale/cleared state.
+        setLoadError(true);
+        return;
+      }
+      setAuth(authState);
+      setSnapshot(toSnapshot(hydration.profile as Record<string, unknown> | null));
+      setFavCount(favs.size);
+      setTrackCount(interactions.size);
+      setLoadError(false);
+    } catch {
+      // A rejected auth/storage promise is NOT the same as "confirmed no
+      // profile" — that used to render toSnapshot(null) (a fabricated
+      // empty-profile screen). Surface a distinct retry state instead so
+      // a transient failure can never look like "you have no data yet."
+      if (cancelledRef.current || generationRef.current !== generation) return;
+      setLoadError(true);
+    } finally {
+      if (!cancelledRef.current && generationRef.current === generation) setLoading(false);
+    }
+  }, []);
+
+  const retry = useCallback(() => {
+    setLoading(true);
+    load(generationRef.current);
+  }, [load]);
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [authState, profile, favs, interactions] = await Promise.all([
-          getAuthState(),
-          loadProfile(),
-          getFavorites(),
-          getInteractionsFull(),
-        ]);
-        if (cancelled) return;
-        setAuth(authState);
-        setSnapshot(toSnapshot(profile));
-        setFavCount(favs.size);
-        setTrackCount(interactions.size);
-      } catch {
-        // A rejected auth/storage promise must never strand the page on the
-        // loading spinner — fall through to render the guest + empty-profile
-        // state instead of an infinite "Loading…".
-        if (!cancelled) setSnapshot(toSnapshot(null));
-      } finally {
-        if (!cancelled) setLoading(false);
+    cancelledRef.current = false;
+    load(generationRef.current);
+    const unsub = onAuthChange((s) => {
+      if (cancelledRef.current) return;
+      const uid = s.user?.id ?? null;
+      if (uid === lastUidRef.current) {
+        // A genuine same-uid re-observation (TOKEN_REFRESHED etc.) — no
+        // reset needed, but this DOES confirm the expected uid going
+        // forward for any load that hasn't committed yet.
+        expectedUidRef.current = uid;
+        setAuth(s);
+        return;
       }
-    }
-    load();
-    const unsub = onAuthChange((s) => { if (!cancelled) setAuth(s); });
-    return () => { cancelled = true; unsub(); };
-  }, []);
+      // Every uid change — INCLUDING the very first event this component
+      // ever observes (lastUidRef.current starts undefined, which never
+      // equals a real uid or null) — is authoritative: invalidate
+      // whatever is in flight and rehydrate fresh under this identity.
+      lastUidRef.current = uid;
+      expectedUidRef.current = uid;
+      generationRef.current += 1;
+      setAuth(s);
+      setLoadError(false);
+      setLoading(true);
+      load(generationRef.current);
+    });
+    return () => { cancelledRef.current = true; unsub(); };
+  }, [load]);
 
   const isPermanent = Boolean(auth?.user && !auth.isAnonymous);
   const email = auth?.email ?? '';
@@ -114,6 +184,21 @@ export default function AccountPage() {
 
       {loading ? (
         <p className="text-sm text-gray-400">{t('account.loading')}</p>
+      ) : loadError ? (
+        // auth stays null on ANY rejected load — rendering the normal
+        // identity/profile/activity cards here would show a CONFIRMED
+        // "guest"/"no profile" state built from data we never actually
+        // resolved. Show only the error + Retry until a load succeeds.
+        <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-red-50 border border-red-200">
+          <p className="text-[13px] text-red-700">{t('account.loadError')}</p>
+          <button
+            type="button"
+            onClick={retry}
+            className="shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium text-red-700 bg-white border border-red-200 hover:bg-red-100 transition-colors"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
       ) : (
         <div className="space-y-6">
           {/* ── Identity ── */}
@@ -237,6 +322,15 @@ export default function AccountPage() {
                 <p className="text-sm font-semibold text-gray-900">{t('account.premiumTitle')}</p>
                 <p className="text-[13px] text-gray-500 mt-0.5">{t('account.premiumDesc')}</p>
               </div>
+              {/* No explicit key/reset needed: every identity transition
+                  round-trips through the `loading` gate above, which
+                  unmounts this ENTIRE branch (a different element type at
+                  this tree position) and mounts a fresh one once the new
+                  owner's load commits — PremiumIntent's internal
+                  email/phase state is destroyed and reseeded from the new
+                  `email` prop along with everything else here, not carried
+                  over. Confirmed via mutation: removing a bespoke key had
+                  no effect on any test. */}
               <PremiumIntent defaultEmail={email} />
             </div>
           </Card>

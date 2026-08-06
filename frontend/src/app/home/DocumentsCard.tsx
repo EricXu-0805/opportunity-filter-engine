@@ -16,10 +16,12 @@ const ResumeUpload = dynamic(() => import('@/components/ResumeUpload'), {
 export function DocumentsCard({
   profile,
   onResumeParsed,
+  onResumeRemoved,
   t,
 }: {
   profile: ProfileData;
   onResumeParsed: (data: ResumeParseResponse) => void;
+  onResumeRemoved: () => void;
   t: TFunc;
 }) {
   return (
@@ -34,7 +36,11 @@ export function DocumentsCard({
         </div>
       </div>
 
-      <ResumeUpload onParsed={onResumeParsed} alreadyUploaded={!!profile.resume_text} />
+      <ResumeUpload
+        onParsed={onResumeParsed}
+        onRemove={onResumeRemoved}
+        alreadyUploaded={!!profile.resume_text}
+      />
 
       <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-indigo-50/60">
         <Upload className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />

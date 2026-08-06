@@ -1,65 +1,206 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BellRing, StickyNote } from 'lucide-react';
 import type { InteractionRecord } from '@/lib/supabase';
+import type { SaveDetailsResult } from './use-opportunity-detail';
 import type { TFunc } from './types';
 
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), { ssr: false });
 const AttachmentsPanel = dynamic(() => import('@/components/AttachmentsPanel'), { ssr: false });
 const StatusTimeline = dynamic(() => import('@/components/StatusTimeline'), { ssr: false });
 
+type NotesPatch = { notes?: string | null; remind_at?: string | null };
+
+// The SAME transforms applied on the wire — dirty comparisons and patch
+// construction must use these consistently on BOTH the draft and the
+// baseline. Comparing a raw draft ("  hi  ") against an already-normalized
+// baseline ("hi") would make the field look permanently dirty even right
+// after its own save committed, dragging it along on every later save of
+// an unrelated field (breaking the sparse-patch contract).
+function normalizeNotes(v: string): string | null {
+  return v.trim() ? v.trim().slice(0, 2000) : null;
+}
+function normalizeRemindAt(v: string): string | null {
+  return v || null;
+}
+
 export function TrackerPanel({
   detail,
   onSave,
   opportunityId,
   hasInteraction,
+  /** False while the owner/interaction-read state this panel writes
+   *  against is not yet trustworthy (owner not primed, read loading/
+   *  failed, no status yet, or a status write in flight) — see
+   *  OpportunityDetail.tsx's computation. Disables every edit control:
+   *  typing while a slow read is still in flight risks auto-saving a
+   *  draft against a target that hasn't actually confirmed its current
+   *  state yet, and a save attempted while not ready would resolve
+   *  'abandoned' with no UI path back to retry it. Defaults to true so
+   *  existing callers/tests that don't pass it are unaffected. */
+  writeReady = true,
   t,
 }: {
   detail: InteractionRecord | null;
-  onSave: (patch: { notes?: string | null; remind_at?: string | null }) => Promise<void>;
+  onSave: (patch: NotesPatch) => Promise<SaveDetailsResult>;
   opportunityId: string;
   hasInteraction: boolean;
+  writeReady?: boolean;
   t: TFunc;
 }) {
   const [open, setOpen] = useState(!!(detail?.notes || detail?.remind_at));
   const [notes, setNotes] = useState(detail?.notes ?? '');
   const [remindAt, setRemindAt] = useState(detail?.remind_at ?? '');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [notesMode, setNotesMode] = useState<'edit' | 'preview'>('edit');
 
+  // Each field's own last-CONFIRMED-from-parent baseline — separate from
+  // the `notes`/`remindAt` DRAFT state above. A parent detail rewrite (an
+  // earlier save's own round-trip landing, possibly after the user has
+  // since started a newer, still-uncommitted edit) may only update a field
+  // that is NOT currently dirty relative to its baseline; it must never
+  // stomp a dirty draft — that is the "N1 completion overwrites N2" bug.
+  const notesBaselineRef = useRef(detail?.notes ?? '');
+  const remindAtBaselineRef = useRef(detail?.remind_at ?? '');
+  // Bumped SYNCHRONOUSLY on every keystroke (onChange), NOT when a
+  // debounced attemptSave eventually starts — a save started for N1 must
+  // be recognized as stale the INSTANT the user begins typing N2, even
+  // though N2's own debounce hasn't fired yet 600ms later. Bumping this
+  // only at attemptSave-start would leave a window where N1's completion
+  // (while N2 is drafted but not yet attempted) could still flash
+  // Saved/Error over the user's fresher, uncommitted edit.
+  const draftRevisionRef = useRef(0);
+  // The EXACT sparse patch that last failed — Retry replays this verbatim,
+  // never a fresh dirty-diff recomputed at retry time (which could differ
+  // if some other field changed in between). Cleared the INSTANT a new
+  // edit happens (see the onChange handlers) so a stale Retry can never
+  // write back a patch the user has already changed their mind about.
+  const lastFailedPatchRef = useRef<NotesPatch | null>(null);
+
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect --
-       Sync internal editor state when the parent's `detail` updates
-       (e.g. after the debounced save below round-trips through
-       Supabase). Using key-remount would close the editor on every
-       save — the wrong UX since the user might still be typing. */
-    setNotes(detail?.notes ?? '');
-    setRemindAt(detail?.remind_at ?? '');
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [detail?.notes, detail?.remind_at]);
+    // The functional updater reads the CURRENT draft at flush time (never
+    // a closure over the outer `notes` variable), so the dirty comparison
+    // is always against the freshest value with no stale-closure risk —
+    // and the effect's own deps genuinely need only detail?.notes.
+    const oldBaseline = notesBaselineRef.current;
+    const nextBaseline = detail?.notes ?? '';
+    notesBaselineRef.current = nextBaseline;
+    setNotes((cur) => (cur === oldBaseline ? nextBaseline : cur));
+  }, [detail?.notes]);
+
+  useEffect(() => {
+    // See the notes effect above; independent per field.
+    const oldBaseline = remindAtBaselineRef.current;
+    const nextBaseline = detail?.remind_at ?? '';
+    remindAtBaselineRef.current = nextBaseline;
+    setRemindAt((cur) => (cur === oldBaseline ? nextBaseline : cur));
+  }, [detail?.remind_at]);
+
+  // A new edit ALWAYS invalidates a stale failure/retry immediately — the
+  // user should never be able to click a Retry button that would write
+  // back a patch for a draft they've since changed. Bumping the revision
+  // here (not at attemptSave-start) is also what makes an in-flight save
+  // correctly recognize itself as superseded the instant the next edit
+  // happens, not 600ms later when that edit's own debounce fires.
+  function handleNotesChange(value: string) {
+    // The `disabled` attribute on the textarea is a UI-layer defense
+    // (blocks real browser typing) but not a logic-layer guarantee — this
+    // check is what actually makes it impossible to register an edit while
+    // not writeReady, regardless of how the change event was dispatched.
+    if (!writeReady) return;
+    draftRevisionRef.current += 1;
+    if (saveStatus === 'error') { setSaveStatus('idle'); lastFailedPatchRef.current = null; }
+    setNotes(value);
+  }
+  function handleRemindAtChange(value: string) {
+    if (!writeReady) return;
+    draftRevisionRef.current += 1;
+    if (saveStatus === 'error') { setSaveStatus('idle'); lastFailedPatchRef.current = null; }
+    setRemindAt(value);
+  }
+
+  // Shared by the debounced auto-save effect and the manual Retry button.
+  // Without an explicit `patchOverride`, computes a SPARSE patch from
+  // whichever field(s) currently differ from their own baseline (compared
+  // using the SAME normalize* transforms as the wire patch — see their doc
+  // comment for why raw comparison would falsely stay dirty forever) — a
+  // notes-only edit must never carry remind_at (and vice versa), so a
+  // concurrent edit to the other field via some other path is never
+  // silently reverted to whatever this component happened to be showing
+  // for it. `patchOverride` is used by Retry to replay the EXACT patch
+  // that failed, not a recomputation.
+  //
+  // onSave (the hook's saveDetails) resolves to a discriminated result —
+  // 'committed' only after real persistence; 'abandoned' covers every
+  // precondition/generation-moved-on case — and only 'committed' is
+  // treated as "Saved". A genuine failure for the current context throws.
+  async function attemptSave(patchOverride?: NotesPatch) {
+    if (!writeReady) { setSaveStatus('idle'); return; } // never actually attempt while not ready
+    const patch: NotesPatch = patchOverride ?? {};
+    if (!patchOverride) {
+      const notesDirty = normalizeNotes(notes) !== normalizeNotes(notesBaselineRef.current);
+      const remindAtDirty = normalizeRemindAt(remindAt) !== normalizeRemindAt(remindAtBaselineRef.current);
+      if (notesDirty) patch.notes = normalizeNotes(notes);
+      if (remindAtDirty) patch.remind_at = normalizeRemindAt(remindAt);
+      if (!notesDirty && !remindAtDirty) {
+        setSaveStatus('idle'); // nothing to save — clear a stale 'saving' left over from before the draft matched baseline again
+        return;
+      }
+    }
+    const myRevision = draftRevisionRef.current;
+    setSaveStatus('saving');
+    try {
+      const result = await onSave(patch);
+      if (myRevision !== draftRevisionRef.current) return; // a newer edit has since happened
+      if (result.status === 'committed') {
+        lastFailedPatchRef.current = null;
+        setSaveStatus('saved');
+        setTimeout(() => { if (myRevision === draftRevisionRef.current) setSaveStatus('idle'); }, 1500);
+      } else {
+        // 'abandoned' — precondition/generation moved on, not the user's
+        // fault; the identity-generation-keyed remount (see
+        // OpportunityDetail.tsx) already handles a real account switch by
+        // unmounting this component entirely, so quietly returning to idle
+        // is correct here rather than flashing an error.
+        setSaveStatus('idle');
+      }
+    } catch {
+      if (myRevision !== draftRevisionRef.current) return;
+      lastFailedPatchRef.current = patch;
+      setSaveStatus('error');
+    }
+  }
 
   useEffect(() => {
     // Notes/reminders persist on the interactions row, so saving with no
     // status would have to invent one ('applied' = a send event the user
     // never reported). No status yet → no auto-save; the statusFirst hint
-    // below asks the user to pick one instead.
-    if (!hasInteraction) return;
-    if (notes === (detail?.notes ?? '') && remindAt === (detail?.remind_at ?? '')) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced save side effect; setSaveStatus must run sync to show 'saving…' before the 600ms timer fires
+    // below asks the user to pick one instead. Not writeReady means the
+    // same thing for a different reason (untrustworthy read, or a status
+    // write in flight) — see the prop doc comment. Neither branch may
+    // leave a stale 'saving' indicator behind: nothing is actually
+    // happening once we bail out here.
+    if (!hasInteraction || !writeReady) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears a stale indicator left over from before hasInteraction/writeReady flipped false; no timer is scheduled in this branch
+      setSaveStatus('idle');
+      return;
+    }
+    if (
+      normalizeNotes(notes) === normalizeNotes(detail?.notes ?? '') &&
+      normalizeRemindAt(remindAt) === normalizeRemindAt(detail?.remind_at ?? '')
+    ) {
+      // Clears a stale 'saving' left over from before the user reverted
+      // their draft back to baseline within the 600ms window.
+      setSaveStatus('idle');
+      return;
+    }
     setSaveStatus('saving');
-    const timer = setTimeout(async () => {
-      await onSave({
-        notes: notes.trim() ? notes.trim().slice(0, 2000) : null,
-        remind_at: remindAt || null,
-      });
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 1500);
-    }, 600);
+    const timer = setTimeout(() => { void attemptSave(); }, 600);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, remindAt, hasInteraction]);
+  }, [notes, remindAt, hasInteraction, writeReady]);
 
   const hasContent = !!(notes || remindAt);
 
@@ -96,6 +237,19 @@ export function TrackerPanel({
           {!hasInteraction && (
             <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
               {t('detail.tracker.statusFirst')}
+            </p>
+          )}
+          {saveStatus === 'error' && (
+            <p role="alert" className="flex items-center gap-2 text-[11px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5">
+              {t('detail.tracker.saveError')}
+              <button
+                type="button"
+                onClick={() => { void attemptSave(lastFailedPatchRef.current ?? undefined); }}
+                disabled={!writeReady}
+                className="font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded disabled:opacity-50 disabled:cursor-wait"
+              >
+                {t('common.retry')}
+              </button>
             </p>
           )}
           {detail?.type && detail?.updated_at && (
@@ -139,11 +293,12 @@ export function TrackerPanel({
                 <span className="sr-only">{t('detail.sections.description')}</span>
                 <textarea
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => handleNotesChange(e.target.value)}
+                  disabled={!writeReady}
                   maxLength={2000}
                   rows={3}
                   placeholder={t('detail.tracker.notesPlaceholder')}
-                  className="w-full px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 resize-y"
+                  className="w-full px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 resize-y disabled:opacity-60 disabled:cursor-wait"
                 />
                 <div className="flex justify-between mt-1 text-[10px] text-gray-400">
                   <span className="italic">{t('detail.tracker.markdownHint')}</span>
@@ -169,14 +324,16 @@ export function TrackerPanel({
             <input
               type="date"
               value={remindAt}
-              onChange={(e) => setRemindAt(e.target.value)}
-              className="px-2 py-1 text-[12px] bg-white border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              onChange={(e) => handleRemindAtChange(e.target.value)}
+              disabled={!writeReady}
+              className="px-2 py-1 text-[12px] bg-white border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60 disabled:cursor-wait"
             />
             {remindAt && (
               <button
                 type="button"
-                onClick={() => setRemindAt('')}
-                className="text-[11px] text-gray-400 hover:text-red-500 transition-colors"
+                onClick={() => handleRemindAtChange('')}
+                disabled={!writeReady}
+                className="text-[11px] text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-wait"
               >
                 {t('common.clear')}
               </button>

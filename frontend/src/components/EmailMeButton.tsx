@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
+import { captureOwnerToken, readUserScopedRaw, writeUserScopedRaw } from '@/lib/identity-owner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
@@ -33,10 +34,8 @@ export default function EmailMeButton({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleOpen = useCallback(() => {
-    try {
-      const cached = localStorage.getItem(LS_KEY);
-      if (cached) setEmail(cached);
-    } catch { /* noop */ }
+    const cached = readUserScopedRaw(LS_KEY);
+    if (cached) setEmail(cached);
     setOpen(true);
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
@@ -58,9 +57,13 @@ export default function EmailMeButton({
     }
     setState('sending');
     setMessage(null);
+    // Captured before the send await: the hint write below must be
+    // attributed to the identity that was active when the user submitted,
+    // never one that resolves only later once the request completes.
+    const token = captureOwnerToken();
     try {
       await onSend(trimmed);
-      try { localStorage.setItem(LS_KEY, trimmed); } catch { /* quota */ }
+      writeUserScopedRaw(LS_KEY, trimmed, token);
       setState('sent');
       setMessage(t('email.sentMessage'));
       setTimeout(() => { setOpen(false); setState('idle'); setMessage(null); }, 2500);

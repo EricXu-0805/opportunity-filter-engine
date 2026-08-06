@@ -16,6 +16,7 @@
 // payloads may contain an address copied into a public text or URL field.
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { captureOwnerToken, isOwnerTokenValid, readUserScopedRaw, removeUserScopedRaw, writeUserScopedRaw, type OwnerToken } from '@/lib/identity-owner';
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = STORAGE_KEYS.MATCH_RESULTS;
@@ -140,30 +141,70 @@ export function hasValidMatchResultIdentity(results: unknown): results is MatchR
   return true;
 }
 
+// Legacy (pre-v7) key names — NOT in USER_SCOPED_KEYS (only the CURRENT
+// ofe_match_results_v7 is registered there), so these stay on raw
+// localStorage.removeItem: they are dead, superseded key names being swept
+// up as a one-time migration cleanup, never data anyone currently owns or
+// reads. The static USER_SCOPED contract test allowlists exactly these
+// literals for that reason.
 function removeObsoleteMatchCaches(): void {
   for (const key of OBSOLETE_MATCH_KEYS) {
     try { localStorage.removeItem(key); } catch { /* ignore */ }
   }
 }
 
+// Fail-closed backstop for the case removeUserScopedRaw's own read-back
+// verification is designed to catch but a caller here must still degrade
+// safely from: a write fails (quota) AND the fallback clearMatchCache
+// below ALSO cannot VERIFY the stale/half-written entry is gone (a thrown
+// removeItem, or a read-back that still finds it there). Storage itself is
+// left in an unknown state at that point — this module has no way to prove
+// the single cache slot doesn't contain mismatched or half-written data —
+// so reads fail closed for the REST of this session rather than risk
+// serving it. Scoped to the SPECIFIC (uid, epoch) this happened under: a
+// later, genuinely different owner (a real identity transition) was never
+// the one whose cleanup failed and must never inherit the block.
+let taintedOwnerKey: string | null = null;
+
+function ownerKey(token: OwnerToken): string {
+  return `${token.uid ?? ''}:${token.epoch}`;
+}
+
+function taintForFailedCleanup(token: OwnerToken): void {
+  taintedOwnerKey = ownerKey(token);
+}
+
+function clearTaintOnSuccess(token: OwnerToken): void {
+  if (taintedOwnerKey === ownerKey(token)) taintedOwnerKey = null;
+}
+
+function isTaintedForCurrentOwner(): boolean {
+  return taintedOwnerKey !== null && taintedOwnerKey === ownerKey(captureOwnerToken());
+}
+
 function parse(): MatchCacheShape | null {
   try {
     removeObsoleteMatchCaches();
-    const raw = localStorage.getItem(KEY);
+    if (isTaintedForCurrentOwner()) return null;
+    const raw = readUserScopedRaw(KEY);
     if (!raw) return null;
     const c = JSON.parse(raw) as MatchCacheShape;
+    // Cleanup-on-read: a synchronous call with no await in between, so a
+    // freshly-captured token is trivially current — there is no staleness
+    // window for a self-correcting read to race across.
+    const token = captureOwnerToken();
     if (!c || c.version !== CACHE_VERSION) {
-      localStorage.removeItem(KEY);
+      removeUserScopedRaw(KEY, token);
       return null;
     }
     if (c.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
-      localStorage.removeItem(KEY);
+      removeUserScopedRaw(KEY, token);
       return null;
     }
     if (typeof c.savedAt !== 'number') return null;
     if (Date.now() - c.savedAt >= TTL_MS) return null;
     if (!hasValidMatchResultIdentity(c.results)) {
-      localStorage.removeItem(KEY);
+      removeUserScopedRaw(KEY, token);
       return null;
     }
     return c;
@@ -178,18 +219,48 @@ export function hasMatchCache(): boolean {
   return parse() !== null;
 }
 
-export function clearMatchCache(): void {
-  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+// `token` MUST be captured (via captureOwnerToken()) at the moment the
+// caller's own clear intent began — see writeUserScopedRaw's own doc
+// comment. A stale token silently no-ops the CURRENT-format removal (the
+// legacy-key sweep still runs regardless, since those are dead keys no
+// current owner could ever have written).
+//
+// Returns whether the CURRENT-format key was actually removed (false for
+// a stale token — removeUserScopedRaw re-validates it independently, so
+// this can never touch a DIFFERENT identity's cache no matter who calls
+// it or why). Dispatches a same-tab 'storage' event on an actual removal
+// — same-tab readers (Header's "Find Matches" link) subscribe to this,
+// not to raw sessionStorage, and writeUserScopedRaw/removeUserScopedRaw
+// themselves never dispatch it.
+export function clearMatchCache(token: OwnerToken): boolean {
+  // Captured before the attempt, not after: nothing async happens between
+  // here and removeUserScopedRaw's own call, so this is exactly "was the
+  // acting identity current for this whole attempt" — a stale token was
+  // never going to touch storage at all (removeUserScopedRaw's own gate),
+  // so a false return in that case needs no taint; only a CURRENT token
+  // whose removal still couldn't be verified means something is actually
+  // wrong with storage for THIS owner.
+  const tokenWasCurrent = isOwnerTokenValid(token, token.uid);
+  const removed = removeUserScopedRaw(KEY, token);
   removeObsoleteMatchCaches();
+  if (removed) {
+    clearTaintOnSuccess(token);
+    try { window.dispatchEvent(new StorageEvent('storage', { key: KEY })); } catch { /* SSR */ }
+    return true;
+  }
+  if (tokenWasCurrent) taintForFailedCleanup(token);
+  return false;
 }
 
 /** Persist a compact, self-contained copy of the match set (opportunities
- *  projected to display fields). */
-export function writeMatchCache(hash: string, semantic: boolean, data: MatchesResponse): void {
+ *  projected to display fields). `token` MUST be captured at the moment
+ *  the caller's own write intent began. Returns whether it actually
+ *  landed. */
+export function writeMatchCache(hash: string, semantic: boolean, data: MatchesResponse, token: OwnerToken): boolean {
   try {
     if (data.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
-      clearMatchCache();
-      return;
+      clearMatchCache(token);
+      return false;
     }
     const results = data.results.slice(0, MAX_RESULTS).map((r) => ({
       ...r,
@@ -221,11 +292,29 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       scope_available: data.scope_available,
       view_id: data.view_id,
     };
-    localStorage.setItem(KEY, JSON.stringify(payload));
+    const wrote = writeUserScopedRaw(KEY, JSON.stringify(payload), token);
+    if (!wrote) {
+      // writeUserScopedRaw returns false for TWO different reasons this
+      // function cannot itself distinguish: a stale token (clearMatchCache
+      // below then ALSO no-ops, since removeUserScopedRaw re-validates the
+      // SAME token — a different identity's cache is never touched), or a
+      // valid token whose underlying setItem failed (quota) — that clear
+      // genuinely runs, dropping the now half-written/stale entry rather
+      // than silently serving it (or a wrong-for-this-write leftover) on
+      // the next visit. If that fallback clear ALSO can't verify the entry
+      // is gone, clearMatchCache itself taints this owner+epoch so reads
+      // fail closed rather than risk serving whatever is actually left.
+      clearMatchCache(token);
+      return false;
+    }
+    clearTaintOnSuccess(token);
+    try { window.dispatchEvent(new StorageEvent('storage', { key: KEY })); } catch { /* SSR */ }
+    return true;
   } catch {
     // quota or serialization failure → drop any partial write; the caller still
     // has the live data, and returning later simply re-matches (old behavior).
-    clearMatchCache();
+    clearMatchCache(token);
+    return false;
   }
 }
 

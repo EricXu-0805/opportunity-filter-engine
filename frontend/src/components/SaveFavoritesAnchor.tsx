@@ -26,6 +26,12 @@ import {
   type AuthState,
 } from '@/lib/supabase';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import {
+  captureOwnerToken,
+  onLocalOwnerStateChange,
+  readUserScopedRaw,
+  writeUserScopedRaw,
+} from '@/lib/identity-owner';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import { useT } from '@/i18n/client';
 
@@ -37,14 +43,21 @@ interface SaveFavoritesAnchorProps {
   favoriteCount: number;
 }
 
+// A `null` read (genuinely never dismissed, OR local ownership not yet
+// confirmed for the current identity) is treated as "not dismissed" — the
+// worst case is the anchor briefly shows during the readiness window before
+// self-correcting on the next owner-state notification, not a data leak.
 function readDismissed(): boolean {
   if (typeof window === 'undefined') return true;
-  try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return true; }
+  return readUserScopedRaw(DISMISS_KEY) === '1';
 }
 
-function writeDismissed() {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* quota */ }
+// `token` MUST be captured at the moment the caller's own dismiss click
+// happened — see writeUserScopedRaw's own doc comment. Returns whether it
+// actually landed.
+function writeDismissed(token: ReturnType<typeof captureOwnerToken>): boolean {
+  if (typeof window === 'undefined') return false;
+  return writeUserScopedRaw(DISMISS_KEY, '1', token);
 }
 
 export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnchorProps) {
@@ -60,7 +73,11 @@ export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnch
     let cancelled = false;
     getAuthState().then(s => { if (!cancelled) setAuthState(s); });
     const unsub = onAuthChange(s => { if (!cancelled) setAuthState(s); });
-    return () => { cancelled = true; unsub(); };
+    // Re-read on every readiness transition too: an identity switch (e.g.
+    // signing out into a DIFFERENT anon session) must not carry the
+    // previous identity's dismiss decision forward.
+    const unsubOwner = onLocalOwnerStateChange(() => { if (!cancelled) setDismissedLocal(readDismissed()); });
+    return () => { cancelled = true; unsub(); unsubOwner(); };
   }, []);
 
   // We only render once we've actually read the auth state (else we'd
@@ -68,6 +85,11 @@ export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnch
   // first paint, which looks like a glitch).
   const isAnon = authState !== null && (!authState.user || authState.isAnonymous);
   const shouldShow = isAnon && favoriteCount >= THRESHOLD && !dismissedLocal;
+
+  const handleDismiss = () => {
+    if (writeDismissed(captureOwnerToken())) setDismissedLocal(true);
+  };
+
   if (!shouldShow) return null;
 
   return (
@@ -97,10 +119,7 @@ export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnch
             </button>
             <button
               type="button"
-              onClick={() => {
-                writeDismissed();
-                setDismissedLocal(true);
-              }}
+              onClick={handleDismiss}
               className="px-3 py-1.5 rounded-full text-[12px] text-gray-500 hover:text-gray-700 hover:bg-white transition-colors"
             >
               {t('auth.anchor.favorites3.dismiss')}
@@ -109,10 +128,7 @@ export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnch
         </div>
         <button
           type="button"
-          onClick={() => {
-            writeDismissed();
-            setDismissedLocal(true);
-          }}
+          onClick={handleDismiss}
           aria-label={t('common.dismiss')}
           className="shrink-0 p-1 rounded-lg hover:bg-white transition-colors"
         >

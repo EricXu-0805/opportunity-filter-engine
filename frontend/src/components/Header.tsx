@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, Sparkles, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { hasMatchCache as readHasMatchCache } from '@/lib/match-cache';
+import { onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useNewMatchCount } from '@/lib/use-new-match-count';
 import AccountMenu from './AccountMenu';
@@ -64,11 +65,29 @@ export default function Header() {
   // is window-only so the initial state has to start false to avoid
   // SSR/hydration mismatch; useEffect runs after the first paint and
   // upgrades to the real value before any user interaction.
+  //
+  // Pathname alone misses an identity change on the SAME page (sign-out
+  // from the account menu without navigating): the cache is USER_SCOPED,
+  // so a switch can make it newly blocked (still-loading identity) or
+  // newly present/absent for the new owner, yet the link would keep
+  // pointing at whatever was true for the PREVIOUS identity until the
+  // next navigation. Re-check on 'storage' (writeMatchCache/clearMatchCache
+  // dispatch it THEMSELVES, only after their own write/remove is confirmed —
+  // writeUserScopedRaw/removeUserScopedRaw never dispatch anything on their
+  // own) and on identity-owner's own readiness transitions too.
   const [hasMatchCache, setHasMatchCache] = useState(false);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate external-source-of-truth sync: sessionStorage is window-only so we must read it after mount, and re-read on pathname change so the link target stays in sync as the user generates new matches mid-session
-    try { setHasMatchCache(readHasMatchCache()); }
-    catch { setHasMatchCache(false); }
+    const recheck = () => {
+      try { setHasMatchCache(readHasMatchCache()); }
+      catch { setHasMatchCache(false); }
+    };
+    recheck();
+    window.addEventListener('storage', recheck);
+    const unsubscribeOwner = onLocalOwnerStateChange(recheck);
+    return () => {
+      window.removeEventListener('storage', recheck);
+      unsubscribeOwner();
+    };
   }, [pathname]);
 
   const close = useCallback(() => setOpen(false), []);

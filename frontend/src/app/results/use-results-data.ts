@@ -7,6 +7,7 @@ import {
   type MatchViewRequestState,
 } from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
+import { captureOwnerToken } from '@/lib/identity-owner';
 import { hashProfile } from '@/lib/match-utils';
 import {
   MATCH_VIEW_CONTRACT_VERSION,
@@ -101,6 +102,11 @@ export function useResultsData(
     const controller = new AbortController();
     let active = true;
     const cacheKey = requestKey;
+    // Captured at the moment this request STARTS, not re-captured just
+    // before the write below — a stale caller (identity moved on during
+    // the network round-trip) must not write this response into a
+    // different account's cache slot.
+    const cacheToken = captureOwnerToken();
 
     /* eslint-disable react-hooks/set-state-in-effect -- page/profile/view changes intentionally enter a new request state */
     setLoading(true);
@@ -155,7 +161,7 @@ export function useResultsData(
           cursorsRef.current.byPage.delete(page + 1);
         }
         if (page === 1) {
-          writeMatchCache(cacheKey, semanticRerank, result);
+          writeMatchCache(cacheKey, semanticRerank, result, cacheToken);
         }
         setPaginationReady(true);
         trackOnce('matches_generated', {

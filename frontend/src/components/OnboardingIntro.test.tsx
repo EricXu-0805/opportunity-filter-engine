@@ -13,11 +13,33 @@ vi.mock('@/lib/analytics', () => ({ track: (...args: unknown[]) => mockTrack(...
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
 
 import OnboardingIntro from './OnboardingIntro';
+import { enterLocalOnlyMode } from '@/lib/identity-owner';
 
 const SLIDE_COUNT = 6;
 
 beforeEach(() => {
   localStorage.clear();
+  // jsdom has no Web Locks. The campus is written through the coordinator,
+  // which serializes every change to shared local state through one — without
+  // a fake the write reports a device failure and the gate correctly refuses
+  // to close, which would make this a test about the environment.
+  let chain: Promise<unknown> = Promise.resolve();
+  Object.defineProperty(navigator, 'locks', {
+    configurable: true,
+    value: {
+      request: (_n: string, _o: unknown, fn: () => Promise<unknown>) => {
+        const run = chain.then(() => fn());
+        chain = run.then(() => undefined, () => undefined);
+        return run;
+      },
+    },
+  });
+  // persistHomeSchool/recordSchoolConfirmation now preflight-check the
+  // owner token before writing — this narrow component test never mounts
+  // anything that resolves a real (or confirmed-local-only) identity, so
+  // establish the local-only realm directly (this app has no configured
+  // Supabase in tests, matching the real unconfigured-degrade path).
+  enterLocalOnlyMode();
 });
 
 afterEach(() => {

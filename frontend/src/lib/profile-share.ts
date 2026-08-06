@@ -82,6 +82,30 @@ export function encodeProfile(profile: ProfileData): string {
   return base64UrlEncode(JSON.stringify(toShared(profile)));
 }
 
+/** The ProfileData keys the share WIRE format actually carries. `institution`
+ *  is deliberately absent: fromShared injects a constant so the draft renders,
+ *  but it is not something the sharer transmitted — and a Generate that
+ *  treated it as shared content would write it over the visitor's own school.
+ *  Home builds its save patch from this list intersected with what the payload
+ *  really contained, never from Object.keys() of the decoded object. */
+export const SHARE_WIRE_KEYS = [
+  'college', 'major', 'grade', 'is_international', 'research_interests',
+  'skills', 'seeking_types', 'search_weight', 'coursework',
+] as const satisfies readonly (keyof ProfileData)[];
+
+/** The decoded draft PLUS exactly which of SHARE_WIRE_KEYS the payload
+ *  actually carried (the optional ones may be absent). */
+export function decodeProfileWithKeys(
+  encoded: string,
+): { profile: Partial<ProfileData>; keys: (keyof ProfileData)[] } | null {
+  const profile = decodeProfile(encoded);
+  if (!profile) return null;
+  const keys = SHARE_WIRE_KEYS.filter(
+    (k) => (profile as Record<string, unknown>)[k] !== undefined,
+  );
+  return { profile, keys };
+}
+
 export function decodeProfile(encoded: string): Partial<ProfileData> | null {
   try {
     const json = base64UrlDecode(encoded);

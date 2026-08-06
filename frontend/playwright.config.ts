@@ -2,7 +2,15 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 8100);
+const SUPABASE_PORT = Number(process.env.E2E_SUPABASE_PORT ?? 54321);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+// A loopback stand-in (e2e/supabase-stub.mjs), never a hosted project. The app
+// now follows persistence rather than flipping optimistically, so with NO
+// storage backend the tracker/favorites/dashboard surfaces are correctly inert
+// and the specs covering them would be testing nothing. Must be set at BUILD
+// time: NEXT_PUBLIC_* is inlined by `next build`, not read by `next start`.
+export const SUPABASE_STUB_URL = `http://127.0.0.1:${SUPABASE_PORT}`;
+export const SUPABASE_STUB_ANON_KEY = 'e2e-loopback-stub-anon-key-not-a-real-key';
 
 export default defineConfig({
   testDir: './e2e',
@@ -48,6 +56,15 @@ export default defineConfig({
   ],
   webServer: [
     {
+      command: `node e2e/supabase-stub.mjs`,
+      url: `${SUPABASE_STUB_URL}/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+      env: { E2E_SUPABASE_PORT: String(SUPABASE_PORT) },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+    {
       command: `python3 -m uvicorn backend.main:app --port ${BACKEND_PORT} --host 127.0.0.1`,
       cwd: '..',
       url: `http://127.0.0.1:${BACKEND_PORT}/api/health`,
@@ -75,6 +92,11 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         BACKEND_URL: `http://127.0.0.1:${BACKEND_PORT}`,
+        // `next dev` inlines NEXT_PUBLIC_* per request, so the local dev path
+        // gets the stub from here. The CI path is a prebuilt `next start`, so
+        // ci.yml must pass the same two values at BUILD time.
+        NEXT_PUBLIC_SUPABASE_URL: SUPABASE_STUB_URL,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_STUB_ANON_KEY,
       },
       stdout: 'pipe',
       stderr: 'pipe',

@@ -27,6 +27,12 @@ interface UniversitySwitcherModalProps {
   title?: string;
   note?: string;
   confirmLabel?: string;
+  /** Shown next to Confirm when the last attempt did not land. The picker
+   *  stays open on failure — closing it would leave the caller's school
+   *  unsaved with nothing on screen saying so. */
+  errorMessage?: string | null;
+  /** Blocks a second Confirm while one is in flight. */
+  busy?: boolean;
 }
 
 function CoverageChip(
@@ -64,6 +70,8 @@ export default function UniversitySwitcherModal({
   title,
   note,
   confirmLabel,
+  errorMessage,
+  busy,
 }: UniversitySwitcherModalProps) {
   const { t, locale } = useT();
   const [query, setQuery] = useState('');
@@ -206,6 +214,11 @@ export default function UniversitySwitcherModal({
             <span className="font-medium text-gray-900">{selected ? selected.shortName : '—'}</span>
           </p>
           <div className="flex items-center gap-2 shrink-0">
+            {errorMessage && (
+              <span data-testid="switcher-error" role="alert" className="text-[12px] text-amber-600">
+                {errorMessage}
+              </span>
+            )}
             <button
               type="button"
               onClick={onCancel}
@@ -216,7 +229,8 @@ export default function UniversitySwitcherModal({
             <button
               type="button"
               onClick={() => onConfirm(selectedSlug)}
-              disabled={!selected}
+              disabled={!selected || busy}
+              data-testid="switcher-confirm"
               className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {confirmLabel ?? t('universitySwitcher.confirm')}

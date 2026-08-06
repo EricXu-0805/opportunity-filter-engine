@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -24,6 +24,7 @@ import {
   useCustomImports,
   type CustomImport,
 } from '@/lib/custom-imports';
+import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { useT } from '@/i18n/client';
 
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), {
@@ -38,7 +39,19 @@ const TEXT_MIN_CHARS = 50;
 type FetchState =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'success'; opportunity: ImportedOpportunity; llmEnriched: boolean; mode: Mode }
+  | {
+      kind: 'success';
+      opportunity: ImportedOpportunity;
+      llmEnriched: boolean;
+      mode: Mode;
+      // Captured at request-start, when this result was fetched — NOT
+      // re-captured at Save-click time. handleSave reuses this so a click
+      // landing after a live identity switch (but before the
+      // onLocalOwnerStateChange effect below resets this component) fails
+      // its own preflight against the OLD owner instead of succeeding
+      // under whoever is current at click time.
+      token: OwnerToken;
+    }
   | { kind: 'error'; message: string };
 
 export default function ImportPage() {
@@ -48,19 +61,43 @@ export default function ImportPage() {
   const [text, setText] = useState('');
   const [state, setState] = useState<FetchState>({ kind: 'idle' });
   const [copied, setCopied] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const customImports = useCustomImports();
   const savedEntry: CustomImport | null = state.kind === 'success'
     ? findExistingImport(state.opportunity, customImports)
     : null;
 
+  // An identity change invalidates any in-progress or completed extract
+  // for the PREVIOUS owner — reset to idle in the SAME tick the owner
+  // moves so a stale result/loading/error never lingers under a new
+  // identity, and so its Save button (bound to the OLD origin token) can
+  // never be clicked after the switch.
+  useEffect(() => onLocalOwnerStateChange(() => {
+    setState({ kind: 'idle' });
+    setCopied(false);
+    setSaveFailed(false);
+  }), []);
+
   const handleSave = useCallback(() => {
     if (state.kind !== 'success') return;
-    addCustomImport(state.opportunity);
+    const saved = addCustomImport(state.opportunity, state.token);
+    setSaveFailed(!saved);
   }, [state]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setCopied(false);
+    setSaveFailed(false);
+    // Captured at the moment this extract request begins — stored on the
+    // success state itself (see FetchState's own doc comment), never
+    // re-captured after the await.
+    const requestToken = captureOwnerToken();
+    // isOwnerTokenValid, not a plain uid/epoch comparison: a same-uid but
+    // still-BLOCKED owner (local ownership not yet confirmed) must also
+    // discard the result — rendering a Save button that would just fail
+    // its own preflight is worse than discarding and letting the user
+    // resubmit once the owner settles.
+    const stillCurrent = () => isOwnerTokenValid(requestToken, requestToken.uid);
 
     if (mode === 'url') {
       const trimmed = url.trim();
@@ -71,6 +108,9 @@ export default function ImportPage() {
       setState({ kind: 'loading' });
       try {
         const result = await importByUrl(trimmed);
+        // Identity moved on mid-flight — discard silently. This is not a
+        // failure of the CURRENT session, so it must not show an error.
+        if (!stillCurrent()) return;
         if (!result.ok || !result.opportunity) {
           const msg = result.error?.toLowerCase().includes('unsafe')
             ? t('import.errorUnsafe')
@@ -83,8 +123,12 @@ export default function ImportPage() {
           opportunity: result.opportunity,
           llmEnriched: result.llm_enriched,
           mode: 'url',
+          token: requestToken,
         });
       } catch {
+        // A stale failure must not overwrite the CURRENT owner's UI with
+        // an error that belongs to an abandoned request.
+        if (!stillCurrent()) return;
         setState({ kind: 'error', message: t('import.errorFetch') });
       }
       return;
@@ -102,6 +146,7 @@ export default function ImportPage() {
     setState({ kind: 'loading' });
     try {
       const result = await importByText(trimmedText);
+      if (!stillCurrent()) return;
       if (!result.ok || !result.opportunity) {
         setState({ kind: 'error', message: t('import.errorExtract') });
         return;
@@ -111,8 +156,10 @@ export default function ImportPage() {
         opportunity: result.opportunity,
         llmEnriched: result.llm_enriched,
         mode: 'text',
+        token: requestToken,
       });
     } catch {
+      if (!stillCurrent()) return;
       setState({ kind: 'error', message: t('import.errorExtract') });
     }
   }, [mode, url, text, t]);
@@ -125,6 +172,7 @@ export default function ImportPage() {
     }
     setState({ kind: 'idle' });
     setCopied(false);
+    setSaveFailed(false);
   }, [state]);
 
   const handleModeChange = useCallback((next: Mode) => {
@@ -252,6 +300,7 @@ export default function ImportPage() {
           onReset={handleReset}
           onSave={handleSave}
           savedEntry={savedEntry}
+          saveFailed={saveFailed}
           copied={copied}
           t={t}
         />
@@ -294,6 +343,7 @@ function ResultCard({
   onReset,
   onSave,
   savedEntry,
+  saveFailed,
   copied,
   t,
 }: {
@@ -304,6 +354,7 @@ function ResultCard({
   onReset: () => void;
   onSave: () => void;
   savedEntry: CustomImport | null;
+  saveFailed: boolean;
   copied: boolean;
   t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
@@ -382,14 +433,19 @@ function ResultCard({
             {t('import.saved')}
           </span>
         ) : (
-          <button
-            type="button"
-            onClick={onSave}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            <Bookmark className="w-3.5 h-3.5" />
-            {t('import.saveToList')}
-          </button>
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={onSave}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              {t('import.saveToList')}
+            </button>
+            {saveFailed && (
+              <p className="text-[12px] text-red-600">{t('import.saveFailed')}</p>
+            )}
+          </div>
         )}
         {savedEntry && (
           <Link

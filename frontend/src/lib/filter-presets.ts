@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from './storage-keys';
 import { readLocalStorageJSON, writeLocalStorageJSON } from './use-local-storage-json';
+import type { OwnerToken } from './identity-owner';
 
 export interface FilterPresetFilters {
   paid: '' | 'yes' | 'no';
@@ -45,8 +46,13 @@ export function loadPresets(): FilterPreset[] {
   return readLocalStorageJSON(PRESETS_KEY, parsePresetsArray);
 }
 
-export function savePresets(presets: FilterPreset[]): void {
-  writeLocalStorageJSON(PRESETS_KEY, presets.length > 0 ? presets : null);
+// `token` MUST be captured (via captureOwnerToken()) at the moment the
+// caller's own write intent began — see writeLocalStorageJSON's own doc
+// comment. Returns whether the write actually landed — a stale token or a
+// storage failure must not let the caller optimistically believe the
+// preset list it just built is what's actually persisted.
+export function savePresets(presets: FilterPreset[], token: OwnerToken): boolean {
+  return writeLocalStorageJSON(PRESETS_KEY, presets.length > 0 ? presets : null, token);
 }
 
 export function upsertPreset(presets: FilterPreset[], preset: FilterPreset): FilterPreset[] {

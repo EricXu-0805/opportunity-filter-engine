@@ -46,14 +46,23 @@ export default function OpportunityDetail({
   const { t } = useT();
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const {
+    identityGeneration,
+    ownerScopeKey,
     isFavorited,
     favoriteLoading,
     favoriteError,
     retryFavoriteHydration,
     favoriteSaving,
     favoriteSaveError,
+    ownerReady,
     interactionDetail,
     interaction,
+    interactionLoading,
+    interactionError,
+    retryInteractionHydration,
+    statusSaving,
+    statusError,
+    retryTrack,
     emailModalOpen,
     setEmailModalOpen,
     shareCopied,
@@ -64,6 +73,8 @@ export default function OpportunityDetail({
     renovationOpen,
     setRenovationOpen,
     suggestion,
+    suggestionSaving,
+    suggestionError,
     handleStar,
     handleTrack,
     saveDetails,
@@ -93,12 +104,13 @@ export default function OpportunityDetail({
               opp={opp}
               profile={profile}
               isFavorited={isFavorited}
-              favoriteDisabled={favoriteLoading || favoriteSaving || favoriteError}
+              favoriteDisabled={!ownerReady || favoriteLoading || favoriteSaving || favoriteError}
               favoriteBusy={favoriteLoading || favoriteSaving}
               shareCopied={shareCopied}
               onStar={handleStar}
               onOpenEmailModal={() => setEmailModalOpen(true)}
               onOpenTailorModal={() => setTailorOpen(true)}
+              tailorDisabled={!ownerReady}
               onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate
                 ? () => setRenovationOpen(true)
                 : undefined}
@@ -119,19 +131,54 @@ export default function OpportunityDetail({
                 </p>
               </div>
             )}
+            {interactionError && (
+              <div className="px-5 sm:px-8 pb-3 -mt-2" role="alert">
+                <p className="flex items-center gap-2 text-xs text-red-700">
+                  {t('detail.tracker.loadError')}
+                  <button
+                    type="button"
+                    onClick={retryInteractionHydration}
+                    className="font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                  >
+                    {t('common.retry')}
+                  </button>
+                </p>
+              </div>
+            )}
             <InteractionPills
               interaction={interaction}
               suggestion={suggestion}
+              statusSaving={statusSaving}
+              statusError={statusError}
+              interactionUnready={!ownerReady || interactionLoading || interactionError}
               onTrack={handleTrack}
+              onRetryTrack={retryTrack}
               onUseSuggestion={handleUseSuggestion}
               onDismissSuggestion={handleDismissSuggestion}
+              suggestionSaving={suggestionSaving}
+              suggestionError={suggestionError}
               t={t}
             />
             <TrackerPanel
+              // Relying on interactionDetail merely passing through null
+              // between identities is not a robust guarantee that React
+              // unmounts this panel across a U1->U2 switch (same
+              // opportunity, same mounted OpportunityDetail instance) — the
+              // generation-qualified key forces a fresh instance (and
+              // therefore a fresh, empty local notes/reminder draft)
+              // explicitly, by construction (same fix as tracker/page.tsx).
+              key={`${identityGeneration}:${opp.id}`}
               detail={interactionDetail}
               onSave={saveDetails}
               opportunityId={opp.id as string}
               hasInteraction={!!interaction}
+              // A still-loading/failed/not-yet-owned read, or a status
+              // write in flight, means notes/reminder edits must not be
+              // typeable at all — otherwise a slow read landing later (or
+              // a status change resolving) could auto-save a draft the
+              // user typed against untrustworthy state, or silently drop
+              // it into a permanently-unretried limbo.
+              writeReady={ownerReady && !interactionLoading && !interactionError && !!interaction && !statusSaving}
               t={t}
             />
             {RELEASE_SCOPE.professorSignals && (
@@ -193,11 +240,20 @@ export default function OpportunityDetail({
 
       {profile && (
         <TailorModal
+          // Generation-qualified key (same fix as TrackerPanel above): a
+          // real identity transition forces a full remount, destroying
+          // this modal's own local state (draft, in-flight request)
+          // outright rather than relying solely on hydrate()'s
+          // setTailorOpen(false) to close it — belt-and-suspenders, not
+          // either/or.
+          key={`${identityGeneration}:${opp.id}`}
           isOpen={tailorOpen}
           onClose={() => setTailorOpen(false)}
           profile={profile}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
+          ownerReady={ownerReady}
+          ownerScopeKey={ownerScopeKey}
         />
       )}
 

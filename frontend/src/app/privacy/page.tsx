@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     'How JoinALab collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'June 24, 2026';
+const EFFECTIVE_DATE = 'August 1, 2026';
 
 const CONTENT = `# Privacy Policy
 
@@ -31,7 +31,7 @@ Only school, college, major, and academic year are required; everything else is 
 - **International-student status:** an optional flag indicating whether you are an international student. We use this only to assess which opportunities are realistically open to you (e.g. work-authorization or on-campus constraints). You may leave it blank.
 - **Background:** research interests, skills and proficiency levels, coursework, experience level.
 - **Links:** LinkedIn and GitHub URLs (optional).
-- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, coursework, and interests. We store up to ~3,000 characters of extracted résumé text as part of your profile if you choose to keep it. **The original PDF file is not stored on our servers.**
+- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, coursework, and interests. We store up to ~8,000 characters of extracted résumé text as part of your profile. **The original PDF file is not stored on our servers.** Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. Earlier saved versions of your profile (§4, profile history) still contain the text until you request a full data deletion under §7.
 - **Preferences:** the kinds of opportunities you are seeking, search weighting, saved searches, filters.
 
 ### 2.2 Activity information
@@ -79,6 +79,7 @@ We do **not** sell your personal information, and we do **not** use it for third
 - **Your profile, favorites, tracking, saved searches, and match feedback** are stored in a Supabase Postgres database, in rows that are access-restricted to your own identity by database row-level security — other users cannot read your rows. If you enable the weekly email digest for a saved search, the email address you provide for it is stored alongside that saved search until you turn the digest off.
 - **Product-analytics events and any paid-help interest you register** (including the contact email you provide) are stored in the same Supabase database, scoped to your own anonymous identity.
 - **Attachments** you add to tracked opportunities are stored in Supabase Storage under a folder private to your identity (≤5 MB per file; PDF, common image, DOCX, TXT, Markdown).
+- **Profile history:** every time your profile is saved, a copy of it is also appended to a version-history table (profile_versions) in the same database, under the same row-level security. That history is append-only: editing your profile — including removing your résumé from it (§2.1) — updates the current profile but does **not** rewrite or remove earlier versions, which still contain what your profile held at the time. There is no self-serve way to purge that history today; it is removed when you request a full data deletion under §7.
 - **In your browser:** your profile and some preferences are also cached in your browser's local storage so the app works smoothly and offline-tolerantly. You can clear this at any time via your browser settings.
 
 ## 5. Third parties that process your data (subprocessors)

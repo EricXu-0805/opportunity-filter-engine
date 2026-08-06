@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { readUserScopedRaw } from '@/lib/identity-owner';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
 
@@ -76,8 +77,7 @@ export function readInitialSemanticRerank(
   const p = searchParams.get('ai');
   if (p === '1') return true;
   if (p === '0') return false;
-  if (typeof window === 'undefined') return false;
-  const stored = localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK);
+  const stored = readUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK);
   if (stored === '0') return false;
   if (stored === '1') return true;
   return false;

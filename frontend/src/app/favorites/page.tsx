@@ -111,7 +111,11 @@ export default function FavoritesPage() {
     setSavedSearchesEpoch((e) => e + 1);
   }, [cancelSelection]);
 
-  const { serverOpportunities, loading, error, retry, unavailableCount, handleRemove } = useFavoritesData(resetPageLocalState);
+  const {
+    serverOpportunities, loading, error, retry, unavailableCount,
+    identityGeneration, ownerReady, ownerScopeKey,
+    handleRemove,
+  } = useFavoritesData(resetPageLocalState);
 
   const opportunities = useMemo<Opp[]>(
     () => [...customImports.map(customImportToOpp), ...serverOpportunities],
@@ -135,8 +139,9 @@ export default function FavoritesPage() {
   }, []);
 
   const openTailorModal = useCallback((opp: Opp) => {
+    if (!ownerReady) return; // fail-closed — the CTA is disabled too, this is defense-in-depth
     setTailorModal({ open: true, id: opp.id, title: opp.title });
-  }, []);
+  }, [ownerReady]);
 
   const closeTailorModal = useCallback(() => {
     setTailorModal({ open: false, id: '', title: '' });
@@ -246,6 +251,7 @@ export default function FavoritesPage() {
               onRemove={handleRemove}
               onOpenEmailModal={openEmailModal}
               onOpenTailorModal={openTailorModal}
+              tailorDisabled={!ownerReady}
               t={t}
             />
           ))}
@@ -275,11 +281,22 @@ export default function FavoritesPage() {
 
       {profile && (
         <TailorModal
+          // Generation-qualified key: a real identity transition forces a
+          // full remount, destroying this modal's own local state (draft,
+          // in-flight request) outright — belt-and-suspenders alongside
+          // resetPageLocalState's setTailorModal({open:false,...}), not
+          // either/or. Also remounts on a target-opportunity change (this
+          // is a single page-level modal instance reused across cards),
+          // which is already the existing behavior via tailorModal.id
+          // changing what's displayed — the key just makes it explicit.
+          key={`${identityGeneration}:${tailorModal.id}`}
           isOpen={tailorModal.open}
           onClose={closeTailorModal}
           profile={profile}
           opportunityId={tailorModal.id}
           opportunityTitle={tailorModal.title}
+          ownerReady={ownerReady}
+          ownerScopeKey={ownerScopeKey}
         />
       )}
     </div>

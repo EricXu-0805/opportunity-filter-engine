@@ -1,12 +1,27 @@
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import {
   loadPresets,
-  savePresets,
+  savePresets as savePresetsRaw,
   upsertPreset,
   removePreset,
   parsePresetsArray,
 } from './filter-presets';
 import type { FilterPreset } from './filter-presets';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, type OwnerToken } from './identity-owner';
+
+// savePresets now requires an origin token — every test establishes local
+// readiness in beforeEach, and this thin wrapper (same name, arity minus
+// the token) keeps every pre-existing call site below untouched.
+let token: OwnerToken;
+function savePresets(presets: FilterPreset[]) {
+  return savePresetsRaw(presets, token);
+}
+
+beforeEach(async () => {
+  advanceOwnerEpoch('filter-presets-test-uid');
+  await syncLocalIdentityOwner('filter-presets-test-uid');
+  token = captureOwnerToken();
+});
 
 afterEach(() => {
   localStorage.clear();
@@ -157,5 +172,19 @@ describe('parsePresetsArray', () => {
       window.removeEventListener('storage', listener);
     }
     expect(fired).toEqual(['ofe_filter_presets']);
+  });
+
+  it('savePresets returns true on a real, current-token write', () => {
+    expect(savePresets([PRESET_A])).toBe(true);
+  });
+
+  it('savePresets returns false for a stale token and never touches the CURRENT owner\'s real presets', async () => {
+    const staleToken = token;
+    advanceOwnerEpoch('filter-presets-test-uid-2');
+    await syncLocalIdentityOwner('filter-presets-test-uid-2');
+    savePresetsRaw([PRESET_B], captureOwnerToken()); // current owner's real presets
+
+    expect(savePresetsRaw([PRESET_A], staleToken)).toBe(false);
+    expect(loadPresets()).toEqual([PRESET_B]);
   });
 });

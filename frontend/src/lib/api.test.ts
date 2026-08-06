@@ -825,3 +825,52 @@ describe('chatWithOpportunity — SSE streaming (onDelta present)', () => {
     expect(result).toEqual({ reply: 'cut ', method: 'llm', errored: true });
   });
 });
+
+describe('the match request built from a profile whose résumé was removed', () => {
+  // The end of the removal journey: what the matcher is actually asked for.
+  // Everything before this (local write, cloud row) only matters because it
+  // decides this request body.
+  const withResume: ProfileData = {
+    name: 'Test',
+    home_school: 'uiuc',
+    institution: 'UIUC',
+    college: 'Grainger',
+    major: 'Computer Science',
+    grade: 'Junior',
+    is_international: false,
+    research_interests: 'robotics and controls',
+    skills: [{ name: 'Python', level: 'experienced' }],
+    coursework: ['ECE 220', 'CS 225'],
+    resume_text: 'the full text of my resume',
+  } as unknown as ProfileData;
+
+  const afterRemoval: ProfileData = {
+    ...withResume,
+    resume_text: '',
+    coursework: [],
+  } as unknown as ProfileData;
+
+  async function requestBodyFor(profile: ProfileData): Promise<Record<string, unknown>> {
+    fetchMock.mockResolvedValueOnce(okJson({
+      total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [],
+    }));
+    await getMatches(profile);
+    const init = fetchMock.mock.calls[0][1] as { body: string };
+    return JSON.parse(init.body) as Record<string, unknown>;
+  }
+
+  it('sends resume_ready true and the coursework while the résumé is on file', async () => {
+    const body = await requestBodyFor(withResume);
+    expect(body.resume_ready).toBe(true);
+    expect(body.coursework).toEqual(['ECE 220', 'CS 225']);
+  });
+
+  it('sends resume_ready false and no coursework once it has been removed, keeping skills and interests', async () => {
+    const body = await requestBodyFor(afterRemoval);
+    expect(body.resume_ready).toBe(false);
+    expect(body.coursework).toEqual([]);
+    // The evidence the user did NOT delete is still theirs.
+    expect(body.hard_skills).toEqual([{ name: 'Python', level: 'experienced' }]);
+    expect(body.research_interests_text).toBe('robotics and controls');
+  });
+});
