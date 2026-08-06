@@ -560,6 +560,88 @@ describe('useProfileForm — the very first visit is not stranded', () => {
   });
 
   /**
+   * FV-0 — the defect, reduced to the two events that cause it.
+   *
+   * Anonymous sign-in arrives as TWO observations: INITIAL_SESSION carrying no
+   * user, then SIGNED_IN carrying the browser's first uid. Only the first is
+   * `firstObservation`. The second is an ordinary null -> uid transition, so
+   * it ran the full account-switch reset and wiped whatever the visitor had
+   * typed while the school catalog had already opened the dropdowns.
+   *
+   * In a real browser this is what "pick a college the moment the page loads
+   * and watch it vanish ~300ms later, while the same pick 3s later sticks"
+   * was. Two ordinary unit suites and 2892 green tests did not see it.
+   */
+  // `it.fails` ON PURPOSE. The body asserts what the product needs and FAILS
+  // on today's source — that is the defect, reproduced. Recording it this way
+  // keeps it in the suite instead of in a document nobody re-reads: the moment
+  // someone fixes it, this line starts failing and forces the flip.
+  //
+  // It is not a one-liner. The narrow fix (exempt a screen no real account has
+  // ever owned) makes FIVE deliberate isolation tests fail, including "resets
+  // profile, search weight, save status and GitHub status in the identity
+  // event's own tick", which asserts the OPPOSITE contract: that an identity
+  // event wipes a pre-auth edit. Whether sign-in is a hard reset boundary or
+  // the visitor's own typing survives it is a product decision, and it belongs
+  // to whoever owns this state machine — not to a drive-by patch.
+  it.fails('FV-0: the second observation of the first sign-in does not wipe what the visitor typed', async () => {
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    // INITIAL_SESSION: a live observation that carries no user at all.
+    await emitAuth(null);
+
+    fireEvent.click(screen.getByTestId('pick-college'));
+    expect(screen.getByTestId('college').textContent).toBe('Grainger');
+
+    // SIGNED_IN: the browser's first real identity. Not an account switch —
+    // there was no account — so it may not reset the form to defaults.
+    await emitAuth(HOME_UID);
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+
+    expect(
+      screen.getByTestId('college').textContent,
+      'a null -> uid transition is not an account switch, and must not discard the visitor\'s work',
+    ).toBe('Grainger');
+  });
+
+  /**
+   * FV-3 — the defect itself, as a real browser shows it.
+   *
+   * The college dropdown enables when the school catalog lands, which is
+   * before the anonymous sign-in has resolved. A load issued in that window
+   * freezes a screen origin holding the unresolved `{uid: null, epoch: 0}`
+   * token. The first identity resolution advances the epoch; `ownsScreen`
+   * then rejects that origin, `editingOrigin()` returns null, and `update()`
+   * returns early — the keystroke is dropped in silence. The controlled input
+   * paints the value once and snaps back, which is exactly what the browser
+   * does: a college picked at t=0 is gone ~300ms later, while the same pick
+   * 3s later sticks.
+   *
+   * The load is held open here on purpose: hydration landing is what
+   * eventually issues a fresh, owned origin and ends the window. The bug
+   * lives strictly inside it.
+   */
+  it('FV-3: an edit lands while the first load is still in flight under a newly-resolved identity', async () => {
+    let releaseLoad!: (value: LoadedProfile) => void;
+    mockLoadProfile = () => new Promise<LoadedProfile>((r) => { releaseLoad = r; });
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    // The load has been issued and its origin frozen under "no identity yet".
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+
+    // The browser's first identity resolves. Nothing has hydrated: the load
+    // above is still open, so no accepted view exists to re-issue an origin.
+    await emitAuth(HOME_UID);
+
+    fireEvent.click(screen.getByTestId('pick-college'));
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+
+    expect(
+      screen.getByTestId('college').textContent,
+      'a keystroke during the sign-in window is the visitor\'s own, and must be kept',
+    ).toBe('Grainger');
+    await act(async () => { releaseLoad?.(absentRow()); await new Promise((r) => setTimeout(r, 20)); });
+  });
+
+  /**
    * FV-2, the control that keeps FV-1 honest. A screen whose owner really
    * moved on mid-flight must still fail closed — re-anchoring THERE is the
    * cross-account write the whole capability chain exists to prevent.
