@@ -45,7 +45,7 @@ const CONFLICT_KEYS = {
   interactions: ['device_id', 'opportunity_id'],
   professor_follows: ['device_id', 'professor_id'],
   professor_update_reads: ['device_id', 'professor_id'],
-  profiles: ['device_id'],
+  profiles: ['id'],
   saved_searches: ['id'],
   push_subscriptions: ['endpoint'],
 };
@@ -227,27 +227,65 @@ const rpcs = {
     return { status: 200, body: [row] };
   },
 
-  // supabase/migrations/027_profile_save_cas.sql — compare-and-set on revision.
+  // supabase/migrations/027_profile_save_cas.sql — compare-and-set on
+  // revision. RETURNS jsonb: one envelope object, NOT an array of rows —
+  // PostgREST serialises a scalar-jsonb function result as the value itself,
+  // and src/lib/supabase.ts reads `data.status` straight off it (an earlier
+  // hand-invented [{applied, conflict}] shape parsed as `status: undefined`
+  // -> 'malformed' -> device-failed -> Generate refused to navigate, which
+  // took out every goToResults e2e). Field names and branch conditions below
+  // mirror 027 line for line; the real semantics are proven against Postgres
+  // by supabase/tests, this stub only has to speak the same wire shape.
   commit_profile_patch_cas(body, uid) {
-    const deviceId = body.p_device_id ?? uid;
-    if (!uid || (body.p_device_id != null && body.p_device_id !== uid)) {
+    const expected = body.p_expected_device_id;
+    if (!uid || expected == null || expected !== uid) {
       return { status: 403, body: { message: 'identity_changed', code: '42501' } };
     }
+    const patch = body.p_patch;
+    if (!patch || typeof patch !== 'object' || Object.keys(patch).length === 0) {
+      return { status: 400, body: { message: 'empty_patch', code: '22023' } };
+    }
+    const expectedRevision = Number(body.p_expected_revision ?? 0);
     const rows = rowsOf('profiles');
-    let row = rows.find((r) => r.device_id === deviceId);
-    const patch = body.p_patch ?? {};
     const now = new Date().toISOString();
+    let row = rows.find((r) => r.id === uid);
+
     if (!row) {
-      row = { device_id: deviceId, revision: 0, data: {}, created_at: now, updated_at: now };
+      if (expectedRevision !== 0) {
+        return {
+          status: 200,
+          body: { status: 'missing', reason: 'absent', revision: 0, profile: null, updated_at: null },
+        };
+      }
+      row = { id: uid, profile_data: { ...patch }, revision: 1, created_at: now, updated_at: now };
       rows.push(row);
+      return {
+        status: 200,
+        body: { status: 'applied', revision: 1, profile: row.profile_data, updated_at: now },
+      };
     }
-    if (body.p_expected_revision != null && body.p_expected_revision !== row.revision) {
-      return { status: 200, body: [{ ...row, applied: false, conflict: true }] };
+
+    const merged = { ...row.profile_data, ...patch };
+    const unchanged = JSON.stringify(merged) === JSON.stringify(row.profile_data);
+    if (unchanged && (row.revision === expectedRevision || row.revision === expectedRevision + 1)) {
+      return {
+        status: 200,
+        body: { status: 'unchanged', revision: row.revision, profile: row.profile_data, updated_at: row.updated_at },
+      };
     }
-    row.data = { ...(row.data ?? {}), ...patch };
+    if (row.revision !== expectedRevision) {
+      return {
+        status: 200,
+        body: { status: 'conflict', revision: row.revision, profile: row.profile_data, updated_at: row.updated_at },
+      };
+    }
+    row.profile_data = merged;
     row.revision += 1;
     row.updated_at = now;
-    return { status: 200, body: [{ ...row, applied: true, conflict: false }] };
+    return {
+      status: 200,
+      body: { status: 'applied', revision: row.revision, profile: row.profile_data, updated_at: now },
+    };
   },
 
   // supabase/migrations/017 + 026 — a grant is minted, never redeemed here.

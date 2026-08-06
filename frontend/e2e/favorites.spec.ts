@@ -95,9 +95,11 @@ test.describe('Interaction tracking (dismiss)', () => {
 
     // R69-C (#63): the inline "Not interested" pill row was replaced by the
     // "Mark status" disclosure menu (portaled to <body>, hence not scoped
-    // to the card).
+    // to the card). It is a NON-modal disclosure dialog — role="dialog"
+    // with plain buttons, deliberately not role="menu"/menuitemradio (see
+    // InteractionStatusMenu.tsx's doc comment for the ARIA reasoning).
     await firstCard.getByRole('button', { name: /^Set application status for/ }).click();
-    await page.getByRole('menuitemradio', { name: 'Not interested' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Not interested' }).click();
     await expect(page.locator('h3', { hasText: title }).first()).not.toBeVisible();
 
     const showDismissed = page.getByRole('button', { name: /Show.*dismissed/i });
