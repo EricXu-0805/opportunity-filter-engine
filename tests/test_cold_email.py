@@ -837,25 +837,36 @@ class TestColdEmailPipeline:
         assert out is not None
         assert "computer vision" in out.lower()
 
-    def test_short_surname_needs_word_boundary(self):
-        """PI surname 'Li' must not match inside 'would like' — a generic draft
-        cannot vacuously pass the references-professor check via substring."""
+    def test_surname_only_data_is_no_data_and_boundaries_hold(self):
+        """Two contracts in one staging. (1) EG1: the PI surname is no longer
+        an anchor at all — 'Jane Li' with nothing else means there is NOTHING
+        specific to reference, so the genericness axis is not judged. (2) The
+        word-boundary rule that once protected short surnames still protects
+        short keyword anchors: 'cell' must not match inside 'excellent'."""
         import backend.routes.cold_email as ce
 
         p = {
             "research_area": "", "research_topic": "", "research_areas_raw": "",
             "pi_name": "Jane Li",
         }
-        opp = {"keywords": [], "metadata": {}}
-        generic = ce._deterministic_findings(
+        surname_only = ce._deterministic_findings(
             "Dear Professor,\nI would like to join your lab.\nBest,\nEric",
-            "would like to join your lab dear professor best eric", p, opp,
+            "would like to join your lab dear professor best eric",
+            p, {"keywords": [], "metadata": {}},
         )
-        assert generic["has_specific_prof_data"] is True
-        assert generic["references_professor"] is False
+        assert surname_only["has_specific_prof_data"] is False
+        assert surname_only["references_professor"] is True  # nothing to demand
+
+        opp = {"keywords": ["cell biology", "cell"], "metadata": {}}
+        vacuous = ce._deterministic_findings(
+            "Dear Professor,\nYour excellent lab stood out to me.\nBest,\nEric",
+            "excellent lab stood out dear professor best eric", p, opp,
+        )
+        assert vacuous["has_specific_prof_data"] is True
+        assert vacuous["references_professor"] is False
         named = ce._deterministic_findings(
-            "Dear Professor Li,\nYour lab's work stood out to me.\nBest,\nEric",
-            "professor li your lab's work stood out best eric", p, opp,
+            "Dear Professor Li,\nYour work on cell biology stood out.\nBest,\nEric",
+            "professor li your work on cell biology stood out best eric", p, opp,
         )
         assert named["references_professor"] is True
 
@@ -1074,3 +1085,265 @@ class TestEmailModesRegistry:
         assert "fast learner" not in out["body"]
         assert "Python experience" in out["body"]
         assert "concise" in out["applied"]
+
+
+class TestSurnameNotAResearchAnchorEG1:
+    """Evidence grounding, gap 1: the PI surname is in EVERY draft's
+    salutation, so counting it as a professor-work anchor makes
+    ``references_professor`` vacuously true — a completely generic draft
+    "passes" the specificity check by writing "Dear Prof. Tran"."""
+
+    _P = {
+        "pi_name": "Huy Tran",
+        "research_area": "", "research_topic": "", "research_areas_raw": "",
+    }
+    _OPP = {"keywords": ["hypersonics", "reentry vehicles"], "metadata": {}}
+
+    def test_salutation_alone_is_not_engagement(self):
+        from backend.routes.cold_email import _deterministic_findings
+        draft = (
+            "Dear Prof. Tran,\n\nMy name is Eric and I am a sophomore. I am "
+            "interested in joining your group and would welcome a chance to "
+            "talk.\n\nBest regards,\nEric"
+        )
+        findings = _deterministic_findings(draft, corpus="", p=self._P, opp=self._OPP)
+        assert findings["has_specific_prof_data"] is True
+        assert findings["references_professor"] is False, (
+            "a draft whose only 'anchor' hit is the salutation surname did no "
+            "homework on this professor's actual work"
+        )
+
+    def test_real_topic_mention_is_engagement(self):
+        from backend.routes.cold_email import _deterministic_findings
+        draft = (
+            "Dear Prof. Tran,\n\nYour group's work on hypersonics connects "
+            "directly to my coursework.\n\nBest regards,\nEric"
+        )
+        findings = _deterministic_findings(draft, corpus="", p=self._P, opp=self._OPP)
+        assert findings["references_professor"] is True
+
+
+class TestStudentCompetenceProvenanceEG2:
+    """Evidence grounding, gap 2: the anti-fabrication corpus is ONE bag —
+    student facts and the professor's vocabulary together — so a draft can
+    claim the STUDENT has experience in a topic that appears only on the
+    PROFESSOR's side ("I have experience with hypersonics") and pass the
+    gate. Competence claims must ground in student-provenance facts alone."""
+
+    def _profile(self):
+        return {
+            "name": "Eric", "year": "sophomore", "major": "Computer Engineering",
+            "school": "UIUC", "hard_skills": [{"name": "Python", "level": "expert"}],
+            "research_interests_text": "machine learning",
+        }
+
+    def _opp(self):
+        return {
+            "opportunity_type": "research", "title": "Hypersonics Research",
+            "pi_name": "Huy Tran", "lab_or_program": "Prof. Tran's Group",
+            "department": "Aerospace Engineering",
+            "keywords": ["hypersonics", "reentry aerodynamics"],
+            "description_raw": "Experimental hypersonics lab.",
+            "eligibility": {},
+        }
+
+    def test_competence_claim_cannot_borrow_professor_vocabulary(self):
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import competence_violations
+        p = ce._common_parts(self._profile(), self._opp())
+        student_corpus = ce._student_email_corpus(p)
+        violations = competence_violations(
+            "I have extensive experience with hypersonics and reentry "
+            "aerodynamics from my personal projects.",
+            student_corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING,
+        )
+        assert "hypersonics" in violations
+
+    def test_target_work_mention_is_not_a_competence_claim(self):
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import competence_violations
+        p = ce._common_parts(self._profile(), self._opp())
+        student_corpus = ce._student_email_corpus(p)
+        violations = competence_violations(
+            "I was drawn to your recent work on hypersonics, and your "
+            "group's focus on reentry aerodynamics interests me.",
+            student_corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING,
+        )
+        assert violations == []
+
+    def test_grounded_competence_claim_passes(self):
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import competence_violations
+        p = ce._common_parts(self._profile(), self._opp())
+        student_corpus = ce._student_email_corpus(p)
+        violations = competence_violations(
+            "I have experience with Python and machine learning.",
+            student_corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING,
+        )
+        assert violations == []
+
+    def test_engine_rejects_borrowing_draft(self, monkeypatch):
+        """End to end through _run_engine: an AI draft claiming professor-side
+        competence falls back to the grounded template as a fabrication."""
+        import backend.routes.cold_email as ce
+        from backend.schemas import ColdEmailRequest, ProfileRequest
+
+        borrowing = (
+            "Subject: Hypersonics research inquiry\n\n"
+            "Dear Prof. Tran,\n\n"
+            "My name is Eric, a sophomore in Computer Engineering at UIUC. "
+            "I have extensive experience with hypersonics and reentry "
+            "aerodynamics from personal projects, and your lab's direction "
+            "matches that background.\n\nBest regards,\nEric"
+        )
+        monkeypatch.setattr(ce, "is_configured", lambda: True)
+        monkeypatch.setattr(ce, "_pipeline_generate",
+                            lambda *a, **k: borrowing)
+        req = ColdEmailRequest(
+            profile=ProfileRequest(
+                name="Eric", home_school="uiuc", school="UIUC",
+                year="sophomore", major="Computer Engineering",
+                hard_skills=[{"name": "Python", "level": "expert"}],
+                research_interests_text="machine learning",
+            ),
+            opportunity_id="x", engine="ai",
+        )
+        resp = ce._run_engine(req, self._opp(), req.profile.model_dump(), False)
+        assert resp.method == "template"
+        assert resp.fallback_reason == "fabrication"
+
+
+class TestBeginnerSafeTemplateEG3:
+    """Evidence grounding, gap 3: the deterministic template — the email every
+    user without an LLM gets, and the fallback the fabrication gate degrades
+    to — claims "I have experience with X" for skills the student marked
+    BEGINNER. The prompt's hard rules forbid the AI exactly that claim; the
+    fallback must hold itself to the same standard."""
+
+    _OPP = {
+        "opportunity_type": "research", "pi_name": "Jane Doe",
+        "lab_or_program": "Prof. Jane Doe's Research Group",
+        "department": "Computer Science", "keywords": ["computer vision"],
+        "description_raw": "Computer vision research using Python.",
+        "eligibility": {"skills_required": ["Python"]},
+    }
+
+    def _beginner_profile(self):
+        return {
+            "name": "Eric", "year": "freshman", "major": "Computer Science",
+            "school": "UIUC",
+            "hard_skills": [
+                {"name": "Python", "level": "beginner"},
+                {"name": "MATLAB", "level": "beginner"},
+            ],
+            "research_interests_text": "computer vision",
+        }
+
+    def test_beginner_only_skills_are_never_claimed_as_experience(self):
+        email = generate_cold_email(self._beginner_profile(), self._OPP)
+        low = email.lower()
+        assert "i have experience with" not in low
+        assert "hands-on experience" not in low
+        assert "proficiency" not in low
+
+    def test_beginner_only_skills_get_honest_exposure_framing(self):
+        email = generate_cold_email(self._beginner_profile(), self._OPP)
+        assert "foundational exposure to" in email.lower()
+        assert "Python" in email
+
+    def test_expert_skills_still_read_as_experience(self):
+        profile = self._beginner_profile()
+        profile["hard_skills"] = [{"name": "Python", "level": "expert"}]
+        email = generate_cold_email(profile, self._OPP)
+        assert "foundational exposure" not in email.lower()
+
+    def test_skills_focus_variant_is_also_beginner_safe(self):
+        from src.recommender.cold_email import generate_variants
+        variants = generate_variants(self._beginner_profile(), self._OPP)
+        for v in variants:
+            low = v["text"].lower()
+            assert "i have experience with" not in low, v["id"]
+            assert "strong proficiency" not in low, v["id"]
+
+
+class TestInsufficientEvidenceExplicitEG4:
+    """Evidence grounding, gap 4: when the posting carries NO specific
+    research signal (no keywords, no areas, no verified works — the
+    research-blind majority of the corpus), the pipeline silently produces a
+    generic email while the UI presents it as tailored. The response must SAY
+    the evidence was insufficient, and the AI prompt must stop instructing
+    the model to 'name ONE specific aspect' it was never given."""
+
+    _BARE_OPP = {
+        "opportunity_type": "research", "pi_name": "Pat Lee",
+        "lab_or_program": "", "department": "History",
+        "keywords": [], "description_raw": "", "eligibility": {},
+        "metadata": {},
+    }
+
+    _RICH_OPP = {
+        "opportunity_type": "research", "pi_name": "Jane Doe",
+        "lab_or_program": "Prof. Jane Doe's Group",
+        "department": "Computer Science", "keywords": ["computer vision"],
+        "description_raw": "Computer vision lab.", "eligibility": {},
+    }
+
+    def _req(self):
+        from backend.schemas import ColdEmailRequest, ProfileRequest
+        return ColdEmailRequest(
+            profile=ProfileRequest(
+                name="Eric", home_school="uiuc", school="UIUC",
+                year="sophomore", major="History",
+            ),
+            opportunity_id="x", engine="template",
+        )
+
+    def test_bare_opportunity_says_no_target_data(self):
+        import backend.routes.cold_email as ce
+        req = self._req()
+        resp = ce._run_engine(req, self._BARE_OPP, req.profile.model_dump(), False)
+        assert resp.grounding == "no_target_data"
+
+    def test_rich_opportunity_says_specific(self):
+        import backend.routes.cold_email as ce
+        req = self._req()
+        resp = ce._run_engine(req, self._RICH_OPP, req.profile.model_dump(), False)
+        assert resp.grounding == "specific"
+
+    def test_prompt_drops_specific_aspect_demand_without_data(self):
+        from backend.routes.cold_email import _base_rules
+        rules = _base_rules(False, has_target_data=False)
+        assert "name ONE specific aspect" not in rules
+        assert "do not imply familiarity" in rules.lower()
+
+    def test_prompt_keeps_specific_aspect_demand_with_data(self):
+        from backend.routes.cold_email import _base_rules
+        rules = _base_rules(False, has_target_data=True)
+        assert "name ONE specific aspect" in rules
+
+    def test_pipeline_threads_the_no_data_prompt(self, monkeypatch):
+        """The honest prompt variant must actually REACH the draft call for a
+        bare posting — _base_rules supporting the flag means nothing if the
+        pipeline always passes has_target_data=True."""
+        import backend.routes.cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        systems: list[str] = []
+
+        def fake(messages, **_kw):
+            systems.append(messages[0]["content"])
+            return "Subject: Inquiry\n\nDear Professor,\nBody.\nBest,\nEric"
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        profile = {
+            "name": "Eric", "year": "sophomore", "major": "History",
+            "school": "UIUC", "research_interests_text": "",
+        }
+        ce._pipeline_generate(profile, dict(self._BARE_OPP), None)
+        assert systems, "the draft stage ran"
+        assert "do not imply familiarity" in systems[0]
+        assert "name ONE specific aspect" not in systems[0]

@@ -211,6 +211,11 @@ export default function ColdEmailModal({
   // no-verified-address state. Pre-W10b cached responses lack the field —
   // derive from whether an address arrived.
   const [recipientStatus, setRecipientStatus] = useState<ContactEmailStatus>('unavailable');
+  // Evidence honesty (one value per opportunity, from the backend): when the
+  // posting carries no research signal at all, every draft is necessarily
+  // generic, and presenting one as tailored would be a lie. Absent field
+  // (older cached responses) ⇒ 'specific', the pre-existing behaviour.
+  const [grounding, setGrounding] = useState<'specific' | 'no_target_data'>('specific');
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   // Copying/opening a draft only REVEALS the follow-up strip — it is not
@@ -289,6 +294,7 @@ export default function ColdEmailModal({
       setRecipientStatus(
         statusOf(data.recipient_status, data.variants[0]?.recipient_email ?? ''),
       );
+      setGrounding(data.grounding ?? 'specific');
       if (data.variants.length > 0) {
         const first = data.variants[0];
         setSubject(first.subject);
@@ -954,6 +960,19 @@ export default function ColdEmailModal({
                     )}
                   </div>
                   <div>
+                    {grounding === 'no_target_data' && (
+                      /* Evidence honesty: nothing in this record could
+                         personalize a draft, so say so instead of letting a
+                         generic email pass as tailored homework. */
+                      <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2" data-testid="grounding-notice">
+                        <p className="text-[12px] font-medium text-amber-800">
+                          {t('coldEmail.noTargetDataTitle')}
+                        </p>
+                        <p className="mt-0.5 text-[12px] leading-snug text-amber-700">
+                          {t('coldEmail.noTargetDataBody')}
+                        </p>
+                      </div>
+                    )}
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('coldEmail.subject')}</label>
                     <input
                       type="text"

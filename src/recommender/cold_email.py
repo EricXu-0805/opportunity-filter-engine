@@ -533,17 +533,32 @@ def _build_skills_focus(p: dict) -> str:
         elif experienced_skills:
             skills_para += f"\n\nI have hands-on experience with {', '.join(experienced_skills[:4])}."
         else:
-            skills_para += f"\n\nI have experience with {', '.join(skills[:4])}."
+            # Beginner-only: the same standard the AI prompt's hard rules
+            # impose — never presented as experience, at most exposure.
+            skills_para += f"\n\nI have foundational exposure to {', '.join(skills[:4])}."
 
+        seasoned = {
+            s.lower() for s in skills
+            if levels.get(s) in ("expert", "experienced")
+        }
         if matching:
-            skills_para += (
-                f" In particular, my background in {', '.join(matching)}"
-                f" is directly applicable to this position."
-            )
+            seasoned_matching = [s for s in matching if s.lower() in seasoned]
+            if seasoned_matching:
+                skills_para += (
+                    f" In particular, my background in {', '.join(seasoned_matching)}"
+                    f" is directly applicable to this position."
+                )
+            else:
+                # A beginner-level overlap is a reason to be interested, not a
+                # background to claim.
+                skills_para += (
+                    f" I am actively building on {', '.join(matching)},"
+                    f" which this position uses directly."
+                )
 
         required = p["opp_skills_required"]
         if required:
-            have = [s for s in required if s.lower() in {sk.lower() for sk in skills}]
+            have = [s for s in required if s.lower() in seasoned]
             if have:
                 skills_para += f" I already work with {', '.join(have)} which this role requires."
 
@@ -576,11 +591,20 @@ def _build_concise(p: dict) -> str:
 
     skills = p["skills"]
     matching = p["matching_skills"]
+    levels = p["skill_levels"]
+
+    def _claim(names: list[str]) -> str:
+        # Same beginner rule as every other builder: exposure, not experience.
+        if all(levels.get(s, "beginner") == "beginner" for s in names):
+            return f" I have foundational exposure to {', '.join(names)}."
+        return f" I have experience with {', '.join(names)}."
+
     if matching:
-        verb = "is" if len(matching[:3]) == 1 else "are"
-        core += f" I have experience with {', '.join(matching[:3])}, which {verb} relevant to your work."
+        chosen = matching[:3]
+        verb = "is" if len(chosen) == 1 else "are"
+        core += _claim(chosen)[:-1] + f", which {verb} relevant to your work."
     elif skills:
-        core += f" I have experience with {', '.join(skills[:3])}."
+        core += _claim(skills[:3])
 
     ask = " Would you be open to a brief conversation about potential opportunities in your lab?"
 
@@ -737,7 +761,18 @@ def _p2_skills_applied(p: dict) -> str:
     else:
         skill_str = f"{', '.join(applications[:-1])}, and {applications[-1]}"
 
-    para = f"\n\nI have experience with {skill_str}."
+    # The same standard the AI prompt's hard rules impose: a skill the student
+    # marked BEGINNER is never presented as experience — at most foundational
+    # exposure. This template is the fallback the fabrication gate degrades
+    # to, so it cannot itself overstate.
+    levels = p["skill_levels"]
+    all_beginner = all(levels.get(s, "beginner") == "beginner" for s in top)
+    verb = (
+        "I have foundational exposure to"
+        if all_beginner
+        else "I have experience with"
+    )
+    para = f"\n\n{verb} {skill_str}."
 
     # When `top` is already the matching skills (matching is non-empty), naming
     # them again here just repeats the same list. Keep the relevance emphasis

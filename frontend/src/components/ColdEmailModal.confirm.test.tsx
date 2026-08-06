@@ -605,3 +605,38 @@ describe('CE0-7 — closing or switching resets every session-specific state', (
       .toHaveTextContent('coldEmail.confirmSent');
   });
 });
+
+describe('ColdEmailModal — evidence honesty (grounding)', () => {
+  /** The backend answers one `grounding` value per opportunity. When it says
+   *  the record carries NO research signal, the modal must say the draft is a
+   *  general inquiry — not let it pass as tailored homework. */
+  it('shows the no-target-data notice when the backend says so', async () => {
+    mockGetVariants.mockImplementation(async (_p: unknown, oppId: string) => ({
+      variants: [variantFor(oppId)],
+      grounding: 'no_target_data',
+    }));
+    renderModal();
+    await openedOn('opp-A');
+    expect(screen.getByTestId('grounding-notice')).toBeInTheDocument();
+    expect(screen.getByText('coldEmail.noTargetDataTitle')).toBeInTheDocument();
+  });
+
+  it('shows nothing for a specific record, and for older responses without the field', async () => {
+    mockGetVariants.mockImplementation(async (_p: unknown, oppId: string) => ({
+      variants: [variantFor(oppId)],
+      grounding: 'specific',
+    }));
+    const { show } = renderModal();
+    await openedOn('opp-A');
+    expect(screen.queryByTestId('grounding-notice')).toBeNull();
+
+    // Absent field (an older cached response): same silence.
+    mockGetVariants.mockImplementation(async (_p: unknown, oppId: string) => ({
+      variants: [variantFor(oppId)],
+    }));
+    await act(async () => { show(false, 'opp-A'); });
+    await act(async () => { show(true, 'opp-B'); });
+    await openedOn('opp-B');
+    expect(screen.queryByTestId('grounding-notice')).toBeNull();
+  });
+});

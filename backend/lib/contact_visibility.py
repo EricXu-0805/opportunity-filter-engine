@@ -27,6 +27,7 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
 from backend.lib.public_projection import safe_public_http_url
+
 # The synthesized-vs-observed provenance predicate lives in src.evidence,
 # shared with the Match ranker's actionability tie-break
 # (src.matcher.ranker._is_actionable), which imports and calls

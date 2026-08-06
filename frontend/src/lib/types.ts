@@ -295,6 +295,11 @@ export interface ColdEmailResponse {
   recommended_style?: EmailStyle | null;
   /** R72-A: why the template was served when AI was requested (null on success). */
   fallback_reason?: ColdEmailFallbackReason | null;
+  /** Evidence honesty: 'no_target_data' when the posting carries no research
+   *  signal at all, so the draft is necessarily generic and must not be
+   *  presented as tailored. Optional so cached older responses typecheck
+   *  (absent ⇒ treated as 'specific'). */
+  grounding?: 'specific' | 'no_target_data';
 }
 
 export type ColdEmailEngine = 'template' | 'ai';
@@ -321,6 +326,8 @@ export interface EmailVariantsResponse {
    *  opportunity + session, not of a variant. */
   recipient_status?: ContactEmailStatus;
   recommended_style?: EmailStyle | null;
+  /** Same evidence-honesty answer as ColdEmailResponse.grounding. */
+  grounding?: 'specific' | 'no_target_data';
 }
 
 // ── Tailor (resume bullet rewriter, R71) ─────────────────────────────

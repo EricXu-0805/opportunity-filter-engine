@@ -26,6 +26,7 @@ from backend.lib.contact_visibility import contact_email_status
 from backend.lib.email_modes import EDIT_OPS, draft_voice, recommended_voice
 from backend.lib.grounding import (
     LENIENT_PROSE,
+    competence_violations,
     policy_divergence,
     validate_no_fabrication,
 )
@@ -222,6 +223,55 @@ _GRAD_BODY = (
     "framing.\n"
 )
 
+# The honest variants of point 2 for a posting that carries NO specific
+# research signal. The regular bodies order the model to "name ONE specific
+# aspect of THIS lab's work (a provided research area, topic, or keyword)" —
+# with nothing provided, that is an instruction to fabricate homework. These
+# swap the key sentence for a connection at the level actually given (the
+# department/program and the student's own direction) and forbid implying
+# familiarity with work the model was never shown.
+_UNDERGRAD_BODY_NO_TARGET_DATA = (
+    "Write the body in this order (the professional research-inquiry "
+    "structure used by university research offices):\n"
+    "1. One sentence: who the student is (name, year, major, school) and that "
+    "they are inquiring about a research opportunity.\n"
+    "2. The key sentence — connect the student's OWN stated interests to the "
+    "department or program named in the posting, honestly and at that level. "
+    "No specific research details were provided for this posting, so do not "
+    "imply familiarity with the professor's work: never invent a topic, "
+    "paper, or research area, and never claim to have read or followed "
+    "their work.\n"
+    "3. Concrete fit: the relevant skills and coursework the student actually "
+    "has. Show evidence, do not self-praise.\n"
+    "4. One clear ask: a brief meeting to discuss getting involved; offer the "
+    "student's availability if provided, and offer to share a resume or other "
+    "materials on request (never claim anything is attached).\n"
+)
+
+_GRAD_BODY_NO_TARGET_DATA = (
+    "Write the body in this order (the structure a strong prospective-advisee "
+    "email uses):\n"
+    "1. One sentence: who the applicant is (name, current program and year, "
+    "field, school) and that they are interested in this professor's group for "
+    "doctoral or research work.\n"
+    "2. The key sentence — connect the applicant's OWN research direction to "
+    "the department or program named in the posting, honestly and at that "
+    "level. No specific research details were provided for this posting, so "
+    "do not imply familiarity with the professor's work: never invent a "
+    "topic, paper, or research area, and never claim to have read or "
+    "followed their work.\n"
+    "3. Concrete standing: the applicant's actual research background — the "
+    "research experience, methods, and advanced coursework they listed. "
+    "Evidence, not self-praise; never claim a publication, degree, or "
+    "experience the applicant did not provide.\n"
+    "4. One clear ask: whether the professor is taking students or has openings "
+    "for the relevant cycle, and a brief meeting to discuss fit; offer to share "
+    "a CV or other materials on request (never claim anything is attached).\n"
+    "- Write as a prospective advisee and peer: do NOT offer to 'volunteer', ask "
+    "to be 'mentored by a graduate student', or use undergraduate RA-seat "
+    "framing.\n"
+)
+
 _HARD_RULES = (
     "\nHard rules:\n"
     "- ONLY use the structured facts provided. Never invent skills, courses, "
@@ -248,12 +298,22 @@ _HARD_RULES = (
 )
 
 
-def _base_rules(is_grad: bool) -> str:
+def _base_rules(is_grad: bool, has_target_data: bool = True) -> str:
     """Persona + format + body structure + shared hard rules, keyed to whether the
     sender is a graduate-level applicant (prospective advisor outreach) or an
-    undergraduate (first-research-experience inquiry)."""
+    undergraduate (first-research-experience inquiry).
+
+    ``has_target_data=False`` — the posting carries NO specific research
+    signal (no keywords, no stated areas, no verified works). Point 2 of both
+    bodies demands the model "name ONE specific aspect of THIS lab's work";
+    with nothing provided, that instruction is an order to fabricate homework.
+    Swap it for an honest connection: the department/program at the level
+    actually given, and the student's own direction — never implied
+    familiarity with work we could not show the model."""
     role = _GRAD_ROLE if is_grad else _UNDERGRAD_ROLE
     body = _GRAD_BODY if is_grad else _UNDERGRAD_BODY
+    if not has_target_data:
+        body = _GRAD_BODY_NO_TARGET_DATA if is_grad else _UNDERGRAD_BODY_NO_TARGET_DATA
     return role + _FORMAT_BLOCK + body + _HARD_RULES
 
 
@@ -475,11 +535,15 @@ def _draft_email(
     style: str | None,
     lab_type: str,
     angle: str | None = None,
+    has_target_data: bool = True,
 ) -> str | None:
     """Stage 2 — the draft. Same persona/format/hard-rules + lab-type tone as
     before, now with few-shot anchors and the voice folded in as a first-class
     section. ``angle`` (judge tier) steers the opening structure only."""
-    system = _base_rules(is_grad) + _LAB_TYPE_TONE.get(lab_type, _LAB_TYPE_TONE["dry"]) + _FEWSHOT
+    system = (
+        _base_rules(is_grad, has_target_data=has_target_data)
+        + _LAB_TYPE_TONE.get(lab_type, _LAB_TYPE_TONE["dry"]) + _FEWSHOT
+    )
     voice = draft_voice(style)
     if voice:
         system += (
@@ -550,9 +614,13 @@ def _judge_drafts(
 
 def _professor_anchors(p: dict, opp: dict) -> list[str]:
     """Lower-cased specific strings that would prove a draft references THIS
-    professor's actual work — keywords, research area/topic, stated areas, paper
-    title words, and the PI surname. Empty list ⟹ no specific data to reference,
-    so a draft is not faulted for genericness on that axis."""
+    professor's actual work — keywords, research area/topic, stated areas, and
+    paper title words. Empty list ⟹ no specific data to reference, so a draft
+    is not faulted for genericness on that axis.
+
+    Deliberately NOT the PI surname: it appears in every draft's salutation,
+    so counting it made ``references_professor`` vacuously true — "Dear Prof.
+    Tran" is not homework."""
     anchors: list[str] = []
     for kw in (opp.get("keywords") or [])[:12]:
         if len(str(kw)) >= 4:
@@ -571,9 +639,6 @@ def _professor_anchors(p: dict, opp: dict) -> list[str]:
     for wk in verified_recent_works(opp):
         for word in re.findall(r"[a-z][a-z0-9-]{5,}", str(wk.get("title", "")).lower()):
             anchors.append(word)
-    pi = str(p.get("pi_name") or "").strip().lower().split()
-    if pi:
-        anchors.append(pi[-1])  # surname
     return anchors
 
 
@@ -598,6 +663,12 @@ def _deterministic_findings(draft: str, corpus: str, p: dict, opp: dict) -> dict
     return {
         "banned_filler": banned,
         "unsupported": fabricated,
+        # First-person competence claims grounded only in the TARGET's
+        # vocabulary — the revise loop gets a chance to fix these before the
+        # engine-level gate falls back to the template.
+        "borrowed_competence": competence_violations(
+            draft, _student_email_corpus(p), extra_allow=_EMAIL_SCAFFOLDING,
+        ),
         "references_professor": references_professor,
         "has_specific_prof_data": bool(anchors),
     }
@@ -674,7 +745,11 @@ def _llm_critique(draft: str, prof_brief: str, stu_brief: str, style: str | None
 
 
 def _should_revise(findings: dict) -> bool:
-    if findings.get("banned_filler") or findings.get("unsupported"):
+    if (
+        findings.get("banned_filler")
+        or findings.get("unsupported")
+        or findings.get("borrowed_competence")
+    ):
         return True
     if findings.get("has_specific_prof_data") and not findings.get("references_professor"):
         return True
@@ -697,6 +772,7 @@ def _findings_score(findings: dict) -> int:
     return (
         len(findings.get("banned_filler") or [])
         + len(findings.get("unsupported") or [])
+        + len(findings.get("borrowed_competence") or [])
         + (
             1
             if findings.get("has_specific_prof_data")
@@ -718,6 +794,14 @@ def _revision_notes(findings: dict) -> str:
             "These terms are NOT supported by the student's provided facts — "
             f"remove them or replace with something they actually listed: "
             f"{', '.join(str(t) for t in findings['unsupported'][:8])}."
+        )
+    if findings.get("borrowed_competence"):
+        parts.append(
+            "The email claims the student personally has experience in these "
+            "topics, but they appear only in the PROFESSOR's own materials — "
+            "the student never listed them. Rephrase as interest in the "
+            "professor's work, or drop the claim: "
+            f"{', '.join(str(t) for t in findings['borrowed_competence'][:8])}."
         )
     if findings.get("has_specific_prof_data") and not findings.get("references_professor"):
         parts.append(
@@ -784,12 +868,20 @@ def _pipeline_generate(
     prof_brief = _render_professor_brief(p, opp)
     is_grad = _is_grad_year(str(p.get("year", "")))
     corpus = _build_email_corpus(p, opp)
+    # Whether the posting carries ANY specific research signal. When it does
+    # not, the prompt's key-sentence instruction switches to the honest
+    # variant — asking for "ONE specific aspect of THIS lab's work" that was
+    # never provided is an order to fabricate homework.
+    has_target_data = bool(_professor_anchors(p, opp))
 
     if on_stage:
         on_stage("drafting")
     n = _ndraft_count()
     if n <= 1:
-        drafts = [_draft_email(prof_brief, stu_brief, is_grad, style, p["lab_type"])]
+        drafts = [_draft_email(
+            prof_brief, stu_brief, is_grad, style, p["lab_type"],
+            has_target_data=has_target_data,
+        )]
     else:
         with ThreadPoolExecutor(max_workers=n) as pool:
             futures = [
@@ -797,6 +889,7 @@ def _pipeline_generate(
                     _draft_email,
                     prof_brief, stu_brief, is_grad, style, p["lab_type"],
                     _DRAFT_ANGLES[i],
+                    has_target_data,
                 )
                 for i in range(n)
             ]
@@ -841,6 +934,22 @@ def _pipeline_generate(
     return draft
 
 
+def _student_email_corpus(p: dict) -> str:
+    """Lower-cased SENDER-provenance facts only: what the student themself
+    provided. This is the sole corpus a first-person competence claim may
+    ground in (``grounding.competence_violations``) — the professor's
+    vocabulary deliberately is not here, so "I have experience with
+    hypersonics" cannot borrow the posting's own words as proof."""
+    parts: list[str] = [
+        str(p.get("name", "")), str(p.get("major", "")), str(p.get("school", "")),
+        str(p.get("research_interests", "")), str(p.get("linkedin_url", "")),
+        str(p.get("github_url", "")), str(p.get("scholar_url", "")),
+    ]
+    for key in ("skills", "coursework", "matching_skills", "resume_bullets"):
+        parts.extend(str(x) for x in (p.get(key) or []))
+    return " ".join(parts).lower()
+
+
 def _build_email_corpus(p: dict, opp: dict) -> str:
     """Lower-cased evidence corpus the AI email may draw vocabulary from.
 
@@ -848,17 +957,20 @@ def _build_email_corpus(p: dict, opp: dict) -> str:
     opportunity's own text. Any 5+ char ASCII token in the draft that isn't
     here, isn't generic filler, and isn't email scaffolding is a fabricated
     skill claim → reject the draft and fall back to the grounded template.
+
+    Two provenance halves: ``_student_email_corpus`` (the sender's own facts)
+    plus the target's text below. The union answers "may the draft use this
+    word at all"; the student half alone answers "may the draft claim this as
+    the sender's own competence".
     """
     parts: list[str] = [
-        str(p.get("name", "")), str(p.get("major", "")), str(p.get("school", "")),
-        str(p.get("research_interests", "")), str(p.get("title", "")),
+        _student_email_corpus(p),
+        str(p.get("title", "")),
         str(p.get("recipient", "")), str(p.get("lab", "")),
         str(p.get("research_area", "")), str(p.get("research_topic", "")),
-        str(p.get("opp_desc", "")), str(p.get("linkedin_url", "")),
-        str(p.get("github_url", "")), str(p.get("scholar_url", "")),
+        str(p.get("opp_desc", "")),
     ]
-    for key in ("skills", "coursework", "matching_skills", "opp_skills_required", "resume_bullets"):
-        parts.extend(str(x) for x in (p.get(key) or []))
+    parts.extend(str(x) for x in (p.get("opp_skills_required") or []))
     # The professor's stated research areas + academic title are fed to the
     # model via the professor brief; without them here a draft citing an area
     # named only in research_areas_raw would be flagged as fabrication.
@@ -978,14 +1090,31 @@ def _run_engine(
                     f"{ai_subject}\n{ai_body}", corpus,
                     extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
                 )
-                if passed:
+                # Second provenance gate: a first-person competence claim must
+                # ground in the STUDENT's own facts — the union corpus above
+                # would let "I have experience with <the posting's topic>"
+                # borrow the professor's vocabulary as proof.
+                borrowed = competence_violations(
+                    f"{ai_subject}\n{ai_body}",
+                    _student_email_corpus(
+                        _common_parts(
+                            profile_dict,
+                            safe_opp,
+                            resume_bullets=request.resume_bullets,
+                        ),
+                    ),
+                    extra_allow=_EMAIL_SCAFFOLDING,
+                )
+                if passed and not borrowed:
                     subject, body, method = ai_subject, ai_body, "ai"
                     _log_grounding_shadow(f"{ai_subject}\n{ai_body}", corpus)
                 else:
                     fallback_reason = "fabrication"
                     logger.info(
-                        "cold-email: AI draft rejected (fabrication: %s)",
+                        "cold-email: AI draft rejected (fabrication: %s; "
+                        "borrowed competence: %s)",
                         fabricated[:5],
+                        borrowed[:5],
                     )
 
     if method != "ai":
@@ -1006,6 +1135,12 @@ def _run_engine(
     )
     mailto_link = _build_mailto_link(recipient_email, subject, body)
     lab_type = _detect_lab_type(safe_opp)
+    # From the SAFE opportunity + the same parts the drafts were built from,
+    # so this answer and the draft describe the same evidence.
+    anchors = _professor_anchors(
+        _common_parts(profile_dict, safe_opp, resume_bullets=request.resume_bullets),
+        safe_opp,
+    )
 
     return ColdEmailResponse(
         subject=subject,
@@ -1020,6 +1155,7 @@ def _run_engine(
         style=request.style if method == "ai" else None,
         recommended_style=_recommended_style(lab_type),
         fallback_reason=fallback_reason,
+        grounding="specific" if anchors else "no_target_data",
     )
 
 
@@ -1168,6 +1304,13 @@ async def generate_email_variants(
         "lab_type": lab_type,
         "recipient_status": recipient_status,
         "recommended_style": _recommended_style(lab_type),
+        # Same evidence-honesty answer as /cold-email: a property of the
+        # opportunity, one value for the whole response.
+        "grounding": (
+            "specific"
+            if _professor_anchors(_common_parts(profile_dict, safe_opp), safe_opp)
+            else "no_target_data"
+        ),
     }
 
 

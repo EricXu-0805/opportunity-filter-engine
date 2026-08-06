@@ -324,6 +324,13 @@ class ColdEmailResponse(BaseModel):
     # Values: "not_configured" | "unavailable" | "invalid_output" |
     # "fabrication".
     fallback_reason: str | None = None
+    # Evidence honesty: "specific" when the posting carries real research
+    # signal (keywords / stated areas / verified works) the draft could be
+    # tailored with; "no_target_data" when it carries none, so the draft is
+    # NECESSARILY generic and the UI must not present it as tailored. The
+    # majority of scraped faculty records are research-blind — silence here
+    # showed students a "personalized" email nothing personalizes.
+    grounding: str = "specific"
 
 
 class GapAnalysisResponse(BaseModel):
