@@ -5,11 +5,15 @@
  *   - mint (exercised through signInExistingEmail / signInExistingOAuth):
  *     an existing-account sign-in must stash a grant bound to the right
  *     email (email path) or to a device secret whose SHA-256 hash is all
- *     the server ever sees (OAuth path), and minting must NEVER block
+ *     the server ever sees (OAuth path), stamped with minted_at so an
+ *     abandoned stash can expire (W14), and minting must NEVER block
  *     sign-in.
- *   - redeemPendingMerge: one-shot redeem on /auth/callback, tolerant of
- *     expired/used/not-bound grants (they surface as an RPC error and must
- *     NOT fail the sign-in).
+ *   - redeemPendingMerge: verdict-based redeem on /auth/callback (W14).
+ *     The token is kept until a DEFINITIVE server verdict — success, or a
+ *     dead-grant error (expired/used/invalid/unbound). Transport failures
+ *     get one immediate retry and otherwise KEEP the token for the next
+ *     callback land, so a network blip can no longer permanently orphan
+ *     the anonymous data. No redeem outcome may fail the sign-in.
  *
  * The SQL correctness (dedup, conflict rules, takeover/replay/expiry/
  * secret-binding refusal) is verified separately against real Postgres in
@@ -69,8 +73,9 @@ beforeEach(() => {
 });
 
 describe('mint (via signInExistingEmail)', () => {
-  it('mints a grant bound to the target email and stashes the token', async () => {
+  it('mints a grant bound to the target email and stashes {token, minted_at}', async () => {
     mockRpc.mockResolvedValueOnce({ data: GRANT, error: null });
+    const before = Date.now();
 
     const result = await signInExistingEmail('Eric@Illinois.edu', REDIRECT);
 
@@ -78,7 +83,13 @@ describe('mint (via signInExistingEmail)', () => {
     expect(mockRpc).toHaveBeenCalledWith('mint_merge_grant', {
       p_target_email: 'eric@illinois.edu',
     });
-    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(GRANT);
+    // W14: the stash is JSON with a minted_at stamp so identity-owner can
+    // expire an abandoned hand-off instead of deferring clears forever.
+    const raw = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT);
+    const stash = JSON.parse(raw!) as { token: string; minted_at: number };
+    expect(stash.token).toBe(GRANT);
+    expect(stash.minted_at).toBeGreaterThanOrEqual(before);
+    expect(stash.minted_at).toBeLessThanOrEqual(Date.now());
     // mint happens BEFORE the redirect
     expect(mockSignInWithOtp).toHaveBeenCalled();
   });
@@ -115,8 +126,9 @@ describe('mint (via signInExistingOAuth) — device-secret binding', () => {
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
-  it('mints a secret-bound grant (null email + SHA-256 hash) and stashes {token, secret}', async () => {
+  it('mints a secret-bound grant (null email + SHA-256 hash) and stashes {token, secret, minted_at}', async () => {
     mockRpc.mockResolvedValueOnce({ data: GRANT, error: null });
+    const before = Date.now();
 
     const result = await signInExistingOAuth('google', REDIRECT);
 
@@ -128,9 +140,11 @@ describe('mint (via signInExistingOAuth) — device-secret binding', () => {
     expect(args.p_secret_hash).toMatch(/^[0-9a-f]{64}$/);
 
     const raw = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT);
-    const stash = JSON.parse(raw!) as { token: string; secret: string };
+    const stash = JSON.parse(raw!) as { token: string; secret: string; minted_at: number };
     expect(stash.token).toBe(GRANT);
     expect(stash.secret).toMatch(/^[0-9a-f]{64}$/);
+    expect(stash.minted_at).toBeGreaterThanOrEqual(before);
+    expect(stash.minted_at).toBeLessThanOrEqual(Date.now());
     // Recompute the hash via node:crypto — independent of the SubtleCrypto
     // path under test — to pin "server stores sha256(secret), nothing else".
     expect(createHash('sha256').update(stash.secret).digest('hex')).toBe(args.p_secret_hash);
@@ -197,7 +211,7 @@ describe('redeemPendingMerge', () => {
     }
   });
 
-  it('redeems a pending token, maps the summary, and clears the token', async () => {
+  it('redeems a pending token, maps the summary, and clears the token (success = definitive)', async () => {
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
     mockRpc.mockResolvedValueOnce({
       data: {
@@ -220,47 +234,94 @@ describe('redeemPendingMerge', () => {
         attachmentsNotMoved: 1,
       },
     });
+    // token consumed on success
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
-  it('clears the token and returns {kind:"none"} when the grant is rejected (expired/used/not-bound) — a definitive, non-retryable outcome', async () => {
-    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
-    mockRpc.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'redeem_merge_grant: grant expired' },
-    });
-
-    const res = await redeemPendingMerge();
-
-    expect(res).toEqual({ kind: 'none' });
-    // Definitive: the grant is dead server-side regardless of retries.
-    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
-  });
-
-  it('KEEPS the token and returns {kind:"failed"} when the redeem RPC THROWS (transport failure) — unknown whether the server processed it, so a retry must be able to re-present the SAME token', async () => {
-    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
-    mockRpc.mockRejectedValueOnce(new Error('network down'));
-
-    const res = await redeemPendingMerge();
-
-    expect(res).toEqual({ kind: 'failed' });
-    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(GRANT);
-  });
-
-  it('a retry after a transport failure re-presents the SAME token and succeeds', async () => {
-    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
-    mockRpc.mockRejectedValueOnce(new Error('network down'));
-    const first = await redeemPendingMerge();
-    expect(first).toEqual({ kind: 'failed' });
-
+  it('redeems a W14 email-path JSON slot {token, minted_at} with p_token only', async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.MERGE_GRANT,
+      JSON.stringify({ token: GRANT, minted_at: Date.now() }),
+    );
     mockRpc.mockResolvedValueOnce({
       data: { merged: true, summary: { favorites: 1 } },
       error: null,
     });
-    const second = await redeemPendingMerge();
 
-    expect(mockRpc).toHaveBeenLastCalledWith('redeem_merge_grant', { p_token: GRANT });
-    expect(second.kind).toBe('success');
+    const res = await redeemPendingMerge();
+
+    expect(mockRpc).toHaveBeenCalledWith('redeem_merge_grant', { p_token: GRANT });
+    expect(res.kind).toBe('success');
+    expect(res.kind === 'success' && res.summary.merged).toBe(true);
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
+  // The four dead-grant RAISE strings from the redeem_merge_grant bodies
+  // (migrations 017/0181/021/023). Each is a definitive verdict: the grant
+  // can never be redeemed, so the token must be consumed.
+  it.each([
+    'redeem_merge_grant: invalid grant',
+    'redeem_merge_grant: grant already used',
+    'redeem_merge_grant: grant expired',
+    'redeem_merge_grant: unbound grant is not redeemable',
+  ])('clears the token and returns {kind:"none"} on the definitive verdict "%s"', async (message) => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message } });
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toEqual({ kind: 'none' });
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+  });
+
+  // Non-definitive RPC errors: the grant may still be alive server-side
+  // ('not bound' = wrong account signed in — the right one can still redeem
+  // within the 15-min TTL; 5xx/session errors say nothing about the grant).
+  // {kind:'failed'} — a grant existed and its fate is unconfirmed.
+  it.each([
+    'redeem_merge_grant: grant not bound to this account',
+    'redeem_merge_grant: grant not bound to this session',
+    'redeem_merge_grant: no authenticated session',
+    'upstream connect error or disconnect/reset before headers',
+  ])('KEEPS the token and returns {kind:"failed"} on the non-definitive error "%s"', async (message) => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message } });
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toEqual({ kind: 'failed' });
+    // no verdict → the next /auth/callback land may retry
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(GRANT);
+  });
+
+  it('retries once when the RPC THROWS, and keeps the token when the retry also fails', async () => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
+    mockRpc.mockRejectedValueOnce(new Error('network down'));
+    mockRpc.mockRejectedValueOnce(new Error('network still down'));
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toEqual({ kind: 'failed' });
+    // exactly one bounded retry for this page load
+    expect(mockRpc).toHaveBeenCalledTimes(2);
+    // transport failure is NOT a verdict — the token survives so the next
+    // callback land can redeem instead of orphaning the anon data forever
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(GRANT);
+  });
+
+  it('recovers when the immediate retry succeeds after a transport failure', async () => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
+    mockRpc.mockRejectedValueOnce(new Error('network blip'));
+    mockRpc.mockResolvedValueOnce({
+      data: { merged: true, summary: { favorites: 2 } },
+      error: null,
+    });
+
+    const res = await redeemPendingMerge();
+
+    expect(mockRpc).toHaveBeenCalledTimes(2);
+    expect(res.kind).toBe('success');
+    expect(res.kind === 'success' && res.summary.favorites).toBe(2);
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
@@ -288,6 +349,8 @@ describe('redeemPendingMerge', () => {
   it('an OAuth-path transport failure also keeps the {token,secret} JSON slot intact for retry', async () => {
     const stash = JSON.stringify({ token: GRANT, secret: 'device-secret-hex' });
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, stash);
+    // Both the call and its one bounded in-page retry fail.
+    mockRpc.mockRejectedValueOnce(new Error('network down'));
     mockRpc.mockRejectedValueOnce(new Error('network down'));
 
     const res = await redeemPendingMerge();
@@ -306,8 +369,12 @@ describe('redeemPendingMerge', () => {
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
-  it('returns {kind:"none"} and makes no RPC when the JSON slot is missing token/secret strings', async () => {
-    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: GRANT }));
+  it.each([
+    JSON.stringify({ secret: 'device-secret-hex' }), // token missing
+    JSON.stringify({ token: 42 }), // token not a string
+    JSON.stringify({ token: GRANT, secret: 123 }), // secret present but not a string
+  ])('returns {kind:"none"}, clears the slot, and makes no RPC on the unusable JSON slot %s', async (slot) => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, slot);
 
     const res = await redeemPendingMerge();
 
@@ -335,5 +402,7 @@ describe('redeemPendingMerge', () => {
         attachmentsNotMoved: 0,
       },
     });
+    // an explicit no-op is still a definitive verdict — token consumed
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 });

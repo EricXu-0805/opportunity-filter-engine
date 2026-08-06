@@ -556,4 +556,62 @@ BEGIN
   RAISE WARNING 'PASS scenario 7 (renovation + usage merge: union/dedup/drain)';
 END $$;
 
+
+-- ---------------------------------------------------------------------------
+-- Scenario 8 (W14): orders move on merge; paid history survives the account
+-- switch. Also pins the widened grant TTL (a grant minted now is redeemable
+-- 30 minutes later — regression guard for the 15-minute strand-forever bug).
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  -- UUIDs unique to this scenario: the professor-tracking merge test (runs
+  -- later in this same database) mints for '8888…' — a tombstone here would
+  -- break its mint with "device already merged".
+  u text := '40404040-4040-4040-8040-404040404040';  -- anon source
+  v text := '50505050-5050-4050-8050-505050505050';  -- permanent target
+  tok uuid;
+  res jsonb;
+  c int;
+BEGIN
+  -- Source bought while anonymous (pending + paid); target has its own order.
+  INSERT INTO orders (device_id, package, amount_cents, channel, status)
+    VALUES (u, 'concierge_basic', 4900, 'manual', 'pending'),
+           (u, 'concierge_basic', 4900, 'manual', 'paid');
+  INSERT INTO orders (device_id, package, amount_cents, channel, status)
+    VALUES (v, 'concierge_plus', 9900, 'manual', 'paid');
+
+  PERFORM set_config('test.uid', u, false);
+  PERFORM set_config('test.jwt', '{"is_anonymous": true}', false);
+  tok := mint_merge_grant('accountw@ex.com');
+
+  -- Widened TTL: backdate the mint by 30 minutes — must still redeem.
+  UPDATE merge_grants
+    SET expires_at = expires_at - interval '30 minutes'
+    WHERE token = tok;
+
+  PERFORM set_config('test.uid', v, false);
+  PERFORM set_config('test.jwt', '{"email":"accountw@ex.com"}', false);
+  res := redeem_merge_grant(tok);
+
+  IF (res->>'merged')::boolean IS NOT TRUE THEN
+    RAISE EXCEPTION 'TEST FAIL s8: expected merged=true, got %', res;
+  END IF;
+
+  SELECT count(*) INTO c FROM orders WHERE device_id = v;
+  IF c <> 3 THEN RAISE EXCEPTION 'TEST FAIL s8 orders: want 3 under target got %', c; END IF;
+  SELECT count(*) INTO c FROM orders WHERE device_id = u;
+  IF c <> 0 THEN RAISE EXCEPTION 'TEST FAIL s8: source orders not drained (%)', c; END IF;
+  PERFORM 1 FROM orders WHERE device_id = v AND status = 'paid' AND package = 'concierge_basic';
+  IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL s8: paid anonymous order lost'; END IF;
+  IF (res#>>'{summary,orders}')::int <> 2 THEN
+    RAISE EXCEPTION 'TEST FAIL s8: orders summary want 2 got %', res#>>'{summary,orders}';
+  END IF;
+
+  -- Clean up: orders_rls_test.sql runs later in this same database and
+  -- asserts whole-table row counts — scenario rows must not leak into it.
+  DELETE FROM orders WHERE device_id IN (u, v);
+
+  RAISE WARNING 'PASS scenario 8 (orders merge + widened TTL)';
+END $$;
+
 SELECT 'ALL FLOW B TESTS PASSED' AS result;

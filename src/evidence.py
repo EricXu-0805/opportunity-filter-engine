@@ -75,6 +75,44 @@ def harvested_contact_email(opp: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Recipient truth (shared by the collector hygiene pass and the serve-time
+# reveal bar so the two cannot drift — W12 cold-email boundary)
+# ---------------------------------------------------------------------------
+
+# Generic department/unit/role mailbox local-parts that scrape in place of a
+# professor's personal address (english@, mainoffice@physics, poultry@). A
+# "Dear Prof. X" cold email to a unit inbox misfires. Exact-match only, never
+# substring, so a personal username is never clipped.
+UNIT_MAILBOX_LOCALPARTS = frozenset({
+    "office", "mainoffice", "frontoffice", "dean", "meddean", "info", "contact",
+    "admin", "administration", "advising", "gradoffice", "undergrad",
+    "undergraduate", "hr", "reception", "frontdesk", "ischool", "poultry",
+    "anthro", "dept", "department", "generalinquiries", "mailbox", "webmaster",
+    "help", "support",
+})
+
+
+def dept_name_stems(department: str) -> set[str]:
+    """Significant lowercased words of a department name (drops structural
+    words), so an email local-part equal to one ("english", "linguistics")
+    reads as a unit inbox, not a person."""
+    return {
+        w for w in re.split(r"[^a-z]+", (department or "").lower())
+        if len(w) >= 4 and w not in {"department", "school", "college", "and", "the", "of"}
+    }
+
+
+def is_unit_mailbox_email(email: str, department: str = "") -> bool:
+    """True when the address's local-part is a department/unit/role mailbox
+    rather than a personal address."""
+    if not email or "@" not in email:
+        return False
+    local = re.sub(r"[^a-z]", "", email.split("@")[0].lower())
+    return bool(local) and (local in UNIT_MAILBOX_LOCALPARTS
+                            or local in dept_name_stems(department))
+
+
+# ---------------------------------------------------------------------------
 # Position rank (shared by collectors and serving so framing cannot drift)
 # ---------------------------------------------------------------------------
 

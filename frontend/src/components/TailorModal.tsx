@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { tailorResume, getTailorStatus, extractResumeBullets } from '@/lib/api';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { hashString } from '@/lib/match-utils';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
@@ -44,10 +45,28 @@ function draftStorageKey(ownerScopeKey: string, opportunityId: string): string {
 // bare, ownerless slot the NEXT identity to open this opportunity could
 // read. Draft state stays purely in-memory (React state) for that window;
 // these two functions simply no-op instead.
-function loadSavedDraft(ownerScopeKey: string | null, opportunityId: string): string | null {
+//
+// W13: drafts carry a fingerprint of profile.resume_text at save time so a
+// restored draft built against a since-edited résumé is flagged, not
+// silently preferred. Legacy plain-string drafts have no sig — unknown, so
+// no staleness claim is made for them.
+interface StoredDraft {
+  text: string;
+  sig: string | null;
+}
+
+function loadSavedDraft(ownerScopeKey: string | null, opportunityId: string): StoredDraft | null {
   if (typeof window === 'undefined' || !ownerScopeKey) return null;
   try {
-    return window.localStorage.getItem(draftStorageKey(ownerScopeKey, opportunityId));
+    const raw = window.localStorage.getItem(draftStorageKey(ownerScopeKey, opportunityId));
+    if (raw === null) return null;
+    try {
+      const parsed = JSON.parse(raw) as { t?: unknown; s?: unknown };
+      if (parsed && typeof parsed.t === 'string') {
+        return { text: parsed.t, sig: typeof parsed.s === 'string' ? parsed.s : null };
+      }
+    } catch { /* legacy plain-string draft */ }
+    return { text: raw, sig: null };
   } catch {
     // localStorage can throw in private-mode Safari and embedded webviews.
     // Swallow — persistence is a UX nicety, not a correctness requirement.
@@ -55,14 +74,19 @@ function loadSavedDraft(ownerScopeKey: string | null, opportunityId: string): st
   }
 }
 
-function saveDraft(ownerScopeKey: string | null, opportunityId: string, value: string): void {
+function saveDraft(
+  ownerScopeKey: string | null,
+  opportunityId: string,
+  value: string,
+  resumeSig: string | null,
+): void {
   if (typeof window === 'undefined' || !ownerScopeKey) return;
   try {
     const key = draftStorageKey(ownerScopeKey, opportunityId);
     if (value.trim().length === 0) {
       window.localStorage.removeItem(key);
     } else {
-      window.localStorage.setItem(key, value);
+      window.localStorage.setItem(key, JSON.stringify({ t: value, s: resumeSig }));
     }
   } catch {
     // Same rationale as loadSavedDraft — never crash the modal on quota
@@ -291,6 +315,7 @@ export default function TailorModal({
   // see the open-effect below for the actual loading.
   const [draft, setDraft] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
+  const [draftStale, setDraftStale] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<TailorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -322,6 +347,12 @@ export default function TailorModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  // W13 target isolation: one TailorModal instance serves many opportunities
+  // on the favorites page. A slow /tailor response from target A must never
+  // render under target B after a close→reopen — every open/target change
+  // bumps the generation, and a landing response is dropped unless it
+  // belongs to the current generation AND (when the backend echoes it) the
+  // current target.
 
   // C1-R2B: every async Generate/Extract continuation must confirm, AFTER
   // its own await, that the context it started under is STILL current —
@@ -418,8 +449,12 @@ export default function TailorModal({
       // prefill so the user's last typed bullets survive across
       // close→reopen cycles. Empty heuristic + no saved draft → "".
       const saved = loadSavedDraft(ownerScopeKey, opportunityId);
-      setDraft(saved ?? heuristicPrefill);
-      setDraftRestored(saved !== null && saved.length > 0);
+      setDraft(saved?.text ?? heuristicPrefill);
+      setDraftRestored(saved !== null && saved.text.length > 0);
+      setDraftStale(
+        !!saved?.sig && !!profile.resume_text &&
+        saved.sig !== hashString(profile.resume_text),
+      );
       setResp(null);
       setError(null);
       setCopied(false);
@@ -433,7 +468,8 @@ export default function TailorModal({
       setEditDraft('');
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [isOpen, profileFingerprint, heuristicPrefill, opportunityId, ownerReady, ownerScopeKey]);
+  // profile.resume_text feeds the draft-staleness comparison.
+  }, [isOpen, profileFingerprint, heuristicPrefill, opportunityId, ownerReady, ownerScopeKey, profile.resume_text]);
 
   // Tracks the (ownerScopeKey, opportunityId) the persist effect below last
   // ACTUALLY wrote under. Guards against a real cross-owner leak: if
@@ -472,8 +508,9 @@ export default function TailorModal({
     // giving `draft` the new context's real value) has contextChanged ===
     // false and persists normally.
     if (contextChanged) return;
-    saveDraft(ownerScopeKey, opportunityId, draft);
-  }, [isOpen, ownerScopeKey, opportunityId, draft]);
+    saveDraft(ownerScopeKey, opportunityId, draft,
+      profile.resume_text ? hashString(profile.resume_text) : null);
+  }, [isOpen, ownerScopeKey, opportunityId, draft, profile.resume_text]);
 
   // R71-G: probe server AI availability each time the modal opens so the
   // banner reflects current config (a Render env-var change shouldn't need
@@ -498,7 +535,7 @@ export default function TailorModal({
   const handleClearDraft = useCallback(() => {
     setDraft('');
     setDraftRestored(false);
-    saveDraft(ownerScopeKey, opportunityId, '');
+    saveDraft(ownerScopeKey, opportunityId, '', null);
     // See the textarea onChange handler below — a manual draft mutation of
     // any kind invalidates a still-pending Extract. setExtracting(false)
     // right here, synchronously, rather than only bumping the attempt
@@ -593,7 +630,8 @@ export default function TailorModal({
       if (data.bullets.length > 0) {
         const next = data.bullets.join('\n');
         setDraft(next);
-        saveDraft(ctx.ownerScopeKey, ctx.opportunityId, next);
+        saveDraft(ctx.ownerScopeKey, ctx.opportunityId, next,
+          profile.resume_text ? hashString(profile.resume_text) : null);
         setDraftRestored(false);
       }
     } catch {
@@ -643,6 +681,9 @@ export default function TailorModal({
     try {
       const data = await tailorResume(profile, ctx.opportunityId, bullets, { locale });
       if (!stillCurrent()) return; // superseded — N1's result must never appear as N2's
+      // W13: a response the backend stamped for a DIFFERENT target than the
+      // one this call was made for is dropped outright.
+      if (data.opportunity_id && data.opportunity_id !== ctx.opportunityId) return;
       setResp(data);
     } catch (err) {
       if (!stillCurrent()) return;
@@ -706,7 +747,8 @@ export default function TailorModal({
     if (kept.length === 0) return;
     const next = kept.join('\n');
     setDraft(next);
-    saveDraft(ownerScopeKey, opportunityId, next);
+    saveDraft(ownerScopeKey, opportunityId, next,
+      profile.resume_text ? hashString(profile.resume_text) : null);
     setDraftRestored(false);
     // See the textarea onChange handler below — a manual draft mutation of
     // any kind invalidates a still-pending Extract; setExtracting(false)
@@ -845,6 +887,11 @@ export default function TailorModal({
                     </button>
                   </span>
                 )}
+                {draftStale && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full" data-testid="tailor-stale-draft">
+                    {t('tailor.staleDraft')}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-400 mb-2">
                 {t('tailor.bulletsHint')}
@@ -892,6 +939,7 @@ export default function TailorModal({
                   // else would ever clear the spinner otherwise.
                   extractAttemptRef.current += 1;
                   setExtracting(false);
+                  if (draftStale) setDraftStale(false);
                 }}
                 placeholder={t('tailor.bulletsPlaceholder')}
                 rows={12}

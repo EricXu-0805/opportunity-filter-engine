@@ -30,7 +30,7 @@ from src.evidence import (
     source_rank,
     stamp_inferred,
 )
-from src.matcher.ranker import _is_actionable
+from src.matcher.ranker import _evidence_rank, _is_actionable
 from src.normalizers.deactivate_past import deactivate_past
 from src.parsers.llm_tagger import (
     _detect_intl_from_org,
@@ -291,22 +291,33 @@ class TestEmailProvenance:
                  "application": {"contact_method": "email"}}
         assert not _is_actionable(synth)
         # profile_page / bare-legacy / wayback sources are OBSERVED
-        # (non-synthesized) but carry no identity-bound evidence tuple — the
-        # ranker's actionability bar now equals the reveal bar, so none of
-        # these may win a ranking tie as actionable.
+        # (non-synthesized) and carry no binding fields at all — the W7a
+        # legacy rule (W12 merge reconciliation): they ARE actionable, since
+        # the product reveals and sends them; the evidence LADDER (not this
+        # boolean) is what keeps fully-bound proof above them in a tie.
         profile_page = {"contact_email": "jdoe@test.edu",
                          "metadata": {"email_source": "profile_page"},
                          "application": {"contact_method": "email"}}
-        assert not _is_actionable(profile_page)
+        assert _is_actionable(profile_page)
+        assert _evidence_rank(profile_page) == 1
         legacy = {"contact_email": "jdoe@test.edu", "metadata": {},
                   "application": {"contact_method": "email"}}
-        assert not _is_actionable(legacy)
+        assert _is_actionable(legacy)
+        assert _evidence_rank(legacy) == 1
         wayback = {"contact_email": "jdoe@test.edu",
                    "metadata": {"email_source": "wayback"},
                    "application": {"contact_method": "email"}}
-        assert not _is_actionable(wayback)
+        assert _is_actionable(wayback)
+        assert _evidence_rank(wayback) == 1
+        # A PARTIAL binding stamp is not legacy — it fails closed entirely.
+        partial = {"contact_email": "jdoe@test.edu",
+                   "metadata": {"email_source": "profile_page", "identity_bound": False},
+                   "application": {"contact_method": "email"}}
+        assert not _is_actionable(partial)
+        assert _evidence_rank(partial) == 0
         complete = _bound_opp("jdoe@test.edu")
         assert _is_actionable(complete)
+        assert _evidence_rank(complete) == 2
 
     def test_ranker_and_reveal_bars_agree(self):
         # The real invariant: _is_actionable (ranker tie-break) and

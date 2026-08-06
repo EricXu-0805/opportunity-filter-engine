@@ -100,7 +100,9 @@ describe('InteractionStatusMenu (R69-C)', () => {
     fireEvent.click(screen.getByText('results.statusMenu.trigger'));
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getAllByRole('button')).toHaveLength(5); // no Remove footer yet — no interaction set
+    // 6 status options (W12 added 'contacted'), plain buttons in a non-modal
+    // disclosure dialog — no Remove footer yet since no interaction is set.
+    expect(within(dialog).getAllByRole('button')).toHaveLength(6);
   });
 
   it('clicking a status option fires onTrackInteraction(id, type) and closes the dialog', () => {
@@ -238,7 +240,7 @@ describe('InteractionStatusMenu (R69-C)', () => {
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeInTheDocument(); // still open
       // back to the normal status list, fully interactive again
-      expect(within(dialog).getAllByRole('button')).toHaveLength(6); // 5 statuses + Remove footer
+      expect(within(dialog).getAllByRole('button')).toHaveLength(7); // 6 statuses + Remove footer
     });
 
     it('confirming fires onTrackInteraction with the EXACT same-type callback the underlying REMOVE contract expects, then closes the dialog', () => {
@@ -428,8 +430,8 @@ describe('InteractionStatusMenu (R69-C)', () => {
       );
       await user.click(screen.getByRole('button', { name: /statusMenu\.ariaTrigger:Test Lab/ }));
       const dialog = screen.getByRole('dialog');
-      const buttons = within(dialog).getAllByRole('button'); // 5 statuses + Remove footer = 6
-      expect(buttons).toHaveLength(6);
+      const buttons = within(dialog).getAllByRole('button'); // 6 statuses + Remove footer = 7
+      expect(buttons).toHaveLength(7);
       buttons[buttons.length - 1].focus();
       await user.tab();
       expect(document.activeElement).toBe(buttons[0]);

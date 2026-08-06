@@ -334,5 +334,8 @@ def test_cold_email_context_and_output_cannot_reintroduce_hidden_address(monkeyp
     assert response["subject"] == "[email redacted]"
     assert response["body"] == "[email redacted]"
     assert response["recipient_email"] == ""
-    assert response["recipient_status"] == "unavailable"
+    # W7a reconciliation: this legacy-shaped record now HAS a verified send
+    # target, so an anonymous caller gets the honest sign-in gate — never the
+    # address itself (asserted above), and never a false "unavailable".
+    assert response["recipient_status"] == "sign_in_required"
     assert "example.edu" not in response["mailto_link"]

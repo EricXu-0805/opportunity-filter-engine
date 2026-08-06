@@ -33,6 +33,7 @@ import logging
 import os
 import re
 import unicodedata
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -40,7 +41,7 @@ from fastapi import APIRouter, Header, HTTPException
 
 from backend.data_loader import load_opportunities_by_id
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
-from backend.lib.grounding import LENIENT_PROSE
+from backend.lib.grounding import LENIENT_PROSE_NUMERIC
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
@@ -71,6 +72,53 @@ router = APIRouter()
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200
 _DEFAULT_BULLETS_PER_REQUEST = 8
+
+
+# Bumped whenever tailoring logic changes materially — stamped on every
+# response with the target echo so a client can pair a suggestion set to the
+# exact target + code that produced it (W13; mirrors the W12 cold-email
+# provenance contract).
+TAILOR_PIPELINE_VERSION = "w13.1"
+
+
+def _verify_evidence(evidence: str, corpus: str) -> str:
+    """A ``source_evidence`` quote is only shown when it actually appears in
+    the student's material (same NFKC/casefold/whitespace normalization as
+    the extraction gate). The prompt demands a real quote, but a prompt is
+    not a proof — a fabricated "quote" rendered as evidence would be invented
+    certainty (W13). Ungrounded evidence degrades to "" (the UI then shows no
+    evidence line rather than a fake one); the bullet text itself is still
+    separately validated.
+
+    Composite citations ("Python (experienced); CS 225") are legitimate —
+    each separator-delimited fragment must be contained, so real multi-fact
+    quotes survive while an invented fragment blanks the whole quote.
+    Matching is punctuation-insensitive (the prompt renders skills as
+    "Python (experienced)" while the corpus joins "Python experienced"):
+    evidence is a transparency artifact, so the bar is "these words appear
+    contiguously in the student's material", not byte-exactness — the bullet
+    TEXT keeps the stricter extraction/validation gates."""
+    ev = (evidence or "").strip()
+    if not ev:
+        return ""
+    corpus_norm = _normalized_evidence_text(corpus)
+    fragments = [f for f in re.split(r"[;·|]+", ev)
+                 if len(_normalized_evidence_text(f)) >= 4]
+    if not fragments:
+        return evidence if _normalized_evidence_text(ev) in corpus_norm else ""
+    for frag in fragments:
+        if _normalized_evidence_text(frag) not in corpus_norm:
+            return ""
+    return evidence
+
+
+def _normalized_evidence_text(value: str) -> str:
+    """NFKC + casefold + punctuation stripped to spaces + collapsed — the
+    evidence-quote containment normalization (word presence + order, tolerant
+    of formatting punctuation)."""
+    value = unicodedata.normalize("NFKC", value).casefold()
+    value = re.sub(r"[^0-9a-z\u4e00-\u9fff]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def _build_evidence_corpus(
@@ -604,7 +652,7 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         # generic English rejected natural phrasing ("demonstrating foundational
         # understanding"), nuking every draft to the passthrough fallback.
         passed, fabricated = _validate_no_fabrication(
-            item["text"], evidence_corpus, policy=LENIENT_PROSE,
+            item["text"], evidence_corpus, policy=LENIENT_PROSE_NUMERIC,
         )
         if passed:
             # R71-E: ``i`` indexes into both the LLM response array and
@@ -614,7 +662,8 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
             # bullets than were submitted.
             accepted.append(TailoredBullet(
                 text=item["text"],
-                source_evidence=item.get("source_evidence", ""),
+                source_evidence=_verify_evidence(
+                    item.get("source_evidence", ""), evidence_corpus),
                 source_index=min(i, len(request.original_bullets) - 1),
             ))
         else:
@@ -634,6 +683,9 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         tailored_bullets=accepted,
         method="ai",
         warnings=warnings,
+        opportunity_id=request.opportunity_id,
+        generated_at=datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        pipeline_version=TAILOR_PIPELINE_VERSION,
     )
 
 
@@ -1091,9 +1143,11 @@ async def renovate_resume(
                     # bullet simply stays at base_text.
                     continue
                 passed, fabricated = _validate_no_fabrication(
-                    item["text"], corpus, policy=LENIENT_PROSE,
+                    item["text"], corpus, policy=LENIENT_PROSE_NUMERIC,
                 )
                 if passed:
+                    item["source_evidence"] = _verify_evidence(
+                        item.get("source_evidence", ""), corpus)
                     rewrites[bid] = item
                 else:
                     warnings.append(f"bullet_{bid}_rejected_fabrication: " + ",".join(fabricated[:5]))
@@ -1106,6 +1160,9 @@ async def renovate_resume(
         # reserved for docs with no AI effect at all (passthrough paths above).
         method="ai",
         warnings=warnings,
+        opportunity_id=request.opportunity_id,
+        generated_at=datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        pipeline_version=TAILOR_PIPELINE_VERSION,
     )
 
 
@@ -1114,7 +1171,9 @@ _BULLET_SYSTEM_PROMPT_EN = (
     "ONLY the experience already present in the bullet and the student's "
     "material. Never invent technologies, tools, metrics, courses, or "
     "affiliations the student didn't state. You may mirror the opportunity's "
-    "vocabulary only when the underlying experience is genuinely present. Start "
+    "vocabulary only when the underlying experience is genuinely present. "
+    "Respect stated skill levels — never present a beginner-level skill as "
+    "mastery. Start "
     "with a strong past-tense verb; keep any real numbers; cut buzzwords.\n"
     "\n"
     "OUTPUT (mandatory): one JSON object, no markdown fences:\n"
@@ -1124,7 +1183,8 @@ _BULLET_SYSTEM_PROMPT_EN = (
 _BULLET_SYSTEM_PROMPT_ZH = (
     "你只改写一条简历 bullet，让它更贴合某个具体机会，只能使用这条 bullet 和"
     "学生材料里**已经有**的经历。绝不编造学生没写过的技术、工具、指标、课程或"
-    "所属。只有当对应经历确实存在时，才能借用机会描述里的术语。以有力的动词"
+    "所属。只有当对应经历确实存在时，才能借用机会描述里的术语。尊重学生标注的"
+    "技能水平——绝不把入门水平写成精通。以有力的动词"
     "开头；保留真实数字；删掉空话。\n"
     "\n"
     "输出（强制）：一个 JSON 对象，无 markdown 围栏：\n"
@@ -1225,14 +1285,21 @@ async def optimize_bullet(
     corpus = _build_evidence_corpus(
         profile_dict, [b for b in (request.base_text.strip(), current) if b],
     )
-    passed, fabricated = _validate_no_fabrication(result["text"], corpus, policy=LENIENT_PROSE)
+    passed, fabricated = _validate_no_fabrication(result["text"], corpus, policy=LENIENT_PROSE_NUMERIC)
     if not passed:
         return BulletOptimizeResponse(
             text=current, changed=False,
             warnings=["rejected_fabrication: " + ",".join(fabricated[:5])],
+            opportunity_id=request.opportunity_id,
+            generated_at=datetime.now(UTC).replace(tzinfo=None).isoformat(),
+            pipeline_version=TAILOR_PIPELINE_VERSION,
         )
     changed = result["text"].strip() != current
     return BulletOptimizeResponse(
-        text=result["text"], source_evidence=result.get("source_evidence", ""),
+        text=result["text"],
+        source_evidence=_verify_evidence(result.get("source_evidence", ""), corpus),
         changed=changed, warnings=[],
+        opportunity_id=request.opportunity_id,
+        generated_at=datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        pipeline_version=TAILOR_PIPELINE_VERSION,
     )

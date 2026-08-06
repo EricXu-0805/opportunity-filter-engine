@@ -2,7 +2,7 @@
  * Verified-send tracking contract for the cold-email modal.
  *
  * Copying the draft or opening a mail client is NOT evidence the email was
- * sent — neither may create an 'applied' interaction (an outreach "send"
+ * sent — neither may create a 'contacted' interaction (an outreach "send"
  * event that feeds the responsiveness aggregates). Only the explicit
  * "I sent it" confirmation records the contact. No evidence = no tracking
  * event.
@@ -111,7 +111,7 @@ async function renderModal() {
 }
 
 describe('ColdEmailModal — verified send tracking', () => {
-  it('copying the draft does not create an applied interaction', async () => {
+  it('copying the draft does not create a contacted interaction', async () => {
     await renderModal();
     fireEvent.click(screen.getByText('coldEmail.copy'));
     // The confirm strip appears instead of silent tracking.
@@ -121,7 +121,7 @@ describe('ColdEmailModal — verified send tracking', () => {
     expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
   });
 
-  it('opening a mail client does not create an applied interaction', async () => {
+  it('opening a mail client does not create a contacted interaction', async () => {
     await renderModal();
     fireEvent.click(screen.getByText('coldEmail.openInEmail'));
     expect(await screen.findByText('coldEmail.sentQuestion')).toBeInTheDocument();
@@ -138,6 +138,9 @@ describe('ColdEmailModal — verified send tracking', () => {
       // One call. The second argument is the owner capability captured when
       // the person confirmed — a tracker write that cannot say which identity
       // and which storage generation it belongs to has no business landing.
+      // (Gate E supersedes W12's trackInteraction('contacted') here: contact
+      // is the atomic RPC's last_contacted_at stamp, never a status row the
+      // modal writes on its own.)
       expect(confirmContactMock).toHaveBeenCalledWith(
         'opp-1',
         expect.objectContaining({ epoch: expect.any(Number), generation: expect.any(Number) }),
@@ -152,5 +155,29 @@ describe('ColdEmailModal — verified send tracking', () => {
     expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
     // Confirmation reveals the follow-up reminder chips.
     expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
+  });
+});
+
+describe('W12 draft freshness — in-tab AI cache', () => {
+  it('expires a cached draft after the TTL', async () => {
+    const { aiCacheEntryIsStale, AI_CACHE_TTL_MS } = await import('./ColdEmailModal');
+    const entry = { response: { corpus_version: 'v1' }, at: 1_000 };
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS + 1, 'v1')).toBe(true);
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS - 1, 'v1')).toBe(false);
+  });
+
+  it('expires a cached draft when the corpus generation moves', async () => {
+    const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
+    const entry = { response: { corpus_version: 'v1' }, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2')).toBe(true);
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v1')).toBe(false);
+  });
+
+  it('keeps pre-W12 cached drafts on the TTL rule alone', async () => {
+    const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
+    // No corpus_version on the cached response (old backend) — only the TTL
+    // can expire it; a null comparison must not spuriously invalidate.
+    const entry = { response: {}, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2')).toBe(false);
   });
 });

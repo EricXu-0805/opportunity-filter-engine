@@ -28,6 +28,7 @@ import type {
 } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
+import { hashString } from '@/lib/match-utils';
 
 /**
  * Whole-résumé renovation toward ONE opportunity (per-professor by
@@ -62,7 +63,7 @@ function pickRenovationWarning(warnings: string[], t: Replier): string | null {
   if (warnings.includes('llm_not_configured')) {
     return t('renovate.warnings.llmUnavailable');
   }
-  if (warnings.some((w) => w.startsWith('plan_'))) {
+  if (warnings.some((w) => w.startsWith('plan_') || w === 'macro_plan_failed')) {
     return t('renovate.warnings.planFailed');
   }
   return null;
@@ -143,10 +144,15 @@ export default function ResumeRenovationModal({
   const [doc, setDoc] = useState<RenovationDoc | null>(null);
   const [baseSections, setBaseSections] = useState<ResumeSectionInput[]>([]);
   const [restoredFromSave, setRestoredFromSave] = useState(false);
+  const [staleResume, setStaleResume] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  // The last persist payload, so the save-failed state can offer a real
+  // retry of exactly what failed (W13).
+  const lastPersistRef = useRef<{ doc: RenovationDoc; sections: ResumeSectionInput[] } | null>(null);
   // Per-bullet UI state, keyed by bullet id (ids are unique doc-wide — the
   // backend 422s duplicate ids).
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -172,6 +178,8 @@ export default function ResumeRenovationModal({
     setCopied(false);
     setSaving(false);
     setSavedFlash(false);
+    setSaveFailed(false);
+    setStaleResume(false);
     setEditingId(null);
     setEditDraft('');
     setOptimizingId(null);
@@ -183,6 +191,14 @@ export default function ResumeRenovationModal({
         if (ignore) return;
         const storedDoc = stored?.doc as unknown as RenovationDoc | undefined;
         if (storedDoc && Array.isArray(storedDoc.sections) && storedDoc.sections.length > 0) {
+          // W13 staleness: a doc built from a since-edited résumé must not
+          // render as silently current. Legacy docs carry no sig — unknown,
+          // so no claim either way.
+          setStaleResume(
+            typeof storedDoc.resume_sig === 'string' &&
+            !!profile.resume_text &&
+            storedDoc.resume_sig !== hashString(profile.resume_text),
+          );
           setDoc(storedDoc);
           setBaseSections(
             Array.isArray((stored?.base_snapshot as { sections?: ResumeSectionInput[] })?.sections)
@@ -201,7 +217,9 @@ export default function ResumeRenovationModal({
     return () => {
       ignore = true;
     };
-  }, [isOpen, opportunityId]);
+    // profile.resume_text feeds the staleness comparison — a resume edit
+    // while the modal is closed must re-evaluate on the next open.
+  }, [isOpen, opportunityId, profile.resume_text]);
 
   // Focus trap + escape + body-overflow lock, lifted from TailorModal so the
   // renovation modal feels identical to keyboard users.
@@ -250,21 +268,34 @@ export default function ResumeRenovationModal({
   const persist = useCallback(
     async (nextDoc: RenovationDoc, sections: ResumeSectionInput[]) => {
       setSaving(true);
+      setSaveFailed(false);
+      if (profile.resume_text) nextDoc.resume_sig = hashString(profile.resume_text);
+      lastPersistRef.current = { doc: nextDoc, sections };
       try {
-        await saveRenovation(
+        // W13 save truthfulness: "Saved" is a persistence CLAIM — it renders
+        // only when the upsert confirmed. A failure (offline, signed-out
+        // session, RLS denial) shows an explicit retry state instead; the
+        // in-memory doc is untouched either way.
+        const ok = await saveRenovation(
           opportunityId,
           nextDoc as unknown as Record<string, unknown>,
           { sections } as unknown as Record<string, unknown>,
           nextDoc.method,
           nextDoc.warnings,
         );
-        setSavedFlash(true);
-        setTimeout(() => setSavedFlash(false), 2000);
+        if (ok) {
+          setSavedFlash(true);
+          setTimeout(() => setSavedFlash(false), 2000);
+        } else {
+          setSaveFailed(true);
+        }
+      } catch {
+        setSaveFailed(true);
       } finally {
         setSaving(false);
       }
     },
-    [opportunityId],
+    [opportunityId, profile.resume_text],
   );
 
   async function handleRenovate() {
@@ -439,6 +470,21 @@ export default function ResumeRenovationModal({
                 {t('renovate.saved')}
               </span>
             )}
+            {saveFailed && !saving && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-600" data-testid="renovation-save-failed">
+                {t('renovate.saveFailed')}
+                <button
+                  type="button"
+                  className="underline hover:text-amber-700"
+                  onClick={() => {
+                    const last = lastPersistRef.current;
+                    if (last) void persist(last.doc, last.sections);
+                  }}
+                >
+                  {t('renovate.retrySave')}
+                </button>
+              </span>
+            )}
             {saving && !savedFlash && (
               <span className="text-[11px] text-gray-400">{t('renovate.saving')}</span>
             )}
@@ -506,6 +552,12 @@ export default function ResumeRenovationModal({
                   <Info className="w-3.5 h-3.5" aria-hidden="true" />
                   {t('renovate.restored')}
                 </p>
+              )}
+              {staleResume && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12.5px] text-amber-800" data-testid="renovation-stale-resume">
+                  <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>{t('renovate.staleResume')}</span>
+                </div>
               )}
               {warningMessage && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12.5px] text-amber-800">

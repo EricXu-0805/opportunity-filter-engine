@@ -8,13 +8,14 @@ import re
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from backend.data_loader import load_opportunities_by_id
+from backend.data_loader import corpus_version, load_opportunities_by_id
 from backend.lib.blocking import (
     LOCAL_WORK_TIMEOUT_SECONDS,
     MULTI_LLM_TIMEOUT_SECONDS,
@@ -47,6 +48,7 @@ from src.recommender.cold_email import (
     generate_cold_email,
     generate_variants,
 )
+from src.tracking.professor_profiles import FRESHNESS_TTL_DAYS
 
 logger = logging.getLogger("ofe.cold_email")
 
@@ -1037,6 +1039,59 @@ async def generate_email(
         return _template_after_timeout(request, opp, profile_dict, authed)
 
 
+# Bumped whenever generation logic changes materially — stamped on every
+# response so a cached client draft is traceable to the code that made it
+# (W12 draft provenance; the corpus side is covered by corpus_version()).
+COLD_EMAIL_PIPELINE_VERSION = "w12.1"
+
+# Claims about the professor's research made when the record carries NO
+# research signal at all. The vocabulary-level fabrication gate can't see a
+# lowercase invented area ("your work on machine learning"), so when there is
+# nothing to ground ANY such claim, the claim shape itself is the fabrication.
+_UNGROUNDED_RESEARCH_CLAIM_RE = re.compile(
+    r"\byour (?:recent )?(?:work|research|scholarship|studies)\s+(?:on|in|about|regarding)\b",
+    re.IGNORECASE,
+)
+
+
+def _ungrounded_research_claim(parts: dict, body: str) -> bool:
+    """True when ``body`` claims familiarity with the professor's research
+    while the record carries NO research signal to ground any such claim
+    (W12). The vocabulary-level gate can't see a lowercase invented area
+    ("your work on machine learning"), so the claim SHAPE is the fabrication."""
+    has_signal = bool(
+        parts.get("research_area") or parts.get("research_topic")
+        or parts.get("research_areas_raw") or parts.get("recent_works")
+    )
+    return not has_signal and bool(_UNGROUNDED_RESEARCH_CLAIM_RE.search(body))
+
+
+def _source_freshness(opp: dict) -> str:
+    """How current the record behind this draft is (W12 draft provenance).
+
+    ``inactive`` — the record was deactivated (departed faculty, expired
+    posting); the UI must not present the draft as current outreach.
+    ``stale`` — last collector verification is older than the shared 60-day
+    tracking TTL; usable, but the UI should nudge re-verification.
+    ``fresh`` — verified within the TTL. ``unknown`` — no parseable
+    last_verified (never optimistically "fresh").
+    """
+    md = opp.get("metadata") or {}
+    if md.get("is_active") is False:
+        return "inactive"
+    raw = md.get("last_verified")
+    if not isinstance(raw, str) or not raw:
+        return "unknown"
+    try:
+        seen = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return "unknown"
+    if seen.tzinfo is not None:
+        seen = seen.astimezone(UTC).replace(tzinfo=None)
+    age = datetime.now(UTC).replace(tzinfo=None) - seen
+    return "stale" if age.days > FRESHNESS_TTL_DAYS else "fresh"
+
+
 def _run_engine(
     request: ColdEmailRequest,
     opp: dict,
@@ -1078,31 +1133,29 @@ def _run_engine(
                 # R72-A: reject the AI draft if it fabricates a skill / tech
                 # the student never listed (same guarantee as the resume
                 # tailor) and fall back to the grounded template.
-                corpus = _build_email_corpus(
-                    _common_parts(
-                        profile_dict,
-                        safe_opp,
-                        resume_bullets=request.resume_bullets,
-                    ),
-                    safe_opp,
-                )
+                # safe_opp, not opp (both sides of the merge agreed on the
+                # gate, differed here): the contact-stripped record keeps a
+                # harvested address out of the evidence vocabulary entirely.
+                parts = _common_parts(profile_dict, safe_opp, resume_bullets=request.resume_bullets)
+                corpus = _build_email_corpus(parts, safe_opp)
                 passed, fabricated = validate_no_fabrication(
                     f"{ai_subject}\n{ai_body}", corpus,
                     extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
                 )
+                # W12: when the record carries NO research signal (no area, no
+                # topic, no raw research text, no verified works), any "your
+                # work on X" claim is invented certainty the vocabulary gate
+                # can't catch (lowercase prose) — reject the draft shape itself.
+                if passed and _ungrounded_research_claim(parts, ai_body):
+                    passed = False
+                    fabricated = ["ungrounded research claim"]
                 # Second provenance gate: a first-person competence claim must
                 # ground in the STUDENT's own facts — the union corpus above
                 # would let "I have experience with <the posting's topic>"
                 # borrow the professor's vocabulary as proof.
                 borrowed = competence_violations(
                     f"{ai_subject}\n{ai_body}",
-                    _student_email_corpus(
-                        _common_parts(
-                            profile_dict,
-                            safe_opp,
-                            resume_bullets=request.resume_bullets,
-                        ),
-                    ),
+                    _student_email_corpus(parts),
                     extra_allow=_EMAIL_SCAFFOLDING,
                 )
                 if passed and not borrowed:
@@ -1156,6 +1209,14 @@ def _run_engine(
         recommended_style=_recommended_style(lab_type),
         fallback_reason=fallback_reason,
         grounding="specific" if anchors else "no_target_data",
+        # W12 draft provenance: a draft is traceable to the corpus + code that
+        # produced it, and carries how current its source record was. The
+        # client cache keys on these so a changed corpus invalidates cached
+        # drafts instead of silently re-serving them.
+        generated_at=datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        corpus_version=corpus_version(),
+        pipeline_version=COLD_EMAIL_PIPELINE_VERSION,
+        source_freshness=_source_freshness(opp),
     )
 
 
@@ -1311,6 +1372,11 @@ async def generate_email_variants(
             if _professor_anchors(_common_parts(profile_dict, safe_opp), safe_opp)
             else "no_target_data"
         ),
+        # W12 draft provenance (same contract as /cold-email).
+        "generated_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        "corpus_version": corpus_version(),
+        "pipeline_version": COLD_EMAIL_PIPELINE_VERSION,
+        "source_freshness": _source_freshness(opp),
     }
 
 

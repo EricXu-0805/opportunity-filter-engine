@@ -79,6 +79,19 @@ const DRAFT_KEY = `ofe_tailor_draft_${OWNER}:opp-123`;
 const DRAFT_KEY_OWNER2 = `ofe_tailor_draft_${OWNER2}:opp-123`;
 const LEGACY_DRAFT_KEY = 'ofe_tailor_draft_opp-123';
 
+/** W13: drafts are stored as {t, s} envelopes (text + resume sig); legacy
+ *  plain strings still load. Tests assert on the TEXT. */
+function storedDraftText(key: string): string | null {
+  const raw = window.localStorage.getItem(key);
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as { t?: unknown };
+    if (parsed && typeof parsed.t === 'string') return parsed.t;
+  } catch { /* legacy */ }
+  return raw;
+}
+
+
 describe('TailorModal', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -237,9 +250,7 @@ describe('TailorModal', () => {
     fireEvent.change(textarea, { target: { value: 'newly typed bullet' } });
 
     await waitFor(() => {
-      expect(
-        window.localStorage.getItem(DRAFT_KEY),
-      ).toBe('newly typed bullet');
+      expect(storedDraftText(DRAFT_KEY)).toBe('newly typed bullet');
     });
   });
 
@@ -251,7 +262,7 @@ describe('TailorModal', () => {
 
     const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
     expect(textarea.value).toBe('');
-    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+    expect(storedDraftText(DRAFT_KEY)).toBeNull();
     // Chip disappears once cleared.
     expect(screen.queryByText('tailor.draftRestored')).toBeNull();
   });
@@ -503,7 +514,7 @@ describe('TailorModal', () => {
       expect(textarea.value).toBe('Dark bullet one with no glyph\nDark bullet two with no glyph');
     });
     // Promoted draft is persisted so it survives a close/reopen.
-    expect(window.localStorage.getItem(DRAFT_KEY)).toBe(
+    expect(storedDraftText(DRAFT_KEY)).toBe(
       'Dark bullet one with no glyph\nDark bullet two with no glyph',
     );
   });
@@ -547,7 +558,7 @@ describe('TailorModal', () => {
     // Draft now holds the tailored text, one bullet per line.
     expect(textarea.value).toBe('Rewritten bullet one\nRewritten bullet two');
     // Storage persisted the promoted draft too.
-    expect(window.localStorage.getItem(DRAFT_KEY)).toBe(
+    expect(storedDraftText(DRAFT_KEY)).toBe(
       'Rewritten bullet one\nRewritten bullet two',
     );
     // Result panel resets — CTA flips back to generate, promote button gone.
@@ -805,7 +816,7 @@ describe('TailorModal', () => {
       });
 
       expect(textarea.value).toBe(freshValue); // untouched by N1's late result
-      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBe('STALE extracted bullet');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extracted bullet');
     });
 
     // C1-R2B red-team correction: an earlier version of these tests clicked
@@ -953,7 +964,7 @@ describe('TailorModal', () => {
 
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea.value).not.toBe('STALE extract via X button');
-      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBe('STALE extract via X button');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extract via X button');
     });
 
     it('Extract via the backdrop click: same immediate-resolve proof', async () => {
@@ -975,7 +986,7 @@ describe('TailorModal', () => {
 
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea.value).not.toBe('STALE extract via backdrop');
-      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBe('STALE extract via backdrop');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extract via backdrop');
     });
 
     it('Extract via Escape: same immediate-resolve proof', async () => {
@@ -996,7 +1007,7 @@ describe('TailorModal', () => {
 
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea.value).not.toBe('STALE extract via Escape');
-      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBe('STALE extract via Escape');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extract via Escape');
     });
   });
 
@@ -1143,7 +1154,7 @@ describe('TailorModal', () => {
       });
       await waitFor(() => expect(textarea.value).toBe('N2 genuine extracted bullet'));
       expect(screen.queryByText('tailor.extracting')).toBeNull();
-      expect(window.localStorage.getItem(DRAFT_KEY)).toBe('N2 genuine extracted bullet');
+      expect(storedDraftText(DRAFT_KEY)).toBe('N2 genuine extracted bullet');
     });
   });
 
@@ -1234,7 +1245,7 @@ describe('TailorModal', () => {
       });
 
       expect(textarea.value).toBe(freshValue); // untouched by N1's late, profile-stale result
-      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBe('STALE bullet computed against the OLD profile');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE bullet computed against the OLD profile');
     });
 
     it('a same-content profile re-render (a brand NEW object, identical field values — e.g. a parent re-fetch that resolves to the same data) must NOT invalidate an in-flight Generate: this is not a real context change', async () => {
@@ -1394,8 +1405,8 @@ describe('TailorModal', () => {
 
       const badCalls = setItemSpy.mock.calls.filter(([, value]) => value === 'STALE bullet computed under the OLD owner');
       expect(badCalls).toEqual([]);
-      expect(window.localStorage.getItem(DRAFT_KEY)).not.toBe('STALE bullet computed under the OLD owner');
-      expect(window.localStorage.getItem(DRAFT_KEY_OWNER2)).not.toBe('STALE bullet computed under the OLD owner');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE bullet computed under the OLD owner');
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).not.toBe('STALE bullet computed under the OLD owner');
     });
   });
 
@@ -1452,7 +1463,7 @@ describe('TailorModal', () => {
       render(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={profile} />);
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea.value).toBe(''); // no trace of U1's stale extract — clean
-      expect(window.localStorage.getItem(DRAFT_KEY_OWNER2)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
     });
 
     it('deferred Extract crossing a real U1->U2 unmount, WITH an explicit post-unmount identity sweep of U1\'s key (mirrors identity-owner.ts\'s real USER_SCOPED_PREFIXES cleanup): U1\'s stale extract resolving AFTER the sweep must not resurrect the just-cleaned key', async () => {
@@ -1468,7 +1479,7 @@ describe('TailorModal', () => {
       fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
         target: { value: 'U1 own draft before extracting' },
       });
-      await waitFor(() => expect(window.localStorage.getItem(DRAFT_KEY)).toBe('U1 own draft before extracting'));
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('U1 own draft before extracting'));
 
       fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
       await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
@@ -1494,11 +1505,11 @@ describe('TailorModal', () => {
       // The swept key must stay swept — a mount-awareness regression would
       // have this stale `saveDraft` call recreate it with stale content,
       // silently undoing the sweep's own cleanup.
-      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY)).toBeNull();
       // And it must never have landed under U2's key either — the closure
       // captured ctx.ownerScopeKey as OWNER at call time, not whatever
       // ownerScopeKey happens to be live when the promise settles.
-      expect(window.localStorage.getItem(DRAFT_KEY_OWNER2)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
     });
 
     it('deferred Generate crossing a real U1->U2 unmount: U1\'s stale AI result must never appear for a fresh U2 instance on the SAME opportunity', async () => {
@@ -1584,7 +1595,7 @@ describe('TailorModal', () => {
 
       expect(textarea.value).toBe('my own fresher typing'); // manual intent wins
       expect(screen.queryByText('tailor.extracting')).toBeNull(); // still recovered after the late resolve
-      await waitFor(() => expect(window.localStorage.getItem(DRAFT_KEY)).toBe('my own fresher typing'));
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('my own fresher typing'));
     });
 
     it('Extract pending, user clicks "Clear draft", THEN Extract resolves: the cleared (empty) draft is not resurrected', async () => {
@@ -1606,7 +1617,7 @@ describe('TailorModal', () => {
       });
 
       expect(textarea.value).toBe(''); // still cleared — extract's stale result did not resurrect it
-      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY)).toBeNull();
     });
   });
 
@@ -1620,7 +1631,7 @@ describe('TailorModal', () => {
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea.value).toBe(''); // heuristic prefill is empty — legacy content never read
       expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe('legacy content — must never surface'); // untouched — never migrated, never deleted
-      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull(); // never written to the scoped key either
+      expect(storedDraftText(DRAFT_KEY)).toBeNull(); // never written to the scoped key either
     });
 
     it('a DELAYED legacy write — a stale U1 tab writing the old opp-only key AFTER the LOCAL_IDENTITY_OWNER marker has already moved to U2 — is never shown or migrated to U2', async () => {
@@ -1637,7 +1648,7 @@ describe('TailorModal', () => {
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea.value).toBe(''); // U1's delayed write never surfaces for U2
       expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe('U1 content written AFTER U2 took over'); // left exactly as-is
-      expect(window.localStorage.getItem(DRAFT_KEY_OWNER2)).toBeNull(); // never claimed into U2's scoped key
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull(); // never claimed into U2's scoped key
     });
 
     it('a null ownerScopeKey never persists anything — the draft is ephemeral (in-memory only)', async () => {
@@ -1661,7 +1672,7 @@ describe('TailorModal', () => {
       fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
         target: { value: 'owner-1 private bullets' },
       });
-      await waitFor(() => expect(window.localStorage.getItem(DRAFT_KEY)).toBe('owner-1 private bullets'));
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('owner-1 private bullets'));
       unmount();
 
       // U2 — a different owner, same opportunity, a genuinely fresh instance
@@ -1670,9 +1681,9 @@ describe('TailorModal', () => {
       render(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
       const textarea2 = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea2.value).toBe(''); // U1's draft never surfaces for U2
-      expect(window.localStorage.getItem(DRAFT_KEY_OWNER2)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
       // U1's own draft is still exactly where U1 left it.
-      expect(window.localStorage.getItem(DRAFT_KEY)).toBe('owner-1 private bullets');
+      expect(storedDraftText(DRAFT_KEY)).toBe('owner-1 private bullets');
     });
   });
 
@@ -1681,7 +1692,7 @@ describe('TailorModal', () => {
       const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />); // U1, isOpen=true throughout
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       fireEvent.change(textarea, { target: { value: 'U1 PRIVATE draft' } });
-      await waitFor(() => expect(window.localStorage.getItem(DRAFT_KEY)).toBe('U1 PRIVATE draft'));
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft'));
 
       // U2's own draft already exists in storage — proves the UI ends up
       // showing U2's real content, not merely "not U1's".
@@ -1719,9 +1730,9 @@ describe('TailorModal', () => {
       expect(u1KeyTouched).toBe(false);
 
       // Final settled state: U1's key untouched, U2 sees U2's own draft.
-      expect(window.localStorage.getItem(DRAFT_KEY)).toBe('U1 PRIVATE draft');
+      expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft');
       await waitFor(() => expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('U2 own draft'));
-      expect(window.localStorage.getItem(DRAFT_KEY_OWNER2)).toBe('U2 own draft');
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBe('U2 own draft');
     });
 
     it('same scenario but U2 has NO existing draft — U2 sees the heuristic prefill (or empty), and setItem is NEVER called with U2\'s key paired with U1\'s text at any point', async () => {
@@ -1729,7 +1740,7 @@ describe('TailorModal', () => {
       const { rerender } = render(<TailorModal {...baseProps} profile={profile} />);
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       fireEvent.change(textarea, { target: { value: 'another U1 secret' } });
-      await waitFor(() => expect(window.localStorage.getItem(DRAFT_KEY)).toBe('another U1 secret'));
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('another U1 secret'));
 
       const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
       rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={profile} />);
@@ -1740,8 +1751,69 @@ describe('TailorModal', () => {
       expect(badCalls).toEqual([]);
 
       await waitFor(() => expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue(''));
-      expect(window.localStorage.getItem(DRAFT_KEY_OWNER2)).toBeNull();
-      expect(window.localStorage.getItem(DRAFT_KEY)).toBe('another U1 secret'); // U1's own draft untouched
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY)).toBe('another U1 secret'); // U1's own draft untouched
     });
+  });
+});
+
+describe('W13 target isolation + draft staleness', () => {
+  it('drops a tailor response stamped for a different target', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      opportunity_id: 'opp-SOMEONE-ELSE',
+      tailored_bullets: [
+        { text: 'Leaked bullet', source_evidence: 'Python', source_index: 0 },
+      ],
+    } as TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+    fireEvent.change(textarea, { target: { value: 'orig one' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() => expect(mockTailorResume).toHaveBeenCalled());
+    // The mismatched response must never render as this target's result.
+    expect(screen.queryByText(fullText('Leaked bullet'))).toBeNull();
+  });
+
+  it('accepts a tailor response echoing the current target', async () => {
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      opportunity_id: 'opp-123',
+      tailored_bullets: [
+        { text: 'Correct-target bullet', source_evidence: 'Python', source_index: 0 },
+      ],
+    } as TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+    fireEvent.change(textarea, { target: { value: 'orig one' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+    await waitFor(() =>
+      expect(screen.getByText(fullText('Correct-target bullet'))).toBeTruthy(),
+    );
+  });
+
+  it('flags a restored draft whose resume sig no longer matches', async () => {
+    // Owner-scoped key: the branch's privacy contract never reads the
+    // legacy unscoped slot (see the C1-R2B suite above), so W13's staleness
+    // flag applies to drafts in the CURRENT owner's namespace.
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ t: 'old bullet draft', s: 'sig-of-old-resume' }),
+    );
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'a brand new resume text' })} />);
+    expect(screen.getByTestId('tailor-stale-draft')).toBeTruthy();
+  });
+
+  it('makes no staleness claim for legacy plain-string drafts', async () => {
+    window.localStorage.setItem(DRAFT_KEY, 'legacy draft line');
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'whatever text' })} />);
+    expect(screen.getByText('tailor.draftRestored')).toBeTruthy();
+    expect(screen.queryByTestId('tailor-stale-draft')).toBeNull();
   });
 });

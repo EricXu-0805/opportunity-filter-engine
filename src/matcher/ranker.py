@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
 
-from backend.lib.contact_visibility import verified_send_target
+from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
 from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
@@ -85,6 +85,21 @@ def _is_actionable(opportunity: dict) -> bool:
     return bool(app.get("application_url"))
 
 
+def _evidence_rank(opportunity: dict) -> int:
+    """Tie-break ladder: 2 fully-bound email > 1 legacy email or a real
+    application URL > 0 dead end. Fully-proven evidence outranks the W7a
+    legacy pass-through in a tie (the truthfulness contract), while a
+    legacy address still outranks a record the student cannot act on at
+    all."""
+    strength = send_target_strength(opportunity)
+    if strength:
+        return strength
+    app = opportunity.get("application") or {}
+    if app.get("contact_method") == "email":
+        return 0
+    return 1 if app.get("application_url") else 0
+
+
 @dataclass
 class MatchResult:
     opportunity_id: str
@@ -105,6 +120,9 @@ class MatchResult:
     # within a tie the actionable result must outrank the dead-end one — the
     # audit found #1 matches with no email while equal-scored peers had one.
     actionable: bool = True
+    # Tie-break evidence ladder (see _evidence_rank): 2 bound email, 1 legacy
+    # email / application URL, 0 dead end.
+    evidence_rank: int = 1
     # One concrete, student-specific sentence from the LLM rerank pass (the
     # card's lead line for top-K results). None outside the reranked window or
     # when the rerank is unavailable — the rule reasons are always the floor.
@@ -124,7 +142,7 @@ def canonical_sort_key(r: "MatchResult"):
     MatchResults (rank_all, semantic_rerank, the route-level LLM rerank) must
     use this key; a bare `final_score` sort silently drops the tie-break
     contract."""
-    return (-r.final_score, not r.actionable, r.opportunity_id)
+    return (-r.final_score, -r.evidence_rank, r.opportunity_id)
 
 
 # --- Field matching utilities ---
@@ -2155,6 +2173,7 @@ def _rank_opportunity_unlocked(
         next_steps=next_steps,
         field_relevant=field_relevant,
         actionable=_is_actionable(opportunity),
+        evidence_rank=_evidence_rank(opportunity),
         unknowns=_decision_unknowns(profile, opportunity),
     )
 

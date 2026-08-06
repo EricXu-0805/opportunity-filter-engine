@@ -36,6 +36,26 @@ import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
 
 const AI_VARIANT_ID = 'ai';
+// W12: a cached AI draft is re-served for at most this long — beyond it the
+// professor record may have moved (email nulled, works revoked) and the
+// draft must regenerate from the live corpus.
+export const AI_CACHE_TTL_MS = 30 * 60 * 1000;
+
+/** W12 draft-freshness rule for the in-tab AI cache: an entry is stale once
+ *  it outlives the TTL or once the backend's corpus generation moves past
+ *  the one that produced it. Exported for tests. */
+export function aiCacheEntryIsStale(
+  entry: { response: { corpus_version?: string | null }; at: number },
+  nowMs: number,
+  currentCorpusVersion: string | null,
+): boolean {
+  if (nowMs - entry.at > AI_CACHE_TTL_MS) return true;
+  return (
+    !!entry.response.corpus_version &&
+    !!currentCorpusVersion &&
+    entry.response.corpus_version !== currentCorpusVersion
+  );
+}
 const STYLE_KEYS: readonly EmailStyle[] = ['professional', 'warm', 'friendly', 'lively'];
 
 interface ColdEmailModalProps {
@@ -254,8 +274,12 @@ export default function ColdEmailModal({
   // Real AI drafts per (opportunity, style): reopening the same opportunity
   // reuses the draft instead of re-billing the pipeline. Fallback responses
   // are never cached (they retry on the next open). Cleared when the profile
-  // prop changes — a draft must not outlive a profile edit.
-  const aiCacheRef = useRef<Map<string, ColdEmailResponse>>(new Map());
+  // prop changes — a draft must not outlive a profile edit. W12: entries
+  // also expire after AI_CACHE_TTL_MS and whenever the backend's
+  // corpus_version moves, so a long-lived tab can never re-serve a draft
+  // built from a superseded professor record.
+  const aiCacheRef = useRef<Map<string, { response: ColdEmailResponse; at: number }>>(new Map());
+  const corpusVersionRef = useRef<string | null>(null);
   // Which send session an in-flight persistence belongs to. Bumped on every
   // close and every target change, so a completion that comes back after the
   // modal moved on can be identified as belonging to a session that no longer
@@ -295,6 +319,9 @@ export default function ColdEmailModal({
         statusOf(data.recipient_status, data.variants[0]?.recipient_email ?? ''),
       );
       setGrounding(data.grounding ?? 'specific');
+      // W12: variants regenerate on every open, so their corpus_version is
+      // the "current" mark that decides whether a cached AI draft survives.
+      if (data.corpus_version) corpusVersionRef.current = data.corpus_version;
       if (data.variants.length > 0) {
         const first = data.variants[0];
         setSubject(first.subject);
@@ -491,14 +518,21 @@ export default function ColdEmailModal({
       }
     };
 
+    // W12 draft freshness: a cached AI draft is only re-served while young
+    // AND while the backend corpus that produced it is still current — a
+    // superseded professor record must not keep personalizing from the cache.
     const cached = aiCacheRef.current.get(`${opportunityId}|${style}`);
     if (cached) {
-      // Cache only the AI writing value. Recipient truth was refreshed by
-      // getEmailVariants for the current auth session and must never be
-      // overwritten by a reveal cached before logout/token expiry.
-      applyResponse(cached, true, false);
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.aiGenerated') }]);
-      return;
+      if (aiCacheEntryIsStale(cached, Date.now(), corpusVersionRef.current)) {
+        aiCacheRef.current.delete(`${opportunityId}|${style}`);
+      } else {
+        // Cache only the AI writing value. Recipient truth was refreshed by
+        // getEmailVariants for the current auth session and must never be
+        // overwritten by a reveal cached before logout/token expiry.
+        applyResponse(cached.response, true, false);
+        setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.aiGenerated') }]);
+        return;
+      }
     }
 
     setAiLoading(true);
@@ -546,11 +580,17 @@ export default function ColdEmailModal({
       }
       if (resp.method === 'ai') {
         aiCacheRef.current.set(`${opportunityId}|${style}`, {
-          ...resp,
-          recipient_email: '',
-          recipient_status: 'unavailable',
-          mailto_link: '',
+          // Recipient truth stripped before caching — same reason as the
+          // cached-serve path above.
+          response: {
+            ...resp,
+            recipient_email: '',
+            recipient_status: 'unavailable',
+            mailto_link: '',
+          },
+          at: Date.now(),
         });
+        if (resp.corpus_version) corpusVersionRef.current = resp.corpus_version;
       }
       if (auto && resp.method !== 'ai') return; // silent — the user never asked
       applyResponse(resp, !auto || bodyRef.current === baselineBody);

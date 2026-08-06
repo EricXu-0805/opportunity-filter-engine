@@ -1320,6 +1320,10 @@ def record_contact_claim(record: dict) -> dict | None:
     metadata = record.get("metadata")
     if not email or not isinstance(metadata, dict):
         return None
+    if not all(field in metadata for field in CONTACT_EVIDENCE_FIELDS):
+        # W7a legacy pass-through: an unstamped record can be a send target,
+        # but it holds no evidence bundle — there is no claim to carry.
+        return None
     return {
         "contact_email": email,
         "metadata": {
@@ -1330,7 +1334,14 @@ def record_contact_claim(record: dict) -> dict | None:
 
 
 def clear_contact_evidence(record: dict) -> None:
-    """Remove all five proof fields while preserving the current email."""
+    """Remove the proof fields while preserving the current email.
+
+    Leaves ``identity_bound: False`` as a tombstone — "a collector reviewed
+    this and it is NOT bound" — rather than stripping every trace. Without
+    it, a fully-cleared record is indistinguishable from one harvested
+    before stamping existed, and the W7a legacy pass-through in
+    ``contact_visibility`` would let the just-unverified address flow
+    again."""
 
     metadata = record.get("metadata")
     if not isinstance(metadata, dict):
@@ -1340,6 +1351,7 @@ def clear_contact_evidence(record: dict) -> None:
         for key, value in metadata.items()
         if key not in CONTACT_EVIDENCE_FIELDS
     }
+    cleaned["identity_bound"] = False
     record["metadata"] = cleaned
 
 

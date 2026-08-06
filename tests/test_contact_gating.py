@@ -154,18 +154,31 @@ class TestVerifiedSendTarget:
                 _opp("x", "a@b.edu", source, verified=True)
             ) == "a@b.edu"
 
-    def test_legacy_harvested_and_constructed_sources_fail_closed(self):
-        for source in (
-            None,
-            "profile_page",
-            "wayback",
-            "digitalmeasures_profile",
-            "constructed_sunetid",
-            "constructed_netid",
-            "constructed",
-            "unknown_future_collector",
-        ):
+    def test_synthesized_sources_fail_closed_but_unstamped_legacy_passes(self):
+        # W7a reconciliation (the W12 merge): an email_source alone is
+        # pre-contract provenance INFO, not a binding claim — the corpus'
+        # 114k emailed rows carry zero binding stamps, and failing them all
+        # would black out recipient reveal product-wide. Harvested-looking
+        # legacy rows therefore PASS; a constructed/synthesized source is
+        # still never a send target; and the moment any BINDING field
+        # appears, the full three-part contract applies (below).
+        for source in (None, "profile_page", "wayback", "digitalmeasures_profile"):
+            assert verified_send_target(_opp("x", "a@b.edu", source)) == "a@b.edu"
+        for source in ("constructed_sunetid", "constructed_netid", "constructed"):
             assert verified_send_target(_opp("x", "a@b.edu", source)) == ""
+        # An unknown future collector name is not synthesized and not bound —
+        # it rides the legacy rule until it stamps binding fields.
+        assert verified_send_target(_opp("x", "a@b.edu", "unknown_future_collector")) == "a@b.edu"
+
+    def test_partial_binding_stamp_fails_closed(self):
+        # Any binding field without the complete contract = fail closed; the
+        # legacy pass-through never applies once a collector has spoken.
+        opp = _opp("x", "a@b.edu", "profile_page",
+                   metadata_overrides={"identity_bound": False})
+        assert verified_send_target(opp) == ""
+        opp2 = _opp("x", "a@b.edu", "profile_page",
+                    metadata_overrides={"contact_verified_at": "2026-08-01T00:00:00+00:00"})
+        assert verified_send_target(opp2) == ""
 
     def test_profile_bound_source_must_match_current_record_profile_url(self):
         opp = _opp(
@@ -409,11 +422,15 @@ class TestDetailRevealGate:
         )
         assert response.headers["Pragma"] == "no-cache"
 
-    def test_legacy_and_harvested_looking_rows_are_unavailable(self, fake_corpus, authed):
+    def test_legacy_and_harvested_rows_reveal_to_a_signed_in_caller(self, fake_corpus, authed):
+        # W7a reconciliation: pre-stamping rows (no binding fields at all)
+        # are the entire corpus today — they reveal under the ordinary W10b
+        # bar (signed-in session) instead of being blacked out wholesale.
+        # Synthesized sources stay unavailable (the test below).
         for oid in ("legacy", "harvested", "wayback"):
             body = client.get(f"/api/opportunities/{oid}", headers=AUTH).json()
-            assert "contact_email" not in body
-            assert body["contact_email_status"] == "unavailable"
+            assert body["contact_email_status"] == "revealed"
+            assert body["contact_email"]
 
     def test_constructed_unavailable_even_authed(self, fake_corpus, authed):
         for oid in ("constructed", "constructed-netid"):

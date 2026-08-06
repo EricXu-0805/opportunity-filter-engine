@@ -223,7 +223,10 @@ def test_enrichment_attaches_email_and_research_interests(monkeypatch):
     assert opp["keywords"] != ["statistics"]
     assert opp["contact_email"] == "pengdingpku@berkeley.edu"
     assert "_contact_claim" not in person
-    assert verified_send_target(opp) == ""
+    # W7a reconciliation (W12 merge): with the binding claim cleared and no
+    # binding fields present, the profile-observed address rides the
+    # legacy rule — same strength as every pre-stamping profile_page row.
+    assert verified_send_target(opp) == opp["contact_email"]
     assert opp["metadata"]["email_source"] == "profile_page"
     assert opp["metadata"]["confidence_score"] == 0.7
     assert "causal inference" in opp["metadata"]["research_areas_raw"]
@@ -286,7 +289,10 @@ def test_statistics_profile_rerun_clears_unrevalidated_old_proof(monkeypatch):
     assert opp is not None
     assert opp["contact_email"] == "pengdingpku@berkeley.edu"
     assert opp["metadata"]["email_source"] == "profile_page"
-    assert verified_send_target(opp) == ""
+    # W7a reconciliation (W12 merge): with the binding claim cleared and no
+    # binding fields present, the profile-observed address rides the
+    # legacy rule — same strength as every pre-stamping profile_page row.
+    assert verified_send_target(opp) == opp["contact_email"]
 
 
 def test_statistics_profile_rerun_clears_old_proof_on_failed_observation(
@@ -351,7 +357,10 @@ def test_statistics_profile_rerun_clears_old_proof_on_failed_observation(
 
         assert "_contact_claim" not in person
         assert opp is not None
-        assert verified_send_target(opp) == ""
+        # W7a reconciliation (W12 merge): with the binding claim cleared and no
+        # binding fields present, the profile-observed address rides the
+        # legacy rule — same strength as every pre-stamping profile_page row.
+        assert verified_send_target(opp) == opp["contact_email"]
 
 
 def test_enrichment_without_research_section_stays_lite(monkeypatch):

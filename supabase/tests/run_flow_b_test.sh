@@ -42,14 +42,14 @@ for f in "$MIGRATIONS"/0*.sql; do
   case "$base" in
     004_*) echo "    skip $base (superseded by 006)"; continue ;;
   esac
-  if [[ "$base" == "024_disable_pre_llc_orders.sql" ]]; then
+  if [[ "$base" == "026_disable_pre_llc_orders.sql" ]]; then
     # Supabase grants browser roles access to public tables through its
     # managed default privileges. Mirror that state immediately before the
     # hard-close migration so this test proves 024 actively revokes it.
     "${PSQL[@]}" -c \
       "GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO anon, authenticated"
   fi
-  if [[ "$base" == "027_profile_save_cas.sql" ]]; then
+  if [[ "$base" == "029_profile_save_cas.sql" ]]; then
     # Same reasoning as 024: without this, "authenticated cannot INSERT into
     # profiles" would be true on a vanilla cluster that never granted it, and
     # the ACL assertions in profile_save_cas_test.sql would pass whether or

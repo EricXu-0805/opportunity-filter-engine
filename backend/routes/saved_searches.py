@@ -447,13 +447,29 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     api_key=api_key, from_addr=from_addr, to=to_email,
                     subject=subject, html=html, text=text,
                 )
+                # The provider accepted the send; this stamp is what prevents
+                # a duplicate digest tomorrow (throttle keys off
+                # last_digest_sent_at). Retry once on failure and record a
+                # loud, distinct error — the generic per-row handler below
+                # would bury it as just another skipped row (W14).
                 patch_resp = await client.patch(
                     f"{supabase_url}/rest/v1/saved_searches",
                     params={"id": f"eq.{sid}"},
                     headers=headers,
                     json={"last_digest_sent_at": now.isoformat(), "new_match_ids": []},
                 )
-                patch_resp.raise_for_status()
+                if patch_resp.status_code >= 400:
+                    patch_resp = await client.patch(
+                        f"{supabase_url}/rest/v1/saved_searches",
+                        params={"id": f"eq.{sid}"},
+                        headers=headers,
+                        json={"last_digest_sent_at": now.isoformat(), "new_match_ids": []},
+                    )
+                if patch_resp.status_code >= 400:
+                    errors.append(
+                        f"{sid}: digest SENT but stamp failed twice "
+                        f"({patch_resp.status_code}) — will duplicate next run"
+                    )
                 sent += 1
             except Exception as e:  # noqa: BLE001 — keep cron iterating
                 errors.append(f"{sid}: {type(e).__name__}: {e}")

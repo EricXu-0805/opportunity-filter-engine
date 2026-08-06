@@ -331,6 +331,13 @@ class ColdEmailResponse(BaseModel):
     # majority of scraped faculty records are research-blind — silence here
     # showed students a "personalized" email nothing personalizes.
     grounding: str = "specific"
+    # W12 draft provenance: when/what produced this draft and how current the
+    # source record was. source_freshness: "fresh" | "stale" | "inactive" |
+    # "unknown" — never optimistically "fresh" when last_verified is absent.
+    generated_at: str | None = None
+    corpus_version: str | None = None
+    pipeline_version: str | None = None
+    source_freshness: str | None = None
 
 
 class GapAnalysisResponse(BaseModel):
@@ -435,6 +442,13 @@ class TailorResponse(BaseModel):
     tailored_bullets: list[TailoredBullet]
     method: str = "fallback"  # "ai" | "fallback"
     warnings: list[str] = Field(default_factory=list)
+    # W13 target binding + provenance (mirrors the W12 cold-email stamps):
+    # which target this suggestion set was generated for, when, and by what
+    # pipeline — the client pairs suggestions to targets by the echo instead
+    # of trusting its own bookkeeping.
+    opportunity_id: str | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 class ExtractBulletsRequest(BaseModel):
@@ -618,6 +632,13 @@ class RenovateResponse(BaseModel):
     sections: list[RenovatedSection]
     method: str = "fallback"  # "ai" | "fallback"
     warnings: list[str] = Field(default_factory=list)
+    # W13 target binding + provenance (mirrors the W12 cold-email stamps):
+    # which target this suggestion set was generated for, when, and by what
+    # pipeline — the client pairs suggestions to targets by the echo instead
+    # of trusting its own bookkeeping.
+    opportunity_id: str | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 class BulletOptimizeRequest(BaseModel):
@@ -640,6 +661,13 @@ class BulletOptimizeResponse(BaseModel):
     source_evidence: str = ""
     changed: bool = False
     warnings: list[str] = Field(default_factory=list)
+    # W13 target binding + provenance (mirrors the W12 cold-email stamps):
+    # which target this suggestion set was generated for, when, and by what
+    # pipeline — the client pairs suggestions to targets by the echo instead
+    # of trusting its own bookkeeping.
+    opportunity_id: str | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 class OpportunityListResponse(BaseModel):

@@ -641,7 +641,7 @@ def test_pre_llc_migration_revokes_direct_order_inserts():
         Path(__file__).parents[1]
         / "supabase"
         / "migrations"
-        / "024_disable_pre_llc_orders.sql"
+        / "026_disable_pre_llc_orders.sql"
     ).read_text()
     assert 'DROP POLICY IF EXISTS "orders_insert_own_pending"' in migration
     assert 'DROP POLICY IF EXISTS "orders_select_own"' in migration

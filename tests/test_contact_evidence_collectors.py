@@ -58,6 +58,16 @@ def _marked_soup(
     )
 
 
+def _no_bound_evidence(metadata: dict) -> bool:
+    """True when nothing PROVING a binding remains. The clear tombstone
+    (identity_bound: False — "reviewed, not bound") is allowed; any other
+    evidence field, or identity_bound True, is residue."""
+    residue = {k for k in CONTACT_EVIDENCE_FIELDS if k in metadata}
+    if metadata.get("identity_bound") is False:
+        residue.discard("identity_bound")
+    return not residue
+
+
 def _bound_record(
     *,
     email: str = "ada@berkeley.edu",
@@ -602,7 +612,7 @@ def test_clear_removes_whole_evidence_bundle_and_preserves_other_metadata():
     record = _bound_record()
     clear_contact_claim(record)
     assert record["contact_email"] is None
-    assert record["metadata"] == {"other": "kept"}
+    assert record["metadata"] == {"other": "kept", "identity_bound": False}
 
 
 def test_stable_id_carry_moves_complete_bundle_without_refreshing_timestamp():
@@ -646,7 +656,7 @@ def test_directory_bound_carry_requires_stable_profile_identity():
     }
     _carry_forward_enrichment(existing, incoming)
     assert incoming["contact_email"] == "ada@berkeley.edu"
-    assert CONTACT_EVIDENCE_FIELDS.isdisjoint(incoming["metadata"])
+    assert _no_bound_evidence(incoming["metadata"])
     assert verified_send_target(incoming) == ""
 
     application_only = {
@@ -665,7 +675,7 @@ def test_directory_bound_carry_requires_stable_profile_identity():
     }
     _carry_forward_enrichment(existing_application_only, application_only)
     assert application_only["contact_email"] == "ada@berkeley.edu"
-    assert CONTACT_EVIDENCE_FIELDS.isdisjoint(
+    assert _no_bound_evidence(
         application_only["metadata"]
     )
     assert verified_send_target(application_only) == ""
@@ -680,20 +690,20 @@ def test_different_email_and_partial_or_expired_claims_fail_closed():
     })
     _carry_forward_enrichment(existing, incoming)
     assert incoming["contact_email"] == "grace@berkeley.edu"
-    assert CONTACT_EVIDENCE_FIELDS.isdisjoint(incoming["metadata"])
+    assert _no_bound_evidence(incoming["metadata"])
 
     partial = _bound_record()
     partial["metadata"].pop("contact_source_url")
     incoming_partial = {"metadata": {}, "keywords": []}
     _carry_forward_enrichment(partial, incoming_partial)
     assert incoming_partial["contact_email"] == "ada@berkeley.edu"
-    assert CONTACT_EVIDENCE_FIELDS.isdisjoint(incoming_partial["metadata"])
+    assert _no_bound_evidence(incoming_partial["metadata"])
 
     expired = _bound_record(observed_at=NOW - timedelta(days=61))
     incoming_expired = {"metadata": {}, "keywords": []}
     _carry_forward_enrichment(expired, incoming_expired)
     assert incoming_expired["contact_email"] == "ada@berkeley.edu"
-    assert CONTACT_EVIDENCE_FIELDS.isdisjoint(incoming_expired["metadata"])
+    assert _no_bound_evidence(incoming_expired["metadata"])
 
 
 def test_weak_cross_record_merge_never_moves_bound_evidence():
@@ -701,7 +711,7 @@ def test_weak_cross_record_merge_never_moves_bound_evidence():
     loser = _bound_record()
     _merge_faculty_fields(survivor, loser)
     assert survivor["contact_email"] == "ada@berkeley.edu"
-    assert CONTACT_EVIDENCE_FIELDS.isdisjoint(survivor["metadata"])
+    assert _no_bound_evidence(survivor["metadata"])
     assert verified_send_target(survivor) == ""
 
 
@@ -788,5 +798,5 @@ def test_bound_profile_carry_requires_same_id_name_and_profile_url():
         incoming = {**changed, "keywords": [], "metadata": {}}
         _carry_forward_enrichment(existing, incoming)
         assert incoming["contact_email"] == "ada@berkeley.edu"
-        assert CONTACT_EVIDENCE_FIELDS.isdisjoint(incoming["metadata"])
+        assert _no_bound_evidence(incoming["metadata"])
         assert verified_send_target(incoming) == ""

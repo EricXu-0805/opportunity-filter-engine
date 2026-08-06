@@ -21,6 +21,7 @@ import {
   isLocalOwnerReady,
   isOwnerScopedLoadError,
   isOwnerTokenValid,
+  MERGE_GRANT_MAX_AGE_MS,
   onLocalOwnerStateChange,
   OwnerScopedLoadError,
   readUserScopedRaw,
@@ -171,10 +172,11 @@ describe('clear path (marker differs)', () => {
     expect(ownerOf(localStorage.getItem(MARKER))).toBe('uid-b');
   });
 
-  it('defers the clear while a Flow B merge grant is stashed', async () => {
+  it('defers the clear while a FRESH Flow B merge grant is stashed', async () => {
     const seeded = seedUserScopedValues();
     localStorage.setItem(MARKER, 'uid-a');
-    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, 'grant-token');
+    const grant = JSON.stringify({ token: 'grant-token', minted_at: Date.now() });
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, grant);
 
     // The SIGNED_IN event outruns /auth/callback's grant redemption; the
     // sync must leave both the values AND the marker alone so the
@@ -183,14 +185,69 @@ describe('clear path (marker differs)', () => {
     await syncLocalIdentityOwner('uid-b');
 
     expect(ownerOf(localStorage.getItem(MARKER))).toBe('uid-a');
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBe(grant);
     for (const [key, value] of Object.entries(seeded)) {
       expect(localStorage.getItem(key)).toBe(value);
     }
 
-    // Grant consumed (redeemPendingMerge removes it), redemption failed →
-    // the plain re-sync now clears.
+    // Grant consumed (redeemPendingMerge clears it on a definitive
+    // verdict), redemption failed → the plain re-sync now clears.
     localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
     await syncLocalIdentityOwner('uid-b');
+    expect(ownerOf(localStorage.getItem(MARKER))).toBe('uid-b');
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBeNull();
+  });
+
+  it('defers the clear for legacy pre-W14 grant shapes (bare token / unstamped JSON)', () => {
+    seedUserScopedValues();
+    localStorage.setItem(MARKER, 'uid-a');
+
+    // pre-W14 email path stored the bare token string — no stamp to judge,
+    // so it must keep deferring (it is consumed by callback or sign-out)
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, 'grant-token');
+    syncLocalIdentityOwner('uid-b');
+    expect(localStorage.getItem(MARKER)).toBe('uid-a');
+
+    // pre-W14 OAuth path stored {token, secret} without minted_at
+    localStorage.setItem(
+      STORAGE_KEYS.MERGE_GRANT,
+      JSON.stringify({ token: 'grant-token', secret: 'hex' }),
+    );
+    syncLocalIdentityOwner('uid-b');
+    expect(localStorage.getItem(MARKER)).toBe('uid-a');
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).not.toBeNull();
+  });
+
+  it('does NOT defer for a grant older than MERGE_GRANT_MAX_AGE_MS — removes it and clears', async () => {
+    seedUserScopedValues();
+    localStorage.setItem(MARKER, 'uid-a');
+    localStorage.setItem(
+      STORAGE_KEYS.MERGE_GRANT,
+      JSON.stringify({
+        token: 'grant-token',
+        minted_at: Date.now() - MERGE_GRANT_MAX_AGE_MS - 1000,
+      }),
+    );
+
+    // An abandoned hand-off (server grant died at 15 min) must not shield
+    // the previous identity's local data indefinitely.
+    advanceOwnerEpoch('uid-b');
+    await syncLocalIdentityOwner('uid-b');
+
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+    expect(ownerOf(localStorage.getItem(MARKER))).toBe('uid-b');
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBeNull();
+  });
+
+  it('does NOT defer for an unparseable JSON grant slot (garbage can never redeem)', async () => {
+    seedUserScopedValues();
+    localStorage.setItem(MARKER, 'uid-a');
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, '{not-json');
+
+    advanceOwnerEpoch('uid-b');
+    await syncLocalIdentityOwner('uid-b');
+
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
     expect(ownerOf(localStorage.getItem(MARKER))).toBe('uid-b');
     expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBeNull();
   });

@@ -44,7 +44,7 @@ export const USER_SCOPED_KEYS: readonly string[] = [
 
 // Per-opportunity keys discovered by localStorage key scan.
 export const USER_SCOPED_PREFIXES: readonly string[] = [
-  STORAGE_KEYS.TAILOR_DRAFT_PREFIX, // cold-email drafts — user-written content
+  STORAGE_KEYS.TAILOR_DRAFT_PREFIX, // resume-tailor drafts — user-written content
   // One lane per tab holding that tab's unsent profile edit operations, plus
   // the shared settled/claim lane. Same data as PROFILE/PROFILE_SYNC — an
   // operation staged by one account must never be replayed under another's.
@@ -56,7 +56,10 @@ export const USER_SCOPED_PREFIXES: readonly string[] = [
 //   ONBOARDING_SEEN    — UI education; re-running the tour on every account
 //                        switch would punish switching, and it reveals nothing
 //   MERGE_GRANT        — owned by the Flow B merge flow; it must survive the
-//                        anon → account redirect to be redeemed on callback
+//                        anon → account redirect to be redeemed on callback.
+//                        W14: it defers the clear below only while fresh
+//                        (see MERGE_GRANT_MAX_AGE_MS); a stale stash is
+//                        removed and no longer suppresses clears
 //   ofe_auth           — the Supabase session itself; clearing it = sign-out
 //   JUST_SIGNED_OUT, GUEST_BANNER_DISMISSED, OAUTH_LINK_PROVIDER,
 //   ofe_home_save_cta_dismissed — sessionStorage transients (per-tab, die on
@@ -259,10 +262,20 @@ function transitionLocked(uid: string, claim: boolean): boolean {
     // proves both sessions belong to the same human. Defer — the callback
     // consumes the grant on every sign-in and re-syncs with the definitive
     // claim decision, so a stale grant can suppress at most one cycle.
+    // Deferral is time-bounded (W14): a grant older than
+    // MERGE_GRANT_MAX_AGE_MS is an ABANDONED hand-off (the server-side grant
+    // died at 15 minutes), so it is removed and the transition proceeds — a
+    // stale stash must not shield the previous identity's data forever.
     try {
-      if (window.localStorage.getItem(STORAGE_KEYS.MERGE_GRANT) !== null) {
-        setLocalOwnerState(uid, 'blocked');
-        return false;
+      const grant = window.localStorage.getItem(STORAGE_KEYS.MERGE_GRANT);
+      if (grant !== null) {
+        if (!isMergeGrantStale(grant)) {
+          setLocalOwnerState(uid, 'blocked');
+          return false;
+        }
+        try {
+          window.localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
+        } catch { /* remove failed — still proceed with the transition */ }
       }
     } catch { /* unreadable — proceed with the transition */ }
   }
@@ -289,6 +302,34 @@ function transitionLocked(uid: string, claim: boolean): boolean {
   // ones. It must never block the user.
   if (ok) sweepGenerationsBefore(next);
   return ok;
+}
+
+// How long a stashed Flow B merge grant may defer user-scoped transitions.
+// The server-side grant is single-use with a 15-minute TTL, so 60 minutes is
+// a generous 4x envelope for magic-link latency + clock skew; beyond it the
+// hand-off is certainly dead and deferring further only leaks the previous
+// identity's local data to the next uid.
+export const MERGE_GRANT_MAX_AGE_MS = 60 * 60 * 1000;
+
+/**
+ * True when the stashed grant is too old to still be redeemable. Shapes
+ * (written by supabase.ts mint helpers):
+ *   - JSON with numeric `minted_at` (W14+) → age check
+ *   - JSON without a usable `minted_at` (pre-W14 {token,secret}) → treated
+ *     as fresh; legacy stashes are consumed by the callback or sign-out
+ *   - bare token string (pre-W14 email path) → treated as fresh, same reason
+ *   - unparseable `{…` garbage → stale; it can never be redeemed, so it
+ *     must not defer transitions
+ */
+function isMergeGrantStale(raw: string): boolean {
+  if (!raw.startsWith('{')) return false;
+  try {
+    const parsed = JSON.parse(raw) as { minted_at?: unknown };
+    if (typeof parsed.minted_at !== 'number' || !Number.isFinite(parsed.minted_at)) return false;
+    return Date.now() - parsed.minted_at > MERGE_GRANT_MAX_AGE_MS;
+  } catch {
+    return true;
+  }
 }
 
 /** One past the highest generation anyone has ever used here — from the marker

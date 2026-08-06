@@ -43,7 +43,10 @@ export function FavoritesHeader({
             label={t('email.sendFavorites')}
             title={t('email.subtitle')}
             onSend={async (emailAddr) => {
-              const interactions = await getInteractionsFull().catch(() => new Map());
+              // W14: a failed status load must not silently export blank
+              // notes/status columns as if none existed — the email is a
+              // data export, so fail it loudly and let the user retry.
+              const interactions = await getInteractionsFull();
               const items = opportunities
                 .filter((o) => !o._customId)
                 .slice(0, 50)

@@ -193,7 +193,7 @@ function respondRows(req, res, rows, params, total) {
 // Postgres in supabase/tests/.
 // ---------------------------------------------------------------------
 const rpcs = {
-  // supabase/migrations/025_confirm_interaction_contact.sql
+  // supabase/migrations/027_confirm_interaction_contact.sql
   confirm_interaction_contact(body, uid) {
     const { p_expected_device_id: expected, p_opportunity_id: oppId, p_remind_at: remindAt } = body;
     if (expected == null || uid !== expected) {
@@ -227,7 +227,7 @@ const rpcs = {
     return { status: 200, body: [row] };
   },
 
-  // supabase/migrations/027_profile_save_cas.sql — compare-and-set on
+  // supabase/migrations/029_profile_save_cas.sql — compare-and-set on
   // revision. RETURNS jsonb: one envelope object, NOT an array of rows —
   // PostgREST serialises a scalar-jsonb function result as the value itself,
   // and src/lib/supabase.ts reads `data.status` straight off it (an earlier

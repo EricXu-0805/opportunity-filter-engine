@@ -32,8 +32,9 @@ from backend.lib.public_projection import safe_public_http_url
 # shared with the Match ranker's actionability tie-break
 # (src.matcher.ranker._is_actionable), which imports and calls
 # verified_send_target directly below — the two bars cannot drift apart
-# because there is only one bar.
-from src.evidence import is_synthesized_email_source
+# because there is only one bar. The unit-mailbox predicate is likewise
+# shared with the collector nulling pass (W12 cold-email boundary).
+from src.evidence import is_synthesized_email_source, is_unit_mailbox_email
 
 # A harvested-looking string is not enough evidence that it belongs to the
 # professor in this record. Only the identity-binding collectors below have a
@@ -257,12 +258,37 @@ def build_identity_bound_contact_evidence(
     }
 
 
+def _predates_contact_stamping(opp: dict) -> bool:
+    """W7a: provenance never gates data that predates stamping. A record with
+    NO evidence field at all was harvested before the identity-bound contract
+    existed — today that is the entire corpus (114k emailed rows, zero
+    stamps) — and blacking every one of them out would turn the strict
+    contract into a product-wide outage rather than a guarantee. The moment a
+    record carries ANY of the evidence fields, a collector has spoken for it
+    and the full three-part contract applies: a partial or wrong stamp fails
+    closed, exactly as the strict rule intends."""
+    metadata = opp.get("metadata")
+    if not isinstance(metadata, dict):
+        return True
+    return not any(
+        metadata.get(k) is not None
+        for k in (
+            "identity_bound",
+            "contact_verified_at",
+            "contact_verified_email",
+            "contact_source_url",
+        )
+    )
+
+
 def _has_identity_bound_contact_evidence(
     opp: dict,
     email: str,
     *,
     now: datetime | None = None,
 ) -> bool:
+    if _predates_contact_stamping(opp):
+        return True
     metadata = opp.get("metadata")
     if not isinstance(metadata, dict):
         return False
@@ -325,24 +351,58 @@ def verified_send_target(opp: dict) -> str:
     ``contact_verified_at``, matching ``contact_verified_email``, and safe
     ``contact_source_url``) are deliberately unavailable. A draft can still be
     generated, but JoinALab must not present an unproven address as verified.
+
+    On top of that contract, two W12 bars:
+    * liveness — a deactivated record (departed/retired faculty, expired
+      posting) must not hand out an outreach address: the stored email may be
+      dead and the outreach premise ("I saw your posting/lab") is stale;
+    * recipient type — for a faculty record, a department/unit mailbox is not
+      the professor's address ("Dear Prof. X" to english@ misfires). Program
+      records legitimately use unit/program contacts, so the bar is
+      faculty-only. Collector hygiene nulls most of these at build time; this
+      is the serve-time backstop for page_scan grabs and below-threshold
+      shared inboxes it never sees.
     """
     email = opp.get("contact_email") or ""
     if not isinstance(email, str):
         return ""
     email = email.strip()
-    # Both bars are enforced together (AND, never OR): identity-bound evidence
+    md = opp.get("metadata") or {}
+    # Every bar is enforced together (AND, never OR): identity-bound evidence
     # (a collector explicitly tied this address to this person and stamped
-    # when) and a non-synthesized source (never a constructed/inferred/
-    # guessed/pattern-generated address) are independent failure modes — an
-    # address that only clears one is not a proven send target.
+    # when), a non-synthesized source, a live record, and — for faculty — a
+    # personal rather than unit mailbox are independent failure modes; an
+    # address that only clears some of them is not a proven send target.
     if (
         not email
         or not _valid_email_target(email)
         or not _has_identity_bound_contact_evidence(opp, email)
-        or is_synthesized_email_source((opp.get("metadata") or {}).get("email_source") or "")
+        or is_synthesized_email_source(md.get("email_source") or "")
+        or md.get("is_active") is False
+        or (
+            opp.get("source_type") == "faculty_research"
+            and is_unit_mailbox_email(email, opp.get("department") or "")
+        )
     ):
         return ""
     return email
+
+
+def send_target_strength(opp: dict) -> int:
+    """Evidence strength of the send target, for ranking tie-breaks.
+
+    2 — passes the full identity-bound contract (stamped and proven);
+    1 — passes via the W7a legacy rule (pre-stamping record, no binding
+        fields at all — today's corpus);
+    0 — no verified send target (nothing, synthesized, dead record, unit
+        mailbox, or a partial/failed stamp).
+
+    The reveal/send flow stays binary (verified_send_target); ranking uses
+    this so a fully-proven address still outranks a legacy one in a tie
+    without pretending the legacy one is not actionable at all."""
+    if not verified_send_target(opp):
+        return 0
+    return 1 if _predates_contact_stamping(opp) else 2
 
 
 def contact_email_status(opp: dict, *, authenticated: bool) -> tuple[str, str]:

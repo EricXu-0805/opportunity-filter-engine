@@ -672,7 +672,14 @@ async function mintMergeGrant(targetEmail: string | null): Promise<void> {
       if (error) console.warn('[ofe] merge mint skipped:', error.message);
       return;
     }
-    try { localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, data); } catch { /* private mode */ }
+    // minted_at lets identity-owner expire an abandoned stash (W14): a grant
+    // older than its deferral window stops suppressing user-scoped clears.
+    try {
+      localStorage.setItem(
+        STORAGE_KEYS.MERGE_GRANT,
+        JSON.stringify({ token: data, minted_at: Date.now() }),
+      );
+    } catch { /* private mode */ }
   } catch (e) {
     console.warn('[ofe] merge mint error:', e);
   }
@@ -709,7 +716,11 @@ async function mintSecretMergeGrant(): Promise<void> {
       return;
     }
     try {
-      localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: data, secret }));
+      // minted_at: same abandoned-stash expiry contract as mintMergeGrant.
+      localStorage.setItem(
+        STORAGE_KEYS.MERGE_GRANT,
+        JSON.stringify({ token: data, secret, minted_at: Date.now() }),
+      );
     } catch { /* private mode */ }
   } catch (e) {
     console.warn('[ofe] merge mint error:', e);
@@ -717,21 +728,60 @@ async function mintSecretMergeGrant(): Promise<void> {
 }
 
 /**
+ * W14: definitive server verdicts — the grant is dead and can NEVER be
+ * redeemed, so keeping the token buys nothing. Enumerated from the RAISE
+ * strings in the redeem_merge_grant bodies (supabase/migrations/017 →
+ * 0181 → 021 → 023, all four keep the same wording):
+ *   'redeem_merge_grant: invalid grant'                  (token unknown/not found)
+ *   'redeem_merge_grant: grant already used'
+ *   'redeem_merge_grant: grant expired'
+ *   'redeem_merge_grant: unbound grant is not redeemable'
+ * Deliberately NOT definitive (token kept, retryable):
+ *   'redeem_merge_grant: no authenticated session'       (transient client state)
+ *   'redeem_merge_grant: grant not bound to this session/account' — the grant
+ *     is still alive server-side; a sign-in to the RIGHT account in this
+ *     browser (within the server's 15-min TTL) can still redeem it.
+ * 'not found' / 'already merged' don't occur in the current redeem bodies
+ * ('invalid grant' covers unknown tokens; 'device already merged' is
+ * mint-side) but are matched defensively against future rewording.
+ */
+const DEFINITIVE_GRANT_ERRORS = [
+  'invalid grant',
+  'already used',
+  'expired',
+  'unbound grant',
+  'not found',
+  'already merged',
+] as const;
+
+function isDefinitiveGrantError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return DEFINITIVE_GRANT_ERRORS.some((marker) => lower.includes(marker));
+}
+
+function clearMergeGrantSlot(): void {
+  try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
+}
+
+/**
  * Redeem a pending merge grant (if any) after sign-in. Safe to call
  * unconditionally: returns `{kind:'none'}` when there's no token.
  *
- * The token is cleared only once the outcome is CONFIRMED terminal — a real
- * response from the server, whether success or a definitive rejection
- * (expired/used/not-bound: dead regardless of retries). A transport-level
- * throw leaves the token in place and returns `{kind:'failed'}`: the server
- * may or may not have processed it, and migration 026 makes redeeming the
- * SAME token again idempotent (replays the stored result instead of
- * re-running the merge), so a caller-driven retry is always safe.
+ * W14 contract: the token is kept until a DEFINITIVE server verdict —
+ * RPC success (merged or no-op) or a dead-grant error (see
+ * DEFINITIVE_GRANT_ERRORS). A transport failure gets ONE immediate retry;
+ * if that also fails (or the RPC returns a non-definitive error) the token
+ * stays stashed and `{kind:'failed'}` is returned so the next
+ * /auth/callback land can retry instead of permanently orphaning the
+ * anonymous data. Double-redeem after a kept token is safe: migration 026
+ * makes redeeming the SAME token idempotent (replays the stored result),
+ * and a genuinely dead grant answers with a definitive error that clears
+ * the slot. Abandoned stashes expire via identity-owner's minted_at check
+ * and are dropped on sign-out.
  *
- * The slot holds either a bare token (email path) or JSON `{token, secret}`
- * (OAuth path) — the latter presents the device secret so the SQL side can
- * verify possession against the hash it stored at mint. A malformed slot is
- * a dead end no retry could fix, so it's cleared immediately.
+ * The slot holds JSON `{token, minted_at}` (email path), JSON
+ * `{token, secret, minted_at}` (OAuth path — the secret proves possession
+ * against the hash stored at mint), or a legacy pre-W14 bare token string.
  *
  * A throw reading the slot itself (private-mode storage) is reported as
  * `'failed'`, not `'none'` — a genuinely-absent grant and an unreadable one
@@ -748,41 +798,58 @@ export async function redeemPendingMerge(): Promise<MergeRedemptionOutcome> {
   let token = stashed;
   let secret: string | null = null;
   if (stashed.startsWith('{')) {
+    let parsed: { token?: unknown; secret?: unknown } | null = null;
     try {
-      const parsed = JSON.parse(stashed) as { token?: unknown; secret?: unknown };
-      if (typeof parsed.token !== 'string' || typeof parsed.secret !== 'string') {
-        try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
-        return { kind: 'none' };
-      }
-      token = parsed.token;
-      secret = parsed.secret;
-    } catch {
-      try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
+      parsed = JSON.parse(stashed) as { token?: unknown; secret?: unknown };
+    } catch { parsed = null; }
+    if (
+      !parsed
+      || typeof parsed.token !== 'string'
+      || (parsed.secret !== undefined && typeof parsed.secret !== 'string')
+    ) {
+      // Garbage can never be redeemed — clearing is safe (client-side
+      // definitive verdict).
+      clearMergeGrantSlot();
       return { kind: 'none' };
     }
+    token = parsed.token;
+    secret = typeof parsed.secret === 'string' ? parsed.secret : null;
   }
 
+  const args = secret === null ? { p_token: token } : { p_token: token, p_secret: secret };
   let rpcResult;
   try {
-    rpcResult = await supabase.rpc(
-      'redeem_merge_grant',
-      secret === null ? { p_token: token } : { p_token: token, p_secret: secret },
-    );
+    rpcResult = await supabase.rpc('redeem_merge_grant', args);
   } catch (e) {
-    // Transport/network failure — genuinely unknown whether the server saw
-    // this. Token stays put; see the doc comment above.
-    console.warn('[ofe] merge redeem error:', e);
-    return { kind: 'failed' };
+    // Transport/network failure — not a verdict. Retry once immediately
+    // (transient blips are common right after the OAuth/PKCE redirect).
+    console.warn('[ofe] merge redeem transport failure, retrying once:', e);
+    try {
+      rpcResult = await supabase.rpc('redeem_merge_grant', args);
+    } catch (e2) {
+      // Still no verdict: KEEP the token so the next /auth/callback land
+      // can retry — sign-in still succeeded, we just don't show a merge
+      // line this time.
+      console.warn('[ofe] merge redeem retry failed, keeping token:', e2);
+      return { kind: 'failed' };
+    }
   }
   const { data, error } = rpcResult;
   if (error) {
-    // Expired / already-used / not-bound are definitive, non-retryable
-    // outcomes: the sign-in still succeeded, we just don't show a merge line.
-    console.warn('[ofe] merge redeem skipped:', error.message);
-    try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
-    return { kind: 'none' };
+    if (isDefinitiveGrantError(error.message ?? '')) {
+      // Expired / already-used / invalid / unbound: the grant is dead —
+      // consume the token. Non-fatal: sign-in still succeeded.
+      clearMergeGrantSlot();
+      console.warn('[ofe] merge redeem skipped (grant dead):', error.message);
+      return { kind: 'none' };
+    }
+    // Server/gateway error or transient state — no verdict, keep the
+    // token for the next land.
+    console.warn('[ofe] merge redeem failed, keeping token:', error.message);
+    return { kind: 'failed' };
   }
-  try { localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT); } catch { /* private mode */ }
+  // Success (merged or explicit no-op) is a definitive verdict — consume.
+  clearMergeGrantSlot();
   const res = data as { merged?: boolean; summary?: Record<string, unknown> } | null;
   if (!res?.merged) {
     return {
@@ -1010,6 +1077,10 @@ export async function signOutOfAccount(): Promise<string | null> {
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) console.warn('[ofe] signOut failed:', error.message);
   clearOAuthLinkProvider(); // don't let a stale link-provider stash cross sessions
+  // W14: signing out abandons any pending Flow B merge — drop the stashed
+  // grant BEFORE the re-anon so it can't defer identity-owner's clear below
+  // (the server-side grant dies on its own 15-min TTL regardless).
+  clearMergeGrantSlot();
   // W6: no bespoke clear here — the re-anon below lands in ensureAnonSession's
   // owner sync, where the fresh anon uid differs from the marker and the
   // signed-out account's local data is cleared.
@@ -1521,7 +1592,11 @@ export async function toggleFavorite(
     .from('favorites')
     .insert({ device_id: deviceId, opportunity_id: opportunityId });
   if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (error) {
+  // 23505 = unique_violation: the favorite row already exists (double-click,
+  // or a retry of a request that actually landed) — an idempotent success,
+  // exactly like followProfessor. The cloud row and local mirror already
+  // agree, so downgrading to 'local-only' here would be a false signal.
+  if (error && error.code !== '23505') {
     console.warn('[ofe] favorite insert failed:', error.message);
     const local = readFavFallback();
     local.add(opportunityId);
@@ -1584,7 +1659,7 @@ export async function submitFeedback(
   return true;
 }
 
-export type InteractionType = 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
+export type InteractionType = 'contacted' | 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
 
 export interface InteractionRecord {
   type: InteractionType;
@@ -1699,6 +1774,14 @@ export async function dismissInteraction(
   });
 }
 
+/**
+ * Patch notes/reminder/contact-date on an existing interaction row.
+ *
+ * W14 truthful-write contract: returns true ONLY when the UPDATE succeeded
+ * without error; false when the session is unavailable or the write failed.
+ * Callers own the failure UX — show a failed-save state / revert optimistic
+ * edits on false instead of pretending the save landed.
+ */
 export async function updateInteractionDetails(
   opportunityId: string,
   patch: { notes?: string | null; remind_at?: string | null; last_contacted_at?: string | null },
@@ -1765,9 +1848,28 @@ export async function getInteractions(): Promise<Map<string, InteractionType>> {
   );
 }
 
+/**
+ * Full interaction records (status + notes + reminders) for the current
+ * identity.
+ *
+ * W14 truthful zero-state contract: an empty Map MEANS the user has zero
+ * tracked interactions — never a swallowed failure. When no session can be
+ * established this throws 'session-unavailable'; when the query fails it
+ * flips the storage banner to 'local-only' and throws with the Supabase
+ * error message. Callers own the failure UX (dashboard/tracker render error
+ * states instead of confident zeros).
+ */
 export async function getInteractionsFull(): Promise<Map<string, InteractionRecord>> {
   const deviceId = await ensureAnonSession();
-  if (!deviceId) return new Map();
+  if (!deviceId) {
+    // Unconfigured Supabase is the DESIGNED local-only mode (disclosed by
+    // the storage banner, which ensureAnonSession just flipped): there are
+    // genuinely zero synced interactions, so an empty Map is the truthful
+    // answer. Only a CONFIGURED environment failing to produce a session is
+    // an error (W14) — that's the false-zero case the throw exists for.
+    if (!SUPABASE_CONFIGURED) return new Map();
+    throw new Error('session-unavailable');
+  }
 
   const { data, error } = await supabase
     .from('interactions')
@@ -2046,9 +2148,12 @@ export async function getAttachmentSignedUrl(
 // snapshot) split: `resume_renovations` holds ONE working doc per
 // (device, opportunity) — the per-bullet rollback history lives INSIDE the
 // doc's variant chains — and `resume_renovation_versions` appends a whole-doc
-// snapshot on every save as the coarse recovery net. All failures degrade to
-// console warnings: persistence is sync-across-devices sugar, the modal keeps
-// its in-memory doc regardless. See supabase/migrations/020_resume_renovations.sql.
+// snapshot on every save as the coarse recovery net. The modal keeps its
+// in-memory doc regardless, but the RESULT is reported truthfully (W13):
+// the UI may only show "Saved" when the working-doc upsert actually
+// succeeded — a swallowed failure flashing "Saved" is a false persistence
+// claim. The version snapshot stays fire-and-forget (recovery sugar).
+// See supabase/migrations/020_resume_renovations.sql.
 
 export async function saveRenovation(
   opportunityId: string,
@@ -2056,9 +2161,9 @@ export async function saveRenovation(
   baseSnapshot: Record<string, unknown>,
   method: string,
   warnings: string[],
-): Promise<void> {
+): Promise<boolean> {
   const deviceId = await ensureAnonSession();
-  if (!deviceId) return;
+  if (!deviceId) return false;
   const now = new Date().toISOString();
 
   const { error } = await supabase
@@ -2075,7 +2180,10 @@ export async function saveRenovation(
       },
       { onConflict: 'device_id,opportunity_id' },
     );
-  if (error) console.warn('[ofe] renovation save failed:', error.message);
+  if (error) {
+    console.warn('[ofe] renovation save failed:', error.message);
+    return false;
+  }
 
   supabase
     .from('resume_renovation_versions')
@@ -2085,6 +2193,7 @@ export async function saveRenovation(
         console.warn('[ofe] renovation version snapshot failed:', vErr.message);
       }
     });
+  return true;
 }
 
 export interface StoredRenovation {

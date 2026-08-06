@@ -19,6 +19,9 @@ export interface SavedSearchesSectionProps {
   savedSearches: SavedSearch[];
   /** null while loading or when migration 013 is unapplied — digest UI hidden. */
   digests: Map<string, SavedSearchDigest> | null;
+  /** W14: the list failed to load — render an inline error note instead of
+   *  the empty hint (the user's saved searches still exist server-side). */
+  loadError?: boolean;
   onApplyOptimisticClear: (id: string) => void;
   onRemove: (search: SavedSearch) => void;
   onDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
@@ -110,6 +113,7 @@ function DigestEditor({ initial, onSave, onClose, t }: DigestEditorProps) {
 export function SavedSearchesSection({
   savedSearches,
   digests,
+  loadError = false,
   onApplyOptimisticClear,
   onRemove,
   onDigestSave,
@@ -136,7 +140,18 @@ export function SavedSearchesSection({
           </span>
         )}
       </div>
-      {savedSearches.length === 0 ? (
+      {loadError && savedSearches.length === 0 ? (
+        // W14 truthful zero states: a failed load is an error note, never
+        // the "save one from results" empty hint (the searches still exist).
+        <div
+          data-testid="saved-searches-load-error"
+          className="text-center py-4 px-4 rounded-xl bg-red-50/60 border border-red-100"
+        >
+          <p className="text-[13px] text-red-700">
+            {t('favorites.savedSearches.loadError')}
+          </p>
+        </div>
+      ) : savedSearches.length === 0 ? (
         <div className="text-center py-6 px-4 rounded-xl bg-gray-50/80 border border-dashed border-gray-200">
           <p className="text-[13px] text-gray-500">
             {t('favorites.savedSearches.emptyHint')}

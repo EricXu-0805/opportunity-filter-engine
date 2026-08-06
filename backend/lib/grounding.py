@@ -332,6 +332,12 @@ _COMMON_FILLER: frozenset[str] = frozenset({
 # the deny-by-default approach over-rejects benign edits.
 STRICT = "strict"
 LENIENT_PROSE = "lenient_prose"
+# LENIENT_PROSE plus bare-numeral grounding: digit runs ("45", "10,000",
+# "2023") in the output must appear as digit runs in the corpus. Resume
+# rewrites are the surface where an invented metric is a fabricated FACT the
+# letter-initial tokenizer cannot see ("increased throughput 45%"); prose
+# registers (cold email) keep plain LENIENT_PROSE.
+LENIENT_PROSE_NUMERIC = "lenient_prose_numeric"
 
 # Concrete technology / tool / credential terms that are hard claims even in
 # lowercase prose. The shape signal (internal caps, digits, +/#) misses two
@@ -418,6 +424,26 @@ def _expansion_grounded(token: str, corpus_norm: str) -> bool:
 # Case-preserving token scan (keeps tech punctuation so c++, node.js, ci/cd,
 # scikit-learn survive as single tokens). Lower-cased + stripped before use.
 _LENIENT_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#./\-]*")
+
+# Digit runs for the NUMERIC policy: commas/periods inside a run are grouping
+# ("10,000", "3.5") — normalized away so formatting changes don't dodge the
+# check while "10,000" still matches a corpus "10000".
+_DIGIT_RUN_RE = re.compile(r"\d[\d,.]*")
+
+
+def _digit_runs(text: str) -> set[str]:
+    return {run.strip(",.").replace(",", "").replace(".", "")
+            for run in _DIGIT_RUN_RE.findall(text)}
+
+
+def _numeric_fabricated(text: str, corpus_lower: str) -> list[str]:
+    """Digit runs in ``text`` with no counterpart digit run in the corpus —
+    an invented metric/count/year in a rewritten resume bullet. Fail-closed:
+    a legitimate reformat the student never stated ("10k" → "10,000") is
+    flagged too; the bullet then falls back to the student's own wording."""
+    corpus_runs = _digit_runs(corpus_lower)
+    return [run for run in sorted(_digit_runs(text))
+            if run and run not in corpus_runs]
 
 
 def hard_claims(text: str) -> set[str]:
@@ -512,10 +538,11 @@ def validate_no_fabrication(
     bidirectional acronym/expansion matching (``_TECH_ACRONYMS``).
     """
     corpus_lower = evidence_corpus.lower()
-    if policy == LENIENT_PROSE:
-        fabricated = sorted(set(_lenient_fabricated(
-            text, corpus_lower, extra_allow,
-        )))
+    if policy in (LENIENT_PROSE, LENIENT_PROSE_NUMERIC):
+        fabricated = _lenient_fabricated(text, corpus_lower, extra_allow)
+        if policy == LENIENT_PROSE_NUMERIC:
+            fabricated += _numeric_fabricated(text, corpus_lower)
+        fabricated = sorted(set(fabricated))
         return (len(fabricated) == 0, fabricated)
 
     claims = hard_claims(text)

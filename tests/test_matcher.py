@@ -2530,10 +2530,12 @@ class TestActionableTieBreak:
         results = rank_all(profile, opps)
         scores = {r.final_score for r in results}
         assert len(scores) == 1  # true tie wall
-        assert results[0].opportunity_id == "c-verified-email"
-        # a-dead-end and b-legacy-email are both non-actionable — tied,
-        # falling back to stable id order.
-        assert [r.opportunity_id for r in results[1:]] == ["a-dead-end", "b-legacy-email"]
+        # Evidence ladder (W7a reconciliation): fully-bound beats legacy,
+        # legacy beats the dead end — a legacy address IS actionable (the
+        # product reveals and sends it), it just never outranks proof.
+        assert [r.opportunity_id for r in results] == [
+            "c-verified-email", "b-legacy-email", "a-dead-end",
+        ]
 
     def test_score_still_dominates_actionability(self):
         from src.matcher.ranker import rank_all

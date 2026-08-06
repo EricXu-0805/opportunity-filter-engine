@@ -300,6 +300,12 @@ export interface ColdEmailResponse {
    *  presented as tailored. Optional so cached older responses typecheck
    *  (absent ⇒ treated as 'specific'). */
   grounding?: 'specific' | 'no_target_data';
+  /** W12 draft provenance: when/what produced this draft and how current the
+   *  source record was. Optional so pre-W12 responses still typecheck. */
+  generated_at?: string | null;
+  corpus_version?: string | null;
+  pipeline_version?: string | null;
+  source_freshness?: 'fresh' | 'stale' | 'inactive' | 'unknown' | null;
 }
 
 export type ColdEmailEngine = 'template' | 'ai';
@@ -328,6 +334,11 @@ export interface EmailVariantsResponse {
   recommended_style?: EmailStyle | null;
   /** Same evidence-honesty answer as ColdEmailResponse.grounding. */
   grounding?: 'specific' | 'no_target_data';
+  /** W12 draft provenance (same contract as ColdEmailResponse). */
+  generated_at?: string | null;
+  corpus_version?: string | null;
+  pipeline_version?: string | null;
+  source_freshness?: 'fresh' | 'stale' | 'inactive' | 'unknown' | null;
 }
 
 // ── Tailor (resume bullet rewriter, R71) ─────────────────────────────
@@ -366,6 +377,10 @@ export interface TailorResponse {
   tailored_bullets: TailoredBullet[];
   method: 'ai' | 'fallback';
   warnings: string[];
+  /** W13 target binding echo + provenance (mirrors ColdEmailResponse). */
+  opportunity_id?: string | null;
+  generated_at?: string | null;
+  pipeline_version?: string | null;
 }
 
 // ── Resume renovation (per-opportunity whole-résumé rework) ──────────
@@ -438,6 +453,10 @@ export interface RenovationDoc {
   sections: RenovatedSection[];
   method: 'ai' | 'fallback';
   warnings: string[];
+  /** W13 staleness signal: fingerprint of profile.resume_text at save time.
+   *  Absent on legacy docs — no staleness claim is made for them (unknown
+   *  is not stale, and not fresh). */
+  resume_sig?: string;
 }
 
 // ── Resume ───────────────────────────────────────────────────────────
