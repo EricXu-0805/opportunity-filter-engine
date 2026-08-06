@@ -515,11 +515,13 @@ function FullHarness() {
       <span data-testid="hydration">{form.hydrationState}</span>
       <span data-testid="save-status">{form.saveStatus}</span>
       <button data-testid="set-weight" onClick={() => form.setSearchWeight(90)}>w</button>
+      <span data-testid="weight">{form.searchWeight}</span>
       <span data-testid="interests">{form.profile.research_interests}</span>
       <button data-testid="parseA" onClick={() => form.handleResumeParsed(RESUME('computer vision, machine learning'))}>A</button>
       <button data-testid="parseB" onClick={() => form.handleResumeParsed(RESUME('robotics'))}>B</button>
       <button data-testid="set-gh" onClick={() => form.update('github_url', 'https://github.com/octocat')}>set</button>
       <button data-testid="set-skill" onClick={() => form.update('skills', [{ name: 'Rust', level: 'expert' }])}>skill</button>
+      <span data-testid="skills">{form.profile.skills.map((sk) => sk.name).join(',')}</span>
       <button data-testid="make-valid" onClick={() => form.setProfile((p) => ({ ...p, college: 'Grainger', major: 'CS', grade: 'Junior' }))}>valid</button>
       <button data-testid="seed-required" onClick={() => form.setProfile((p) => ({ ...p, major: 'CS', grade: 'Junior' }))}>seed</button>
       <button data-testid="submit" onClick={() => { void form.handleSubmit(); }}>submit</button>
@@ -787,6 +789,103 @@ describe('useProfileForm — the very first visit is not stranded', () => {
       sent.some((patch) => patch.college === 'Grainger'),
       `the first complete create must carry the pick; patches sent: ${JSON.stringify(sent)}`,
     ).toBe(true);
+  });
+
+  /**
+   * FV-9 — the gap BETWEEN the owner primitive and this hook's observation.
+   *
+   * In a real browser the auth adapter advances the shared owner a beat
+   * before this hook's callback runs. A keystroke in that beat finds the
+   * screen's held origin (frozen pre-identity, uid null) no longer owned,
+   * and `editingOrigin()` returned null — the keystroke silently dropped.
+   * jsdom's emitAuth() packs advance + callback into one act(), so FV-0/3
+   * never see the gap; staging the advance WITHOUT delivering the callback
+   * is exactly what another surface (or the adapter mid-flight) does.
+   *
+   * Found by e2e/i18n.spec.ts: the zh-switch reflow pushed the third pick
+   * (grade) into precisely this window — college and major survived, grade
+   * vanished at the instant of the pick, and Generate stayed disabled.
+   */
+  it('FV-9: a keystroke between the owner advancing and this hook observing it is not dropped', async () => {
+    let release!: (value: LoadedProfile) => void;
+    mockLoadProfile = () => new Promise<LoadedProfile>((r) => { release = r; });
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    // A GENUINELY unowned browser. The suite's beforeEach claims it for
+    // HOME_UID, which would make the "first identity" below a no-op epoch
+    // advance and this whole test vacuous. INITIAL_SESSION-with-no-user is
+    // also exactly what a real first visit delivers first.
+    await emitAuth(null);
+
+    // The FIRST pre-auth edit is what freezes the screen origin under the
+    // unresolved {uid: null} token (editingOrigin's own write-back). Without
+    // this step the second edit below fresh-captures and the gap never
+    // exists — which is how an earlier version of this test passed against
+    // the defect.
+    fireEvent.click(screen.getByTestId('pick-college'));
+    expect(screen.getByTestId('college').textContent).toBe('Grainger');
+
+    // The browser's first identity lands in the owner primitive. This hook's
+    // own callback has NOT run yet — that is the gap.
+    await act(async () => {
+      advanceOwnerEpoch(HOME_UID);
+      await syncLocalIdentityOwner(HOME_UID);
+    });
+
+    // The next keystrokes find the held origin no longer owned. The slider
+    // rides its own entry point (editSearchWeight), so it is its own check.
+    fireEvent.click(screen.getByTestId('set-skill'));
+    fireEvent.click(screen.getByTestId('set-weight'));
+    expect(
+      screen.getByTestId('skills').textContent,
+      'the visitor at the keyboard owns a screen no account has ever owned',
+    ).toBe('Rust');
+    expect(screen.getByTestId('weight').textContent, 'the slider too').toBe('90');
+
+    // The callback arrives; the carried edits survive it and the load.
+    await act(async () => { authChangeCb?.({ user: { id: HOME_UID } }); });
+    await act(async () => {
+      release(absentRow());
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(screen.getByTestId('college').textContent).toBe('Grainger');
+    expect(screen.getByTestId('skills').textContent).toBe('Rust');
+    expect(screen.getByTestId('weight').textContent).toBe('90');
+
+    // The buffer flag is spent by that adoption: a real switch afterwards
+    // takes the full reset, gap keystrokes or not.
+    mockLoadProfile = () => Promise.resolve(absentRow());
+    await emitAuth('fv9-second-account');
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+    expect(
+      screen.getByTestId('college').textContent,
+      'the exemption does not outlive the identity that spent it',
+    ).toBe('');
+  });
+
+  /**
+   * FV-9b — the same gap, after a REAL account has owned the screen: the
+   * exemption must not exist. U1's row is on screen; another tab switches
+   * the browser to U2; a keystroke before this hook observes the switch is
+   * U1's screen being typed on under U2's ownership — refused, exactly as
+   * the E-series contract says.
+   */
+  it('FV-9b: the same gap after a real owner is still refused', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ college: 'U1 College', major: 'CS', grade: 'Junior', search_weight: 50 }, 3));
+    render(<Suspense fallback={null}><FullHarness /></Suspense>);
+    await emitAuth(HOME_UID);
+    await waitFor(() => expect(screen.getByTestId('college').textContent).toBe('U1 College'));
+
+    // Another tab claims the browser for U2; no callback here yet.
+    await act(async () => {
+      advanceOwnerEpoch('fv9b-second-account');
+      await syncLocalIdentityOwner('fv9b-second-account');
+    });
+
+    fireEvent.click(screen.getByTestId('pick-college'));
+    expect(
+      screen.getByTestId('college').textContent,
+      "U1's rendered document may not be edited under U2's ownership",
+    ).toBe('U1 College');
   });
 
   /**
@@ -8360,8 +8459,13 @@ describe('useProfileForm — every action is bound to the capability the screen 
     const removes = privateOf(rec.calls.remove);
     const enumerated = rec.calls.enumerate;
     rec.restore();
+    // The keystroke PAINTS: this screen shows nobody's row (view-uid 'none'
+    // above) and no real account has ever owned it, so the typing is the
+    // visitor's own — the first-visit contract (FV-0/FV-9). What the forged
+    // failure must not do is grant that keystroke any CAPABILITY: every
+    // assertion below stays at zero.
     expect(screen.getByTestId('interests').textContent,
-      'the edit is not admitted').toBe('');
+      "the visitor's own keystroke stays on their screen").toBe('my interests');
     expect(reads, 'nothing private is read').toEqual([]);
     expect(writes, 'nothing written').toEqual([]);
     expect(removes, 'nothing removed').toEqual([]);

@@ -393,6 +393,30 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   const identityGenerationRef = useRef(0);
   const [identityGeneration, setIdentityGeneration] = useState(0);
 
+  // Together these answer one question — could anything on this screen belong
+  // to somebody other than the person at the keyboard? It can only be someone
+  // else's if a row was once accepted onto it, or if it once belonged to a
+  // real account. Until then the screen is the visitor's own — defaults plus
+  // whatever they typed. Read at the identity choke point (the onAuthChange
+  // effect) and by editingOrigin below, which is why they live up here.
+  //
+  // Both are monotonic on purpose. Once either turns true it never returns,
+  // so `null -> U1 -> sign out -> U2` gets the full reset the same as any
+  // other switch: the exemption is available to a screen exactly once, at
+  // the very beginning of its life.
+  const everHadRealUidRef = useRef(false);
+  const rowEverAcceptedRef = useRef(false);
+  // A keystroke landed in the beat between the owner primitive advancing to
+  // the browser's FIRST identity and this hook's own observation of it (the
+  // onAuthChange adapter awaits the exclusive-lock owner sync between the
+  // two). Such an edit is painted and buffered — dirty keys + unrecorded —
+  // but authorized under NOBODY: no capability is issued, no journal entry
+  // is written, no private storage is touched. The identity choke point
+  // adopts the buffer when the observation arrives (the same carry branch
+  // that keeps ordinary pre-auth typing), or discards it with the reset on
+  // any real switch.
+  const gapCarriedRef = useRef(false);
+
   /**
    * The immutable capability the screen on display was issued for: the view
    * this form ACCEPTED, or — before a row has landed — the origin its load
@@ -892,8 +916,18 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // token captured at the keystroke would be the NEW owner's, which is how
     // one person's typing lands in another's row.
     const origin = actionOrigin ?? editingOrigin();
-    if (!origin) return;
-    editOriginRef.current = origin;
+    // ONE exception, and it is paint-only: the first-identity gap (see
+    // gapCarriedRef). The keystroke is the visitor's own on a screen that
+    // has never shown anyone's row and never belonged to a real account, so
+    // it stays on screen and in the buffers — but with NO capability, it may
+    // not reach the journal or any private storage. The choke point settles
+    // its fate moments later.
+    const gapCarry = !origin
+      && !everHadRealUidRef.current
+      && !rowEverAcceptedRef.current
+      && (screenOrigin()?.token.uid ?? null) === null;
+    if (!origin && !gapCarry) return;
+    if (origin) editOriginRef.current = origin;
     // Computed against the ref, not inside a state updater: an updater that
     // records dirty keys and moves refs is not a pure function (React may
     // run it twice, and a load resolving before React commits would read a
@@ -920,7 +954,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // a save issued later is resolved three ways against what the user
     // actually started from rather than against whatever the row has become.
     if (touched.size > 0) {
-      if (shareDraftActiveRef.current) {
+      if (gapCarry) {
+        // Remembered as owed, not journalled: recordIntent would be a
+        // private write under an owner this keystroke was never made by.
+        for (const key of touched) unrecordedRef.current.add(key);
+        gapCarriedRef.current = true;
+      } else if (shareDraftActiveRef.current) {
         for (const key of touched) draftTouchedRef.current.add(key);
       } else if (hydrationStateRef.current === 'failed') {
         // A read that FAILED means a row may well exist and this device could
@@ -935,21 +974,27 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // a crash; downgrading it here would trade one contract for another.
         for (const key of touched) unrecordedRef.current.add(key);
       } else {
-        recordIntent(next, [...touched], { origin });
+        recordIntent(next, [...touched], { origin: origin! });
       }
     }
     if (next === prev) return;
     profileRef.current = next;
     setProfile(next);
     if (!shareDraftActiveRef.current) republishRendered(next);
-  }, [bumpEditEpochs, recordIntent, republishRendered, editingOrigin]);
+  }, [bumpEditEpochs, recordIntent, republishRendered, editingOrigin, screenOrigin]);
 
   const editSearchWeight = useCallback((value: number) => {
     // Its own entry, so its own gate: a generic-edit gate that forgot the
     // slider would leave one control writing under whoever owns the browser.
     const origin = editingOrigin();
-    if (!origin) return;
-    editOriginRef.current = origin;
+    // Same first-identity-gap exception as editProfile: paint + buffer,
+    // never journal (see gapCarriedRef).
+    const gapCarry = !origin
+      && !everHadRealUidRef.current
+      && !rowEverAcceptedRef.current
+      && (screenOrigin()?.token.uid ?? null) === null;
+    if (!origin && !gapCarry) return;
+    if (origin) editOriginRef.current = origin;
     weightDirtyRef.current = true;
     bumpEditEpochs(['search_weight']);
     // The LIVE document moves, exactly as it does for every other field —
@@ -967,18 +1012,21 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       : ({ ...prev, search_weight: value } as ProfileData);
     weightRef.current = value;
     profileRef.current = next;
-    if (shareDraftActiveRef.current) {
+    if (gapCarry) {
+      unrecordedRef.current.add('search_weight');
+      gapCarriedRef.current = true;
+    } else if (shareDraftActiveRef.current) {
       draftTouchedRef.current.add('search_weight');
     } else if (hydrationStateRef.current === 'failed') {
       // Same rule as every other field, and only for a read that FAILED.
       unrecordedRef.current.add('search_weight');
     } else {
-      recordIntent(next, ['search_weight'], { origin });
+      recordIntent(next, ['search_weight'], { origin: origin! });
       republishRendered(next);
     }
     if (next !== prev) setProfile(next);
     setSearchWeight(value);
-  }, [recordIntent, republishRendered, editingOrigin]);
+  }, [recordIntent, republishRendered, editingOrigin, screenOrigin]);
 
   // R67 problem #4 (cross-device sync, code-side portion) + C1-R2B:
   //
@@ -1461,18 +1509,6 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   applyConflictRefreshRef.current = applyConflictRefresh;
 
   const lastUidRef = useRef<string | null | undefined>(undefined);
-  // Together these answer one question, asked at the identity choke point:
-  // could anything on this screen belong to somebody other than the person
-  // at the keyboard? It can only be someone else's if a row was once
-  // accepted onto it, or if it once belonged to a real account. Until then
-  // the screen is the visitor's own — defaults plus whatever they typed.
-  //
-  // Both are monotonic on purpose. Once either turns true it never returns,
-  // so `null -> U1 -> sign out -> U2` gets the full reset the same as any
-  // other switch: the exemption is available to a screen exactly once, at
-  // the very beginning of its life.
-  const everHadRealUidRef = useRef(false);
-  const rowEverAcceptedRef = useRef(false);
   // Which generation currently has a read in flight — NOT a bare boolean:
   // a new identity must be able to start its own read while the previous
   // one's is still hanging, or a slow U1 read would leave U2 with a form
@@ -1622,8 +1658,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // leak W-identity-owed pins. A genuine first-visit edit's frozen token
       // names nobody; that is what makes it the visitor's own.
       const virginScreen = !everHadRealUidRef.current && !rowEverAcceptedRef.current;
-      const editsBelongToNobody =
-        editOriginRef.current !== null && editOriginRef.current.token.uid === null;
+      // Gap-buffered keystrokes (see gapCarriedRef) carry no origin at all —
+      // they were made under nobody by construction, which is exactly the
+      // same claim.
+      const editsBelongToNobody = gapCarriedRef.current || (
+        editOriginRef.current !== null && editOriginRef.current.token.uid === null
+      );
+      gapCarriedRef.current = false;
       if (uid) everHadRealUidRef.current = true;
       liveIdentityObservedRef.current = true;
       if (fallbackLoadTimerRef.current) {
@@ -2107,11 +2148,21 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // every later addition until it lands — so a stale screen marking it is
     // not a cosmetic slip: it silently swallows the NEW owner's own imports.
     const origin = editingOrigin();
-    if (!origin) return;
+    // The first-identity gap (see gapCarriedRef): the keystroke is admitted
+    // for paint-and-buffer, with no capability. editProfile makes the same
+    // determination itself when handed no origin.
+    const gapCarry = !origin
+      && !everHadRealUidRef.current
+      && !rowEverAcceptedRef.current
+      && (screenOrigin()?.token.uid ?? null) === null;
+    if (!origin && !gapCarry) return;
     // A hand-edit of the skills list can DELETE. From here on the list itself
     // is the intent, and a later import must not turn that deletion back into
-    // "add everything again" (see markSkillsReplaced's sticky rule).
-    if (key === 'skills') markSkillsReplaced(origin.token);
+    // "add everything again" (see markSkillsReplaced's sticky rule). Skipped
+    // in the gap — the marker is a private-storage write and this keystroke
+    // holds no capability; a skills DELETION in the ~ms gap can thus be
+    // re-added by a later import, a notch accepted over granting a write.
+    if (origin && key === 'skills') markSkillsReplaced(origin.token);
     // Picking a different college from a school's catalog invalidates the
     // major (the cascading dropdown). Schools without a catalog edit
     // college as free text, where clearing the major on every keystroke
@@ -2129,9 +2180,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // The cascade is an intent even when the fields are already empty:
       // the row still loading must not put its own major back afterwards.
       clearMajor ? [key, 'major', 'additional_majors'] : [key],
-      origin,
+      origin ?? undefined,
     );
-  }, [editProfile, editingOrigin]);
+  }, [editProfile, editingOrigin, screenOrigin]);
 
   // Rebuilt on every identity transition (identityGeneration is a dep), so
   // a resume parse that started under the previous identity calls the
