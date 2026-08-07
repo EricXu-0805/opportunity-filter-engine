@@ -15,33 +15,56 @@ async function waitForSaved(page: Page) {
   ).toBeVisible({ timeout: 5_000 });
 }
 
+// The detail page's controls are server-rendered and visible before React
+// hydrates, so on a loaded CI runner a click can land before the handler
+// attaches and silently do nothing — the recurring tracker flake (three
+// 2026-08-07 events, then the 2026-08-08 main-CI red where the notes panel
+// never opened even on retry). Both interaction helpers below retry
+// click-until-observable-effect as one idempotent unit: the state check
+// inside the toPass body means a click that DID register is never repeated,
+// so the toggle can't oscillate.
+
+// Opens the notes panel and leaves it open. Matches both toggle labels
+// ("Add notes or reminder" before content exists, "Notes & reminder" after).
+async function openNotesPanel(page: Page) {
+  const toggle = page.getByRole('button', { name: /Notes & reminder|notes or reminder/i });
+  await expect(toggle).toBeVisible();
+  await expect(async () => {
+    if (await toggle.getAttribute('aria-expanded') !== 'true') {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+}
+
 // Notes/reminders attach to a tracked status — saving without one would have
 // to invent an 'applied' (a send event the user never reported), so the panel
 // only autosaves once a status exists. Tests that exercise persistence first
 // set one explicitly, the way a real user does.
 async function ensureTracked(page: Page) {
   const appliedButton = page.getByRole('button', { name: 'Applied' });
-  if (await appliedButton.getAttribute('aria-pressed') !== 'true') {
-    await appliedButton.click();
-    await expect(appliedButton).toHaveAttribute('aria-pressed', 'true');
-  }
+  await expect(async () => {
+    if (await appliedButton.getAttribute('aria-pressed') !== 'true') {
+      await appliedButton.click();
+    }
+    await expect(appliedButton).toHaveAttribute('aria-pressed', 'true', { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
 }
 
 test.describe('Application tracker notes & reminder', () => {
   test('notes panel toggles open and closed', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
-    const toggle = page.getByRole('button', { name: /notes or reminder/i });
-    await expect(toggle).toBeVisible();
-    await toggle.click();
+    await openNotesPanel(page);
     await expect(page.getByPlaceholder(/Private notes/i)).toBeVisible();
-    await toggle.click();
+    // The open above proves hydration finished, so one plain click closes.
+    await page.getByRole('button', { name: /Notes & reminder|notes or reminder/i }).click();
     await expect(page.getByPlaceholder(/Private notes/i)).not.toBeVisible();
   });
 
   test('typing notes shows Saving and then Saved', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
     await ensureTracked(page);
-    await page.getByRole('button', { name: /notes or reminder/i }).click();
+    await openNotesPanel(page);
     const textarea = page.getByPlaceholder(/Private notes/i);
     await textarea.fill('Prep: review their recent NeurIPS paper');
     const statusIndicator = page.locator('[aria-live="polite"]').filter({ hasText: /Saving|Saved/ });
@@ -51,17 +74,13 @@ test.describe('Application tracker notes & reminder', () => {
   test('setting remind_at persists across reload', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
     await ensureTracked(page);
-    await page.getByRole('button', { name: /notes or reminder/i }).click();
+    await openNotesPanel(page);
     const dateInput = page.locator('input[type="date"]');
     await dateInput.fill('2026-05-01');
     await waitForSaved(page);
 
     await page.reload();
-    const panelToggle = page.getByRole('button', { name: /Notes & reminder|notes or reminder/i });
-    await panelToggle.waitFor();
-    if (await panelToggle.getAttribute('aria-expanded') !== 'true') {
-      await panelToggle.click();
-    }
+    await openNotesPanel(page);
     const persisted = await page.locator('input[type="date"]').first().inputValue();
     if (persisted !== '2026-05-01') {
       test.skip(true, 'Supabase migration 005 not yet applied to this database');
@@ -74,7 +93,7 @@ test.describe('Application tracker notes & reminder', () => {
     // Notes attach to a tracked status, so the box is disabled until one
     // exists — the same convention the rest of this file already follows.
     await ensureTracked(page);
-    await page.getByRole('button', { name: /notes or reminder/i }).click();
+    await openNotesPanel(page);
     const textarea = page.getByPlaceholder(/Private notes/i);
     await textarea.fill('hello');
     await expect(page.getByText('5 / 2000')).toBeVisible();
@@ -83,7 +102,7 @@ test.describe('Application tracker notes & reminder', () => {
   test('clear reminder button removes the date', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
     await ensureTracked(page);
-    await page.getByRole('button', { name: /notes or reminder/i }).click();
+    await openNotesPanel(page);
     const dateInput = page.locator('input[type="date"]');
     await dateInput.fill('2026-05-01');
     // Wait for the save round-trip so the detail sync effect cannot
@@ -97,13 +116,18 @@ test.describe('Application tracker notes & reminder', () => {
   test('does NOT auto-set applied when adding a note on untracked opp', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
 
+    // The tracked status persists in the shared stub across tests, so this
+    // prelude usually DOES click to untrack — same hydration race, same
+    // idempotent retry shape as ensureTracked.
     const appliedButton = page.getByRole('button', { name: 'Applied' });
-    if (await appliedButton.getAttribute('aria-pressed') === 'true') {
-      await appliedButton.click();
-      await expect(appliedButton).toHaveAttribute('aria-pressed', 'false');
-    }
+    await expect(async () => {
+      if (await appliedButton.getAttribute('aria-pressed') === 'true') {
+        await appliedButton.click();
+      }
+      await expect(appliedButton).toHaveAttribute('aria-pressed', 'false', { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
 
-    await page.getByRole('button', { name: /notes or reminder/i }).click();
+    await openNotesPanel(page);
     // The panel asks for a status instead of fabricating an 'applied'
     // interaction (a send event the user never reported).
     await expect(page.getByText(/Pick a status above first/i)).toBeVisible();
@@ -124,15 +148,11 @@ test.describe('Dashboard reminders widget', () => {
   async function hasRemindAtColumn(page: import('@playwright/test').Page): Promise<boolean> {
     await page.goto(`/opportunities/${KNOWN_ID}`);
     await ensureTracked(page);
-    await page.getByRole('button', { name: /notes or reminder/i }).click();
+    await openNotesPanel(page);
     await page.locator('input[type="date"]').fill('2030-05-01');
     await waitForSaved(page);
     await page.reload();
-    const toggle = page.getByRole('button', { name: /Notes & reminder|notes or reminder/i });
-    await toggle.waitFor();
-    if (await toggle.getAttribute('aria-expanded') !== 'true') {
-      await toggle.click();
-    }
+    await openNotesPanel(page);
     const value = await page.locator('input[type="date"]').first().inputValue();
     return value === '2030-05-01';
   }
