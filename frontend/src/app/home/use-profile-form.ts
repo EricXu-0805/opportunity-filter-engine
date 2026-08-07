@@ -237,6 +237,25 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   /** Every listed field's edit count, RIGHT NOW. Taken when an async read is
    *  issued, so what comes back can be told apart from what the person typed
    *  while it was running. */
+  // While a shared draft is on screen, NOTHING about it is persisted: the
+  // banner promises the visitor's own saved profile stays untouched until
+  // they press Generate, and an autosave (or an unmount flush) of their
+  // tweaks to someone else's profile would break that promise in the one
+  // place they cannot see. Cleared by the Generate that deliberately saves
+  // the draft, and by any real identity transition.
+  const shareDraftActiveRef = useRef(false);
+  // Fields the visitor changed WHILE a shared draft was on screen. Memory
+  // only: a draft is somebody else's profile, and recording it in this
+  // account's journal would make it durable, flushable and — after a reload
+  // that finds a foreign origin — savable to their row without them ever
+  // pressing Generate. Generate is what converts these into one intent.
+  const draftTouchedRef = useRef<Set<keyof ProfileData>>(new Set());
+  // An edit is not an edit until it is DURABLE. When the journal write fails
+  // — private mode, a full quota — the KEYS are remembered here (not the
+  // values: the form on screen still holds those), so the next attempt can
+  // record them again. Without this the edit is silently nowhere: not in the
+  // journal, not in the cloud, and not replayable by Retry.
+  const unrecordedRef = useRef<Set<keyof ProfileData>>(new Set());
   /** Fields no coordinator read can account for: a shared draft's edits never
    *  reach the journal, and a key whose journal write failed is not in it
    *  either. */
@@ -301,6 +320,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // can advance.
   const resolveSeqRef = useRef(0);
   const activeResolveRef = useRef<number | null>(null);
+  // Keys another device changed underneath this one. Surfaced so the person
+  // is told WHICH fields did not save, not just that something did not.
+  const [conflictKeys, setConflictKeys] = useState<string[]>([]);
+  // The disagreement AS RENDERED — candidate values, who wants them, and the
+  // exact operations behind each. Answering hands this very object back, so
+  // an edit another tab makes while the question is on screen is not decided
+  // by a click that never saw it.
+  const [conflicts, setConflicts] = useState<ProfileConflict[]>([]);
   /** Publishes a conflict question together with the view it was asked from.
    *  The two are one thing: an answer that cannot say which view showed it
    *  cannot prove it belongs to that identity or that state. */
@@ -499,19 +526,6 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // gate — including after they generated from it, or after a real account
   // switch.
   const shareImportedParamRef = useRef<string | null>(null);
-  // While a shared draft is on screen, NOTHING about it is persisted: the
-  // banner promises the visitor's own saved profile stays untouched until
-  // they press Generate, and an autosave (or an unmount flush) of their
-  // tweaks to someone else's profile would break that promise in the one
-  // place they cannot see. Cleared by the Generate that deliberately saves
-  // the draft, and by any real identity transition.
-  const shareDraftActiveRef = useRef(false);
-  // Fields the visitor changed WHILE a shared draft was on screen. Memory
-  // only: a draft is somebody else's profile, and recording it in this
-  // account's journal would make it durable, flushable and — after a reload
-  // that finds a foreign origin — savable to their row without them ever
-  // pressing Generate. Generate is what converts these into one intent.
-  const draftTouchedRef = useRef<Set<keyof ProfileData>>(new Set());
   // Exactly the fields the share link carried. Generate persists THESE and
   // nothing else: a shared payload has no résumé, no profile URLs and no
   // school, and writing the whole draft would blank the visitor's own.
@@ -560,14 +574,6 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     },
     [],
   );
-  // Keys another device changed underneath this one. Surfaced so the person
-  // is told WHICH fields did not save, not just that something did not.
-  const [conflictKeys, setConflictKeys] = useState<string[]>([]);
-  // The disagreement AS RENDERED — candidate values, who wants them, and the
-  // exact operations behind each. Answering hands this very object back, so
-  // an edit another tab makes while the question is on screen is not decided
-  // by a click that never saw it.
-  const [conflicts, setConflicts] = useState<ProfileConflict[]>([]);
 
   // The profile/weight pair the form was last HYDRATED with (a load, the
   // share import, or an identity reset) — as opposed to edited into by the
@@ -602,12 +608,6 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
    *  until that identity's own load settles. Without the split, an edit
    *  made during a slow load would be debounced straight into storage as
    *  DEFAULT_PROFILE plus that one field — over a row still in flight. */
-  // An edit is not an edit until it is DURABLE. When the journal write fails
-  // — private mode, a full quota — the KEYS are remembered here (not the
-  // values: the form on screen still holds those), so the next attempt can
-  // record them again. Without this the edit is silently nowhere: not in the
-  // journal, not in the cloud, and not replayable by Retry.
-  const unrecordedRef = useRef<Set<keyof ProfileData>>(new Set());
   const resetForPendingLoad = useCallback(() => {
     // Synchronously, first: the published view described the row this form is
     // about to stop showing. Any surface still holding it (the school
@@ -1506,6 +1506,15 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     republishRendered, retireConflictKeys,
     armRetryable, setSaveStatus,
   ]);
+  // Same-tick latest-ref, deliberately written during render: the reader
+  // sits behind an await in the save/refresh chain, and a save that resolves
+  // between this render and its effects must still find the CURRENT handler
+  // — an effect-assigned ref is undefined for exactly that window on the
+  // first render, silently skipping the refresh (the retry suites catch it
+  // as intermittent dead Retry buttons). The write is idempotent per render
+  // and read by nothing during render, so the rule's tearing concern does
+  // not apply.
+  // eslint-disable-next-line react-hooks/refs
   applyConflictRefreshRef.current = applyConflictRefresh;
 
   const lastUidRef = useRef<string | null | undefined>(undefined);
