@@ -479,6 +479,17 @@ class TestAntiFabrication:
         )
         assert not passed and "pytorch" in fab
 
+    def test_datelike_coursework_does_not_enter_the_corpus(self):
+        """A venue/date entry ("CVPR 2026") stored as coursework must not seed
+        the evidence corpus: its tokens would let a fabricated claim like
+        "presented at CVPR" pass the grounding gate."""
+        from backend.routes.tailor import _build_evidence_corpus
+
+        profile = {"hard_skills": [], "coursework": ["CVPR 2026", "ECE 391"]}
+        corpus = _build_evidence_corpus(profile, [])
+        assert "cvpr" not in corpus
+        assert "ece 391" in corpus
+
 
 class TestLlmFailureModes:
     def test_malformed_json_falls_back(

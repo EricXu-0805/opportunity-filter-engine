@@ -10,6 +10,22 @@ from src.publication_trust import verified_recent_works
 # ("R", "C") and short ones ("AI") match inside unrelated words ("Research").
 _SKILL_TOKEN_RE = re.compile(r"[a-z][a-z0-9+#.]*")
 
+# A stored coursework entry of the shape WORD + calendar-year is a venue or a
+# date ("CVPR 2026", "NeurIPS 2025", "May 2027"), not a catalog number — the
+# résumé parser's ACRONYM+NUMBER heuristic can't tell them apart, and citing
+# one as "relevant coursework" is a false claim in the student's own voice.
+# Genuine catalog numbers in the 1950–2049 band ("CS 2050") are sacrificed:
+# losing one course from a sentence is cheap, a fabricated claim is not.
+_DATELIKE_COURSE_RE = re.compile(r"^\S{2,12}\.?\s+(19[5-9]\d|20[0-4]\d)$")
+
+
+def filter_course_entries(courses: list) -> list[str]:
+    """Coursework entries safe to cite as courses — venue/date shapes dropped."""
+    return [
+        c for c in (str(x).strip() for x in courses or [])
+        if c and not _DATELIKE_COURSE_RE.match(c)
+    ]
+
 
 def _extract_skill_names(raw_skills: list) -> list[str]:
     result = []
@@ -74,7 +90,13 @@ _DRY_LAB_KEYWORDS = frozenset({
     "computer science", "computing", "data science", "software",
     "machine learning", "deep learning", "artificial intelligence",
     "computer vision", "natural language processing", "nlp", "robotics",
-    "electrical engineering", "ece", "mechanical engineering",
+    # "computer engineering" carries the ampersand department form
+    # ("Electrical & Computer Engineering"), which contains neither
+    # "electrical engineering" nor "ece" as a substring — without it the
+    # highest-weight dry signal is mute and one application-domain word
+    # ("medical technologies") can flip a chip lab to wet.
+    "electrical engineering", "computer engineering", "ece",
+    "mechanical engineering",
     "civil engineering", "aerospace", "materials science", "physics",
     "applied math", "statistics", "operations research", "bioinformatics",
     "computational biology", "computational neuroscience",
@@ -346,7 +368,7 @@ def _common_parts(
     else:
         recipient = "Professor"
 
-    coursework = profile.get("coursework", [])
+    coursework = filter_course_entries(profile.get("coursework", []))
     lab_type = _detect_lab_type(opportunity)
 
     # The professor's own free-text research areas (the substantive signal) and

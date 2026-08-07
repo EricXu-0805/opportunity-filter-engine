@@ -355,6 +355,21 @@ class TestLabTypeDetection:
         }
         assert _detect_lab_type(opp) == "dry"
 
+    def test_ece_with_medical_application_keywords_stays_dry(self):
+        # Real UIUC shape (observed live 2026-08-07): the department's
+        # ampersand form matched neither "electrical engineering" nor "ece",
+        # muting the highest-weight dry signal, while "medical" inside an
+        # application phrase ("healthcare and medical technologies") scored
+        # wet — a chip-architecture group got wet-lab PCR guidance.
+        opp = {
+            "title": "Research with Prof. Nam Sung Kim — ECE (beyond cmos, ai applications, healthcare and medical technologies)",
+            "department": "Electrical & Computer Engineering",
+            "description_clean": "Research opportunity with Professor Nam Sung Kim in the Electrical & Computer Engineering at UIUC. Research areas: beyond cmos, ai applications, healthcare and medical technologies, wearable and mobile computing.",
+            "keywords": ["beyond cmos", "ai applications", "healthcare and medical technologies", "wearable and mobile computing"],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "dry"
+
     def test_humanities_lab_from_psychology(self):
         opp = {
             "title": "Research assistant — behavioral psychology",

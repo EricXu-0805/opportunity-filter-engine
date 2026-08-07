@@ -167,6 +167,19 @@ describe('parseResumePDF — coursework extraction', () => {
     expect(res.extracted_coursework).toEqual(['CS 225', 'ECE 220', 'MATH 241']);
   });
 
+  it('rejects venue/date entries whose number is a calendar year', async () => {
+    // Publications and dates share the course-code shape: "CVPR 2026",
+    // "AAAI 2025", "MAY 2027" are not courses, and citing one as coursework
+    // is a false claim downstream (observed live in a generated email).
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(
+        fakePdf(['Publications: paper at CVPR 2026, AAAI 2025 workshop. Graduating MAY 2027. Took ECE 391 and CS 2110.']),
+      ),
+    });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.extracted_coursework).toEqual(['CS 2110', 'ECE 391']);
+  });
+
   it('dedupes repeated course mentions across the document', async () => {
     mockGetDocument.mockReturnValue({
       promise: Promise.resolve(fakePdf(['CS 225 — Data Structures; later TA for CS 225'])),
