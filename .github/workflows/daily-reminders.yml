@@ -23,15 +23,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # W15: the cron-response checker below lives in the repo, so this job
+      # (previously a pure curl with no working copy) needs a checkout.
+      - uses: actions/checkout@v6
+
       - name: Fire reminder cron
         run: |
           if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
             echo "BACKEND_URL or CRON_SECRET secret not set — skipping"
             exit 0
           fi
+          # W15: a 200 with failures inside is still a failure — the body
+          # carries the W14 bookkeeping counters and the digest's partial
+          # status, which `curl -sf` cannot see. Piping through the checker
+          # fails the step so the operator-alert job below actually fires.
           curl -sfSL \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.BACKEND_URL }}/api/cron/reminders"
+            "${{ secrets.BACKEND_URL }}/api/cron/reminders" \
+            | tee /dev/stderr \
+            | python3 scripts/check_cron_response.py
 
       - name: Data-quality health check
         if: env.ADMIN_TOKEN != '' && env.RESEND_API_KEY != ''

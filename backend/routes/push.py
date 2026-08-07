@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import logging
 import os
@@ -48,6 +49,171 @@ def _required_env(keys: list[str]) -> dict[str, str] | tuple[None, list[str]]:
     if missing:
         return (None, missing)
     return out
+
+
+# ---------------------------------------------------------------------------
+# W15: notification failures become durable incidents
+# ---------------------------------------------------------------------------
+# Before this, a failed reminder lived exactly as long as the cron response:
+# a counter in JSON that nobody read once the request ended. The same failures
+# now also upsert into the ops_incidents queue (migration 027), so an operator
+# sees "device X has failed nine nights running" instead of a number that
+# resets every night.
+#
+# Three rules govern everything below.
+#
+# 1. BEST EFFORT, ALWAYS. Recording an incident must never cost a reminder.
+#    Every call is wrapped; a failure only bumps a counter that ships in the
+#    cron response.
+# 2. NO SECRETS, NO BODIES, NO PII. The push endpoint is a bearer-capability
+#    URL and the message body is user content — neither goes into an incident.
+#    A truncated SHA-256 fingerprint keeps the same subscription joinable
+#    across runs without storing the capability itself.
+# 3. LOCAL RPC HELPERS, NOT AN IMPORT. backend.routes.ops imports admin, which
+#    imports this module; importing ops here would close the cycle. These few
+#    lines of duplication are the price of that acyclic direction.
+
+_ENDPOINT_FINGERPRINT_LEN = 16
+_OPEN_INCIDENT_FETCH_LIMIT = 1000
+
+
+def _endpoint_fingerprint(endpoint: str | None) -> str:
+    return hashlib.sha256((endpoint or "").encode("utf-8")).hexdigest()[
+        :_ENDPOINT_FINGERPRINT_LEN
+    ]
+
+
+def _provider_error_category(status: int | None) -> str:
+    """Coarse, non-identifying bucket for a push provider's rejection."""
+    if status is None:
+        return "provider_rejected_no_status"
+    if status in (404, 410):
+        return "subscription_gone"
+    if status == 401 or status == 403:
+        return "provider_auth_rejected"
+    if status == 429:
+        return "provider_rate_limited"
+    if status >= 500:
+        return "provider_error"
+    return "provider_rejected"
+
+
+class _IncidentSink:
+    """Best-effort ops_incidents writer for the reminders cron.
+
+    Writes exclusively through the SECURITY DEFINER RPCs, so this path can
+    record a sighting or a verified recovery but can never set a status,
+    assign an owner, or resolve anything (027 core invariant).
+    """
+
+    def __init__(self, client, supabase_url: str, headers: dict):
+        self._client = client
+        self._base = supabase_url
+        self._headers = headers
+        self.recorded = 0
+        self.recovered = 0
+        self.errors = 0
+        # dedup_keys that already have a live incident. Lets a healthy run
+        # skip a recovery RPC per delivered reminder instead of firing one
+        # for every device that has never failed.
+        self.open_keys: set[str] = set()
+
+    async def load_open_keys(self) -> None:
+        try:
+            resp = await self._client.get(
+                f"{self._base}/rest/v1/ops_incidents",
+                params={
+                    "select": "dedup_key",
+                    "kind": "eq.notification_failure",
+                    "status": "not.in.(resolved,suppressed)",
+                    "limit": str(_OPEN_INCIDENT_FETCH_LIMIT),
+                },
+                headers=self._headers,
+            )
+            rows = resp.json()
+        except Exception:
+            # A queue we cannot read simply means no recoveries this run; the
+            # reminders themselves are unaffected.
+            logger.warning("reminders cron: open-incident prefetch failed", exc_info=True)
+            return
+        if not isinstance(rows, list):
+            return
+        self.open_keys = {
+            row["dedup_key"]
+            for row in rows
+            if isinstance(row, dict) and isinstance(row.get("dedup_key"), str)
+        }
+
+    async def record(
+        self,
+        dedup_key: str,
+        *,
+        title: str,
+        detail: dict,
+        failure_state: str,
+        summary: str | None = None,
+        priority: str = "normal",
+        entity_id: str | None = None,
+    ) -> None:
+        try:
+            resp = await self._client.post(
+                f"{self._base}/rest/v1/rpc/record_ops_incident",
+                headers=self._headers,
+                json={
+                    "p_kind": "notification_failure",
+                    "p_dedup_key": dedup_key,
+                    "p_title": title,
+                    "p_summary": summary,
+                    "p_detail": detail,
+                    "p_scope": "reminders_cron",
+                    "p_priority": priority,
+                    "p_failure_state": failure_state,
+                    "p_entity_type": "reminder" if entity_id else None,
+                    "p_entity_id": entity_id,
+                    "p_field": None,
+                },
+            )
+            if getattr(resp, "status_code", 500) >= 400:
+                self.errors += 1
+                logger.error(
+                    "reminders cron: incident record rejected (%s)", resp.status_code
+                )
+                return
+        except Exception:
+            self.errors += 1
+            logger.warning("reminders cron: incident record failed", exc_info=True)
+            return
+        self.recorded += 1
+        self.open_keys.add(dedup_key)
+
+    async def recover(self, dedup_key: str, note: str) -> None:
+        """Record a verified success against a live incident.
+
+        Only fires when this dedup_key actually has an open incident — a
+        reminder that was never broken has nothing to recover. auto_resolve
+        is true here because the evidence IS the outcome: the notification
+        this incident is about was delivered.
+        """
+        if dedup_key not in self.open_keys:
+            return
+        try:
+            resp = await self._client.post(
+                f"{self._base}/rest/v1/rpc/record_ops_recovery",
+                headers=self._headers,
+                json={"p_dedup_key": dedup_key, "p_auto_resolve": True, "p_note": note},
+            )
+            if getattr(resp, "status_code", 500) >= 400:
+                self.errors += 1
+                logger.error(
+                    "reminders cron: incident recovery rejected (%s)", resp.status_code
+                )
+                return
+        except Exception:
+            self.errors += 1
+            logger.warning("reminders cron: incident recovery failed", exc_info=True)
+            return
+        self.recovered += 1
+        self.open_keys.discard(dedup_key)
 
 
 def _render_reminder_email(opportunity_id: str) -> tuple[str, str, str]:
@@ -103,6 +269,13 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     to a reminder email when the device has no working push subscription.
     Delivered reminders get remind_at cleared so they fire once, not daily;
     gone (404/410) subscriptions are pruned.
+
+    Every failure path also upserts a notification_failure incident into the
+    W15 ops queue (see _IncidentSink) and every verified delivery records a
+    recovery against it, so a repeatedly failing reminder is visible to an
+    operator instead of only to this run's counters. That path is strictly
+    best-effort: ``incident_errors`` in the response counts the times it
+    could not be written, and the counters remain authoritative.
     """
     _verify_cron_secret(authorization)
 
@@ -177,6 +350,11 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         email_by_device: dict[str, str | None] = {}
         now_iso = datetime.now(UTC).isoformat()
 
+        # One read of the live notification-failure queue, after the
+        # nothing-due early return so a quiet night costs nothing extra.
+        incidents = _IncidentSink(client, supabase_url, headers)
+        await incidents.load_open_keys()
+
         bookkeeping_failed = 0
         row_errors = 0
         for row in due:
@@ -186,6 +364,16 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
           # tomorrow (at-least-once, never lost).
           try:
             device_id = row["device_id"]
+            opportunity_id = row["opportunity_id"]
+            # Two identities per reminder: the delivery attempt itself, and
+            # the bookkeeping that must follow a delivery. They fail for
+            # different reasons and are fixed differently, so they are
+            # different incidents.
+            delivery_key = f"notification_failure:{device_id}:{opportunity_id}"
+            bookkeeping_key = (
+                f"notification_failure:bookkeeping:{device_id}:{opportunity_id}"
+            )
+            entity_id = f"{device_id}:{opportunity_id}"
             delivered = False
             for sub in list(subs_by_device.get(device_id, [])):
                 payload = (
@@ -215,6 +403,9 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                     )
                     sent += 1
                     delivered = True
+                    # The provider accepted it: verified evidence that any
+                    # open incident for this reminder is over.
+                    await incidents.recover(delivery_key, "web push delivered")
                     stamp = await client.patch(
                         f"{supabase_url}/rest/v1/push_subscriptions",
                         params=sub_params,
@@ -228,7 +419,25 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                             "reminders cron: last_delivered_at stamp failed (%s)",
                             stamp.status_code,
                         )
-                except UnsafePushEndpointError:
+                        await incidents.record(
+                            bookkeeping_key,
+                            title="Reminder bookkeeping write failed",
+                            summary="delivery stamp (last_delivered_at) rejected by storage",
+                            detail={
+                                "stage": "delivery_stamp",
+                                "error_category": "bookkeeping_write_failed",
+                                "http_status": stamp.status_code,
+                                "endpoint_fingerprint": _endpoint_fingerprint(
+                                    sub.get("endpoint")
+                                ),
+                                "delivered": True,
+                            },
+                            # 'partial': the notification WAS delivered, only
+                            # the record of it failed.
+                            failure_state="partial",
+                            entity_id=entity_id,
+                        )
+                except UnsafePushEndpointError as e:
                     # Junk or an SSRF probe — prune so the cron never
                     # re-attempts it. The reason code never includes the URL.
                     failed += 1
@@ -239,12 +448,43 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                     )
                     subs_by_device[device_id].remove(sub)
                     pruned += 1
+                    await incidents.record(
+                        delivery_key,
+                        title="Push endpoint rejected by the outbound-network policy",
+                        summary="subscription pruned; endpoint failed send-time validation",
+                        detail={
+                            "error_category": "unsafe_endpoint",
+                            "reason": getattr(e, "reason", None),
+                            "endpoint_fingerprint": _endpoint_fingerprint(
+                                sub.get("endpoint")
+                            ),
+                            "pruned": True,
+                        },
+                        failure_state="blocked",
+                        entity_id=entity_id,
+                    )
                 except WebPushDeliveryTimeout:
                     failed += 1
+                    await incidents.record(
+                        delivery_key,
+                        title="Web Push delivery timed out",
+                        summary="dispatcher exceeded its wall-clock budget",
+                        detail={
+                            "error_category": "delivery_timeout",
+                            "provider_status": None,
+                            "endpoint_fingerprint": _endpoint_fingerprint(
+                                sub.get("endpoint")
+                            ),
+                            "pruned": False,
+                        },
+                        failure_state="timed_out",
+                        entity_id=entity_id,
+                    )
                 except WebPushException as e:
                     failed += 1
                     status = getattr(getattr(e, "response", None), "status_code", None)
-                    if status in (404, 410):
+                    gone = status in (404, 410)
+                    if gone:
                         await client.delete(
                             f"{supabase_url}/rest/v1/push_subscriptions",
                             params=sub_params,
@@ -252,6 +492,25 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         )
                         subs_by_device[device_id].remove(sub)
                         pruned += 1
+                    await incidents.record(
+                        delivery_key,
+                        title="Web Push delivery rejected by the provider",
+                        summary=f"provider responded {status}" if status else
+                                "provider rejected the push with no status",
+                        detail={
+                            # The provider's status was read and thrown away
+                            # before W15; it is the single most useful field
+                            # for triage, so it is preserved here.
+                            "provider_status": status,
+                            "error_category": _provider_error_category(status),
+                            "endpoint_fingerprint": _endpoint_fingerprint(
+                                sub.get("endpoint")
+                            ),
+                            "pruned": gone,
+                        },
+                        failure_state="blocked" if status in (401, 403) else "failed",
+                        entity_id=entity_id,
+                    )
 
             if not delivered and resend_key and resend_from:
                 if device_id not in email_by_device:
@@ -269,12 +528,29 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         )
                         emailed += 1
                         delivered = True
-                    except Exception:
+                        await incidents.recover(
+                            delivery_key, "reminder delivered by email fallback"
+                        )
+                    except Exception as e:
                         # HTTPException (quota/Resend 4xx) AND transport
                         # errors (httpx timeout in _send_via_resend or
                         # _account_email) — the fallback is best-effort and
                         # must never abort the cron (W14).
                         failed += 1
+                        await incidents.record(
+                            delivery_key,
+                            title="Reminder email fallback failed",
+                            summary="no push subscription delivered and the email fallback failed",
+                            detail={
+                                "error_category": "email_fallback_failed",
+                                # Type only: the message can carry the
+                                # recipient address or provider payload.
+                                "exception_type": type(e).__name__,
+                                "http_status": getattr(e, "status_code", None),
+                            },
+                            failure_state="failed",
+                            entity_id=entity_id,
+                        )
 
             if delivered:
                 # One-shot semantics live or die on this PATCH: if it fails
@@ -307,9 +583,48 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         "reminder will refire tomorrow",
                         cleared.status_code,
                     )
-          except Exception:
+                    await incidents.record(
+                        bookkeeping_key,
+                        title="Reminder bookkeeping write failed",
+                        summary="remind_at clear failed twice; the reminder will refire",
+                        detail={
+                            "stage": "remind_at_clear",
+                            "error_category": "bookkeeping_write_failed",
+                            "http_status": cleared.status_code,
+                            "attempts": 2,
+                            "consequence": "reminder refires until the clear succeeds",
+                            "delivered": True,
+                        },
+                        failure_state="partial",
+                        entity_id=entity_id,
+                    )
+                else:
+                    await incidents.recover(
+                        bookkeeping_key, "remind_at cleared after delivery"
+                    )
+          except Exception as e:
             row_errors += 1
             logger.exception("reminders cron: row failed; continuing batch")
+            # The row blew up somewhere unexpected: record it against the
+            # reminder's identity so a systematically broken row is visible
+            # after the run, not just in the logs.
+            hint_device = row.get("device_id") if isinstance(row, dict) else None
+            hint_opp = row.get("opportunity_id") if isinstance(row, dict) else None
+            await incidents.record(
+                f"notification_failure:{hint_device or 'unknown'}:{hint_opp or 'unknown'}",
+                title="Reminder row failed with an unexpected error",
+                summary="row isolated; remaining reminders continued",
+                detail={
+                    "error_category": "row_exception",
+                    # Type only — an exception message can carry the endpoint,
+                    # the recipient address, or a provider payload.
+                    "exception_type": type(e).__name__,
+                },
+                failure_state="failed",
+                entity_id=(
+                    f"{hint_device}:{hint_opp}" if hint_device and hint_opp else None
+                ),
+            )
 
     return {
         "status": "ok",
@@ -320,6 +635,12 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         "pruned": pruned,
         "bookkeeping_failed": bookkeeping_failed,
         "row_errors": row_errors,
+        # W15 ops-queue bookkeeping. incident_errors > 0 means failures
+        # happened that did NOT reach the operator queue — the counters above
+        # remain the source of truth for this run.
+        "incidents_recorded": incidents.recorded,
+        "incidents_recovered": incidents.recovered,
+        "incident_errors": incidents.errors,
         "timestamp": datetime.now(UTC).isoformat(),
     }
 

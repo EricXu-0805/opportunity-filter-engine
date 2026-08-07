@@ -41,6 +41,13 @@ export const STORAGE_KEYS = {
   // localStorage and is redeemed once on /auth/callback, then cleared.
   MERGE_GRANT: 'ofe_merge_grant',
   RESULTS_CTA_DISMISSED: 'ofe_results_cta_dismissed',
+  // W15: the SINGLE in-progress feedback draft (message/email/category/
+  // subject + its idempotency token), so a reload or a failed send doesn't
+  // destroy what the user typed. Deliberately one draft and no history:
+  // feedback routinely contains personal detail, so the widget clears this
+  // the moment a send is confirmed rather than accumulating a local archive.
+  // User-scoped in the W6 registry — see identity-owner.ts.
+  FEEDBACK_DRAFT: 'ofe_feedback_draft',
 } as const;
 
 // Window CustomEvent fired when the onboarding school gate sets the campus, so a

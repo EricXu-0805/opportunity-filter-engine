@@ -29,8 +29,13 @@ function AdminInner() {
     savedSearchHealth,
     feedbackInbox,
     ordersInbox,
+    tickets,
+    ops,
+    actor,
+    setActor,
     loading,
     error,
+    adminDisabled,
     activeFieldFilter,
     setActiveFieldFilter,
     triggerStatus,
@@ -58,6 +63,7 @@ function AdminInner() {
 
   return (
     <AdminDashboard
+      adminDisabled={adminDisabled}
       data={data}
       history={history}
       collectorStatus={collectorStatus}
@@ -66,6 +72,10 @@ function AdminInner() {
       savedSearchHealth={savedSearchHealth}
       feedbackInbox={feedbackInbox}
       ordersInbox={ordersInbox}
+      tickets={tickets}
+      ops={ops}
+      actor={actor}
+      onActorChange={setActor}
       loading={loading}
       error={error}
       activeFieldFilter={activeFieldFilter}

@@ -14,8 +14,8 @@ import sys
 
 def main() -> int:
     try:
-        from cryptography.hazmat.primitives.asymmetric import ec
         from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
     except ImportError:
         print("Missing `cryptography`. Install with: pip install cryptography", file=sys.stderr)
         return 1
@@ -41,9 +41,9 @@ def main() -> int:
     print("=" * 68)
     print()
     print("# Backend env (Python host running /api/cron/reminders):")
-    print(f"VAPID_PRIVATE_KEY=<<<paste PEM below>>>")
+    print("VAPID_PRIVATE_KEY=<<<paste PEM below>>>")
     print(f"VAPID_PUBLIC_KEY={pub_b64}")
-    print(f"VAPID_SUBJECT=mailto:your-email@example.com")
+    print("VAPID_SUBJECT=mailto:your-email@example.com")
     print()
     print("# Frontend env (Vercel — public, used by service worker):")
     print(f"NEXT_PUBLIC_VAPID_PUBLIC_KEY={pub_b64}")
