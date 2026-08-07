@@ -516,6 +516,7 @@ def refresh_all(
     schools: set[str] | None = None,
     national: bool = False,
     provenance: dict | None = None,
+    time_budget_minutes: float | None = None,
 ) -> dict:
     """Run enabled collectors and merge results.
 
@@ -570,6 +571,27 @@ def refresh_all(
         summary["provenance"] = dict(provenance)
     if sharded:
         summary["shard"] = {"schools": sorted(schools or []), "national": national}
+
+    # Wall-clock budget: when exhausted, stop STARTING sources. The CI job's
+    # hard timeout kills the process mid-write and publishes nothing (the
+    # 2026-08-07 scheduled run died at the 300-minute cap inside jhu_faculty
+    # after ucsd ate 4.5h) — deferring the un-started tail instead lets every
+    # completed school still publish. A deferred source reports
+    # ``deferred_deadline``, never "ok", so deactivate_stale_faculty provably
+    # cannot retire its records off a run that skipped it.
+    deadline = (
+        time.monotonic() + time_budget_minutes * 60
+        if time_budget_minutes is not None else None
+    )
+    summary["time_budget"] = {"budget_minutes": time_budget_minutes, "deferred": 0}
+
+    def defer(source_name: str) -> bool:
+        if deadline is None or time.monotonic() < deadline:
+            return False
+        summary["sources"][source_name] = {"status": "deferred_deadline"}
+        summary["time_budget"]["deferred"] += 1
+        logger.warning("%s deferred: run time budget exhausted", source_name)
+        return True
 
     # 1. OUR RSS feed
     if selected("uiuc"):
@@ -634,7 +656,7 @@ def refresh_all(
             summary["sources"]["nsf_reu"] = {"status": "error", "error": str(e)}
 
     # 4. UIUC Faculty directories
-    if selected("uiuc"):
+    if selected("uiuc") and not defer("uiuc_faculty"):
         logger.info("=" * 50)
         logger.info("Collecting from UIUC Faculty directories...")
         try:
@@ -778,6 +800,8 @@ def refresh_all(
     ]:
         if not selected(school):
             continue
+        if defer(source_name):
+            continue
         logger.info("=" * 50)
         logger.info(f"Collecting from {source_name}...")
         try:
@@ -800,7 +824,7 @@ def refresh_all(
     # department pages, career boards, lab recruiting). The curated seed layer
     # runs unconditionally (no network); the keyword-prioritized BFS crawl that
     # refines status and discovers extra postings only runs in deep mode.
-    if selected("ucb"):
+    if selected("ucb") and not defer("ucb_campus"):
         logger.info("=" * 50)
         logger.info(f"Collecting from UC Berkeley campus sources (deep={deep})...")
         try:
@@ -840,6 +864,8 @@ def refresh_all(
     for school_cfg in SCHOOL_CONFIGS:
         slug = school_cfg.get("school_slug", "unknown")
         if not selected(slug):
+            continue
+        if defer(f"campus_graph:{slug}"):
             continue
         try:
             school_opps, graph_evidence = (
@@ -1140,6 +1166,8 @@ def refresh_all(
             # scoping — the registration tests run this loop stubbed.
             if not selected(SOURCE_DEFAULTS[source_name][0]):
                 continue
+            if defer(source_name):
+                continue
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")
             try:
@@ -1164,7 +1192,7 @@ def refresh_all(
         # plus the status=Closed archive (~860 past projects, seeded as
         # non-actionable references). The merge leaves the corpus untouched on
         # an empty scrape.
-        if selected("ucb"):
+        if selected("ucb") and not defer("ucb_urap_projects"):
             logger.info("=" * 50)
             logger.info("Collecting from UC Berkeley URAP project database...")
             try:
@@ -1184,7 +1212,7 @@ def refresh_all(
                 logger.error(f"URAP projects collection failed: {e}")
                 summary["sources"]["ucb_urap_projects"] = {"status": "error", "error": str(e)}
 
-        if selected("ucsb"):
+        if selected("ucsb") and not defer("ucsb_urca_projects"):
             logger.info("=" * 50)
             logger.info("Collecting from UC Santa Barbara URCA project directory...")
             try:
@@ -1572,6 +1600,12 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Refresh all opportunity data sources")
     parser.add_argument("--no-deep", action="store_true", help="Skip deep scraping of SRO detail pages")
+    parser.add_argument(
+        "--time-budget-minutes", type=float, default=None,
+        help="Stop starting new sources once this much wall-clock has elapsed; "
+             "un-started sources report deferred_deadline and completed schools "
+             "still publish (keep below the CI job's hard timeout-minutes)",
+    )
     parser.add_argument("--base-sha")
     parser.add_argument("--run-id")
     parser.add_argument("--run-attempt")
@@ -1619,6 +1653,7 @@ def main(argv: list[str] | None = None) -> int:
             schools=schools,
             national=args.national,
             provenance=provenance,
+            time_budget_minutes=args.time_budget_minutes,
         )
     except Exception as e:
         elapsed = time.time() - start

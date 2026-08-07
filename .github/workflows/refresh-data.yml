@@ -138,7 +138,12 @@ jobs:
               echo "First week of the month — enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
               export OFE_ENRICH_PROFILES=1
             fi
-            python -m src.collectors.refresh_all $ARGS
+            # 260-minute source budget under the job's 300-minute hard timeout:
+            # once spent, refresh_all stops STARTING sources (they report
+            # deferred_deadline) so completed schools still merge and publish.
+            # The 2026-08-07 run hit the hard cap mid-source and published
+            # nothing, losing even the 4.5h of ucsd work that had finished.
+            python -m src.collectors.refresh_all --time-budget-minutes 260 $ARGS
           else
             echo "Running QUICK refresh (shard: ${SHARD:-full})"
             python -m src.collectors.refresh_all --no-deep $ARGS

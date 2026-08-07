@@ -2943,3 +2943,86 @@ class TestIdentityProvenance:
         )
 
         assert result == ("", "", [], "ada@x.edu", True)
+
+
+class TestRenderBudget:
+    """A per-URL wall-clock budget across render attempts. The 2026-08-07
+    scheduled run spent ~11 minutes per unresolved carey.jhu.edu page (3
+    goto+settle+selector rounds); the budget stops RETRYING once spent —
+    attempt 1 always runs."""
+
+    def _fake_playwright(self, sys_modules_setter, goto_calls):
+        import types
+
+        class _Page:
+            def goto(self, *a, **k):
+                goto_calls.append(1)
+
+            def wait_for_timeout(self, ms):
+                pass
+
+            def wait_for_selector(self, *a, **k):
+                raise RuntimeError("no cards")
+
+            def content(self):
+                return "<html><body><p>challenge shell</p></body></html>"
+
+        class _Context:
+            def new_page(self):
+                return _Page()
+
+        class _Browser:
+            def new_context(self, **k):
+                return _Context()
+
+            def close(self):
+                pass
+
+        class _Chromium:
+            def launch(self, **k):
+                return _Browser()
+
+        class _P:
+            chromium = _Chromium()
+
+        class _SyncPW:
+            def __enter__(self):
+                return _P()
+
+            def __exit__(self, *a):
+                return False
+
+        pw_pkg = types.ModuleType("playwright")
+        pw_sync = types.ModuleType("playwright.sync_api")
+        pw_sync.sync_playwright = lambda: _SyncPW()
+        pw_pkg.sync_api = pw_sync
+        sys_modules_setter("playwright", pw_pkg)
+        sys_modules_setter("playwright.sync_api", pw_sync)
+
+    def test_zero_budget_stops_after_first_attempt(self, monkeypatch):
+        import sys
+
+        from src.collectors.faculty_graph import _render_soup
+
+        calls: list[int] = []
+        self._fake_playwright(
+            lambda name, mod: monkeypatch.setitem(sys.modules, name, mod), calls,
+        )
+        soup = _render_soup(
+            "https://example.edu/dir", expect_selector=".card", total_budget_s=0,
+        )
+        assert soup is None
+        assert len(calls) == 1, "an exhausted budget must not retry the render"
+
+    def test_default_budget_still_retries_three_times(self, monkeypatch):
+        import sys
+
+        from src.collectors.faculty_graph import _render_soup
+
+        calls: list[int] = []
+        self._fake_playwright(
+            lambda name, mod: monkeypatch.setitem(sys.modules, name, mod), calls,
+        )
+        soup = _render_soup("https://example.edu/dir", expect_selector=".card")
+        assert soup is None
+        assert len(calls) == 3
