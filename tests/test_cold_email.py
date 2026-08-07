@@ -232,6 +232,66 @@ class TestGenerateColdEmailEndToEnd:
         assert "Google Scholar:" not in email
 
 
+class TestCourseworkDatePollution:
+    """Venue/date entries masquerading as course codes must never be cited.
+
+    A résumé's publications ("CVPR 2026") and dates ("May 2027") have the same
+    ACRONYM + NUMBER shape the parser reads as course codes, and stored
+    profiles already carry such entries — citing one as "relevant coursework"
+    is a false claim in the student's own voice (observed live 2026-08-07).
+    """
+
+    _OPP = {
+        "opportunity_type": "research",
+        "pi_name": "Jane Doe",
+        "lab_or_program": "Prof. Jane Doe's Research Group",
+        "department": "Department of Physics",
+        "keywords": ["physics"],
+        "eligibility": {},
+    }
+    _PROFILE = {
+        "name": "Eric", "year": "sophomore", "major": "Computer Engineering",
+        "school": "UIUC", "research_interests_text": "machine learning",
+        # The coursework sentence lives in the skills paragraph, which only
+        # renders for a profile that actually has skills (the live case).
+        "hard_skills": [{"name": "Python", "level": "experienced"}],
+    }
+
+    def test_venue_year_entry_never_reaches_the_email(self):
+        profile = {**self._PROFILE, "coursework": ["CVPR 2026", "ECE 391"]}
+        email = generate_cold_email(profile, self._OPP)
+        assert "CVPR 2026" not in email
+        assert "ECE 391" in email
+
+    def test_all_datelike_entries_drop_the_coursework_sentence(self):
+        profile = {
+            **self._PROFILE,
+            "coursework": ["CVPR 2026", "May 2027", "NeurIPS 2025"],
+        }
+        email = generate_cold_email(profile, self._OPP)
+        assert "Relevant coursework" not in email
+
+    def test_real_course_codes_survive(self):
+        # CS 2110 sits above the calendar band; MCBT 310 and a named course
+        # are untouched — the guard must not eat genuine catalog entries.
+        profile = {
+            **self._PROFILE,
+            "coursework": ["CS 2110", "MCBT 310", "Data Structures"],
+        }
+        email = generate_cold_email(profile, self._OPP)
+        assert "CS 2110" in email
+        assert "MCBT 310" in email
+
+    def test_filter_shapes(self):
+        from src.recommender.cold_email import filter_course_entries
+
+        rejected = ["CVPR 2026", "ICML 2025", "AAAI 2024", "NeurIPS 2025",
+                    "MAY 2027", "Fall 2026", "IEEE 2023", "ACM 1999"]
+        kept = ["CS 2110", "ECE 391", "MATH 241", "CS 4641",
+                "Data Structures", "HIST 170", "Machine Learning"]
+        assert filter_course_entries(rejected + kept) == kept
+
+
 class TestRecipientJunkNameCE6:
     def test_na_pi_name_does_not_leak_into_recipient(self):
         # CE-6: "N/A" (in the matcher's _BAD_PI_NAMES) must not render as a name.

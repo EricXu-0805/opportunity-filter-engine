@@ -65,6 +65,7 @@ from backend.schemas import (
     TailorRequest,
     TailorResponse,
 )
+from src.recommender.cold_email import filter_course_entries
 
 logger = logging.getLogger("ofe.tailor")
 
@@ -161,7 +162,7 @@ def _build_evidence_corpus(
         else:
             parts.append(str(skill))
 
-    parts.extend(str(c) for c in (profile_dict.get("coursework") or []))
+    parts.extend(filter_course_entries(profile_dict.get("coursework")))
     parts.extend(str(b) for b in (original_bullets or []))
 
     return " ".join(parts).lower()
@@ -305,8 +306,8 @@ def _ai_tailor_bullets(
             skills_lines.append(f"- {skill}")
     skills_block = "\n".join(skills_lines) or "(none listed)"
 
-    coursework = (profile_dict.get("coursework") or [])[:15]
-    coursework_str = ", ".join(str(c) for c in coursework) or "(none listed)"
+    coursework = filter_course_entries(profile_dict.get("coursework"))[:15]
+    coursework_str = ", ".join(coursework) or "(none listed)"
 
     original_lines = []
     for i, b in enumerate(original_bullets[:_DEFAULT_BULLETS_PER_REQUEST], start=1):

@@ -60,6 +60,13 @@ function trimCourse(s: string): string {
 function extractCoursework(text: string): string[] {
   const courses: string[] = [];
   for (const m of text.matchAll(COURSE_PATTERN)) {
+    // A number in the calendar band is a venue or a date ("CVPR 2026",
+    // "MAY 2027"), not a catalog number — publications and graduation dates
+    // share the course-code shape, and a venue cited as coursework becomes a
+    // false claim in generated emails. Catalog numbers in the band ("CS 2050")
+    // are sacrificed; a labeled "Coursework:" line still captures them below.
+    const num = Number(m[2]);
+    if (num >= 1950 && num <= 2049) continue;
     courses.push(`${m[1]} ${m[2]}`);
   }
   for (const line of text.split('\n')) {
