@@ -209,7 +209,8 @@ const rpcs = {
       row = {
         device_id: expected,
         opportunity_id: oppId,
-        interaction_type: 'applied',
+        // 'contacted', mirroring 027: a confirmed send is outreach, not an application.
+        interaction_type: 'contacted',
         notes: null,
         remind_at: remindAt ?? null,
         last_contacted_at: now,

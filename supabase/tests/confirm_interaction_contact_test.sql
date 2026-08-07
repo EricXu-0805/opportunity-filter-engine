@@ -20,7 +20,7 @@
 --   - anon role has no EXECUTE at all (permission denied) — dynamic proof,
 --     not just the static has_function_privilege check below.
 --   - empty/blank opportunity id is rejected (22023, 'invalid_opportunity').
---   - an absent row becomes 'applied' with last_contacted_at + remind_at.
+--   - an absent row becomes 'contacted' with last_contacted_at + remind_at.
 --   - an existing further-along status (replied/interviewing/rejected/
 --     dismissed) and any notes survive byte-for-byte, AND the conflict
 --     path does NOT fire the interactions_log_status_change trigger (009)
@@ -152,10 +152,10 @@ BEGIN
     RAISE EXCEPTION 'TEST FAIL confirm-invalid-opp: a blank (whitespace-only) opportunity id was not rejected';
   END IF;
 
-  -- ---- absent row becomes 'applied' (as authenticated, RLS-scoped) ----
+  -- ---- absent row becomes 'contacted' (as authenticated, RLS-scoped) ----
   SELECT * INTO rec FROM confirm_interaction_contact(u1, opp_absent, '2026-08-10');
-  IF rec.interaction_type <> 'applied' THEN
-    RAISE EXCEPTION 'TEST FAIL confirm-absent: expected applied, got %', rec.interaction_type;
+  IF rec.interaction_type <> 'contacted' THEN
+    RAISE EXCEPTION 'TEST FAIL confirm-absent: expected contacted, got %', rec.interaction_type;
   END IF;
   IF rec.device_id <> u1 THEN
     RAISE EXCEPTION 'TEST FAIL confirm-absent: row landed on device_id %, not the caller %', rec.device_id, u1;
@@ -204,8 +204,8 @@ BEGIN
   --      and leaves EXACTLY ONE row for the pair (not a duplicate) ----
   PERFORM confirm_interaction_contact(u1, opp_idempotent, NULL);
   SELECT * INTO rec FROM confirm_interaction_contact(u1, opp_idempotent, NULL);
-  IF rec.interaction_type <> 'applied' THEN
-    RAISE EXCEPTION 'TEST FAIL confirm-idempotent: expected applied on retry, got %', rec.interaction_type;
+  IF rec.interaction_type <> 'contacted' THEN
+    RAISE EXCEPTION 'TEST FAIL confirm-idempotent: expected contacted on retry, got %', rec.interaction_type;
   END IF;
   SELECT count(*) INTO row_count FROM interactions WHERE device_id = u1 AND opportunity_id = opp_idempotent;
   IF row_count <> 1 THEN

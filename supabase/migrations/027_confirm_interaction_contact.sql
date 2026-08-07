@@ -7,7 +7,8 @@
 -- status (replied/interviewing/rejected/dismissed) back to 'applied', or
 -- double-fire the interaction_status_changes trigger (009). One INSERT ...
 -- ON CONFLICT DO UPDATE closes that window: it either creates the row as
--- 'applied' or, if a status already exists, ONLY refreshes
+-- 'contacted' (the honest state for a sent outreach email — see 024) or,
+-- if a status already exists, ONLY refreshes
 -- last_contacted_at (+ an explicitly supplied remind_at) — it can never
 -- touch interaction_type or notes, so an existing further-along status and
 -- any notes survive byte-for-byte.
@@ -51,7 +52,9 @@ BEGIN
 
   RETURN QUERY
   INSERT INTO interactions (device_id, opportunity_id, interaction_type, last_contacted_at, remind_at, updated_at)
-  VALUES (p_expected_device_id, p_opportunity_id, 'applied', now(), p_remind_at, now())
+  -- 'contacted', not 'applied' (W12's 024): a confirmed cold-email send is
+  -- an outreach contact, never an application claim made on the user's behalf.
+  VALUES (p_expected_device_id, p_opportunity_id, 'contacted', now(), p_remind_at, now())
   ON CONFLICT (device_id, opportunity_id) DO UPDATE SET
     last_contacted_at = EXCLUDED.last_contacted_at,
     remind_at = COALESCE(EXCLUDED.remind_at, interactions.remind_at),

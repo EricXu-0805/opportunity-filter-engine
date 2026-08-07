@@ -109,7 +109,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean } = {}): Promis
       body: JSON.stringify([{
         device_id: DEVICE_ID,
         opportunity_id: KNOWN_ID,
-        interaction_type: 'applied',
+        interaction_type: 'contacted',
         notes: null,
         remind_at: null,
         last_contacted_at: new Date().toISOString(),
@@ -139,7 +139,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean } = {}): Promis
         body: JSON.stringify([{
           device_id: DEVICE_ID,
           opportunity_id: KNOWN_ID,
-          interaction_type: 'applied',
+          interaction_type: 'contacted',
           notes: null,
           remind_at: null,
           last_contacted_at: new Date().toISOString(),
