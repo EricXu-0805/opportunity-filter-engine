@@ -90,7 +90,13 @@ _DRY_LAB_KEYWORDS = frozenset({
     "computer science", "computing", "data science", "software",
     "machine learning", "deep learning", "artificial intelligence",
     "computer vision", "natural language processing", "nlp", "robotics",
-    "electrical engineering", "ece", "mechanical engineering",
+    # "computer engineering" carries the ampersand department form
+    # ("Electrical & Computer Engineering"), which contains neither
+    # "electrical engineering" nor "ece" as a substring — without it the
+    # highest-weight dry signal is mute and one application-domain word
+    # ("medical technologies") can flip a chip lab to wet.
+    "electrical engineering", "computer engineering", "ece",
+    "mechanical engineering",
     "civil engineering", "aerospace", "materials science", "physics",
     "applied math", "statistics", "operations research", "bioinformatics",
     "computational biology", "computational neuroscience",
