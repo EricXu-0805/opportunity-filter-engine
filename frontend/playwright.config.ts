@@ -18,10 +18,14 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  // One retry in CI (down from 2): still absorbs a single flake, but halves the
-  // worst-case time a failing test adds — part of keeping the suite inside the
-  // job timeout. Kept serial (workers: 1) so cross-file state stays predictable.
-  retries: 1,
+  // Two retries in CI (was briefly 1 to shave worst-case time): on 2026-08-07
+  // three separate runs went red on runner-load jitter that a single retry
+  // failed through but a full re-run passed — favorites/tracker timing and a
+  // borderline CLS. The suite completes in ~15 min against the 30-min job cap,
+  // so the extra retry's worst case fits with room; maxFailures below still
+  // bounds a genuinely broken build. Kept serial (workers: 1) so cross-file
+  // state stays predictable.
+  retries: process.env.CI ? 2 : 1,
   workers: 1,
   // A systemic breakage (e.g. a modal covering the viewport) makes every test
   // eat its full timeout serially and the job hang to its 30m cap — bail after
