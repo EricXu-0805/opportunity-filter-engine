@@ -1,10 +1,24 @@
-name: Validate Opportunity Data Refresh
+name: Refresh Opportunity Data
 
-# Publication and automatic scheduling are deliberately paused. This manual
-# workflow proves that one canonical target-only refresh can be replayed onto
-# the latest main revision without touching any non-target data. A publisher
-# and recurring schedule require separate authorization.
+# Daily per-school shard rotation (UTC day → shard). Every scheduled run is a
+# DEEP run for its shard — each shard's weekly run IS its deep run. Balanced
+# by faculty counts + which scrapes visit profile pages weekly:
+#
+#   | Day | Shard                             | Weekly est. | First-week est. |
+#   |-----|-----------------------------------|-------------|-----------------|
+#   | Mon | uiuc,rutgers,ncsu,asu,ucr,uiowa,iastate,buffalo,fsu,bc,emory,tufts,stevens (+ Experts monthly, +Chromium) | ~120-190 min | ~150-230 min |
+#   | Tue | ucb,mit,usc,umn,tamu,psu,msu,utah,uconn,usf,georgetown,nyu,uva,njit,wpi | ~115-175 min | ~150-225 min |
+#   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh | ~60-105 min | ~110-185 min |
+#   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse | ~65-115 min | ~120-200 min |
+#   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl | ~80-125 min | ~130-205 min |
+#   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas,ucd | ~60-105 min | ~115-200 min |
+#   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
+#
+# First-week column = the monthly per-profile enrichment (OFE_ENRICH_PROFILES)
+# now runs on each school's OWN shard day in the first week of the month.
 on:
+  schedule:
+    - cron: '0 6 * * *'    # daily 6am UTC — that day's shard, deep
   workflow_dispatch:
     inputs:
       deep:
@@ -14,233 +28,308 @@ on:
         type: choice
         options: ['true', 'false']
       schools:
-        description: 'Required: one school, national, or one canonical scheduled shard'
-        required: true
+        description: 'Shard: comma-separated school slugs (e.g. uw,wisc), literal "national" for the school-less sources, empty = full refresh'
+        required: false
+        default: ''
         type: string
 
 env:
+  # Surface Node 24 breakage now, on our schedule, ahead of GitHub's
+  # June 16 2026 forced migration of node20 actions.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# collector_status.json is global. Serialize manual validation runs so their
-# compare-and-swap preimages cannot race.
+# A deep shard can outlast a manual dispatch fired later the same day; two
+# refreshes racing the same corpus file produce garbage merges. Queue, never
+# cancel (a long scrape is too expensive to kill).
 concurrency:
-  group: refresh-data-validation
+  group: refresh-data
   cancel-in-progress: false
 
 jobs:
-  validate-refresh:
+  refresh:
     runs-on: ubuntu-latest
+    # Shards are budgeted far under this (worst day ~3h: Monday uiuc in the
+    # first week of the month); 300 is headroom, and a full manual refresh
+    # (empty schools input) still fits.
     timeout-minutes: 300
     permissions:
-      contents: read
+      contents: write
 
     steps:
-      - name: Check out run-start revision
-        # actions/checkout v6, pinned to the reviewed commit behind the v6 tag
-        # on 2026-07-31.
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Python 3.11
-        # actions/setup-python v6, pinned to the reviewed commit behind the v6
-        # tag on 2026-07-31.
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Capture run-start identity
-        id: base
-        shell: bash
-        env:
-          TRIGGER_REF: ${{ github.ref }}
-        run: |
-          set -euo pipefail
-          if [[ "$TRIGGER_REF" != "refs/heads/main" ]]; then
-            echo "::error::Refresh validation must run from refs/heads/main."
-            exit 1
-          fi
-          BASE_SHA="$(git rev-parse HEAD)"
-          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          git fetch origin main
-          if ! git merge-base --is-ancestor "$BASE_SHA" FETCH_HEAD; then
-            echo "::error::Run-start revision is not an ancestor of latest main."
-            exit 1
-          fi
-          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
-
-      - name: Assemble corpus work file from committed shards
+      - name: Assemble corpus work file from shards
+        # git stores the corpus as per-school shards (100 MB blob limit); the
+        # pipeline reads/writes the single assembled work file. assemble is a
+        # no-op if a work file already exists (never clobber fresher data).
         run: python scripts/shard_corpus.py assemble
 
-      - name: Determine bounded refresh shard
+      - name: Determine shard
         id: shard
-        shell: bash
-        env:
-          REQUESTED_SCHOOLS: ${{ inputs.schools }}
         run: |
-          set -euo pipefail
-          SHARD="$(
-            python scripts/refresh_rotation.py \
-              --schools "$REQUESTED_SCHOOLS" \
-              --publication-unit
-          )"
-          TARGETS="$(
-            python scripts/refresh_rotation.py \
-              --schools "$SHARD" \
-              --targets
-          )"
-          echo "shard=$SHARD" >> "$GITHUB_OUTPUT"
-          echo "targets=$TARGETS" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "shard=${{ inputs.schools }}" >> $GITHUB_OUTPUT
+          else
+            case "$(date -u +%u)" in
+              1) SHARD="uiuc,rutgers,ncsu,asu,ucr,uiowa,iastate,buffalo,fsu,bc,emory,tufts,stevens" ;;
+              2) SHARD="ucb,mit,usc,umn,tamu,psu,msu,utah,uconn,usf,georgetown,nyu,uva,njit,wpi" ;;
+              3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh" ;;
+              4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse" ;;
+              5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl" ;;
+              6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas,ucd" ;;
+              7) SHARD="national" ;;
+            esac
+            echo "shard=$SHARD" >> $GITHUB_OUTPUT
+          fi
 
       - name: Determine scrape mode
         id: mode
-        shell: bash
-        env:
-          REQUESTED_DEEP: ${{ inputs.deep }}
+        # Scheduled shard runs are ALWAYS deep — each shard's weekly run is its
+        # deep run. Manual dispatches honor the input.
         run: |
-          set -euo pipefail
-          case "$REQUESTED_DEEP" in
-            true)
-              echo "deep=true" >> "$GITHUB_OUTPUT"
-              echo "mode=deep" >> "$GITHUB_OUTPUT"
-              ;;
-            false)
-              echo "deep=false" >> "$GITHUB_OUTPUT"
-              echo "mode=quick" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "::error::deep must be exactly true or false."
-              exit 1
-              ;;
-          esac
-
-      - name: Run bounded data refresh
-        shell: bash
-        env:
-          BASE_SHA: ${{ steps.base.outputs.base_sha }}
-          DEEP: ${{ steps.mode.outputs.deep }}
-          SHARD: ${{ steps.shard.outputs.shard }}
-        run: |
-          set -euo pipefail
-          ARGS=(
-            --base-sha "$BASE_SHA"
-            --run-id "$GITHUB_RUN_ID"
-            --run-attempt "$GITHUB_RUN_ATTEMPT"
-          )
-          if [[ "$SHARD" == "national" ]]; then
-            ARGS+=(--national)
+          if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ inputs.deep }}" == "true" ]]; then
+            echo "deep=true" >> $GITHUB_OUTPUT
           else
-            ARGS+=(--schools "$SHARD")
+            echo "deep=false" >> $GITHUB_OUTPUT
           fi
-          if [[ "$DEEP" != "true" ]]; then
-            ARGS+=(--no-deep)
-          elif [[ "$SHARD" != "national" ]]; then
-            pip install playwright==1.60.0
-            python -m playwright install --with-deps chromium
+
+      - name: Run data refresh
+        run: |
+          SHARD="${{ steps.shard.outputs.shard }}"
+          ARGS=""
+          if [[ "$SHARD" == "national" ]]; then
+            ARGS="--national"
+          elif [[ -n "$SHARD" ]]; then
+            ARGS="--schools $SHARD"
           fi
-          DAY_OF_MONTH="$((10#$(date -u +%d)))"
-          if [[ "$DEEP" == "true" && "$SHARD" != "national" ]] && (( DAY_OF_MONTH <= 7 )); then
-            export OFE_ENRICH_PROFILES=1
+          if [[ "${{ steps.mode.outputs.deep }}" == "true" ]]; then
+            echo "Running DEEP refresh (shard: ${SHARD:-full})"
+            # Several schools render client-side / behind Cloudflare and need a
+            # headless browser: uiuc (ACES Drupal Views AJAX) plus the render-mode
+            # faculty configs for umich, princeton, uchicago, uci, ucsd, duke
+            # (Pratt), jhu (Whiting .entity/.zn sites), and northwestern (School of
+            # Communication article listings). Playwright isn't in requirements.txt
+            # (the collectors lazy-import it; tests mock it), so install it + Chromium
+            # whenever the run is a full refresh OR its shard includes any render-using
+            # school — otherwise those schools' render departments silently collect nothing.
+            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucd|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt|uva|hamilton|haverford), ]]; then
+              pip install playwright
+              python -m playwright install --with-deps chromium
+            fi
+            # First run of the month for this shard: enable the gated
+            # per-profile enrichment pass (OFE_ENRICH_PROFILES). It follows each
+            # faculty profile link to recover the email/research the directory
+            # listing omits — render mode for the Cloudflare-walled schools
+            # (Princeton dept subdomains, umich), plain fetch for the rest.
+            # Expensive per-profile, so monthly not weekly; the richer-dedup
+            # carry-forward keeps recovered fields, so already-enriched profiles
+            # are skipped on later runs. Each school gets its monthly pass on
+            # its own shard day in the first week of the month.
+            if [[ "$SHARD" != "national" ]] && [ "$(date -u +%d)" -le 07 ]; then
+              echo "First week of the month — enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
+              export OFE_ENRICH_PROFILES=1
+            fi
+            python -m src.collectors.refresh_all $ARGS
+          else
+            echo "Running QUICK refresh (shard: ${SHARD:-full})"
+            python -m src.collectors.refresh_all --no-deep $ARGS
           fi
-          python -m src.collectors.refresh_all "${ARGS[@]}"
+
+      - name: Monthly Illinois Experts enrichment (first week, deep uiuc runs only)
+        # Pure fingerprints change slowly, so the per-person Experts scrape runs
+        # ~monthly, not weekly — the keyword-richer dedup keeps its concepts when
+        # the weekly broad re-scrape re-fetches the same faculty. uiuc = Monday,
+        # so this fires on the first Monday of the month (same cadence as when
+        # every deep run was a Monday full run). Folds into the data-refresh PR
+        # below. Polite: ~1s/person, only the broad-only faculty.
+        if: steps.mode.outputs.deep == 'true'
+        run: |
+          SHARD="${{ steps.shard.outputs.shard }}"
+          if [[ -n "$SHARD" && ",$SHARD," != *",uiuc,"* ]]; then
+            echo "Shard '$SHARD' does not include uiuc — skipping Experts pass"
+          elif [ "$(date -u +%d)" -le 07 ]; then
+            echo "First week of the month — running Illinois Experts enrichment"
+            python -m src.collectors.uiuc_experts --refresh
+          else
+            echo "Not the first week of the month — skipping Experts pass"
+          fi
+
+      # Daily, corpus-wide, cheap/offline passes — deliberately NOT sharded.
+      - name: Retroactive enricher pass
+        run: python -m src.normalizers.enrich_processed --save
+
+      - name: Deactivate past-deadline opportunities
+        run: python -m src.normalizers.deactivate_past --save
 
       - name: Data-quality gate
-        run: pytest -q -p no:cacheprovider tests/test_opportunity_data_quality.py
+        # Fail fast and attributably here if the fresh scrape produced dirty data,
+        # rather than letting the downstream data PR's CI catch it late.
+        run: pytest tests/test_opportunity_data_quality.py -q
 
-      - name: Split only the authorized target shards
-        env:
-          TARGETS: ${{ steps.shard.outputs.targets }}
-        run: python scripts/shard_corpus.py split --only-shards "$TARGETS"
+      - name: Check for changes
+        id: changes
+        # The work file is untracked (shards are the committed form), so a
+        # tracked-file diff can't answer this. Always proceed; the commit step's
+        # `git diff --cached --quiet` after the split is the authoritative gate
+        # and exits cleanly when the scrape produced nothing new.
+        run: echo "changed=true" >> $GITHUB_OUTPUT
 
-      - name: Build and validate target-only artifact
-        shell: bash
+      - name: Open data-refresh PR and merge once required checks pass
+        if: steps.changes.outputs.changed == 'true'
         env:
-          ARTIFACT_ROOT: ${{ runner.temp }}/refresh-artifact
-          BASE_SHA: ${{ steps.base.outputs.base_sha }}
-          MODE: ${{ steps.mode.outputs.mode }}
-          SHARD: ${{ steps.shard.outputs.shard }}
+          GH_TOKEN: ${{ secrets.REFRESH_PAT }}
         run: |
           set -euo pipefail
-          python scripts/refresh_artifact.py build \
-            --shard "$SHARD" \
-            --base-sha "$BASE_SHA" \
-            --repository-root "$GITHUB_WORKSPACE" \
-            --source-shards "$GITHUB_WORKSPACE/data/processed/shards" \
-            --collector-status "$GITHUB_WORKSPACE/data/processed/collector_status.json" \
-            --output "$ARTIFACT_ROOT" \
-            --mode "$MODE" \
-            --run-id "$GITHUB_RUN_ID" \
-            --run-attempt "$GITHUB_RUN_ATTEMPT"
-          python scripts/refresh_artifact.py validate \
-            --artifact "$ARTIFACT_ROOT" \
-            --expected-shard "$SHARD" \
-            --expected-base-sha "$BASE_SHA" \
-            --expected-mode "$MODE" \
-            --expected-run-id "$GITHUB_RUN_ID" \
-            --expected-run-attempt "$GITHUB_RUN_ATTEMPT"
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::REFRESH_PAT secret is not set — cannot push to protected main via PR. See repo setup notes."
+            exit 1
+          fi
 
-      - name: Replay artifact on latest main with compare-and-swap
-        shell: bash
+          MODE="${{ steps.mode.outputs.deep == 'true' && 'deep' || 'quick' }}"
+          SHARD="${{ steps.shard.outputs.shard }}"
+          TOTAL=$(python3 -c "import json; print(len(json.load(open('data/processed/opportunities.json'))))")
+          EMAILS=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('contact_email')))")
+          INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
+          MSG="chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode, shard: ${SHARD:-full})"
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # An earlier run's PR can linger open when main moved between its
+          # checks going green and its merge (how #637 sat stuck for days,
+          # blocking the pipeline). This scrape supersedes its data either way:
+          # close leftovers before opening a fresh PR.
+          STALE=$(gh pr list --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("auto/refresh-data-")) | .number' || true)
+          for PR in $STALE; do
+            echo "closing superseded refresh PR #$PR"
+            gh pr close "$PR" --comment "Superseded by a newer data-refresh run." --delete-branch || true
+          done
+
+          # A deep scrape can run hours, during which other PRs can merge to main and
+          # rewrite these same data files. Branching from the run-start checkout would
+          # then conflict at PR-open time — and GitHub schedules NO pull_request CI on a
+          # PR it can't compute a merge commit for, so the required checks below would
+          # never register and this job would hang then fail. Re-base onto the *latest*
+          # main and replay the freshly scraped data on top, so the PR is conflict-free.
+          cp data/processed/opportunities.json /tmp/refresh-opportunities.json
+          cp data/processed/collector_status.json /tmp/refresh-collector_status.json
+          # W15: the rolling history ledger is the ONLY record of a failure that
+          # yesterday's snapshot no longer shows (each run rewrites the snapshot
+          # and only for its own shard). It was never stashed or committed, so
+          # the runner's copy died at the rebase below and the committed file
+          # froze — the admin freshness chart was reading a fossil.
+          if [ -f data/processed/collector_status_history.jsonl ]; then
+            cp data/processed/collector_status_history.jsonl /tmp/refresh-collector_history.jsonl
+          fi
+          # Professor tracking ledger (W8): best-effort artifact — refresh_all
+          # writes it unless tracking errored, so guard the copies.
+          if [ -f data/processed/professor_tracking.json ]; then
+            cp data/processed/professor_tracking.json /tmp/refresh-professor_tracking.json
+          fi
+
+          # Two attempts: main can move again during the ~20 min the required
+          # checks run, un-merging an already-green PR. Rather than erroring out
+          # with a stuck-open PR, close it and replay once onto the new main —
+          # a fresh branch each time, so no force-push ever hits automation.
+          for ATTEMPT in 1 2; do
+            BRANCH="auto/refresh-data-${{ github.run_id }}"
+            [ "$ATTEMPT" -gt 1 ] && BRANCH="$BRANCH-r$ATTEMPT"
+
+            git fetch "$REMOTE" main
+            git checkout -f -B "$BRANCH" FETCH_HEAD
+            cp /tmp/refresh-opportunities.json data/processed/opportunities.json
+            cp /tmp/refresh-collector_status.json data/processed/collector_status.json
+            if [ -f /tmp/refresh-collector_history.jsonl ]; then
+              cp /tmp/refresh-collector_history.jsonl data/processed/collector_status_history.jsonl
+            fi
+            if [ -f /tmp/refresh-professor_tracking.json ]; then
+              cp /tmp/refresh-professor_tracking.json data/processed/professor_tracking.json
+            fi
+
+            # Commit-time chokepoint: split the work file into minified per-school
+            # shards (scripts/shard_corpus.py) — each shard sits far below GitHub's
+            # 100 MB blob limit and grows independently, so onboarding more schools
+            # can't outgrow a single file again. split() prunes description_raw
+            # duplicates (lossless). It is UPSERT-ONLY (no --prune): this run's work
+            # file is assembled from its run-start checkout and omits any school
+            # onboarded to main after the run began, so pruning "absent" shards here
+            # would delete freshly-landed schools (how #614 wiped Yale, #630 the
+            # Wave-3 six). Upsert-only writes only the schools we actually scraped
+            # and leaves every other on-disk shard (from the FETCH_HEAD rebase onto
+            # latest main) untouched.
+            python3 scripts/shard_corpus.py split
+
+            git add data/processed/shards data/processed/collector_status.json
+            if [ -f data/processed/collector_status_history.jsonl ]; then
+              git add data/processed/collector_status_history.jsonl
+            fi
+            if [ -f data/processed/professor_tracking.json ]; then
+              git add data/processed/professor_tracking.json
+            fi
+            if git diff --cached --quiet; then
+              echo "Latest main already matches this scrape — nothing to ship."
+              exit 0
+            fi
+            git commit -m "$MSG"
+            # Push via PAT so the PR triggers CI (the default GITHUB_TOKEN does not).
+            git push "$REMOTE" "$BRANCH"
+
+            gh pr create --base main --head "$BRANCH" --title "$MSG" \
+              --body "Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
+
+            # Wait for the required checks to register, then watch them to
+            # completion. A red check fails this step (no retry: a data/DQ
+            # failure will not pass on replay) and triggers the alert below.
+            for i in $(seq 1 12); do
+              gh pr checks "$BRANCH" --required >/dev/null 2>&1 && break
+              echo "waiting for required checks to register ($i)…"; sleep 15
+            done
+            gh pr checks "$BRANCH" --required --watch
+
+            # Merge once green (retry briefly while GitHub recomputes mergeability).
+            MERGED=""
+            for i in $(seq 1 6); do
+              if gh pr merge "$BRANCH" --squash --delete-branch; then MERGED=1; break; fi
+              echo "merge not ready, retrying ($i)…"; sleep 10
+            done
+            [ -n "$MERGED" ] && exit 0
+
+            echo "checks passed but the merge was rejected — main moved; closing and replaying"
+            gh pr close "$BRANCH" --comment "Superseded: main moved between green checks and merge; replaying onto the new main." --delete-branch || true
+          done
+          echo "::error::Data refresh could not be merged even after a replay retry."
+          exit 1
+
+      # The refresh failed silently 7 runs in a row (6/25–7/02) before anyone
+      # noticed — cron failures send no notification by default.
+      - name: Alert operator on failure
+        if: failure()
         env:
-          ARTIFACT_ROOT: ${{ runner.temp }}/refresh-artifact
-          BASE_SHA: ${{ steps.base.outputs.base_sha }}
-          LATEST_ROOT: ${{ runner.temp }}/latest-main
-          MODE: ${{ steps.mode.outputs.mode }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
           SHARD: ${{ steps.shard.outputs.shard }}
-          TARGETS: ${{ steps.shard.outputs.targets }}
         run: |
-          set -euo pipefail
-          git fetch origin main
-          git worktree add --detach "$LATEST_ROOT" FETCH_HEAD
-          python "$GITHUB_WORKSPACE/scripts/refresh_artifact.py" apply \
-            --artifact "$ARTIFACT_ROOT" \
-            --repository-root "$LATEST_ROOT" \
-            --expected-shard "$SHARD" \
-            --expected-base-sha "$BASE_SHA" \
-            --expected-mode "$MODE" \
-            --expected-run-id "$GITHUB_RUN_ID" \
-            --expected-run-attempt "$GITHUB_RUN_ATTEMPT"
-
-          python - "$LATEST_ROOT" "$TARGETS" <<'PY'
-          import subprocess
-          import sys
-
-          root, targets_csv = sys.argv[1:]
-          targets = set(targets_csv.split(","))
-          allowed = {"data/processed/collector_status.json"} | {
-              f"data/processed/shards/{slug}.json" for slug in targets
-          }
-          raw = subprocess.run(
-              [
-                  "git", "-C", root, "status", "--porcelain=v1", "-z",
-                  "--untracked-files=all",
-              ],
-              check=True,
-              stdout=subprocess.PIPE,
-          ).stdout
-          changed = set()
-          for entry in filter(None, raw.split(b"\0")):
-              status = entry[:2]
-              if status not in {b" M", b"??"} or entry[2:3] != b" ":
-                  raise SystemExit(
-                      f"unexpected Git status after artifact apply: {entry!r}"
-                  )
-              path = entry[3:].decode("utf-8")
-              if path not in allowed:
-                  raise SystemExit(
-                      f"artifact apply changed unauthorized path: {path}"
-                  )
-              changed.add(path)
-          print("Validated target-only latest-main diff:")
-          for path in sorted(changed):
-              print(f"  {path}")
-          PY
-
-      - name: Publication remains disabled
-        run: |
-          echo "Target-only artifact and latest-main replay validated."
-          echo "No commit, push, pull request, merge, branch deletion, or email was performed."
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            exit 0
+          fi
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
+              \"to\": [\"$OPERATOR_EMAIL\"],
+              \"subject\": \"JoinALab: data refresh FAILED (shard: ${SHARD:-full})\",
+              \"text\": \"The scheduled data refresh failed.\n\nShard: ${SHARD:-full}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived).\"
+            }" || true

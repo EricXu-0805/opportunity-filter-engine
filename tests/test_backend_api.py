@@ -4000,6 +4000,746 @@ class TestAdminFeedback:
         assert replay["sample_n"] == 50
 
 
+# ---------------------------------------------------------------------------
+# W15 feedback tickets (migration 026)
+# ---------------------------------------------------------------------------
+
+TICKET_ID = "11111111-2222-3333-4444-555555555555"
+
+
+def _ticket(**overrides):
+    """A feedback row as migration 026 shapes it (defaults = freshly filed)."""
+    row = {
+        "id": TICKET_ID,
+        "created_at": "2026-08-01T00:00:00+00:00",
+        "updated_at": "2026-08-01T00:00:00+00:00",
+        "category": "bug",
+        "subject": "Matches look wrong",
+        "message": "The scores seem off for my profile",
+        "email": "student@example.edu",
+        "props": {"path": "/results"},
+        "status": "open",
+        "priority": "normal",
+        "assigned_to": None,
+        "admin_reply": None,
+        "admin_reply_at": None,
+        "admin_reply_by": None,
+        "admin_reply_delivery": None,
+        "resolution": None,
+        "resolution_note": None,
+        "resolved_by": None,
+        "resolved_at": None,
+        "closed_at": None,
+    }
+    row.update(overrides)
+    return row
+
+
+class FakeSupabase:
+    """PostgREST stand-in for the ticket routes.
+
+    Mirrors the stub style of TestAdminFeedback (async ctx-manager client,
+    raise_for_status no-op) but also records PATCH bodies and feedback_events
+    inserts so tests can assert on what was persisted and what was logged.
+    """
+
+    def __init__(self, ticket=None, events=None, event_status=201):
+        self.ticket = ticket
+        self.events = events or []
+        self.inserted_events = []
+        self.patches = []
+        self.gets = []
+        self.event_status = event_status
+
+    def install(self, monkeypatch):
+        from backend.routes import admin as admin_mod
+
+        outer = self
+
+        class _Resp:
+            def __init__(self, payload, status_code=200, text=""):
+                self._payload = payload
+                self.status_code = status_code
+                self.text = text
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return self._payload
+
+        class _Client:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def get(self, url, params=None, headers=None):
+                outer.gets.append({"url": url, "params": params})
+                if url.endswith("/rest/v1/feedback"):
+                    return _Resp([outer.ticket] if outer.ticket else [])
+                if url.endswith("/rest/v1/feedback_events"):
+                    return _Resp(list(outer.events))
+                return _Resp([])
+
+            async def patch(self, url, params=None, headers=None, json=None):
+                outer.patches.append({"url": url, "params": params, "json": json})
+                if outer.ticket is None:
+                    return _Resp([])
+                outer.ticket = {**outer.ticket, **(json or {})}
+                return _Resp([outer.ticket])
+
+            async def post(self, url, headers=None, json=None):
+                if url.endswith("/rest/v1/feedback_events"):
+                    outer.inserted_events.extend(json or [])
+                return _Resp([], status_code=outer.event_status)
+
+        monkeypatch.setattr(admin_mod.httpx, "AsyncClient", _Client)
+        return self
+
+    def event(self, action):
+        for row in self.inserted_events:
+            if row["action"] == action:
+                return row
+        return None
+
+    @property
+    def actions(self):
+        return [row["action"] for row in self.inserted_events]
+
+    @property
+    def last_patch(self):
+        return self.patches[-1]["json"]
+
+
+def _admin_env(monkeypatch):
+    monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+    monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+
+
+def _auth(actor=None):
+    headers = {"X-Admin-Token": "secret-abc"}
+    if actor is not None:
+        headers["X-Admin-Actor"] = actor
+    return headers
+
+
+_TICKET_ROUTES = [
+    ("get", f"/api/admin/feedback/{TICKET_ID}", None),
+    ("patch", f"/api/admin/feedback/{TICKET_ID}", {"priority": "high"}),
+    ("post", f"/api/admin/feedback/{TICKET_ID}/reply", {"reply": "thanks"}),
+]
+
+
+def _call(method, path, body, headers):
+    fn = getattr(client, method)
+    if body is None:
+        return fn(path, headers=headers)
+    return fn(path, json=body, headers=headers)
+
+
+class TestAdminFeedbackTicketAuth:
+    """Every ticket route sits behind the same lock as the inbox: 503 when the
+    admin surface is disabled, 401 on a bad token, 503 when storage is unset."""
+
+    @pytest.mark.parametrize("method,path,body", _TICKET_ROUTES)
+    def test_503_when_admin_token_unset(self, monkeypatch, method, path, body):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        assert _call(method, path, body, {}).status_code == 503
+
+    @pytest.mark.parametrize("method,path,body", _TICKET_ROUTES)
+    def test_401_when_wrong_token(self, monkeypatch, method, path, body):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        r = _call(method, path, body, {"X-Admin-Token": "wrong"})
+        assert r.status_code == 401
+
+    @pytest.mark.parametrize("method,path,body", _TICKET_ROUTES)
+    def test_503_when_supabase_unset(self, monkeypatch, method, path, body):
+        # A mutation that cannot reach storage must fail loudly — never the
+        # inbox's 200 {"status": "skipped"} shape, which would read as success.
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-abc")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        r = _call(method, path, body, _auth())
+        assert r.status_code == 503
+        assert "not configured" in r.json()["detail"]
+
+    @pytest.mark.parametrize("method,path,body", _TICKET_ROUTES)
+    def test_404_for_unknown_ticket(self, monkeypatch, method, path, body):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=None).install(monkeypatch)
+        r = _call(method, path, body, _auth())
+        assert r.status_code == 404
+        # An unknown ticket must never be mutated or logged against.
+        assert fake.patches == []
+        assert fake.inserted_events == []
+
+    def test_malformed_ticket_id_is_404_not_a_storage_error(self, monkeypatch):
+        _admin_env(monkeypatch)
+        FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        r = client.get("/api/admin/feedback/not-a-uuid", headers=_auth())
+        assert r.status_code == 404
+
+
+class TestAdminFeedbackActor:
+    """X-Admin-Actor is a self-declared label: sanitized, defaulted, and used
+    only for audit attribution."""
+
+    def test_actor_defaults_to_operator(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"priority": "high"}, headers=_auth()
+        )
+        assert r.status_code == 200
+        assert r.json()["actor"] == "operator"
+        assert fake.event("priority_changed")["actor"] == "operator"
+
+    def test_actor_sanitized_to_allowed_alphabet(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}",
+            json={"priority": "high"},
+            headers=_auth("ops:alice <script>alert(1)</script>"),
+        )
+        assert r.status_code == 200
+        actor = r.json()["actor"]
+        assert actor == "ops:alicescriptalert1script"
+        assert fake.event("priority_changed")["actor"] == actor
+
+    def test_actor_truncated_and_empty_falls_back(self, monkeypatch):
+        from backend.routes.admin import _sanitize_actor
+
+        assert len(_sanitize_actor("a" * 200)) == 64
+        assert _sanitize_actor("   ") == "operator"
+        assert _sanitize_actor("!!!") == "operator"
+        assert _sanitize_actor(None) == "operator"
+        assert _sanitize_actor("ops:alice") == "ops:alice"
+
+
+class TestAdminFeedbackTicketDetail:
+    def test_returns_ticket_and_ordered_history(self, monkeypatch):
+        _admin_env(monkeypatch)
+        events = [
+            {"id": "e1", "action": "assigned", "actor": "ops:alice",
+             "from_value": None, "to_value": "ops:bob", "created_at": "2026-08-02T00:00:00+00:00"},
+            {"id": "e2", "action": "priority_changed", "actor": "ops:bob",
+             "from_value": "normal", "to_value": "high", "created_at": "2026-08-03T00:00:00+00:00"},
+        ]
+        fake = FakeSupabase(ticket=_ticket(assigned_to="ops:bob", priority="high"),
+                            events=events).install(monkeypatch)
+
+        r = client.get(f"/api/admin/feedback/{TICKET_ID}", headers=_auth())
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ticket"]["assigned_to"] == "ops:bob"
+        assert body["event_count"] == 2
+        assert [e["action"] for e in body["events"]] == ["assigned", "priority_changed"]
+        events_get = [g for g in fake.gets if g["url"].endswith("/feedback_events")][0]
+        assert events_get["params"]["order"] == "created_at.asc"
+        assert events_get["params"]["ticket_id"] == f"eq.{TICKET_ID}"
+
+
+class TestAdminFeedbackPatch:
+    def test_assign_persists_and_logs_event(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}",
+            json={"assigned_to": "ops:bob"},
+            headers=_auth("ops:alice"),
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ticket"]["assigned_to"] == "ops:bob"
+        assert body["changed"] is True
+        assert fake.last_patch["assigned_to"] == "ops:bob"
+        assert "updated_at" in fake.last_patch
+        ev = fake.event("assigned")
+        assert ev["from_value"] is None
+        assert ev["to_value"] == "ops:bob"
+        assert ev["actor"] == "ops:alice"
+        assert ev["ticket_id"] == TICKET_ID
+
+    def test_explicit_null_unassigns(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket(assigned_to="ops:bob")).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"assigned_to": None}, headers=_auth()
+        )
+        assert r.status_code == 200
+        assert r.json()["ticket"]["assigned_to"] is None
+        assert fake.last_patch["assigned_to"] is None
+        assert fake.event("unassigned")["from_value"] == "ops:bob"
+
+    def test_priority_event_carries_real_from_value(self, monkeypatch):
+        _admin_env(monkeypatch)
+        # from_value is read off the live row, not assumed to be the default.
+        fake = FakeSupabase(ticket=_ticket(priority="low")).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"priority": "urgent"}, headers=_auth()
+        )
+        assert r.status_code == 200
+        ev = fake.event("priority_changed")
+        assert (ev["from_value"], ev["to_value"]) == ("low", "urgent")
+
+    def test_noop_patch_writes_nothing(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket(priority="high")).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"priority": "high"}, headers=_auth()
+        )
+        assert r.status_code == 200
+        assert r.json()["changed"] is False
+        # No phantom audit row for a change that did not happen.
+        assert fake.patches == []
+        assert fake.inserted_events == []
+
+    def test_resolve_without_resolution_is_rejected(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        for status in ("resolved", "closed"):
+            r = client.patch(
+                f"/api/admin/feedback/{TICKET_ID}", json={"status": status}, headers=_auth()
+            )
+            assert r.status_code == 400, status
+            assert "requires a resolution" in r.json()["detail"]
+        # No silent close: nothing was written before the rejection.
+        assert fake.patches == []
+        assert fake.inserted_events == []
+
+    def test_resolve_with_resolution_stamps_who_and_when(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}",
+            json={"status": "resolved", "resolution": "fixed", "resolution_note": "shipped in #700"},
+            headers=_auth("ops:alice"),
+        )
+        assert r.status_code == 200
+        patched = fake.last_patch
+        assert patched["status"] == "resolved"
+        assert patched["resolution"] == "fixed"
+        assert patched["resolution_note"] == "shipped in #700"
+        assert patched["resolved_by"] == "ops:alice"
+        assert patched["resolved_at"]
+        assert "status_changed" in fake.actions
+        assert fake.event("resolved")["to_value"] == "fixed"
+
+    def test_closing_keeps_original_resolved_at_and_stamps_closed_at(self, monkeypatch):
+        _admin_env(monkeypatch)
+        resolved = _ticket(
+            status="resolved", resolution="fixed",
+            resolved_by="ops:alice", resolved_at="2026-08-02T00:00:00+00:00",
+        )
+        fake = FakeSupabase(ticket=resolved).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"status": "closed"}, headers=_auth("ops:bob")
+        )
+        assert r.status_code == 200
+        patched = fake.last_patch
+        # When it was DECIDED is a different fact from when it was filed away.
+        assert "resolved_at" not in patched
+        assert patched["closed_at"]
+        assert fake.actions == ["status_changed"]
+
+    def test_reopen_clears_resolution_and_logs_reopened(self, monkeypatch):
+        _admin_env(monkeypatch)
+        resolved = _ticket(
+            status="resolved", resolution="wont_fix", resolution_note="by design",
+            resolved_by="ops:alice", resolved_at="2026-08-02T00:00:00+00:00",
+            closed_at=None,
+        )
+        fake = FakeSupabase(ticket=resolved).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"status": "in_progress"}, headers=_auth()
+        )
+        assert r.status_code == 200
+        patched = fake.last_patch
+        assert patched["status"] == "in_progress"
+        assert patched["resolution"] is None
+        assert patched["resolution_note"] is None
+        assert patched["resolved_at"] is None
+        assert patched["resolved_by"] is None
+        assert patched["closed_at"] is None
+        ev = fake.event("reopened")
+        assert (ev["from_value"], ev["to_value"]) == ("resolved", "in_progress")
+        # The retracted decision survives in the audit trail.
+        assert "wont_fix" in ev["note"]
+        assert r.json()["ticket"]["resolution"] is None
+
+    def test_cannot_set_resolution_while_reopening(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(
+            ticket=_ticket(status="closed", resolution="duplicate", closed_at="2026-08-02T00:00:00+00:00")
+        ).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}",
+            json={"status": "open", "resolution": "fixed"},
+            headers=_auth(),
+        )
+        assert r.status_code == 400
+        assert fake.patches == []
+
+    def test_resolution_on_open_ticket_is_rejected(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"resolution": "fixed"}, headers=_auth()
+        )
+        assert r.status_code == 400
+        assert "resolved/closed" in r.json()["detail"]
+        assert fake.patches == []
+
+    @pytest.mark.parametrize("body,field", [
+        ({"status": "done"}, "status"),
+        ({"priority": "urgent!!"}, "priority"),
+        ({"status": "resolved", "resolution": "magic"}, "resolution"),
+        ({"status": None}, "status"),
+    ])
+    def test_unknown_enum_is_400_not_a_db_error(self, monkeypatch, body, field):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        r = client.patch(f"/api/admin/feedback/{TICKET_ID}", json=body, headers=_auth())
+        assert r.status_code == 400
+        assert field in r.json()["detail"]
+        # Rejected before any network call — the DB CHECK is the backstop, not
+        # the first line of defence.
+        assert fake.patches == []
+        assert fake.gets == []
+
+    def test_empty_body_is_rejected(self, monkeypatch):
+        _admin_env(monkeypatch)
+        FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        r = client.patch(f"/api/admin/feedback/{TICKET_ID}", json={}, headers=_auth())
+        assert r.status_code == 400
+
+    def test_audit_write_failure_is_surfaced_not_swallowed(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket(), event_status=500).install(monkeypatch)
+
+        r = client.patch(
+            f"/api/admin/feedback/{TICKET_ID}", json={"priority": "high"}, headers=_auth()
+        )
+        assert r.status_code == 200
+        # The mutation landed, so reporting failure would be a lie — but the
+        # missing audit row is reported rather than hidden.
+        assert r.json()["ticket"]["priority"] == "high"
+        assert "audit log write failed" in r.json()["audit_log_error"]
+        assert fake.patches
+
+
+class TestAdminFeedbackReply:
+    @staticmethod
+    def _no_quota(monkeypatch):
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "_enforce_recipient_quota", lambda email: None)
+
+    def test_reply_stores_and_does_not_resolve(self, monkeypatch):
+        _admin_env(monkeypatch)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "Fixed in today's refresh."},
+            headers=_auth("ops:alice"),
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["delivery"] == "stored"
+        patched = fake.last_patch
+        assert patched["admin_reply"] == "Fixed in today's refresh."
+        assert patched["admin_reply_by"] == "ops:alice"
+        assert patched["admin_reply_delivery"] == "stored"
+        # A reply is a message, not a handling decision.
+        assert "status" not in patched
+        assert "resolution" not in patched
+        assert body["ticket"]["status"] == "open"
+        assert body["ticket"]["resolution"] is None
+        assert fake.event("replied")["to_value"] == "stored"
+
+    def test_deliver_false_never_attempts_send(self, monkeypatch):
+        _admin_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        self._no_quota(monkeypatch)
+
+        sent = []
+
+        async def _send(**kwargs):
+            sent.append(kwargs)
+
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "_send_via_resend", _send)
+
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "internal note to self"},
+            headers=_auth(),
+        )
+        assert r.json()["delivery"] == "stored"
+        assert sent == []
+
+    def test_deliver_emails_on_provider_acceptance(self, monkeypatch):
+        _admin_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        self._no_quota(monkeypatch)
+
+        sent = []
+
+        async def _send(**kwargs):
+            sent.append(kwargs)
+
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "_send_via_resend", _send)
+
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "We shipped a fix.", "deliver": True},
+            headers=_auth(),
+        )
+        assert r.status_code == 200
+        assert r.json()["delivery"] == "emailed"
+        assert r.json()["delivery_error"] is None
+        assert sent[0]["to"] == "student@example.edu"
+        assert "We shipped a fix." in sent[0]["text"]
+        assert fake.last_patch["admin_reply_delivery"] == "emailed"
+        assert fake.event("replied")["to_value"] == "emailed"
+
+    def test_failing_provider_records_email_failed_never_emailed(self, monkeypatch):
+        _admin_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        self._no_quota(monkeypatch)
+
+        from fastapi import HTTPException
+
+        from backend.routes import admin as admin_mod
+
+        async def _boom(**kwargs):
+            raise HTTPException(status_code=502, detail="Email delivery failed")
+
+        monkeypatch.setattr(admin_mod, "_send_via_resend", _boom)
+
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "We shipped a fix.", "deliver": True},
+            headers=_auth(),
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["delivery"] == "email_failed"
+        assert "Email delivery failed" in body["delivery_error"]
+        # The stored state must not claim an email went out.
+        assert fake.last_patch["admin_reply_delivery"] == "email_failed"
+        assert body["ticket"]["admin_reply_delivery"] != "emailed"
+        assert fake.event("replied")["to_value"] == "email_failed"
+        # The reply itself is still recorded — the operator's words are not lost.
+        assert fake.last_patch["admin_reply"] == "We shipped a fix."
+
+    def test_recipient_quota_exhaustion_is_email_failed(self, monkeypatch):
+        _admin_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        from fastapi import HTTPException
+
+        from backend.routes import admin as admin_mod
+
+        def _over_quota(email):
+            raise HTTPException(status_code=429, detail="too many emails")
+
+        sent = []
+
+        async def _send(**kwargs):
+            sent.append(kwargs)
+
+        monkeypatch.setattr(admin_mod, "_enforce_recipient_quota", _over_quota)
+        monkeypatch.setattr(admin_mod, "_send_via_resend", _send)
+
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "ping", "deliver": True},
+            headers=_auth(),
+        )
+        assert r.json()["delivery"] == "email_failed"
+        assert sent == []
+        assert fake.last_patch["admin_reply_delivery"] == "email_failed"
+
+    def test_deliver_without_email_on_ticket_is_stored_with_reason(self, monkeypatch):
+        _admin_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        fake = FakeSupabase(ticket=_ticket(email=None)).install(monkeypatch)
+
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "no way to reach you", "deliver": True},
+            headers=_auth(),
+        )
+        body = r.json()
+        assert body["delivery"] == "stored"
+        assert "no email" in body["delivery_error"]
+        assert fake.last_patch["admin_reply_delivery"] == "stored"
+
+    def test_deliver_without_provider_configured_is_stored(self, monkeypatch):
+        _admin_env(monkeypatch)
+        monkeypatch.delenv("RESEND_API_KEY", raising=False)
+        monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
+        fake = FakeSupabase(ticket=_ticket()).install(monkeypatch)
+
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "hello", "deliver": True},
+            headers=_auth(),
+        )
+        body = r.json()
+        assert body["delivery"] == "stored"
+        assert "not configured" in body["delivery_error"]
+        assert fake.last_patch["admin_reply_delivery"] == "stored"
+
+    def test_blank_reply_rejected(self, monkeypatch):
+        _admin_env(monkeypatch)
+        FakeSupabase(ticket=_ticket()).install(monkeypatch)
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply", json={"reply": "   "}, headers=_auth()
+        )
+        assert r.status_code == 422
+
+
+class TestAdminFeedbackInboxFilters:
+    @staticmethod
+    def _install(monkeypatch, rows):
+        from backend.routes import admin as admin_mod
+
+        captured = {}
+
+        class _Resp:
+            def __init__(self, payload):
+                self._payload = payload
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return self._payload
+
+        class _Client:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def get(self, url, params=None, headers=None):
+                if url.endswith("/rest/v1/feedback"):
+                    captured["params"] = params
+                    return _Resp(rows)
+                return _Resp([])
+
+        monkeypatch.setattr(admin_mod.httpx, "AsyncClient", _Client)
+        monkeypatch.setattr(admin_mod, "load_opportunities", list)
+        return captured
+
+    def test_new_columns_are_selected(self, monkeypatch):
+        _admin_env(monkeypatch)
+        captured = self._install(monkeypatch, [_ticket()])
+
+        r = client.get("/api/admin/feedback", headers=_auth())
+        assert r.status_code == 200
+        select = captured["params"]["select"]
+        for col in ("status", "priority", "assigned_to", "admin_reply_delivery",
+                    "resolution", "resolved_at", "updated_at", "category", "subject"):
+            assert col in select
+        assert r.json()["entries"][0]["status"] == "open"
+
+    def test_status_filter_accepts_repeat_and_csv(self, monkeypatch):
+        _admin_env(monkeypatch)
+        captured = self._install(monkeypatch, [])
+
+        client.get("/api/admin/feedback?status=open&status=triaged", headers=_auth())
+        assert captured["params"]["status"] == "in.(open,triaged)"
+
+        client.get("/api/admin/feedback?status=open,in_progress", headers=_auth())
+        assert captured["params"]["status"] == "in.(in_progress,open)"
+
+    def test_priority_and_assignee_filters(self, monkeypatch):
+        _admin_env(monkeypatch)
+        captured = self._install(monkeypatch, [])
+
+        client.get("/api/admin/feedback?priority=urgent&assigned_to=ops:bob", headers=_auth())
+        assert captured["params"]["priority"] == "in.(urgent)"
+        assert captured["params"]["assigned_to"] == "eq.ops:bob"
+
+    def test_unresolved_only_excludes_terminal_states(self, monkeypatch):
+        _admin_env(monkeypatch)
+        captured = self._install(monkeypatch, [])
+
+        r = client.get("/api/admin/feedback?unresolved_only=true", headers=_auth())
+        wanted = captured["params"]["status"]
+        assert "resolved" not in wanted and "closed" not in wanted
+        assert "open" in wanted and "waiting_on_user" in wanted
+        assert r.json()["filters"]["unresolved_only"] is True
+
+    def test_contradictory_filter_returns_nothing_not_everything(self, monkeypatch):
+        _admin_env(monkeypatch)
+        captured = self._install(monkeypatch, [_ticket()])
+
+        r = client.get(
+            "/api/admin/feedback?status=closed&unresolved_only=true", headers=_auth()
+        )
+        assert r.status_code == 200
+        # Honouring only one half of a contradiction would answer a question
+        # nobody asked; the unsatisfiable filter returns an empty inbox.
+        assert r.json()["entries"] == []
+        assert r.json()["count"] == 0
+        assert "params" not in captured
+
+    @pytest.mark.parametrize("qs", ["status=nope", "priority=critical"])
+    def test_unknown_filter_value_is_400(self, monkeypatch, qs):
+        _admin_env(monkeypatch)
+        self._install(monkeypatch, [])
+        r = client.get(f"/api/admin/feedback?{qs}", headers=_auth())
+        assert r.status_code == 400
+
+
+class TestAdminRateBucket:
+    def test_admin_has_its_own_tighter_bucket(self):
+        from backend.main import DEFAULT_RATE, RATE_LIMITS, _rate_limit_key
+
+        key = _rate_limit_key("/api/admin/feedback")
+        assert key == "/api/admin"
+        assert RATE_LIMITS[key] == (30, 60)
+        assert RATE_LIMITS[key] != DEFAULT_RATE
+        # Mutations share the bucket — longest-prefix covers every admin route.
+        assert _rate_limit_key(f"/api/admin/feedback/{TICKET_ID}/reply") == "/api/admin"
+
+
 class TestExplainScoreConsistency:
     """/matches/{id}/explain must score with the same context as the /matches
     list (slider weights, exploring, implicit major steer, fitted similarity)

@@ -81,6 +81,9 @@ describe('registry sanity', () => {
     // W10b: the school confirmation is an account-level decision — the next
     // uid on this browser must confirm their own campus.
     expect(USER_SCOPED_KEYS).toContain(STORAGE_KEYS.SCHOOL_CONFIRMED);
+    // W15: an unsent feedback draft is user-written content (often personal
+    // detail) — the next account on this browser must never inherit it.
+    expect(USER_SCOPED_KEYS).toContain(STORAGE_KEYS.FEEDBACK_DRAFT);
     expect(USER_SCOPED_PREFIXES).toContain(STORAGE_KEYS.TAILOR_DRAFT_PREFIX);
     expect(USER_SCOPED_KEYS).not.toContain('ofe_auth');
     expect(USER_SCOPED_KEYS).not.toContain(MARKER);

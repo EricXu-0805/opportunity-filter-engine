@@ -114,4 +114,7 @@ if ! grep -qi "lock_timeout\|canceling statement" <<<"$CONTENTION_OUT"; then
 fi
 echo "    PASS cas advisory-lock contention"
 
+echo "==> run ops_and_tickets_test.sql"
+"${PSQL[@]}" -f "$HERE/ops_and_tickets_test.sql"
+
 echo "==> OK"

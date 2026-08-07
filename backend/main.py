@@ -38,6 +38,7 @@ from backend.routes import (
     import_url,
     matches,
     opportunities,
+    ops,
     orders,
     professors,
     push,
@@ -87,6 +88,14 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     # /api/opportunities/ bucket let one chatty user exhaust the quota that
     # detail GETs draw on, and vice versa.
     CHAT_RATE_KEY: (15, 60),
+    # W15: the admin surface used to inherit the loose 60/60 default despite
+    # being the highest-value target on the API — one shared ADMIN_TOKEN
+    # guarding reads of student emails/feedback and writes that mutate ticket
+    # state. A tighter bucket bounds an online token-guessing run and any
+    # runaway ops script, while staying far above what a human operator (or the
+    # admin dashboard's polling) generates. Longest-prefix matching scopes it to
+    # every /api/admin/* route, mutations included.
+    "/api/admin": (30, 60),
 }
 DEFAULT_RATE = (60, 60)
 DEFAULT_RATE_KEY = "__default__"
@@ -528,8 +537,13 @@ app.add_middleware(
         "https://www.joinalab.com",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
+    # PATCH is here for the admin ticket-lifecycle route (W15). Without it a
+    # cross-origin admin call from a first-party origin fails preflight, so the
+    # route would look broken in exactly the NEXT_PUBLIC_API_URL → Render
+    # configuration the X-Admin-Token grant below already anticipates.
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    # X-Admin-Actor is the self-declared operator label (see admin.require_admin).
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token", "X-Admin-Actor"],
 )
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])
@@ -549,6 +563,7 @@ app.include_router(import_text.router, prefix="/api", tags=["import-text"])
 app.include_router(saved_searches.router, prefix="/api", tags=["saved-searches"])
 app.include_router(orders.router, prefix="/api", tags=["orders"])
 app.include_router(professors.router, prefix="/api", tags=["professors"])
+app.include_router(ops.router, prefix="/api", tags=["ops"])
 
 
 @app.get("/api/health")

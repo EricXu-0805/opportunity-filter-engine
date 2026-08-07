@@ -5,13 +5,19 @@ only. The legacy ?token= query param was removed — query strings leak
 into referrer headers, access logs, and browser history.
 
 If ADMIN_TOKEN is unset, all admin requests return 503 (admin disabled).
+
+Operator attribution: routes may additionally read an X-Admin-Actor header
+(see ``require_admin``). It is a SELF-DECLARED label, not a second factor —
+every operator shares the one ADMIN_TOKEN.
 """
 
 from __future__ import annotations
 
 import hmac
 import json
+import logging
 import os
+import re
 import sys
 import time
 from collections import Counter
@@ -19,14 +25,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.data_loader import load_opportunities
+from backend.routes.email import _enforce_recipient_quota, _html_escape, _send_via_resend
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
 from src.matcher.feedback_learning import analyze_votes
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 _HISTORY_PATH = _PROCESSED_DIR / "admin_history.jsonl"
@@ -42,11 +51,42 @@ _cache: dict = {"snapshot": None, "built_at": 0.0}
 
 
 def _opportunities_mtime() -> str | None:
-    path = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
-    if not path.exists():
-        return None
-    ts = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
-    return ts.isoformat()
+    """When the corpus was last refreshed, as an ISO timestamp.
+
+    W15 fix: this used to stat ``opportunities.json`` — a GITIGNORED work file
+    that render.yaml never assembles, so in production the path never existed,
+    the function always returned None, and the stale-data alert (the primary
+    "the cron died" detector) could never fire. The authoritative signal is the
+    committed collector snapshot's own run timestamp; the shard directory mtime
+    is the deploy-time fallback.
+    """
+    base = Path(__file__).resolve().parents[2] / "data" / "processed"
+    snapshot = base / "collector_status.json"
+    if snapshot.exists():
+        try:
+            with snapshot.open("r", encoding="utf-8") as f:
+                ts = json.load(f).get("timestamp")
+            if isinstance(ts, str) and ts:
+                # Stored naive-UTC by write_status; normalize so the caller's
+                # arithmetic against an aware "now" cannot raise.
+                parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=UTC)
+                return parsed.isoformat()
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pass
+    work_file = base / "opportunities.json"
+    if work_file.exists():
+        return datetime.fromtimestamp(work_file.stat().st_mtime, tz=UTC).isoformat()
+    shards = base / "shards"
+    if shards.is_dir():
+        try:
+            newest = max((p.stat().st_mtime for p in shards.glob("*.json")), default=None)
+        except OSError:
+            newest = None
+        if newest:
+            return datetime.fromtimestamp(newest, tz=UTC).isoformat()
+    return None
 
 _UNSORTED_SENTINELS = frozenset({"unsorted", "uncategorized", "misc"})
 
@@ -61,13 +101,68 @@ def _is_unsorted(keywords) -> bool:
 
 
 def _authenticate(token_header: str | None) -> None:
+    """Constant-time check of the shared ADMIN_TOKEN; 503 when it is unset.
+
+    Failures are logged (never with token material — only whether a token was
+    absent or wrong) so a credential-stuffing run against the admin surface
+    leaves a trace instead of being silently absorbed into 401s.
+
+    Kept as a plain function because orders.py imports it; new routes should
+    prefer the ``require_admin`` dependency below, which also resolves the
+    operator label.
+    """
     expected = os.environ.get("ADMIN_TOKEN")
     if not expected:
+        logger.warning("Admin request refused: ADMIN_TOKEN is unset (admin surface disabled)")
         raise HTTPException(status_code=503, detail="Admin endpoints disabled (ADMIN_TOKEN unset)")
     provided = (token_header or "").encode("utf-8")
     expected_bytes = expected.encode("utf-8")
     if not provided or not hmac.compare_digest(provided, expected_bytes):
+        logger.warning(
+            "Admin authentication failed: X-Admin-Token %s",
+            "missing" if not provided else "did not match",
+        )
         raise HTTPException(status_code=401, detail="Invalid admin token")
+
+
+# Operator labels are opaque short identifiers ("ops:alice", "eric.x"). Anything
+# outside this alphabet is dropped rather than rejected: the label is decoration
+# on an audit row, and a 400 over a stray space would block a real mutation.
+_ACTOR_DISALLOWED_RE = re.compile(r"[^A-Za-z0-9:._-]+")
+_ACTOR_MAX_LEN = 64
+DEFAULT_ACTOR = "operator"
+
+
+def _sanitize_actor(raw: str | None) -> str:
+    """Normalize an X-Admin-Actor header to ``[A-Za-z0-9:._-]{1,64}``."""
+    cleaned = _ACTOR_DISALLOWED_RE.sub("", (raw or "").strip())[:_ACTOR_MAX_LEN]
+    return cleaned or DEFAULT_ACTOR
+
+
+def _sanitize_label(raw: str | None) -> str | None:
+    """Same alphabet as the actor, but empty means "no label" (unassigned)."""
+    cleaned = _ACTOR_DISALLOWED_RE.sub("", (raw or "").strip())[:_ACTOR_MAX_LEN]
+    return cleaned or None
+
+
+def require_admin(
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+    x_admin_actor: str | None = Header(default=None, alias="X-Admin-Actor"),
+) -> str:
+    """Authenticate an admin request and return the operator's claimed label.
+
+    THE ACTOR IS SELF-DECLARED, NOT AUTHENTICATED. Every operator holds the
+    same ADMIN_TOKEN, so X-Admin-Actor is an unverified string that anyone with
+    the token can set to anything — including another operator's label. It
+    exists so the feedback_events trail can answer "who says they did this",
+    which is useful for coordinating a small ops team, and it is worthless as
+    evidence in a dispute. Real attribution needs per-operator credentials
+    (documented residual, same one migration 026 records).
+
+    Defaults to ``operator`` when the header is absent or sanitizes to empty.
+    """
+    _authenticate(x_admin_token)
+    return _sanitize_actor(x_admin_actor)
 
 
 @router.get("/admin/data-quality")
@@ -398,9 +493,22 @@ async def health_check(
             pass
 
     history = _read_history()
-    if len(history) >= 2:
+    prior = _find_baseline(history, days_ago=7) if len(history) >= 2 else None
+    if prior is None and history:
+        # Honest about the gap rather than silently skipping comparison: with
+        # no usable baseline the regression detector is blind, and an operator
+        # reading a clean board deserves to know that (W15).
+        alerts.append({
+            "level": "warn",
+            "kind": "baseline_unavailable",
+            "message": (
+                "No data-quality baseline within "
+                f"{_BASELINE_MAX_AGE_DAYS}d — regression alerts are inactive "
+                "(admin_history resets on deploy)"
+            ),
+        })
+    if prior is not None:
         latest = history[-1]
-        prior = _find_baseline(history, days_ago=7)
         for metric in ("empty_majors", "empty_keywords", "missing_deadline", "flagged_inactive"):
             cur = int(latest.get(metric) or 0)
             base = int(prior.get(metric) or 0)
@@ -460,14 +568,34 @@ def _read_history() -> list[dict]:
     return out
 
 
-def _find_baseline(history: list[dict], days_ago: int) -> dict:
-    """Pick the snapshot closest to (now - days_ago) without going past it."""
-    target = datetime.now(UTC) - timedelta(days=days_ago)
-    best = history[0]
+# A baseline older than this is not a baseline, it is a fossil. admin_history
+# lives on Render's ephemeral disk and resets to the committed file on every
+# deploy, so the "7 days ago" pick could land on a months-old snapshot from a
+# corpus 50x smaller — every metric then reads as a catastrophic regression and
+# the daily operator email cries wolf forever. Beyond this age we report no
+# baseline instead of a false one (W15).
+_BASELINE_MAX_AGE_DAYS = 21
+
+
+def _find_baseline(history: list[dict], days_ago: int) -> dict | None:
+    """Snapshot closest to (now - days_ago) without going past it.
+
+    Returns None when nothing in the retained history is recent enough to be a
+    meaningful comparison — callers must treat that as "no baseline", never as
+    a zero baseline.
+    """
+    now = datetime.now(UTC)
+    target = now - timedelta(days=days_ago)
+    floor = now - timedelta(days=_BASELINE_MAX_AGE_DAYS)
+    best: dict | None = None
     for entry in history:
         try:
             t = datetime.fromisoformat(str(entry.get("t", "")).replace("Z", "+00:00"))
         except ValueError:
+            continue
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=UTC)
+        if t < floor:
             continue
         if t <= target:
             best = entry
@@ -582,20 +710,271 @@ async def trigger_refresh(
     )
 
 
+# ---------------------------------------------------------------------------
+# Feedback tickets (migration 026)
+# ---------------------------------------------------------------------------
+# 016 shipped feedback as an insert-only inbox an operator could read and
+# nothing else. 026 gives each submission a lifecycle; these routes are the
+# ONLY sanctioned mutation path (RLS grants users insert+select on their own
+# rows and no update at all), and every accepted mutation appends to the
+# append-only feedback_events log.
+
+FEEDBACK_STATUSES = ("open", "triaged", "in_progress", "waiting_on_user", "resolved", "closed")
+FEEDBACK_PRIORITIES = ("low", "normal", "high", "urgent")
+FEEDBACK_RESOLUTIONS = (
+    "fixed", "expected_behavior", "duplicate", "data_corrected",
+    "unable_to_reproduce", "wont_fix", "user_guidance_provided",
+)
+# A ticket in one of these states carries a handling decision (DB CHECK
+# feedback_resolved_has_decision enforces the same thing as a backstop).
+TERMINAL_STATUSES = frozenset({"resolved", "closed"})
+
+# Explicit column list, not `*`: props/message can be large and the operator UI
+# should get a stable shape. Mirrors the columns migration 026 adds.
+_TICKET_COLUMNS = (
+    "id,created_at,updated_at,category,subject,message,email,props,"
+    "status,priority,assigned_to,"
+    "admin_reply,admin_reply_at,admin_reply_by,admin_reply_delivery,"
+    "resolution,resolution_note,resolved_by,resolved_at,closed_at"
+)
+_EVENT_COLUMNS = "id,ticket_id,actor,action,from_value,to_value,note,created_at"
+# Audit values are labels and short notes, not payloads; keep one long message
+# from bloating the log.
+_EVENT_VALUE_MAX = 500
+
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
+def _service_role_env() -> tuple[str, dict]:
+    """(base_url, service-role headers) or 503 when Supabase env is unset.
+
+    The ticket routes 503 rather than returning the inbox's ``status:skipped``
+    shape: a mutation that cannot reach storage must not look like a success.
+    """
+    env_result = _required_env(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
+    if isinstance(env_result, tuple):
+        _, missing = env_result
+        raise HTTPException(
+            status_code=503,
+            detail=f"Feedback storage not configured (missing: {', '.join(missing)})",
+        )
+    env = env_result
+    return env["SUPABASE_URL"].rstrip("/"), {
+        "apikey": env["SUPABASE_SERVICE_ROLE_KEY"],
+        "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE_KEY']}",
+        "Content-Type": "application/json",
+    }
+
+
+def _split_csv(values: list[str] | None) -> list[str]:
+    """Flatten repeated ?k=a&k=b and CSV ?k=a,b into one list."""
+    out: list[str] = []
+    for raw in values or []:
+        out.extend(part.strip() for part in str(raw).split(",") if part.strip())
+    return out
+
+
+def _validate_enum_filter(values: list[str], allowed: tuple[str, ...], field: str) -> set[str] | None:
+    """Validated filter set, or None when no filter was supplied.
+
+    Unknown values 400 here rather than reaching PostgREST, where an invalid
+    enum surfaces as an opaque upstream error.
+    """
+    if not values:
+        return None
+    unknown = sorted({v for v in values if v not in allowed})
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown {field}: {', '.join(unknown)} (allowed: {', '.join(allowed)})",
+        )
+    return set(values)
+
+
+def _require_enum(value: str | None, allowed: tuple[str, ...], field: str) -> str:
+    if value is None:
+        raise HTTPException(status_code=400, detail=f"{field} cannot be null")
+    if value not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown {field} '{value}' (allowed: {', '.join(allowed)})",
+        )
+    return value
+
+
+def _event_row(
+    ticket_id: str, actor: str, action: str,
+    from_value: str | None = None, to_value: str | None = None, note: str | None = None,
+) -> dict:
+    def _trim(v: str | None) -> str | None:
+        return None if v is None else str(v)[:_EVENT_VALUE_MAX]
+
+    return {
+        "ticket_id": ticket_id,
+        "actor": actor,
+        "action": action,
+        "from_value": _trim(from_value),
+        "to_value": _trim(to_value),
+        "note": _trim(note),
+    }
+
+
+async def _fetch_ticket(client: httpx.AsyncClient, supabase_url: str, headers: dict, ticket_id: str) -> dict:
+    """One ticket by id, or 404.
+
+    A malformed id is 404 too: it identifies no ticket, and letting PostgREST
+    reject the uuid cast would leak a storage-layer 400 to the operator.
+    """
+    if not _UUID_RE.match(ticket_id or ""):
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    resp = await client.get(
+        f"{supabase_url}/rest/v1/feedback",
+        params={"id": f"eq.{ticket_id}", "select": _TICKET_COLUMNS, "limit": "1"},
+        headers=headers,
+    )
+    resp.raise_for_status()
+    rows = resp.json()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return rows[0]
+
+
+async def _patch_ticket(
+    client: httpx.AsyncClient, supabase_url: str, headers: dict, ticket_id: str, updates: dict,
+) -> dict:
+    resp = await client.patch(
+        f"{supabase_url}/rest/v1/feedback",
+        params={"id": f"eq.{ticket_id}", "select": _TICKET_COLUMNS},
+        headers={**headers, "Prefer": "return=representation"},
+        json=updates,
+    )
+    resp.raise_for_status()
+    rows = resp.json()
+    if not isinstance(rows, list) or not rows:
+        # PostgREST answers 200 + [] when the predicate matched nothing (the
+        # row was deleted mid-request). Never report that as a successful edit.
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return rows[0]
+
+
+async def _log_events(
+    client: httpx.AsyncClient, supabase_url: str, headers: dict, rows: list[dict],
+) -> str | None:
+    """Append audit rows; return an error string instead of raising.
+
+    Deliberately called AFTER the ticket mutation lands. Logging first would
+    risk an event asserting a change that then failed — a fabricated audit
+    trail, which is worse than a missing entry. The residual (mutation applied,
+    log write failed) is surfaced to the caller as ``audit_log_error`` and
+    logged, never swallowed.
+    """
+    if not rows:
+        return None
+    try:
+        resp = await client.post(
+            f"{supabase_url}/rest/v1/feedback_events",
+            headers={**headers, "Prefer": "return=minimal"},
+            json=rows,
+        )
+        status = getattr(resp, "status_code", 200)
+        if status >= 400:
+            body = str(getattr(resp, "text", ""))[:200]
+            logger.warning("feedback_events insert failed (%s): %s", status, body)
+            return f"audit log write failed ({status})"
+    except httpx.HTTPError as e:
+        logger.warning("feedback_events insert unreachable: %s", e)
+        return f"audit log write failed ({type(e).__name__})"
+    return None
+
+
+def _render_reply_email(ticket: dict, reply: str) -> tuple[str, str, str]:
+    subj = (ticket.get("subject") or "").strip()
+    subject = f"Re: {subj}" if subj else "Re: your JoinALab feedback"
+    original = (ticket.get("message") or "").strip()
+    quoted_html = (
+        f'<div style="margin-top:24px;padding:12px 14px;background:#f9fafb;'
+        f'border-left:3px solid #e5e7eb;font-size:13px;color:#6b7280;white-space:pre-wrap">'
+        f"{_html_escape(original[:2000])}</div>"
+        if original else ""
+    )
+    html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
+  <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td style="padding:32px 28px">
+    <div style="font-size:22px;font-weight:700;color:#4f46e5;letter-spacing:-0.5px">JoinALab</div>
+    <h1 style="font-size:20px;margin:20px 0 6px;color:#111827">{_html_escape(subject)}</h1>
+    <div style="font-size:14px;color:#374151;white-space:pre-wrap">{_html_escape(reply)}</div>
+    <div style="margin-top:20px;font-size:12px;color:#9ca3af">You wrote:</div>
+    {quoted_html}
+  </td></tr>
+</table>
+</body></html>"""
+    text = f"{subject}\n\n{reply}\n"
+    if original:
+        text += "\n--- You wrote ---\n" + original[:2000] + "\n"
+    return subject, html, text
+
+
+class FeedbackPatchRequest(BaseModel):
+    """Ticket mutation body. Unset fields are left alone; ``assigned_to: null``
+    explicitly unassigns (model_fields_set distinguishes the two)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: str | None = None
+    priority: str | None = None
+    assigned_to: str | None = None
+    resolution: str | None = None
+    resolution_note: str | None = Field(default=None, max_length=2000)
+
+
+class FeedbackReplyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reply: str = Field(min_length=1, max_length=5000)
+    deliver: bool = False
+
+    @field_validator("reply")
+    @classmethod
+    def _non_blank(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("reply cannot be blank")
+        return cleaned
+
+
 @router.get("/admin/feedback")
 async def feedback_inbox(
-    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+    actor: str = Depends(require_admin),
     limit: int = Query(default=50, ge=1, le=200),
     since_hours: int | None = Query(default=None, ge=1, le=720),
+    status: list[str] | None = Query(
+        default=None, description="Repeatable or CSV, e.g. ?status=open&status=triaged"
+    ),
+    priority: list[str] | None = Query(default=None, description="Repeatable or CSV"),
+    assigned_to: str | None = Query(default=None, max_length=64),
+    unresolved_only: bool = Query(
+        default=False, description="Exclude resolved/closed tickets"
+    ),
 ):
     """User feedback inbox + match-feedback (thumbs) summary.
 
-    The feedback / match_feedback tables are INSERT-only under RLS (clients
-    can never read them back) — this endpoint is the operator's read path,
-    via the service-role key. `since_hours` narrows the inbox window so the
-    daily cron can ask "anything new in the last 24h?".
+    The feedback / match_feedback tables are operator-read-only under RLS
+    (clients may insert, and read back only their own rows) — this endpoint is
+    the operator's read path, via the service-role key. `since_hours` narrows
+    the inbox window so the daily cron can ask "anything new in the last 24h?";
+    the status/priority/assigned_to/unresolved_only filters drive triage views.
     """
-    _authenticate(x_admin_token)
+    wanted_status = _validate_enum_filter(_split_csv(status), FEEDBACK_STATUSES, "status")
+    wanted_priority = _validate_enum_filter(_split_csv(priority), FEEDBACK_PRIORITIES, "priority")
+    if unresolved_only:
+        # Intersect rather than clobber: asking for status=closed AND
+        # unresolved_only is contradictory, and silently honouring one of the
+        # two would answer a question the operator did not ask.
+        base = wanted_status if wanted_status is not None else set(FEEDBACK_STATUSES)
+        wanted_status = base - TERMINAL_STATUSES
 
     env_result = _required_env(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
     if isinstance(env_result, tuple):
@@ -609,21 +988,32 @@ async def feedback_inbox(
         "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE_KEY']}",
     }
     params = {
-        "select": "id,created_at,message,email,props",
+        "select": _TICKET_COLUMNS,
         "order": "created_at.desc",
         "limit": str(limit),
     }
     if since_hours is not None:
         cutoff = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat()
         params["created_at"] = f"gte.{cutoff}"
+    if wanted_status:
+        params["status"] = "in.(" + ",".join(sorted(wanted_status)) + ")"
+    if wanted_priority:
+        params["priority"] = "in.(" + ",".join(sorted(wanted_priority)) + ")"
+    if assigned_to:
+        params["assigned_to"] = f"eq.{assigned_to}"
+    # An empty (not absent) status set is an unsatisfiable filter — skip the
+    # query rather than emit `in.()`, which PostgREST rejects.
+    no_match = wanted_status is not None and not wanted_status
 
     try:
         async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
-            fb_resp = await client.get(
-                f"{supabase_url}/rest/v1/feedback", params=params, headers=headers
-            )
-            fb_resp.raise_for_status()
-            entries = fb_resp.json()
+            entries: list = []
+            if not no_match:
+                fb_resp = await client.get(
+                    f"{supabase_url}/rest/v1/feedback", params=params, headers=headers
+                )
+                fb_resp.raise_for_status()
+                entries = fb_resp.json()
 
             mf_resp = await client.get(
                 f"{supabase_url}/rest/v1/match_feedback",
@@ -663,6 +1053,15 @@ async def feedback_inbox(
         "status": "ok",
         "entries": entries,
         "count": len(entries),
+        # Echo the effective filter so a UI cannot mistake "nothing matched"
+        # for "nothing exists" (unresolved_only silently narrows `status`).
+        "filters": {
+            "status": sorted(wanted_status) if wanted_status is not None else None,
+            "priority": sorted(wanted_priority) if wanted_priority is not None else None,
+            "assigned_to": assigned_to,
+            "unresolved_only": unresolved_only,
+            "since_hours": since_hours,
+        },
         "match_feedback": {
             "up": up,
             "down": down,
@@ -673,3 +1072,276 @@ async def feedback_inbox(
             "analysis": analyze_votes(thumbs, schools),
         },
     }
+
+
+@router.get("/admin/feedback/{ticket_id}")
+async def feedback_ticket_detail(
+    ticket_id: str,
+    actor: str = Depends(require_admin),
+):
+    """One ticket plus its full admin action history, oldest event first."""
+    supabase_url, headers = _service_role_env()
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
+            ticket = await _fetch_ticket(client, supabase_url, headers, ticket_id)
+            ev_resp = await client.get(
+                f"{supabase_url}/rest/v1/feedback_events",
+                params={
+                    "ticket_id": f"eq.{ticket_id}",
+                    "select": _EVENT_COLUMNS,
+                    "order": "created_at.asc",
+                    "limit": "500",
+                },
+                headers=headers,
+            )
+            ev_resp.raise_for_status()
+            events = ev_resp.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Supabase unreachable: {e}") from e
+
+    return {"status": "ok", "ticket": ticket, "events": events, "event_count": len(events)}
+
+
+@router.patch("/admin/feedback/{ticket_id}")
+async def update_feedback_ticket(
+    ticket_id: str,
+    req: FeedbackPatchRequest,
+    actor: str = Depends(require_admin),
+):
+    """Move a ticket through its lifecycle, logging every accepted change.
+
+    Invariants (the DB CHECKs in 026 are the backstop, not the first line):
+      * resolved/closed REQUIRES a resolution — no silent closes. The decision
+        may arrive in this request or already sit on the row (resolved→closed).
+      * a resolution only exists on a resolved/closed ticket; moving off those
+        states clears it, stamps a 'reopened' event, and carries the retracted
+        decision into that event's note so it is not lost.
+      * from_value on every event is read from the live row, so the trail
+        records what actually changed rather than what the caller assumed.
+      * unknown enum values are rejected here with 400; letting them reach
+        PostgREST would surface as a 500-shaped upstream failure.
+    """
+    fields = req.model_fields_set
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    # Validate before touching env or the network: a malformed request should
+    # cost nothing and must not depend on storage being configured.
+    new_status = _require_enum(req.status, FEEDBACK_STATUSES, "status") if "status" in fields else None
+    new_priority = (
+        _require_enum(req.priority, FEEDBACK_PRIORITIES, "priority") if "priority" in fields else None
+    )
+    if "resolution" in fields and req.resolution is not None:
+        _require_enum(req.resolution, FEEDBACK_RESOLUTIONS, "resolution")
+
+    supabase_url, headers = _service_role_env()
+    now_iso = datetime.now(UTC).isoformat()
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
+            ticket = await _fetch_ticket(client, supabase_url, headers, ticket_id)
+
+            cur_status = ticket.get("status") or "open"
+            cur_priority = ticket.get("priority") or "normal"
+            cur_assigned = ticket.get("assigned_to")
+            cur_resolution = ticket.get("resolution")
+            cur_note = ticket.get("resolution_note")
+
+            target_status = new_status if new_status is not None else cur_status
+            entering_terminal = target_status in TERMINAL_STATUSES and cur_status not in TERMINAL_STATUSES
+            leaving_terminal = cur_status in TERMINAL_STATUSES and target_status not in TERMINAL_STATUSES
+
+            target_resolution = req.resolution if "resolution" in fields else cur_resolution
+            if leaving_terminal:
+                if "resolution" in fields and req.resolution is not None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Cannot set a resolution while moving to '{target_status}'; reopening clears it",
+                    )
+                target_resolution = None
+            if target_status in TERMINAL_STATUSES and not target_resolution:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"status '{target_status}' requires a resolution "
+                        f"(one of: {', '.join(FEEDBACK_RESOLUTIONS)})"
+                    ),
+                )
+            if target_resolution and target_status not in TERMINAL_STATUSES:
+                raise HTTPException(
+                    status_code=400,
+                    detail="A resolution only belongs on a resolved/closed ticket; set status too",
+                )
+
+            target_note = (req.resolution_note or None) if "resolution_note" in fields else cur_note
+            if leaving_terminal:
+                target_note = None
+            if target_note and not target_resolution:
+                raise HTTPException(
+                    status_code=400,
+                    detail="resolution_note requires a resolution",
+                )
+
+            updates: dict = {}
+            events: list[dict] = []
+
+            def _log(action: str, from_value=None, to_value=None, note=None) -> None:
+                events.append(_event_row(ticket_id, actor, action, from_value, to_value, note))
+
+            if new_priority is not None and new_priority != cur_priority:
+                updates["priority"] = new_priority
+                _log("priority_changed", cur_priority, new_priority)
+
+            if "assigned_to" in fields:
+                new_assigned = _sanitize_label(req.assigned_to)
+                if new_assigned != cur_assigned:
+                    updates["assigned_to"] = new_assigned
+                    if new_assigned is None:
+                        _log("unassigned", cur_assigned, None)
+                    else:
+                        _log("assigned", cur_assigned, new_assigned)
+
+            if new_status is not None and new_status != cur_status:
+                updates["status"] = new_status
+                _log("status_changed", cur_status, new_status)
+
+            if target_resolution != cur_resolution:
+                updates["resolution"] = target_resolution
+            if target_note != cur_note:
+                updates["resolution_note"] = target_note
+
+            if leaving_terminal:
+                updates["resolved_at"] = None
+                updates["resolved_by"] = None
+                updates["closed_at"] = None
+                _log(
+                    "reopened", cur_status, target_status,
+                    note=f"cleared resolution: {cur_resolution}" if cur_resolution else None,
+                )
+            elif target_status in TERMINAL_STATUSES:
+                decision_changed = target_resolution != cur_resolution
+                if entering_terminal or decision_changed:
+                    updates["resolved_by"] = actor
+                    # Keep the ORIGINAL resolved_at across resolved→closed: when
+                    # the ticket was decided is a different fact from when it
+                    # was filed away.
+                    if entering_terminal or not ticket.get("resolved_at"):
+                        updates["resolved_at"] = now_iso
+                if decision_changed:
+                    _log("resolved", cur_resolution, target_resolution)
+                elif target_note != cur_note:
+                    _log("note_added", cur_note, target_note)
+                if target_status == "closed" and not ticket.get("closed_at"):
+                    updates["closed_at"] = now_iso
+
+            if not updates:
+                return {
+                    "status": "ok", "ticket": ticket, "changed": False,
+                    "events_written": [], "actor": actor,
+                }
+
+            # No trigger on the table, so updated_at is ours to maintain.
+            updates["updated_at"] = now_iso
+            updated = await _patch_ticket(client, supabase_url, headers, ticket_id, updates)
+            audit_error = await _log_events(client, supabase_url, headers, events)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Supabase unreachable: {e}") from e
+
+    out = {
+        "status": "ok",
+        "ticket": updated,
+        "changed": True,
+        "events_written": [e["action"] for e in events],
+        "actor": actor,
+    }
+    if audit_error:
+        out["audit_log_error"] = audit_error
+    return out
+
+
+@router.post("/admin/feedback/{ticket_id}/reply")
+async def reply_to_feedback_ticket(
+    ticket_id: str,
+    req: FeedbackReplyRequest,
+    actor: str = Depends(require_admin),
+):
+    """Record an operator reply, optionally emailing it to the submitter.
+
+    Delivery honesty (the W12/W14 invariant): admin_reply_delivery is set to
+    'emailed' ONLY when Resend accepted the message. `deliver=false`, a ticket
+    with no email, or an unconfigured provider all record 'stored' — the reply
+    exists in the ticket and nobody was told. A requested send that fails
+    records 'email_failed' and returns the reason; it never degrades to a
+    silent 'stored' (which would read as "we chose not to send") and never
+    claims 'emailed'.
+
+    A reply is not a handling decision: status and resolution are untouched.
+    """
+    supabase_url, headers = _service_role_env()
+    now_iso = datetime.now(UTC).isoformat()
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
+            ticket = await _fetch_ticket(client, supabase_url, headers, ticket_id)
+
+            recipient = (ticket.get("email") or "").strip().lower()
+            api_key = os.environ.get("RESEND_API_KEY", "").strip()
+            from_addr = os.environ.get("RESEND_FROM_EMAIL", "").strip()
+
+            delivery = "stored"
+            delivery_error: str | None = None
+            if req.deliver:
+                if not recipient:
+                    delivery_error = "ticket has no email address; reply stored only"
+                elif not (api_key and from_addr):
+                    delivery_error = "email provider not configured; reply stored only"
+                else:
+                    subject, html, text = _render_reply_email(ticket, req.reply)
+                    try:
+                        # Same per-recipient cap the user-facing send paths obey,
+                        # so an admin reply loop cannot flood one mailbox.
+                        _enforce_recipient_quota(recipient)
+                        await _send_via_resend(
+                            api_key=api_key, from_addr=from_addr, to=recipient,
+                            subject=subject, html=html, text=text,
+                        )
+                        delivery = "emailed"
+                    except Exception as e:  # provider 4xx/5xx, timeout, quota
+                        delivery = "email_failed"
+                        detail = getattr(e, "detail", None) or str(e)
+                        delivery_error = f"{type(e).__name__}: {detail}"[:200]
+                        logger.warning(
+                            "Admin reply delivery failed for ticket %s: %s", ticket_id, delivery_error
+                        )
+
+            updates = {
+                "admin_reply": req.reply,
+                "admin_reply_at": now_iso,
+                "admin_reply_by": actor,
+                "admin_reply_delivery": delivery,
+                "updated_at": now_iso,
+            }
+            updated = await _patch_ticket(client, supabase_url, headers, ticket_id, updates)
+            audit_error = await _log_events(
+                client, supabase_url, headers,
+                [_event_row(
+                    ticket_id, actor, "replied",
+                    from_value=ticket.get("admin_reply_delivery"),
+                    to_value=delivery,
+                    note=delivery_error,
+                )],
+            )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Supabase unreachable: {e}") from e
+
+    out = {
+        "status": "ok",
+        "ticket": updated,
+        "delivery": delivery,
+        "delivery_error": delivery_error,
+        "actor": actor,
+    }
+    if audit_error:
+        out["audit_log_error"] = audit_error
+    return out

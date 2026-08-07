@@ -40,6 +40,7 @@ export const USER_SCOPED_KEYS: readonly string[] = [
   STORAGE_KEYS.RESULTS_CTA_DISMISSED, // concierge CTA dismissal — same
   STORAGE_KEYS.FAVORITES_FALLBACK, // offline favorites mirror — would backfill into the next uid's account
   STORAGE_KEYS.SCHOOL_CONFIRMED, // W10b school confirmation — an account-level decision; the next uid must confirm their own campus
+  STORAGE_KEYS.FEEDBACK_DRAFT, // W15 unsent feedback draft — user-written content, often personal; must never be inherited by the next account
 ];
 
 // Per-opportunity keys discovered by localStorage key scan.
