@@ -253,6 +253,15 @@ BEGIN
   -- accounting stays coherent under the surviving account.
   UPDATE usage_events SET device_id = v_target WHERE device_id = v_source;
 
+  -- orders (019, added by 025/W14 — carried into this replay body so the
+  -- final function keeps it): purchase records were absent from every prior
+  -- redeem, so a paid order made while anonymous silently vanished from the
+  -- merged account. Keyed by PK only (no per-device uniqueness), so a plain
+  -- re-key moves them all.
+  UPDATE orders SET device_id = v_target WHERE device_id = v_source;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  v_summary := v_summary || jsonb_build_object('orders', n);
+
   -- professor_follows (023): set union on (device_id, professor_id). Drop
   -- source dupes, move the rest — same conflict handling as favorites and
   -- the 021 resume tables on their UNIQUE constraints.
