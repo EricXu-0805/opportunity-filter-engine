@@ -370,6 +370,98 @@ class TestLabTypeDetection:
         }
         assert _detect_lab_type(opp) == "dry"
 
+    def test_theory_ece_with_mathematical_biology_stays_dry(self):
+        # Byte-real record faculty-ece-817eb026 (Bruce Hajek — stochastic
+        # analysis / information theory). One phrase, "mathematical biology",
+        # used to fire TWO wet vocabulary entries per field ("biology" and its
+        # substring "bio"), inflating wet to 8 vs dry 6 and routing a theory
+        # group to bench-technique guidance. Counted once per span, the true
+        # balance is wet 4 : dry 6.
+        opp = {
+            "title": "Research with Prof. Bruce Hajek — ECE (mathematical biology, information theory, stochastic analysis)",
+            "department": "Electrical & Computer Engineering",
+            "description_clean": "Research opportunity with Professor Bruce Hajek in the Electrical & Computer Engineering at UIUC. Research areas: mathematical biology, information theory, stochastic analysis. Contact the professor directly to inquire about undergraduate research positions in their lab.",
+            "keywords": ["mathematical biology", "information theory", "stochastic analysis"],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "dry"
+
+    def test_short_entries_do_not_fire_inside_names(self):
+        # Short vocabulary entries used to match as bare substrings, turning
+        # names into phantom signals: "law" AND "aws" both live inside
+        # "Lawson", "irb" inside "Anirban", and every University of Delaware
+        # record carried a humanities "law" point from the school name. A CS
+        # professor literally named Delaware classified humanities.
+        cs_delaware = {
+            "title": "Research with Prof. Benjamin J. Delaware — CS",
+            "department": "Department of Computer Science",
+            "lab_or_program": "Prof. Benjamin J. Delaware's Research Group",
+            "description_clean": "Research opportunity with Professor Benjamin J. Delaware in the Department of Computer Science at the University of Delaware.",
+            "keywords": [],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(cs_delaware) == "dry"
+        # "aws" inside "Dawson" gave DRY a phantom point that outvoted the
+        # real humanities department signal.
+        cmst_dawson = {
+            "title": "Research with Prof. Taylor Dawson — CMST",
+            "department": "Department of Communication Studies",
+            "lab_or_program": "Prof. Taylor Dawson's Research Group",
+            "description_clean": "Research opportunity with Professor Taylor Dawson in the Department of Communication Studies.",
+            "keywords": [],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(cmst_dawson) == "humanities"
+        # "irb" inside "Anirban" must not outvote a Biomedical Engineering
+        # department (byte-real shape: faculty-casewestern-bme-14eda861).
+        bme_anirban = {
+            "title": "Research with Prof. Anirban Sen Gupta — BME",
+            "department": "Department of Biomedical Engineering",
+            "lab_or_program": "Prof. Anirban Sen Gupta's Research Group",
+            "description_clean": "Research opportunity with Anirban Sen Gupta in the Department of Biomedical Engineering at Case Western Reserve University.",
+            "keywords": [],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(bme_anirban) == "wet"
+
+    def test_bio_keeps_prefix_rights_but_not_mid_word(self):
+        # "bio" must still catch prefix disciplines the vocabulary lacks as
+        # words ("biophysics") — a plant-biology group whose PI is named
+        # Lawson stays wet — but must not fire mid-word: a psychologist
+        # studying autobiographical memory is not a bench lab.
+        ib_lawson = {
+            "title": "Research with Prof. Tracy Lawson — IB (Photosynthesis, Photosystem, Stomatal Conductance)",
+            "department": "School of Integrative Biology",
+            "lab_or_program": "Prof. Tracy Lawson's Research Group",
+            "description_clean": "Research opportunity with Professor Tracy Lawson in the School of Integrative Biology at UIUC. Research areas: Photosynthesis, Photosystem, Stomatal Conductance.",
+            "keywords": ["Photosynthesis", "Photosystem", "Stomatal Conductance"],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(ib_lawson) == "wet"
+        psych_memory = {
+            "title": "Research with Prof. Lance Rips — PSYCH (autobiographical memory)",
+            "department": "Department of Psychology",
+            "lab_or_program": "Prof. Lance Rips's Research Group",
+            "description_clean": "Research opportunity in the Department of Psychology. Research areas: autobiographical memory.",
+            "keywords": ["autobiographical memory"],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(psych_memory) == "humanities"
+
+    def test_nested_vocabulary_entries_count_once_per_span(self):
+        # "microbiology" contains three wet entries as substrings
+        # (microbiology, biology, bio) — one word must be one signal, or
+        # every biology-family department triple-counts against dry/humanities.
+        # A genuinely wet department must still classify wet afterwards.
+        opp = {
+            "title": "Undergraduate research in bacterial genetics",
+            "department": "Microbiology",
+            "description_clean": "Assist with cell culture and sequencing.",
+            "keywords": [],
+            "eligibility": {"skills_required": []},
+        }
+        assert _detect_lab_type(opp) == "wet"
+
     def test_humanities_lab_from_psychology(self):
         opp = {
             "title": "Research assistant — behavioral psychology",
