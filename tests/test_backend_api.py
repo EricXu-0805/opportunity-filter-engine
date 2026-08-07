@@ -80,15 +80,20 @@ class TestHealthEndpoint:
 
 
 class TestMatchesPagination:
-    def test_default_returns_all_visible_buckets(self, sample_profile_req):
-        # Default (no limit) returns every non-low_fit result so all advertised
-        # buckets are browsable — previously capped at 500, hiding most of Reach.
+    def test_default_returns_bounded_first_page_with_complete_counts(self, sample_profile_req):
+        # The first response is bounded; complete bucket counts plus the cursor
+        # make the entire non-low-fit universe browsable without one multi-MB
+        # response.
         resp = client.post("/api/matches", json=sample_profile_req)
         assert resp.status_code == 200
         body = resp.json()
         assert "total" in body and "results" in body
         visible = body["high_priority"] + body["good_match"] + body["reach"]
-        assert len(body["results"]) == visible
+        assert body["total"] == visible
+        assert len(body["results"]) <= 100
+        assert body["returned_count"] == len(body["results"])
+        assert body["has_more"] is (visible > len(body["results"]))
+        assert bool(body["next_cursor"]) is body["has_more"]
 
     def test_limit_clamps_page_size(self, sample_profile_req):
         resp = client.post("/api/matches?limit=5", json=sample_profile_req)
@@ -475,6 +480,41 @@ class TestLLMRerank:
         area = captured["cand"][0][1]
         assert "\n" not in area  # flattened — cannot inject a fake numbered line
 
+    def test_candidate_context_redacts_hidden_contact_before_provider(self, monkeypatch):
+        from backend.lib.public_projection import contains_embedded_email
+        from backend.routes import matches
+
+        captured = {}
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+
+        def fake_score(query, cand):
+            captured["cand"] = cand
+            return {candidate[0]: {"s": 50.0, "r": ""} for candidate in cand}
+
+        monkeypatch.setattr(matches, "_llm_score_candidates", fake_score)
+        lookup = {
+            "a": {
+                "id": "a",
+                "title": "Email jane@example.edu",
+                "keywords": ["machine learning"],
+                "metadata": {
+                    "research_areas_raw": (
+                        "vision; jane\u2060at\u2060example"
+                        "\u2060dot\u2060edu"
+                    ),
+                },
+            },
+        }
+        matches.llm_rerank(
+            {"research_interests_text": "privacy-provider-boundary-query"},
+            self._results([("a", 80)]),
+            lookup,
+        )
+
+        area = captured["cand"][0][1]
+        assert not contains_embedded_email(area)
+        assert "jane" not in area
+
     def test_route_exploring_with_llm_is_graceful(self):
         # exploring=True + llm=true exercises the re-diversify-after-rerank path;
         # llm no-ops without a key, so this guards the wiring doesn't 5xx.
@@ -612,6 +652,208 @@ class TestOpportunityLookupCache:
         first = data_loader.load_opportunities_by_id()
         second = data_loader.load_opportunities_by_id()
         assert first is second
+
+    def test_cached_corpus_does_not_reenter_ranker_prepare(self, monkeypatch):
+        cached = data_loader.load_opportunities()
+
+        def unexpected_prepare(*_args, **_kwargs):
+            raise AssertionError("cache hit must not wait on the scorer generation lock")
+
+        monkeypatch.setattr(
+            data_loader,
+            "_prepare_ranker_corpus",
+            unexpected_prepare,
+        )
+        assert data_loader.load_opportunities() is cached
+
+    def test_concurrent_cold_load_is_single_flight(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        corpus_path = tmp_path / "opportunities.json"
+        corpus_path.write_text(
+            json.dumps([
+                {"id": "cold-a", "title": "Cold A"},
+                {"id": "cold-b", "title": "Cold B"},
+            ]),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(data_loader, "DATA_DIR", tmp_path)
+        monkeypatch.setattr(data_loader, "_opp_cache", [])
+        monkeypatch.setattr(data_loader, "_opp_cache_by_id", {})
+        monkeypatch.setattr(data_loader, "_opp_cache_mtime", 0)
+        monkeypatch.setattr(data_loader, "_tfidf_fitted_mtime", -1)
+
+        counts = {"read": 0, "canonicalize": 0, "prepare": 0}
+        counts_lock = threading.Lock()
+        original_json_load = data_loader.json.load
+        original_canonicalize = data_loader._canonicalize_corpus
+
+        def counted_json_load(file):
+            with counts_lock:
+                counts["read"] += 1
+            return original_json_load(file)
+
+        def counted_canonicalize(raw):
+            with counts_lock:
+                counts["canonicalize"] += 1
+            time.sleep(0.03)
+            return original_canonicalize(raw)
+
+        def counted_prepare(_opportunities, _mtime):
+            with counts_lock:
+                counts["prepare"] += 1
+            time.sleep(0.03)
+
+        monkeypatch.setattr(data_loader.json, "load", counted_json_load)
+        monkeypatch.setattr(
+            data_loader,
+            "_canonicalize_corpus",
+            counted_canonicalize,
+        )
+        monkeypatch.setattr(
+            data_loader,
+            "_prepare_ranker_corpus",
+            counted_prepare,
+        )
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            generations = list(
+                executor.map(
+                    lambda _index: data_loader.load_opportunities_generation(),
+                    range(4),
+                )
+            )
+
+        assert counts == {"read": 1, "canonicalize": 1, "prepare": 1}
+        first_corpus, first_token = generations[0]
+        assert all(corpus is first_corpus for corpus, _token in generations)
+        assert all(token == first_token for _corpus, token in generations)
+
+    def test_failed_candidate_keeps_old_generation_and_retries(
+        self,
+        monkeypatch,
+    ):
+        old = [{"id": "old", "title": "Old"}]
+        old_by_id = {"old": old[0]}
+        monkeypatch.setattr(data_loader, "_opp_cache", old)
+        monkeypatch.setattr(data_loader, "_opp_cache_by_id", old_by_id)
+        monkeypatch.setattr(data_loader, "_opp_cache_mtime", 1.0)
+        monkeypatch.setattr(data_loader, "_opp_cache_generation", 7)
+
+        should_fail = {"value": True}
+        calls = {"count": 0}
+
+        def prepare(_candidate, _mtime):
+            calls["count"] += 1
+            if should_fail["value"]:
+                raise RuntimeError("simulated fit failure")
+
+        monkeypatch.setattr(data_loader, "_prepare_ranker_corpus", prepare)
+        raw = [
+            {"id": "new-a", "title": "New A"},
+            {"id": "new-b", "title": "New B"},
+        ]
+
+        assert data_loader._try_publish_corpus(raw, 2.0, "test") is False
+        assert data_loader._opp_cache is old
+        assert data_loader._opp_cache_by_id is old_by_id
+        assert data_loader._opp_cache_mtime == 1.0
+        assert data_loader._opp_cache_generation == 7
+
+        should_fail["value"] = False
+        assert data_loader._try_publish_corpus(raw, 2.0, "test") is True
+        assert data_loader._opp_cache is not old
+        assert set(data_loader._opp_cache_by_id) == {"new-a", "new-b"}
+        assert data_loader._opp_cache_mtime == 2.0
+        assert data_loader._opp_cache_generation == 8
+        assert calls["count"] == 2
+
+    def test_fit_failure_never_registers_new_records(self, monkeypatch):
+        from src.matcher import embeddings, ranker
+
+        old_vectorizer = embeddings._tfidf_vectorizer
+        old_fitted = embeddings._tfidf_fitted
+        old_corpus = ranker._corpus_ref
+        old_matrix = ranker._sim_matrix
+        old_mtime = data_loader._tfidf_fitted_mtime
+        register_calls = {"count": 0}
+
+        monkeypatch.setattr(
+            embeddings,
+            "fit_tfidf_corpus",
+            lambda _texts: False,
+        )
+
+        def unexpected_register(_candidate):
+            register_calls["count"] += 1
+
+        monkeypatch.setattr(ranker, "register_corpus", unexpected_register)
+
+        with pytest.raises(RuntimeError, match="did not produce"):
+            data_loader._prepare_ranker_corpus(
+                [
+                    {"id": "fit-a", "title": "alpha research"},
+                    {"id": "fit-b", "title": "beta research"},
+                ],
+                old_mtime + 10,
+            )
+
+        assert register_calls["count"] == 0
+        assert embeddings._tfidf_vectorizer is old_vectorizer
+        assert embeddings._tfidf_fitted is old_fitted
+        assert ranker._corpus_ref is old_corpus
+        assert ranker._sim_matrix is old_matrix
+        assert data_loader._tfidf_fitted_mtime == old_mtime
+
+    def test_register_failure_rolls_back_new_vectorizer(self, monkeypatch):
+        from src.matcher import embeddings, ranker
+
+        old_vectorizer = embeddings._tfidf_vectorizer
+        old_fitted = embeddings._tfidf_fitted
+        old_corpus = ranker._corpus_ref
+        old_rows = ranker._corpus_rows
+        old_matrix = ranker._sim_matrix
+        old_mtime = data_loader._tfidf_fitted_mtime
+        replacement_vectorizer = object()
+
+        def fit_then_publish(_texts):
+            embeddings._tfidf_vectorizer = replacement_vectorizer
+            embeddings._tfidf_fitted = True
+            return True
+
+        monkeypatch.setattr(
+            embeddings,
+            "fit_tfidf_corpus",
+            fit_then_publish,
+        )
+        monkeypatch.setattr(
+            ranker,
+            "register_corpus",
+            lambda _candidate: (_ for _ in ()).throw(
+                RuntimeError("simulated matrix failure")
+            ),
+        )
+
+        with pytest.raises(RuntimeError, match="matrix failure"):
+            data_loader._prepare_ranker_corpus(
+                [
+                    {"id": "register-a", "title": "alpha research"},
+                    {"id": "register-b", "title": "beta research"},
+                ],
+                old_mtime + 20,
+            )
+
+        assert embeddings._tfidf_vectorizer is old_vectorizer
+        assert embeddings._tfidf_fitted is old_fitted
+        assert ranker._corpus_ref is old_corpus
+        assert ranker._corpus_rows is old_rows
+        assert ranker._sim_matrix is old_matrix
+        assert data_loader._tfidf_fitted_mtime == old_mtime
 
 
 class TestLocalRefineCumulative:
@@ -995,6 +1237,34 @@ class TestColdEmailRefineGrounding:
         assert out["method"] == "llm"
         assert "fallback_reason" not in out
 
+    def test_refine_redacts_pre_boundary_address_before_provider(self, monkeypatch):
+        import backend.routes.cold_email as ce_module
+        from backend.lib.public_projection import contains_embedded_email
+
+        captured: dict = {}
+
+        def capture(messages, **_kwargs):
+            captured["prompt"] = messages[-1]["content"]
+            return self._BODY
+
+        monkeypatch.setattr(ce_module, "is_configured", lambda: True)
+        monkeypatch.setattr(ce_module, "chat_completion", capture)
+        resp = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    self._BODY
+                    + "\nPlease contact jane\u2060at\u2060example"
+                    "\u2060dot\u2060edu."
+                ),
+                "instruction": "make it formal",
+            },
+        )
+
+        assert resp.status_code == 200
+        assert not contains_embedded_email(captured["prompt"])
+        assert "jane" not in captured["prompt"]
+
     def test_refine_rejects_instruction_injected_skill(
         self, monkeypatch, sample_profile_req, opp_id
     ):
@@ -1312,6 +1582,25 @@ class TestOpportunityChatHardening:
         assert body["method"] == "llm"
         assert body["reply"] == "Yes, it is paid."
 
+    def test_chat_redacts_address_reintroduced_by_model(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+
+        monkeypatch.setattr(
+            op_module,
+            "_llm_chat_call",
+            lambda _messages, _model_id=None: "Email jane at example dot edu",
+        )
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat",
+            json={"message": "How do I apply?"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "reply": "[email redacted]",
+            "method": "llm",
+        }
+
     def test_chat_prompt_has_injection_guard_and_flattens_profile(
         self, opp_id, sample_profile_req, monkeypatch
     ):
@@ -1455,7 +1744,26 @@ class TestOpportunityChatStreaming:
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
         events = self._events(resp.text)
-        assert [e["delta"] for e in events if "delta" in e] == ["Hel", "lo"]
+        assert [e["delta"] for e in events if "delta" in e] == ["Hello"]
+        assert events[-1] == {"done": True, "method": "llm"}
+
+    def test_cross_chunk_address_is_redacted_before_any_delta(self, opp_id, monkeypatch):
+        import backend.routes.opportunities as op_module
+
+        def fake_stream(_messages, _model_id=None):
+            yield "Email jane@"
+            yield "example.edu"
+
+        monkeypatch.setattr(op_module, "_llm_chat_stream", fake_stream)
+        resp = client.post(
+            f"/api/opportunities/{opp_id}/chat?stream=1",
+            json={"message": "How do I apply?"},
+        )
+        events = self._events(resp.text)
+
+        assert [event["delta"] for event in events if "delta" in event] == [
+            "[email redacted]"
+        ]
         assert events[-1] == {"done": True, "method": "llm"}
 
     def test_accept_header_alone_triggers_streaming(self, opp_id, monkeypatch):
@@ -1772,7 +2080,11 @@ class TestTfidfCorpusFit:
         embeddings._tfidf_fitted = False
         embeddings._tfidf_vectorizer = None
         data_loader._tfidf_fitted_mtime = -1
-        data_loader.load_opportunities()
+        opportunities = data_loader.load_opportunities()
+        data_loader._prepare_ranker_corpus(
+            opportunities,
+            data_loader._opp_cache_mtime,
+        )
         if len(data_loader._opp_cache) >= 2:
             assert embeddings._tfidf_fitted is True
 
@@ -2307,57 +2619,8 @@ class TestEmailRenderers:
         assert "&lt;script&gt;" in html
 
 
-def _install_fake_dispatch(
-    monkeypatch,
-    *,
-    status_code: int = 204,
-    text: str = "",
-    raise_error: Exception | None = None,
-    calls: list | None = None,
-):
-    """Swap admin.httpx.AsyncClient for a stub that records the dispatch call.
-
-    The real trigger_refresh fires a GitHub Actions workflow_dispatch over the
-    network; tests must never reach api.github.com. This stub honours the
-    ``async with httpx.AsyncClient() as c: await c.post(...)`` shape the route
-    uses and lets each test pin the simulated GitHub response (or a transport
-    error) while capturing the outbound url/json/headers for assertions.
-    """
-    from backend.routes import admin as admin_mod
-
-    class _Resp:
-        def __init__(self):
-            self.status_code = status_code
-            self.text = text
-
-    class _Client:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *exc):
-            return False
-
-        async def post(self, url, **kwargs):
-            if calls is not None:
-                calls.append({"url": url, **kwargs})
-            if raise_error is not None:
-                raise raise_error
-            return _Resp()
-
-    monkeypatch.setattr(admin_mod.httpx, "AsyncClient", _Client)
-
-
 class TestAdminTriggerRefresh:
-    """Contract lock for ``POST /admin/trigger-refresh``.
-
-    The admin dashboard's "Refresh now" button dispatches refresh-data.yml on
-    GitHub Actions. These tests pin the auth gate, the GITHUB_REFRESH_PAT setup
-    gate, the quick/deep input mapping, GitHub error pass-through, and the
-    network-failure 502 — all without touching the real GitHub API.
-    """
+    """The admin trigger stays authenticated and fail-closed."""
 
     def test_503_when_token_unset(self, monkeypatch):
         monkeypatch.delenv("ADMIN_TOKEN", raising=False)
@@ -2374,133 +2637,59 @@ class TestAdminTriggerRefresh:
         r = client.post("/api/admin/trigger-refresh")
         assert r.status_code == 401
 
-    def test_503_when_pat_unset(self, monkeypatch):
+    def test_503_while_publication_is_paused(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.delenv("GITHUB_REFRESH_PAT", raising=False)
         r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 503
-        assert "GITHUB_REFRESH_PAT" in r.json()["detail"]
+        assert "publication is paused" in r.json()["detail"]
 
     def test_422_invalid_mode(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
         r = client.post("/api/admin/trigger-refresh?mode=sideways", headers={"X-Admin-Token": "ok"})
         assert r.status_code == 422
 
-    def test_200_quick_mode_dispatches_with_deep_false(self, monkeypatch):
+    def test_configured_pat_cannot_dispatch(self, monkeypatch):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
         monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh?mode=quick", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        body = r.json()
-        assert body["ok"] is True
-        assert body["mode"] == "quick"
-        assert body["workflow"] == "refresh-data.yml"
-        assert "dispatched_at" in body
-        assert len(calls) == 1
-        assert calls[0]["json"]["ref"] == "main"
-        assert calls[0]["json"]["inputs"]["deep"] == "false"
-
-    def test_200_deep_mode_sets_deep_true(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh?mode=deep", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert r.json()["mode"] == "deep"
-        assert calls[0]["json"]["inputs"]["deep"] == "true"
-
-    def test_quick_is_the_default_mode(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert r.json()["mode"] == "quick"
-        assert calls[0]["json"]["inputs"]["deep"] == "false"
-
-    def test_sends_bearer_auth_and_api_version_headers(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-xyz")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        headers = calls[0]["headers"]
-        assert headers["Authorization"] == "Bearer pat-xyz"
-        assert headers["Accept"] == "application/vnd.github+json"
-        assert headers["X-GitHub-Api-Version"] == "2022-11-28"
-
-    def test_uses_default_repo_when_env_unset(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        monkeypatch.delenv("GITHUB_REPO", raising=False)
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert "EricXu-0805/opportunity-filter-engine" in calls[0]["url"]
-        assert calls[0]["url"].endswith("refresh-data.yml/dispatches")
-
-    def test_uses_custom_repo_from_env(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        monkeypatch.setenv("GITHUB_REPO", "acme/other-repo")
-        calls: list = []
-        _install_fake_dispatch(monkeypatch, status_code=204, calls=calls)
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 200
-        assert "acme/other-repo" in calls[0]["url"]
-
-    def test_accepts_token_via_header(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "hdr-secret")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        _install_fake_dispatch(monkeypatch, status_code=204)
 
         r = client.post(
-            "/api/admin/trigger-refresh",
-            headers={"X-Admin-Token": "hdr-secret"},
+            "/api/admin/trigger-refresh?mode=deep",
+            headers={"X-Admin-Token": "ok"},
         )
-        assert r.status_code == 200
+        assert r.status_code == 503
 
-    def test_propagates_github_error_status_and_detail(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "bad-pat")
-        _install_fake_dispatch(
-            monkeypatch, status_code=401, text='{"message":"Bad credentials"}'
+    def test_route_body_is_exact_auth_then_fail_closed_contract(self):
+        import ast
+        import inspect
+        import textwrap
+
+        from backend.routes import admin as admin_mod
+
+        source = textwrap.dedent(
+            inspect.getsource(admin_mod.trigger_refresh)
         )
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 401
-        assert "Bad credentials" in r.json()["detail"]
-
-    def test_github_error_without_body_uses_fallback_detail(self, monkeypatch):
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        _install_fake_dispatch(monkeypatch, status_code=500, text="")
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 500
-        assert "GitHub returned 500" in r.json()["detail"]
-
-    def test_502_when_github_unreachable(self, monkeypatch):
-        import httpx
-        monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        monkeypatch.setenv("GITHUB_REFRESH_PAT", "pat-123")
-        _install_fake_dispatch(monkeypatch, raise_error=httpx.ConnectError("boom"))
-
-        r = client.post("/api/admin/trigger-refresh", headers={"X-Admin-Token": "ok"})
-        assert r.status_code == 502
-        assert "GitHub API unreachable" in r.json()["detail"]
+        tree = ast.parse(source)
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef)
+        )
+        assert len(function.body) == 3
+        assert (
+            isinstance(function.body[0], ast.Expr)
+            and isinstance(function.body[0].value, ast.Constant)
+            and isinstance(function.body[0].value.value, str)
+        )
+        authenticate = function.body[1]
+        assert isinstance(authenticate, ast.Expr)
+        assert isinstance(authenticate.value, ast.Call)
+        assert isinstance(authenticate.value.func, ast.Name)
+        assert authenticate.value.func.id == "_authenticate"
+        failure = function.body[2]
+        assert isinstance(failure, ast.Raise)
+        assert isinstance(failure.exc, ast.Call)
+        assert isinstance(failure.exc.func, ast.Name)
+        assert failure.exc.func.id == "HTTPException"
 
 
 def _install_saved_search_rows(monkeypatch, *, rows=None, raise_error=None, calls=None):
@@ -3106,6 +3295,14 @@ class TestRateLimitResolution:
     dedicated sub-route buckets aren't shadowed and the paid chat endpoint
     isn't left on the loose default."""
 
+    def test_match_view_has_its_own_interaction_budget(self):
+        from backend.main import RATE_LIMITS, _rate_limit_key
+
+        key = _rate_limit_key("/api/matches/view")
+        assert key == "/api/matches/view"
+        assert RATE_LIMITS[key] == (60, 60)
+        assert RATE_LIMITS[key] != RATE_LIMITS["/api/matches"]
+
     def test_cold_email_subroutes_get_own_buckets(self):
         from backend.main import RATE_LIMITS, _rate_limit_key
         # SEC-4: /refine and /variants must NOT be shadowed by /api/cold-email.
@@ -3411,7 +3608,18 @@ class TestMatchesHomeSchool:
             self._opp("ucb-campus", "ucb", "campus"),
             self._opp("national-open", None, "open"),
         ]
-        monkeypatch.setattr("backend.routes.matches.load_opportunities", lambda: corpus)
+        monkeypatch.setattr(
+            "backend.routes.matches.load_opportunities_generation",
+            lambda: (corpus, "home-school-fixture"),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity_nowait",
+            lambda: id(corpus),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity",
+            lambda: id(corpus),
+        )
         monkeypatch.setattr(
             "backend.routes.matches.load_opportunities_by_id",
             lambda: {o["id"]: o for o in corpus},
@@ -3443,11 +3651,8 @@ class TestMatchesHomeSchool:
 
 
 class TestMatchesCrossSchoolToggle:
-    """include_cross_school (default False) flows through
-    ProfileRequest.model_dump() into rank_all: another school's non-campus
-    records are opt-in, while national records and summer programs always
-    show. ProfileRequest always stamps home_school (default 'uiuc'), so every
-    API profile takes the toggle path."""
+    """Dormant implementation coverage: when the release gate is patched on by
+    tests, the cross-school matcher still preserves its intended opt-in rules."""
 
     @pytest.fixture
     def cross_corpus(self, monkeypatch):
@@ -3459,7 +3664,18 @@ class TestMatchesCrossSchoolToggle:
              "opportunity_type": "summer_program"},
             _opp("national-open", None, "open"),
         ]
-        monkeypatch.setattr("backend.routes.matches.load_opportunities", lambda: corpus)
+        monkeypatch.setattr(
+            "backend.routes.matches.load_opportunities_generation",
+            lambda: (corpus, "cross-school-fixture"),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity_nowait",
+            lambda: id(corpus),
+        )
+        monkeypatch.setattr(
+            "backend.routes.matches.registered_corpus_identity",
+            lambda: id(corpus),
+        )
         monkeypatch.setattr(
             "backend.routes.matches.load_opportunities_by_id",
             lambda: {o["id"]: o for o in corpus},
@@ -3602,7 +3818,8 @@ class TestResponsePayloadTrim:
         not serve unverified works: name_match / legacy / junk stamps are
         stripped together with the status field, WITHOUT mutating the shared
         in-process corpus object. Verified metadata passes through untouched
-        (same object — no needless copy)."""
+        by value; the public projection still copies it so later recursive
+        contact/URL sanitization can never mutate the shared corpus."""
         from backend.routes.opportunities import _redact
 
         works = [{"title": "P", "year": 2026}]
@@ -3622,11 +3839,14 @@ class TestResponsePayloadTrim:
             "recent_works": list(works),
             "publication_attribution_status": "verified_author_id"}}
         out = _redact(verified)
-        assert out["metadata"] is verified["metadata"]  # no needless copy
+        assert out["metadata"] == verified["metadata"]
+        assert out["metadata"] is not verified["metadata"]
         assert out["metadata"]["recent_works"] == works
 
         plain = {"id": "x", "metadata": {"is_active": True}}
-        assert _redact(plain)["metadata"] is plain["metadata"]
+        plain_out = _redact(plain)
+        assert plain_out["metadata"] == plain["metadata"]
+        assert plain_out["metadata"] is not plain["metadata"]
 
 
 class TestAdminFeedback:

@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  ApiError,
   getMatches,
+  getMatchView,
   getOpportunities,
   getGapAnalysis,
   chatWithOpportunity,
   getMatchExplanation,
   getOpportunityById,
   getOpportunitiesByIds,
+  getShortlistOpportunities,
   generateColdEmail,
   getEmailVariants,
   refineEmail,
@@ -65,12 +68,14 @@ describe('request<T> (internal helper, exercised through every endpoint)', () =>
     expect(result).toEqual({ total: 0, opportunities: [] });
   });
 
-  it('throws "API {status}: {body}" on non-2xx', async () => {
+  it('does not expose an unstructured 5xx body', async () => {
     fetchMock.mockResolvedValue(badResponse(500, 'server explode'));
-    await expect(getOpportunities()).rejects.toThrow('API 500: server explode');
+    await expect(getOpportunities()).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
   });
 
-  it('throws "API 500: Unknown error" when the error body cannot be read', async () => {
+  it('uses the same safe fallback when the error body cannot be read', async () => {
     /* Response.text() resolves successfully to "" for an empty body — it does
        not reject. So we install a Response stub whose .text() rejects to
        exercise the .catch(() => 'Unknown error') fallback. */
@@ -80,7 +85,9 @@ describe('request<T> (internal helper, exercised through every endpoint)', () =>
       text: () => Promise.reject(new Error('stream gone')),
       json: () => Promise.resolve({}),
     } as unknown as Response);
-    await expect(getOpportunities()).rejects.toThrow('API 500: Unknown error');
+    await expect(getOpportunities()).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
   });
 
   it('sets Content-Type: application/json on every JSON request', async () => {
@@ -100,14 +107,14 @@ describe('request<T> (internal helper, exercised through every endpoint)', () =>
 });
 
 describe('getMatches', () => {
-  it('POSTs /matches with the profile body and no semantic flag by default', async () => {
+  it('POSTs /matches with the profile body and an explicit deterministic flag', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile());
     const url = fetchMock.mock.calls[0][0] as string;
     const init = fetchMock.mock.calls[0][1] as RequestInit;
-    expect(url).toBe('/api/matches');
+    expect(url).toBe('/api/matches?llm=false');
     expect(init.method).toBe('POST');
     const body = JSON.parse(init.body as string);
     expect(body.school).toBe('UIUC');
@@ -128,13 +135,22 @@ describe('getMatches', () => {
     expect(body.exploring).toBe(true);
   });
 
-  it('sends include_cross_school=true when the profile opts in', async () => {
+  it('fails closed when a stale profile opts into unreleased cross-school matching', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile({ include_cross_school: true }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.include_cross_school).toBe(true);
+    expect(body.include_cross_school).toBe(false);
+  });
+
+  it('removes the dormant fellowship preference before matching', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    await getMatches(makeProfile({ seeking_types: ['research', 'fellowship'] }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.seeking_type).toEqual(['research']);
   });
 
   it('maps scholar_url into the request and defaults it to "" when absent', async () => {
@@ -188,7 +204,7 @@ describe('getMatches', () => {
     expect(body.school).toBe('UC Berkeley');
   });
 
-  it('AI smart match is the server default: llm=true sends no param, llm=false opts out', async () => {
+  it('forces deterministic matching while AI refine is outside the release', async () => {
     // Fresh Response per call — this test fetches twice, and a shared
     // mockResolvedValue Response throws "Body has already been read" on the
     // second res.json() (CI Node enforces single-use bodies).
@@ -196,9 +212,82 @@ describe('getMatches', () => {
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile(), { llm: true });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=false');
     await getMatches(makeProfile(), { llm: false });
     expect(fetchMock.mock.calls[1][0]).toBe('/api/matches?llm=false');
+  });
+});
+
+describe('getMatchView', () => {
+  it('POSTs the complete view state and cursor in the body', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({
+        total: 0,
+        high_priority: 0,
+        good_match: 0,
+        reach: 0,
+        low_fit: 0,
+        results: [],
+        filtered_total: 0,
+        view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
+        contract_version: 'match-view-v2-contact-trust',
+      }),
+    );
+    const view = {
+      tab: 'starred' as const,
+      search_query: 'ml',
+      paid: 'yes' as const,
+      intl: '' as const,
+      source: 'uiuc_faculty',
+      on_campus: '' as const,
+      deadline: '30' as const,
+      min_score: 70,
+      scope: 'campus' as const,
+      sort_by: 'score' as const,
+      show_dismissed: false,
+      favorite_ids: ['opp-1'],
+      dismissed_ids: ['opp-2'],
+      today: '2026-07-31',
+    };
+    await getMatchView(makeProfile(), view, {
+      cursor: 'opaque-cursor',
+      pageSize: 50,
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/view');
+    const body = JSON.parse(
+      (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+    );
+    expect(body.profile.major).toBe('CS');
+    expect(body.view).toEqual(view);
+    expect(body.page_size).toBe(50);
+    expect(body.cursor).toBe('opaque-cursor');
+  });
+
+  it('never includes an HTML gateway body in the user-facing error', async () => {
+    fetchMock.mockResolvedValue(
+      badResponse(502, '<html><body>upstream trace and internal host</body></html>'),
+    );
+    const view = {
+      tab: 'all' as const,
+      search_query: '',
+      paid: '' as const,
+      intl: '' as const,
+      source: '',
+      on_campus: '' as const,
+      deadline: '' as const,
+      min_score: 0,
+      scope: '' as const,
+      sort_by: 'score' as const,
+      show_dismissed: false,
+      favorite_ids: [],
+      dismissed_ids: [],
+      today: '2026-07-31',
+    };
+    const promise = getMatchView(makeProfile(), view);
+    await expect(promise).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
+    await expect(promise).rejects.not.toThrow('upstream trace');
   });
 });
 
@@ -228,7 +317,7 @@ describe('per-opportunity endpoints', () => {
       }),
     );
     await getMatchExplanation(makeProfile(), 'opp-1');
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/opp-1/explain');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/opp-1/explain?llm=false');
   });
 
   it('chatWithOpportunity passes profile through toProfileRequest when present', async () => {
@@ -288,6 +377,161 @@ describe('getOpportunitiesByIds (batching)', () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     const body = JSON.parse(init.body as string);
     expect(body.ids).toEqual(['a']);
+  });
+});
+
+describe('getShortlistOpportunities (fail-closed accounting)', () => {
+  function batchBody(ids: string[]): { opportunities: { id: string }[]; requested: number; found: number } {
+    const opportunities = ids.map((id) => ({ id }));
+    return { opportunities, requested: ids.length, found: opportunities.length };
+  }
+
+  it('returns [] / [] without hitting fetch when ids is empty', async () => {
+    const result = await getShortlistOpportunities([]);
+    expect(result).toEqual({ opportunities: [], unavailableIds: [] });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts a valid payload: ordered opportunities, no unavailable', async () => {
+    fetchMock.mockResolvedValue(okJson(batchBody(['a', 'b'])));
+    const result = await getShortlistOpportunities(['a', 'b']);
+    expect(result).toEqual({ opportunities: [{ id: 'a' }, { id: 'b' }], unavailableIds: [] });
+  });
+
+  it('normalizes/dedupes requested ids while preserving first-request order', async () => {
+    fetchMock.mockResolvedValue(okJson(batchBody(['b', 'a'])));
+    await getShortlistOpportunities(['b', 'a', 'b', 'a']);
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body.ids).toEqual(['b', 'a']);
+  });
+
+  it('chunks requests at 200 and preserves overall first-seen order across chunks', async () => {
+    const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+    fetchMock
+      .mockResolvedValueOnce(okJson(batchBody(ids.slice(0, 200))))
+      .mockResolvedValueOnce(okJson(batchBody(ids.slice(200))));
+    const result = await getShortlistOpportunities(ids);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.opportunities.map((o) => o.id)).toEqual(ids);
+    expect(result.unavailableIds).toEqual([]);
+  });
+
+  it('returns missing (backend-skipped) ids as unavailableIds, in request order, without dropping found rows', async () => {
+    fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: 'a' }], requested: 3, found: 1 }));
+    const result = await getShortlistOpportunities(['a', 'missing-1', 'missing-2']);
+    expect(result.opportunities).toEqual([{ id: 'a' }]);
+    expect(result.unavailableIds).toEqual(['missing-1', 'missing-2']);
+  });
+
+  it('never auto-drops a requested id that IS found — round-trips extra fields untouched', async () => {
+    fetchMock.mockResolvedValue(okJson({
+      opportunities: [{ id: 'a', title: 'Research Assistant' }],
+      requested: 1,
+      found: 1,
+    }));
+    const result = await getShortlistOpportunities(['a']);
+    expect(result.opportunities).toEqual([{ id: 'a', title: 'Research Assistant' }]);
+  });
+
+  describe('fail-closed on the request side (before any fetch)', () => {
+    it('rejects a non-string id (e.g. 123) and never calls fetch', async () => {
+      await expect(getShortlistOpportunities([123 as unknown as string]))
+        .rejects.toMatchObject({ name: 'ApiError', code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects a null id and never calls fetch', async () => {
+      await expect(getShortlistOpportunities([null as unknown as string]))
+        .rejects.toBeInstanceOf(ApiError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty-string id and never calls fetch', async () => {
+      await expect(getShortlistOpportunities(['']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects a whitespace-only id and never calls fetch', async () => {
+      await expect(getShortlistOpportunities(['   ']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects an id over 100 chars and never calls fetch', async () => {
+      await expect(getShortlistOpportunities(['x'.repeat(101)]))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('accepts an id at exactly 100 chars and uses it raw, untrimmed', async () => {
+      const id = 'x'.repeat(100);
+      fetchMock.mockResolvedValue(okJson(batchBody([id])));
+      const result = await getShortlistOpportunities([id]);
+      expect(result.opportunities).toEqual([{ id }]);
+    });
+
+    it('fails closed on the whole call when only ONE id among many is malformed — no partial fetch', async () => {
+      await expect(getShortlistOpportunities(['good-1', '   ', 'good-2']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_REQUEST_ID' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fail-closed on the response side', () => {
+    it('rejects an unknown id (not among the requested chunk) as a safe ApiError', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: 'not-requested' }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ name: 'ApiError', code: 'SHORTLIST_UNKNOWN_ID', retryable: true });
+    });
+
+    it('rejects a duplicate returned id as a safe ApiError', async () => {
+      fetchMock.mockResolvedValue(okJson({
+        opportunities: [{ id: 'a' }, { id: 'a' }],
+        requested: 2,
+        found: 2,
+      }));
+      await expect(getShortlistOpportunities(['a', 'b']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_DUPLICATE_ID' });
+    });
+
+    it('rejects an incoherent requested/found count as a safe ApiError', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: 'a' }], requested: 5, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_CONTRACT_MISMATCH' });
+    });
+
+    it('rejects a malformed result missing an id', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ title: 'no id' }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_RESULT' });
+    });
+
+    it('rejects a result whose id is whitespace-only', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: '   ' }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_RESULT' });
+    });
+
+    it('rejects a result item that is itself an array', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: [['a']], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_MALFORMED_RESULT' });
+    });
+
+    it('rejects a non-array opportunities field', async () => {
+      fetchMock.mockResolvedValue(okJson({ opportunities: 'not-an-array', requested: 1, found: 0 }));
+      await expect(getShortlistOpportunities(['a']))
+        .rejects.toMatchObject({ code: 'SHORTLIST_CONTRACT_MISMATCH' });
+    });
+
+    it('does not repair or trim a mismatched id — fails closed instead', async () => {
+      const id = 'exact-id';
+      fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: ` ${id} ` }], requested: 1, found: 1 }));
+      await expect(getShortlistOpportunities([id]))
+        .rejects.toMatchObject({ code: 'SHORTLIST_UNKNOWN_ID' });
+    });
   });
 });
 
@@ -433,9 +677,11 @@ describe('import endpoints (FastAPI detail handling)', () => {
     expect(result).toEqual({ ok: false, error: 'too short', llm_enriched: false });
   });
 
-  it('importByUrl re-throws when the error body cannot be parsed as a FastAPI detail', async () => {
+  it('importByUrl re-throws a safe message when the body is not structured detail', async () => {
     fetchMock.mockResolvedValue(badResponse(502, 'bad gateway'));
-    await expect(importByUrl('https://example.com')).rejects.toThrow('API 502: bad gateway');
+    await expect(importByUrl('https://example.com')).rejects.toThrow(
+      'The service is temporarily unavailable. Please try again.',
+    );
   });
 
   it('importByText POSTs /import-text with the body field', async () => {
@@ -540,11 +786,23 @@ describe('chatWithOpportunity — SSE streaming (onDelta present)', () => {
     expect(result.reply).toContain('AI chat is not configured');
   });
 
-  it('throws "API {status}" on a non-2xx streaming response', async () => {
+  it('throws a structured safe error on a non-2xx streaming response', async () => {
     fetchMock.mockResolvedValue(badResponse(429, 'slow down'));
-    await expect(
-      chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn()),
-    ).rejects.toThrow('API 429: slow down');
+    const promise = chatWithOpportunity(
+      'opp-1',
+      'Hi',
+      [],
+      null,
+      undefined,
+      vi.fn(),
+    );
+    await expect(promise).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 429,
+      code: 'HTTP_429',
+      retryable: true,
+      message: 'The service is busy. Please try again shortly.',
+    });
   });
 
   it('returns the partial reply as errored when the stream breaks mid-read', async () => {
@@ -565,5 +823,54 @@ describe('chatWithOpportunity — SSE streaming (onDelta present)', () => {
     }));
     const result = await chatWithOpportunity('opp-1', 'Hi', [], null, undefined, vi.fn());
     expect(result).toEqual({ reply: 'cut ', method: 'llm', errored: true });
+  });
+});
+
+describe('the match request built from a profile whose résumé was removed', () => {
+  // The end of the removal journey: what the matcher is actually asked for.
+  // Everything before this (local write, cloud row) only matters because it
+  // decides this request body.
+  const withResume: ProfileData = {
+    name: 'Test',
+    home_school: 'uiuc',
+    institution: 'UIUC',
+    college: 'Grainger',
+    major: 'Computer Science',
+    grade: 'Junior',
+    is_international: false,
+    research_interests: 'robotics and controls',
+    skills: [{ name: 'Python', level: 'experienced' }],
+    coursework: ['ECE 220', 'CS 225'],
+    resume_text: 'the full text of my resume',
+  } as unknown as ProfileData;
+
+  const afterRemoval: ProfileData = {
+    ...withResume,
+    resume_text: '',
+    coursework: [],
+  } as unknown as ProfileData;
+
+  async function requestBodyFor(profile: ProfileData): Promise<Record<string, unknown>> {
+    fetchMock.mockResolvedValueOnce(okJson({
+      total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [],
+    }));
+    await getMatches(profile);
+    const init = fetchMock.mock.calls[0][1] as { body: string };
+    return JSON.parse(init.body) as Record<string, unknown>;
+  }
+
+  it('sends resume_ready true and the coursework while the résumé is on file', async () => {
+    const body = await requestBodyFor(withResume);
+    expect(body.resume_ready).toBe(true);
+    expect(body.coursework).toEqual(['ECE 220', 'CS 225']);
+  });
+
+  it('sends resume_ready false and no coursework once it has been removed, keeping skills and interests', async () => {
+    const body = await requestBodyFor(afterRemoval);
+    expect(body.resume_ready).toBe(false);
+    expect(body.coursework).toEqual([]);
+    // The evidence the user did NOT delete is still theirs.
+    expect(body.hard_skills).toEqual([{ name: 'Python', level: 'experienced' }]);
+    expect(body.research_interests_text).toBe('robotics and controls');
   });
 });

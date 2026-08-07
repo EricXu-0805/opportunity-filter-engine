@@ -5,8 +5,30 @@ import {
   type User,
 } from '@supabase/supabase-js';
 
-import { syncLocalIdentityOwner } from './identity-owner';
+import {
+  advanceOwnerEpoch,
+  advanceOwnerEpochIfUnchanged,
+  bumpAuthObservationRevision,
+  captureOwnerToken,
+  enqueuePrivateWrite,
+  enterLocalOnlyMode,
+  getAuthObservationRevision,
+  isOwnerTokenValid,
+  isTokenOwnerStillCurrent,
+  isOwnerScopedLoadError,
+  OwnerNotReadyError,
+  OwnerScopedLoadError,
+  OwnerMismatchError,
+  readUserScopedRaw,
+  syncLocalIdentityOwner,
+  writeUserScopedRaw,
+  type OwnerToken,
+} from './identity-owner';
+import { RELEASE_SCOPE } from './release-scope';
 import { STORAGE_KEYS } from './storage-keys';
+
+export { OwnerMismatchError, OwnerNotReadyError } from './identity-owner';
+export type { OwnerToken } from './identity-owner';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -75,22 +97,65 @@ export function onStorageStatusChange(cb: () => void): () => void {
   return () => { storageListeners.delete(cb); };
 }
 
+// Token-less, like readUserScopedRaw itself: every call site below already
+// re-validated (or is explicitly asking "what does the CURRENT owner's
+// fallback show", e.g. after its own token went stale) before reaching
+// this — it reflects whichever identity is genuinely ready right now, not
+// a specific captured token.
 function readFavFallback(): Set<string> {
   if (typeof window === 'undefined') return new Set();
+  const raw = readUserScopedRaw(FAV_FALLBACK_KEY);
+  if (!raw) return new Set();
   try {
-    const raw = localStorage.getItem(FAV_FALLBACK_KEY);
-    if (!raw) return new Set();
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? new Set(arr as string[]) : new Set();
   } catch { return new Set(); }
 }
 
-function writeFavFallback(set: Set<string>): void {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem(FAV_FALLBACK_KEY, JSON.stringify(Array.from(set))); } catch { /* quota */ }
+// `token` MUST be the SAME already-validated token the caller just checked
+// via isOwnerTokenValid immediately before calling this — defense in depth
+// so a future call site that forgets that check still cannot attribute a
+// write to the wrong identity.
+function writeFavFallback(set: Set<string>, token: OwnerToken): boolean {
+  if (typeof window === 'undefined') return false;
+  return writeUserScopedRaw(FAV_FALLBACK_KEY, JSON.stringify(Array.from(set)), token);
 }
 
 let anonSignInPromise: Promise<string | null> | null = null;
+
+/**
+ * Establishes (or confirms) the confirmed-local-only degrade: a real
+ * null-owner window FIRST (advanceOwnerEpoch — a no-op if already null),
+ * then the explicit local-only realm (enterLocalOnlyMode, which itself
+ * refuses to clear a real prior account's data — see its own doc
+ * comment). Status is marked 'local-only' ONLY when the realm is
+ * CONFIRMED established, never merely attempted: an unconfirmed realm
+ * (a real prior account's marker is sitting here, or storage threw) must
+ * surface as 'unknown', not falsely announce local data as safe.
+ */
+/**
+ * `sinceEpoch`, when given, gates the transition on `advanceOwnerEpochIfUnchanged`
+ * instead of an unconditional `advanceOwnerEpoch(null)` — required at any call
+ * site reached after an await (a late anon-sign-in failure): without it, a
+ * live sign-in that completed WHILE this attempt was in flight would be
+ * silently rolled back to a null owner by an abandoned attempt's own error
+ * handling. Returns false (and touches nothing) when the epoch moved on
+ * since `sinceEpoch` was captured — the caller must trust whatever that
+ * live event already established instead.
+ */
+function establishLocalOnlyDegrade(reason: string, sinceEpoch?: number): boolean {
+  if (sinceEpoch !== undefined) {
+    if (!advanceOwnerEpochIfUnchanged(null, sinceEpoch)) return false;
+  } else {
+    advanceOwnerEpoch(null);
+  }
+  const localOnlyOk = enterLocalOnlyMode();
+  setStorageStatus(
+    localOnlyOk ? 'local-only' : 'unknown',
+    localOnlyOk ? reason : 'a prior account\'s local data could not be verified — storage stays blocked until it can be',
+  );
+  return true;
+}
 
 async function ensureAnonSession(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
@@ -98,14 +163,57 @@ async function ensureAnonSession(): Promise<string | null> {
     // The dummy client points at localhost:54321 — signInAnonymously would
     // fire a doomed network call (and its late console.warn crashes vitest
     // worker teardown in CI). Unconfigured means local-only, full stop.
-    setStorageStatus('local-only', 'Supabase is not configured');
+    establishLocalOnlyDegrade('Supabase is not configured');
     return null;
   }
+  // Captured BEFORE either await below. getSession()/signInAnonymously() are
+  // not ordered relative to the live onAuthChange event stream — a slow
+  // resolution can arrive after that authoritative stream has already
+  // advanced past it. advanceOwnerEpochIfUnchanged applies this
+  // observation only if nothing did; see identity-owner.ts. sinceRevision
+  // is the belt-and-suspenders companion: a same-uid TOKEN_REFRESHED/
+  // INITIAL_SESSION live event bumps the revision but NOT the epoch (see
+  // advanceOwnerEpoch's own doc comment on same-uid re-observations), and
+  // that event may be the FIRST successful sync for this uid (blocked ->
+  // ready) — this resolution must not treat "epoch unchanged" as license
+  // to re-run its own stale-but-matching-uid sync over it.
+  const sinceEpoch = captureOwnerToken().epoch;
+  const sinceRevision = getAuthObservationRevision();
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user?.id) {
-    syncLocalIdentityOwner(session.user.id);
-    setStorageStatus('synced');
-    return session.user.id;
+    // syncLocalIdentityOwner has no epoch awareness of its own — it must
+    // only run when this observation is actually accepted, never for a
+    // stale result the guard drops (a late-arriving U1 after a live switch
+    // to U2 must not clear/reclaim U2's local storage as U1).
+    if (
+      getAuthObservationRevision() === sinceRevision
+      && advanceOwnerEpochIfUnchanged(session.user.id, sinceEpoch)
+    ) {
+      // The uid IS current (the epoch CAS above just confirmed it), but
+      // sync itself can still fail closed (an unverified clear/marker
+      // write) — that means local USER_SCOPED data is NOT yet confirmed
+      // usable for this uid, even though the account resolution is real.
+      // Marking 'synced' anyway would tell the storage-status banner
+      // "your data is safely synced" while isLocalOwnerReady is still
+      // 'blocked' underneath it — a truthfulness bug, not a data-safety
+      // one (every actual read/write still re-checks readiness itself).
+      const synced = await syncLocalIdentityOwner(session.user.id);
+      setStorageStatus(
+        synced ? 'synced' : 'unknown',
+        synced ? null : 'local data ownership could not be verified',
+      );
+      return session.user.id;
+    }
+    // B1: dropped as stale — a live event already advanced the shared
+    // owner past this observation before we got here. That live event's
+    // OWN processing (onAuthChange's wrapper) already ran
+    // syncLocalIdentityOwner and set whatever status follows from IT —
+    // returning our own stale session.user.id (or re-marking 'synced' for
+    // an observation that was just rejected) would let a caller trust an
+    // identity that is no longer current. The CURRENT global owner
+    // (already established by that live event) is the only trustworthy
+    // answer.
+    return captureOwnerToken().uid;
   }
   if (anonSignInPromise) return anonSignInPromise;
   anonSignInPromise = (async () => {
@@ -115,13 +223,37 @@ async function ensureAnonSession(): Promise<string | null> {
         ? 'Anonymous sign-ins are disabled for this Supabase project.'
         : error.message;
       console.warn('[ofe] anonymous sign-in failed:', error.message);
-      setStorageStatus('local-only', hint || error.message);
+      // B2: a confirmed anon-sign-in failure is ALSO a confirmed
+      // local-only degrade — same realm-establishment discipline as the
+      // unconfigured branch above. Gated on sinceEpoch: this runs after
+      // TWO awaits, so a live sign-in could have already superseded this
+      // attempt entirely.
       anonSignInPromise = null;
+      if (
+        getAuthObservationRevision() !== sinceRevision
+        || !establishLocalOnlyDegrade(hint || error.message, sinceEpoch)
+      ) {
+        // Stale — a live event already established a more current outcome
+        // (e.g. a real sign-in completed while this was in flight). Trust
+        // the CURRENT global owner, not this abandoned attempt's null.
+        return captureOwnerToken().uid;
+      }
       return null;
     }
-    syncLocalIdentityOwner(data.user?.id ?? null);
-    setStorageStatus('synced');
-    return data.user?.id ?? null;
+    if (
+      getAuthObservationRevision() === sinceRevision
+      && advanceOwnerEpochIfUnchanged(data.user?.id ?? null, sinceEpoch)
+    ) {
+      const synced = await syncLocalIdentityOwner(data.user?.id ?? null);
+      setStorageStatus(
+        synced ? 'synced' : 'unknown',
+        synced ? null : 'local data ownership could not be verified',
+      );
+      return data.user?.id ?? null;
+    }
+    // B1: same stale-drop as above — a live event already superseded
+    // this resolution.
+    return captureOwnerToken().uid;
   })();
   const result = await anonSignInPromise;
   anonSignInPromise = null;
@@ -294,11 +426,47 @@ export async function refreshRevealAccessToken(): Promise<string | null> {
  * Supabase subscription object shape directly.
  */
 export function onAuthChange(cb: (state: AuthState) => void): () => void {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+  // Async because the owner transition now runs inside the same exclusive
+  // lock every private mutation takes. The two synchronous fences below —
+  // the observation revision and the owner epoch — still land before this
+  // function first yields, so a hook that reacts to ANY of this still finds
+  // the previous identity's local data already blocked.
+  const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Bumped FIRST, unconditionally, even for a same-uid re-observation —
+    // this is THE authoritative choke point every async resolution
+    // elsewhere (ensureAnonSession) checks to detect "something landed
+    // while I was in flight," and a same-uid TOKEN_REFRESHED/
+    // INITIAL_SESSION event carries no epoch bump of its own to signal that.
+    bumpAuthObservationRevision();
+    // Advance the shared owner epoch next (the authoritative source
+    // private-write helpers check), then syncLocalIdentityOwner's
+    // clear/claim, then notify subscribers — so any hook reacting to this
+    // event (capturing a fresh owner token, reading local storage) always
+    // sees post-transition state on both.
+    advanceOwnerEpoch(session?.user?.id ?? null);
     // W6: every uid observed here passes through the owner sync, so an
     // account switch from ANY flow clears the previous identity's local
-    // data before subscribers render against the new session.
-    syncLocalIdentityOwner(session?.user?.id ?? null);
+    // data before subscribers render against the new session. A failed
+    // (fail-closed) sync must not be papered over as 'synced' — the
+    // storage-status banner would tell U2 their data is safe while
+    // isLocalOwnerReady is still 'blocked' underneath it.
+    const uid = session?.user?.id ?? null;
+    if (uid) {
+      const synced = await syncLocalIdentityOwner(uid);
+      setStorageStatus(
+        synced ? 'synced' : 'unknown',
+        synced ? null : 'local data ownership could not be verified',
+      );
+    } else {
+      // A null-uid event (sign-out, or the transient window before a
+      // replacement session exists) must not leave a PREVIOUS identity's
+      // 'synced' status lingering — the banner would keep claiming data is
+      // safely synced for an account that just signed out. 'unknown', not
+      // 'local-only': that confirmed status requires enterLocalOnlyMode's
+      // own explicit realm-establishment (see ensureAnonSession), not
+      // merely the fact that no uid is known at this instant.
+      setStorageStatus('unknown', null);
+    }
     cb({
       session,
       user: session?.user ?? null,
@@ -311,7 +479,7 @@ export function onAuthChange(cb: (state: AuthState) => void): () => void {
 
 export type SignInOutcome =
   | { ok: true; mode: 'link-anon' | 'sign-in'; message: string }
-  | { ok: false; reason: 'not-configured' | 'invalid-email' | 'rate-limited' | 'email-taken' | 'identity-taken' | 'unknown'; message: string };
+  | { ok: false; reason: 'not-configured' | 'feature-disabled' | 'invalid-email' | 'rate-limited' | 'email-taken' | 'identity-taken' | 'unknown'; message: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -464,6 +632,19 @@ export interface MergeSummary {
   attachmentsNotMoved: number;
 }
 
+/**
+ * `redeemPendingMerge`'s result. `MergeSummary | null` used to collapse two
+ * different situations into the same `null` — "there was nothing to merge"
+ * and "there WAS a grant but we could not confirm what happened to it" (a
+ * network drop mid-RPC) — and /auth/callback treated both as a green light
+ * to show success. `'failed'` is the second case: retryable, and MUST leave
+ * the caller unable to silently proceed as if the merge had been resolved.
+ */
+export type MergeRedemptionOutcome =
+  | { kind: 'none' }
+  | { kind: 'success'; summary: MergeSummary }
+  | { kind: 'failed' };
+
 function asCount(v: unknown): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
@@ -584,28 +765,35 @@ function clearMergeGrantSlot(): void {
 
 /**
  * Redeem a pending merge grant (if any) after sign-in. Safe to call
- * unconditionally: returns null when there's no token.
+ * unconditionally: returns `{kind:'none'}` when there's no token.
  *
  * W14 contract: the token is kept until a DEFINITIVE server verdict —
  * RPC success (merged or no-op) or a dead-grant error (see
  * DEFINITIVE_GRANT_ERRORS). A transport failure gets ONE immediate retry;
  * if that also fails (or the RPC returns a non-definitive error) the token
- * stays stashed so the next /auth/callback land can retry instead of
- * permanently orphaning the anonymous data. Double-redeem after a kept
- * token is safe: the grant is single-use server-side, so a replay comes
- * back 'grant already used' — a definitive verdict that clears the slot.
- * Abandoned stashes expire via identity-owner's minted_at check and are
- * dropped on sign-out.
+ * stays stashed and `{kind:'failed'}` is returned so the next
+ * /auth/callback land can retry instead of permanently orphaning the
+ * anonymous data. Double-redeem after a kept token is safe: migration 026
+ * makes redeeming the SAME token idempotent (replays the stored result),
+ * and a genuinely dead grant answers with a definitive error that clears
+ * the slot. Abandoned stashes expire via identity-owner's minted_at check
+ * and are dropped on sign-out.
  *
  * The slot holds JSON `{token, minted_at}` (email path), JSON
  * `{token, secret, minted_at}` (OAuth path — the secret proves possession
  * against the hash stored at mint), or a legacy pre-W14 bare token string.
+ *
+ * A throw reading the slot itself (private-mode storage) is reported as
+ * `'failed'`, not `'none'` — a genuinely-absent grant and an unreadable one
+ * are indistinguishable here, and collapsing them into "nothing to merge"
+ * would silently drop a real pending merge with no way for the user to
+ * even learn it happened, let alone retry.
  */
-export async function redeemPendingMerge(): Promise<MergeSummary | null> {
-  if (!SUPABASE_CONFIGURED || typeof window === 'undefined') return null;
+export async function redeemPendingMerge(): Promise<MergeRedemptionOutcome> {
+  if (!SUPABASE_CONFIGURED || typeof window === 'undefined') return { kind: 'none' };
   let stashed: string | null = null;
-  try { stashed = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT); } catch { return null; }
-  if (!stashed) return null;
+  try { stashed = localStorage.getItem(STORAGE_KEYS.MERGE_GRANT); } catch { return { kind: 'failed' }; }
+  if (!stashed) return { kind: 'none' };
 
   let token = stashed;
   let secret: string | null = null;
@@ -622,7 +810,7 @@ export async function redeemPendingMerge(): Promise<MergeSummary | null> {
       // Garbage can never be redeemed — clearing is safe (client-side
       // definitive verdict).
       clearMergeGrantSlot();
-      return null;
+      return { kind: 'none' };
     }
     token = parsed.token;
     secret = typeof parsed.secret === 'string' ? parsed.secret : null;
@@ -643,7 +831,7 @@ export async function redeemPendingMerge(): Promise<MergeSummary | null> {
       // can retry — sign-in still succeeded, we just don't show a merge
       // line this time.
       console.warn('[ofe] merge redeem retry failed, keeping token:', e2);
-      return null;
+      return { kind: 'failed' };
     }
   }
   const { data, error } = rpcResult;
@@ -653,28 +841,47 @@ export async function redeemPendingMerge(): Promise<MergeSummary | null> {
       // consume the token. Non-fatal: sign-in still succeeded.
       clearMergeGrantSlot();
       console.warn('[ofe] merge redeem skipped (grant dead):', error.message);
-    } else {
-      // Server/gateway error or transient state — no verdict, keep the
-      // token for the next land.
-      console.warn('[ofe] merge redeem failed, keeping token:', error.message);
+      return { kind: 'none' };
     }
-    return null;
+    // Server/gateway error or transient state — no verdict, keep the
+    // token for the next land.
+    console.warn('[ofe] merge redeem failed, keeping token:', error.message);
+    return { kind: 'failed' };
   }
   // Success (merged or explicit no-op) is a definitive verdict — consume.
   clearMergeGrantSlot();
   const res = data as { merged?: boolean; summary?: Record<string, unknown> } | null;
-  if (!res?.merged) return { merged: false, favorites: 0, interactions: 0, savedSearches: 0, attachmentsNotMoved: 0 };
+  if (!res?.merged) {
+    return {
+      kind: 'success',
+      summary: { merged: false, favorites: 0, interactions: 0, savedSearches: 0, attachmentsNotMoved: 0 },
+    };
+  }
   const s = res.summary ?? {};
   return {
-    merged: true,
-    favorites: asCount(s.favorites),
-    interactions: asCount(s.interactions),
-    savedSearches: asCount(s.saved_searches),
-    attachmentsNotMoved: asCount(s.attachments_not_moved),
+    kind: 'success',
+    summary: {
+      merged: true,
+      favorites: asCount(s.favorites),
+      interactions: asCount(s.interactions),
+      savedSearches: asCount(s.saved_searches),
+      attachmentsNotMoved: asCount(s.attachments_not_moved),
+    },
   };
 }
 
 export type OAuthProvider = 'google' | 'azure';
+
+function oauthProviderReleaseRejection(
+  provider: OAuthProvider,
+): SignInOutcome | null {
+  if (provider !== 'azure' || RELEASE_SCOPE.microsoftSchoolAuth) return null;
+  return {
+    ok: false,
+    reason: 'feature-disabled',
+    message: 'Microsoft school sign-in is not available in this release.',
+  };
+}
 
 function oauthOptions(provider: OAuthProvider, redirectTo: string) {
   return {
@@ -734,6 +941,9 @@ export async function signInWithOAuthProvider(
   provider: OAuthProvider,
   redirectTo: string,
 ): Promise<SignInOutcome> {
+  const releaseRejection = oauthProviderReleaseRejection(provider);
+  if (releaseRejection) return releaseRejection;
+
   if (!SUPABASE_CONFIGURED) {
     return {
       ok: false,
@@ -775,6 +985,9 @@ export async function signInExistingOAuth(
   provider: OAuthProvider,
   redirectTo: string,
 ): Promise<SignInOutcome> {
+  const releaseRejection = oauthProviderReleaseRejection(provider);
+  if (releaseRejection) return releaseRejection;
+
   if (!SUPABASE_CONFIGURED) {
     return {
       ok: false,
@@ -874,86 +1087,425 @@ export async function signOutOfAccount(): Promise<string | null> {
   return ensureAnonSession();
 }
 
-export async function saveProfile(profileData: Record<string, unknown>): Promise<void> {
-  const id = await ensureAnonSession();
-  if (!id) return;
+/**
+ * `originToken` MUST be captured (via captureOwnerToken()) at the moment
+ * the caller's own save intent began — a debounced autosave timer's
+ * creation, a toggle's click handler — never re-captured just before this
+ * call. Re-verified before EVERY network round-trip's own await boundary
+ * (preflight, post-ensure, pre-version-insert): a stale caller (identity
+ * moved on while this was in flight) must never write ANY of these three
+ * things under the wrong account. The main upsert's error is thrown, not
+ * swallowed — callers need to know a save failed to surface it, matching
+ * every other private-write helper in this file.
+ */
+// Returns whether the profile actually reached the server (the main
+// upsert committed) — false for EVERY no-op path (stale/blocked origin
+// token, no cloud backend available). A caller must check this: `void`
+// made "saved" and "silently rejected because the identity moved on"
+// indistinguishable, the exact false-success shape this whole file's
+// other private-write helpers were hardened against. The version-insert's
+// own outcome does NOT affect this return — it stays best-effort in
+// OUTCOME per its own comment below, only its SCHEDULING is no longer
+// fire-and-forget.
+// One serialization domain for the whole profile row, at the single
+// exported entry point rather than at each caller: the home form's
+// autosave/unmount-flush/submit AND the results page's cross-school toggle
+// all write this same row, so a per-caller queue would still let a slow
+// write from one screen commit after a faster one from another and roll the
+// row back on every other device. Keyed by (owner uid, owner epoch) via
+// enqueuePrivateWrite, so a genuine identity change starts a fresh queue.
+//
+// Client-side ordering is NOT the durability story, though — it cannot see
+// the user's other devices at all. The revision check inside
+// commit_profile_patch_cas (migration 027) is what actually makes a save
+// safe; this queue only keeps ONE browser's own writes from interleaving.
+const PROFILE_ROW_WRITE_ID = 'profile-row';
 
-  const now = new Date().toISOString();
-
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(
-      { id, profile_data: profileData, updated_at: now },
-      { onConflict: 'id' },
-    );
-
-  if (error) console.warn('Failed to sync profile:', error.message);
-
-  supabase
-    .from('profile_versions')
-    .insert({ device_id: id, profile_data: profileData, created_at: now })
-    .then(({ error: vErr }) => {
-      if (vErr && !vErr.message.includes('does not exist')) {
-        console.warn('Failed to save profile version:', vErr.message);
-      }
-    });
+/** What the caller believes it is editing, captured when the edit intent
+ *  began. Every field is part of the CAS contract:
+ *   - expectedRevision  the revision this edit was made against (0 = create)
+ *   - patch             ONLY the keys this intent actually changed. Never the
+ *                       whole document: the server shallow-merges it, so a
+ *                       key that is not here cannot be cleared by a caller
+ *                       holding a stale snapshot.
+ *   - token             the owner active at intent time (see OwnerToken)
+ *   - mutationId        the client's own id for this attempt, used ONLY by the
+ *                       coordinator's outbox to match a late response to the
+ *                       pending write it belongs to. Deliberately not sent:
+ *                       the server derives idempotency from the revision plus
+ *                       the patch itself (see 027's header), so a mutation-id
+ *                       table would be a second, weaker source of truth.
+ */
+export interface ProfilePatchIntent {
+  expectedRevision: number;
+  patch: Record<string, unknown>;
+  token: OwnerToken;
+  mutationId: string;
 }
 
+export type ProfilePatchOutcome =
+  /** The patch was applied; `revision`/`profile` are the new canonical row. */
+  | { status: 'saved'; revision: number; profile: Record<string, unknown> }
+  /** Already stored — a redundant save, or a retry of a lost response. */
+  | { status: 'already-saved'; revision: number; profile: Record<string, unknown> }
+  /** Another device got there first. NOTHING was written; `profile` is the
+   *  current row so the caller can rebase onto it. */
+  | { status: 'conflict'; revision: number; profile: Record<string, unknown> }
+  /** No row to patch (deleted), or this account was merged into another.
+   *  Fail closed: the caller must reload, never recreate. */
+  | { status: 'missing'; reason: 'absent' | 'merged_away' }
+  /** No cloud backend at all — the confirmed local-only degrade. */
+  | { status: 'local-only' }
+  /** The identity moved on before or during the call. Nothing was written
+   *  and nothing about it is news to whoever is signed in now. */
+  | { status: 'abandoned' }
+  /** The request itself failed (network, RLS, permission). Retriable. */
+  | { status: 'transport-error'; message: string }
+  /** The RPC returned something this client cannot interpret. Treated as a
+   *  failure, never as success — an unknown status must not clear a pending
+   *  write the way a confirmed one does. */
+  | { status: 'malformed'; message: string };
+
+function readCasRow(value: unknown): { revision: number; profile: Record<string, unknown> } | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const revision = row.revision;
+  const profile = row.profile;
+  // A stored row is revision >= 1 by construction (027's CHECK). Anything
+  // else — a float, 0, a string, a missing field — means this response cannot
+  // be used as the base for the next save, so it is not accepted as one.
+  if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 1) return null;
+  // An array or a JSON null is not a profile. Accepting either would hand the
+  // coordinator something it would then merge patches into.
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return null;
+  return { revision, profile: profile as Record<string, unknown> };
+}
+
+/**
+ * The ONE way this app writes a profile row. There is no upsert path and no
+ * separate history insert: migration 027 does both inside a single
+ * transaction, and revokes the direct table privileges that made the old
+ * two-statement client possible.
+ */
+export async function commitProfilePatch(intent: ProfilePatchIntent): Promise<ProfilePatchOutcome> {
+  return enqueuePrivateWrite(
+    intent.token,
+    PROFILE_ROW_WRITE_ID,
+    () => commitProfilePatchRow(intent),
+  );
+}
+
+async function commitProfilePatchRow(intent: ProfilePatchIntent): Promise<ProfilePatchOutcome> {
+  const { token, expectedRevision, patch, mutationId } = intent;
+  // Preflight — before any network call at all.
+  //
+  // "Abandoned" means the identity MOVED ON, and only that. A token whose
+  // owner is still the current one but is not yet CONFIRMED for local
+  // storage is a different situation entirely: nothing has been resolved
+  // yet, and it is ensureAnonSession below — not this check — that decides
+  // whether there is a cloud backend at all. Rejecting here would report a
+  // browser with no backend as somebody else's write.
+  if (!isOwnerTokenValid(token, token.uid) && !isTokenOwnerStillCurrent(token)) {
+    return { status: 'abandoned' };
+  }
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+    return { status: 'malformed', message: 'expectedRevision must be a non-negative integer' };
+  }
+  if (Object.keys(patch).length === 0) {
+    return { status: 'malformed', message: 'refusing to send an empty patch' };
+  }
+
+  const id = await ensureAnonSession();
+  if (!id) return { status: 'local-only' }; // no cloud backend available
+  // Re-verified after ensureAnonSession's own await, BEFORE the request is
+  // built: the uid sent as p_expected_device_id has to be the one the edit
+  // intent was captured under, not whoever resolved in the meantime.
+  if (!isOwnerTokenValid(token, id)) return { status: 'abandoned' };
+
+  const { data, error } = await supabase.rpc('commit_profile_patch_cas', {
+    p_expected_device_id: id,
+    p_expected_revision: expectedRevision,
+    p_patch: patch,
+  });
+
+  // Origin BEFORE outcome: if the identity moved on while this was in
+  // flight, neither the success nor the failure is the current identity's
+  // news — reporting either would let a form now rendering U2 act on U1's
+  // result.
+  if (!isOwnerTokenValid(token, id)) return { status: 'abandoned' };
+  if (error) return { status: 'transport-error', message: error.message };
+
+  const envelope = data as Record<string, unknown> | null;
+  const status = envelope && typeof envelope === 'object' ? envelope.status : null;
+  if (status === 'applied' || status === 'unchanged') {
+    const row = readCasRow(envelope);
+    if (!row) return { status: 'malformed', message: `no row in ${String(status)} response` };
+    return {
+      status: status === 'applied' ? 'saved' : 'already-saved',
+      revision: row.revision,
+      profile: row.profile,
+    };
+  }
+  if (status === 'conflict') {
+    const row = readCasRow(envelope);
+    if (!row) return { status: 'malformed', message: 'no row in conflict response' };
+    return { status: 'conflict', revision: row.revision, profile: row.profile };
+  }
+  if (status === 'missing') {
+    const reason = (envelope as Record<string, unknown>).reason;
+    // A reason this client does not know is NOT "absent". Defaulting it that
+    // way would let a future server-side state (a lock, a legal hold, a
+    // quarantine) be reported to the user as "your profile does not exist",
+    // and the caller acts differently on the two.
+    if (reason !== 'absent' && reason !== 'merged_away') {
+      return { status: 'malformed', message: `unknown missing reason: ${String(reason)}` };
+    }
+    return { status: 'missing', reason };
+  }
+  // Anything else — an older deployed function, a proxy rewriting the body —
+  // is unknown, and unknown is a failure. Never treat it as saved.
+  return { status: 'malformed', message: `unexpected CAS status: ${String(status)}` };
+}
+
+
 function readLocalProfile(): Record<string, unknown> | null {
-  if (typeof window === 'undefined') return null;
+  const raw = readUserScopedRaw(STORAGE_KEYS.PROFILE);
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === 'object' ? parsed : null;
   } catch { return null; }
 }
 
-// R69-D: in-flight promise dedup. Pre-R69-D, mount + onAuthChange
-// (see app/home/use-profile-form.ts:100,151) both called loadProfile
-// shortly after each other on page entry, producing 3-4 concurrent
-// SELECT profiles?id=eq.<uid> requests per visit. Two were "wasted"
-// (same result, same uid). Cache the in-flight promise so concurrent
-// callers within the same event-loop burst share one request; clear
-// it the next macrotask so a real later call still re-fetches fresh
-// data (no long-lived stale cache).
-let inflightLoadProfile: Promise<Record<string, unknown> | null> | null = null;
+// R69-D: in-flight promise dedup, keyed by (uid, epoch) — NOT a single
+// global slot. A bare global would dedupe a NEW identity's loadProfile()
+// call against an OLD identity's still-in-flight promise (including a
+// U1->null->U1 cycle, which is a DIFFERENT epoch despite the same uid —
+// see identity-owner.ts's own "full cycle" test for why uid alone can't
+// tell these apart). Pre-R69-D, mount + onAuthChange (see
+// app/home/use-profile-form.ts) both called loadProfile shortly after
+// each other on page entry, producing 3-4 concurrent SELECT requests per
+// visit for the SAME identity — this cache still collapses those, since
+// they share the same (uid, epoch) key, while never collapsing across a
+// genuine identity transition.
+/**
+ * A read's full result, not just its row. Under CAS a profile without the
+ * revision it was read at is unusable — the next save has nothing to compare
+ * against — and "the cloud says you have no row" has to stay distinguishable
+ * from "there is no cloud", because only one of them may be created into.
+ */
+export interface LoadedProfile {
+  /** 'cloud'        — a stored row came back; `revision` is its revision.
+   *  'cloud-absent' — the backend CONFIRMED there is no row (revision 0).
+   *  'local-only'   — there is no cloud backend at all; `profile` is this
+   *                   browser's mirror, and nothing may be written remotely. */
+  source: 'cloud' | 'cloud-absent' | 'local-only';
+  profile: Record<string, unknown> | null;
+  revision: number;
+  /** The token this read finally validated under — the one a follow-up write
+   *  derived from this load must be attributed to. */
+  token: OwnerToken;
+}
 
-export async function loadProfile(): Promise<Record<string, unknown> | null> {
-  if (inflightLoadProfile) return inflightLoadProfile;
-  inflightLoadProfile = (async (): Promise<Record<string, unknown> | null> => {
-    const local = readLocalProfile();
+const inflightLoadProfile = new Map<string, Promise<LoadedProfile>>();
+
+function loadProfileKey(token: OwnerToken): string {
+  return JSON.stringify([token.uid, token.epoch]);
+}
+
+/**
+ * Whose failure a not-ready owner check is.
+ *
+ * The same triangle everywhere in loadProfile, so the answer cannot drift
+ * between the check before the SELECT and the one after it: a candidate that
+ * IS the ensured identity and is still exactly the current owner has simply
+ * lost the proof that this browser's data is theirs — their own failure, and
+ * reportable, or the screen they are looking at waits forever. Anything else
+ * — a uid that does not match, a takeover, a superseded epoch — belongs to
+ * nobody and must never hand a screen a capability.
+ */
+function notReadyFor(candidate: OwnerToken, ensuredId: string | null): Error {
+  if (candidate.uid === ensuredId && isTokenOwnerStillCurrent(candidate)) {
+    return new OwnerScopedLoadError(candidate, new OwnerNotReadyError());
+  }
+  return new OwnerNotReadyError();
+}
+
+export async function loadProfile(): Promise<LoadedProfile> {
+  // Dedup key is the pre-ensure "start-attempt" token: concurrent calls
+  // captured at (near-)identical moments — including two concurrent
+  // FIRST-ever calls, both uid: null — correctly collapse onto one
+  // in-flight promise (R69-D's original mount+onAuthChange double-fire).
+  const startAttempt = captureOwnerToken();
+  const key = loadProfileKey(startAttempt);
+  const existing = inflightLoadProfile.get(key);
+  if (existing) return existing;
+
+  const promise = (async (): Promise<LoadedProfile> => {
     const id = await ensureAnonSession();
-    if (!id) return local;
+    let token = startAttempt;
+    if (!isOwnerTokenValid(token, id)) {
+      if (token.uid !== null) {
+        // A KNOWN identity moved on mid-flight, OR this browser's local
+        // data is not confirmed for it (a blocked/unverified clear). Both
+        // are "we could not read your profile", NOT "you do not have one":
+        // returning null here let the caller hydrate defaults and then
+        // save them over a row it never read. Never retried here; a fresh
+        // loadProfile() call captures the current state.
+        //
+        // Which of the two it is decides whose failure it is — see above.
+        throw notReadyFor(token, id);
+      }
+      // token.uid === null: nothing had resolved yet at capture time, so
+      // this is the browser's first-ever resolution, not an abandonment —
+      // the ORIGINAL bug: a pre-ensure null-uid token can never validate
+      // against a real first-ever uid, so first-ever loadProfile() always
+      // returned null. Mirror getFavorites: re-check against the CURRENT
+      // state: only continue if nothing raced further since ensureAnonSession
+      // resolved (including a same-uid-but-new-epoch U1->null->U1 cycle,
+      // which the epoch comparison inside isOwnerTokenValid still rejects).
+      const freshToken = captureOwnerToken();
+      if (!isOwnerTokenValid(freshToken, id)) throw notReadyFor(freshToken, id);
+      token = freshToken;
+    }
 
-    // R69-D: maybeSingle (not single). single() returns HTTP 406 when
-    // the profile row doesn't exist yet — every cold visit produced
-    // a console error even though the empty-row case is expected.
-    // maybeSingle() returns { data: null, error: null } for missing
-    // rows and the existing `if (error || !data)` fallback handles
-    // both paths identically.
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('profile_data')
-      .eq('id', id)
-      .maybeSingle();
+    // FROM HERE ON the identity this read belongs to is fixed. Everything
+    // below either succeeds for `token` or fails for `token` — and the
+    // difference between "this person's read failed" and "this read was
+    // abandoned because somebody else took the browser over" is one the
+    // caller cannot reconstruct, so it is carried out with the failure.
+    try {
+      // Only now — ensure+ready confirmed for THIS token — is it safe to
+      // read the local fallback (readLocalProfile is itself readiness-gated,
+      // this is belt-and-suspenders against a stale caller reaching it at
+      // all).
+      const local = readLocalProfile();
+      // Confirmed local-only degrade: revision 0 and NOT 'cloud-absent' — the
+      // caller must not read this as "the server says you have no profile" and
+      // create one, because no server was asked.
+      if (!id) return { source: 'local-only', profile: local, revision: 0, token };
 
-    if (error || !data) return local;
-    return (data.profile_data as Record<string, unknown>) ?? local;
+      // R69-D: maybeSingle (not single). single() returns HTTP 406 when
+      // the profile row doesn't exist yet — every cold visit produced
+      // a console error even though the empty-row case is expected.
+      // maybeSingle() returns { data: null, error: null } for missing rows.
+      const result = await supabase
+        .from('profiles')
+        .select('profile_data, revision')
+        .eq('id', id)
+        .maybeSingle();
+
+      // Re-verify after the SELECT's own await — same reasoning as above: a
+      // read we can no longer attribute is an error, not an empty profile.
+      // BEFORE the query's own error is even looked at: a takeover is not
+      // this identity's failure to report, whatever the query said.
+      //
+      if (!isOwnerTokenValid(token, id)) throw notReadyFor(token, id);
+
+      // A real query error (network, RLS misconfiguration) is NOT the same
+      // as a confirmed-absent row — collapsing both into "fall back to
+      // local" let a transient backend failure masquerade as "you have no
+      // cloud profile yet," which downstream first-visit logic could act on
+      // incorrectly. Throw (like every other private-write helper in this
+      // file) so the caller can tell the difference; maybeSingle's
+      // confirmed `data === null` is the ONLY case that legitimately falls
+      // back to the local mirror.
+      if (result.error) {
+        console.warn('[ofe] loadProfile SELECT failed:', result.error.message);
+        throw new Error(`Failed to load profile: ${result.error.message}`);
+      }
+      const data = result.data as { profile_data?: unknown; revision?: unknown } | null;
+      // CONFIRMED absent. Deliberately does NOT fall back to the local mirror
+      // any more: under CAS the caller has to know the row is absent (so it may
+      // create it at revision 0) as opposed to present-but-unread. The mirror
+      // is still reconciled — by the coordinator, which can compare it against
+      // this answer instead of having it silently substituted here.
+      if (!data) return { source: 'cloud-absent', profile: null, revision: 0, token };
+      const revision = data.revision;
+      if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 1) {
+        // A row without a usable revision cannot be saved over: every write
+        // would have to guess what it is overwriting, which is the exact
+        // failure CAS exists to remove. Fail closed rather than fall back to a
+        // blind write. (Reachable only against a backend that has not applied
+        // migration 027.)
+        throw new Error('Failed to load profile: stored row has no usable revision');
+      }
+      const profile = (data.profile_data as Record<string, unknown>) ?? {};
+      return { source: 'cloud', profile, revision, token };
+    } catch (err) {
+      // Ownership is decided FIRST, then the error is interpreted.
+      //
+      // An already-scoped failure — including everything notReadyFor decided
+      // above — is passed through with the token it was raised with.
+      // Re-wrapping would replace whoever actually owned it.
+      if (isOwnerScopedLoadError(err)) throw err;
+      // OWNER-CURRENTNESS decides, not realm validity. A read abandoned
+      // because somebody else took the browser over belongs to nobody, and
+      // tagging it with this token would hand a superseded screen a
+      // capability it must never get. But an owner who is still exactly
+      // current and has merely lost the proof that this browser's data is
+      // theirs has a failure of their OWN — reported, or the screen they are
+      // looking at waits on a spinner forever.
+      if (!isTokenOwnerStillCurrent(token)) throw new OwnerNotReadyError();
+      throw new OwnerScopedLoadError(token, err);
+    }
   })();
+
+  inflightLoadProfile.set(key, promise);
   try {
-    return await inflightLoadProfile;
+    return await promise;
+  } catch (err) {
+    // A FAILED read is dropped from the dedup map immediately, not a
+    // macrotask later: a same-uid re-observation (TOKEN_REFRESHED after a
+    // grant is redeemed, a readiness recovery) does not advance the epoch,
+    // so the retry it triggers hashes to this very key — and would be
+    // handed back the rejection it is retrying.
+    if (inflightLoadProfile.get(key) === promise) inflightLoadProfile.delete(key);
+    throw err;
   } finally {
     // Clear after the current burst settles so a future explicit
     // re-fetch (e.g. after auth.uid() changes on this tab) goes to
     // the network again instead of getting a stale result.
-    setTimeout(() => { inflightLoadProfile = null; }, 0);
+    setTimeout(() => {
+      if (inflightLoadProfile.get(key) === promise) inflightLoadProfile.delete(key);
+    }, 0);
   }
 }
 
+// getFavorites is not a pure read: on success it backfills local-only ids up
+// to the remote table and mirrors the merged result back into the local
+// fallback. Both are private-write side effects (RLS protects the remote
+// table but nothing protects the browser fallback), so this function
+// captures its OWN owner token at invocation and re-validates it — using
+// isOwnerTokenValid directly, not a throw, since a read degrading to
+// "local-only for now" is the honest answer to "I can no longer trust this
+// in-flight read for the current identity" — immediately before every
+// side-effecting step, exactly like a write helper.
 export async function getFavorites(): Promise<Set<string>> {
-  const local = readFavFallback();
+  let token = captureOwnerToken();
+  let local = readFavFallback();
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) {
+    if (token.uid !== null) {
+      // A previously-KNOWN identity changed mid-flight — a genuine
+      // abandonment. Never retried here; stays local-only.
+      return readFavFallback();
+    }
+    // token.uid === null: nothing had been resolved yet at capture time,
+    // so this isn't abandoning a known identity — it's the browser's
+    // first-ever resolution, which ensureAnonSession above just completed.
+    // A null token is never a wildcard for a WRITE, but for a READ there
+    // is no cross-account corruption risk in continuing under the
+    // freshly-established identity — refusing to would silently omit
+    // every server-side favorite on the very first load. Only continue if
+    // the shared primitive's CURRENT state still exactly matches what was
+    // just resolved (no further race since) — no retry loop beyond this
+    // one immediate re-check.
+    const freshToken = captureOwnerToken();
+    if (!isOwnerTokenValid(freshToken, deviceId)) return readFavFallback();
+    token = freshToken;
+    local = readFavFallback(); // re-read: identity-owner's sync may have run since the read above
+  }
   if (!deviceId) {
     return local;
   }
@@ -962,6 +1514,7 @@ export async function getFavorites(): Promise<Set<string>> {
     .from('favorites')
     .select('opportunity_id')
     .eq('device_id', deviceId);
+  if (!isOwnerTokenValid(token, deviceId)) return readFavFallback();
 
   if (error || !data) {
     console.warn('[ofe] getFavorites failed, using local fallback:', error?.message);
@@ -975,28 +1528,36 @@ export async function getFavorites(): Promise<Set<string>> {
   if (toPush.length > 0) {
     const rows = toPush.map(opportunity_id => ({ device_id: deviceId, opportunity_id }));
     const { error: insErr } = await supabase.from('favorites').insert(rows);
+    if (!isOwnerTokenValid(token, deviceId)) return readFavFallback();
     if (!insErr) {
       toPush.forEach(id => remote.add(id));
-      writeFavFallback(new Set());
+      writeFavFallback(new Set(), token);
     } else {
       console.warn('[ofe] favorites backfill failed:', insErr.message);
     }
   } else if (local.size > 0) {
-    writeFavFallback(new Set());
+    writeFavFallback(new Set(), token);
   }
 
-  writeFavFallback(remote);
+  writeFavFallback(remote, token);
   setStorageStatus('synced');
   return remote;
 }
 
-export async function toggleFavorite(opportunityId: string, isFaved: boolean): Promise<boolean> {
-  const local = readFavFallback();
-  if (isFaved) local.delete(opportunityId); else local.add(opportunityId);
-  writeFavFallback(local);
-
+export async function toggleFavorite(
+  opportunityId: string,
+  isFaved: boolean,
+  token: OwnerToken,
+): Promise<boolean> {
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+
   if (!deviceId) {
+    // Unconfigured Supabase / no session at all — local-only is the only
+    // possible storage, and the token is already confirmed valid for it.
+    const local = readFavFallback();
+    if (isFaved) local.delete(opportunityId); else local.add(opportunityId);
+    writeFavFallback(local, token);
     return !isFaved;
   }
 
@@ -1006,8 +1567,20 @@ export async function toggleFavorite(opportunityId: string, isFaved: boolean): P
       .delete()
       .eq('device_id', deviceId)
       .eq('opportunity_id', opportunityId);
+    // Re-validate AFTER the remote round-trip, before resolving EITHER
+    // outcome: if identity changed while this request was in flight, the
+    // remote write may have genuinely landed for the OLD identity, but a
+    // caller now rendering a different account/target must never be told
+    // "removed" or "here is your persistence error" (which a caller could
+    // act on with a stale-context degrade write) for a result that no
+    // longer belongs to it. A caller's own generation guard is
+    // defense-in-depth, not the only proof.
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
     if (error) {
       console.warn('[ofe] favorite delete failed:', error.message);
+      const local = readFavFallback();
+      local.delete(opportunityId);
+      writeFavFallback(local, token);
       setStorageStatus('local-only', error.message);
     } else {
       setStorageStatus('synced');
@@ -1018,12 +1591,16 @@ export async function toggleFavorite(opportunityId: string, isFaved: boolean): P
   const { error } = await supabase
     .from('favorites')
     .insert({ device_id: deviceId, opportunity_id: opportunityId });
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   // 23505 = unique_violation: the favorite row already exists (double-click,
   // or a retry of a request that actually landed) — an idempotent success,
   // exactly like followProfessor. The cloud row and local mirror already
   // agree, so downgrading to 'local-only' here would be a false signal.
   if (error && error.code !== '23505') {
     console.warn('[ofe] favorite insert failed:', error.message);
+    const local = readFavFallback();
+    local.add(opportunityId);
+    writeFavFallback(local, token);
     setStorageStatus('local-only', error.message);
   } else {
     setStorageStatus('synced');
@@ -1154,73 +1731,6 @@ export async function submitFeedback(input: FeedbackSubmission): Promise<Feedbac
   return { ok: false, reason: 'error' };
 }
 
-// Concierge manual-payment orders (migration 019). The client may only
-// INSERT its own pending order and SELECT its own rows — every status
-// transition happens server-side (mark-paid-claimed + admin confirm).
-export interface OrderRow {
-  id: string;
-  package: string;
-  amount_cents: number;
-  currency: string;
-  status: 'pending' | 'awaiting_confirm' | 'paid' | 'cancelled' | 'refunded';
-  channel: string;
-  created_at: string;
-  paid_at: string | null;
-}
-
-export async function createOrder(
-  pkg: { id: string; amountCents: number; currency: string },
-): Promise<OrderRow | null> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return null;
-
-  const { data, error } = await supabase
-    .from('orders')
-    .insert({
-      device_id: deviceId,
-      package: pkg.id,
-      amount_cents: pkg.amountCents,
-      currency: pkg.currency,
-      channel: 'manual',
-    })
-    .select()
-    .single();
-  if (error || !data) {
-    console.warn('[ofe] order insert failed:', error?.message);
-    return null;
-  }
-  return data as OrderRow;
-}
-
-export async function getMyOrders(): Promise<OrderRow[]> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return [];
-
-  const { data, error } = await supabase
-    .from('orders')
-    .select('id,package,amount_cents,currency,status,channel,created_at,paid_at')
-    .order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return data as OrderRow[];
-}
-
-export async function claimOrderPaid(orderId: string): Promise<boolean> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) return false;
-
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
-  try {
-    const res = await fetch(`${apiBase}/orders/${orderId}/mark-paid-claimed`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export type InteractionType = 'contacted' | 'applied' | 'replied' | 'rejected' | 'interviewing' | 'dismissed';
 
 export interface InteractionRecord {
@@ -1231,43 +1741,109 @@ export interface InteractionRecord {
   updated_at?: string;
 }
 
-/**
- * Upsert the user's status for an opportunity.
- *
- * W14 truthful-write contract: the upsert result is checked and failure
- * THROWS — a resolved promise means the status row is actually persisted.
- * Callers own the failure UX (revert the optimistic status on catch instead
- * of flashing a false "Saved"). Throws 'session-unavailable' when no session
- * could be established (the write never happened).
- */
+// Thrown by every Tracker helper on a resolvable-but-unusable identity
+// (Supabase unconfigured, anon sign-in failed): Tracker has no local
+// fallback, so unlike favorites this must never degrade to a silent no-op.
+class TrackerStorageUnavailableError extends Error {
+  constructor() {
+    super('interaction persistence is unavailable');
+    this.name = 'TrackerStorageUnavailableError';
+  }
+}
+
 export async function trackInteraction(
   opportunityId: string,
   type: InteractionType,
+  token: OwnerToken,
 ): Promise<void> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) {
-    // Designed local-only mode (unconfigured Supabase): the status lives in
-    // client state for this session and the storage banner discloses that
-    // nothing syncs — a no-op resolve keeps the UI functional, matching the
-    // documented degraded-mode contract. A CONFIGURED environment with no
-    // session is a real failure: throw so callers revert optimistic state.
-    if (!SUPABASE_CONFIGURED) return;
-    throw new Error('session-unavailable');
-  }
+  return enqueuePrivateWrite(token, opportunityId, async () => {
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new TrackerStorageUnavailableError();
 
-  const { error } = await supabase.from('interactions').upsert(
-    {
-      device_id: deviceId,
-      opportunity_id: opportunityId,
-      interaction_type: type,
+    const { error } = await supabase.from('interactions').upsert(
+      {
+        device_id: deviceId,
+        opportunity_id: opportunityId,
+        interaction_type: type,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'device_id,opportunity_id' },
+    );
+    // Re-validate AFTER the remote round-trip, before treating either
+    // outcome as final: if identity changed while this request was in
+    // flight, the write may have genuinely landed for the OLD identity,
+    // but the current caller (now rendering a different account/target)
+    // must never be told "success" or "here is your persistence error" —
+    // both would be acted on by a context this result no longer belongs
+    // to. A caller's own generation guard is defense-in-depth, not the
+    // only proof.
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error) throw new Error(error.message);
+  });
+}
+
+/**
+ * Atomic Tracker "dismiss": sets interaction_type='dismissed' and
+ * (optionally, in the SAME statement) the final notes text, in exactly
+ * ONE enqueuePrivateWrite call.
+ *
+ * This exists because chaining two separately-awaited helpers —
+ * updateInteractionDetails(notes) then trackInteraction('dismissed') — has
+ * a real race: the second call is not even INVOKED (let alone enqueued)
+ * until the first one's promise resolves, leaving a window between them
+ * where a DIFFERENT surface acting on the SAME (owner, opportunityId) —
+ * e.g. the user hits Back to /results mid-flush and clicks a different
+ * status there — can enqueue its own write and land BETWEEN the two,
+ * ending up overridden by the stale dismiss's second call once it finally
+ * gets its turn. Worse, trackInteraction UPSERTs: if that intervening
+ * action was a REMOVE (a real DELETE), the stale dismiss's late upsert
+ * would silently resurrect the row.
+ *
+ * A single atomic call closes both holes: it reserves its ONE queue slot
+ * the instant it's invoked (nothing can be interleaved inside it), and it
+ * uses UPDATE, not upsert — so if the row is gone by the time this runs
+ * (a REMOVE beat it into the queue), it fails closed on the exact-one
+ * check below instead of inserting a fresh row.
+ *
+ * Requires an EXACT one-row, matching-id match (like
+ * updateInteractionDetails, unlike removeInteraction's DELETE-is-
+ * idempotent stance) — a Tracker row being dismissed is known to already
+ * exist; zero rows means something else (a concurrent REMOVE) beat this
+ * to the row, and resurrecting it via upsert would be exactly the bug
+ * this helper exists to prevent.
+ */
+export async function dismissInteraction(
+  opportunityId: string,
+  /** undefined = leave notes untouched; string | null = set it in the
+   *  SAME statement as the status change. */
+  notes: string | null | undefined,
+  token: OwnerToken,
+): Promise<void> {
+  return enqueuePrivateWrite(token, opportunityId, async () => {
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new TrackerStorageUnavailableError();
+
+    const patch: { interaction_type: InteractionType; updated_at: string; notes?: string | null } = {
+      interaction_type: 'dismissed',
       updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'device_id,opportunity_id' },
-  );
-  if (error) {
-    console.warn('[ofe] trackInteraction failed:', error.message);
-    throw new Error(`interaction-save-failed: ${error.message}`);
-  }
+    };
+    if (notes !== undefined) patch.notes = notes;
+
+    const { data, error } = await supabase
+      .from('interactions')
+      .update(patch)
+      .eq('device_id', deviceId)
+      .eq('opportunity_id', opportunityId)
+      .select('opportunity_id');
+
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error) throw new Error(error.message);
+    if (!data || data.length !== 1 || data[0].opportunity_id !== opportunityId) {
+      throw new Error('dismissInteraction: expected exactly one matching interaction row');
+    }
+  });
 }
 
 /**
@@ -1281,29 +1857,51 @@ export async function trackInteraction(
 export async function updateInteractionDetails(
   opportunityId: string,
   patch: { notes?: string | null; remind_at?: string | null; last_contacted_at?: string | null },
-): Promise<boolean> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) {
-    // Local-only mode (unconfigured): the edit "landed" as far as this mode
-    // can land anything — the banner discloses non-sync, so the panel's
-    // Saved indicator is not a sync claim here. Configured-but-no-session
-    // stays a failed save.
-    return !SUPABASE_CONFIGURED ? true : false;
-  }
+  token: OwnerToken,
+): Promise<void> {
+  return enqueuePrivateWrite(token, opportunityId, async () => {
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new TrackerStorageUnavailableError();
 
-  const { error } = await supabase
-    .from('interactions')
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq('device_id', deviceId)
-    .eq('opportunity_id', opportunityId);
+    // .select() turns the UPDATE into a RETURNING query — without it, an
+    // UPDATE that matches ZERO rows (the interaction was deleted, or the
+    // device_id/opportunity_id pair never existed) succeeds with
+    // {error: null}, indistinguishable from a real update. A caller
+    // treating that as success would show "Saved" for a write that never
+    // touched anything.
+    const { data, error } = await supabase
+      .from('interactions')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('device_id', deviceId)
+      .eq('opportunity_id', opportunityId)
+      .select('opportunity_id');
 
-  if (error) {
-    console.warn('Failed to update interaction details:', error.message);
-    return false;
-  }
-  return true;
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error) throw new Error(error.message);
+    // Exactly one row, matching the requested id — not merely "at least
+    // one". (device_id, opportunity_id) is a unique key, so a correct
+    // update can only ever affect one row; anything else (zero, more than
+    // one, or a returned id that doesn't match what was asked for) is a
+    // contract violation on the anomaly path, never the normal one, and
+    // must fail closed rather than be waved through as "some rows came
+    // back so it must be fine." Unlike removeInteraction, this is NOT
+    // idempotent-safe to treat a mismatch as success: new data with
+    // nowhere confirmed to have landed is a real failure.
+    if (!data || data.length !== 1 || data[0].opportunity_id !== opportunityId) {
+      throw new Error('updateInteractionDetails: expected exactly one matching interaction row');
+    }
+  });
 }
 
+// !deviceId (Supabase unconfigured / anon sign-in permanently failed) is a
+// confirmed local-only degrade: there is no device_id a server row could be
+// scoped to, so "no interactions" is true, not a guess. A query error is
+// the opposite — a row may well exist and we simply failed to read it — so
+// it throws rather than silently degrading to the same empty result. A
+// caller that swallowed this into "no interactions" would let a mutation
+// built on that map (track/remove) blindly overwrite a real status it
+// simply failed to see (see use-opportunity-detail.ts's interactionError).
 export async function getInteractions(): Promise<Map<string, InteractionType>> {
   const deviceId = await ensureAnonSession();
   if (!deviceId) return new Map();
@@ -1313,9 +1911,9 @@ export async function getInteractions(): Promise<Map<string, InteractionType>> {
     .select('opportunity_id, interaction_type')
     .eq('device_id', deviceId);
 
-  if (error || !data) return new Map();
+  if (error) throw new Error(error.message);
   return new Map(
-    data.map((r: { opportunity_id: string; interaction_type: InteractionType }) => [
+    (data ?? []).map((r: { opportunity_id: string; interaction_type: InteractionType }) => [
       r.opportunity_id,
       r.interaction_type,
     ]),
@@ -1350,11 +1948,7 @@ export async function getInteractionsFull(): Promise<Map<string, InteractionReco
     .select('opportunity_id, interaction_type, notes, remind_at, last_contacted_at, updated_at')
     .eq('device_id', deviceId);
 
-  if (error) {
-    console.warn('[ofe] getInteractionsFull failed:', error.message);
-    setStorageStatus('local-only', error.message);
-    throw new Error(`interactions-load-failed: ${error.message}`);
-  }
+  if (error) throw new Error(error.message);
   return new Map(
     (data ?? []).map((r: {
       opportunity_id: string;
@@ -1389,7 +1983,8 @@ export async function getInteractionDetail(
     .eq('opportunity_id', opportunityId)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) throw new Error(error.message);
+  if (!data) return null; // confirmed absence — maybeSingle found no row, not a failure to look
   return {
     type: data.interaction_type,
     notes: data.notes ?? undefined,
@@ -1399,10 +1994,75 @@ export async function getInteractionDetail(
   };
 }
 
-export async function removeInteraction(opportunityId: string): Promise<void> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return;
-  await supabase.from('interactions').delete().eq('device_id', deviceId).eq('opportunity_id', opportunityId);
+export async function removeInteraction(opportunityId: string, token: OwnerToken): Promise<void> {
+  return enqueuePrivateWrite(token, opportunityId, async () => {
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new TrackerStorageUnavailableError();
+    const { error } = await supabase
+      .from('interactions')
+      .delete()
+      .eq('device_id', deviceId)
+      .eq('opportunity_id', opportunityId);
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error) throw new Error(error.message);
+    // Deliberately NOT checking for a zero-row match the way
+    // updateInteractionDetails does — deletion is idempotent, and a
+    // zero-row DELETE (query succeeded, nothing matched) most likely means
+    // an EARLIER attempt's request already landed but its response was
+    // lost (a network timeout, say) before the caller ever learned it
+    // succeeded. The target state — this row absent — is already true
+    // either way. Treating it as a failure would strand a Retry on a row
+    // that can never reappear, looping forever on a delete that already
+    // happened. An UPDATE has no such idempotent reading: a zero-row match
+    // there means the caller's new data was silently dropped nowhere, a
+    // real failure, not a no-op.
+  });
+}
+
+// Atomic replacement for the old client read (getInteractionDetail) ->
+// conditional upsert (trackInteraction) -> metadata update
+// (updateInteractionDetails) Cold Email confirm flow, which was TOCTOU: two
+// concurrent confirms (or a confirm racing a manual status change) could
+// interleave their reads and writes and silently downgrade an advanced
+// status back to 'applied'. See supabase/migrations/025_confirm_interaction_
+// contact.sql — one INSERT ... ON CONFLICT DO UPDATE that only ever creates
+// the row as 'applied' or refreshes last_contacted_at (+ an explicitly
+// supplied remind_at); it can never touch interaction_type or notes, so an
+// existing further-along status and any notes survive byte-for-byte.
+export async function confirmInteractionContact(
+  opportunityId: string,
+  token: OwnerToken,
+  remindAt?: string | null,
+): Promise<InteractionRecord> {
+  return enqueuePrivateWrite(token, opportunityId, async () => {
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new TrackerStorageUnavailableError();
+
+    const { data, error } = await supabase.rpc('confirm_interaction_contact', {
+      p_expected_device_id: deviceId,
+      p_opportunity_id: opportunityId,
+      p_remind_at: remindAt ?? null,
+    });
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error) throw new Error(error.message);
+    const row = (Array.isArray(data) ? data[0] : data) as {
+      interaction_type: InteractionType;
+      notes: string | null;
+      remind_at: string | null;
+      last_contacted_at: string | null;
+      updated_at: string | null;
+    } | undefined;
+    if (!row) throw new Error('confirm_interaction_contact returned no row');
+    return {
+      type: row.interaction_type,
+      notes: row.notes ?? undefined,
+      remind_at: row.remind_at ?? undefined,
+      last_contacted_at: row.last_contacted_at ?? undefined,
+      updated_at: row.updated_at ?? undefined,
+    };
+  });
 }
 
 export interface StatusChange {

@@ -22,6 +22,7 @@ import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import { getOpportunitiesByIds } from '@/lib/api';
 import { daysUntil } from '@/lib/match-utils';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { collectReminders, type ReminderInfo } from '@/lib/reminders';
 import { getFavorites, getInteractionsFull } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
@@ -339,7 +340,7 @@ export default function DashboardPage() {
           <ReminderContent state={reminders} t={t} />
         </DashboardSection>
 
-        <ProfessorUpdatesSection />
+        {RELEASE_SCOPE.professorSignals && <ProfessorUpdatesSection />}
 
         <DashboardSection
           icon={BarChart3}
@@ -360,28 +361,30 @@ export default function DashboardPage() {
           <TrackerContent state={tracker} t={t} />
         </DashboardSection>
 
-        <section aria-labelledby="dashboard-roadmap-cta">
-          <Link
-            href="/roadmap"
-            className="group flex items-center gap-4 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
-              <GraduationCap className="h-5 w-5 text-violet-700" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 id="dashboard-roadmap-cta" className="text-sm font-bold text-gray-950">
-                {t('dashboard.roadmapCta.title')}
-              </h2>
-              <p className="mt-0.5 text-[13px] leading-5 text-gray-500">
-                {t('dashboard.roadmapCta.body')}
-              </p>
-            </div>
-            <ArrowRight
-              className="h-4 w-4 shrink-0 text-violet-500 transition-transform group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
-          </Link>
-        </section>
+        {RELEASE_SCOPE.roadmap && (
+          <section aria-labelledby="dashboard-roadmap-cta">
+            <Link
+              href="/roadmap"
+              className="group flex items-center gap-4 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                <GraduationCap className="h-5 w-5 text-violet-700" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 id="dashboard-roadmap-cta" className="text-sm font-bold text-gray-950">
+                  {t('dashboard.roadmapCta.title')}
+                </h2>
+                <p className="mt-0.5 text-[13px] leading-5 text-gray-500">
+                  {t('dashboard.roadmapCta.body')}
+                </p>
+              </div>
+              <ArrowRight
+                className="h-4 w-4 shrink-0 text-violet-500 transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </Link>
+          </section>
+        )}
       </div>
     </div>
   );

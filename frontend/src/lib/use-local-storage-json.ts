@@ -1,6 +1,16 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import {
+  isLocalOwnerReadyNow,
+  isUserScopedStorageKey,
+  onLocalOwnerStateChange,
+  readUserScopedEntry,
+  readUserScopedRaw,
+  removeUserScopedRaw,
+  writeUserScopedRaw,
+  type OwnerToken,
+} from './identity-owner';
 
 type Transformer = (value: unknown) => unknown;
 
@@ -45,10 +55,24 @@ export function readLocalStorageJSON(
     return transformer ? transformer(null) : null;
   }
   let raw: string | null;
-  try {
-    raw = window.localStorage.getItem(key);
-  } catch {
-    return transformer ? transformer(null) : null;
+  if (isUserScopedStorageKey(key)) {
+    // Local-owner readiness barrier: a USER_SCOPED key (PROFILE,
+    // CUSTOM_IMPORTS, FILTER_PRESETS, …) is only trustworthy once
+    // identity-owner.ts has VERIFIED it belongs to the current identity.
+    // readUserScopedRaw already returns null for both "genuinely absent"
+    // and "not confirmed ready" — deliberately indistinguishable, and
+    // deliberately bypassing the cache entirely on a blocked read so a
+    // stale cached value from before the block can never leak either.
+    raw = readUserScopedRaw(key);
+    if (raw === null && !isLocalOwnerReadyNow()) {
+      return transformer ? transformer(null) : null;
+    }
+  } else {
+    try {
+      raw = window.localStorage.getItem(key);
+    } catch {
+      return transformer ? transformer(null) : null;
+    }
   }
   const cached = snapshotCache.get(key);
   if (
@@ -71,10 +95,20 @@ export function readLocalStorageJSON(
   return transformed;
 }
 
+// Subscribes to BOTH the native cross-tab 'storage' event AND local-owner
+// readiness transitions (identity-owner.ts's onLocalOwnerStateChange) — a
+// blocked->ready transition (e.g. the sweep for a new identity finishes)
+// must re-invoke every mounted reader's snapshot function exactly like a
+// real storage write would, even though no individual key's value changed
+// at that instant (the READABILITY of the whole USER_SCOPED registry did).
 function subscribe(onStoreChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {};
   window.addEventListener('storage', onStoreChange);
-  return () => window.removeEventListener('storage', onStoreChange);
+  const unsubscribeReadiness = onLocalOwnerStateChange(onStoreChange);
+  return () => {
+    window.removeEventListener('storage', onStoreChange);
+    unsubscribeReadiness();
+  };
 }
 
 // Companion writer for useLocalStorageJSON readers. The native 'storage'
@@ -84,19 +118,58 @@ function subscribe(onStoreChange: () => void): () => void {
 // the SAME tab need to react (e.g. /favorites re-rendering after a save
 // click on /import).
 //
+// `token` — captured via captureOwnerToken() at the moment the caller's
+// write INTENT began (a debounce timer's creation, a click handler),
+// never re-captured just before this call — is REQUIRED for every
+// USER_SCOPED key (PROFILE, CUSTOM_IMPORTS, FILTER_PRESETS, …): the write
+// is silently dropped if the token is no longer current (see
+// writeUserScopedRaw/removeUserScopedRaw), and in that case NO synthetic
+// 'storage' event fires either — nothing actually changed, so nothing
+// should announce a change. Device-scoped keys (none currently route
+// through this generic function, but the type stays permissive) keep the
+// original unconditional behavior and always dispatch.
+//
 // Passing null removes the key. Throws are swallowed (quota, private
 // browsing); callers should treat as best-effort persistence.
-export function writeLocalStorageJSON<T>(key: string, value: T | null): void {
-  if (typeof window === 'undefined') return;
+//
+// Returns whether the write actually happened: for a USER_SCOPED key, the
+// underlying writeUserScopedRaw/removeUserScopedRaw result (false on a
+// stale/no-longer-current token — no synthetic event fires either, since
+// nothing changed); for a device-scoped key, true on success and false on
+// a thrown quota/storage error. Callers with an additional side effect
+// beyond the write itself (clearing a derived cache, broadcasting a custom
+// event) MUST check this return value before performing that side effect —
+// see persistHomeSchool's own doc comment for why "the write no-opped" and
+// "the side effect still fired" must never diverge.
+export function writeLocalStorageJSON<T>(key: string, value: T | null, token: OwnerToken): boolean {
+  if (typeof window === 'undefined') return false;
+  let serialized: string | null;
   try {
-    if (value === null) {
+    // A circular value or a BigInt throws SYNCHRONOUSLY and uncaught —
+    // this must degrade to a reported failure like any other write
+    // failure, not crash the caller.
+    serialized = value === null ? null : JSON.stringify(value);
+  } catch {
+    return false;
+  }
+  if (isUserScopedStorageKey(key)) {
+    const wrote = serialized === null
+      ? removeUserScopedRaw(key, token)
+      : writeUserScopedRaw(key, serialized, token);
+    if (wrote) window.dispatchEvent(new StorageEvent('storage', { key }));
+    return wrote;
+  }
+  try {
+    if (serialized === null) {
       window.localStorage.removeItem(key);
     } else {
-      window.localStorage.setItem(key, JSON.stringify(value));
+      window.localStorage.setItem(key, serialized);
     }
     window.dispatchEvent(new StorageEvent('storage', { key }));
+    return true;
   } catch {
     /* localStorage unavailable / quota exceeded */
+    return false;
   }
 }
 
@@ -113,10 +186,11 @@ export function writeLocalStorageJSON<T>(key: string, value: T | null): void {
 // already-validated shape (no need for `?? []` + a parallel parser at the
 // call site). See readLocalStorageJSON for the transformer contract.
 //
-// Subscribes to cross-tab 'storage' events. Same-tab writes by other code
-// paths do NOT trigger re-renders here (browsers don't fire 'storage' for
-// the writing tab) — use writeLocalStorageJSON to dispatch a synthetic
-// event so same-tab readers re-render.
+// Subscribes to cross-tab 'storage' events AND local-owner readiness
+// transitions (see subscribe above). Same-tab writes by other code paths
+// do NOT trigger re-renders here (browsers don't fire 'storage' for the
+// writing tab) — use writeLocalStorageJSON to dispatch a synthetic event
+// so same-tab readers re-render.
 export function useLocalStorageJSON<T>(key: string): T | null;
 export function useLocalStorageJSON<T, U>(
   key: string,
@@ -134,22 +208,40 @@ export function useLocalStorageJSON(
 }
 
 // Tri-state existence probe for "is this key set?" decisions.
-//   undefined → still hydrating (don't act yet)
+//   undefined → still hydrating OR (for a USER_SCOPED key) local ownership
+//               is not yet confirmed — callers must not act on this as
+//               "confirmed absent" any more than they would during SSR
 //   true      → key is present in localStorage
 //   false     → confirmed absent
 // Returns undefined during SSR + first client render so callers can
 // distinguish "not yet known" from "confirmed missing" —
 // useLocalStorageJSON returns null for both, which conflates the two
 // and causes redirect-on-hydrate races for pages that bounce to '/'
-// when storage is empty.
+// when storage is empty. A blocked->ready readiness transition (see
+// subscribe above) re-invokes this and flips undefined to the real
+// true/false the moment ownership is confirmed — no separate rehydrate
+// logic needed, the same useSyncExternalStore mechanism already does it.
 export function useHasLocalStorageKey(key: string): boolean | undefined {
   return useSyncExternalStore<boolean | undefined>(
     subscribe,
     () => {
+      if (isUserScopedStorageKey(key)) {
+        // Through the authority, never through a raw getItem: a private key's
+        // physical name belongs to the owner's generation, so a direct read
+        // here would probe a name nobody is using and report every value as
+        // missing. The tri-state maps exactly onto this hook's own contract —
+        // `unavailable` is "we don't know", which is not "confirmed absent".
+        const entry = readUserScopedEntry(key);
+        if (entry.status === 'unavailable') return undefined;
+        return entry.status === 'present';
+      }
       try {
         return window.localStorage.getItem(key) !== null;
       } catch {
-        return false;
+        // A throw (e.g. Safari private-mode storage denial) means "we
+        // don't actually know," not "confirmed absent" — false would tell
+        // a caller a key is definitely missing when access simply failed.
+        return undefined;
       }
     },
     () => undefined,

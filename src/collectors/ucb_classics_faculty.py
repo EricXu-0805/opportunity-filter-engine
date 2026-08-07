@@ -20,7 +20,13 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from . import ucb_common
-from .ucb_common import NOISE_EMAILS, dedup_by_profile_url, fetch_soup, normalize_faculty
+from .ucb_common import (
+    dedup_by_profile_url,
+    fetch_soup,
+    normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +83,19 @@ def _scrape_classics_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
         if not name or len(name) < 3:
             continue
         person: dict = {"name": name, "url": urljoin(base, href)}
-        m = _EMAIL_RE.search(row.get_text(" ", strip=True))
-        if m and m.group(0).lower() not in NOISE_EMAILS:
-            person["email"] = m.group(0).lower()
+        email = unique_bound_container_contact(
+            row,
+            CLASSICS_CONFIG,
+            nested_record_selector="div.views-row",
+        )
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                CLASSICS_CONFIG,
+                source_soup=soup,
+                requested_url=CLASSICS_CONFIG["url"],
+            )
         faculty.append(person)
     logger.info(f"  Found {len(faculty)} AGRS (Classics) faculty")
     return faculty

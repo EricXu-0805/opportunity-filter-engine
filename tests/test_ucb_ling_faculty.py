@@ -17,7 +17,12 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.collectors.ucb_common import dedup_by_profile_url, normalize_faculty
+from backend.lib.contact_visibility import verified_send_target
+from src.collectors.ucb_common import (
+    _mark_fetched_soup_observation,
+    dedup_by_profile_url,
+    normalize_faculty,
+)
 from src.collectors.ucb_ling_faculty import LING_CONFIG, _scrape_ling_faculty_list
 
 
@@ -43,6 +48,11 @@ LISTING_HTML = f"""
 
 def _scrape():
     soup = BeautifulSoup(LISTING_HTML, "html.parser")
+    _mark_fetched_soup_observation(
+        soup,
+        requested_url=LING_CONFIG["url"],
+        final_url=LING_CONFIG["url"],
+    )
     return _scrape_ling_faculty_list(soup, LING_CONFIG["base"], LING_CONFIG["url"])
 
 
@@ -50,7 +60,7 @@ def test_parses_name_title_email_research():
     people = _scrape()
     begus = next(p for p in people if p["name"] == "Gašper Beguš")
     assert begus["title"] == "Associate Professor of Linguistics"
-    assert begus["email"] == "begus@berkeley.edu"
+    assert begus["_contact_claim"]["contact_email"] == "begus@berkeley.edu"
     assert "phonology" in begus["research_areas"].lower()
     assert "Email:" not in begus["research_areas"]
 
@@ -86,6 +96,7 @@ def test_output_shape_with_email():
     assert opp["organization"] == "University of California, Berkeley"
     assert opp["id"].startswith("faculty-ucb-ling-")
     assert opp["contact_email"] == "begus@berkeley.edu"
+    assert verified_send_target(opp) == "begus@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
     assert opp["eligibility"]["majors"] == LING_CONFIG["majors"]
     assert opp["on_campus"] is False
@@ -100,6 +111,33 @@ def test_lite_record_falls_back_to_broad_keyword():
     assert opp["contact_email"] is None
     assert opp["metadata"]["confidence_score"] == 0.5
     assert opp["keywords"] == ["linguistics"]
+
+
+def test_unrelated_later_table_cannot_reuse_previous_professor_heading():
+    html = (
+        _person(
+            "Ada Lovelace",
+            "Professor Email: ada@berkeley.edu Research and teaching: Computing",
+            None,
+        )
+        + "<div>Unrelated content</div><table><tr><td>"
+        "Email: helper.person@berkeley.edu"
+        "</td></tr></table>"
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    _mark_fetched_soup_observation(
+        soup,
+        requested_url=LING_CONFIG["url"],
+        final_url=LING_CONFIG["url"],
+    )
+    people = _scrape_ling_faculty_list(
+        soup,
+        LING_CONFIG["base"],
+        LING_CONFIG["url"],
+    )
+    assert [person["name"] for person in people] == ["Ada Lovelace"]
+    opp = normalize_faculty(people[0], LING_CONFIG)
+    assert verified_send_target(opp) == "ada@berkeley.edu"
 
 
 def test_known_record_id_is_byte_stable():

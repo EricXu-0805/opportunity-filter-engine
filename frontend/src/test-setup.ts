@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
+import { configure } from '@testing-library/react';
+
+// waitFor's 1s default is calibrated to a warm laptop, not a cold shared CI
+// runner — the debounce-and-settle suites (1.5s autosave timers + held
+// promises) intermittently outlive it there and fail with the PREVIOUS
+// state ('saving' where 'cloud-failed' is a beat away). 5s changes nothing
+// on a fast machine (waitFor returns the moment the condition passes) and
+// absorbs runner jitter on a slow one.
+configure({ asyncUtilTimeout: 5000 });
+
 import { cleanup } from '@testing-library/react';
 
 function makeMemoryStorage(): Storage {
@@ -14,21 +24,68 @@ function makeMemoryStorage(): Storage {
   };
 }
 
+/**
+ * jsdom has no Web Locks. Every browser this ships to does (Chrome 69,
+ * Firefox 96, Safari 15.4), and the private-storage authority treats their
+ * absence as "this browser cannot serialize, so it gets no private
+ * persistence at all" — the correct production rule, and a pure environment
+ * artefact here. Supplying a real serial implementation keeps every suite
+ * about its own subject; the fail-closed path has its own fixture that
+ * deliberately removes this again.
+ */
+function installWebLocks(): void {
+  let held = false;
+  const waiting: Array<() => void> = [];
+  const start = (
+    fn: () => unknown,
+    resolve: (v: unknown) => void,
+    reject: (e: unknown) => void,
+  ): void => {
+    held = true;
+    const done = (): void => { held = false; waiting.shift()?.(); };
+    let out: unknown;
+    try {
+      out = fn();
+    } catch (err) {
+      done();
+      reject(err);
+      return;
+    }
+    Promise.resolve(out).then(
+      (v) => { done(); resolve(v); },
+      (e) => { done(); reject(e); },
+    );
+  };
+  Object.defineProperty(navigator, 'locks', {
+    configurable: true,
+    writable: true,
+    value: {
+      request: (_name: string, _opts: unknown, fn: () => unknown) => new Promise((resolve, reject) => {
+        if (held) waiting.push(() => start(fn, resolve, reject));
+        else start(fn, resolve, reject);
+      }),
+    },
+  });
+}
+
 if (typeof window !== 'undefined') {
-  const needsLocal = !window.localStorage || typeof window.localStorage.setItem !== 'function';
-  const needsSession = !window.sessionStorage || typeof window.sessionStorage.setItem !== 'function';
-  if (needsLocal) {
-    Object.defineProperty(window, 'localStorage', {
-      value: makeMemoryStorage(),
-      configurable: true,
-    });
-  }
-  if (needsSession) {
-    Object.defineProperty(window, 'sessionStorage', {
-      value: makeMemoryStorage(),
-      configurable: true,
-    });
-  }
+  installWebLocks();
+  // ALWAYS the memory storage, never jsdom's own. jsdom Storage instances
+  // route own-property definition through their named-properties proxy, so
+  // vi.spyOn(window.localStorage, 'setItem') stores the mock as a storage
+  // ITEM named "setItem" while the real method keeps running — a spy that
+  // silently intercepts nothing. Whether that happens depends on the
+  // jsdom/Node pairing (it did on CI's Node 24 and not on a local Node 25),
+  // which made the write-verification suites pass or fail by runtime
+  // version. A plain object storage is deterministically spyable everywhere.
+  Object.defineProperty(window, 'localStorage', {
+    value: makeMemoryStorage(),
+    configurable: true,
+  });
+  Object.defineProperty(window, 'sessionStorage', {
+    value: makeMemoryStorage(),
+    configurable: true,
+  });
 }
 
 beforeEach(() => {

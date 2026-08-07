@@ -26,6 +26,17 @@ const mockChat = vi.fn<
 const mockGetChatModels = vi.fn<() => Promise<{ id: string; label: string }[]>>();
 
 vi.mock('@/lib/api', () => ({
+  ApiError: class ApiError extends Error {
+    constructor(
+      public readonly status: number,
+      public readonly code: string,
+      message: string,
+      public readonly retryable: boolean,
+    ) {
+      super(message);
+      this.name = 'ApiError';
+    }
+  },
   chatWithOpportunity: (
     oppId: string,
     msg: string,
@@ -37,6 +48,7 @@ vi.mock('@/lib/api', () => ({
   getChatModels: () => mockGetChatModels(),
 }));
 
+import { ApiError } from '@/lib/api';
 import OpportunityChatbot from './OpportunityChatbot';
 
 const OPP: Opportunity = {
@@ -244,7 +256,14 @@ describe('OpportunityChatbot — error handling', () => {
   });
 
   it('shows the translated rate-limit message on a 429 instead of the raw API error', async () => {
-    mockChat.mockRejectedValue(new Error('API 429: {"detail":"Rate limit exceeded. Try again later."}'));
+    mockChat.mockRejectedValue(
+      new ApiError(
+        429,
+        'RATE_LIMITED',
+        'The service is busy. Please try again shortly.',
+        true,
+      ),
+    );
     render(<OpportunityChatbot opportunity={OPP} profile={null} />);
 
     const textarea = screen.getByPlaceholderText(/chatbot.placeholder/);
@@ -252,7 +271,7 @@ describe('OpportunityChatbot — error handling', () => {
     fireEvent.submit(textarea.closest('form')!);
 
     await waitFor(() => expect(screen.getByText(/chatbot.errorRateLimited/)).toBeInTheDocument());
-    expect(screen.queryByText(/API 429/)).toBeNull();
+    expect(screen.queryByText(/service is busy/i)).toBeNull();
   });
 
   it('falls back to the generic error message when the thrown value is not an Error', async () => {

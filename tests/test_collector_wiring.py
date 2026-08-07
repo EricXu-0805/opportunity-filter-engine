@@ -42,8 +42,8 @@ SCHOOLS_DIR = COLLECTORS_DIR / "schools"
 # silently in either direction.
 KNOWN_UNWIRED = {
     # -- engines / libraries / registries (consumed by wired collectors) --
+    "application_status",  # shared fail-closed status parser used by campus collectors
     "base",  # vestigial ABC interface; real convention is fetch_and_normalize/merge_into_processed
-    "ucb_sources",  # data registry consumed by ucb_campus
     # -- deliberately manual / CLI / API-driven (never on the weekly refresh) --
     "handshake",  # per-school login cookies expire in days; manual --school runs only
     "manual_importer",  # CLI import of hand-curated JSON/CSV entries
@@ -248,6 +248,7 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         "auto_tagger",
         "intl_reconciliation",
         "faculty_hygiene",  # post-processing pass (keyword clean + person dedup), not a source
+        "campus_discovery_quarantine",  # scoped post-processing migration, not a source
         "faculty_joint_collapse",  # post-enrichment ucb joint-appointment collapse pass, not a source
         "professor_tracking",  # post-write tracking-ledger derivation (W8), not a source
         # Run key, not a record source: ucb_campus records ship as

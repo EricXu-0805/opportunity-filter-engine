@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
@@ -16,13 +16,43 @@ vi.mock('next/navigation', () => ({
 }));
 
 import Header from './Header';
-import { STORAGE_KEYS } from '@/lib/storage-keys';
+import {
+  MATCH_VIEW_CONTRACT_VERSION,
+  clearMatchCache,
+  writeMatchCache,
+} from '@/lib/match-cache';
+import { advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode } from '@/lib/identity-owner';
 
 beforeEach(() => {
   pathnameRef.current = '/';
   try { sessionStorage.clear(); } catch { /* private mode */ }
   try { localStorage.clear(); } catch { /* private mode */ }
+  // identity-owner's module-level owner state is a singleton shared across
+  // every test in this file (no per-test module reset) — a prior test that
+  // advanced to a real, non-null uid (the identity-switch test below) would
+  // otherwise leak into the NEXT test's beforeEach, where enterLocalOnlyMode
+  // is a no-op whenever currentOwnerUid !== null. Force it back to null first
+  // so every test starts from the same known state regardless of order.
+  advanceOwnerEpoch(null);
+  // Header renders AccountMenu, which subscribes to the REAL (unconfigured)
+  // Supabase client's onAuthStateChange — that eventually reports a null
+  // session in this test environment, advancing the shared owner to null.
+  // Establishing the LOCAL-ONLY realm (rather than a fake specific uid)
+  // matches that null-uid resolution instead of racing against it.
+  enterLocalOnlyMode();
 });
+
+function seedMatchCache(): void {
+  writeMatchCache('x', false, {
+    total: 0,
+    high_priority: 0,
+    good_match: 0,
+    reach: 0,
+    low_fit: 0,
+    results: [],
+    contract_version: MATCH_VIEW_CONTRACT_VERSION,
+  }, captureOwnerToken());
+}
 
 describe('Header', () => {
   it('renders all nav labels in both desktop and mobile panels plus a language switcher', () => {
@@ -31,6 +61,12 @@ describe('Header', () => {
       expect(screen.getAllByText(key).length).toBeGreaterThanOrEqual(2);
     }
     expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('does not advertise dormant Fellowships or Roadmap routes', () => {
+    render(<Header />);
+    expect(screen.queryByText('nav.fellowships')).not.toBeInTheDocument();
+    expect(screen.queryByText('nav.roadmap')).not.toBeInTheDocument();
   });
 
   it('exposes a hamburger toggle that is initially collapsed', () => {
@@ -192,7 +228,7 @@ describe('Header', () => {
   });
 
   it('routes "Find Matches" to /results when a match cache is present', async () => {
-    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    seedMatchCache();
     render(<Header />);
     // Wait for the useEffect that reads sessionStorage to run.
     await new Promise((r) => setTimeout(r, 0));
@@ -206,7 +242,7 @@ describe('Header', () => {
   });
 
   it('keeps active styling on "Find Matches" when on /results, even when href has switched to /results', async () => {
-    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    seedMatchCache();
     pathnameRef.current = '/results';
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
@@ -218,7 +254,7 @@ describe('Header', () => {
   });
 
   it('only swaps the Find Matches link — other nav items keep their hrefs', async () => {
-    localStorage.setItem(STORAGE_KEYS.MATCH_RESULTS, JSON.stringify({ hash: 'x', semantic: false, savedAt: Date.now(), results: [] }));
+    seedMatchCache();
     render(<Header />);
     await new Promise((r) => setTimeout(r, 0));
     const favoritesLinks = screen
@@ -227,5 +263,62 @@ describe('Header', () => {
     for (const link of favoritesLinks) {
       expect(link.getAttribute('href')).toBe('/favorites');
     }
+  });
+
+  function findMatchesHrefs(): (string | null)[] {
+    return screen
+      .getAllByRole('link')
+      .filter((el) => el.textContent === 'nav.findMatches')
+      .map((el) => el.getAttribute('href'));
+  }
+
+  it('swaps "Find Matches" to /results when the cache appears mid-session, with NO pathname change — writeMatchCache\'s own storage-event dispatch drives it', async () => {
+    render(<Header />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(findMatchesHrefs().every((h) => h === '/')).toBe(true);
+
+    act(() => {
+      // Re-confirm: AccountMenu's own real (unconfigured) Supabase
+      // subscription may have observed its own null session in the
+      // interim, which re-blocks the realm until re-confirmed — the SAME
+      // reason beforeEach calls this before the initial render.
+      enterLocalOnlyMode();
+      seedMatchCache();
+    });
+
+    await new Promise((r) => setTimeout(r, 0));
+    expect(findMatchesHrefs().every((h) => h === '/results')).toBe(true);
+  });
+
+  it('swaps "Find Matches" back to / the instant local ownership becomes blocked (identity switch), with NO pathname change', async () => {
+    seedMatchCache();
+    render(<Header />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(findMatchesHrefs().every((h) => h === '/results')).toBe(true);
+
+    // A live identity switch marks the realm blocked synchronously —
+    // hasMatchCache() (which reads through readUserScopedRaw) must
+    // immediately stop reporting the PREVIOUS owner's cache as present.
+    act(() => { advanceOwnerEpoch('header-test-other-uid'); });
+
+    expect(findMatchesHrefs().every((h) => h === '/')).toBe(true);
+  });
+
+  it('clearing the match cache with the current token flips "Find Matches" back to / IMMEDIATELY — the same-tab notification must fire only AFTER the removal is actually visible in storage, not before', async () => {
+    seedMatchCache();
+    render(<Header />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(findMatchesHrefs().every((h) => h === '/results')).toBe(true);
+
+    // dispatchEvent('storage', ...) invokes listeners SYNCHRONOUSLY, in the
+    // same call stack. If clearMatchCache ever fired that event BEFORE its
+    // own removal actually lands, this synchronous recheck() would still
+    // see the stale, not-yet-removed entry and leave the link on /results.
+    act(() => {
+      const removed = clearMatchCache(captureOwnerToken());
+      expect(removed).toBe(true);
+    });
+
+    expect(findMatchesHrefs().every((h) => h === '/')).toBe(true);
   });
 });

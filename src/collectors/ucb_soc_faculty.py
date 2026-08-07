@@ -27,12 +27,12 @@ from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
-    EMAIL_RE,
-    NOISE_EMAILS,
     clean_name,
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,9 +80,19 @@ def _scrape_soc_faculty_list(soup: BeautifulSoup, base: str) -> list[dict]:
 
         mail_cell = row.select_one("td.views-field-mail, td[class*='views-field-mail']")
         if mail_cell:
-            match = EMAIL_RE.search(mail_cell.get_text(" ", strip=True))
-            if match and match.group(0).lower() not in NOISE_EMAILS:
-                person["email"] = match.group(0).lower()
+            email = unique_bound_container_contact(
+                row,
+                SOC_CONFIG,
+                nested_record_selector="tr",
+            )
+            if email:
+                stamp_bound_directory_contact(
+                    person,
+                    email,
+                    SOC_CONFIG,
+                    source_soup=soup,
+                    requested_url=SOC_CONFIG["url"],
+                )
 
         research_cell = row.select_one("td.views-field-field-special")
         if research_cell and research_cell.get_text(strip=True):

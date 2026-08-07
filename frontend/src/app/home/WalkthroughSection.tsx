@@ -3,12 +3,17 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import { useT } from '@/i18n/client';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 
 const STEPS = [
   { key: 'profile', image: '/walkthrough/step-profile.webp' },
   { key: 'matches', image: '/walkthrough/step-matches.webp' },
-  { key: 'compare', image: '/walkthrough/step-compare.webp' },
-  { key: 'act', image: '/walkthrough/step-act.webp' },
+  ...(RELEASE_SCOPE.compare
+    ? [{ key: 'compare' as const, image: '/walkthrough/step-compare.webp' }]
+    : []),
+  ...(RELEASE_SCOPE.askAi
+    ? [{ key: 'act' as const, image: '/walkthrough/step-act.webp' }]
+    : []),
   { key: 'email', image: '/walkthrough/step-email.webp' },
   { key: 'tracker', image: '/walkthrough/step-tracker.webp' },
 ] as const;
@@ -22,8 +27,8 @@ function subscribeReducedMotion(onChange: () => void) {
 }
 
 /**
- * Product walkthrough on the landing page — an auto-advancing tour of the six
- * core features, captured as real 1440px WebP screenshots (regenerate with a
+ * Product walkthrough on the landing page — an auto-advancing tour of accepted
+ * release features, captured as real 1440px WebP screenshots (regenerate with a
  * seeded profile + local backend whenever the UI meaningfully changes; keep
  * each under ~100KB). Autoplay pauses on hover, stops for good once the user
  * picks a step, and never runs under prefers-reduced-motion or off-screen.

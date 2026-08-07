@@ -5,7 +5,7 @@ Locks in the conservative stale-faculty deactivation pass:
   * a record unseen for more than GRACE_DAYS is deactivated with the standard
     metadata stamps (is_active / deactivated_at / deactivation_reason);
   * fresh records (and records exactly at the cutoff) are kept;
-  * the partial-scrape gate skips a source whose scrape yielded < 70% of its
+  * the partial-scrape gate skips a source whose scrape yielded < 95% of its
     currently-active records — a broken scrape must never mass-deactivate;
   * sources absent from ``fetched_counts`` (didn't run, or errored) are never
     touched, no matter how stale their records are;
@@ -35,11 +35,12 @@ AT_CUTOFF = "2026-05-29T00:00:00"  # exactly GRACE_DAYS before TODAY
 
 
 def _fac(ident, source="uiuc_faculty", last_seen=STALE, active=True,
-         source_type="faculty_research"):
+         source_type="faculty_research", department="ECE"):
     return {
         "id": ident,
         "source": source,
         "source_type": source_type,
+        "department": department,
         "title": f"Research with Prof. {ident}",
         "deadline": None,
         "metadata": {
@@ -76,11 +77,46 @@ def test_partial_scrape_gate_skips_source():
     assert all(o["metadata"]["is_active"] is True for o in opps)
 
 
-def test_scrape_at_exactly_70_percent_passes_gate():
-    opps = [_fac(f"p{i}", last_seen=STALE) for i in range(10)]
-    counts = deactivate_stale_faculty(opps, {"uiuc_faculty": 7}, today=TODAY)
-    assert counts["newly_deactivated"] == 10
+def test_scrape_at_exactly_95_percent_passes_gate():
+    opps = [_fac(f"p{i}", last_seen=STALE) for i in range(20)]
+    counts = deactivate_stale_faculty(opps, {"uiuc_faculty": 19}, today=TODAY)
+    assert counts["newly_deactivated"] == 20
     assert counts["skipped_partial_scrape"] == []
+
+
+def test_aggregate_source_cannot_hide_a_missing_department_at_95_percent():
+    opps = [
+        _fac(f"present-{i}", last_seen=FRESH, department="Computer Science")
+        for i in range(95)
+    ]
+    opps += [
+        _fac(f"missing-{i}", last_seen=STALE, department="Statistics")
+        for i in range(5)
+    ]
+
+    counts = deactivate_stale_faculty(
+        opps,
+        {"uiuc_faculty": 95},
+        today=TODAY,
+    )
+
+    assert counts["newly_deactivated"] == 0
+    assert counts["skipped_missing_unit_ledger"] == ["uiuc_faculty"]
+    assert all(o["metadata"]["is_active"] is True for o in opps)
+
+
+def test_unnamed_unit_is_preserved_without_unit_ledger():
+    opps = [_fac("unknown", department="", last_seen=STALE)]
+
+    counts = deactivate_stale_faculty(
+        opps,
+        {"uiuc_faculty": 1},
+        today=TODAY,
+    )
+
+    assert counts["newly_deactivated"] == 0
+    assert counts["skipped_missing_unit_ledger"] == ["uiuc_faculty"]
+    assert opps[0]["metadata"]["is_active"] is True
 
 
 def test_source_not_in_run_is_untouched():

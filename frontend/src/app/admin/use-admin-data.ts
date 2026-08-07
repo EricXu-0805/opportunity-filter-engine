@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import {
   adminFetch,
   DEFAULT_ACTOR,
@@ -206,7 +207,12 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
           adminFetch<{ entries: CollectorHistoryEntry[]; count: number }>(`/admin/collector-status/history?limit=30`, tok),
           adminFetch<SavedSearchHealth>(`/admin/saved-search-health`, tok),
           adminFetch<FeedbackInbox>(ticketQuery(ticketFilters), tok),
-          adminFetch<OrdersInbox>(`/admin/orders?limit=50`, tok),
+          // Payments are outside the MVP release scope: the orders inbox is
+          // not fetched at all rather than rendered empty (fail closed —
+          // see release-scope.ts).
+          RELEASE_SCOPE.payments
+            ? adminFetch<OrdersInbox>(`/admin/orders?limit=50`, tok)
+            : Promise.resolve<Awaited<ReturnType<typeof adminFetch<OrdersInbox>>>>({ status: 200 }),
           adminFetch<OpsIncidentsResponse>(opsQuery(opsFilters), tok),
         ]);
       const all = [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes];
@@ -303,7 +309,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   }, []);
 
   const handleConfirmOrder = useCallback(async (id: string) => {
-    if (!token) return;
+    if (!token || !RELEASE_SCOPE.payments) return;
     const res = await adminFetch(`/admin/orders/${id}/confirm`, token, { method: 'POST' });
     if (res.status === 401) { surfaceAuthFailure(); return; }
     if (res.error) {

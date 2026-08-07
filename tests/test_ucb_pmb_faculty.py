@@ -129,6 +129,21 @@ def test_output_shape_with_email():
     assert opp["eligibility"]["work_auth_notes"] == PMB_CONFIG["work_auth_notes"]
 
 
+def test_position_title_label_never_leaks_into_normalized_record():
+    """Regression for the 2026-07-28 scheduled DQ failure (45 PMB rows)."""
+
+    person = {
+        "name": "Benjamin Blackman",
+        "url": "https://pmb.berkeley.edu/people/benjamin-blackman",
+        "title": "Position title: Associate Professor",
+    }
+    opp = normalize_faculty(person, PMB_CONFIG)
+
+    assert opp["metadata"]["faculty_title"] == "Associate Professor"
+    assert "Position title:" not in opp["description_clean"]
+    assert "Position title:" not in opp["eligibility"]["eligibility_text_raw"]
+
+
 def test_known_record_id_is_byte_stable():
     """Ids are the upsert key — a drifted derivation duplicates the whole PMB
     corpus on the next scrape. Pin a real corpus id."""

@@ -49,7 +49,7 @@ from backend.routes.push import _required_env
 router = APIRouter()
 logger = logging.getLogger("ofe.ops")
 
-# --- enums, mirrored from 027_ops_incidents.sql ----------------------------
+# --- enums, mirrored from 031_ops_incidents.sql ----------------------------
 # Validated here so a typo returns 400 with a usable message instead of
 # bubbling a Postgres CHECK violation out as a 500.
 KINDS = ("collector_failure", "data_drift", "notification_failure", "manual_review")

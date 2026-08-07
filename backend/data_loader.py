@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,9 @@ EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 _opp_cache: list[dict] = []
 _opp_cache_by_id: dict[str, dict] = {}
 _opp_cache_mtime: float = 0
+_opp_cache_generation: int = 0
 _tfidf_fitted_mtime: float = -1
+_loader_lock = threading.RLock()
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
@@ -120,47 +123,141 @@ def _opportunity_corpus_text(opp: dict) -> str:
 
 def _maybe_fit_tfidf(opportunities: list[dict], mtime: float) -> None:
     global _tfidf_fitted_mtime
-    if mtime == _tfidf_fitted_mtime or not opportunities:
+    if mtime == _tfidf_fitted_mtime:
         return
-    try:
-        from src.matcher.embeddings import fit_tfidf_corpus
-        # Generator, not a list: the joined corpus texts are ~90 MiB for 32k
-        # records and the fit only needs one pass — materializing them spikes
-        # startup RSS for nothing on a 2 GB instance.
-        fit_tfidf_corpus(_opportunity_corpus_text(o) for o in opportunities)
-        _tfidf_fitted_mtime = mtime
-    except Exception as e:
-        logger.warning("TF-IDF corpus fit failed: %s", e)
+    if not opportunities:
+        raise ValueError("cannot fit an empty opportunity corpus")
+    from src.matcher.embeddings import fit_tfidf_corpus
+
+    # Generator, not a list: the joined corpus texts are ~90 MiB for 32k
+    # records and the fit only needs one pass — materializing them spikes
+    # startup RSS for nothing on a 2 GB instance.
+    fitted = fit_tfidf_corpus(
+        _opportunity_corpus_text(o) for o in opportunities
+    )
+    if not fitted:
+        raise RuntimeError("TF-IDF corpus fit did not produce a usable model")
+    _tfidf_fitted_mtime = mtime
 
 
-def _maybe_register_ranker_corpus(opportunities: list[dict]) -> None:
-    """Bind the ranker's per-record precompute to the freshly-cached corpus
-    list. Idempotent per list object (register_corpus no-ops on the same
-    list), so calling on every request only re-registers after a reload.
-    Must run AFTER _maybe_fit_tfidf — the precomputed similarity matrix
-    needs the fitted vectorizer."""
+def _prepare_ranker_corpus(opportunities: list[dict], mtime: float) -> None:
+    """Atomically fit and register one ranker corpus generation.
+
+    A scorer may still be reading the previous global vectorizer/matrix in its
+    dedicated worker. The shared lock makes a hot data refresh wait for that
+    traversal instead of replacing those globals halfway through one result
+    set.
+    """
+    global _tfidf_fitted_mtime
+
+    from src.matcher import embeddings, ranker
+
+    with ranker.corpus_generation_lock:
+        old_vectorizer = embeddings._tfidf_vectorizer
+        old_fitted = embeddings._tfidf_fitted
+        old_fitted_mtime = _tfidf_fitted_mtime
+        old_ranker_state = (
+            ranker._corpus_ref,
+            ranker._corpus_rows,
+            ranker._static_cache,
+            ranker._sim_matrix,
+            dict(ranker._kw_word_res),
+        )
+        try:
+            _maybe_fit_tfidf(opportunities, mtime)
+            ranker.register_corpus(opportunities)
+            if (
+                ranker._corpus_ref is not opportunities
+                or ranker._sim_matrix is None
+            ):
+                raise RuntimeError(
+                    "ranker did not publish a complete corpus matrix"
+                )
+        except Exception:
+            embeddings._tfidf_vectorizer = old_vectorizer
+            embeddings._tfidf_fitted = old_fitted
+            _tfidf_fitted_mtime = old_fitted_mtime
+            (
+                ranker._corpus_ref,
+                ranker._corpus_rows,
+                ranker._static_cache,
+                ranker._sim_matrix,
+                old_keyword_res,
+            ) = old_ranker_state
+            ranker._kw_word_res.clear()
+            ranker._kw_word_res.update(old_keyword_res)
+            raise
+
+
+def _try_publish_corpus(raw: list[dict], mtime: float, source: str) -> bool:
+    """Prepare a candidate fully, then atomically publish loader globals."""
+    global _opp_cache, _opp_cache_by_id, _opp_cache_generation, _opp_cache_mtime
+
     try:
-        from src.matcher.ranker import register_corpus
-        register_corpus(opportunities)
-    except Exception as e:
-        logger.warning("Ranker corpus precompute failed: %s", e)
+        candidate = _canonicalize_corpus(raw)
+        if not candidate:
+            raise ValueError("candidate corpus is empty")
+        candidate_by_id = {
+            opportunity["id"]: opportunity
+            for opportunity in candidate
+            if opportunity.get("id")
+        }
+        _prepare_ranker_corpus(candidate, mtime)
+    except Exception as exc:
+        _STR_POOL.clear()
+        logger.error(
+            "Corpus refresh from %s failed; keeping generation %d: %s",
+            source,
+            _opp_cache_generation,
+            exc,
+        )
+        return False
+
+    _opp_cache = candidate
+    _opp_cache_by_id = candidate_by_id
+    _opp_cache_mtime = mtime
+    _opp_cache_generation += 1
+    _STR_POOL.clear()
+    return True
 
 
 def load_opportunities() -> list[dict]:
-    global _opp_cache, _opp_cache_by_id, _opp_cache_mtime
+    """Return one process-wide immutable corpus generation.
+
+    Match routes call this from a worker thread. The lock turns concurrent cold
+    starts/hot reloads into one load+canonicalize+fit/register operation; every
+    waiter then observes the same list identity instead of briefly building
+    multiple hundred-megabyte generations in parallel.
+    """
+    return load_opportunities_generation()[0]
+
+
+def load_opportunities_generation() -> tuple[list[dict], str]:
+    """Atomically return the corpus and its process-local generation token."""
+    with _loader_lock:
+        opportunities = _load_opportunities_unlocked()
+        token = f"{_opp_cache_generation}:{_opp_cache_mtime:.6f}"
+        return opportunities, token
+
+
+def _load_opportunities_unlocked() -> list[dict]:
+    global _opp_cache, _opp_cache_by_id, _opp_cache_generation, _opp_cache_mtime
 
     processed = DATA_DIR / "opportunities.json"
     if processed.exists():
         mtime = processed.stat().st_mtime
         if mtime != _opp_cache_mtime or not _opp_cache:
-            with open(processed, encoding="utf-8") as f:
-                raw = json.load(f)
-            _opp_cache = _canonicalize_corpus(raw)
-            _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
-            _opp_cache_mtime = mtime
-            _STR_POOL.clear()
-        _maybe_fit_tfidf(_opp_cache, mtime)
-        _maybe_register_ranker_corpus(_opp_cache)
+            try:
+                with open(processed, encoding="utf-8") as f:
+                    raw = json.load(f)
+                _try_publish_corpus(raw, mtime, str(processed))
+            except Exception as exc:
+                logger.error(
+                    "Corpus read from %s failed; keeping generation %d: %s",
+                    processed,
+                    _opp_cache_generation,
+                    exc,
+                )
         return _opp_cache
 
     # Deployed checkouts carry the corpus as per-school shards (the committed
@@ -172,16 +269,19 @@ def load_opportunities() -> list[dict]:
         if shards:
             mtime = max(p.stat().st_mtime for p in shards)
             if mtime != _opp_cache_mtime or not _opp_cache:
-                raw = []
-                for p in shards:
-                    with open(p, encoding="utf-8") as f:
-                        raw.extend(json.load(f))
-                _opp_cache = _canonicalize_corpus(raw)
-                _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
-                _opp_cache_mtime = mtime
-                _STR_POOL.clear()
-            _maybe_fit_tfidf(_opp_cache, mtime)
-            _maybe_register_ranker_corpus(_opp_cache)
+                try:
+                    raw = []
+                    for p in shards:
+                        with open(p, encoding="utf-8") as f:
+                            raw.extend(json.load(f))
+                    _try_publish_corpus(raw, mtime, str(shards_dir))
+                except Exception as exc:
+                    logger.error(
+                        "Corpus read from %s failed; keeping generation %d: %s",
+                        shards_dir,
+                        _opp_cache_generation,
+                        exc,
+                    )
             return _opp_cache
 
     examples = EXAMPLES_DIR / "sample_opportunities.json"
@@ -192,14 +292,17 @@ def load_opportunities() -> list[dict]:
         # endpoints disagreeing about the same id on the fallback corpus.
         mtime = examples.stat().st_mtime
         if mtime != _opp_cache_mtime or not _opp_cache:
-            with open(examples, encoding="utf-8") as f:
-                raw = json.load(f)
-            _opp_cache = _canonicalize_corpus(raw)
-            _opp_cache_by_id = {o["id"]: o for o in _opp_cache if o.get("id")}
-            _opp_cache_mtime = mtime
-            _STR_POOL.clear()
-        _maybe_fit_tfidf(_opp_cache, mtime)
-        _maybe_register_ranker_corpus(_opp_cache)
+            try:
+                with open(examples, encoding="utf-8") as f:
+                    raw = json.load(f)
+                _try_publish_corpus(raw, mtime, str(examples))
+            except Exception as exc:
+                logger.error(
+                    "Corpus read from %s failed; keeping generation %d: %s",
+                    examples,
+                    _opp_cache_generation,
+                    exc,
+                )
         return _opp_cache
 
     return []

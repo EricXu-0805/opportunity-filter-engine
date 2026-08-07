@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchOpportunityServer, fetchSimilarServer, fetchOpportunityIdsServer } from './api-server';
+import {
+  fetchOpportunityServer,
+  fetchSimilarServer,
+  fetchOpportunityIdsServer,
+  fetchOpportunityDetail,
+} from './api-server';
 
 const fetchMock = vi.fn();
 
@@ -82,7 +87,9 @@ describe('server-side API base URL resolution', () => {
     await fetchOpportunityServer('x');
 
     const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toBe('https://backend.example.com/api/opportunities/x');
+    expect(url).toBe(
+      'https://backend.example.com/api/opportunities/x?_release_scope=mvp-route-freeze-v2-contact-trust-v1',
+    );
   });
 });
 
@@ -101,7 +108,9 @@ describe('fetchOpportunityServer', () => {
     fetchMock.mockResolvedValue(okJson({ id: 'x' }));
     await fetchOpportunityServer('uiuc/cs:101');
     const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toBe('https://api.test/api/opportunities/uiuc%2Fcs%3A101');
+    expect(url).toBe(
+      'https://api.test/api/opportunities/uiuc%2Fcs%3A101?_release_scope=mvp-route-freeze-v2-contact-trust-v1',
+    );
   });
 
   it('returns null on a non-2xx response', async () => {
@@ -157,6 +166,32 @@ describe('fetchSimilarServer', () => {
     await fetchSimilarServer('seed', 12);
     expect(fetchMock.mock.calls[0][0]).toContain('limit=12');
   });
+
+  it('uses the release-scope cache version after the limit query', async () => {
+    fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
+    await fetchSimilarServer('seed');
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      'limit=5&_release_scope=mvp-route-freeze-v2-contact-trust-v1',
+    );
+  });
+
+  it('degrades to [] on a finite timeout instead of hanging the caller (fail-open)', async () => {
+    vi.useFakeTimers();
+    try {
+      fetchMock.mockImplementation((_url: string, options: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          });
+        }),
+      );
+      const pending = fetchSimilarServer('seed');
+      await vi.advanceTimersByTimeAsync(8000);
+      expect(await pending).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('fetchOpportunityIdsServer', () => {
@@ -197,5 +232,99 @@ describe('fetchOpportunityIdsServer', () => {
     fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
     await fetchOpportunityIdsServer();
     expect(fetchMock.mock.calls[0][0]).toContain('limit=200');
+  });
+
+  it('does not reuse a pre-release-scope server data-cache key', async () => {
+    fetchMock.mockResolvedValue(okJson({ opportunities: [] }));
+    await fetchOpportunityIdsServer();
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      'limit=200&_release_scope=mvp-route-freeze-v2-contact-trust-v1',
+    );
+  });
+});
+
+describe('fetchOpportunityDetail (detail-page classification)', () => {
+  beforeEach(() => {
+    vi.stubEnv('BACKEND_URL', 'https://api.test');
+  });
+
+  it('returns ok with the opportunity when the body id matches the requested id', async () => {
+    fetchMock.mockResolvedValue(okJson({ id: 'opp-1', title: 'Test' }));
+    const result = await fetchOpportunityDetail('opp-1');
+    expect(result).toEqual({ status: 'ok', opportunity: { id: 'opp-1', title: 'Test' } });
+  });
+
+  it('classifies an explicit 404 as not-found', async () => {
+    fetchMock.mockResolvedValue(badResponse(404));
+    expect(await fetchOpportunityDetail('missing')).toEqual({ status: 'not-found' });
+  });
+
+  it('classifies an explicit 400 as not-found', async () => {
+    fetchMock.mockResolvedValue(badResponse(400));
+    expect(await fetchOpportunityDetail('bad-id')).toEqual({ status: 'not-found' });
+  });
+
+  it('classifies a 429 as unavailable, never not-found', async () => {
+    fetchMock.mockResolvedValue(badResponse(429));
+    expect(await fetchOpportunityDetail('opp-1')).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies a 5xx as unavailable, never not-found', async () => {
+    fetchMock.mockResolvedValue(badResponse(502));
+    expect(await fetchOpportunityDetail('opp-1')).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies a network error as unavailable', async () => {
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
+    expect(await fetchOpportunityDetail('opp-1')).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies an unparseable (non-JSON) 200 body as unavailable', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.reject(new SyntaxError('Unexpected token')),
+    } as unknown as Response);
+    expect(await fetchOpportunityDetail('opp-1')).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies a body missing id as unavailable', async () => {
+    fetchMock.mockResolvedValue(okJson({ title: 'no id here' }));
+    expect(await fetchOpportunityDetail('opp-1')).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies a body with an empty-string id as unavailable', async () => {
+    fetchMock.mockResolvedValue(okJson({ id: '', title: 'empty id' }));
+    expect(await fetchOpportunityDetail('opp-1')).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies a returned id mismatch as unavailable, never renders the wrong opportunity', async () => {
+    fetchMock.mockResolvedValue(okJson({ id: 'some-other-id', title: 'wrong record' }));
+    expect(await fetchOpportunityDetail('opp-1')).toEqual({ status: 'unavailable' });
+  });
+
+  it('classifies a timeout (finite abort) as unavailable', async () => {
+    vi.useFakeTimers();
+    try {
+      fetchMock.mockImplementation((_url: string, options: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          });
+        }),
+      );
+      const pending = fetchOpportunityDetail('opp-1');
+      await vi.advanceTimersByTimeAsync(8000);
+      expect(await pending).toEqual({ status: 'unavailable' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not change the legacy fetchOpportunityServer contract', async () => {
+    fetchMock.mockResolvedValue(okJson({ id: 'opp-1', title: 'Test' }));
+    expect(await fetchOpportunityServer('opp-1')).toEqual({ id: 'opp-1', title: 'Test' });
+    fetchMock.mockResolvedValue(badResponse(404));
+    expect(await fetchOpportunityServer('missing')).toBeNull();
   });
 });

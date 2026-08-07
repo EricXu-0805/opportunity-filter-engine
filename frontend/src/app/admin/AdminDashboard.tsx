@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft, Database, Lock, RefreshCw } from 'lucide-react';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { AlertList } from './AlertList';
 import { CollectorStatusSection } from './CollectorStatusSection';
 import { FreshnessBanner } from './FreshnessBanner';
@@ -157,7 +158,9 @@ export function AdminDashboard({
             read-only pane errored — the exact moment an operator needs them. */}
         <OpsIncidentsSection ops={ops} t={t} />
         <FeedbackSection inbox={feedbackInbox} tickets={tickets} t={t} />
-        <OrdersSection inbox={ordersInbox} onConfirm={onConfirmOrder} t={t} />
+        {RELEASE_SCOPE.payments && (
+          <OrdersSection inbox={ordersInbox} onConfirm={onConfirmOrder} t={t} />
+        )}
 
         {data && (
           <>

@@ -34,6 +34,7 @@ function renderCard(overrides: Partial<ProfileData> = {}) {
     <AcademicProfileCard
       profile={{ ...DEFAULT_PROFILE, ...overrides }}
       update={update}
+      viewSnapshot={null}
       t={t}
     />,
   );
@@ -42,6 +43,7 @@ function renderCard(overrides: Partial<ProfileData> = {}) {
       <AcademicProfileCard
         profile={{ ...DEFAULT_PROFILE, ...next }}
         update={update}
+        viewSnapshot={null}
         t={t}
       />,
     );

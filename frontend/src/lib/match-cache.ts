@@ -8,18 +8,30 @@
 // cached and the header always fell back to the profile form. And re-fetching
 // the bodies by id on return is a visible load.
 //
-// Instead we store a self-contained but COMPACT copy in localStorage: each
-// opportunity is projected to just the fields the results list/filters render
-// (no metadata, no full descriptions ≈ 3 MB for the broadest profile), so the
-// read is a synchronous localStorage parse — instant, no network. The /matches
-// response is already email-redacted, so the projection carries no PII.
+// The v7 contract stores only the bounded first server-view page (max 100
+// cards) plus complete server-derived counts/facets/cursor metadata. A cache
+// hit may paint immediately, but useResultsData always validates it in the
+// background so a seven-day local copy never becomes the authority for corpus
+// or matcher generation. v7 is also the contact-trust boundary: pre-v7
+// payloads may contain an address copied into a public text or URL field.
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { captureOwnerToken, isOwnerTokenValid, readUserScopedRaw, removeUserScopedRaw, writeUserScopedRaw, type OwnerToken } from '@/lib/identity-owner';
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = STORAGE_KEYS.MATCH_RESULTS;
+const CACHE_VERSION = 'contact-trust-v1';
+export const MATCH_VIEW_CONTRACT_VERSION = 'match-view-v2-contact-trust';
+const OBSOLETE_MATCH_KEYS = [
+  'ofe_match_results',
+  'ofe_match_results_v2',
+  'ofe_match_results_v3',
+  'ofe_match_results_v4',
+  'ofe_match_results_v5',
+  'ofe_match_results_v6',
+] as const;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // results older than this re-fetch (corpus drift)
-const MAX_RESULTS = 2500; // hard size bound; far past what anyone scrolls/paginates
+const MAX_RESULTS = 100;
 const DESC_CHARS = 200; // keep a snippet so the free-text search still matches bodies
 
 // Exactly the opportunity fields the results list, filters and sort read
@@ -70,6 +82,7 @@ function projectOpportunity(opp: Opportunity): Opportunity {
 }
 
 interface MatchCacheShape {
+  version: typeof CACHE_VERSION;
   hash: string;
   semantic: boolean;
   savedAt: number;
@@ -85,15 +98,115 @@ interface MatchCacheShape {
   field_relevant_count?: number;
   thin_inventory?: boolean;
   matcher_version?: string;
+  returned_count?: number;
+  has_more?: boolean;
+  next_cursor?: string | null;
+  result_set_id?: string;
+  contract_version: typeof MATCH_VIEW_CONTRACT_VERSION;
+  view_start?: number;
+  filtered_total?: number;
+  view_counts?: MatchesResponse['view_counts'];
+  source_facets?: MatchesResponse['source_facets'];
+  scope_available?: boolean;
+  view_id?: string;
+}
+
+/**
+ * Boundary check for match-target identity: every result must carry a
+ * non-empty top-level `opportunity_id`, its nested `opportunity.id` must be
+ * non-empty and exactly equal that id, and no id may repeat. A stale/cached
+ * payload, a duplicate row, or an id that drifted between the top-level and
+ * nested shape must never let the Detail → Shortlist → reopen journey land
+ * on the wrong record. Applied to both live results (before they enter
+ * state/cache) and cached results (before they render).
+ */
+export function hasValidMatchResultIdentity(results: unknown): results is MatchResult[] {
+  if (!Array.isArray(results)) return false;
+  const seen = new Set<string>();
+  for (const r of results) {
+    if (!r || typeof r !== 'object') return false;
+    const topId = (r as { opportunity_id?: unknown }).opportunity_id;
+    if (typeof topId !== 'string' || topId.trim().length === 0) return false;
+    const nested = (r as { opportunity?: unknown }).opportunity;
+    const nestedId = nested && typeof nested === 'object'
+      ? (nested as { id?: unknown }).id
+      : undefined;
+    // Strict raw equality — a whitespace-only id fails the trim() check above,
+    // but two present ids that merely differ in surrounding whitespace are
+    // NOT normalized into a match; that would silently repair drifted data.
+    if (typeof nestedId !== 'string' || nestedId.trim().length === 0 || nestedId !== topId) return false;
+    if (seen.has(topId)) return false;
+    seen.add(topId);
+  }
+  return true;
+}
+
+// Legacy (pre-v7) key names — NOT in USER_SCOPED_KEYS (only the CURRENT
+// ofe_match_results_v7 is registered there), so these stay on raw
+// localStorage.removeItem: they are dead, superseded key names being swept
+// up as a one-time migration cleanup, never data anyone currently owns or
+// reads. The static USER_SCOPED contract test allowlists exactly these
+// literals for that reason.
+function removeObsoleteMatchCaches(): void {
+  for (const key of OBSOLETE_MATCH_KEYS) {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+  }
+}
+
+// Fail-closed backstop for the case removeUserScopedRaw's own read-back
+// verification is designed to catch but a caller here must still degrade
+// safely from: a write fails (quota) AND the fallback clearMatchCache
+// below ALSO cannot VERIFY the stale/half-written entry is gone (a thrown
+// removeItem, or a read-back that still finds it there). Storage itself is
+// left in an unknown state at that point — this module has no way to prove
+// the single cache slot doesn't contain mismatched or half-written data —
+// so reads fail closed for the REST of this session rather than risk
+// serving it. Scoped to the SPECIFIC (uid, epoch) this happened under: a
+// later, genuinely different owner (a real identity transition) was never
+// the one whose cleanup failed and must never inherit the block.
+let taintedOwnerKey: string | null = null;
+
+function ownerKey(token: OwnerToken): string {
+  return `${token.uid ?? ''}:${token.epoch}`;
+}
+
+function taintForFailedCleanup(token: OwnerToken): void {
+  taintedOwnerKey = ownerKey(token);
+}
+
+function clearTaintOnSuccess(token: OwnerToken): void {
+  if (taintedOwnerKey === ownerKey(token)) taintedOwnerKey = null;
+}
+
+function isTaintedForCurrentOwner(): boolean {
+  return taintedOwnerKey !== null && taintedOwnerKey === ownerKey(captureOwnerToken());
 }
 
 function parse(): MatchCacheShape | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    removeObsoleteMatchCaches();
+    if (isTaintedForCurrentOwner()) return null;
+    const raw = readUserScopedRaw(KEY);
     if (!raw) return null;
     const c = JSON.parse(raw) as MatchCacheShape;
-    if (!c || typeof c.savedAt !== 'number') return null;
+    // Cleanup-on-read: a synchronous call with no await in between, so a
+    // freshly-captured token is trivially current — there is no staleness
+    // window for a self-correcting read to race across.
+    const token = captureOwnerToken();
+    if (!c || c.version !== CACHE_VERSION) {
+      removeUserScopedRaw(KEY, token);
+      return null;
+    }
+    if (c.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
+      removeUserScopedRaw(KEY, token);
+      return null;
+    }
+    if (typeof c.savedAt !== 'number') return null;
     if (Date.now() - c.savedAt >= TTL_MS) return null;
+    if (!hasValidMatchResultIdentity(c.results)) {
+      removeUserScopedRaw(KEY, token);
+      return null;
+    }
     return c;
   } catch {
     return null;
@@ -106,19 +219,55 @@ export function hasMatchCache(): boolean {
   return parse() !== null;
 }
 
-export function clearMatchCache(): void {
-  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+// `token` MUST be captured (via captureOwnerToken()) at the moment the
+// caller's own clear intent began — see writeUserScopedRaw's own doc
+// comment. A stale token silently no-ops the CURRENT-format removal (the
+// legacy-key sweep still runs regardless, since those are dead keys no
+// current owner could ever have written).
+//
+// Returns whether the CURRENT-format key was actually removed (false for
+// a stale token — removeUserScopedRaw re-validates it independently, so
+// this can never touch a DIFFERENT identity's cache no matter who calls
+// it or why). Dispatches a same-tab 'storage' event on an actual removal
+// — same-tab readers (Header's "Find Matches" link) subscribe to this,
+// not to raw sessionStorage, and writeUserScopedRaw/removeUserScopedRaw
+// themselves never dispatch it.
+export function clearMatchCache(token: OwnerToken): boolean {
+  // Captured before the attempt, not after: nothing async happens between
+  // here and removeUserScopedRaw's own call, so this is exactly "was the
+  // acting identity current for this whole attempt" — a stale token was
+  // never going to touch storage at all (removeUserScopedRaw's own gate),
+  // so a false return in that case needs no taint; only a CURRENT token
+  // whose removal still couldn't be verified means something is actually
+  // wrong with storage for THIS owner.
+  const tokenWasCurrent = isOwnerTokenValid(token, token.uid);
+  const removed = removeUserScopedRaw(KEY, token);
+  removeObsoleteMatchCaches();
+  if (removed) {
+    clearTaintOnSuccess(token);
+    try { window.dispatchEvent(new StorageEvent('storage', { key: KEY })); } catch { /* SSR */ }
+    return true;
+  }
+  if (tokenWasCurrent) taintForFailedCleanup(token);
+  return false;
 }
 
 /** Persist a compact, self-contained copy of the match set (opportunities
- *  projected to display fields). */
-export function writeMatchCache(hash: string, semantic: boolean, data: MatchesResponse): void {
+ *  projected to display fields). `token` MUST be captured at the moment
+ *  the caller's own write intent began. Returns whether it actually
+ *  landed. */
+export function writeMatchCache(hash: string, semantic: boolean, data: MatchesResponse, token: OwnerToken): boolean {
   try {
+    if (data.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
+      clearMatchCache(token);
+      return false;
+    }
     const results = data.results.slice(0, MAX_RESULTS).map((r) => ({
       ...r,
       opportunity: projectOpportunity(r.opportunity),
     }));
     const payload: MatchCacheShape = {
+      version: CACHE_VERSION,
       hash,
       semantic,
       savedAt: Date.now(),
@@ -131,12 +280,41 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       field_relevant_count: data.field_relevant_count,
       thin_inventory: data.thin_inventory,
       matcher_version: data.matcher_version,
+      returned_count: data.returned_count,
+      has_more: data.has_more,
+      next_cursor: data.next_cursor,
+      result_set_id: data.result_set_id,
+      contract_version: MATCH_VIEW_CONTRACT_VERSION,
+      view_start: data.view_start,
+      filtered_total: data.filtered_total,
+      view_counts: data.view_counts,
+      source_facets: data.source_facets,
+      scope_available: data.scope_available,
+      view_id: data.view_id,
     };
-    localStorage.setItem(KEY, JSON.stringify(payload));
+    const wrote = writeUserScopedRaw(KEY, JSON.stringify(payload), token);
+    if (!wrote) {
+      // writeUserScopedRaw returns false for TWO different reasons this
+      // function cannot itself distinguish: a stale token (clearMatchCache
+      // below then ALSO no-ops, since removeUserScopedRaw re-validates the
+      // SAME token — a different identity's cache is never touched), or a
+      // valid token whose underlying setItem failed (quota) — that clear
+      // genuinely runs, dropping the now half-written/stale entry rather
+      // than silently serving it (or a wrong-for-this-write leftover) on
+      // the next visit. If that fallback clear ALSO can't verify the entry
+      // is gone, clearMatchCache itself taints this owner+epoch so reads
+      // fail closed rather than risk serving whatever is actually left.
+      clearMatchCache(token);
+      return false;
+    }
+    clearTaintOnSuccess(token);
+    try { window.dispatchEvent(new StorageEvent('storage', { key: KEY })); } catch { /* SSR */ }
+    return true;
   } catch {
     // quota or serialization failure → drop any partial write; the caller still
     // has the live data, and returning later simply re-matches (old behavior).
-    clearMatchCache();
+    clearMatchCache(token);
+    return false;
   }
 }
 
@@ -155,6 +333,17 @@ export function readMatchCache(hash: string, semantic: boolean): MatchesResponse
     field_relevant_count: c.field_relevant_count,
     thin_inventory: c.thin_inventory,
     matcher_version: c.matcher_version,
+    returned_count: c.returned_count,
+    has_more: c.has_more,
+    next_cursor: c.next_cursor,
+    result_set_id: c.result_set_id,
+    contract_version: c.contract_version,
+    view_start: c.view_start,
+    filtered_total: c.filtered_total,
+    view_counts: c.view_counts,
+    source_facets: c.source_facets,
+    scope_available: c.scope_available,
+    view_id: c.view_id,
   };
 }
 

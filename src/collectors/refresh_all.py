@@ -11,6 +11,7 @@ Usage:
 
 import json
 import logging
+import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,11 +22,20 @@ from src.normalizers.school_audience import SOURCE_DEFAULTS, apply_school_audien
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
 from .atomic_json import atomic_write_json, atomic_write_text
-from .campus_graph import fetch_and_normalize as fetch_campus_graph
-from .campus_graph import merge_into_processed as merge_campus_graph
+from .campus_graph import (
+    RECURSIVE,
+    quarantine_unverified_discovered,
+)
+from .campus_graph import (
+    fetch_and_normalize_with_evidence as fetch_campus_graph_with_evidence,
+)
+from .campus_graph import (
+    merge_into_processed as merge_campus_graph,
+)
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
+from .refresh_contract import evaluate_refresh_summary
 from .schools import SCHOOL_CONFIGS
 from .schools.amherst_faculty import fetch_and_normalize as fetch_amherst_faculty
 from .schools.amherst_faculty import merge_into_processed as merge_amherst_faculty
@@ -272,7 +282,9 @@ from .ucb_anthro_faculty import fetch_and_normalize as fetch_ucb_anthro
 from .ucb_arch_faculty import fetch_and_normalize as fetch_ucb_arch
 from .ucb_astro_faculty import fetch_and_normalize as fetch_ucb_astro
 from .ucb_bioe_faculty import fetch_and_normalize as fetch_ucb_bioe
-from .ucb_campus import fetch_and_normalize as fetch_ucb_campus
+from .ucb_campus import (
+    fetch_and_normalize_with_evidence as fetch_ucb_campus_with_evidence,
+)
 from .ucb_campus import merge_into_processed as merge_ucb_campus
 from .ucb_cbe_faculty import fetch_and_normalize as fetch_ucb_cbe
 from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
@@ -328,6 +340,7 @@ from .ucb_scandinavian_faculty import fetch_and_normalize as fetch_ucb_scandinav
 from .ucb_slavic_faculty import fetch_and_normalize as fetch_ucb_slavic
 from .ucb_soc_faculty import fetch_and_normalize as fetch_ucb_soc
 from .ucb_socwel_faculty import fetch_and_normalize as fetch_ucb_socwel
+from .ucb_sources import UCB_SOURCES
 from .ucb_spanish_portuguese_faculty import fetch_and_normalize as fetch_ucb_spanish_portuguese
 from .ucb_sph_faculty import fetch_and_normalize as fetch_ucb_sph
 from .ucb_stat_faculty import fetch_and_normalize as fetch_ucb_stat
@@ -336,14 +349,19 @@ from .ucb_urap import fetch_and_normalize as fetch_ucb_urap
 from .ucb_urap import merge_into_processed as merge_ucb_urap
 from .ucb_urap_projects import fetch_and_normalize as fetch_ucb_urap_projects
 from .ucb_urap_projects import merge_into_processed as merge_ucb_urap_projects
-from .ucsb_urca_projects import fetch_and_normalize as fetch_ucsb_urca_projects
-from .ucsb_urca_projects import merge_into_processed as merge_ucsb_urca_projects
+from .ucsb_urca_projects import (
+    fetch_and_normalize_with_evidence as fetch_ucsb_urca_projects_with_evidence,
+)
+from .ucsb_urca_projects import (
+    merge_snapshot_into_processed as merge_ucsb_urca_projects,
+)
 from .uiuc_drp import fetch_and_normalize as fetch_drp
 from .uiuc_drp import merge_into_processed as merge_drp
 from .uiuc_faculty import (
     _null_shared_admin_emails,
     _null_unit_inbox_emails,
     _strip_furniture_keywords,
+    enforce_final_shared_keyword_invariant,
 )
 from .uiuc_faculty import fetch_and_normalize as fetch_faculty
 from .uiuc_faculty import merge_into_processed as merge_faculty
@@ -373,6 +391,8 @@ STATUS_HISTORY_FILE = PROJECT_ROOT / "data" / "processed" / "collector_status_hi
 TRACKING_FILE = PROJECT_ROOT / "data" / "processed" / "professor_tracking.json"
 
 STATUS_HISTORY_MAX_ENTRIES = 200
+_BASE_SHA_RE = re.compile(r"[0-9a-f]{40}")
+_RUN_NUMBER_RE = re.compile(r"[1-9][0-9]*")
 
 
 def _trim_history_to_max(path: Path, max_entries: int) -> None:
@@ -407,8 +427,11 @@ def write_status(summary: dict) -> None:
         STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_json(STATUS_FILE, summary, sort_keys=True)
     except OSError as e:
-        logger.warning("Failed to write collector status: %s", e)
-        return
+        # The latest snapshot is publication evidence. Returning success here
+        # would let the artifact builder pair new shards with a stale green
+        # status file left by an earlier run.
+        logger.error("Failed to write collector status: %s", e)
+        raise
 
     history_entry = {
         "t": summary.get("timestamp"),
@@ -450,7 +473,12 @@ def refresh_run_ok(summary: dict) -> bool:
     )
 
 
-def _update_professor_tracking(all_opps: list[dict], summary: dict) -> None:
+def _update_professor_tracking(
+    all_opps: list[dict],
+    summary: dict,
+    *,
+    refresh_ok: bool,
+) -> None:
     """Append verified professor change events derived from this refresh.
 
     Never raises: professor tracking is an additive artifact and a failure
@@ -464,9 +492,13 @@ def _update_professor_tracking(all_opps: list[dict], summary: dict) -> None:
         from src.tracking.professor_profiles import update_tracking_file
 
         stats = update_tracking_file(
-            all_opps, TRACKING_FILE, refresh_ok=refresh_run_ok(summary),
+            all_opps, TRACKING_FILE, refresh_ok=refresh_ok,
         )
-        summary["sources"]["professor_tracking"] = {**stats, "status": "ok"}
+        summary["sources"]["professor_tracking"] = {
+            **stats,
+            "status": "ok",
+            "publication_status": "local_only_not_in_refresh_artifact",
+        }
         logger.info(
             "professor_tracking: %d profile baseline(s), %d event(s) (%d new), "
             "release_ready=%s (freshness %s%%, %d fully-stale school(s))",
@@ -479,8 +511,12 @@ def _update_professor_tracking(all_opps: list[dict], summary: dict) -> None:
         summary["sources"]["professor_tracking"] = {"status": "error", "error": str(e)}
 
 
-def refresh_all(deep: bool = True, schools: set[str] | None = None,
-                national: bool = False) -> dict:
+def refresh_all(
+    deep: bool = True,
+    schools: set[str] | None = None,
+    national: bool = False,
+    provenance: dict | None = None,
+) -> dict:
     """Run enabled collectors and merge results.
 
     ``schools`` shards the run to collectors belonging to those school slugs;
@@ -490,11 +526,20 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
     reporting "ok" in this run's summary, so a shard run provably cannot
     deactivate another school's records.
 
+    The no-selector full run remains a local maintenance mode; the publication
+    workflow and artifact boundary require an explicit bounded shard. UCD's
+    singleton rule therefore applies to explicit publication shards without
+    removing the local diagnostic full-run path.
+
     Returns a summary dict with counts per source and totals.
     """
+    if national and schools is not None:
+        raise ValueError("national and school shards are mutually exclusive")
     if schools is not None:
         if not schools:
             raise ValueError("schools shard must name at least one school slug")
+        if "ucd" in schools and len(schools) != 1:
+            raise ValueError("ucd must run as an isolated single-school shard")
         known = {school for school, _ in SOURCE_DEFAULTS.values() if school}
         unknown = set(schools) - known
         if unknown:
@@ -511,11 +556,18 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
 
     summary = {
         "timestamp": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        "request": {
+            "schools": sorted(schools) if schools is not None else None,
+            "national": national,
+            "deep": deep,
+        },
         "sources": {},
         "total_new": 0,
         "total_updated": 0,
         "total_in_file": 0,
     }
+    if provenance is not None:
+        summary["provenance"] = dict(provenance)
     if sharded:
         summary["shard"] = {"schools": sorted(schools or []), "national": national}
 
@@ -587,6 +639,43 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
         logger.info("Collecting from UIUC Faculty directories...")
         try:
             faculty_opps = fetch_faculty(enrich=deep)
+            components: dict[str, dict] = {
+                "static": {
+                    "status": "ok" if faculty_opps else "error",
+                    "fetched": len(faculty_opps),
+                }
+            }
+            if not faculty_opps:
+                components["static"]["error"] = (
+                    "static UIUC faculty directories fetched zero records"
+                )
+
+            def collect_required_component(name: str, fetch_fn) -> list[dict]:
+                try:
+                    records = fetch_fn()
+                except Exception as exc:
+                    logger.error(
+                        "UIUC %s faculty collection failed: %s",
+                        name,
+                        exc,
+                    )
+                    components[name] = {
+                        "status": "error",
+                        "fetched": 0,
+                        "error": str(exc),
+                    }
+                    return []
+                components[name] = {
+                    "status": "ok" if records else "error",
+                    "fetched": len(records),
+                }
+                if not records:
+                    components[name]["error"] = (
+                        f"{name} UIUC faculty component fetched zero records"
+                    )
+                    logger.error(components[name]["error"])
+                return records
+
             # The 4 ACES departments (Animal Sci, Crop Sci, NRES, FSHN) render their
             # directory via Drupal Views AJAX, so the static scraper misses them;
             # uiuc_js_faculty drives headless Chromium to recover them. Its records
@@ -598,16 +687,7 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # failure is caught before the grace window retires them.
             js_opps: list[dict] = []
             if deep:
-                try:
-                    js_opps = fetch_js_faculty()
-                    if not js_opps:
-                        logger.error(
-                            "UIUC JS faculty scrape yielded 0 records — Playwright/Chromium "
-                            "missing or directory layout changed; the 4 ACES departments will "
-                            "be deactivated once their last_seen_at passes the grace window"
-                        )
-                except Exception as e:
-                    logger.error(f"UIUC JS faculty collection failed: {e}")
+                js_opps = collect_required_component("js", fetch_js_faculty)
             # AHS, School of Social Work, and Gies publish their directories as
             # paginated JSON APIs (no per-profile HTML fetch). uiuc_json_faculty
             # returns ~430 faculty; like js_opps these share source='uiuc_faculty',
@@ -616,32 +696,20 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             # re-scrape". Cheap + reliable but grouped with the deep faculty work.
             json_opps: list[dict] = []
             if deep:
-                try:
-                    json_opps = fetch_json_faculty()
-                    if not json_opps:
-                        logger.error(
-                            "UIUC JSON faculty scrape yielded 0 records — campus directory "
-                            "APIs unreachable or schema changed; AHS/Social Work/Gies faculty "
-                            "will be deactivated once their last_seen_at passes the grace window"
-                        )
-                except Exception as e:
-                    logger.error(f"UIUC JSON faculty collection failed: {e}")
+                json_opps = collect_required_component(
+                    "json",
+                    fetch_json_faculty,
+                )
             # Carle Medicine, College of Law, and LER have HTML directories the JSON
             # APIs don't cover (Law + LER enrich email per profile). Same
             # source='uiuc_faculty' contract as js/json, so folded into the same
             # merge + fetched count gating deactivate_stale_faculty.
             html_opps: list[dict] = []
             if deep:
-                try:
-                    html_opps = fetch_html_faculty()
-                    if not html_opps:
-                        logger.error(
-                            "UIUC HTML faculty scrape yielded 0 records — Carle/Law/LER "
-                            "directory layout changed; those faculty will be deactivated "
-                            "once their last_seen_at passes the grace window"
-                        )
-                except Exception as e:
-                    logger.error(f"UIUC HTML faculty collection failed: {e}")
+                html_opps = collect_required_component(
+                    "html",
+                    fetch_html_faculty,
+                )
             all_faculty = faculty_opps + js_opps + json_opps + html_opps
             added, updated = merge_faculty(all_faculty)
             # Surface the silent-scrape-failure class (a declared department whose
@@ -655,7 +723,16 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
                     "UIUC faculty department scraped ZERO records — likely URL rot / "
                     f"directory layout change (silent failure): {dept}"
                 )
-            summary["sources"]["uiuc_faculty"] = {
+            component_errors = [
+                f"{name}: {info.get('error', 'component failed')}"
+                for name, info in components.items()
+                if info.get("status") != "ok"
+            ]
+            if empty_depts:
+                component_errors.append(
+                    f"empty departments: {sorted(empty_depts)}"
+                )
+            faculty_summary = {
                 "fetched": len(all_faculty),
                 "js_fetched": len(js_opps),
                 "json_fetched": len(json_opps),
@@ -664,8 +741,18 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
                 "updated": updated,
                 "enriched": deep,
                 "empty_departments": empty_depts,
-                "status": "ok",
+                "components": components,
+                # The four producer families currently share one source value,
+                # so the corpus cannot yet prove which component owned an old
+                # row. Until component-level baselines/lineage exist, a
+                # nonzero-but-collapsed component must never retire old UIUC
+                # faculty through the aggregate 70% gate.
+                "stale_deactivation_authorized": False,
+                "status": "error" if component_errors else "ok",
             }
+            if component_errors:
+                faculty_summary["error"] = "; ".join(component_errors)
+            summary["sources"]["uiuc_faculty"] = faculty_summary
             summary["total_new"] += added
             summary["total_updated"] += updated
             logger.info(
@@ -717,13 +804,21 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
         logger.info("=" * 50)
         logger.info(f"Collecting from UC Berkeley campus sources (deep={deep})...")
         try:
-            campus_opps = fetch_ucb_campus(deep=deep)
-            added, updated = merge_ucb_campus(campus_opps)
+            campus_opps, campus_evidence = fetch_ucb_campus_with_evidence(
+                deep=deep
+            )
+            added, updated = merge_ucb_campus(
+                campus_opps,
+                complete_recursive_sources=set(
+                    campus_evidence.get("complete_recursive_sources") or ()
+                ),
+            )
             summary["sources"]["ucb_campus"] = {
                 "fetched": len(campus_opps),
                 "new": added,
                 "updated": updated,
                 "deep": deep,
+                **campus_evidence,
                 "status": "ok",
             }
             summary["total_new"] += added
@@ -747,13 +842,25 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
         if not selected(slug):
             continue
         try:
-            school_opps = fetch_campus_graph(school_cfg, deep=deep)
-            added, updated = merge_campus_graph(school_opps)
+            school_opps, graph_evidence = (
+                fetch_campus_graph_with_evidence(
+                    school_cfg,
+                    deep=deep,
+                )
+            )
+            added, updated = merge_campus_graph(
+                school_opps,
+                complete_recursive_sources=set(
+                    graph_evidence.get("complete_recursive_sources") or ()
+                ),
+                school_slug=slug,
+            )
             summary["sources"][f"campus_graph:{slug}"] = {
                 "fetched": len(school_opps),
                 "new": added,
                 "updated": updated,
                 "deep": deep,
+                **graph_evidence,
                 "status": "ok",
             }
             summary["total_new"] += added
@@ -1081,14 +1188,28 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             logger.info("=" * 50)
             logger.info("Collecting from UC Santa Barbara URCA project directory...")
             try:
-                urca_proj = fetch_ucsb_urca_projects()
-                added, updated = merge_ucsb_urca_projects(urca_proj)
+                urca_proj, urca_evidence = (
+                    fetch_ucsb_urca_projects_with_evidence()
+                )
+                sitemap_is_complete = (
+                    urca_evidence.get("sitemap_complete") is True
+                )
+                added, updated, deactivated = merge_ucsb_urca_projects(
+                    urca_proj,
+                    snapshot_complete=sitemap_is_complete,
+                )
                 summary["sources"]["ucsb_urca_projects"] = {
                     "fetched": len(urca_proj),
                     "new": added,
                     "updated": updated,
-                    "status": "ok",
+                    "deactivated": deactivated,
+                    **urca_evidence,
+                    "status": "ok" if sitemap_is_complete else "error",
                 }
+                if not sitemap_is_complete:
+                    summary["sources"]["ucsb_urca_projects"]["error"] = (
+                        "URCA sitemap evidence is incomplete or has unknown locations"
+                    )
                 summary["total_new"] += added
                 summary["total_updated"] += updated
                 logger.info(f"URCA projects: {len(urca_proj)} fetched, {added} new, {updated} updated")
@@ -1231,18 +1352,28 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
             for name, info in summary["sources"].items()
             if name in FACULTY_SOURCES and info.get("status") == "ok"
         }
+        deactivation_not_authorized: list[str] = []
+        if "uiuc_faculty" in faculty_fetched:
+            faculty_fetched.pop("uiuc_faculty")
+            deactivation_not_authorized.append("uiuc_faculty")
         stale_faculty = deactivate_stale_faculty(all_opps, faculty_fetched)
         summary["sources"]["deactivate_stale_faculty"] = {
             "newly_deactivated": stale_faculty["newly_deactivated"],
             "kept_fresh": stale_faculty["kept_fresh"],
             "skipped_partial_scrape": stale_faculty["skipped_partial_scrape"],
+            "skipped_missing_unit_ledger": (
+                stale_faculty["skipped_missing_unit_ledger"]
+            ),
+            "deactivation_not_authorized": deactivation_not_authorized,
             "status": "ok",
         }
         logger.info(
-            "deactivate_stale_faculty: %d newly deactivated, %d kept fresh, %d source(s) gated",
+            "deactivate_stale_faculty: %d newly deactivated, %d kept fresh, "
+            "%d partial source(s) and %d aggregate source(s) gated",
             stale_faculty["newly_deactivated"],
             stale_faculty["kept_fresh"],
             len(stale_faculty["skipped_partial_scrape"]),
+            len(stale_faculty["skipped_missing_unit_ledger"]),
         )
 
         # Multi-university Phase 1: stamp source-level school + audience on
@@ -1305,24 +1436,77 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
         collapse = collapse_same_person_faculty(all_opps)
         all_opps = collapse["kept"]
         removed_dupes = sum(collapse["removed_by_school"].values())
+        final_uiuc_dq = enforce_final_shared_keyword_invariant(all_opps)
         summary["sources"]["faculty_hygiene"] = {
             "keywords_cleaned": kw_cleaned,
             "duplicates_removed": removed_dupes,
             "removed_by_school": collapse["removed_by_school"],
             "shared_inbox_nulled": collapse["nulled_by_school"],
+            **final_uiuc_dq,
             "status": "ok",
         }
         logger.info(
-            "faculty_hygiene: %d keyword list(s) cleaned, %d duplicate person(s) removed",
-            kw_cleaned, removed_dupes,
+            "faculty_hygiene: %d keyword list(s) cleaned, %d duplicate person(s) "
+            "removed, %d post-cleanup shared set(s) demoted",
+            kw_cleaned,
+            removed_dupes,
+            final_uiuc_dq["shared_keyword_demoted"],
         )
+
+        graph_targets = {
+            config["school_slug"]
+            for config in SCHOOL_CONFIGS
+            if selected(config.get("school_slug"))
+        }
+        quarantine_sources = {
+            source["source_name"]
+            for config in SCHOOL_CONFIGS
+            if config.get("school_slug") in graph_targets
+            for source in config.get("sources", [])
+            if source.get("crawl") == RECURSIVE
+        }
+        if selected("ucb"):
+            quarantine_sources.update(
+                source["source_name"]
+                for source in UCB_SOURCES
+                if source.get("crawl") == RECURSIVE
+            )
+        legacy_discovered_quarantined = quarantine_unverified_discovered(
+            all_opps,
+            collector_sources=quarantine_sources,
+        )
+        summary["sources"]["campus_discovery_quarantine"] = {
+            "quarantined": legacy_discovered_quarantined,
+            "status": "ok",
+        }
+        if legacy_discovered_quarantined:
+            logger.warning(
+                "Quarantined %d legacy crawl-discovered record(s) without "
+                "detail-page evidence",
+                legacy_discovered_quarantined,
+            )
 
         atomic_write_json(PROCESSED_FILE, all_opps)
 
         # Professor tracking ledger: derive verified change events from the
-        # exact corpus just persisted. Strictly best-effort — a tracking bug
-        # must never fail or roll back the refresh itself.
-        _update_professor_tracking(all_opps, summary)
+        # exact corpus just persisted. The tracking artifact's own refresh_ok
+        # marker comes from the complete target-source contract, not merely
+        # "the process did not crash". Professor Updates remains hidden and
+        # this global ledger is deliberately excluded from target-shard
+        # artifacts, so a tracking error is diagnostic rather than authority
+        # over the opportunity-data publication.
+        preliminary_release = evaluate_refresh_summary(
+            summary,
+            schools=schools,
+            national=national,
+            deep=deep,
+            require_tracking=False,
+        )
+        _update_professor_tracking(
+            all_opps,
+            summary,
+            refresh_ok=preliminary_release["ready"],
+        )
 
         summary["sources"]["deactivate_past"] = {
             "newly_deactivated": deact_counts["newly_deactivated"],
@@ -1342,6 +1526,13 @@ def refresh_all(deep: bool = True, schools: set[str] | None = None,
     else:
         summary["total_in_file"] = 0
 
+    summary["release"] = evaluate_refresh_summary(
+        summary,
+        schools=schools,
+        national=national,
+        deep=deep,
+        require_tracking=False,
+    )
     return summary
 
 
@@ -1374,17 +1565,46 @@ def print_summary(summary: dict) -> None:
     print("=" * 50)
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> int:
     import argparse
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     parser = argparse.ArgumentParser(description="Refresh all opportunity data sources")
     parser.add_argument("--no-deep", action="store_true", help="Skip deep scraping of SRO detail pages")
-    parser.add_argument("--schools", help="Comma-separated school slugs to shard this run to (e.g. uw,wisc)")
-    parser.add_argument("--national", action="store_true",
-                        help="Run only the national (school-less) sources: SRO catalog, NSF REU, Simplify")
-    args = parser.parse_args()
+    parser.add_argument("--base-sha")
+    parser.add_argument("--run-id")
+    parser.add_argument("--run-attempt")
+    selector = parser.add_mutually_exclusive_group()
+    selector.add_argument(
+        "--schools",
+        help="Comma-separated school slugs to shard this run to (e.g. uw,wisc)",
+    )
+    selector.add_argument(
+        "--national",
+        action="store_true",
+        help="Run only the national (school-less) sources: SRO catalog, NSF REU, Simplify",
+    )
+    args = parser.parse_args(argv)
+
+    provenance_values = (args.base_sha, args.run_id, args.run_attempt)
+    provenance = None
+    if any(value is not None for value in provenance_values):
+        if any(value is None for value in provenance_values):
+            parser.error(
+                "--base-sha, --run-id, and --run-attempt must be provided together"
+            )
+        if _BASE_SHA_RE.fullmatch(args.base_sha) is None:
+            parser.error("--base-sha must be a lowercase 40-character Git SHA")
+        if _RUN_NUMBER_RE.fullmatch(args.run_id) is None:
+            parser.error("--run-id must be a positive integer")
+        if _RUN_NUMBER_RE.fullmatch(args.run_attempt) is None:
+            parser.error("--run-attempt must be a positive integer")
+        provenance = {
+            "base_sha": args.base_sha,
+            "run_id": args.run_id,
+            "run_attempt": args.run_attempt,
+        }
 
     schools = None
     if args.schools is not None:
@@ -1394,11 +1614,21 @@ if __name__ == "__main__":
 
     start = time.time()
     try:
-        summary = refresh_all(deep=not args.no_deep, schools=schools, national=args.national)
+        summary = refresh_all(
+            deep=not args.no_deep,
+            schools=schools,
+            national=args.national,
+            provenance=provenance,
+        )
     except Exception as e:
         elapsed = time.time() - start
         summary = {
             "timestamp": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+            "request": {
+                "schools": sorted(schools) if schools is not None else None,
+                "national": args.national,
+                "deep": not args.no_deep,
+            },
             "sources": {},
             "total_new": 0,
             "total_updated": 0,
@@ -1406,6 +1636,8 @@ if __name__ == "__main__":
             "duration_seconds": round(elapsed, 1),
             "fatal_error": str(e),
         }
+        if provenance is not None:
+            summary["provenance"] = provenance
         write_status(summary)
         raise
 
@@ -1417,4 +1649,14 @@ if __name__ == "__main__":
         print_summary(summary)
     except Exception as e:
         logger.warning("print_summary failed (non-fatal): %s", e)
+    release = summary.get("release") or {}
+    if release.get("ready") is not True:
+        for reason in release.get("reasons") or ["release contract did not pass"]:
+            logger.error("REFRESH RELEASE BLOCKED: %s", reason)
+        return 2
     print(f"\nCompleted in {elapsed:.1f}s")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

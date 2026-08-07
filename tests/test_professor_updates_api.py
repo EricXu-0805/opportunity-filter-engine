@@ -49,11 +49,29 @@ def record(*, record_id="faculty-uiuc-ece-abcd1234", pi_name="Jane Doe",
     }
 
 
+def stamp_release(state):
+    expected_professors = {
+        professor_id: profile["school"]
+        for professor_id, profile in state["profiles"].items()
+    }
+    state["release"] = compute_release_status(
+        state["profiles"],
+        state["events"],
+        refresh_ok=True,
+        now=datetime(2026, 7, 20, tzinfo=UTC),
+        expected_schools={"uiuc"},
+        expected_professors=expected_professors,
+    )
+    assert state["release"]["release_ready"] is True
+    return state
+
+
 def state_with_event():
     state = update_tracking_state([record()])
-    return update_tracking_state(
+    state = update_tracking_state(
         [record(last_verified=T1, keywords=("quantum sensing",))], state
     )
+    return stamp_release(state)
 
 
 @pytest.fixture
@@ -87,14 +105,14 @@ class TestArtifactAvailability:
         assert res.status_code == 200
         assert res.json()["available"] is False
 
-    def test_empty_state_is_available_with_no_events(self, tracking_file):
+    def test_empty_state_without_passing_release_is_unavailable(self, tracking_file):
         tracking_file.write_text(
             json.dumps({"schema_version": 2, "profiles": {}, "events": []}),
             encoding="utf-8",
         )
         res = post_updates(["prof:v1:uiuc:" + "a" * 20])
         assert res.json() == {
-            "available": True,
+            "available": False,
             "release_ready": False,
             "events": [],
             "requested": 1,
@@ -120,6 +138,10 @@ class TestArtifactAvailability:
         state["release"] = compute_release_status(
             state["profiles"], state["events"], refresh_ok=True,
             now=datetime(2026, 7, 20, tzinfo=UTC),
+            expected_professors={
+                professor_id: profile["school"]
+                for professor_id, profile in state["profiles"].items()
+            },
         )
         assert state["release"]["release_ready"] is True
         tracking_file.write_text(json.dumps(state), encoding="utf-8")
@@ -128,6 +150,52 @@ class TestArtifactAvailability:
         assert body["available"] is True
         assert body["release_ready"] is True
         assert len(body["events"]) == 1
+
+    def test_once_green_artifact_expires_when_refresh_stops(self, tracking_file):
+        state = state_with_event()
+        state["release"]["computed_at"] = "2026-01-01T00:00:00+00:00"
+        tracking_file.write_text(json.dumps(state), encoding="utf-8")
+
+        body = post_updates([state["events"][0]["professor_id"]]).json()
+
+        assert body["available"] is False
+        assert body["release_ready"] is False
+        assert body["events"] == []
+
+    def test_cached_artifact_stops_at_exact_profile_freshness_expiry(
+        self,
+        tracking_file,
+        monkeypatch,
+    ):
+        observed_at = datetime.now(UTC)
+        fresh_record = record(last_verified=observed_at.isoformat())
+        state = update_tracking_state([fresh_record])
+        professor_id = canonical_professor_id(fresh_record)
+        state["release"] = compute_release_status(
+            state["profiles"],
+            state["events"],
+            refresh_ok=True,
+            now=observed_at,
+            expected_schools={"uiuc"},
+            expected_professors={professor_id: "uiuc"},
+        )
+        tracking_file.write_text(json.dumps(state), encoding="utf-8")
+
+        assert post_updates([professor_id]).json()["available"] is True
+        expiry = datetime.fromisoformat(
+            state["release"]["freshness_valid_until"]
+        )
+
+        class AfterExpiry(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                value = expiry.replace(tzinfo=UTC) + professors.timedelta(seconds=1)
+                return value if tz is None else value.astimezone(tz)
+
+        monkeypatch.setattr(professors, "datetime", AfterExpiry)
+        body = post_updates([professor_id]).json()
+        assert body["available"] is False
+        assert body["release_ready"] is False
 
 
 class TestEventServing:
@@ -140,6 +208,7 @@ class TestEventServing:
                     last_verified=T1, keywords=("hci",))],
             state,
         )
+        stamp_release(state)
         tracking_file.write_text(json.dumps(state), encoding="utf-8")
 
         target = canonical_professor_id(record())
@@ -168,7 +237,7 @@ class TestEventServing:
         tracking_file.write_text(json.dumps(state), encoding="utf-8")
         res = post_updates([state["events"][0]["professor_id"]])
         assert res.json() == {
-            "available": True,
+            "available": False,
             "release_ready": False,
             "events": [],
             "requested": 1,
@@ -189,6 +258,7 @@ class TestEventServing:
                 [record(last_verified=f"2026-07-{i + 2:02d}T00:00:00", keywords=(f"kw-{i}",))],
                 state,
             )
+        stamp_release(state)
         tracking_file.write_text(json.dumps(state), encoding="utf-8")
         professor_id = state["events"][0]["professor_id"]
 

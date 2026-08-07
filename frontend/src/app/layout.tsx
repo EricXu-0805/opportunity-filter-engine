@@ -25,19 +25,19 @@ export const metadata: Metadata = {
     template: '%s · JoinALab',
   },
   description:
-    'AI-powered matching that connects students with research positions, internships, and fellowships that actually fit their background — across a growing list of top universities.',
+    'Evidence-based matching that helps students find research positions and internships suited to their confirmed background.',
   metadataBase: new URL(SITE_URL),
   applicationName: 'JoinALab',
   authors: [{ name: 'Eric Xu', url: 'https://github.com/EricXu-0805' }],
   keywords: [
     'research matching', 'undergraduate research', 'REU',
-    'internships', 'fellowships', 'summer programs',
-    'find a research lab', 'AI opportunity matching',
+    'internships', 'summer programs',
+    'find a research lab', 'opportunity matching',
   ],
   openGraph: {
     title: 'JoinALab — Research & Internship Matching',
     description:
-      'Find research and internship opportunities that actually match your background. AI-powered, free, built by students.',
+      'Find research and internship opportunities ranked against your confirmed background. Free and built by students.',
     siteName: 'JoinALab',
     type: 'website',
     locale: 'en_US',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'JoinALab — Research Matching',
     description:
-      'AI-powered matching for research positions, internships, and fellowships.',
+      'Evidence-based matching for research positions and internships.',
     creator: '@EricXu_0805',
   },
   robots: {

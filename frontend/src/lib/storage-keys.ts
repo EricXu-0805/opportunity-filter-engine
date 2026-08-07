@@ -1,8 +1,23 @@
 // Single source of truth for web-storage keys used in more than one file.
-// Values are persisted in users' browsers — never change them, or existing
-// profiles/preferences silently disappear.
+// Values are persisted in users' browsers — do not change them unless a
+// release contract deliberately invalidates stale state.
 export const STORAGE_KEYS = {
   PROFILE: 'ofe_profile',
+  // Sits BESIDE the raw PROFILE blob rather than replacing it: every screen
+  // still reads `ofe_profile` in its original shape, while the coordinator
+  // (lib/profile-sync.ts) keeps the cloud revision and the not-yet-confirmed
+  // write here. Splitting them this way means shipping CAS cannot invalidate
+  // any existing user's stored profile.
+  PROFILE_SYNC: 'ofe_profile_sync_v1',
+  // The durable intent journal. Written SYNCHRONOUSLY at edit/action time —
+  // before any debounce — so a crash inside the 1.5s autosave window still
+  // leaves the operation on disk. One lane PER TAB (…_<tabId>, plus a single
+  // …_settled lane), because a shared key would need a read-modify-write that
+  // two tabs can interleave: whichever wrote last would silently drop the
+  // other's operation. Appends therefore never touch another tab's lane at
+  // all; only the merge/claim/settle pass reads across lanes, and that pass
+  // runs under an exclusive Web Lock (see profile-journal.ts).
+  PROFILE_JOURNAL_PREFIX: 'ofe_profile_journal_v1_',
   // _v2: #226 switched the opt-in rerank from the (regressing) embedding
   // blend to the LLM "AI smart match" — pre-#226 caches held embedding-ranked
   // sets. _v3: the publication trust boundary — pre-boundary caches hold
@@ -14,8 +29,18 @@ export const STORAGE_KEYS = {
   // matcher inputs, so every pre-_v4 hash is incomparable. From _v4 on,
   // matcher-generation invalidation is AUTOMATIC (the server's matcher_version
   // is part of the payload); manual suffix bumps remain only for shape changes.
-  MATCH_RESULTS: 'ofe_match_results_v4',
-  SEMANTIC_RERANK: 'ofe_semantic_rerank',
+  // _v5: public release-scope boundary. A pre-_v5 self-contained payload may
+  // still contain hidden Fellowship records, AI-refined order, or professor
+  // responsiveness influence, so it must be regenerated deterministically.
+  // _v6: bounded server-view paging. Older payloads claimed a complete total
+  // while silently truncating the locally cached array at 2,500 rows.
+  // _v7: contact-trust boundary. Pre-_v7 payloads may retain an address copied
+  // into a public description, reason, recent-work, or URL field. They are
+  // regenerable and must not survive the stricter server projection.
+  MATCH_RESULTS: 'ofe_match_results_v7',
+  // Versioned opt-in key: the legacy `ofe_semantic_rerank` defaulted on and
+  // cannot prove active consent under the deterministic-default contract.
+  SEMANTIC_RERANK: 'ofe_semantic_rerank_opt_in_v1',
   FILTER_PRESETS: 'ofe_filter_presets',
   CUSTOM_IMPORTS: 'ofe_custom_imports',
   EMAIL_HINT: 'ofe_email_hint',

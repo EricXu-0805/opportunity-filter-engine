@@ -200,9 +200,18 @@ jobs:
         # re-evaluated by `next start` — without it the built app proxies
         # /api/* to the LIVE production backend instead of the local uvicorn
         # the Playwright webServer boots.
+        #
+        # The NEXT_PUBLIC_* pair must ALSO be baked here (values mirror
+        # frontend/playwright.config.ts): the client bundle inlines them at
+        # build time, and the app follows persistence rather than flipping
+        # optimistically — built without a storage backend, tracker/favorites
+        # are correctly inert and every persistence spec fails. `next dev`
+        # injects them per-request, so only the CI production build needs this.
         run: npm run build
         env:
           BACKEND_URL: http://127.0.0.1:8100
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-loopback-stub-anon-key-not-a-real-key
 
       - name: Run E2E tests
         run: npm run test:e2e -- --project=chromium

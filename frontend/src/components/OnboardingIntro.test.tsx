@@ -1,5 +1,5 @@
 /*
- * OnboardingIntro: 8-slide product tour. First-visit gate (localStorage),
+ * OnboardingIntro: accepted-release product tour. First-visit gate (localStorage),
  * Back/Next paging, and "Try it" completion. analytics is mocked; i18n returns
  * the key verbatim. localStorage is real in jsdom and cleared between tests.
  */
@@ -13,11 +13,33 @@ vi.mock('@/lib/analytics', () => ({ track: (...args: unknown[]) => mockTrack(...
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
 
 import OnboardingIntro from './OnboardingIntro';
+import { enterLocalOnlyMode } from '@/lib/identity-owner';
 
-const SLIDE_COUNT = 8;
+const SLIDE_COUNT = 6;
 
 beforeEach(() => {
   localStorage.clear();
+  // jsdom has no Web Locks. The campus is written through the coordinator,
+  // which serializes every change to shared local state through one — without
+  // a fake the write reports a device failure and the gate correctly refuses
+  // to close, which would make this a test about the environment.
+  let chain: Promise<unknown> = Promise.resolve();
+  Object.defineProperty(navigator, 'locks', {
+    configurable: true,
+    value: {
+      request: (_n: string, _o: unknown, fn: () => Promise<unknown>) => {
+        const run = chain.then(() => fn());
+        chain = run.then(() => undefined, () => undefined);
+        return run;
+      },
+    },
+  });
+  // persistHomeSchool/recordSchoolConfirmation now preflight-check the
+  // owner token before writing — this narrow component test never mounts
+  // anything that resolves a real (or confirmed-local-only) identity, so
+  // establish the local-only realm directly (this app has no configured
+  // Supabase in tests, matching the real unconfigured-degrade path).
+  enterLocalOnlyMode();
 });
 
 afterEach(() => {
@@ -49,6 +71,17 @@ describe('OnboardingIntro', () => {
     fireEvent.click(screen.getByTestId('onboarding-back'));
     expect(screen.getByTestId('onboarding-skip')).toBeInTheDocument();
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
+  });
+
+  it('does not advertise dormant Compare or Roadmap slides', async () => {
+    render(<OnboardingIntro />);
+    await waitFor(() => screen.getByTestId('onboarding-intro'));
+    expect(screen.getByText(`1 / ${SLIDE_COUNT}`)).toBeInTheDocument();
+    expect(screen.queryByText('onboarding.compareTitle')).not.toBeInTheDocument();
+    expect(screen.queryByText('onboarding.roadmapTitle')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('onboarding-primary'));
+    expect(screen.getByText('onboarding.exResearch')).toBeInTheDocument();
+    expect(screen.queryByText('onboarding.exFellowship')).not.toBeInTheDocument();
   });
 
   it('pages through to the end and completes via the school gate (default UIUC: seen + tracked + persisted)', async () => {

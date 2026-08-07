@@ -8,6 +8,7 @@ import type { FeedbackCategory, FeedbackResult } from '@/lib/supabase';
 import { track } from '@/lib/analytics';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { readLocalStorageJSON, writeLocalStorageJSON } from '@/lib/use-local-storage-json';
+import { captureOwnerToken } from '@/lib/identity-owner';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 type ErrorKind = 'generic' | 'no-session' | 'timeout';
@@ -135,7 +136,11 @@ export default function FeedbackWidget() {
     // who never opens the widget should leave no trace).
     if (!populated && !persistedRef.current) return;
     persistedRef.current = populated;
-    writeLocalStorageJSON(STORAGE_KEYS.FEEDBACK_DRAFT, populated ? draft : null);
+    // FEEDBACK_DRAFT is user-scoped (W15), so the write carries the owner
+    // capability. Captured at the write itself: this mirror fires on the
+    // typist's own keystroke, so action time IS write time — there is no
+    // earlier moment the intent could have been captured at.
+    writeLocalStorageJSON(STORAGE_KEYS.FEEDBACK_DRAFT, populated ? draft : null, captureOwnerToken());
   }, [draft]);
 
   const send = useCallback(async () => {

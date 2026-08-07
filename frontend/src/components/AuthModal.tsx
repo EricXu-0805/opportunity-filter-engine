@@ -56,6 +56,7 @@ import {
 } from '@/lib/supabase';
 import { detectSchoolFromEmail } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useAuthModal, type AuthModalPhase } from '@/lib/auth-modal-context';
 import { useT } from '@/i18n/client';
 
@@ -85,7 +86,10 @@ function getEnabledProviders(): OAuthProvider[] {
   return raw
     .split(',')
     .map(s => s.trim().toLowerCase())
-    .filter((s): s is OAuthProvider => s === 'google' || s === 'azure');
+    .filter(
+      (s): s is OAuthProvider =>
+        s === 'google' || (s === 'azure' && RELEASE_SCOPE.microsoftSchoolAuth),
+    );
 }
 
 const VALUE_PROPS = [

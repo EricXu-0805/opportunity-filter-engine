@@ -26,7 +26,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle, Sparkles } from 'lucide-react';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import {
@@ -39,11 +39,13 @@ import {
   type MergeSummary,
   type OAuthProvider,
 } from '@/lib/supabase';
-import { syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { advanceOwnerEpochIfUnchanged, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { hydrateProfile } from '@/lib/profile-sync';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
 
-type Status = 'pending' | 'success' | 'error' | 'identity-conflict';
+type Status = 'pending' | 'success' | 'error' | 'identity-conflict' | 'merge-failed';
 
 const DWELL_MS = 2500;
 const TICK_MS = 100;
@@ -60,36 +62,102 @@ function CallbackInner() {
   const [remainingMs, setRemainingMs] = useState<number>(DWELL_MS);
   const [linkProvider, setLinkProvider] = useState<OAuthProvider | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [mergeRetrying, setMergeRetrying] = useState(false);
+  const cancelledRef = useRef(false);
+
+  // Shared success path for all three entry points (preflight short-circuit,
+  // post-exchange re-check, and the normal exchange), and for the
+  // merge-failed screen's own Retry button. Redeems a pending Flow B merge
+  // grant BEFORE loading the inventory so the counts reflect the merged
+  // data, then flips to the success screen.
+  const finishSignedIn = useCallback(async (email: string | null, uid: string | null) => {
+    // Captured BEFORE the redeem await: this page reaches `uid` via a
+    // one-shot getAuthState() poll, not the live onAuthChange stream, so a
+    // live event elsewhere (a sign-out, a DIFFERENT sign-in racing this one)
+    // could advance the shared owner past this resolution while the RPC is
+    // in flight. advanceOwnerEpochIfUnchanged below drops it as stale in
+    // that case instead of forcing the browser's identity back to this
+    // now-stale uid — see identity-owner.ts's own doc comment on the CAS.
+    const sinceEpoch = captureOwnerToken().epoch;
+    const outcome = await redeemPendingMerge();
+    if (cancelledRef.current) return;
+    if (outcome.kind === 'failed') {
+      // Grant existed but its outcome could not be confirmed (network drop
+      // mid-RPC) — the grant token itself is still intact in localStorage
+      // (redeemPendingMerge only clears it on a CONFIRMED terminal
+      // outcome), so Retry can safely re-present the same token; migration
+      // 026 makes that idempotent even if the first attempt actually landed.
+      setStatus('merge-failed');
+      return;
+    }
+    const merge = outcome.kind === 'success' ? outcome.summary : null;
+
+    // W6: any non-null summary — even a "nothing to move" one — means the
+    // grant was validated and consumed by the account it was bound to, i.e.
+    // the same human controlled both the anon session and this account.
+    // Claim the browser-local data for the new uid instead of clearing it
+    // (custom imports live ONLY in localStorage — a clear would destroy
+    // them). No summary → plain sync, which clears on a uid change.
+    const accepted = advanceOwnerEpochIfUnchanged(uid, sinceEpoch);
+    if (accepted) {
+      // syncLocalIdentityOwner's return must not be treated as "safe to
+      // proceed as this uid" when false — its own doc comment says exactly
+      // that. hydrateProfile below writes through the SAME readiness gate,
+      // so skipping it when sync isn't confirmed avoids a doomed write, not
+      // just a redundant one.
+      const synced = await syncLocalIdentityOwner(uid, { claim: merge !== null });
+      if (!synced) {
+        console.warn('[ofe] local identity sync could not be verified after sign-in');
+      }
+      if (merge !== null && synced) {
+        // The merge moved rows server-side, and when the TARGET already had
+        // a profile the server KEPT that one — so the guest's local mirror,
+        // which the claim above just handed to this account, is no longer
+        // canonical. Re-read the row and refresh the sync envelope + mirror
+        // before anything reads them, or /results would keep matching
+        // against a profile this account does not actually have.
+        await hydrateProfile().catch(() => {});
+      }
+    }
+    // else: a live event already advanced the shared owner past this
+    // resolution before we got here — that event's own onAuthChange
+    // handling already ran its own sync. Forcing THIS stale uid back over
+    // it would be wrong; every read below (getDataInventory) goes through
+    // the same readiness-gated primitives and will correctly reflect
+    // whichever identity actually IS current now.
+    const inv = await getDataInventory().catch(() => null);
+    if (cancelledRef.current) return;
+    setSignedInEmail(email);
+    setInventory(inv);
+    setMergeSummary(merge && merge.merged ? merge : null);
+    setStatus('success');
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
+      sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
+      sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
+    } catch { /* private mode */ }
+  }, []);
+
+  const retryMerge = useCallback(async () => {
+    if (mergeRetrying) return;
+    setMergeRetrying(true);
+    const state = await getAuthState();
+    if (cancelledRef.current) return;
+    setMergeRetrying(false);
+    if (!state.user || state.isAnonymous) {
+      // Signed out somehow between the failure and the retry click — the
+      // generic error screen is the honest outcome, not another silent
+      // "success".
+      setStatus('error');
+      setErrorMsg(t('auth.callback.errGeneric'));
+      return;
+    }
+    await finishSignedIn(state.email, state.user.id);
+  }, [mergeRetrying, finishSignedIn, t]);
 
   // ============ exchange + load inventory ============
   useEffect(() => {
-    let cancelled = false;
-
-    // Shared success path for all three entry points (preflight short-circuit,
-    // post-exchange re-check, and the normal exchange). Redeems a pending
-    // Flow B merge grant BEFORE loading the inventory so the counts reflect
-    // the merged data, then flips to the success screen.
-    const finishSignedIn = async (email: string | null, uid: string | null) => {
-      const merge = await redeemPendingMerge().catch(() => null);
-      // W6: any non-null summary — even a "nothing to move" one — means the
-      // grant was validated and consumed by the account it was bound to, i.e.
-      // the same human controlled both the anon session and this account.
-      // Claim the browser-local data for the new uid instead of clearing it
-      // (custom imports live ONLY in localStorage — a clear would destroy
-      // them). No summary → plain sync, which clears on a uid change.
-      syncLocalIdentityOwner(uid, { claim: merge !== null });
-      const inv = await getDataInventory().catch(() => null);
-      if (cancelled) return;
-      setSignedInEmail(email);
-      setInventory(inv);
-      setMergeSummary(merge && merge.merged ? merge : null);
-      setStatus('success');
-      try {
-        sessionStorage.removeItem(STORAGE_KEYS.JUST_SIGNED_OUT);
-        sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
-        sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
-      } catch { /* private mode */ }
-    };
+    cancelledRef.current = false;
 
     (async () => {
       // Surface OAuth-style errors before attempting the exchange.
@@ -99,7 +167,7 @@ function CallbackInner() {
         : null;
       const hashError = hashRaw ? decodeURIComponent(hashRaw) : null;
       if (queryError || hashError) {
-        if (!cancelled) {
+        if (!cancelledRef.current) {
           // linkIdentity conflict: the account the user just consented
           // with already belongs to someone else. GoTrue only detects
           // this AFTER the provider consent, so it arrives here as error
@@ -162,7 +230,7 @@ function CallbackInner() {
       const otpType = params.get('type') as EmailOtpType | null;
 
       if (!code && !tokenHash) {
-        if (!cancelled) {
+        if (!cancelledRef.current) {
           setStatus('error');
           setErrorMsg(t('auth.callback.errMissingCode'));
         }
@@ -182,7 +250,7 @@ function CallbackInner() {
       } else {
         exchangeError = { message: t('auth.callback.errMissingType') };
       }
-      if (cancelled) return;
+      if (cancelledRef.current) return;
       if (exchangeError) {
         // R68 second-chance: a "code verifier not found" error after we
         // already passed the preflight check above is rare but possible
@@ -191,7 +259,7 @@ function CallbackInner() {
         // we're now signed in, treat the exchange's stale-verifier
         // error as a no-op and show success.
         const postCheck = await getAuthState();
-        if (!cancelled && postCheck.user && !postCheck.isAnonymous) {
+        if (!cancelledRef.current && postCheck.user && !postCheck.isAnonymous) {
           await finishSignedIn(postCheck.email, postCheck.user.id);
           return;
         }
@@ -203,12 +271,12 @@ function CallbackInner() {
       // Load email AFTER exchange so RLS lets us read the user's rows; the
       // shared helper redeems any pending merge, then loads the inventory.
       const state = await getAuthState();
-      if (cancelled) return;
+      if (cancelledRef.current) return;
       await finishSignedIn(state.email, state.user?.id ?? null);
     })();
 
-    return () => { cancelled = true; };
-  }, [params, t]);
+    return () => { cancelledRef.current = true; };
+  }, [params, t, finishSignedIn]);
 
   // ============ countdown + auto-redirect on success ============
   useEffect(() => {
@@ -234,7 +302,11 @@ function CallbackInner() {
   // On success the browser navigates to the provider's consent page, so
   // `retrying` only ever resets on failure.
   const signInToExistingAccount = useCallback(async () => {
-    if (!linkProvider || retrying) return;
+    if (
+      !linkProvider
+      || retrying
+      || (linkProvider === 'azure' && !RELEASE_SCOPE.microsoftSchoolAuth)
+    ) return;
     setRetrying(true);
     const result = await signInExistingOAuth(
       linkProvider,
@@ -338,6 +410,34 @@ function CallbackInner() {
         </div>
       )}
 
+      {status === 'merge-failed' && (
+        <div className="text-center">
+          <h1 className="text-lg font-semibold text-gray-900">
+            {t('auth.callback.mergeFailedTitle')}
+          </h1>
+          <p className="mt-2 text-sm text-gray-600">
+            {t('auth.callback.mergeFailedBody')}
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={retryMerge}
+              disabled={mergeRetrying}
+              data-testid="callback-merge-retry"
+              className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+            >
+              {t('common.retry')}
+            </button>
+            <Link
+              href="/"
+              className="px-4 py-2 rounded-full text-gray-600 text-sm font-medium hover:bg-black/[0.04] transition-colors"
+            >
+              {t('auth.callback.goHome')}
+            </Link>
+          </div>
+        </div>
+      )}
+
       {status === 'error' && (
         <div className="text-center">
           <h1 className="text-lg font-semibold text-gray-900">
@@ -427,7 +527,9 @@ function readStashedOAuthProvider(): OAuthProvider | null {
     // stash from an abandoned OAuth attempt can't survive to misroute a
     // later non-OAuth email_exists conflict into the OAuth recovery screen.
     sessionStorage.removeItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER);
-    return v === 'google' || v === 'azure' ? v : null;
+    if (v === 'google') return v;
+    if (v === 'azure' && RELEASE_SCOPE.microsoftSchoolAuth) return v;
+    return null;
   } catch { return null; }
 }
 

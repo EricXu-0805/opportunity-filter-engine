@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { getDeadlineUrgency, daysUntil } from '@/lib/match-utils';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import ResponsivenessBadge from '@/components/ResponsivenessBadge';
 import { DetailBadge } from './DetailBadge';
 import { formatType } from './detail-utils';
@@ -27,10 +28,13 @@ export function OpportunityHeader({
   opp,
   profile,
   isFavorited,
+  favoriteDisabled,
+  favoriteBusy,
   shareCopied,
   onStar,
   onOpenEmailModal,
   onOpenTailorModal,
+  tailorDisabled,
   onOpenRenovationModal,
   onShare,
   t,
@@ -38,6 +42,14 @@ export function OpportunityHeader({
   opp: Opportunity;
   profile: ProfileData | null;
   isFavorited: boolean;
+  /**
+   * True whenever the star control must not be clicked: hydration/save in
+   * flight, OR a hydration failure (isFavorited is a fabricated default
+   * then, not a fact — Retry is the only recovery path).
+   */
+  favoriteDisabled: boolean;
+  /** True only while hydration/save is actually in flight — an error is not "busy". */
+  favoriteBusy: boolean;
   shareCopied: boolean;
   onStar: () => void;
   onOpenEmailModal: () => void;
@@ -48,6 +60,14 @@ export function OpportunityHeader({
    * breaking when this header is reused.
    */
   onOpenTailorModal?: () => void;
+  /** True while the owner identity for this target isn't confirmed yet —
+   *  fail-closed gate for the Tailor CTA (see ownerReady in
+   *  use-opportunity-detail.ts): opening it before an owner is known would
+   *  let Generate/Extract capture an unprimed token, and the draft would
+   *  have no safe scope to persist under. REQUIRED (no default) so a
+   *  caller can never forget it and end up silently fail-OPEN — every
+   *  call site must make an explicit, considered choice. */
+  tailorDisabled: boolean;
   /** Optional — when omitted the "Renovate Resume" CTA is hidden. */
   onOpenRenovationModal?: () => void;
   onShare: () => void;
@@ -87,7 +107,9 @@ export function OpportunityHeader({
               <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}
             {deadlineBadge}
-            <ResponsivenessBadge opportunityId={opp.id} size="detail" />
+            {RELEASE_SCOPE.professorSignals && (
+              <ResponsivenessBadge opportunityId={opp.id} size="detail" />
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight tracking-tight">
             {opp.title}
@@ -111,7 +133,9 @@ export function OpportunityHeader({
         <button
           type="button"
           onClick={onStar}
-          className="shrink-0 p-2 -mr-2 rounded-xl hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          disabled={favoriteDisabled}
+          aria-busy={favoriteBusy}
+          className="shrink-0 p-2 -mr-2 rounded-xl hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-wait disabled:opacity-60"
           aria-label={isFavorited ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
           aria-pressed={isFavorited}
         >
@@ -145,7 +169,9 @@ export function OpportunityHeader({
           <button
             type="button"
             onClick={onOpenTailorModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-[14px] font-medium hover:bg-indigo-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            disabled={tailorDisabled}
+            aria-busy={tailorDisabled}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-[14px] font-medium hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <Sparkles className="w-4 h-4" aria-hidden="true" />
             {t('card.tailorResume')}

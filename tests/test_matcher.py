@@ -10,7 +10,7 @@ import functools
 import json
 import os
 import sys
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -2006,10 +2006,10 @@ class TestCorpusPrecomputeEquivalence:
         import src.matcher.embeddings as emb
         import src.matcher.ranker as rk
         saved = (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
-                 rk._corpus_ids, rk._static_cache, rk._sim_matrix)
+                 rk._corpus_rows, rk._static_cache, rk._sim_matrix)
         yield
         (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
-         rk._corpus_ids, rk._static_cache, rk._sim_matrix) = saved
+         rk._corpus_rows, rk._static_cache, rk._sim_matrix) = saved
 
     def test_top20_byte_identical_with_and_without_precompute(self, _isolated_precompute):
         from dataclasses import asdict
@@ -2045,6 +2045,289 @@ class TestCorpusPrecomputeEquivalence:
         rk.register_corpus(reloaded)
         assert rk._corpus_ref is reloaded
         assert rk._opp_static(corpus[0]) is not st_first  # old ids no longer cached
+
+    def test_hot_reload_waits_for_complete_score_generation(
+        self,
+        _isolated_precompute,
+        monkeypatch,
+    ):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        import src.matcher.ranker as rk
+
+        corpus = self._mini_corpus()
+        reloaded = [dict(opportunity) for opportunity in corpus]
+        profile = self._profiles()[0]
+        rk.register_corpus(corpus)
+
+        scorer_entered = threading.Event()
+        release_scorer = threading.Event()
+        reload_finished = threading.Event()
+        original_chunk_similarities = rk._chunk_similarities
+
+        def blocked_chunk_similarities(*args, **kwargs):
+            scorer_entered.set()
+            if not release_scorer.wait(timeout=5):
+                raise TimeoutError("test did not release scorer")
+            return original_chunk_similarities(*args, **kwargs)
+
+        monkeypatch.setattr(rk, "_chunk_similarities", blocked_chunk_similarities)
+
+        def reload():
+            rk.register_corpus(reloaded)
+            reload_finished.set()
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            score_future = executor.submit(rk.rank_all, profile, corpus)
+            assert scorer_entered.wait(timeout=5)
+            reload_future = executor.submit(reload)
+            try:
+                assert not reload_finished.wait(timeout=0.1), (
+                    "reload must not replace the registered matrix mid-score"
+                )
+            finally:
+                release_scorer.set()
+            assert score_future.result(timeout=5)
+            reload_future.result(timeout=5)
+
+        assert reload_finished.is_set()
+        assert rk._corpus_ref is reloaded
+
+    def test_queued_old_generation_is_rejected_after_reload_wins_lock(
+        self,
+        _isolated_precompute,
+        monkeypatch,
+    ):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        import backend.routes.matches as match_routes
+        import src.matcher.ranker as rk
+
+        corpus = self._mini_corpus()
+        reloaded = [dict(opportunity) for opportunity in corpus]
+        profile = self._profiles()[0]
+        rk.register_corpus(corpus)
+        monkeypatch.setattr(
+            match_routes,
+            "_active_corpus_identity",
+            id(corpus),
+        )
+
+        reload_holds_lock = threading.Event()
+        finish_reload = threading.Event()
+
+        def reload_first():
+            with rk.corpus_generation_lock:
+                reload_holds_lock.set()
+                if not finish_reload.wait(timeout=5):
+                    raise TimeoutError("test did not finish reload")
+                rk._register_corpus_unlocked(reloaded)
+                match_routes._activate_corpus_generation(reloaded)
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            reload_future = executor.submit(reload_first)
+            assert reload_holds_lock.wait(timeout=5)
+            stale_future = executor.submit(
+                match_routes._compute_rule_snapshot,
+                "stale-generation",
+                profile,
+                id(corpus),
+                corpus,
+                None,
+            )
+            finish_reload.set()
+            reload_future.result(timeout=5)
+            with pytest.raises(match_routes._MatchGenerationChanged):
+                stale_future.result(timeout=5)
+
+        assert "stale-generation" not in match_routes._match_snapshots
+
+    def test_registered_subset_reuses_full_corpus_rows_exactly(self, _isolated_precompute):
+        import src.matcher.embeddings as emb
+        import src.matcher.ranker as rk
+        from backend.data_loader import _opportunity_corpus_text
+
+        corpus = self._mini_corpus()
+        emb.fit_tfidf_corpus([_opportunity_corpus_text(o) for o in corpus])
+        rk.register_corpus(corpus)
+        subset = [corpus[i] for i in (1, 4, 7, 19, 23)]
+        query = "machine learning computer vision"
+
+        reused = rk._corpus_sims_precomputed(query, subset)
+        direct = emb.semantic_similarity_batch(
+            query,
+            [rk._similarity_corpus(o) for o in subset],
+            allow_embeddings=False,
+        )
+        assert reused == direct
+
+    def test_compact_visible_universe_is_byte_identical(self, _isolated_precompute):
+        from dataclasses import asdict
+
+        import src.matcher.embeddings as emb
+        import src.matcher.ranker as rk
+        from backend.data_loader import _opportunity_corpus_text
+
+        corpus = self._mini_corpus()
+        emb.fit_tfidf_corpus([_opportunity_corpus_text(o) for o in corpus])
+        rk.register_corpus(corpus)
+
+        profiles = [
+            *self._profiles(),
+            {
+                **self._profiles()[0],
+                "preferences": {"min_match_threshold": 75},
+            },
+        ]
+        for profile in profiles:
+            baseline = rk.rank_all(profile, corpus)
+            compact = rk.rank_visible_universe(profile, corpus)
+            expected_visible = [r for r in baseline if r.bucket != "low_fit"]
+            expected_buckets = {
+                label: sum(1 for r in baseline if r.bucket == label)
+                for label in ("high_priority", "good_match", "reach", "low_fit")
+            }
+            assert [asdict(r) for r in compact.visible] == [
+                asdict(r) for r in expected_visible
+            ]
+            assert compact.buckets == expected_buckets
+            assert compact.field_relevant_count == sum(
+                1 for r in expected_visible if r.field_relevant
+            )
+
+    def test_compact_explore_uses_complete_universe_for_small_set_guard(
+        self,
+        _isolated_precompute,
+        monkeypatch,
+    ):
+        import src.matcher.ranker as rk
+
+        opportunities = [
+            {"id": "a1", "opportunity_type": "research", "keywords": ["alpha"]},
+            {"id": "a2", "opportunity_type": "research", "keywords": ["alpha"]},
+            {"id": "b1", "opportunity_type": "research", "keywords": ["beta"]},
+            {"id": "z-low", "opportunity_type": "research", "keywords": ["gamma"]},
+        ]
+
+        def scored_results():
+            return [
+                rk.MatchResult(
+                    opportunity_id=opportunity_id,
+                    eligibility_score=80.0,
+                    readiness_score=80.0,
+                    upside_score=80.0,
+                    final_score=score,
+                    bucket="low_fit",
+                    reasons_fit=[],
+                    reasons_gap=[],
+                    next_steps=[],
+                )
+                for opportunity_id, score in (
+                    ("a1", 80.0),
+                    ("a2", 79.0),
+                    ("b1", 78.0),
+                    ("z-low", 10.0),
+                )
+            ]
+
+        monkeypatch.setattr(
+            rk,
+            "_iter_scored_results",
+            lambda *_args, **_kwargs: iter(scored_results()),
+        )
+        profile = {"exploring": True}
+
+        baseline = [
+            result.opportunity_id
+            for result in rk.rank_all(profile, opportunities)
+            if result.bucket != "low_fit"
+        ]
+        compact = [
+            result.opportunity_id
+            for result in rk.rank_visible_universe(profile, opportunities).visible
+        ]
+
+        assert baseline == ["a1", "b1", "a2"]
+        assert compact == baseline
+
+    def test_hard_exclusion_runs_before_similarity(self, _isolated_precompute, monkeypatch):
+        import src.matcher.ranker as rk
+
+        corpus = self._mini_corpus()
+        excluded = {
+            **corpus[0],
+            "id": "excluded-campus",
+            "school": "ucb",
+            "audience": "campus",
+        }
+        seen: list[str] = []
+
+        def fake_sims(_query, opportunities):
+            seen.extend(o["id"] for o in opportunities)
+            return [0.0] * len(opportunities)
+
+        monkeypatch.setattr(rk, "_chunk_similarities", fake_sims)
+        profile = {
+            **self._profiles()[0],
+            "include_cross_school": False,
+        }
+        rk.rank_all(profile, [excluded, *corpus])
+        assert "excluded-campus" not in seen
+
+    def test_min_threshold_only_applies_after_the_complete_score(
+        self,
+        _isolated_precompute,
+        monkeypatch,
+    ):
+        import src.matcher.ranker as rk
+
+        opportunity = self._mini_corpus()[0]
+        profile = {
+            **self._profiles()[0],
+            "preferences": {"min_match_threshold": 75},
+        }
+        monkeypatch.setattr(
+            rk,
+            "score_eligibility",
+            lambda *_args, **_kwargs: (0.0, [], []),
+        )
+        monkeypatch.setattr(
+            rk,
+            "_chunk_similarities",
+            lambda _query, opportunities: [0.0] * len(opportunities),
+        )
+
+        def complete_score(*_args, **_kwargs):
+            return rk.MatchResult(
+                opportunity_id=opportunity["id"],
+                eligibility_score=0.0,
+                readiness_score=100.0,
+                upside_score=100.0,
+                final_score=80.0,
+                bucket="high_priority",
+                reasons_fit=[],
+                reasons_gap=[],
+                next_steps=[],
+            )
+
+        monkeypatch.setattr(rk, "_rank_opportunity_unlocked", complete_score)
+        results = list(rk._iter_scored_results(profile, [opportunity]))
+
+        assert [result.opportunity_id for result in results] == [opportunity["id"]]
+
+    def test_static_cache_is_hard_bounded(self, _isolated_precompute, monkeypatch):
+        import src.matcher.ranker as rk
+
+        corpus = self._mini_corpus()[:6]
+        monkeypatch.setattr(rk, "_STATIC_CACHE_MAX", 3)
+        rk.register_corpus(corpus)
+        for opportunity in corpus:
+            rk._opp_static(opportunity)
+        assert len(rk._static_cache) == 3
+        newest = rk._opp_static(corpus[-1])
+        assert rk._opp_static(corpus[-1]) is newest
 
 
 class TestInterestBonusNameLeakage:
@@ -2186,15 +2469,35 @@ class TestActionableTieBreak:
     ordered by record id — the audit found #1 matches with no email while
     equal-scored contactable peers sat below. Within a tie, actionable first."""
 
-    def _opp(self, oid, email=None, app_url=None, method="email"):
+    def _opp(self, oid, email=None, app_url=None, method="email", email_verified=False):
         # the faculty shape: contact_method='email' and application_url stamped
-        # with the PROFILE url — that url must not count as actionability
-        return {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
-                "title": f"Research with Prof. P {oid}", "keywords": ["robotics"],
-                "contact_email": email,
-                "eligibility": {},
-                "application": {"contact_method": method,
-                                "application_url": app_url or f"https://x.edu/{oid}"}}
+        # with the PROFILE url — that url must not count as actionability.
+        # email_verified=True attaches the complete, fresh identity-bound
+        # evidence tuple verified_send_target requires (including url/
+        # source_url matching the evidence's source URL, since a
+        # bound_profile_* source ties evidence to the record's own profile
+        # identity) — a bare `email` alone (the profile_page/legacy shape)
+        # is deliberately NOT actionable since it carries no such evidence.
+        url = app_url or f"https://x.edu/{oid}"
+        metadata = {}
+        if email and email_verified:
+            metadata = {
+                "identity_bound": True,
+                "email_source": "bound_profile_container",
+                "contact_verified_email": email,
+                "contact_source_url": url,
+                "contact_verified_at": datetime.now(UTC).isoformat(),
+            }
+        opp = {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
+               "title": f"Research with Prof. P {oid}", "keywords": ["robotics"],
+               "contact_email": email,
+               "eligibility": {},
+               "metadata": metadata,
+               "application": {"contact_method": method, "application_url": url}}
+        if email and email_verified:
+            opp["url"] = url
+            opp["source_url"] = url
+        return opp
 
     def test_tied_scores_prefer_actionable(self):
         from src.matcher.ranker import rank_all
@@ -2202,7 +2505,7 @@ class TestActionableTieBreak:
                    "research_interests_text": "robotics"}
         opps = [
             self._opp("a-dead-end"),
-            self._opp("b-email", email="p@x.edu"),
+            self._opp("b-email", email="p@x.edu", email_verified=True),
             self._opp("c-app-url", app_url="https://x.edu/apply", method="website"),
         ]
         results = rank_all(profile, opps)
@@ -2210,16 +2513,40 @@ class TestActionableTieBreak:
         assert len(scores) == 1  # identical records = a true tie wall
         assert [r.opportunity_id for r in results] == ["b-email", "c-app-url", "a-dead-end"]
 
+    def test_legacy_email_never_outranks_verified_bound_email_in_tie(self):
+        # Equal-score counterfactual for the ranker/reveal parity fix: a
+        # legacy/unverified email (profile_page shape — real address, no
+        # identity-bound evidence) must not win the actionable tie-break
+        # over a fully verified-bound one, and must not be treated as
+        # actionable itself — it ties with the true dead-end instead.
+        from src.matcher.ranker import rank_all
+        profile = {"year": "junior", "major": "Computer Science",
+                   "research_interests_text": "robotics"}
+        opps = [
+            self._opp("a-dead-end"),
+            self._opp("b-legacy-email", email="p@x.edu"),
+            self._opp("c-verified-email", email="q@x.edu", email_verified=True),
+        ]
+        results = rank_all(profile, opps)
+        scores = {r.final_score for r in results}
+        assert len(scores) == 1  # true tie wall
+        # Evidence ladder (W7a reconciliation): fully-bound beats legacy,
+        # legacy beats the dead end — a legacy address IS actionable (the
+        # product reveals and sends it), it just never outranks proof.
+        assert [r.opportunity_id for r in results] == [
+            "c-verified-email", "b-legacy-email", "a-dead-end",
+        ]
+
     def test_score_still_dominates_actionability(self):
         from src.matcher.ranker import rank_all
         profile = {"year": "junior", "major": "Computer Science",
                    "research_interests_text": "robotics"}
         strong = self._opp("z-strong")
         strong["keywords"] = ["robotics", "robot manipulation", "motion planning"]
-        weak = self._opp("a-weak", email="p@x.edu")
+        weak = self._opp("a-weak", email="p@x.edu", email_verified=True)
         weak["keywords"] = ["ceramics"]
         results = rank_all(profile, [strong, weak])
-        assert results[0].opportunity_id == "z-strong"  # no email, still first
+        assert results[0].opportunity_id == "z-strong"  # actionable weak still loses on score
 
 
 class TestEmptyInterestMajorBonus:

@@ -16,8 +16,13 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from backend.lib.contact_visibility import verified_send_target
 from src.collectors.ucb_anthro_faculty import ANTHRO_CONFIG, _scrape_anthro_page
-from src.collectors.ucb_common import dedup_by_profile_url, normalize_faculty
+from src.collectors.ucb_common import (
+    _mark_fetched_soup_observation,
+    dedup_by_profile_url,
+    normalize_faculty,
+)
 
 
 def _block(slug: str, name: str, body: str) -> str:
@@ -42,7 +47,16 @@ LISTING_HTML = f"""
 
 def _scrape():
     soup = BeautifulSoup(LISTING_HTML, "html.parser")
-    return _scrape_anthro_page(soup, ANTHRO_CONFIG["base"])
+    _mark_fetched_soup_observation(
+        soup,
+        requested_url=ANTHRO_CONFIG["url"],
+        final_url=ANTHRO_CONFIG["url"],
+    )
+    return _scrape_anthro_page(
+        soup,
+        ANTHRO_CONFIG["base"],
+        ANTHRO_CONFIG["url"],
+    )
 
 
 def test_parses_name_title_email_and_link():
@@ -50,7 +64,7 @@ def test_parses_name_title_email_and_link():
     assert len(people) == 2
     agarwal = next(p for p in people if p["name"] == "Sabrina C. Agarwal")
     assert agarwal["title"] == "Professor"
-    assert agarwal["email"] == "agarwal@berkeley.edu"
+    assert agarwal["_contact_claim"]["contact_email"] == "agarwal@berkeley.edu"
     assert agarwal["url"] == "https://anthropology.berkeley.edu/sabrina-c-agarwal"
 
 
@@ -88,6 +102,7 @@ def test_output_shape_with_email():
     assert opp["organization"] == "University of California, Berkeley"
     assert opp["id"].startswith("faculty-ucb-anthro-")
     assert opp["contact_email"] == "agarwal@berkeley.edu"
+    assert verified_send_target(opp) == "agarwal@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
     assert opp["eligibility"]["majors"] == ANTHRO_CONFIG["majors"]
     assert opp["on_campus"] is False

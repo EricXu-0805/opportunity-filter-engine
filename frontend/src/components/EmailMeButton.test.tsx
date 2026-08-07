@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, writeUserScopedRaw } from '@/lib/identity-owner';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
@@ -11,8 +12,10 @@ import EmailMeButton from './EmailMeButton';
 
 const LS_KEY = 'ofe_email_hint';
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.clear();
+  advanceOwnerEpoch('email-me-test-uid');
+  await syncLocalIdentityOwner('email-me-test-uid');
 });
 
 afterEach(() => {
@@ -53,7 +56,7 @@ describe('EmailMeButton', () => {
   });
 
   it('prefills the email from localStorage when opening', () => {
-    localStorage.setItem(LS_KEY, 'cached@example.com');
+    writeUserScopedRaw(LS_KEY, 'cached@example.com', captureOwnerToken());
     render(<EmailMeButton label="Email me" onSend={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /Email me/ }));
     const input = screen.getByRole('textbox') as HTMLInputElement;
@@ -85,6 +88,27 @@ describe('EmailMeButton', () => {
     await waitFor(() => expect(onSend).toHaveBeenCalledWith('user@example.com'));
     await waitFor(() => expect(screen.getByText('email.sentMessage')).toBeInTheDocument());
     expect(localStorage.getItem(LS_KEY)).toBe('user@example.com');
+  });
+
+  it('a deferred send that resolves AFTER the owner switches does not write the email hint under the new owner', async () => {
+    let resolveSend!: (v: { ok: boolean }) => void;
+    const onSend = vi.fn(() => new Promise<{ ok: boolean }>((r) => { resolveSend = r; }));
+    render(<EmailMeButton label="Email me" onSend={onSend} />);
+    fireEvent.click(screen.getByRole('button', { name: /Email me/ }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'user@example.com' } });
+    submitForm();
+    await waitFor(() => expect(onSend).toHaveBeenCalled());
+
+    advanceOwnerEpoch('email-me-test-uid-2');
+    await syncLocalIdentityOwner('email-me-test-uid-2');
+
+    resolveSend({ ok: true });
+    await waitFor(() => expect(screen.getByText('email.sentMessage')).toBeInTheDocument());
+
+    // The send itself succeeded (still shows "sent"), but the hint must not
+    // be attributed to the NEW owner under the OLD (now-stale) identity's
+    // submission — and must not have clobbered the new owner's own slot.
+    expect(localStorage.getItem(LS_KEY)).toBeNull();
   });
 
   it('lowercases and trims the email before sending', async () => {

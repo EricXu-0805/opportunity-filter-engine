@@ -8,12 +8,14 @@ data, not policy — moving them to YAML is a separate refactor.
 
 import math
 import re
-from collections import Counter
+import threading
+from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
 
-from ..evidence import harvested_contact_email
+from backend.lib.contact_visibility import send_target_strength, verified_send_target
+
 from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
@@ -68,15 +70,34 @@ def _is_actionable(opportunity: dict) -> bool:
     application_url, so that field proves nothing for them. For real
     application flows (website/form) the URL is the action.
 
-    The email bar is the harvested-provenance one shared with the reveal flow
-    (backend.lib.contact_visibility): an address the product refuses to reveal
-    because it was synthesized must not win ranking ties as "actionable"."""
-    if harvested_contact_email(opportunity):
+    The email bar is the SAME authoritative predicate the reveal/send flow
+    uses (backend.lib.contact_visibility.verified_send_target): non-
+    synthesized source AND exact identity-bound evidence AND exact verified
+    email AND a safe, matching source URL AND a fresh timestamp. A record the
+    product would refuse to reveal must never win a ranking tie as
+    "actionable" — imported directly rather than re-approximated here, so the
+    two bars can never drift apart again."""
+    if verified_send_target(opportunity):
         return True
     app = opportunity.get("application") or {}
     if app.get("contact_method") == "email":
         return False
     return bool(app.get("application_url"))
+
+
+def _evidence_rank(opportunity: dict) -> int:
+    """Tie-break ladder: 2 fully-bound email > 1 legacy email or a real
+    application URL > 0 dead end. Fully-proven evidence outranks the W7a
+    legacy pass-through in a tie (the truthfulness contract), while a
+    legacy address still outranks a record the student cannot act on at
+    all."""
+    strength = send_target_strength(opportunity)
+    if strength:
+        return strength
+    app = opportunity.get("application") or {}
+    if app.get("contact_method") == "email":
+        return 0
+    return 1 if app.get("application_url") else 0
 
 
 @dataclass
@@ -99,6 +120,9 @@ class MatchResult:
     # within a tie the actionable result must outrank the dead-end one — the
     # audit found #1 matches with no email while equal-scored peers had one.
     actionable: bool = True
+    # Tie-break evidence ladder (see _evidence_rank): 2 bound email, 1 legacy
+    # email / application URL, 0 dead end.
+    evidence_rank: int = 1
     # One concrete, student-specific sentence from the LLM rerank pass (the
     # card's lead line for top-K results). None outside the reranked window or
     # when the rerank is unavailable — the rule reasons are always the floor.
@@ -118,7 +142,7 @@ def canonical_sort_key(r: "MatchResult"):
     MatchResults (rank_all, semantic_rerank, the route-level LLM rerank) must
     use this key; a bare `final_score` sort silently drops the tie-break
     contract."""
-    return (-r.final_score, not r.actionable, r.opportunity_id)
+    return (-r.final_score, -r.evidence_rank, r.opportunity_id)
 
 
 # --- Field matching utilities ---
@@ -1788,19 +1812,36 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     )
 
 
+_STATIC_CACHE_MAX = 8192
+_SIMILARITY_CHUNK_SIZE = 1024
+
 _corpus_ref: list[dict] | None = None
-_corpus_ids: frozenset[int] = frozenset()
-_static_cache: dict[int, _OppStatic] = {}
+# Object identity -> row in the registered TF-IDF matrix.  Release/profile
+# filters return new lists containing the SAME opportunity dicts, so an
+# identity map lets those exact survivors reuse the full-corpus matrix without
+# rebuilding 130k corpus strings on every request.
+_corpus_rows: dict[int, int] = {}
+_static_cache: "OrderedDict[int, _OppStatic]" = OrderedDict()
 _sim_matrix = None
+# A hot corpus reload must never swap the TF-IDF vectorizer/matrix or static
+# identity map halfway through one score traversal. data_loader acquires this
+# same re-entrant lock around fit+register; public single-record scoring and
+# the full iterator acquire it while reading the generation.
+corpus_generation_lock = threading.RLock()
 
 
 def _opp_static(opp: dict) -> _OppStatic:
-    st = _static_cache.get(id(opp))
+    object_id = id(opp)
+    st = _static_cache.get(object_id)
     if st is not None:
+        _static_cache.move_to_end(object_id)
         return st
     st = _build_opp_static(opp)
-    if id(opp) in _corpus_ids:
-        _static_cache[id(opp)] = st
+    if object_id in _corpus_rows and _STATIC_CACHE_MAX > 0:
+        _static_cache[object_id] = st
+        _static_cache.move_to_end(object_id)
+        while len(_static_cache) > _STATIC_CACHE_MAX:
+            _static_cache.popitem(last=False)
     return st
 
 
@@ -1809,14 +1850,41 @@ def register_corpus(opportunities: list[dict]) -> None:
     per list object; call again with the freshly-loaded list on reload. The
     per-record statics build lazily on first use (no reload-time transient);
     the TF-IDF row matrix builds eagerly in bounded chunks."""
-    global _corpus_ref, _corpus_ids, _static_cache, _sim_matrix
+    with corpus_generation_lock:
+        _register_corpus_unlocked(opportunities)
+
+
+def registered_corpus_identity() -> int | None:
+    """Identity of the corpus backing the current TF-IDF/static generation."""
+    with corpus_generation_lock:
+        return id(_corpus_ref) if _corpus_ref is not None else None
+
+
+def registered_corpus_identity_nowait() -> int | None:
+    """Best-effort identity probe that never waits behind an active scorer.
+
+    ``_corpus_ref`` is published only after the replacement matrix/maps are
+    complete. A mismatch is therefore a reason to enter the locked register
+    path; a match lets cache-hit requests avoid blocking the async event loop.
+    The worker still performs the authoritative locked generation check.
+    """
+    return id(_corpus_ref) if _corpus_ref is not None else None
+
+
+def _register_corpus_unlocked(opportunities: list[dict]) -> None:
+    global _corpus_ref, _corpus_rows, _static_cache, _sim_matrix
     if opportunities is _corpus_ref:
         return
-    _corpus_ids = frozenset(id(o) for o in opportunities)
-    _static_cache = {}
-    _kw_word_res.clear()
-    _sim_matrix = _build_sim_matrix(opportunities)
+    # Build every potentially failing replacement before publishing any
+    # generation global. A matrix allocation/transform failure must leave the
+    # previous corpus rows, matrix and caches usable.
+    replacement_rows = {id(o): i for i, o in enumerate(opportunities)}
+    replacement_matrix = _build_sim_matrix(opportunities)
+    _corpus_rows = replacement_rows
+    _static_cache = OrderedDict()
+    _sim_matrix = replacement_matrix
     _corpus_ref = opportunities
+    _kw_word_res.clear()
 
 
 def _build_sim_matrix(opportunities: list[dict]):
@@ -1839,13 +1907,19 @@ def _build_sim_matrix(opportunities: list[dict]):
 
 
 def _corpus_sims_precomputed(research_text: str, opportunities: list[dict]) -> list[float] | None:
-    if _sim_matrix is None or opportunities is not _corpus_ref:
+    if _sim_matrix is None:
         return None
+    rows: list[int] = []
+    for opportunity in opportunities:
+        row = _corpus_rows.get(id(opportunity))
+        if row is None:
+            return None
+        rows.append(row)
     from sklearn.metrics.pairwise import cosine_similarity
 
     from . import embeddings as _emb
     q = _emb._tfidf_vectorizer.transform([research_text])
-    sims = cosine_similarity(q, _sim_matrix)[0]
+    sims = cosine_similarity(q, _sim_matrix[rows])[0]
     return [float(max(0.0, s)) for s in sims]
 
 
@@ -1951,7 +2025,7 @@ def _reason_priority(reason: str) -> int:
     return 4
 
 
-def rank_opportunity(
+def _rank_opportunity_unlocked(
     profile: dict,
     opportunity: dict,
     weights: dict[str, float] | None = None,
@@ -2099,8 +2173,33 @@ def rank_opportunity(
         next_steps=next_steps,
         field_relevant=field_relevant,
         actionable=_is_actionable(opportunity),
+        evidence_rank=_evidence_rank(opportunity),
         unknowns=_decision_unknowns(profile, opportunity),
     )
+
+
+def rank_opportunity(
+    profile: dict,
+    opportunity: dict,
+    weights: dict[str, float] | None = None,
+    precomputed_eligibility: tuple[float, list[str], list[str]] | None = None,
+    precomputed_sim: float | None = None,
+    today=None,
+    implicit_keywords: set[str] | None = None,
+    responsiveness: dict[str, dict] | None = None,
+) -> MatchResult:
+    """Score one record against one immutable registered corpus generation."""
+    with corpus_generation_lock:
+        return _rank_opportunity_unlocked(
+            profile,
+            opportunity,
+            weights,
+            precomputed_eligibility,
+            precomputed_sim,
+            today,
+            implicit_keywords,
+            responsiveness,
+        )
 
 
 def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
@@ -2193,35 +2292,59 @@ def _opportunity_query_text(opp: dict) -> str:
     return " ".join(p for p in parts if p)
 
 
+def _bucket_thresholds(
+    result_count: int,
+    score_at_descending_index,
+) -> tuple[float, float, float]:
+    """Return the exact high/good/reach cutoffs for a ranked score universe.
+
+    ``score_at_descending_index`` deliberately abstracts the backing storage:
+    the legacy list path reads a sorted ``MatchResult`` list, while the
+    low-memory route path reads a score histogram.  Keeping the percentile and
+    top-N formula here prevents those two exact representations from drifting.
+    """
+    floor_high = float(BUCKET_THRESHOLDS[0][0])
+    floor_good = float(BUCKET_THRESHOLDS[1][0])
+    floor_reach = float(BUCKET_THRESHOLDS[2][0])
+    if result_count >= 10:
+        p70 = score_at_descending_index(max(0, (result_count * 3) // 10))
+        p40 = score_at_descending_index(max(0, (result_count * 6) // 10))
+        k = min(HIGH_PRIORITY_TARGET_COUNT, result_count - 1)
+        return (
+            max(floor_high, score_at_descending_index(k)),
+            max(floor_good, p70),
+            max(floor_reach, p40),
+        )
+    return floor_high, floor_good, floor_reach
+
+
+def _assign_bucket(
+    result: MatchResult,
+    thresholds: tuple[float, float, float],
+) -> None:
+    hp_threshold, gm_threshold, reach_threshold = thresholds
+    if result.final_score >= hp_threshold:
+        result.bucket = "high_priority"
+    elif result.final_score >= gm_threshold:
+        result.bucket = "good_match"
+    elif result.final_score >= reach_threshold:
+        result.bucket = "reach"
+    else:
+        result.bucket = "low_fit"
+
+
 def _assign_buckets(results: list[MatchResult]) -> None:
     """Assign each result's bucket from its current final_score. Expects results
     sorted by final_score desc. For >=10 results uses the RANK-6 top-N count cap
     + percentile banding; smaller sets fall back to the flat BUCKET_THRESHOLDS
     floors. Mutates in place. Shared by rank_all and semantic_rerank so a
     re-blended score never keeps a stale bucket label."""
-    floor_high = float(BUCKET_THRESHOLDS[0][0])
-    floor_good = float(BUCKET_THRESHOLDS[1][0])
-    floor_reach = float(BUCKET_THRESHOLDS[2][0])
-    if len(results) >= 10:
-        scores = [r.final_score for r in results]
-        p70 = scores[max(0, (len(scores) * 3) // 10)]
-        p40 = scores[max(0, (len(scores) * 6) // 10)]
-        k = min(HIGH_PRIORITY_TARGET_COUNT, len(scores) - 1)
-        hp_threshold = max(floor_high, scores[k])
-        gm_threshold = max(floor_good, p70)
-        reach_threshold = max(floor_reach, p40)
-    else:
-        hp_threshold, gm_threshold, reach_threshold = floor_high, floor_good, floor_reach
-
+    thresholds = _bucket_thresholds(
+        len(results),
+        lambda index: results[index].final_score,
+    )
     for r in results:
-        if r.final_score >= hp_threshold:
-            r.bucket = "high_priority"
-        elif r.final_score >= gm_threshold:
-            r.bucket = "good_match"
-        elif r.final_score >= reach_threshold:
-            r.bucket = "reach"
-        else:
-            r.bucket = "low_fit"
+        _assign_bucket(r, thresholds)
 
 
 def semantic_rerank(
@@ -2335,13 +2458,19 @@ def _round_robin_by_group(
 
 
 def _diversify_explore(
-    results: list[MatchResult], opportunities_by_id: dict[str, dict]
+    results: list[MatchResult],
+    opportunities_by_id: dict[str, dict],
+    *,
+    universe_count: int | None = None,
 ) -> list[MatchResult]:
     """Reorder WITHIN each actionable band (high_priority / good_match / reach)
     so an explorer sees breadth across research areas / opportunity types instead
     of one cluster. Within-bucket only: bucket membership (hence the quality
     floor) is untouched, and the low_fit tail keeps pure score order."""
-    if len(results) < 4:
+    # The compact public-universe path drops low-fit objects before calling
+    # this helper. Its enable/disable guard must still see the complete scored
+    # universe or a 4-total/3-visible edge would diverge from rank_all.
+    if (len(results) if universe_count is None else universe_count) < 4:
         return results
 
     key_of = {
@@ -2446,78 +2575,128 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     return None
 
 
+def _chunk_similarities(
+    research_text: str,
+    opportunities: list[dict],
+) -> list[float | None]:
+    """Exact corpus-fitted TF-IDF similarities for one bounded candidate chunk.
+
+    The fitted vectorizer still represents the complete corpus.  Filtering only
+    chooses which already-fitted rows to compare with the query; it never
+    refits IDF on a profile-specific subset.  If the corpus precompute is not
+    registered (unit/ad-hoc callers), the same vectorizer transforms this
+    bounded set directly.  ``None`` preserves rank_opportunity's existing
+    per-pair fallback when TF-IDF is unavailable or a batch fails.
+    """
+    if not research_text or not opportunities:
+        return [None] * len(opportunities)
+    try:
+        import src.matcher.embeddings as _emb
+
+        if not _emb._tfidf_fitted:
+            return [None] * len(opportunities)
+        sims = _corpus_sims_precomputed(research_text, opportunities)
+        if sims is None:
+            sims = _emb.semantic_similarity_batch(
+                research_text,
+                [_similarity_corpus(o) for o in opportunities],
+                allow_embeddings=False,
+            )
+        return [float(s) for s in sims]
+    except Exception:
+        return [None] * len(opportunities)
+
+
+def _iter_scored_results_unlocked(
+    profile: dict,
+    opportunities: list[dict],
+    responsiveness: dict[str, dict] | None = None,
+):
+    """Yield every canonical result while bounding per-request transients.
+
+    Hard exclusions run before TF-IDF. Survivors are scored in small chunks,
+    so a 130k corpus never materializes 130k similarity strings, floats, or a
+    second full lookup map for one request. We deliberately do not pre-prune
+    from a partial layer score: interest, school, responsiveness and seasonal
+    bonuses are applied later, so only the fully-computed final score may be
+    compared with the profile's minimum threshold.
+    """
+    search_weight = profile.get("search_weight", 50)
+    exploring = bool(profile.get("exploring"))
+    weights = _compute_weights(search_weight, exploring=exploring)
+    ctx = _filter_context(profile)
+    profile_skill_map = _parse_skills(profile.get("hard_skills", []))
+    implicit_kw = _implicit_steer(profile)
+    research_text = (profile.get("research_interests_text") or "").lower()
+    min_threshold = (profile.get("preferences") or {}).get("min_match_threshold", 0)
+    pending: list[tuple[dict, tuple[float, list[str], list[str]]]] = []
+
+    def flush_pending():
+        chunk_opportunities = [opp for opp, _ in pending]
+        sims = _chunk_similarities(research_text, chunk_opportunities)
+        for (opp, elig_triple), sim in zip(pending, sims, strict=True):
+            # The public wrapper acquires ``corpus_generation_lock`` for
+            # standalone callers. This complete traversal already holds that
+            # re-entrant lock, so call the implementation directly instead of
+            # reacquiring it once per corpus row.
+            result = _rank_opportunity_unlocked(
+                profile,
+                opp,
+                weights,
+                precomputed_eligibility=elig_triple,
+                precomputed_sim=sim,
+                implicit_keywords=implicit_kw,
+                responsiveness=responsiveness,
+            )
+            if result.final_score >= min_threshold:
+                yield result
+
+    for opp in opportunities:
+        if hard_exclusion(opp, ctx) is not None:
+            continue
+
+        elig_triple = score_eligibility(profile, opp, skill_map=profile_skill_map)
+        pending.append((opp, elig_triple))
+        if len(pending) >= _SIMILARITY_CHUNK_SIZE:
+            yield from flush_pending()
+            pending.clear()
+    if pending:
+        yield from flush_pending()
+
+
+def _iter_scored_results(
+    profile: dict,
+    opportunities: list[dict],
+    responsiveness: dict[str, dict] | None = None,
+):
+    """Yield one complete score traversal from a single corpus generation."""
+    with corpus_generation_lock:
+        yield from _iter_scored_results_unlocked(
+            profile,
+            opportunities,
+            responsiveness,
+        )
+
+
+def _opportunity_lookup_for_results(
+    opportunities: list[dict],
+    results: list[MatchResult],
+) -> dict[str, dict]:
+    result_ids = {result.opportunity_id for result in results}
+    return {
+        opportunity["id"]: opportunity
+        for opportunity in opportunities
+        if opportunity.get("id") in result_ids
+    }
+
+
 def rank_all(
     profile: dict,
     opportunities: list[dict],
     responsiveness: dict[str, dict] | None = None,
 ) -> list[MatchResult]:
     """Rank all opportunities for a profile. Returns sorted by final_score desc."""
-    search_weight = profile.get("search_weight", 50)
-    exploring = bool(profile.get("exploring"))
-    weights = _compute_weights(search_weight, exploring=exploring)
-
-    ctx = _filter_context(profile)
-
-    # Parse the profile's skills once — it is identical for every opportunity, so
-    # parsing it per opp (inside score_eligibility) was ~12% of rank_all's time.
-    profile_skill_map = _parse_skills(profile.get("hard_skills", []))
-
-    # Major-derived field steer, computed once (identical per request).
-    implicit_kw = _implicit_steer(profile)
-
-    # Batch the upside research-interest similarity once for the whole corpus.
-    # This pass is TF-IDF only (allow_embeddings=False): embedding the full ~4.4k
-    # corpus per request would fan out into dozens of provider calls and is
-    # reserved for the bounded semantic_rerank slice. The batch is score-identical
-    # to score_upside's per-pair path only when the corpus vectorizer is fitted
-    # (same deterministic transform); when it is not (offline/unfitted), leave
-    # sims empty so score_upside keeps its per-pair behavior unchanged.
-    sims_by_id: dict[str, float] = {}
-    research_text = (profile.get("research_interests_text") or "").lower()
-    if research_text:
-        try:
-            import src.matcher.embeddings as _emb
-            if _emb._tfidf_fitted:
-                # Fast path: the registered corpus's TF-IDF rows are precomputed
-                # (register_corpus), so only the one-row query is vectorized per
-                # request. Bitwise-identical to the batch transform below —
-                # transform and cosine are row-independent.
-                sims = _corpus_sims_precomputed(research_text, opportunities)
-                if sims is None:
-                    corpora = [_similarity_corpus(o) for o in opportunities]
-                    sims = _emb.semantic_similarity_batch(
-                        research_text, corpora, allow_embeddings=False
-                    )
-                sims_by_id = {
-                    o["id"]: s for o, s in zip(opportunities, sims, strict=False) if o.get("id")
-                }
-        except Exception:
-            sims_by_id = {}
-
-    results = []
-    min_threshold = (profile.get("preferences") or {}).get("min_match_threshold", 0)
-    for opp in opportunities:
-        if hard_exclusion(opp, ctx) is not None:
-            continue
-
-        elig_triple = score_eligibility(profile, opp, skill_map=profile_skill_map)
-        if min_threshold > 0:
-            max_possible = (
-                weights["eligibility"] * elig_triple[0]
-                + (weights["readiness"] + weights["upside"]) * 100
-            )
-            if max_possible < min_threshold:
-                continue
-
-        result = rank_opportunity(
-            profile, opp, weights,
-            precomputed_eligibility=elig_triple,
-            precomputed_sim=sims_by_id.get(opp.get("id")),
-            implicit_keywords=implicit_kw,
-            responsiveness=responsiveness,
-        )
-        if result.final_score >= min_threshold:
-            results.append(result)
+    results = list(_iter_scored_results(profile, opportunities, responsiveness))
 
     # Deterministic tie-break: scores round to 0.1, so equal-score bands
     # (17-way ties were observed) otherwise reorder whenever corpus file
@@ -2527,8 +2706,80 @@ def rank_all(
     results.sort(key=canonical_sort_key)
     _assign_buckets(results)
 
-    if exploring:
-        opportunities_by_id = {o["id"]: o for o in opportunities if o.get("id")}
+    if profile.get("exploring"):
+        opportunities_by_id = _opportunity_lookup_for_results(opportunities, results)
         results = _diversify_explore(results, opportunities_by_id)
 
     return results
+
+
+@dataclass(slots=True)
+class RankedMatchUniverse:
+    """Exact public Match universe without retaining low-fit result objects."""
+
+    visible: list[MatchResult]
+    buckets: dict[str, int]
+    field_relevant_count: int
+
+
+def rank_visible_universe(
+    profile: dict,
+    opportunities: list[dict],
+    responsiveness: dict[str, dict] | None = None,
+) -> RankedMatchUniverse:
+    """Return the exact non-low-fit universe with bounded result retention.
+
+    Every survivor of the canonical hard/minimum filters is still scored.  A
+    compact histogram retains the complete score distribution needed by the
+    percentile bucket policy, while full ``MatchResult`` objects below the
+    absolute Reach floor are released immediately.  Because the effective
+    Reach threshold is always at least that floor, no discarded object could
+    become visible.
+    """
+    floor_reach = float(BUCKET_THRESHOLDS[2][0])
+    score_counts: Counter[float] = Counter()
+    retained: list[MatchResult] = []
+
+    for result in _iter_scored_results(profile, opportunities, responsiveness):
+        score_counts[result.final_score] += 1
+        if result.final_score >= floor_reach:
+            retained.append(result)
+
+    result_count = sum(score_counts.values())
+    descending_bands = sorted(score_counts.items(), reverse=True)
+
+    def score_at(index: int) -> float:
+        seen = 0
+        for score, count in descending_bands:
+            seen += count
+            if index < seen:
+                return score
+        raise IndexError(index)
+
+    thresholds = _bucket_thresholds(result_count, score_at)
+    buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
+    visible: list[MatchResult] = []
+    for result in retained:
+        _assign_bucket(result, thresholds)
+        buckets[result.bucket] += 1
+        if result.bucket != "low_fit":
+            visible.append(result)
+
+    # Everything not retained was strictly below the absolute Reach floor and
+    # therefore low_fit under every percentile distribution.
+    buckets["low_fit"] += result_count - len(retained)
+    visible.sort(key=canonical_sort_key)
+
+    if profile.get("exploring"):
+        opportunity_lookup = _opportunity_lookup_for_results(opportunities, visible)
+        visible = _diversify_explore(
+            visible,
+            opportunity_lookup,
+            universe_count=result_count,
+        )
+
+    return RankedMatchUniverse(
+        visible=visible,
+        buckets=buckets,
+        field_relevant_count=sum(1 for result in visible if result.field_relevant),
+    )

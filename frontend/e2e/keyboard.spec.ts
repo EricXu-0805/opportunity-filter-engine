@@ -29,7 +29,9 @@ test.describe('Keyboard shortcuts', () => {
 
   test('j/k navigate focus ring across cards', async ({ page }) => {
     await goToResults(page);
-    await page.locator('body').click();
+    // Focusing the body by clicking its visual centre is unsafe: on a long
+    // results page that point can land on a tab and trigger a new server view.
+    await page.locator('#main-content').focus();
     await page.keyboard.press('j');
     const firstCard = page.locator('[id^="match-card-"]').first();
     await expect(firstCard).toHaveClass(/ring-2/);
@@ -42,7 +44,7 @@ test.describe('Keyboard shortcuts', () => {
 
   test('s stars the focused card', async ({ page }) => {
     await goToResults(page);
-    await page.locator('body').click();
+    await page.locator('#main-content').focus();
     await page.keyboard.press('j');
     const firstCard = page.locator('[id^="match-card-"]').first();
     const star = firstCard.locator('button[aria-label*="favorite" i]').first();

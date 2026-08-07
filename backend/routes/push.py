@@ -8,6 +8,8 @@ from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Header, HTTPException
 
+from backend.data_loader import load_opportunities_by_id
+from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.safe_webpush import (
     UnsafePushEndpointError,
     WebPushDeliveryTimeout,
@@ -310,7 +312,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     resend_key = os.environ.get("RESEND_API_KEY", "").strip()
     resend_from = os.environ.get("RESEND_FROM_EMAIL", "").strip()
 
-    sent, failed, emailed, pruned = 0, 0, 0, 0
+    sent, failed, emailed, pruned, skipped = 0, 0, 0, 0, 0
     vapid_claims = {"sub": env["VAPID_SUBJECT"]}
 
     async with httpx.AsyncClient(timeout=20.0, trust_env=False, follow_redirects=False) as client:
@@ -331,7 +333,41 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         if not due:
             return {"status": "ok", "sent": 0, "due": 0}
 
-        device_ids = list({row["device_id"] for row in due})
+        # A reminder can outlive the release surface that originally exposed
+        # its target. Keep the user's reminder row intact for a future release,
+        # but never send a push/email that points at a now-hidden record.
+        # Unknown ids retain the historical behavior (the corpus may be
+        # temporarily incomplete during refresh); only known hidden records are
+        # skipped by this release gate.
+        opportunity_lookup = load_opportunities_by_id()
+        sendable_due = []
+        for row in due:
+            opportunity_id = row["opportunity_id"]
+            if (
+                opportunity_id in opportunity_lookup
+                and release_visible_opportunity_by_id(
+                    opportunity_lookup,
+                    opportunity_id,
+                )
+                is None
+            ):
+                skipped += 1
+                continue
+            sendable_due.append(row)
+
+        if not sendable_due:
+            return {
+                "status": "ok",
+                "due": len(due),
+                "sent": 0,
+                "failed": 0,
+                "emailed": 0,
+                "pruned": 0,
+                "skipped": skipped,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+        device_ids = list({row["device_id"] for row in sendable_due})
         sub_resp = await client.get(
             f"{supabase_url}/rest/v1/push_subscriptions",
             params={
@@ -357,11 +393,13 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
 
         bookkeeping_failed = 0
         row_errors = 0
-        for row in due:
+        for row in sendable_due:
           # Per-row isolation (W14): one row's transport/Supabase error must
           # not abort the batch — remaining reminders still get their shot,
           # and an already-delivered-but-uncleared row is at worst retried
-          # tomorrow (at-least-once, never lost).
+          # tomorrow (at-least-once, never lost). Iterates sendable_due — the
+          # release gate above already excluded rows whose opportunity is no
+          # longer visible (this branch), and those are counted in `skipped`.
           try:
             device_id = row["device_id"]
             opportunity_id = row["opportunity_id"]
@@ -633,6 +671,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         "failed": failed,
         "emailed": emailed,
         "pruned": pruned,
+        "skipped": skipped,
         "bookkeeping_failed": bookkeeping_failed,
         "row_errors": row_errors,
         # W15 ops-queue bookkeeping. incident_errors > 0 means failures

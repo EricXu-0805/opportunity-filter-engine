@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
@@ -14,8 +14,15 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from '@/lib/use-local-storage-json';
+import { captureOwnerToken } from '@/lib/identity-owner';
+
+import type { ProfileData } from '@/lib/types';
 import { downloadCSV } from '@/lib/csv-export';
 import { matchesToCSV } from '@/lib/match-utils';
+import {
+  getMatchView,
+  type MatchViewRequestState,
+} from '@/lib/api';
 import {
   parsePresetsArray,
   removePreset,
@@ -36,24 +43,20 @@ import {
   type MatchVerdict,
 } from '@/lib/match-feedback';
 import { mergeHydratedFeedback } from './feedback-hydration';
-import { hasScopeData, homeSchoolOf } from '@/lib/discovery-scope';
+import { homeSchoolOf } from '@/lib/discovery-scope';
 import { bySlug } from '@/lib/schools';
+import type { MatchResult } from '@/lib/types';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import {
   getAuthState,
-  getFavorites,
-  getInteractions,
-  removeInteraction,
-  saveProfile,
-  toggleFavorite,
-  trackInteraction,
   type InteractionType,
 } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
-import { useAuthUid } from '@/lib/use-auth-uid';
 import { useT } from '@/i18n/client';
 
 import { EmptyState } from './EmptyState';
+import { favoriteExportView, favoriteRowsForTab } from './export-view';
 import { FilterRail } from './FilterRail';
 import { MatchList } from './MatchList';
 import { ResultsHeader } from './ResultsHeader';
@@ -79,14 +82,29 @@ import {
 import { useHighlightSet } from './use-highlight-set';
 import { useSavedSearchAck } from './use-saved-search-ack';
 import { useResultsData } from './use-results-data';
-import { useResultsFilters } from './use-results-filters';
+import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-profile-view';
+import { useResultsInteractions } from './use-results-interactions';
 import { useResultsKeyboardNav } from './use-results-keyboard-nav';
 
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
   ssr: false,
 });
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
+const EMPTY_VIEW_COUNTS: Record<Tab, number> = {
+  all: 0,
+  high_priority: 0,
+  good_match: 0,
+  reach: 0,
+  starred: 0,
+};
+
+function localIsoDate(now = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function ResultsPage() {
   return (
@@ -121,7 +139,13 @@ function ResultsContent() {
   const { openModal: openAuthModal } = useAuthModal();
 
   const rawStoredProfile = useLocalStorageJSON<LegacyProfileShape>(STORAGE_KEYS.PROFILE);
-  const profile = useMemo(() => migrateProfile(rawStoredProfile), [rawStoredProfile]);
+  // The document this page renders AND the snapshot a write from it carries,
+  // as ONE value committed in one step (see use-results-profile-view).
+  const {
+    accepted: { profile, view },
+    accept: acceptProfileView,
+    clear: clearProfileView,
+  } = useAcceptedProfileView();
   const hasStoredProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
 
   const initialUrl = useMemo(() => readInitialFiltersFromUrl(searchParams), [searchParams]);
@@ -138,55 +162,8 @@ function ResultsContent() {
   const highlightSet = useHighlightSet(searchParams);
   useSavedSearchAck(searchParams, highlightSet);
 
-  const { data, setData, loading, error, showSlowHint } = useResultsData(
-    profile,
-    semanticRerank,
-    t,
-  );
-
-  // Source-filter chips derived from the sources actually present (by count),
-  // so every real source — incl. simplify_internships — is filterable.
-  const sourceOptions = useMemo<Array<[string, string]>>(() => {
-    const counts = new Map<string, number>();
-    for (const m of data?.results ?? []) {
-      const s = m.opportunity.source;
-      if (s) counts.set(s, (counts.get(s) ?? 0) + 1);
-    }
-    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s);
-    return [
-      ['', t('results.filters.sourceAll')],
-      ...sorted.map((s) => [s, sourceLabel(s, t)] as [string, string]),
-    ];
-  }, [data, t]);
-
-  const homeSchool = homeSchoolOf(profile);
-  const homeSchoolEntry = bySlug(homeSchool);
-  // Discovery-scope facet (PR #187), data-derived like sourceOptions:
-  // empty (hidden) when no result carries school/audience metadata. The
-  // "My school" option is suppressed for schools with no campus coverage
-  // yet (campusOpportunities: 'pending') — offering it would only ever
-  // return zero results with the facet still shown.
-  const hasCampusCoverage = homeSchoolEntry?.coverage.campusOpportunities !== 'pending';
-  const scopeOptions = useMemo<Array<[string, string]>>(() => {
-    if (!(data?.results ?? []).some((m) => hasScopeData(m.opportunity))) return [];
-    return [
-      ['', t('results.filters.scopeAll')],
-      ...(hasCampusCoverage
-        ? [['campus', t('results.filters.scopeMySchool')] as [string, string]]
-        : []),
-      ['open', t('results.filters.scopeOpen')],
-    ];
-  }, [data, t, hasCampusCoverage]);
-  const scopeIndicator = t(
-    homeSchoolEntry?.coverage.campusOpportunities === 'pending'
-      ? 'results.scopeIndicatorPending'
-      : 'results.scopeIndicator',
-    { school: homeSchoolEntry?.shortName ?? homeSchool },
-  );
-
   const [showDismissed, setShowDismissed] = useState(false);
   const [page, setPage] = useState(1);
-
   const presets = useLocalStorageJSON<unknown, FilterPreset[]>(
     STORAGE_KEYS.FILTER_PRESETS,
     parsePresetsArray,
@@ -200,76 +177,143 @@ function ResultsContent() {
     opportunitySchool: string | null;
   }>({ open: false, opportunityId: '', opportunityTitle: '', opportunitySchool: null });
 
-  const [favs, setFavs] = useState<Set<string>>(new Set());
-  // Mirror favs into a ref so handleToggleFav can read the current set without
-  // depending on `favs` — a [favs] dep made the callback unstable and defeated
-  // MatchCard's memoization, re-rendering all visible cards on every toggle.
-  const favsRef = useRef(favs);
-  useEffect(() => { favsRef.current = favs; }, [favs]);
-  const [interactions, setInteractions] = useState<Map<string, InteractionType>>(new Map());
-  // Mirror interactions the same way for handleTrackInteraction's revert path.
-  const interactionsRef = useRef(interactions);
-  useEffect(() => { interactionsRef.current = interactions; }, [interactions]);
-  // W14 cross-tab uid isolation: epoch bumps only on a real identity switch,
-  // clearing Account A's stars/statuses and refetching under B.
-  const { epoch: authEpoch } = useAuthUid();
-  useEffect(() => {
-    let cancelled = false;
-    /* eslint-disable react-hooks/set-state-in-effect --
-       Reset before fetching — a no-op on mount, the isolation clear on an
-       identity switch. */
-    setFavs(new Set());
-    setInteractions(new Map());
-    /* eslint-enable react-hooks/set-state-in-effect */
-    getFavorites()
-      .then((d) => { if (!cancelled) setFavs(d); })
-      .catch(() => {});
-    getInteractions()
-      .then((d) => { if (!cancelled) setInteractions(d); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [authEpoch]);
+  // Close (never leave open) the recipient modal on a REAL identity switch —
+  // it can trigger a write, and a U1-opened modal must not be left able to
+  // present or confirm-send against U2's identity. Also resets pagination:
+  // the private filter set (favorite_ids/dismissed_ids, below) is about to
+  // change out from under whatever page the user was on.
+  // The cross-school toggle is declared below (it needs the data hook's
+  // setter), but the identity transition has to reach it. Held in a ref
+  // rather than reordered: the transition can only fire after mount, so the
+  // effect that fills this has always run by then.
+  const clearCrossSchoolRef = useRef<() => void>(() => {});
+  const handleIdentityChange = useCallback(() => {
+    setEmailModal((m) => (m.open ? { ...m, open: false } : m));
+    // SYNCHRONOUSLY, in the transition itself — not in a passive effect keyed
+    // on identityGeneration, which runs after paint and would leave U1's
+    // document on screen and its view actionable for a full render.
+    clearProfileView();
+    clearCrossSchoolRef.current();
+    setPage(1);
+  }, [clearProfileView]);
+  const {
+    favs,
+    interactions,
+    ownerReady,
+    identityGeneration,
+    ownerScopeKey,
+    favoritesLoadError,
+    retryFavoritesLoad,
+    interactionsLoading,
+    interactionsError,
+    favSaveErrors,
+    trackSaveErrors,
+    pendingFavIds,
+    pendingTrackIds,
+    handleToggleFav: handleToggleFavRaw,
+    handleTrackInteraction: handleTrackInteractionRaw,
+    retryFavSave,
+    retryTrackSave,
+    retryInteractionsLoad,
+  } = useResultsInteractions(handleIdentityChange);
 
-  const handleToggleFav = useCallback(async (oppId: string) => {
-    const wasFaved = favsRef.current.has(oppId);
-    const flip = (s: Set<string>) => {
-      const next = new Set(s);
-      if (next.has(oppId)) next.delete(oppId);
-      else next.add(oppId);
-      return next;
-    };
-    setFavs(flip);
-    try {
-      await toggleFavorite(oppId, wasFaved);
-    } catch {
-      setFavs(flip); // revert the optimistic toggle on failure
-    }
-  }, []);
-
+  // Page-level wrappers: preserve the pre-extraction "jump back to page 1"
+  // semantics on every favorite/status mutation attempt — the filtered list
+  // (favorite_ids/dismissed_ids feed matchView below) can shrink out from
+  // under a later page. Reset happens synchronously at click time, same as
+  // before, not gated on whether the hook's own guards let the write proceed.
+  const handleToggleFav = useCallback((oppId: string) => {
+    setPage(1);
+    return handleToggleFavRaw(oppId);
+  }, [handleToggleFavRaw]);
   const handleTrackInteraction = useCallback((oppId: string, type: InteractionType) => {
-    const current = interactionsRef.current.get(oppId);
-    if (current === type) {
-      setInteractions(prev => {
-        const next = new Map(prev);
-        next.delete(oppId);
-        return next;
-      });
-      removeInteraction(oppId).catch(() => {});
-      return;
-    }
-    setInteractions(prev => new Map(prev).set(oppId, type));
-    trackInteraction(oppId, type).catch(() => {
-      // W14: the write failed — revert the optimistic status (same revert
-      // discipline as handleToggleFav above) instead of displaying a status
-      // that was never persisted.
-      setInteractions(prev => {
-        const next = new Map(prev);
-        if (current === undefined) next.delete(oppId);
-        else next.set(oppId, current);
-        return next;
-      });
-    });
-  }, []);
+    setPage(1);
+    return handleTrackInteractionRaw(oppId, type);
+  }, [handleTrackInteractionRaw]);
+
+  useEffect(() => {
+    // Re-accepted only when this page genuinely gets a new snapshot: its
+    // stored profile changed, or the identity did.
+    acceptProfileView();
+  }, [rawStoredProfile, identityGeneration, acceptProfileView]);
+
+  const homeSchool = homeSchoolOf(profile);
+  const viewToday = useMemo(() => localIsoDate(), []);
+  const favoriteIds = useMemo(() => [...favs].sort(), [favs]);
+  const dismissedIds = useMemo(
+    () => [...interactions.entries()]
+      .filter(([, value]) => value === 'dismissed')
+      .map(([id]) => id)
+      .sort(),
+    [interactions],
+  );
+  const matchView = useMemo<MatchViewRequestState>(() => ({
+    tab: activeTab,
+    search_query: debouncedQuery,
+    paid: filters.paid,
+    intl: filters.intl,
+    source: filters.source,
+    on_campus: filters.onCampus,
+    deadline: filters.deadline,
+    min_score: filters.minScore,
+    scope: filters.scope,
+    sort_by: sortBy,
+    show_dismissed: showDismissed,
+    favorite_ids: favoriteIds,
+    dismissed_ids: dismissedIds,
+    today: viewToday,
+  }), [
+    activeTab,
+    debouncedQuery,
+    filters,
+    sortBy,
+    showDismissed,
+    favoriteIds,
+    dismissedIds,
+    viewToday,
+  ]);
+  const {
+    data,
+    setData,
+    loading,
+    error,
+    showSlowHint,
+    paginationReady,
+  } = useResultsData(
+    profile,
+    semanticRerank,
+    matchView,
+    page,
+    t,
+  );
+
+  // Facets are derived from the complete canonical snapshot by the backend,
+  // never guessed from the current 50-card page.
+  const sourceOptions = useMemo<Array<[string, string]>>(() => [
+    ['', t('results.filters.sourceAll')],
+    ...(data?.source_facets ?? []).map(
+      ({ source }) => [source, sourceLabel(source, t)] as [string, string],
+    ),
+  ], [data?.source_facets, t]);
+
+  const homeSchoolEntry = bySlug(homeSchool);
+  const hasCampusCoverage = homeSchoolEntry?.coverage.campusOpportunities !== 'pending';
+  const scopeOptions = useMemo<Array<[string, string]>>(() => {
+    if (!data?.scope_available) return [];
+    return [
+      ['', t('results.filters.scopeAll')],
+      ...(hasCampusCoverage
+        ? [['campus', t('results.filters.scopeMySchool')] as [string, string]]
+        : []),
+      ['open', t('results.filters.scopeOpen')],
+    ];
+  }, [data?.scope_available, t, hasCampusCoverage]);
+  const scopeIndicator = t(
+    homeSchoolEntry?.coverage.campusOpportunities === 'pending'
+      ? 'results.scopeIndicatorPending'
+      : 'results.scopeIndicator',
+    { school: homeSchoolEntry?.shortName ?? homeSchool },
+  );
 
   // Match-accuracy thumbs (Phase 9.6). Optimistic like favorites; the card
   // passes bucket + final_score along so the persisted row stays
@@ -302,8 +346,9 @@ function ResultsContent() {
   }, [hasStoredProfile, router]);
 
   const toggleSemantic = useCallback((next: boolean) => {
+    if (!RELEASE_SCOPE.matchAiRefine) return;
     setSemanticRerank(next);
-    try { localStorage.setItem(STORAGE_KEYS.SEMANTIC_RERANK, next ? '1' : '0'); } catch { /* quota */ }
+    writeLocalStorageJSON(STORAGE_KEYS.SEMANTIC_RERANK, next ? '1' : '0', captureOwnerToken());
     setData(null);
     setPage(1);
   }, [setData]);
@@ -313,32 +358,32 @@ function ResultsContent() {
   // (localStorage + Supabase), then drop the data so useResultsData re-ranks
   // under the new hashProfile key. writeLocalStorageJSON dispatches the
   // synthetic storage event that updates this page's own profile snapshot.
+  //
+  // Displayed FROM the same tuple the click writes against, so the value on
+  // screen and the value in the payload cannot disagree.
   const includeCrossSchool = profile?.include_cross_school ?? false;
-  const toggleCrossSchool = useCallback((next: boolean) => {
-    if (!rawStoredProfile) return;
-    const updated = { ...rawStoredProfile, include_cross_school: next };
-    writeLocalStorageJSON(STORAGE_KEYS.PROFILE, updated);
-    saveProfile(updated as unknown as Record<string, unknown>).catch(() => {});
+  const onCrossSchoolApplied = useCallback(() => {
     setData(null);
     setPage(1);
-  }, [rawStoredProfile, setData]);
+  }, [setData]);
+  const {
+    busy: crossSchoolBusy,
+    failed: crossSchoolFailed,
+    toggle: toggleCrossSchool,
+    retry: retryCrossSchool,
+    clear: clearCrossSchoolFailure,
+  } = useCrossSchoolToggle(view, onCrossSchoolApplied);
+  useEffect(() => {
+    clearCrossSchoolRef.current = clearCrossSchoolFailure;
+  }, [clearCrossSchoolFailure]);
 
-  const { filtered, paginated, totalPages, effectivePage, counts } = useResultsFilters({
-    data,
-    activeTab,
-    debouncedQuery,
-    filters,
-    favs,
-    sortBy,
-    interactions,
-    showDismissed,
-    page,
-    pageSize: PAGE_SIZE,
-    homeSchool,
-  });
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination to page 1 when filter inputs change; key-remount would lose focus on the search box mid-typing, which is worse than the cascading render
-  useEffect(() => { setPage(1); }, [activeTab, debouncedQuery, filters, sortBy, showDismissed]);
+  const paginated = useMemo(() => data?.results ?? [], [data?.results]);
+  const filteredTotal = data?.filtered_total ?? 0;
+  const totalPages = Math.ceil(filteredTotal / PAGE_SIZE);
+  const effectivePage = Math.min(Math.max(1, page), Math.max(1, totalPages));
+  const counts: Record<Tab, number> = data?.view_counts
+    ? { ...EMPTY_VIEW_COUNTS, ...data.view_counts }
+    : EMPTY_VIEW_COUNTS;
 
   // Hydrate saved verdicts for the cards currently on screen. Fetching per
   // visible page (instead of all 600+ result ids at once) keeps the
@@ -371,12 +416,8 @@ function ResultsContent() {
     [interactions],
   );
 
-  // `counts` now comes from useResultsFilters so each tab badge reflects the
-  // active field filters (source/scope/search/…) and matches the list under
-  // that tab — see the hook for the rationale. (Previously these were the
-  // global server-side bucket counts, which disagreed with a filtered list,
-  // e.g. "high_priority 25" above an empty list when a source filter excluded
-  // all 25.)
+  // Tab badges are complete-snapshot counts returned by /matches/view. They
+  // remain exact even though this render holds only one bounded card page.
 
   const loadingPhase = useLoadingNarrative({
     loading,
@@ -395,6 +436,27 @@ function ResultsContent() {
     (filters.deadline ? 1 : 0) +
     (filters.minScore > 0 ? 1 : 0) +
     (filters.scope ? 1 : 0);
+
+  const handleTabChange = useCallback((next: Tab) => {
+    setPage(1);
+    setActiveTab(next);
+  }, []);
+  const handleSearchQueryChange = useCallback((next: string) => {
+    setPage(1);
+    setSearchQuery(next);
+  }, []);
+  const handleFiltersChange = useCallback((next: Filters) => {
+    setPage(1);
+    setFilters(next);
+  }, []);
+  const handleSortChange = useCallback((next: SortKey) => {
+    setPage(1);
+    setSortBy(next);
+  }, []);
+  const handleShowDismissedChange = useCallback((next: boolean) => {
+    setPage(1);
+    setShowDismissed(next);
+  }, []);
 
   const openEmailModal = useCallback(
     (opportunityId: string) => {
@@ -441,8 +503,11 @@ function ResultsContent() {
       sortBy,
       tab: activeTab,
     };
-    savePresets(upsertPreset(presets, preset));
-    setActivePresetId(preset.id);
+    if (savePresets(upsertPreset(presets, preset), captureOwnerToken())) {
+      setActivePresetId(preset.id);
+    } else {
+      window.alert(t('results.presets.saveError'));
+    }
   }, [filters, sortBy, activeTab, presets, t]);
 
   const handleSaveSearchToAccount = useCallback(async () => {
@@ -494,22 +559,88 @@ function ResultsContent() {
     setSortBy(preset.sortBy);
     setActiveTab(preset.tab as Tab);
     setActivePresetId(preset.id);
+    setPage(1);
   }, []);
 
   const handleDeletePreset = useCallback((id: string) => {
-    savePresets(removePreset(presets, id));
-    if (activePresetId === id) setActivePresetId(null);
-  }, [presets, activePresetId]);
+    if (savePresets(removePreset(presets, id), captureOwnerToken())) {
+      if (activePresetId === id) setActivePresetId(null);
+    } else {
+      window.alert(t('results.presets.deleteError'));
+    }
+  }, [presets, activePresetId, t]);
 
-  const handleExport = useCallback(() => {
-    const rows = activeTab === 'starred'
-      ? filtered
-      : filtered.filter(m => favs.has(m.opportunity.id));
-    if (rows.length === 0) return;
-    downloadCSV(`opportunities-${new Date().toISOString().slice(0, 10)}.csv`, matchesToCSV(rows));
-  }, [filtered, favs, activeTab]);
+  const fetchCompleteView = useCallback(async (
+    requestedView: MatchViewRequestState,
+  ) => {
+    if (!profile) return [];
+    const rows: MatchResult[] = [];
+    const ids = new Set<string>();
+    const cursors = new Set<string>();
+    let cursor: string | null = null;
+    let resultSetId: string | undefined;
+    let viewId: string | undefined;
+    for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
+      const response = await getMatchView(profile, requestedView, {
+        cursor,
+        pageSize: 100,
+      });
+      if (
+        (resultSetId && response.result_set_id !== resultSetId)
+        || (viewId && response.view_id !== viewId)
+      ) {
+        throw new Error('match view generation changed');
+      }
+      resultSetId = response.result_set_id;
+      viewId = response.view_id;
+      for (const result of response.results) {
+        if (ids.has(result.opportunity_id)) {
+          throw new Error('duplicate result in match view');
+        }
+        ids.add(result.opportunity_id);
+        rows.push(result);
+      }
+      if (!response.has_more) {
+        if (rows.length !== response.filtered_total) {
+          throw new Error('incomplete match view');
+        }
+        return rows;
+      }
+      if (!response.next_cursor || cursors.has(response.next_cursor)) {
+        throw new Error('invalid match view cursor');
+      }
+      cursors.add(response.next_cursor);
+      cursor = response.next_cursor;
+    }
+    throw new Error('match view exceeded page safety limit');
+  }, [profile]);
+
+  const loadEmailMatches = useCallback(async () => {
+    if (!profile) return [];
+    const response = await getMatchView(profile, matchView, { pageSize: 50 });
+    return response.results;
+  }, [profile, matchView]);
+
+  const handleExport = useCallback(async () => {
+    try {
+      // Ask the server for the filtered favorites directly. Broad profiles can
+      // span 50+ pages, while the canonical bucket carried by each favorite
+      // lets us reconstruct starred ∩ active-tab exactly without scanning the
+      // complete bucket (and colliding with the view rate limit).
+      const rows = await fetchCompleteView(favoriteExportView(matchView));
+      const exportRows = favoriteRowsForTab(rows, activeTab);
+      if (exportRows.length === 0) return;
+      downloadCSV(
+        `opportunities-${new Date().toISOString().slice(0, 10)}.csv`,
+        matchesToCSV(exportRows),
+      );
+    } catch {
+      window.alert(t('results.loadFailed'));
+    }
+  }, [activeTab, matchView, fetchCompleteView, t]);
 
   const handleClearAll = useCallback(() => {
+    setPage(1);
     setFilters(DEFAULT_FILTERS);
     setSearchQuery('');
   }, []);
@@ -537,11 +668,35 @@ function ResultsContent() {
 
       <StorageStatusBanner />
 
+      {/*
+        Favorite/status SAVE failures are per-opportunity now (favSaveErrors/
+        trackSaveErrors — see use-results-interactions.ts) and render at the
+        corresponding card via MatchList/MatchCard, not here — a single
+        page-level slot used to let one id's error silently overwrite
+        another's. LOAD failures (favorites, interactions) are still
+        page-level: they aren't about any one card, they mean the whole
+        list's saved state couldn't be confirmed at all.
+      */}
+      {(favoritesLoadError || interactionsError) && (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200" role="alert">
+          <p className="flex items-center gap-2 text-[13px] text-red-700">
+            {interactionsError ? t('results.interactionsLoadError') : t('results.favoritesLoadError')}
+            <button
+              type="button"
+              onClick={interactionsError ? retryInteractionsLoad : retryFavoritesLoad}
+              className="font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+            >
+              {t('common.retry')}
+            </button>
+          </p>
+        </div>
+      )}
+
       <ResultsHeader
         loading={loading}
         showSlowHint={showSlowHint}
         data={data}
-        filtered={filtered}
+        filteredTotal={filteredTotal}
         counts={counts}
         favs={favs}
         activeTab={activeTab}
@@ -549,6 +704,7 @@ function ResultsContent() {
         onSemanticChange={toggleSemantic}
         onOpenHelp={openHelp}
         onExport={handleExport}
+        loadEmailMatches={loadEmailMatches}
         loadingMessage={loadingPhase.message}
         t={t}
       />
@@ -563,7 +719,7 @@ function ResultsContent() {
       */}
 
       {!loading && data && (
-        <ResultsTabs activeTab={activeTab} onChange={setActiveTab} counts={counts} t={t} />
+        <ResultsTabs activeTab={activeTab} onChange={handleTabChange} counts={counts} t={t} />
       )}
 
       {!loading && data && profile && (
@@ -585,12 +741,12 @@ function ResultsContent() {
         <div className="space-y-3 mb-8">
           <ResultsSearch
             searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
+            onSearchQueryChange={handleSearchQueryChange}
             debouncedQuery={debouncedQuery}
             presets={presets}
             activePresetId={activePresetId}
             activeFilterCount={activeFilterCount}
-            filteredCount={filtered.length}
+            filteredCount={filteredTotal}
             onApplyPreset={handleApplyPreset}
             onDeletePreset={handleDeletePreset}
             onSavePreset={handleSavePreset}
@@ -599,23 +755,28 @@ function ResultsContent() {
           />
           <FilterRail
             filters={filters}
-            onFiltersChange={setFilters}
+            onFiltersChange={handleFiltersChange}
             sortBy={sortBy}
-            onSortByChange={setSortBy}
+            onSortByChange={handleSortChange}
             showDismissed={showDismissed}
-            onShowDismissedChange={setShowDismissed}
+            onShowDismissedChange={handleShowDismissedChange}
             dismissedCount={dismissedCount}
             activeFilterCount={activeFilterCount}
             sourceOptions={sourceOptions}
             scopeOptions={scopeOptions}
             includeCrossSchool={includeCrossSchool}
+            crossSchoolDisabled={!view || crossSchoolBusy}
+            crossSchoolFailed={crossSchoolFailed}
+            onCrossSchoolRetry={retryCrossSchool}
             onIncludeCrossSchoolChange={toggleCrossSchool}
             t={t}
           />
           {scopeOptions.length > 0 && (
             <p className="text-[12px] text-gray-500">{scopeIndicator}</p>
           )}
-          <p className="text-[12px] text-gray-500">{t('results.filters.crossSchoolHint')}</p>
+          {RELEASE_SCOPE.crossSchoolMatching && (
+            <p className="text-[12px] text-gray-500">{t('results.filters.crossSchoolHint')}</p>
+          )}
         </div>
       )}
 
@@ -643,7 +804,7 @@ function ResultsContent() {
 
       {!loading && !error && data && (
         <div className="space-y-6">
-          {filtered.length === 0 ? (
+          {filteredTotal === 0 ? (
             <EmptyState
               hasFilters={activeFilterCount > 0 || !!debouncedQuery.trim()}
               tab={activeTab}
@@ -658,14 +819,25 @@ function ResultsContent() {
               focusedIdx={focusedIdx}
               favs={favs}
               interactions={interactions}
+              ownerReady={ownerReady}
+              identityGeneration={identityGeneration}
+              ownerScopeKey={ownerScopeKey}
+              pendingFavIds={pendingFavIds}
+              pendingTrackIds={pendingTrackIds}
+              favSaveErrors={favSaveErrors}
+              trackSaveErrors={trackSaveErrors}
+              interactionsUnready={interactionsLoading || interactionsError}
               feedback={feedback}
               onDraftEmail={openEmailModal}
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
+              onRetryFavSave={retryFavSave}
+              onRetryTrackSave={retryTrackSave}
               onFeedback={handleFeedback}
-              positionOffset={(effectivePage - 1) * PAGE_SIZE}
+              positionOffset={data.view_start ?? (effectivePage - 1) * PAGE_SIZE}
               page={effectivePage}
               totalPages={totalPages}
+              paginationReady={paginationReady}
               onPageChange={setPage}
               t={t}
             />

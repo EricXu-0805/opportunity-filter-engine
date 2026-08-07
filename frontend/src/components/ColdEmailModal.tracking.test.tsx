@@ -44,7 +44,9 @@ vi.mock('@/lib/auth-modal-context', () => ({
 const trackInteractionMock = vi.fn().mockResolvedValue(undefined);
 const getInteractionDetailMock = vi.fn().mockResolvedValue(null);
 const updateInteractionDetailsMock = vi.fn().mockResolvedValue(undefined);
+const confirmContactMock = vi.fn().mockResolvedValue({ type: 'applied' });
 vi.mock('@/lib/supabase', () => ({
+  confirmInteractionContact: (...args: unknown[]) => confirmContactMock(...args),
   trackInteraction: (...args: unknown[]) => trackInteractionMock(...args),
   getInteractionDetail: (...args: unknown[]) => getInteractionDetailMock(...args),
   updateInteractionDetails: (...args: unknown[]) => updateInteractionDetailsMock(...args),
@@ -79,6 +81,7 @@ beforeEach(() => {
   trackInteractionMock.mockClear();
   getInteractionDetailMock.mockClear().mockResolvedValue(null);
   updateInteractionDetailsMock.mockClear();
+  confirmContactMock.mockClear().mockResolvedValue({ type: 'applied' });
   mockGetVariants.mockReset().mockResolvedValue({ variants: [variant] });
   Element.prototype.scrollIntoView = vi.fn();
   Object.defineProperty(navigator, 'clipboard', {
@@ -113,6 +116,7 @@ describe('ColdEmailModal — verified send tracking', () => {
     fireEvent.click(screen.getByText('coldEmail.copy'));
     // The confirm strip appears instead of silent tracking.
     expect(await screen.findByText('coldEmail.sentQuestion')).toBeInTheDocument();
+    expect(confirmContactMock).not.toHaveBeenCalled();
     expect(trackInteractionMock).not.toHaveBeenCalled();
     expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
   });
@@ -121,35 +125,36 @@ describe('ColdEmailModal — verified send tracking', () => {
     await renderModal();
     fireEvent.click(screen.getByText('coldEmail.openInEmail'));
     expect(await screen.findByText('coldEmail.sentQuestion')).toBeInTheDocument();
+    expect(confirmContactMock).not.toHaveBeenCalled();
     expect(trackInteractionMock).not.toHaveBeenCalled();
   });
 
-  it('the explicit "I sent it" confirmation records the contact', async () => {
+  it('the explicit "I sent it" confirmation records the contact atomically', async () => {
     await renderModal();
     fireEvent.click(screen.getByText('coldEmail.copy'));
-    fireEvent.click(await screen.findByText('coldEmail.confirmSent'));
+    fireEvent.click(await screen.findByTestId('cold-email-confirm-sent'));
 
     await waitFor(() => {
-      expect(trackInteractionMock).toHaveBeenCalledWith('opp-1', 'contacted');
+      // One call. The second argument is the owner capability captured when
+      // the person confirmed — a tracker write that cannot say which identity
+      // and which storage generation it belongs to has no business landing.
+      // (Gate E supersedes W12's trackInteraction('contacted') here: contact
+      // is the atomic RPC's last_contacted_at stamp, never a status row the
+      // modal writes on its own.)
+      expect(confirmContactMock).toHaveBeenCalledWith(
+        'opp-1',
+        expect.objectContaining({ epoch: expect.any(Number), generation: expect.any(Number) }),
+      );
     });
-    expect(updateInteractionDetailsMock).toHaveBeenCalledWith(
-      'opp-1',
-      expect.objectContaining({ last_contacted_at: expect.any(String) }),
-    );
+    expect(confirmContactMock).toHaveBeenCalledTimes(1);
+    // The three-round-trip flow this replaced is gone, not merely bypassed:
+    // its read was the TOCTOU window that let a concurrent status change be
+    // interleaved and downgraded back to 'applied'.
+    expect(getInteractionDetailMock).not.toHaveBeenCalled();
+    expect(trackInteractionMock).not.toHaveBeenCalled();
+    expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
     // Confirmation reveals the follow-up reminder chips.
     expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
-  });
-
-  it('confirming with an existing status only stamps last_contacted_at', async () => {
-    getInteractionDetailMock.mockResolvedValue({ type: 'replied' });
-    await renderModal();
-    fireEvent.click(screen.getByText('coldEmail.copy'));
-    fireEvent.click(await screen.findByText('coldEmail.confirmSent'));
-
-    await waitFor(() => {
-      expect(updateInteractionDetailsMock).toHaveBeenCalled();
-    });
-    expect(trackInteractionMock).not.toHaveBeenCalled();
   });
 });
 

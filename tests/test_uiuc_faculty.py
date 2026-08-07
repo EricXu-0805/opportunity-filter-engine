@@ -34,6 +34,7 @@ from src.collectors.uiuc_faculty import (
     _strip_fragment_keywords,
     _strip_furniture_keywords,
     _strip_pi_name_credentials,
+    enforce_final_shared_keyword_invariant,
     missing_departments,
     normalize_faculty,
 )
@@ -304,6 +305,43 @@ def test_demote_scoped_to_faculty_source():
     shared = ["a", "b"]
     rows = [{"source": "nsf_reu", "department": "X", "keywords": list(shared)} for _ in range(10)]
     assert _demote_shared_keyword_pollution(rows) == 0
+
+
+def test_final_guard_catches_keyword_sets_that_collide_only_after_hygiene():
+    """Regression for the 2026-07-20 scheduled DQ failure.
+
+    The first UIUC pass sees six distinct strings; corpus-wide hygiene strips
+    their whitespace differences and creates one forbidden shared set. The
+    final guard must re-establish the invariant before publication.
+    """
+
+    from src.collectors.faculty_graph import clean_corpus_faculty_keywords
+
+    rows = [
+        {
+            "id": f"physics-{index}",
+            "source": "uiuc_faculty",
+            "source_type": "faculty_research",
+            "department": "Department of Physics",
+            "pi_name": f"Professor {index}",
+            "keywords": [
+                "astrophysics",
+                "cosmology",
+                f"relativity{' ' * index}",
+            ],
+            "metadata": {"faculty_title": "Professor"},
+            "eligibility": {},
+        }
+        for index in range(6)
+    ]
+    assert _demote_shared_keyword_pollution(rows) == 0
+    assert clean_corpus_faculty_keywords(rows) == 5
+
+    stats = enforce_final_shared_keyword_invariant(rows)
+
+    assert stats["shared_keyword_demoted"] == 6
+    assert all(row["keywords"] == ["physics"] for row in rows)
+    assert all("physics" in row["description_clean"].lower() for row in rows)
 
 
 # Same-id merge guard: a broad/empty re-scrape must not clobber committed

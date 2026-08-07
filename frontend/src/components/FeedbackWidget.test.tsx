@@ -15,6 +15,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  advanceOwnerEpoch,
+  isLocalOwnerReady,
+  readUserScopedRaw,
+  syncLocalIdentityOwner,
+} from '@/lib/identity-owner';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockSubmitFeedback = vi.fn();
@@ -49,7 +55,9 @@ interface StoredDraft {
 }
 
 function storedDraft(): StoredDraft | null {
-  const raw = localStorage.getItem(STORAGE_KEYS.FEEDBACK_DRAFT);
+  // FEEDBACK_DRAFT is user-scoped: the mirror lives in the owner's
+  // namespace, never at the bare key (which the next account could read).
+  const raw = readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT);
   return raw ? (JSON.parse(raw) as StoredDraft) : null;
 }
 
@@ -64,8 +72,18 @@ function tokenOfCall(i: number): string {
   return (mockSubmitFeedback.mock.calls[i][0] as { clientToken: string }).clientToken;
 }
 
-beforeEach(() => {
+const OWNER_UID = 'fw-owner-uid';
+
+beforeEach(async () => {
   localStorage.clear();
+  // The widget's mirror is an owner-scoped write; in the app an owner always
+  // exists (ensureAnonSession). Claim one here or every write fails closed.
+  advanceOwnerEpoch(OWNER_UID);
+  await syncLocalIdentityOwner(OWNER_UID);
+  for (let i = 0; i < 200 && !isLocalOwnerReady(OWNER_UID); i += 1) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  expect(isLocalOwnerReady(OWNER_UID)).toBe(true);
   mockSubmitFeedback.mockResolvedValue({ ok: true, reason: 'created', id: TICKET_ID });
 });
 
@@ -171,7 +189,7 @@ describe('draft persistence', () => {
   it('leaves storage untouched for a user who never types', () => {
     render(<FeedbackWidget />);
     fireEvent.click(screen.getByTestId('feedback-open'));
-    expect(localStorage.getItem(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
+    expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
   });
 
   it('keeps the draft after a FAILED submit', async () => {
@@ -192,7 +210,7 @@ describe('draft persistence', () => {
 
     fireEvent.click(screen.getByTestId('feedback-send'));
     await waitFor(() => expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument());
-    expect(localStorage.getItem(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
+    expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
   });
 });
 
@@ -262,7 +280,7 @@ describe('ticket reference', () => {
     expect(screen.getByTestId('feedback-duplicate-note')).toBeInTheDocument();
     // The ticket was counted when it was created; a retry must not re-count it.
     expect(mockTrack).not.toHaveBeenCalled();
-    expect(localStorage.getItem(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
+    expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
   });
 
   it('still thanks the user when the duplicate re-read could not fetch the id', async () => {

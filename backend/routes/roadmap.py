@@ -11,6 +11,7 @@ from backend.lib.blocking import (
     BlockingWorkTimeout,
     run_blocking,
 )
+from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.schemas import RoadmapRequest, RoadmapResponse
 from src.recommender.roadmap import prepare_roadmap
 
@@ -33,7 +34,7 @@ def _prepare_roadmap_request(profile: dict, opportunity_ids: list[str]) -> dict:
     unverified_targets = 0
     unresolved_targets = max(0, len(requested_ids) - MAX_ROADMAP_OPPS)
     for opportunity_id in requested_ids[:MAX_ROADMAP_OPPS]:
-        opportunity = lookup.get(opportunity_id)
+        opportunity = release_visible_opportunity_by_id(lookup, opportunity_id)
         if opportunity is None:
             unresolved_targets += 1
             continue

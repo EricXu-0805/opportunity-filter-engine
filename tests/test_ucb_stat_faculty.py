@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import UTC, datetime
 
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from backend.lib.contact_visibility import verified_send_target
 from src.collectors import ucb_common
 from src.collectors.ucb_common import (
     dedup_by_profile_url,
@@ -189,6 +191,8 @@ PROFILE_WITH_INTERESTS_HTML = """
 </article>
 """
 
+PENG_PROFILE_URL = "https://statistics.berkeley.edu/people/peng-ding"
+
 
 def test_extract_research_interests_reads_both_profile_fields():
     soup = BeautifulSoup(PROFILE_WITH_INTERESTS_HTML, "html.parser")
@@ -218,8 +222,145 @@ def test_enrichment_attaches_email_and_research_interests(monkeypatch):
     assert "causal inference" in opp["keywords"]
     assert opp["keywords"] != ["statistics"]
     assert opp["contact_email"] == "pengdingpku@berkeley.edu"
+    assert "_contact_claim" not in person
+    # W7a reconciliation (W12 merge): with the binding claim cleared and no
+    # binding fields present, the profile-observed address rides the
+    # legacy rule — same strength as every pre-stamping profile_page row.
+    assert verified_send_target(opp) == opp["contact_email"]
+    assert opp["metadata"]["email_source"] == "profile_page"
     assert opp["metadata"]["confidence_score"] == 0.7
     assert "causal inference" in opp["metadata"]["research_areas_raw"]
+
+
+def test_reviewed_statistics_profile_mints_atomic_send_evidence(monkeypatch):
+    observed_at = datetime.now(UTC).replace(microsecond=0)
+    profile_soup = ucb_common._mark_fetched_soup_observation(
+        BeautifulSoup(PROFILE_WITH_INTERESTS_HTML, "html.parser"),
+        requested_url=PENG_PROFILE_URL,
+        final_url=f"{PENG_PROFILE_URL}/",
+        observed_at=observed_at,
+    )
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: profile_soup)
+    person = {
+        "name": "Peng Ding",
+        "title": "Professor",
+        "url": PENG_PROFILE_URL,
+    }
+
+    ucb_common.enrich_faculty_from_profiles([person], STAT_CONFIG)
+    opp = normalize_faculty(person, STAT_CONFIG)
+
+    assert opp is not None
+    assert verified_send_target(opp) == "pengdingpku@berkeley.edu"
+    assert opp["metadata"]["email_source"] == "bound_profile_container"
+    assert opp["metadata"]["contact_source_url"] == f"{PENG_PROFILE_URL}/"
+    assert (
+        opp["metadata"]["contact_verified_at"]
+        == observed_at.isoformat()
+    )
+    assert opp["metadata"]["contact_verified_email"] == (
+        "pengdingpku@berkeley.edu"
+    )
+
+
+def test_statistics_profile_rerun_clears_unrevalidated_old_proof(monkeypatch):
+    observed_at = datetime.now(UTC).replace(microsecond=0)
+    marked = ucb_common._mark_fetched_soup_observation(
+        BeautifulSoup(PROFILE_WITH_INTERESTS_HTML, "html.parser"),
+        requested_url=PENG_PROFILE_URL,
+        final_url=PENG_PROFILE_URL,
+        observed_at=observed_at,
+    )
+    person = {
+        "name": "Peng Ding",
+        "title": "Professor",
+        "url": PENG_PROFILE_URL,
+    }
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: marked)
+    ucb_common.enrich_faculty_from_profiles([person], STAT_CONFIG)
+    assert "_contact_claim" in person
+
+    unmarked = BeautifulSoup(PROFILE_WITH_INTERESTS_HTML, "html.parser")
+    monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: unmarked)
+    ucb_common.enrich_faculty_from_profiles([person], STAT_CONFIG)
+    opp = normalize_faculty(person, STAT_CONFIG)
+
+    assert "_contact_claim" not in person
+    assert opp is not None
+    assert opp["contact_email"] == "pengdingpku@berkeley.edu"
+    assert opp["metadata"]["email_source"] == "profile_page"
+    # W7a reconciliation (W12 merge): with the binding claim cleared and no
+    # binding fields present, the profile-observed address rides the
+    # legacy rule — same strength as every pre-stamping profile_page row.
+    assert verified_send_target(opp) == opp["contact_email"]
+
+
+def test_statistics_profile_rerun_clears_old_proof_on_failed_observation(
+    monkeypatch,
+):
+    observed_at = datetime.now(UTC).replace(microsecond=0)
+
+    def marked(html):
+        return ucb_common._mark_fetched_soup_observation(
+            BeautifulSoup(html, "html.parser"),
+            requested_url=PENG_PROFILE_URL,
+            final_url=PENG_PROFILE_URL,
+            observed_at=observed_at,
+        )
+
+    first = marked(PROFILE_WITH_INTERESTS_HTML)
+    second_observations = [
+        marked(
+            """
+            <article class="node node--type-faculty">
+              <h3 class="page--title">Peng Ding</h3>
+            </article>
+            """
+        ),
+        marked(
+            """
+            <article class="node node--type-faculty">
+              <h3 class="page--title">Grace Hopper</h3>
+              <div class="field field--name-field-email">
+                grace@berkeley.edu
+              </div>
+            </article>
+            """
+        ),
+        marked(
+            """
+            <html><title>Access denied</title>
+              <body>Verify you are human</body>
+            </html>
+            """
+        ),
+        None,
+    ]
+
+    for second in second_observations:
+        person = {
+            "name": "Peng Ding",
+            "title": "Professor",
+            "url": PENG_PROFILE_URL,
+        }
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda url: first)
+        ucb_common.enrich_faculty_from_profiles([person], STAT_CONFIG)
+        assert "_contact_claim" in person
+
+        monkeypatch.setattr(
+            ucb_common,
+            "fetch_soup",
+            lambda url, observation=second: observation,
+        )
+        ucb_common.enrich_faculty_from_profiles([person], STAT_CONFIG)
+        opp = normalize_faculty(person, STAT_CONFIG)
+
+        assert "_contact_claim" not in person
+        assert opp is not None
+        # W7a reconciliation (W12 merge): with the binding claim cleared and no
+        # binding fields present, the profile-observed address rides the
+        # legacy rule — same strength as every pre-stamping profile_page row.
+        assert verified_send_target(opp) == opp["contact_email"]
 
 
 def test_enrichment_without_research_section_stays_lite(monkeypatch):

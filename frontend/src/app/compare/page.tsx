@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { fetchOpportunityServer } from '@/lib/api-server';
 import type { Opportunity } from '@/lib/types';
 import { getServerT } from '@/i18n/server';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import CompareTable from './CompareTable';
 
 const MAX_COMPARE = 4;
@@ -33,6 +35,8 @@ export default async function ComparePage({
 }: {
   searchParams: Promise<{ ids?: string | string[] }>;
 }) {
+  if (!RELEASE_SCOPE.compare) notFound();
+
   const { ids: rawIds } = await searchParams;
   const ids = parseIds(rawIds);
   const [opps, t] = await Promise.all([

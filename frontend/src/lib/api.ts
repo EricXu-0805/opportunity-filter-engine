@@ -17,18 +17,134 @@ import type {
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
+import { RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly retryable: boolean,
+    public readonly requestId?: string,
+    public readonly detail?: unknown,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+type RequestOptions = RequestInit & { timeoutMs?: number };
+
+function safeHttpMessage(status: number): string {
+  if (status === 429 || status === 503) {
+    return 'The service is busy. Please try again shortly.';
+  }
+  if (status === 504) {
+    return 'The request took too long. Please try again.';
+  }
+  if (status >= 500) {
+    return 'The service is temporarily unavailable. Please try again.';
+  }
+  return 'The request could not be completed.';
+}
+
+async function apiErrorFromResponse(res: Response): Promise<ApiError> {
+  const raw = (await res.text().catch(() => '')).slice(0, 4096);
+  let detail: unknown = null;
+  try {
+    detail = raw ? JSON.parse(raw) : null;
+  } catch {
+    // HTML/text gateway bodies are intentionally ignored.
+  }
+  const fastApiDetail = (
+    detail
+    && typeof detail === 'object'
+    && 'detail' in detail
+  ) ? detail.detail : undefined;
+  const envelope = (
+    detail
+    && typeof detail === 'object'
+    && 'detail' in detail
+    && typeof detail.detail === 'object'
+    && detail.detail !== null
+  ) ? detail.detail as Record<string, unknown> : {};
+  const message = typeof envelope.message === 'string'
+    ? envelope.message.slice(0, 240)
+    : (
+      res.status < 500 && typeof fastApiDetail === 'string'
+        ? fastApiDetail.slice(0, 240)
+        : safeHttpMessage(res.status)
+    );
+  const validationCode = Array.isArray(fastApiDetail)
+    && fastApiDetail.length > 0
+    && fastApiDetail[0]
+    && typeof fastApiDetail[0] === 'object'
+    && typeof (fastApiDetail[0] as Record<string, unknown>).type === 'string'
+    ? String((fastApiDetail[0] as Record<string, unknown>).type).slice(0, 80)
+    : null;
+  const code = typeof envelope.code === 'string'
+    ? envelope.code.slice(0, 80)
+    : validationCode ?? `HTTP_${res.status}`;
+  return new ApiError(
+    res.status,
+    code,
+    message,
+    envelope.retryable === true || res.status >= 500 || res.status === 429,
+    res.headers?.get?.('x-request-id') ?? undefined,
+    fastApiDetail,
+  );
+}
+
+async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {
+  const {
+    timeoutMs = 60_000,
+    signal: callerSignal,
+    headers: callerHeaders,
+    ...fetchOptions
+  } = options;
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(callerSignal?.reason);
+  if (callerSignal?.aborted) abortFromCaller();
+  else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+    timeoutMs,
+  );
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (callerHeaders instanceof Headers) {
+    callerHeaders.forEach((value, key) => { headers[key] = value; });
+  } else if (Array.isArray(callerHeaders)) {
+    for (const [key, value] of callerHeaders) headers[key] = value;
+  } else if (callerHeaders) {
+    Object.assign(headers, callerHeaders);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${url}`, {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted && !callerSignal?.aborted) {
+      throw new ApiError(
+        408,
+        'REQUEST_TIMEOUT',
+        'The request took too long. Please try again.',
+        true,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abortFromCaller);
+  }
   if (!res.ok) {
-    const errBody = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${errBody}`);
+    throw await apiErrorFromResponse(res);
   }
   return res.json() as Promise<T>;
 }
@@ -88,6 +204,11 @@ export function deriveDesiredFields(interests: string | undefined): string[] {
 
 function toProfileRequest(profile: ProfileData): ProfileRequest {
   const homeSchool = profile.home_school ?? 'uiuc';
+  const requestedSeekingTypes =
+    profile.seeking_types ?? ['research', 'summer_program'];
+  const acceptedSeekingTypes = requestedSeekingTypes.filter(
+    (value) => value !== 'fellowship' || RELEASE_SCOPE.fellowships,
+  );
   return {
     name: profile.name ?? '',
     // Free-text display name (cold-email "…student at {school}");
@@ -100,7 +221,10 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     // Additional majors/minors feed the matcher's secondary-major + keyword signal.
     secondary_interests: profile.additional_majors ?? [],
     international_student: profile.is_international,
-    seeking_type: profile.seeking_types ?? ['research', 'summer_program'],
+    seeking_type:
+      acceptedSeekingTypes.length > 0
+        ? acceptedSeekingTypes
+        : ['research', 'summer_program'],
     desired_fields: deriveDesiredFields(profile.research_interests),
     hard_skills: profile.skills.map((s) => ({ name: s.name, level: s.level })),
     coursework: profile.coursework ?? [],
@@ -113,23 +237,73 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     scholar_url: profile.scholar_url ?? '',
     search_weight: profile.search_weight ?? 50,
     exploring: profile.exploring ?? false,
-    include_cross_school: profile.include_cross_school ?? false,
+    include_cross_school:
+      RELEASE_SCOPE.crossSchoolMatching && (profile.include_cross_school ?? false),
   };
 }
 
 /** POST /api/matches — get ranked opportunities for a profile */
 export async function getMatches(
   profile: ProfileData,
-  options: { llm?: boolean } = {},
+  options: {
+    llm?: boolean;
+    limit?: number;
+    cursor?: string | null;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<MatchesResponse> {
-  // The LLM reranker is the server default (scores topical fit + writes each
-  // card's concrete lead reason via OpenRouter); the "AI smart match" toggle
-  // only opts OUT (?llm=false). The older embedding ?semantic path is retired
-  // — it regressed the ranking; this replaces it.
-  const qs = options.llm === false ? '?llm=false' : '';
-  return request<MatchesResponse>(`/matches${qs}`, {
+  // Deterministic is the release default. Both source-controlled acceptance
+  // and an explicit user action are required before the request can opt in.
+  const llm = RELEASE_SCOPE.matchAiRefine && options.llm === true;
+  const params = new URLSearchParams({ llm: llm ? 'true' : 'false' });
+  if (options.limit !== undefined) params.set('limit', String(options.limit));
+  if (options.cursor) params.set('cursor', options.cursor);
+  return request<MatchesResponse>(`/matches?${params.toString()}`, {
     method: 'POST',
     body: JSON.stringify(toProfileRequest(profile)),
+    signal: options.signal,
+    timeoutMs: 70_000,
+  });
+}
+
+export interface MatchViewRequestState {
+  tab: 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
+  search_query: string;
+  paid: '' | 'yes' | 'no';
+  intl: '' | 'yes' | 'no';
+  source: string;
+  on_campus: '' | 'yes' | 'no';
+  deadline: '' | '7' | '14' | '30' | 'passed';
+  min_score: number;
+  scope: '' | 'campus' | 'open';
+  sort_by: 'score' | 'deadline' | 'newest';
+  show_dismissed: boolean;
+  favorite_ids: string[];
+  dismissed_ids: string[];
+  today: string;
+}
+
+/** Exact, bounded results view. Search/filter/count semantics live on the
+ * complete canonical snapshot; `results` contains only the requested page. */
+export async function getMatchView(
+  profile: ProfileData,
+  view: MatchViewRequestState,
+  options: {
+    cursor?: string | null;
+    pageSize?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<MatchesResponse> {
+  return request<MatchesResponse>('/matches/view', {
+    method: 'POST',
+    body: JSON.stringify({
+      profile: toProfileRequest(profile),
+      view,
+      page_size: options.pageSize ?? 50,
+      cursor: options.cursor ?? null,
+    }),
+    signal: options.signal,
+    timeoutMs: 70_000,
   });
 }
 
@@ -289,8 +463,7 @@ export async function chatWithOpportunity(
     body,
   });
   if (!res.ok) {
-    const errBody = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${errBody}`);
+    throw await apiErrorFromResponse(res);
   }
   if (!res.headers.get('content-type')?.includes('text/event-stream') || !res.body) {
     const json = (await res.json()) as ChatResponse;
@@ -365,10 +538,10 @@ export async function getMatchExplanation(
   opportunityId: string,
   options: { llm?: boolean } = {},
 ): Promise<MatchExplanationResponse> {
-  // Mirror getMatches: the AI toggle must select the SAME scoring path on the
-  // compare page as on /results, or the two surfaces reach different
-  // conclusions for the same opportunity.
-  const qs = options.llm === false ? '?llm=false' : '';
+  // Mirror getMatches so every surface reaches the same deterministic
+  // conclusion while AI refine remains outside the accepted release.
+  const llm = RELEASE_SCOPE.matchAiRefine && options.llm === true;
+  const qs = `?llm=${llm ? 'true' : 'false'}`;
   return request<MatchExplanationResponse>(
     `/matches/${encodeURIComponent(opportunityId)}/explain${qs}`,
     {
@@ -421,6 +594,97 @@ export async function getOpportunitiesByIds(ids: string[]): Promise<Record<strin
     }),
   ));
   return responses.flatMap(r => r.opportunities);
+}
+
+export interface ShortlistFetchResult {
+  opportunities: Record<string, unknown>[];
+  unavailableIds: string[];
+}
+
+// ids arrive from Supabase rows / localStorage — external, unvalidated data
+// the TS `string[]` parameter type does not actually guarantee at runtime.
+function isValidShortlistRequestId(id: unknown): id is string {
+  return typeof id === 'string' && id.length <= 100 && id.trim().length > 0;
+}
+
+function normalizeShortlistIds(ids: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of ids) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+function shortlistContractError(code: string): ApiError {
+  return new ApiError(502, code, 'Your shortlist could not be verified. Please retry.', true);
+}
+
+/**
+ * Fail-closed sibling of getOpportunitiesByIds for the shortlist journey:
+ * a stale/duplicate/mismatched batch response must never render as another
+ * opportunity or a silently-shrunk list. Validates every returned id belongs
+ * to what was requested, is unique, and that the batch's own requested/found
+ * accounting is internally coherent — any violation rejects the whole call
+ * as a safe ApiError instead of returning a partially-trusted result.
+ */
+export async function getShortlistOpportunities(ids: string[]): Promise<ShortlistFetchResult> {
+  // Fail closed before any network request — a malformed id (not a real
+  // string, too long, or whitespace-only) never partially resolves; raw ids
+  // that pass are used exactly as given, never trimmed/rewritten.
+  for (const id of ids) {
+    if (!isValidShortlistRequestId(id)) throw shortlistContractError('SHORTLIST_MALFORMED_REQUEST_ID');
+  }
+  const uniq = normalizeShortlistIds(ids);
+  if (uniq.length === 0) return { opportunities: [], unavailableIds: [] };
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < uniq.length; i += 200) chunks.push(uniq.slice(i, i + 200));
+
+  const responses = await Promise.all(chunks.map(async (chunk) => ({
+    chunk,
+    body: await request<{ opportunities: Record<string, unknown>[]; requested?: number; found?: number }>(
+      '/opportunities/batch',
+      { method: 'POST', body: JSON.stringify({ ids: chunk }) },
+    ),
+  })));
+
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const { chunk, body } of responses) {
+    if (
+      !body
+      || !Array.isArray(body.opportunities)
+      || typeof body.requested !== 'number'
+      || typeof body.found !== 'number'
+      || body.requested !== chunk.length
+      || body.found !== body.opportunities.length
+    ) {
+      throw shortlistContractError('SHORTLIST_CONTRACT_MISMATCH');
+    }
+    const chunkSet = new Set(chunk);
+    for (const opp of body.opportunities) {
+      if (!opp || typeof opp !== 'object' || Array.isArray(opp)) {
+        throw shortlistContractError('SHORTLIST_MALFORMED_RESULT');
+      }
+      const id = (opp as Record<string, unknown>).id;
+      if (typeof id !== 'string' || id.trim().length === 0) throw shortlistContractError('SHORTLIST_MALFORMED_RESULT');
+      if (!chunkSet.has(id)) throw shortlistContractError('SHORTLIST_UNKNOWN_ID');
+      if (byId.has(id)) throw shortlistContractError('SHORTLIST_DUPLICATE_ID');
+      byId.set(id, opp);
+    }
+  }
+
+  const opportunities: Record<string, unknown>[] = [];
+  const unavailableIds: string[] = [];
+  for (const id of uniq) {
+    const opp = byId.get(id);
+    if (opp) opportunities.push(opp);
+    else unavailableIds.push(id);
+  }
+  return { opportunities, unavailableIds };
 }
 
 /** POST /api/cold-email — generate a cold email draft */
@@ -857,6 +1121,12 @@ export async function importByUrl(url: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ url }),
     });
   } catch (err) {
+    const structured = err instanceof ApiError
+      ? fastApiDetailText(err.detail)
+      : null;
+    if (structured) {
+      return { ok: false, error: structured, llm_enriched: false };
+    }
     const message = err instanceof Error ? err.message : String(err);
     const detail = parseFastApiDetail(message);
     if (detail) {
@@ -873,6 +1143,12 @@ export async function importByText(text: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ text }),
     });
   } catch (err) {
+    const structured = err instanceof ApiError
+      ? fastApiDetailText(err.detail)
+      : null;
+    if (structured) {
+      return { ok: false, error: structured, llm_enriched: false };
+    }
     const message = err instanceof Error ? err.message : String(err);
     const detail = parseFastApiDetail(message);
     if (detail) {
@@ -880,6 +1156,15 @@ export async function importByText(text: string): Promise<ImportUrlResponse> {
     }
     throw err;
   }
+}
+
+function fastApiDetailText(detail: unknown): string | null {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as { msg?: unknown };
+    if (first && typeof first.msg === 'string') return first.msg;
+  }
+  return null;
 }
 
 function parseFastApiDetail(rawErrorMessage: string): string | null {

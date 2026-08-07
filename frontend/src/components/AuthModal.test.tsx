@@ -270,12 +270,12 @@ describe('AuthModal — OAuth provider gating', () => {
     expect(screen.queryByTestId('auth-provider-azure')).toBeNull();
   });
 
-  it('renders both buttons with "google,azure"', async () => {
+  it('cannot expose Microsoft school auth through the env allowlist', async () => {
     vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google,azure');
     render(<AuthModal />);
     await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     expect(screen.getByTestId('auth-provider-google')).toBeInTheDocument();
-    expect(screen.getByTestId('auth-provider-azure')).toBeInTheDocument();
+    expect(screen.queryByTestId('auth-provider-azure')).toBeNull();
     expect(screen.getByText('auth.modal.divider')).toBeInTheDocument();
   });
 
@@ -292,7 +292,7 @@ describe('AuthModal — OAuth provider gating', () => {
     render(<AuthModal />);
     await waitFor(() => screen.getByText('auth.modal.signin.headline'));
     expect(screen.getByTestId('auth-provider-google')).toBeInTheDocument();
-    expect(screen.getByTestId('auth-provider-azure')).toBeInTheDocument();
+    expect(screen.queryByTestId('auth-provider-azure')).toBeNull();
   });
 });
 
@@ -309,16 +309,6 @@ describe('AuthModal — OAuth click flow', () => {
     fireEvent.click(screen.getByTestId('auth-provider-google'));
     await waitFor(() => {
       expect(mockOAuth).toHaveBeenCalledWith('google', 'http://localhost:3000/auth/callback');
-    });
-  });
-
-  it('Microsoft button calls signInWithOAuthProvider with azure', async () => {
-    mockOAuth.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
-    render(<AuthModal />);
-    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
-    fireEvent.click(screen.getByTestId('auth-provider-azure'));
-    await waitFor(() => {
-      expect(mockOAuth).toHaveBeenCalledWith('azure', 'http://localhost:3000/auth/callback');
     });
   });
 
@@ -368,16 +358,16 @@ describe('AuthModal — OAuth identity-taken fallback', () => {
     expect(screen.queryByTestId('auth-modal-signin-existing')).toBeNull();
   });
 
-  it('fallback button calls signInExistingOAuth with the SAME provider that conflicted', async () => {
+  it('fallback button calls signInExistingOAuth with the same accepted provider that conflicted', async () => {
     mockOAuth.mockResolvedValue({ ok: false, reason: 'identity-taken', message: 'taken' });
     mockOAuthExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'redirecting' });
     render(<AuthModal />);
     await waitFor(() => screen.getByText('auth.modal.signin.headline'));
-    fireEvent.click(screen.getByTestId('auth-provider-azure'));
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
     const btn = await screen.findByTestId('auth-modal-oauth-signin-existing');
     fireEvent.click(btn);
     await waitFor(() => {
-      expect(mockOAuthExisting).toHaveBeenCalledWith('azure', 'http://localhost:3000/auth/callback');
+      expect(mockOAuthExisting).toHaveBeenCalledWith('google', 'http://localhost:3000/auth/callback');
     });
   });
 

@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, X, Loader2, AlertCircle, User, Bot, RotateCcw } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
-import { chatWithOpportunity, getChatModels, type ChatMessage, type ChatModelOption } from '@/lib/api';
+import {
+  ApiError,
+  chatWithOpportunity,
+  getChatModels,
+  type ChatMessage,
+  type ChatModelOption,
+} from '@/lib/api';
 import { useT } from '@/i18n/client';
 
 interface Props {
@@ -89,7 +95,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
-      if (message.startsWith('API 429')) {
+      if (err instanceof ApiError && err.status === 429) {
         setError(t('chatbot.errorRateLimited'));
       } else {
         setError(message || t('chatbot.errorGeneric'));

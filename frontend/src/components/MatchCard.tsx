@@ -36,6 +36,7 @@ import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
 import { getDeadlineUrgency } from '@/lib/match-utils';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { allowsProfessorFraming, cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
@@ -49,8 +50,35 @@ export interface MatchCardProps {
   onDraftEmail: (opportunityId: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: (opportunityId: string) => void;
+  /** True while this card's favorite is unwritable — a write already in
+   *  flight for it, or the owner identity isn't primed yet. Disables the
+   *  star control without affecting any other card. */
+  favoritePending?: boolean;
+  /** True when THIS card's own last favorite write failed — per-id (see
+   *  favSaveErrors in use-results-interactions.ts), independent of any
+   *  other card's error/pending/success. */
+  favSaveError?: boolean;
+  onRetryFavSave?: (opportunityId: string) => void;
   interaction?: InteractionType;
   onTrackInteraction?: (opportunityId: string, type: InteractionType) => void;
+  /** Same as favoritePending, for the status menu — a write in flight for
+   *  this opportunity, or the bulk interaction read isn't ready yet. */
+  trackPending?: boolean;
+  /** Same as favSaveError, for the status/track write. */
+  trackSaveError?: boolean;
+  onRetryTrackSave?: (opportunityId: string) => void;
+  /** False until the shared owner primitive is primed for the CURRENT
+   *  identity — see ownerReady in use-results-interactions.ts. Fail-closed
+   *  gate for the Tailor CTA: opening it (and everything downstream —
+   *  Generate, Extract, draft persistence) requires a confirmed owner, so
+   *  the trigger itself is disabled rather than opening into an unready
+   *  state. Defaults to false (fail-closed) when omitted. */
+  ownerReady?: boolean;
+  /** The exact current resolved uid, or null — see ownerScopeKey in
+   *  use-results-interactions.ts. Forwarded to TailorModal so its draft
+   *  persists under an owner-scoped key rather than a bare opportunity-only
+   *  one (which a different owner opening the same opportunity could read). */
+  ownerScopeKey?: string | null;
   isNew?: boolean;
   feedbackVerdict?: MatchVerdict | null;
   onFeedback?: (opportunityId: string, verdict: MatchVerdict | null, context: MatchFeedbackContext) => void;
@@ -115,7 +143,7 @@ const URGENCY_BORDER: Record<string, string> = {
   passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
 };
 
-export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, interaction, onTrackInteraction, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
+export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
@@ -161,7 +189,9 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onToggleFavorite(opp.id); }}
-                  className="mt-0.5 shrink-0 p-1 -ml-1 rounded-lg hover:bg-amber-50 transition-colors duration-200"
+                  disabled={favoritePending}
+                  aria-busy={favoritePending}
+                  className="mt-0.5 shrink-0 p-1 -ml-1 rounded-lg hover:bg-amber-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-wait"
                   aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
                 >
                   <Star className={`w-4 h-4 transition-colors duration-200 ${isFavorited ? 'fill-amber-400 text-amber-400' : 'text-gray-300 hover:text-amber-300'}`} />
@@ -214,7 +244,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             <DollarSign className="w-3 h-3" />
             {paid.label}
           </Badge>
-          <ResponsivenessBadge opportunityId={opp.id} />
+          {RELEASE_SCOPE.professorSignals && <ResponsivenessBadge opportunityId={opp.id} />}
           {opp.source && <Badge variant="gray">{opp.source}</Badge>}
           {scopeChip && (
             <Badge variant={scopeChip.kind === 'open' ? 'green' : 'gray'} dot>
@@ -353,14 +383,16 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           {profile && (
             <button
               type="button"
-              onClick={() => setTailorOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors duration-200"
+              onClick={() => { if (ownerReady) setTailorOpen(true); }}
+              disabled={!ownerReady}
+              aria-busy={!ownerReady}
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors duration-200"
             >
               <Sparkles className="w-3.5 h-3.5" />
               {t('card.tailorResume')}
             </button>
           )}
-          {profile && (
+          {RELEASE_SCOPE.resumeRenovate && profile && (
             <button
               type="button"
               onClick={() => setRenovationOpen(true)}
@@ -399,9 +431,38 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               opportunityTitle={opp.title}
               interaction={interaction}
               onTrackInteraction={onTrackInteraction}
+              disabled={trackPending}
             />
           )}
         </div>
+
+        {/* Per-card save failures — see favSaveErrors/trackSaveErrors in
+            use-results-interactions.ts. Each id owns its own error/retry;
+            a different card's success or failure never touches this one. */}
+        {favSaveError && (
+          <p role="alert" className="mt-2 flex items-center gap-1.5 text-[11px] text-red-700">
+            {t('results.favSaveError')}
+            <button
+              type="button"
+              onClick={() => onRetryFavSave?.(opp.id)}
+              className="font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              {t('common.retry')}
+            </button>
+          </p>
+        )}
+        {trackSaveError && (
+          <p role="alert" className="mt-2 flex items-center gap-1.5 text-[11px] text-red-700">
+            {t('results.trackSaveError')}
+            <button
+              type="button"
+              onClick={() => onRetryTrackSave?.(opp.id)}
+              className="font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              {t('common.retry')}
+            </button>
+          </p>
+        )}
       </div>
 
       <div className="border-t border-black/[0.04]">
@@ -481,7 +542,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </div>
             )}
 
-            {profile && !gaps && (
+            {RELEASE_SCOPE.roadmap && profile && !gaps && (
               <button
                 type="button"
                 disabled={gapLoading}
@@ -500,7 +561,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </button>
             )}
 
-            {gaps && (
+            {RELEASE_SCOPE.roadmap && gaps && (
               <div className="space-y-4 pt-1">
                 {gaps.missing_skills.length > 0 && (
                   <div>
@@ -580,9 +641,11 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         profile={profile}
         opportunityId={opp.id}
         opportunityTitle={opp.title}
+        ownerReady={ownerReady}
+        ownerScopeKey={ownerScopeKey}
       />
     )}
-    {profile && (
+    {RELEASE_SCOPE.resumeRenovate && profile && (
       <ResumeRenovationModal
         isOpen={renovationOpen}
         onClose={() => setRenovationOpen(false)}

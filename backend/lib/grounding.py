@@ -576,3 +576,61 @@ def policy_divergence(
         text, evidence_corpus, extra_allow=extra_allow, policy=LENIENT_PROSE,
     )
     return sorted(set(strict_fab) - set(lenient_fab))
+
+
+# ---------------------------------------------------------------------------
+# Student-competence provenance (cold email / tailoring).
+#
+# The fabrication gates above answer "is this token in the evidence AT ALL?"
+# against ONE corpus holding both the sender's facts and the target's
+# vocabulary. That union is right for most prose — a draft must be free to
+# discuss the professor's topics — but it lets a draft claim the STUDENT has
+# experience in a topic that appears only on the PROFESSOR's side: "I have
+# extensive experience with hypersonics" grounds, because the posting said
+# hypersonics. A claim of the student's own competence must ground in the
+# student's own facts.
+#
+# Deliberately pattern-scoped, not NLP: only sentences that assert competence
+# in the first person are held to the student corpus; everything else stays
+# under the union-corpus policies above. False negatives fall through to
+# those gates; a false positive would block honest prose, so the pattern
+# list is tight and literal.
+
+_COMPETENCE_RE = re.compile(
+    r"\b(?:"
+    r"i\s+have\s+(?:\w+\s+){0,2}?(?:experience|expertise|proficiency|background|skills?)"
+    r"|i\s+am\s+(?:proficient|skilled|experienced|adept|versed)"
+    r"|i(?:'ve|\s+have)\s+(?:worked|built|developed|implemented|used|studied|trained|published)"
+    r"|my\s+(?:\w+\s+)?(?:experience|expertise|proficiency|background|skills?|projects?|research|coursework)\s+(?:in|with|on|includes?|spans?)"
+    r"|i\s+(?:know|use|write|program)\b"
+    r")",
+)
+
+_SENTENCE_SPLIT_RE = re.compile(r"[.!?\n]+")
+
+
+def competence_violations(
+    text: str,
+    student_corpus: str,
+    *,
+    extra_allow: frozenset[str] = frozenset(),
+) -> list[str]:
+    """Tokens claimed as the SENDER's own competence that their own facts do
+    not support. For each sentence matching a first-person competence pattern,
+    every 5+ char hard-claim token must ground in ``student_corpus`` (the
+    sender-provenance facts only — never the target's vocabulary). Sentences
+    that merely discuss the target's work ("your work on hypersonics") do not
+    match the patterns and are not judged here."""
+    corpus_lower = student_corpus.lower()
+    corpus_tokens = _corpus_tokens(corpus_lower)
+    violations: set[str] = set()
+    for sentence in _SENTENCE_SPLIT_RE.split(text.lower()):
+        if not _COMPETENCE_RE.search(sentence):
+            continue
+        for token in hard_claims(sentence):
+            if token in _COMMON_FILLER or token in extra_allow:
+                continue
+            if _in_corpus(token, corpus_lower, corpus_tokens):
+                continue
+            violations.add(token)
+    return sorted(violations)

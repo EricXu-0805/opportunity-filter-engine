@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Sparkles, X } from 'lucide-react';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { captureOwnerToken, onLocalOwnerStateChange, readUserScopedRaw, writeUserScopedRaw } from '@/lib/identity-owner';
 import { track, trackOnce } from '@/lib/analytics';
 import type { TFunc } from './types';
 
@@ -11,7 +12,11 @@ const DISMISS_EVENT = 'ofe:concierge-cta-dismissed';
 
 function subscribeDismissal(onChange: () => void) {
   window.addEventListener(DISMISS_EVENT, onChange);
-  return () => window.removeEventListener(DISMISS_EVENT, onChange);
+  // A real identity transition must also trigger a re-read: the previous
+  // owner's dismiss decision is not this one's, and readiness itself may
+  // flip readUserScopedRaw's answer even with no storage bytes changing.
+  const unsubOwner = onLocalOwnerStateChange(onChange);
+  return () => { window.removeEventListener(DISMISS_EVENT, onChange); unsubOwner(); };
 }
 
 /**
@@ -27,7 +32,7 @@ export function ConciergeCta({ t }: { t: TFunc }) {
   // hydration mismatch.
   const dismissed = useSyncExternalStore(
     subscribeDismissal,
-    () => localStorage.getItem(STORAGE_KEYS.RESULTS_CTA_DISMISSED) === '1',
+    () => readUserScopedRaw(STORAGE_KEYS.RESULTS_CTA_DISMISSED) === '1',
     () => true,
   );
 
@@ -47,7 +52,11 @@ export function ConciergeCta({ t }: { t: TFunc }) {
         aria-label={t('results.conciergeCta.dismiss')}
         data-testid="concierge-cta-dismiss"
         onClick={() => {
-          localStorage.setItem(STORAGE_KEYS.RESULTS_CTA_DISMISSED, '1');
+          // Dispatched unconditionally: a failed write (stale/blocked owner)
+          // means the re-read below resolves to the SAME "not dismissed"
+          // truth the write itself was gated against — there is no window
+          // where dispatching could show a dismissal that never landed.
+          writeUserScopedRaw(STORAGE_KEYS.RESULTS_CTA_DISMISSED, '1', captureOwnerToken());
           window.dispatchEvent(new Event(DISMISS_EVENT));
         }}
         className="absolute top-3 right-3 p-1 text-indigo-300 hover:text-indigo-500 transition-colors"

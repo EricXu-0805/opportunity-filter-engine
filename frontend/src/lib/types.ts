@@ -232,6 +232,25 @@ export interface MatchesResponse {
   // Version of the matching logic + tunables that produced this response.
   // Cache keys include it so two matcher generations can never coexist.
   matcher_version?: string;
+  // Bounded, generation-safe paging metadata.
+  returned_count?: number;
+  has_more?: boolean;
+  next_cursor?: string | null;
+  result_set_id?: string;
+  contract_version?: string;
+  view_start?: number;
+  // Exact server-side view metadata. Present on /matches/view.
+  filtered_total?: number;
+  view_counts?: {
+    all: number;
+    high_priority: number;
+    good_match: number;
+    reach: number;
+    starred: number;
+  };
+  source_facets?: Array<{ source: string; count: number }>;
+  scope_available?: boolean;
+  view_id?: string;
 }
 
 // ── Cold Email ───────────────────────────────────────────────────────
@@ -276,6 +295,11 @@ export interface ColdEmailResponse {
   recommended_style?: EmailStyle | null;
   /** R72-A: why the template was served when AI was requested (null on success). */
   fallback_reason?: ColdEmailFallbackReason | null;
+  /** Evidence honesty: 'no_target_data' when the posting carries no research
+   *  signal at all, so the draft is necessarily generic and must not be
+   *  presented as tailored. Optional so cached older responses typecheck
+   *  (absent ⇒ treated as 'specific'). */
+  grounding?: 'specific' | 'no_target_data';
   /** W12 draft provenance: when/what produced this draft and how current the
    *  source record was. Optional so pre-W12 responses still typecheck. */
   generated_at?: string | null;
@@ -308,6 +332,8 @@ export interface EmailVariantsResponse {
    *  opportunity + session, not of a variant. */
   recipient_status?: ContactEmailStatus;
   recommended_style?: EmailStyle | null;
+  /** Same evidence-honesty answer as ColdEmailResponse.grounding. */
+  grounding?: 'specific' | 'no_target_data';
   /** W12 draft provenance (same contract as ColdEmailResponse). */
   generated_at?: string | null;
   corpus_version?: string | null;

@@ -29,12 +29,12 @@ from bs4 import BeautifulSoup
 
 from . import ucb_common
 from .ucb_common import (
-    EMAIL_RE,
-    NOISE_EMAILS,
     clean_name,
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,11 @@ _FACULTY_URLS = [
 ]
 
 
-def _scrape_anthro_page(soup: BeautifulSoup, base: str) -> list[dict]:
+def _scrape_anthro_page(
+    soup: BeautifulSoup,
+    base: str,
+    requested_url: str,
+) -> list[dict]:
     """Parse one Anthropology landing page into [{name, url, title, email, research_areas}].
 
     Each faculty member is a `div.field-name-field-basic-text-text` block whose
@@ -89,9 +93,19 @@ def _scrape_anthro_page(soup: BeautifulSoup, base: str) -> list[dict]:
         if rank:
             person["title"] = rank.group(1)
 
-        match = EMAIL_RE.search(text)
-        if match and match.group(0).lower() not in NOISE_EMAILS:
-            person["email"] = match.group(0).lower()
+        email = unique_bound_container_contact(
+            block,
+            ANTHRO_CONFIG,
+            nested_record_selector="div.field-name-field-basic-text-text",
+        )
+        if email:
+            stamp_bound_directory_contact(
+                person,
+                email,
+                ANTHRO_CONFIG,
+                source_soup=soup,
+                requested_url=requested_url,
+            )
 
         # Research: subfield areas sit before "OFFICE:"/"EMAIL:"; strip the name
         # and rank that precede them.
@@ -117,7 +131,7 @@ def fetch_and_normalize(enrich: bool = True) -> list[dict]:
         soup = fetch_soup(url)
         if not soup:
             continue
-        page = _scrape_anthro_page(soup, ANTHRO_CONFIG["base"])
+        page = _scrape_anthro_page(soup, ANTHRO_CONFIG["base"], url)
         logger.info(f"  {url.rsplit('/', 1)[-1]}: {len(page)} faculty")
         raw.extend(page)
     raw = dedup_by_profile_url(raw)

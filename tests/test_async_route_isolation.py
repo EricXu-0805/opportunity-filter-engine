@@ -130,7 +130,7 @@ def test_import_url_does_not_block_live(monkeypatch):
     assert response.json()["ok"] is False
 
 
-def _fake_matches_corpus(monkeypatch, opportunity_id: str) -> None:
+def _fake_matches_corpus(monkeypatch, opportunity_id: str) -> list[dict]:
     """A one-opportunity corpus for BOTH loaders the /matches route touches.
 
     Deliberately hermetic: the real ``load_opportunities_by_id`` parses the
@@ -151,8 +151,77 @@ def _fake_matches_corpus(monkeypatch, opportunity_id: str) -> None:
         "application": {},
         "metadata": {"is_active": True},
     }
-    monkeypatch.setattr(matches, "load_opportunities", lambda: [opp])
+    corpus = [opp]
+    monkeypatch.setattr(
+        matches,
+        "load_opportunities_generation",
+        lambda: (corpus, "async-test-generation"),
+    )
+    monkeypatch.setattr(
+        matches,
+        "registered_corpus_identity_nowait",
+        lambda: id(corpus),
+    )
+    monkeypatch.setattr(
+        matches,
+        "registered_corpus_identity",
+        lambda: id(corpus),
+    )
     monkeypatch.setattr(matches, "load_opportunities_by_id", lambda: {opp["id"]: opp})
+    return corpus
+
+
+def test_match_cache_hit_does_not_block_live_while_scorer_holds_generation_lock(
+    monkeypatch,
+    profile,
+):
+    from src.matcher.ranker import RankedMatchUniverse
+
+    _fake_matches_corpus(monkeypatch, "threaded-rule-score")
+    fake, gate = _gated(
+        lambda *_args, **_kwargs: RankedMatchUniverse(
+            visible=[],
+            buckets={
+                "high_priority": 0,
+                "good_match": 0,
+                "reach": 0,
+                "low_fit": 0,
+            },
+            field_relevant_count=0,
+        )
+    )
+    monkeypatch.setattr(matches, "rank_visible_universe", fake)
+    matches._match_snapshots.clear()
+
+    async def probe_two_requests():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://test",
+        ) as client:
+            first = asyncio.create_task(client.post("/api/matches", json=profile))
+            deadline = time.perf_counter() + 2
+            while not gate.started.is_set() and time.perf_counter() < deadline:
+                await asyncio.sleep(0.005)
+            assert gate.started.is_set()
+
+            second_profile = {**profile, "coursework": ["CS 225"]}
+            second = asyncio.create_task(
+                client.post("/api/matches", json=second_profile)
+            )
+            await asyncio.sleep(0.01)
+            began = time.perf_counter()
+            live = await client.get("/api/health")
+            elapsed = time.perf_counter() - began
+            assert live.status_code == 200
+            assert elapsed < 0.25
+            assert not gate.finished.is_set()
+            gate.release.set()
+            first_response, second_response = await asyncio.gather(first, second)
+            assert first_response.status_code == 200
+            assert second_response.status_code == 200
+
+    asyncio.run(probe_two_requests())
 
 
 def test_matches_llm_rerank_does_not_block_live(monkeypatch, profile):
@@ -162,7 +231,7 @@ def test_matches_llm_rerank_does_not_block_live(monkeypatch, profile):
     _fake_matches_corpus(monkeypatch, "threaded-rerank")
     monkeypatch.setattr(matches, "llm_rerank", fake)
     response = _run_probe(
-        "/api/matches?limit=1",
+            "/api/matches?limit=1&llm=true",
         profile,
         gate,
     )

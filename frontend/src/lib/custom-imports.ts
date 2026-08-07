@@ -5,6 +5,7 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from './use-local-storage-json';
+import { isOwnerTokenValid, type OwnerToken } from './identity-owner';
 import { STORAGE_KEYS } from './storage-keys';
 import type { ImportedOpportunity } from './api';
 
@@ -54,7 +55,18 @@ function isSameOpportunity(a: ImportedOpportunity, b: ImportedOpportunity): bool
   return aTitle === bTitle && aOrg === bOrg;
 }
 
-export function addCustomImport(opp: ImportedOpportunity): CustomImport {
+// `token` MUST be captured (via captureOwnerToken()) at the moment the
+// caller's own write intent began — e.g. the click handler that triggered
+// this import — never re-captured just before calling this function. See
+// writeLocalStorageJSON's own doc comment.
+//
+// Preflight (before readCustomImports() below): a stale token must not
+// even READ the current owner's list. Gating only the final write is not
+// enough — findExistingImport's dedup check would still compare against
+// the CURRENT owner's real entries and could return one of THEIR entries
+// (id, imported_at) back to a caller acting on a since-replaced identity.
+export function addCustomImport(opp: ImportedOpportunity, token: OwnerToken): CustomImport | null {
+  if (!isOwnerTokenValid(token, token.uid)) return null;
   const existing = readCustomImports();
   const dup = findExistingImport(opp, existing);
   if (dup) return dup;
@@ -63,13 +75,23 @@ export function addCustomImport(opp: ImportedOpportunity): CustomImport {
     imported_at: new Date().toISOString(),
     opportunity: opp,
   };
-  writeLocalStorageJSON(STORAGE_KEY, [entry, ...existing]);
-  return entry;
+  // The token can still pass the preflight above yet the write itself
+  // fail (quota exceeded, private-mode storage denial) — a caller must be
+  // told that, not handed back an entry object that implies it was
+  // actually persisted.
+  const wrote = writeLocalStorageJSON(STORAGE_KEY, [entry, ...existing], token);
+  return wrote ? entry : null;
 }
 
-export function removeCustomImport(id: string): void {
+// Returns whether the removal actually took effect — true whether or not
+// `id` was found (absence is a benign no-op, not a failure), but false on
+// EITHER a stale token OR a write that reached storage and failed there
+// (quota, private mode). A caller must treat false as a rejected/retryable
+// attempt, never a silent success.
+export function removeCustomImport(id: string, token: OwnerToken): boolean {
+  if (!isOwnerTokenValid(token, token.uid)) return false;
   const existing = readCustomImports();
   const next = existing.filter((c) => c.id !== id);
-  if (next.length === existing.length) return;
-  writeLocalStorageJSON(STORAGE_KEY, next.length > 0 ? next : null);
+  if (next.length === existing.length) return true;
+  return writeLocalStorageJSON(STORAGE_KEY, next.length > 0 ? next : null, token);
 }

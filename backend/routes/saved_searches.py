@@ -29,6 +29,10 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import HTMLResponse
 
 from backend.data_loader import load_opportunities
+from backend.lib.release_scope import (
+    opportunity_visible_in_release,
+    release_visible_opportunities,
+)
 from backend.routes.email import (
     FRONTEND_BASE,
     _enforce_recipient_quota,
@@ -223,9 +227,16 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
     except ImportError:
         return {"status": "skipped", "reason": "httpx not installed"}
 
-    opportunities = load_opportunities()
-    if not opportunities:
+    corpus = load_opportunities()
+    if not corpus:
         return {"status": "skipped", "reason": "no opportunities loaded"}
+    opportunities = release_visible_opportunities(corpus)
+    hidden_opportunity_ids = {
+        opportunity["id"]
+        for opportunity in corpus
+        if opportunity.get("id")
+        and not opportunity_visible_in_release(opportunity)
+    }
 
     supabase_url = env["SUPABASE_URL"].rstrip("/")
     headers = {
@@ -261,7 +272,11 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                 filters = row.get("filters_json") or {}
                 query = row.get("query") or ""
                 prior_ids = set(row.get("last_result_ids") or [])
-                pending_ids = row.get("new_match_ids") or []
+                pending_ids = [
+                    opportunity_id
+                    for opportunity_id in (row.get("new_match_ids") or [])
+                    if opportunity_id not in hidden_opportunity_ids
+                ]
 
                 current_ids = matching_ids(opportunities, filters, query)
                 new_ids = [oid for oid in current_ids if oid not in prior_ids]
@@ -333,10 +348,17 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     except ImportError:
         return {"status": "skipped", "reason": "httpx not installed"}
 
-    opportunities = load_opportunities()
-    if not opportunities:
+    corpus = load_opportunities()
+    if not corpus:
         return {"status": "skipped", "reason": "no opportunities loaded"}
+    opportunities = release_visible_opportunities(corpus)
     opp_by_id = {o.get("id"): o for o in opportunities if o.get("id")}
+    hidden_opportunity_ids = {
+        opportunity["id"]
+        for opportunity in corpus
+        if opportunity.get("id")
+        and not opportunity_visible_in_release(opportunity)
+    }
 
     supabase_url = env["SUPABASE_URL"].rstrip("/")
     headers = {
@@ -370,7 +392,20 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         for row in rows:
             sid = str(row.get("id", "?"))
             try:
-                new_ids = row.get("new_match_ids") or []
+                stored_new_ids = row.get("new_match_ids") or []
+                new_ids = [
+                    opportunity_id
+                    for opportunity_id in stored_new_ids
+                    if opportunity_id not in hidden_opportunity_ids
+                ]
+                if new_ids != stored_new_ids:
+                    cleanup_resp = await client.patch(
+                        f"{supabase_url}/rest/v1/saved_searches",
+                        params={"id": f"eq.{sid}"},
+                        headers=headers,
+                        json={"new_match_ids": new_ids},
+                    )
+                    cleanup_resp.raise_for_status()
                 # new_match_ids accumulates oldest-first (refresh appends);
                 # show the freshest matches and summarize the rest.
                 matched = [opp_by_id[i] for i in reversed(new_ids) if i in opp_by_id]

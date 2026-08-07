@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
@@ -11,7 +11,8 @@ import type { ProfileData } from '@/lib/types';
 import { GRADES } from '@/lib/colleges';
 import { loadCatalog } from '@/lib/catalogs';
 import { suggestInterests } from '@/lib/interest-suggestions';
-import { recordSchoolConfirmation } from '@/lib/school-confirmation';
+import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import { persistHomeSchool } from '@/lib/school-confirmation';
 import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
 import { SEEKING_TYPES, type TFunc } from './types';
@@ -19,14 +20,67 @@ import { SEEKING_TYPES, type TFunc } from './types';
 export function AcademicProfileCard({
   profile,
   update,
+  viewSnapshot,
   t,
 }: {
   profile: ProfileData;
   update: <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => void;
+  /**
+   * The hydration this card is displaying: the row, the revision it is, and
+   * the identity it was accepted for, all from one moment. Owned by the
+   * parent, replaced only when a NEW hydration is accepted — never re-read
+   * here.
+   *
+   * Null means no view has been accepted yet, and there is nothing to change
+   * a school against.
+   */
+  viewSnapshot: ProfileViewSnapshot | null;
   t: TFunc;
 }) {
   const locale = useLocale();
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState(false);
+  // Synchronous double-click gate. `switching` is state: two clicks in the
+  // same tick both read the old value and both start a confirm.
+  const switchInFlightRef = useRef(false);
+
+  const openSwitcher = useCallback(() => {
+    setSwitchError(false);
+    setSwitcherOpen(true);
+  }, []);
+
+  // The SAME ordered helper the tour and the confirm gate use: persist the
+  // campus through the profile coordinator (one-key CAS patch), then the
+  // receipt, then the broadcast — and only then close. Writing the receipt
+  // first and leaving the field to the home form's own autosave, as this did
+  // before, means a save that conflicts or fails leaves a "confirmed" receipt
+  // for a campus that never reached the row. The broadcast is what updates
+  // the form on screen, so nothing is set locally here either.
+  const confirmSwitch = useCallback(async (slug: string) => {
+    if (switchInFlightRef.current) return;
+    // The snapshot's own token, not a fresh capture: this card is not keyed by
+    // identity (only the DocumentsCard is), so it stays on screen straight
+    // through an account switch. Capturing at click time would give a view
+    // that belongs to U1 a currently-valid U2 token, and every preflight below
+    // would wave the resulting patch into U2's row. Acting as the identity the
+    // displayed row was hydrated for means a superseded owner simply fails.
+    //
+    // No accepted view at all means no base to change a school against — say
+    // so instead of inventing one.
+    if (!viewSnapshot) { setSwitchError(true); return; }
+    switchInFlightRef.current = true;
+    setSwitching(true);
+    try {
+      const result = await persistHomeSchool(slug, viewSnapshot, { confirm: true });
+      if (!result.ok) { setSwitchError(true); return; }
+      setSwitchError(false);
+      setSwitcherOpen(false);
+    } finally {
+      switchInFlightRef.current = false;
+      setSwitching(false);
+    }
+  }, [viewSnapshot]);
   const homeSchool = profile.home_school ?? 'uiuc';
   const school = bySlug(homeSchool);
   const schoolName = school ? (locale === 'zh' ? school.nameZh : school.name) : homeSchool;
@@ -125,7 +179,7 @@ export function AcademicProfileCard({
             </span>
             <button
               type="button"
-              onClick={() => setSwitcherOpen(true)}
+              onClick={openSwitcher}
               className="ml-auto shrink-0 text-[13px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
             >
               {t('home.form.changeSchool')}
@@ -349,13 +403,9 @@ export function AcademicProfileCard({
         <UniversitySwitcherModal
           initialSelectedSlug={homeSchool}
           onCancel={() => setSwitcherOpen(false)}
-          onConfirm={(slug) => {
-            // W10b: switching IS confirming — the explicit choice doubles as
-            // the one-time school confirmation, so the gate never re-asks.
-            recordSchoolConfirmation(slug);
-            update('home_school', slug);
-            setSwitcherOpen(false);
-          }}
+          busy={switching}
+          errorMessage={switchError ? t('schoolConfirm.failed') : null}
+          onConfirm={(slug) => { void confirmSwitch(slug); }}
         />
       )}
     </Card>

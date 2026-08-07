@@ -46,16 +46,15 @@ You agree not to: misuse or attempt to break the service; access other users' da
 
 ## 6. Accounts
 
-JoinALab works without an account by default. If you create one (email or linked Google / GitHub / Microsoft), you are responsible for activity under your account. Authentication is handled by our provider (Supabase).
+JoinALab works without an account by default. If you create one by email or, when offered, a linked Google account, you are responsible for activity under your account. Authentication is handled by our provider (Supabase).
 
 ## 7. Payment, paid features, and refunds
 
-*Applies only once a paid tier is live.*
-
-- Some features may be offered for a fee. Prices and what's included will be shown before you pay. Payments are processed by **Stripe**; we do not store your card details.
-- **Free allowance:** 2 free AI generations are provided at no charge; additional generations or concierge fulfillment may require payment.
-- **Refunds:** If you are not satisfied with a paid result, email eric.guoyi.xu@gmail.com within 7 days of your purchase for a full refund — no questions asked.
-- We may change pricing prospectively; changes will not affect a purchase already made.
+JoinALab does not currently offer a paid tier or accept payment. If paid
+features are introduced later, the price, included service, fulfillment
+timeline, cancellation terms, and refund policy will be shown for your review
+before any purchase. This version of the Terms does not make a paid-service
+offer or payment commitment.
 
 ## 8. No professional advice; no guarantee of outcomes
 

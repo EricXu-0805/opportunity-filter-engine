@@ -2,6 +2,9 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import CompareTable from './CompareTable';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, writeUserScopedRaw } from '@/lib/identity-owner';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { hashProfile } from '@/lib/match-utils';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { CompareRow } from './scores';
 
@@ -13,6 +16,15 @@ vi.mock('@/lib/api', () => ({
 vi.mock('@/lib/use-local-storage-json', () => ({
   useHasLocalStorageKey: vi.fn(),
   useLocalStorageJSON: vi.fn(),
+}));
+
+// A mutable ref, not a literal `true`/`false`: RELEASE_SCOPE is a frozen,
+// source-controlled const in production, but the AI-refine toggle tests
+// below need to exercise BOTH the accepted-release and dormant-feature
+// paths, matching how use-results-url.test.ts frames its own coverage.
+const releaseScopeRef = vi.hoisted(() => ({ matchAiRefine: false }));
+vi.mock('@/lib/release-scope', () => ({
+  RELEASE_SCOPE: releaseScopeRef,
 }));
 
 let lastBucketRows: CompareRow[] | null = null;
@@ -57,9 +69,11 @@ function setStorage(has: boolean | undefined, value: ProfileData | null) {
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   sessionStorage.clear();
   vi.clearAllMocks();
   lastBucketRows = null;
+  releaseScopeRef.matchAiRefine = false;
 });
 
 describe('CompareTable', () => {
@@ -98,9 +112,55 @@ describe('CompareTable', () => {
     });
     expect(screen.getByTestId('radar-chart')).toBeInTheDocument();
     expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    expect(mockGetMatchExplanation).toHaveBeenNthCalledWith(
+      1,
+      profile,
+      'a',
+      { llm: false },
+    );
     // Sorted by canonical final_score: b (90) before a (40).
     expect(lastBucketRows?.map((r) => r.opp.id)).toEqual(['b', 'a']);
     expect(lastBucketRows?.map((r) => r.match?.final_score)).toEqual([90, 40]);
+  });
+
+  it('uses AI only after the current-version preference is explicitly enabled AND the release accepts it', async () => {
+    releaseScopeRef.matchAiRefine = true;
+    setStorage(true, profile);
+    advanceOwnerEpoch('compare-test-uid');
+    await syncLocalIdentityOwner('compare-test-uid');
+    writeUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK, '1', captureOwnerToken());
+    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+    expect(mockGetMatchExplanation).toHaveBeenNthCalledWith(
+      1,
+      profile,
+      'a',
+      { llm: true },
+    );
+  });
+
+  it('a stale enabled preference does NOT force llm:true while AI-refine is outside the accepted release — the flag wins regardless of what is stored', async () => {
+    releaseScopeRef.matchAiRefine = false; // dormant, same as the CURRENT real release
+    setStorage(true, profile);
+    advanceOwnerEpoch('compare-test-uid-2');
+    await syncLocalIdentityOwner('compare-test-uid-2');
+    writeUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK, '1', captureOwnerToken());
+    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+    expect(mockGetMatchExplanation).toHaveBeenNthCalledWith(
+      1,
+      profile,
+      'a',
+      { llm: false },
+    );
   });
 
   it('keeps failed rows visible as unavailable instead of substituting a local score', async () => {
@@ -137,6 +197,32 @@ describe('CompareTable', () => {
       expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
     });
     expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not serve an unversioned pre-contact-trust explain cache', async () => {
+    setStorage(true, profile);
+    const oldKey = `ofe_explain_a_${hashProfile(profile)}_ai0`;
+    sessionStorage.setItem(
+      oldKey,
+      JSON.stringify({
+        savedAt: Date.now(),
+        data: {
+          ...EXPLANATION,
+          explanation: 'Write jane@example.edu',
+          reasons_fit: ['Contact jane@example.edu'],
+        },
+      }),
+    );
+    mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    expect(lastBucketRows?.find((row) => row.opp.id === 'a')?.match?.explanation)
+      .toBe('Great topical fit.');
   });
 
   it('failed calls are not cached — a later visit retries', async () => {

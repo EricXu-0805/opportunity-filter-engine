@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { SimilarOpportunity } from '@/lib/api-server';
 import { useT } from '@/i18n/client';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 
 import { ChatDrawer } from './ChatDrawer';
 import { ContactRevealSection } from './ContactRevealSection';
@@ -44,21 +45,36 @@ export default function OpportunityDetail({
 }) {
   const { t } = useT();
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
-  // R71 PR-3: tailor modal is local to this page — it has no callers
-  // outside OpportunityDetail, so we keep state here rather than bloat
-  // useOpportunityDetail. Matches PR-2's MatchCard-local pattern.
-  const [tailorOpen, setTailorOpen] = useState(false);
-  const [renovationOpen, setRenovationOpen] = useState(false);
   const {
+    identityGeneration,
+    ownerScopeKey,
     isFavorited,
+    favoriteLoading,
+    favoriteError,
+    retryFavoriteHydration,
+    favoriteSaving,
+    favoriteSaveError,
+    ownerReady,
     interactionDetail,
     interaction,
+    interactionLoading,
+    interactionError,
+    retryInteractionHydration,
+    statusSaving,
+    statusError,
+    retryTrack,
     emailModalOpen,
     setEmailModalOpen,
     shareCopied,
     chatDrawerOpen,
     setChatDrawerOpen,
+    tailorOpen,
+    setTailorOpen,
+    renovationOpen,
+    setRenovationOpen,
     suggestion,
+    suggestionSaving,
+    suggestionError,
     handleStar,
     handleTrack,
     saveDetails,
@@ -79,6 +95,8 @@ export default function OpportunityDetail({
         {t('detail.backToMatches')}
       </Link>
 
+      <StorageStatusBanner />
+
       <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
         <main className="flex-1 min-w-0 lg:max-w-3xl">
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden mb-6">
@@ -86,34 +104,90 @@ export default function OpportunityDetail({
               opp={opp}
               profile={profile}
               isFavorited={isFavorited}
+              favoriteDisabled={!ownerReady || favoriteLoading || favoriteSaving || favoriteError}
+              favoriteBusy={favoriteLoading || favoriteSaving}
               shareCopied={shareCopied}
               onStar={handleStar}
               onOpenEmailModal={() => setEmailModalOpen(true)}
               onOpenTailorModal={() => setTailorOpen(true)}
-              onOpenRenovationModal={() => setRenovationOpen(true)}
+              tailorDisabled={!ownerReady}
+              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate
+                ? () => setRenovationOpen(true)
+                : undefined}
               onShare={handleShare}
               t={t}
             />
+            {(favoriteError || favoriteSaveError) && (
+              <div className="px-5 sm:px-8 pb-3 -mt-2" role="alert">
+                <p className="flex items-center gap-2 text-xs text-red-700">
+                  {favoriteError ? t('detail.favorite.loadError') : t('detail.favorite.saveError')}
+                  <button
+                    type="button"
+                    onClick={favoriteError ? retryFavoriteHydration : () => { void handleStar(); }}
+                    className="font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                  >
+                    {t('common.retry')}
+                  </button>
+                </p>
+              </div>
+            )}
+            {interactionError && (
+              <div className="px-5 sm:px-8 pb-3 -mt-2" role="alert">
+                <p className="flex items-center gap-2 text-xs text-red-700">
+                  {t('detail.tracker.loadError')}
+                  <button
+                    type="button"
+                    onClick={retryInteractionHydration}
+                    className="font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                  >
+                    {t('common.retry')}
+                  </button>
+                </p>
+              </div>
+            )}
             <InteractionPills
               interaction={interaction}
               suggestion={suggestion}
+              statusSaving={statusSaving}
+              statusError={statusError}
+              interactionUnready={!ownerReady || interactionLoading || interactionError}
               onTrack={handleTrack}
+              onRetryTrack={retryTrack}
               onUseSuggestion={handleUseSuggestion}
               onDismissSuggestion={handleDismissSuggestion}
+              suggestionSaving={suggestionSaving}
+              suggestionError={suggestionError}
               t={t}
             />
             <TrackerPanel
+              // Relying on interactionDetail merely passing through null
+              // between identities is not a robust guarantee that React
+              // unmounts this panel across a U1->U2 switch (same
+              // opportunity, same mounted OpportunityDetail instance) — the
+              // generation-qualified key forces a fresh instance (and
+              // therefore a fresh, empty local notes/reminder draft)
+              // explicitly, by construction (same fix as tracker/page.tsx).
+              key={`${identityGeneration}:${opp.id}`}
               detail={interactionDetail}
               onSave={saveDetails}
               opportunityId={opp.id as string}
               hasInteraction={!!interaction}
+              // A still-loading/failed/not-yet-owned read, or a status
+              // write in flight, means notes/reminder edits must not be
+              // typeable at all — otherwise a slow read landing later (or
+              // a status change resolving) could auto-save a draft the
+              // user typed against untrustworthy state, or silently drop
+              // it into a permanently-unretried limbo.
+              writeReady={ownerReady && !interactionLoading && !interactionError && !!interaction && !statusSaving}
               t={t}
             />
-            <ProfessorFollowToggle
-              professorId={opp.professor_id}
-              professorName={opp.pi_name}
-              school={opp.school}
-            />
+            {RELEASE_SCOPE.professorSignals && (
+              <ProfessorFollowToggle
+                professorId={opp.professor_id}
+                professorName={opp.pi_name}
+                school={opp.school}
+              />
+            )}
           </div>
 
           <DescriptionSection description={description} t={t} />
@@ -133,21 +207,25 @@ export default function OpportunityDetail({
           </div>
         </main>
 
-        <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">
-          <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
-            <OpportunityChatbot opportunity={opp} profile={profile} />
-          </div>
-        </aside>
+        {RELEASE_SCOPE.askAi && (
+          <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">
+            <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
+              <OpportunityChatbot opportunity={opp} profile={profile} />
+            </div>
+          </aside>
+        )}
       </div>
 
-      <ChatDrawer
-        opp={opp}
-        profile={profile}
-        open={chatDrawerOpen}
-        onOpen={() => setChatDrawerOpen(true)}
-        onClose={() => setChatDrawerOpen(false)}
-        t={t}
-      />
+      {RELEASE_SCOPE.askAi && (
+        <ChatDrawer
+          opp={opp}
+          profile={profile}
+          open={chatDrawerOpen}
+          onOpen={() => setChatDrawerOpen(true)}
+          onClose={() => setChatDrawerOpen(false)}
+          t={t}
+        />
+      )}
 
       {profile && (
         <ColdEmailModal
@@ -162,15 +240,24 @@ export default function OpportunityDetail({
 
       {profile && (
         <TailorModal
+          // Generation-qualified key (same fix as TrackerPanel above): a
+          // real identity transition forces a full remount, destroying
+          // this modal's own local state (draft, in-flight request)
+          // outright rather than relying solely on hydrate()'s
+          // setTailorOpen(false) to close it — belt-and-suspenders, not
+          // either/or.
+          key={`${identityGeneration}:${opp.id}`}
           isOpen={tailorOpen}
           onClose={() => setTailorOpen(false)}
           profile={profile}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
+          ownerReady={ownerReady}
+          ownerScopeKey={ownerScopeKey}
         />
       )}
 
-      {profile && (
+      {RELEASE_SCOPE.resumeRenovate && profile && (
         <ResumeRenovationModal
           isOpen={renovationOpen}
           onClose={() => setRenovationOpen(false)}

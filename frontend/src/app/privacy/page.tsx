@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     'How JoinALab collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'June 24, 2026';
+const EFFECTIVE_DATE = 'August 1, 2026';
 
 const CONTENT = `# Privacy Policy
 
@@ -19,7 +19,7 @@ const CONTENT = `# Privacy Policy
 
 ## 1. What this service is
 
-JoinALab helps students discover research, internship, fellowship, and summer-program opportunities, and helps them prepare application materials (a tailored résumé draft and a draft cold-outreach email). You provide a profile; we match it against a catalog of opportunities and, on request, use AI to draft application materials **that you review and send yourself**. JoinALab does not send emails to professors or programs on your behalf without your explicit action.
+JoinALab helps students discover research, internship, and summer-program opportunities, and helps them prepare application materials (a tailored résumé draft and a draft cold-outreach email). You provide a profile; we match it against a catalog of opportunities and, on request, use AI to draft application materials **that you review and send yourself**. JoinALab does not send emails to professors or programs on your behalf without your explicit action.
 
 ## 2. Information we collect
 
@@ -31,7 +31,7 @@ Only school, college, major, and academic year are required; everything else is 
 - **International-student status:** an optional flag indicating whether you are an international student. We use this only to assess which opportunities are realistically open to you (e.g. work-authorization or on-campus constraints). You may leave it blank.
 - **Background:** research interests, skills and proficiency levels, coursework, experience level.
 - **Links:** LinkedIn and GitHub URLs (optional).
-- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, coursework, and interests. We store up to ~3,000 characters of extracted résumé text as part of your profile if you choose to keep it. **The original PDF file is not stored on our servers.**
+- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, coursework, and interests. We store up to ~8,000 characters of extracted résumé text as part of your profile. **The original PDF file is not stored on our servers.** Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. Earlier saved versions of your profile (§4, profile history) still contain the text until you request a full data deletion under §7.
 - **Preferences:** the kinds of opportunities you are seeking, search weighting, saved searches, filters.
 
 ### 2.2 Activity information
@@ -43,7 +43,7 @@ Only school, college, major, and academic year are required; everything else is 
 ### 2.3 Account / authentication information
 
 - JoinALab works **without an account** by default: your browser is assigned an anonymous identifier so your data is private to you.
-- If you choose to save your profile across devices, you can sign in by email (magic link) or link a Google / GitHub / Microsoft account. Your email address and any linked-account identifiers are held by our authentication provider (Supabase, §5); they are **not** stored in JoinALab's own application database.
+- If you choose to save your profile across devices, you can sign in by email (magic link) or, when offered, link a Google account. Your email address and any linked-account identifiers are held by our authentication provider (Supabase, §5); they are **not** stored in JoinALab's own application database.
 
 ### 2.4 Information collected automatically
 
@@ -79,6 +79,7 @@ We do **not** sell your personal information, and we do **not** use it for third
 - **Your profile, favorites, tracking, saved searches, and match feedback** are stored in a Supabase Postgres database, in rows that are access-restricted to your own identity by database row-level security — other users cannot read your rows. If you enable the weekly email digest for a saved search, the email address you provide for it is stored alongside that saved search until you turn the digest off.
 - **Product-analytics events and any paid-help interest you register** (including the contact email you provide) are stored in the same Supabase database, scoped to your own anonymous identity.
 - **Attachments** you add to tracked opportunities are stored in Supabase Storage under a folder private to your identity (≤5 MB per file; PDF, common image, DOCX, TXT, Markdown).
+- **Profile history:** every time your profile is saved, a copy of it is also appended to a version-history table (profile_versions) in the same database, under the same row-level security. That history is append-only: editing your profile — including removing your résumé from it (§2.1) — updates the current profile but does **not** rewrite or remove earlier versions, which still contain what your profile held at the time. There is no self-serve way to purge that history today; it is removed when you request a full data deletion under §7.
 - **In your browser:** your profile and some preferences are also cached in your browser's local storage so the app works smoothly and offline-tolerantly. You can clear this at any time via your browser settings.
 
 ## 5. Third parties that process your data (subprocessors)
@@ -90,12 +91,12 @@ We rely on the following service providers. We share only what each needs to per
 | **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; any "apply for me" interest you register (with the contact email you provide); and feedback you submit (with the optional reply email) |
 | **Vercel** (US) | Frontend hosting | Standard request logs (IP, user-agent, path) |
 | **Render** (US) | Backend hosting | API request contents and server logs |
-| **AI language-model provider** — **OpenAI**, **Google (Gemini)**, and/or **Anthropic (Claude)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact models used are operator-configurable and chosen per task for quality. | Generating résumé drafts, cold-email drafts, match explanations, and opportunity Q&A | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
+| **AI language-model provider** — **OpenAI**, **Google (Gemini)**, and/or **Anthropic (Claude)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact models used are operator-configurable and chosen per task for quality. | Generating résumé and cold-email drafts | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
 | **Resend** (US) | Sending transactional email | The recipient email address you provide and the content of that email (including the weekly saved-search digest, if you enable it) |
 | **GitHub API** | Importing your public GitHub profile (only if you use that feature) | The public GitHub username you enter |
 | **Sentry** (US, optional) | Error monitoring | Error diagnostics with personal data masking enabled (request bodies, IPs, and cookies are not captured) |
 
-**Important — AI processing disclosure.** When you ask JoinALab to tailor a résumé, draft a cold email, explain a match, or answer questions about an opportunity, the relevant parts of your profile (which can include your name, academic details, skills, and your own résumé text) are sent to one of the AI providers named above (OpenAI, Google, or Anthropic, reached directly or through the OpenRouter gateway) to generate that output. These providers process the data under their own terms; we do not control their retention. If you do not want your data processed by an AI provider, **do not use the résumé-tailoring, cold-email, match-explanation, or chat features** — the core matching and saving features do not require sending your profile to an AI provider.
+**Important — AI processing disclosure.** When you ask JoinALab to tailor a résumé or draft a cold email, the relevant parts of your profile (which can include your name, academic details, skills, and your own résumé text) are sent to one of the AI providers named above (OpenAI, Google, or Anthropic, reached directly or through the OpenRouter gateway) to generate that output. These providers process the data under their own terms; we do not control their retention. If you do not want your data processed by an AI provider, **do not use the résumé-tailoring or cold-email features** — the core matching and saving features do not require sending your profile to an AI provider.
 
 ## 6. How long we keep your data
 

@@ -37,6 +37,8 @@ from .ucb_common import (
     dedup_by_profile_url,
     fetch_soup,
     normalize_faculty,
+    stamp_bound_directory_contact,
+    unique_bound_container_contact,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,20 +62,36 @@ def _scrape_directory_emails(soup: BeautifulSoup) -> dict[tuple[str, ...], str]:
     """Map each faculty member's (first, last) name key -> email from the
     directory table. Skips the Emeriti section's table and shared/admin
     mailboxes."""
-    emails: dict[tuple[str, ...], str] = {}
+    candidates: dict[tuple[str, ...], list[str | None]] = {}
     for table in soup.select("table"):
         heading = table.find_previous(["h2", "h3", "h4"])
-        if heading and "emeriti" in heading.get_text(" ", strip=True).lower():
+        if (
+            heading is None
+            or heading.get_text(" ", strip=True).strip().casefold() != "faculty"
+        ):
             continue
         for row in table.select("tr"):
             name_link = row.find("a", href=True)
-            mail = row.select_one("a[href^='mailto:']")
-            if not name_link or not mail:
+            if not name_link:
                 continue
-            email = mail.get("href", "").replace("mailto:", "").split("?")[0].strip().lower()
-            if email and email not in NOISE_EMAILS:
-                emails.setdefault(_name_key(name_link.get_text(" ", strip=True)), email)
-    return emails
+            key = _name_key(name_link.get_text(" ", strip=True))
+            if len(key) != 2:
+                continue
+            email = unique_bound_container_contact(
+                row,
+                MCB_CONFIG,
+                nested_record_selector="tr",
+            )
+            candidates.setdefault(key, []).append(
+                email if email and email not in NOISE_EMAILS else None
+            )
+    # A tolerant first/last key is usable only when it occurs in exactly one
+    # Faculty row and that row carries exactly one personal address.
+    return {
+        key: rows[0]
+        for key, rows in candidates.items()
+        if len(rows) == 1 and rows[0] is not None
+    }
 
 MCB_CONFIG = {
     "source": "ucb_mcb_faculty",
@@ -145,11 +163,22 @@ def fetch_and_normalize(enrich: bool = True) -> list[dict]:
         dir_soup = fetch_soup(_DIRECTORY_URL)
         if dir_soup:
             emails = _scrape_directory_emails(dir_soup)
+            raw_key_counts: dict[tuple[str, ...], int] = {}
+            for person in raw:
+                key = _name_key(person["name"])
+                raw_key_counts[key] = raw_key_counts.get(key, 0) + 1
             matched = 0
             for person in raw:
-                email = emails.get(_name_key(person["name"]))
-                if email:
-                    person["email"] = email
+                key = _name_key(person["name"])
+                email = emails.get(key) if raw_key_counts.get(key) == 1 else None
+                if email and stamp_bound_directory_contact(
+                    person,
+                    email,
+                    MCB_CONFIG,
+                    source_soup=dir_soup,
+                    requested_url=_DIRECTORY_URL,
+                    email_source="bound_directory_name_join",
+                ):
                     matched += 1
             logger.info(f"  Joined {matched}/{len(raw)} emails from the directory")
 

@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { readUserScopedRaw } from '@/lib/identity-owner';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
 
 // Pure reader for the URL → initial-state hydration that runs once on mount
@@ -25,45 +27,60 @@ export function readInitialFiltersFromUrl(
   filters: Filters;
   sortBy: SortKey;
 } {
+  const allow = <T extends string>(
+    raw: string | null,
+    values: readonly T[],
+    fallback: T,
+  ): T => (raw !== null && values.includes(raw as T) ? raw as T : fallback);
+  const rawMinScore = Number(searchParams.get('min') || 0);
+  const minScore = Number.isFinite(rawMinScore)
+    ? Math.min(100, Math.max(0, Math.trunc(rawMinScore)))
+    : 0;
+
   return {
-    activeTab: (searchParams.get('tab') as Tab) || 'high_priority',
-    searchQuery: searchParams.get('q') || '',
+    activeTab: allow<Tab>(
+      searchParams.get('tab'),
+      ['all', 'high_priority', 'good_match', 'reach', 'starred'],
+      'high_priority',
+    ),
+    searchQuery: (searchParams.get('q') || '').slice(0, 200),
     filters: {
-      paid: (searchParams.get('paid') || '') as Filters['paid'],
-      intl: (searchParams.get('intl') || '') as Filters['intl'],
-      source: (searchParams.get('source') || '') as Filters['source'],
-      onCampus: (searchParams.get('loc') || '') as Filters['onCampus'],
-      deadline: (searchParams.get('dl') || '') as Filters['deadline'],
-      minScore: Number(searchParams.get('min') || 0),
-      scope: (searchParams.get('scope') || '') as Filters['scope'],
+      paid: allow(searchParams.get('paid'), ['', 'yes', 'no'], ''),
+      intl: allow(searchParams.get('intl'), ['', 'yes', 'no'], ''),
+      source: (searchParams.get('source') || '').slice(0, 100),
+      onCampus: allow(searchParams.get('loc'), ['', 'yes', 'no'], ''),
+      deadline: allow(
+        searchParams.get('dl'),
+        ['', '7', '14', '30', 'passed'],
+        '',
+      ),
+      minScore,
+      scope: allow(searchParams.get('scope'), ['', 'campus', 'open'], ''),
     },
-    sortBy: (searchParams.get('sort') as SortKey) || 'score',
+    sortBy: allow<SortKey>(
+      searchParams.get('sort'),
+      ['score', 'deadline', 'newest'],
+      'score',
+    ),
   };
 }
 
-// AI/semantic-rerank toggle resolution order:
-//   1. ?ai=1 / ?ai=0 in URL (explicit, wins for shareable URLs)
-//   2. localStorage 'ofe_semantic_rerank' = '1' / '0' (user preference)
-//   3. Default to false (semantic off). The blend in semantic_rerank mixes a
-//      0-0.6 cosine similarity (scaled x100) at weight 0.5, which compresses
-//      a 91 rule score to ~76 and can float generic-keyword matches above
-//      topically specific ones. The rule ranking is accurate, so it is the
-//      default; the toggle stays for opt-in experimentation.
+// AI-refine state fails closed before consulting URL or localStorage. Once the
+// feature passes acceptance, the dormant branch below preserves explicit URL
+// then saved-preference resolution; until then deterministic is unconditional.
 // Kept separate from readInitialFiltersFromUrl because it consults
 // localStorage too — the filters reader is pure URL.
 export function readInitialSemanticRerank(
   searchParams: URLSearchParams | ReadonlyURLSearchParams,
 ): boolean {
+  if (!RELEASE_SCOPE.matchAiRefine) return false;
   const p = searchParams.get('ai');
   if (p === '1') return true;
   if (p === '0') return false;
-  if (typeof window === 'undefined') return true;
-  const stored = localStorage.getItem(STORAGE_KEYS.SEMANTIC_RERANK);
+  const stored = readUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK);
   if (stored === '0') return false;
   if (stored === '1') return true;
-  // AI smart match is the default (2026-07): it fixes the rule ranking's tie
-  // walls and writes each card's concrete lead reason. '0' still opts out.
-  return true;
+  return false;
 }
 
 // URL writer. Uses history.replaceState (not router.replace) to avoid
@@ -95,10 +112,11 @@ export function useResultsUrlSync(state: {
     if (filters.minScore > 0) params.set('min', String(filters.minScore));
     if (filters.scope) params.set('scope', filters.scope);
     if (sortBy !== 'score') params.set('sort', sortBy);
-    // Write the AI-match state symmetrically (ai=1 on / ai=0 off) so a copied
-    // URL round-trips on any device — previously only the off state was written,
-    // so a shared "AI smart match ON" link silently opened with it off.
-    params.set('ai', semanticRerank ? '1' : '0');
+    // Only an accepted AI-refine release may serialize its state into a
+    // shareable URL. Dormant-feature query params are removed.
+    if (RELEASE_SCOPE.matchAiRefine) {
+      params.set('ai', semanticRerank ? '1' : '0');
+    }
     const qs = params.toString();
     const newUrl = qs ? `/results?${qs}` : '/results';
     window.history.replaceState(null, '', newUrl);

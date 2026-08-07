@@ -11,6 +11,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, writeUserScopedRaw } from '@/lib/identity-owner';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 
 const mockOpenModal = vi.fn();
 const mockGetAuthState = vi.fn();
@@ -57,8 +59,14 @@ const PERMANENT: unknown = {
   email: 'e@i.edu',
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.clear();
+  // The anchor only ever shows for an anonymous SESSION, which still has a
+  // real uid (just flagged isAnonymous) — establish that readiness the same
+  // way ensureAnonSession does in production, so the gated dismiss read/
+  // write actually has an owner to resolve against.
+  advanceOwnerEpoch('anon-test-uid');
+  await syncLocalIdentityOwner('anon-test-uid');
 });
 
 afterEach(() => {
@@ -91,7 +99,7 @@ describe('SaveFavoritesAnchor — visibility', () => {
   });
 
   it('hides when dismiss flag is already in localStorage', async () => {
-    localStorage.setItem('ofe_anchor_3fav_dismissed', '1');
+    writeUserScopedRaw(STORAGE_KEYS.ANCHOR_3FAV_DISMISSED, '1', captureOwnerToken());
     mockGetAuthState.mockResolvedValue(ANON);
     const { container } = render(<SaveFavoritesAnchor favoriteCount={5} />);
     await new Promise(r => setTimeout(r, 0));
@@ -122,5 +130,28 @@ describe('SaveFavoritesAnchor — interactions', () => {
       expect(container.querySelector('[data-testid="save-favorites-anchor"]')).toBeNull();
     });
     expect(localStorage.getItem('ofe_anchor_3fav_dismissed')).toBe('1');
+  });
+
+  it('a dismiss write attempted while the identity is mid-transition (blocked, not yet synced) does NOT optimistically hide the anchor', async () => {
+    render(<SaveFavoritesAnchor favoriteCount={3} />);
+    await waitFor(() => screen.getByTestId('save-favorites-anchor'));
+
+    // A real transition — but the choke point that would prove local
+    // ownership (syncLocalIdentityOwner) hasn't run yet, so isLocalOwnerReady
+    // is false for the new uid at the exact moment the click's own
+    // captureOwnerToken() resolves. writeUserScopedRaw's gate must reject
+    // this write, since click-to-write here is fully synchronous — there is
+    // no async gap for a token to go stale relative to itself, only whether
+    // the CURRENT owner is actually ready right now.
+    advanceOwnerEpoch('anon-test-uid-2');
+
+    const dismiss = screen.getByText('auth.anchor.favorites3.dismiss');
+    dismiss.click();
+    // A tick for any pending re-render to settle — this asserts the
+    // ABSENCE of a change, so there is no positive condition to await.
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(screen.getByTestId('save-favorites-anchor')).toBeInTheDocument();
+    expect(localStorage.getItem('ofe_anchor_3fav_dismissed')).toBeNull();
   });
 });

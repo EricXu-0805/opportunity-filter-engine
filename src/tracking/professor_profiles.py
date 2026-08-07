@@ -21,12 +21,12 @@ Serving stays per-record (an event serves iff its own evidence validates, see
 ``validate_tracking_event_evidence``), so the ledger is useful from the very
 first verified change.  Schema v2 additionally stamps an artifact-level
 ``release`` block (see ``compute_release_status``): an honest, recomputed-
-every-write summary of whether the artifact as a whole is release-ready —
+every-write summary of whether the artifact as a whole is safe to serve —
 schema valid, every stored event evidence-valid, baseline freshness >=
 ``FRESHNESS_MIN_PCT``, zero fully-stale schools, and the producing refresh run
-free of collector errors.  ``release_ready`` is a marker for consumers and
-ops; it never gates per-record serving (v1's global gate shipped the feature
-permanently dead — see #661).
+free of collector errors. Consumers fail closed when that artifact-level
+contract expires; per-event evidence is then revalidated at the serving
+boundary.
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import re
 import unicodedata
 from copy import deepcopy
@@ -503,6 +504,20 @@ def _empty_state() -> dict:
 # Bound the fully-stale-school list so a systemic outage can't balloon the
 # artifact; the count is always exact.
 _MAX_FULLY_STALE_SCHOOLS_LISTED = 20
+TRACKING_COVERAGE_MIN_PCT = 95.0
+_CURRENT_RELEASE_CHECKS = frozenset(
+    {
+        "schema_v2",
+        "events_valid",
+        "freshness_min_pct",
+        "no_fully_stale_school",
+        "all_active_schools_tracked",
+        "active_professor_denominator_present",
+        "active_professor_coverage_min_pct",
+        "all_active_professors_identifiable",
+        "refresh_ok",
+    }
+)
 
 
 def compute_release_status(
@@ -511,6 +526,9 @@ def compute_release_status(
     *,
     refresh_ok: bool,
     now: datetime | None = None,
+    expected_schools: set[str] | frozenset[str] | None = None,
+    expected_professors: dict[str, str] | None = None,
+    untrackable_active_count: int = 0,
 ) -> dict:
     """Compute the artifact-level ``release`` block from real state only.
 
@@ -519,15 +537,29 @@ def compute_release_status(
     * ``schema_v2`` — this writer only emits v2, recorded for consumers;
     * ``events_valid`` — every stored event re-validates against its own
       evidence (the project's existing validator, nothing waived);
-    * ``freshness_min_pct`` — >= ``FRESHNESS_MIN_PCT`` of profile baselines
-      were successfully profile-verified within ``FRESHNESS_TTL_DAYS``.  A
+    * ``freshness_min_pct`` — >= ``FRESHNESS_MIN_PCT`` of active professor
+      records were successfully profile-verified within
+      ``FRESHNESS_TTL_DAYS``. A
       baseline's ``last_verified`` only advances from a real, strictly-newer
       profile fetch, so this cannot be gamed by pipeline execution alone.
-      An artifact with zero baselines has nothing verified — freshness is
+      Missing active baselines count as not fresh. An artifact with zero
+      active professors has nothing verified — freshness is
       ``None`` and the check fails (fail-closed, never vacuously fresh);
     * ``no_fully_stale_school`` — no school whose *entire* baseline set is
       stale.  The global percentage alone would mask a school-wide outage
       (one dead school among many fresh ones still averages above 95%);
+    * ``all_active_schools_tracked`` — every school represented by an active
+      faculty record in the producing corpus has at least one profile-verified
+      tracking baseline. Schools without a baseline must not disappear from
+      the denominator and let a partial tracker claim full release readiness;
+    * ``active_professor_coverage_min_pct`` — at least 95% of active faculty
+      records have an individually profile-verified baseline. One fresh
+      professor per school is not sufficient evidence for a complete feed;
+    * ``active_professor_denominator_present`` — the producer supplied the
+      active corpus denominator; a helper caller cannot accidentally release
+      using only the already-tracked subset;
+    * ``all_active_professors_identifiable`` — every active faculty record can
+      be assigned the stable tracking id used by the artifact;
     * ``refresh_ok`` — the producing refresh run reported no collector
       errors.  Passed in by the caller from the run summary; a standalone
       recompute must derive it from the run's real recorded statuses, never
@@ -537,32 +569,122 @@ def compute_release_status(
     now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
     ttl = timedelta(days=FRESHNESS_TTL_DAYS)
 
+    if not isinstance(untrackable_active_count, int) or isinstance(
+        untrackable_active_count, bool
+    ) or untrackable_active_count < 0:
+        raise ValueError("untrackable_active_count must be a non-negative integer")
+
+    expected_profile_map: dict[str, str] | None = None
+    if expected_professors is not None:
+        expected_profile_map = {
+            professor_id: school
+            for professor_id, school in expected_professors.items()
+            if isinstance(professor_id, str)
+            and professor_id
+            and isinstance(school, str)
+            and school
+        }
+        if len(expected_profile_map) != len(expected_professors):
+            raise ValueError("expected_professors contains an invalid id or school")
+
     total = 0
     fresh = 0
     school_totals: dict[str, int] = {}
     school_fresh: dict[str, int] = {}
-    for profile in profiles.values():
+    fresh_expirations: list[datetime] = []
+    school_fresh_expirations: dict[str, list[datetime]] = {}
+    tracked_schools: set[str] = set()
+    if expected_profile_map is None:
+        profile_rows = [
+            (professor_id, profile, None)
+            for professor_id, profile in profiles.items()
+        ]
+    else:
+        profile_rows = [
+            (
+                professor_id,
+                profiles.get(professor_id),
+                expected_profile_map[professor_id],
+            )
+            for professor_id in sorted(expected_profile_map)
+        ]
+
+    for _professor_id, profile, expected_school in profile_rows:
+        profile = profile if isinstance(profile, dict) else {}
         verified_at = _parse_verified_at(profile.get("last_verified"))
-        school = profile.get("school")
+        school = expected_school or profile.get("school")
         if not isinstance(school, str) or verified_at is None:
             # _valid_previous_state / update_tracking_state never store such a
             # profile; a hand-edited artifact counts it as stale, not fresh.
             is_fresh = False
             school = school if isinstance(school, str) and school else "?"
         else:
-            is_fresh = now - verified_at <= ttl
+            is_fresh = (
+                verified_at <= now + timedelta(minutes=5)
+                and now - verified_at <= ttl
+            )
         total += 1
         school_totals[school] = school_totals.get(school, 0) + 1
+        if profile:
+            tracked_schools.add(school)
         if is_fresh:
             fresh += 1
             school_fresh[school] = school_fresh.get(school, 0) + 1
+            expires_at = verified_at + ttl
+            fresh_expirations.append(expires_at)
+            school_fresh_expirations.setdefault(school, []).append(expires_at)
 
     freshness_pct = (100.0 * fresh / total) if total else None
     fully_stale = sorted(
         school for school, n in school_totals.items()
         if n > 0 and school_fresh.get(school, 0) == 0
     )
+    expected = (
+        {
+            school
+            for school in expected_schools
+            if isinstance(school, str) and school
+        }
+        if expected_schools is not None
+        else set(school_totals)
+    )
+    if expected_profile_map is not None:
+        expected.update(expected_profile_map.values())
+    missing_schools = sorted(expected - tracked_schools)
+    if expected_profile_map is None:
+        expected_profile_count = len(profiles)
+        tracked_expected_profile_count = len(profiles)
+        missing_profile_ids: list[str] = []
+    else:
+        expected_profile_count = len(expected_profile_map)
+        tracked_expected_profile_count = sum(
+            professor_id in profiles
+            for professor_id in expected_profile_map
+        )
+        missing_profile_ids = sorted(set(expected_profile_map) - set(profiles))
+    active_profile_coverage_pct = (
+        100.0 * tracked_expected_profile_count / expected_profile_count
+        if expected_profile_count
+        else None
+    )
     events_valid = all(validate_tracking_event_evidence(event) for event in events)
+
+    # Store the exact point at which the already-computed freshness evidence
+    # stops satisfying either the global 95% floor or a school's at-least-one
+    # fresh observation rule. Consumers can then invalidate a cached artifact
+    # as time passes without pretending the producer's old computed_at is a
+    # fresh profile observation.
+    freshness_valid_until: datetime | None = None
+    minimum_fresh = math.ceil(FRESHNESS_MIN_PCT * total / 100)
+    if total and fresh >= minimum_fresh and not fully_stale:
+        expirations = sorted(fresh_expirations)
+        first_global_failure = fresh - minimum_fresh
+        validity_candidates = [expirations[first_global_failure]]
+        validity_candidates.extend(
+            max(expirations)
+            for expirations in school_fresh_expirations.values()
+        )
+        freshness_valid_until = min(validity_candidates)
 
     checks = {
         "schema_v2": True,
@@ -570,16 +692,47 @@ def compute_release_status(
         "freshness_min_pct": freshness_pct is not None
         and freshness_pct >= FRESHNESS_MIN_PCT,
         "no_fully_stale_school": not fully_stale,
+        "all_active_schools_tracked": not missing_schools,
+        "active_professor_denominator_present": expected_profile_map is not None,
+        "active_professor_coverage_min_pct": (
+            active_profile_coverage_pct is not None
+            and active_profile_coverage_pct >= TRACKING_COVERAGE_MIN_PCT
+        ),
+        "all_active_professors_identifiable": untrackable_active_count == 0,
         "refresh_ok": bool(refresh_ok),
     }
     return {
         "computed_at": now.isoformat(),
+        "freshness_valid_until": (
+            freshness_valid_until.isoformat()
+            if freshness_valid_until is not None
+            else None
+        ),
         "freshness_ttl_days": FRESHNESS_TTL_DAYS,
         "freshness_min_pct": FRESHNESS_MIN_PCT,
+        "active_profile_coverage_min_pct": TRACKING_COVERAGE_MIN_PCT,
         "freshness_pct": round(freshness_pct, 2) if freshness_pct is not None else None,
         "fresh_profiles": fresh,
         "total_profiles": total,
+        "stored_profiles": len(profiles),
+        "expected_profile_count": expected_profile_count,
+        "tracked_expected_profile_count": tracked_expected_profile_count,
+        "active_profile_coverage_pct": (
+            round(active_profile_coverage_pct, 2)
+            if active_profile_coverage_pct is not None
+            else None
+        ),
+        "missing_profile_count": len(missing_profile_ids),
+        "missing_profile_ids": missing_profile_ids[
+            :_MAX_FULLY_STALE_SCHOOLS_LISTED
+        ],
+        "untrackable_active_count": untrackable_active_count,
         "schools_tracked": len(school_totals),
+        "expected_school_count": len(expected),
+        "missing_school_count": len(missing_schools),
+        "missing_schools": missing_schools[
+            :_MAX_FULLY_STALE_SCHOOLS_LISTED
+        ],
         "fully_stale_school_count": len(fully_stale),
         "fully_stale_schools": fully_stale[:_MAX_FULLY_STALE_SCHOOLS_LISTED],
         "checks": checks,
@@ -587,14 +740,45 @@ def compute_release_status(
     }
 
 
-def artifact_release_ready(state: object) -> bool:
+def artifact_release_ready(
+    state: object,
+    *,
+    now: datetime | None = None,
+) -> bool:
     """True iff ``state`` is a v2 artifact whose stored release block passed
-    every check.  v1 artifacts (no release block) are never release-ready."""
+    every current check. v1 artifacts and older/hand-edited v2 release blocks
+    with a missing, extra, or false check are never release-ready."""
 
     if not isinstance(state, dict) or state.get("schema_version") != TRACKING_SCHEMA_VERSION:
         return False
     release = state.get("release")
-    return isinstance(release, dict) and release.get("release_ready") is True
+    checks = release.get("checks") if isinstance(release, dict) else None
+    computed_at = (
+        _parse_verified_at(release.get("computed_at"))
+        if isinstance(release, dict)
+        else None
+    )
+    freshness_valid_until = (
+        _parse_verified_at(release.get("freshness_valid_until"))
+        if isinstance(release, dict)
+        else None
+    )
+    now = now or datetime.now(UTC)
+    if (
+        computed_at is None
+        or freshness_valid_until is None
+        or computed_at > now + timedelta(minutes=5)
+        or now - computed_at > timedelta(days=FRESHNESS_TTL_DAYS)
+        or now > freshness_valid_until
+        or release.get("freshness_ttl_days") != FRESHNESS_TTL_DAYS
+    ):
+        return False
+    return (
+        isinstance(checks, dict)
+        and set(checks) == _CURRENT_RELEASE_CHECKS
+        and all(value is True for value in checks.values())
+        and release.get("release_ready") is True
+    )
 
 
 def _profile_observation(profile: object) -> bool:
@@ -796,8 +980,34 @@ def update_tracking_file(
         }
 
     state = update_tracking_state(opportunities, previous)
+    expected_professors: dict[str, str] = {}
+    untrackable_active_count = 0
+    for opportunity in opportunities:
+        if (
+            not isinstance(opportunity, dict)
+            or opportunity.get("source_type") != "faculty_research"
+            or (opportunity.get("metadata") or {}).get("is_active") is False
+        ):
+            continue
+        school = opportunity.get("school")
+        professor_id = canonical_professor_id(opportunity)
+        if (
+            professor_id is None
+            or not isinstance(school, str)
+            or not school
+        ):
+            untrackable_active_count += 1
+            continue
+        expected_professors[professor_id] = school
+    expected_schools = set(expected_professors.values())
     state["release"] = compute_release_status(
-        state["profiles"], state["events"], refresh_ok=refresh_ok, now=now,
+        state["profiles"],
+        state["events"],
+        refresh_ok=refresh_ok,
+        now=now,
+        expected_schools=expected_schools,
+        expected_professors=expected_professors,
+        untrackable_active_count=untrackable_active_count,
     )
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(path, state, indent=None, separators=(",", ":"))
@@ -812,4 +1022,12 @@ def update_tracking_file(
         "release_ready": state["release"]["release_ready"],
         "freshness_pct": state["release"]["freshness_pct"],
         "fully_stale_school_count": state["release"]["fully_stale_school_count"],
+        "missing_school_count": state["release"]["missing_school_count"],
+        "active_profile_coverage_pct": state["release"][
+            "active_profile_coverage_pct"
+        ],
+        "missing_profile_count": state["release"]["missing_profile_count"],
+        "untrackable_active_count": state["release"][
+            "untrackable_active_count"
+        ],
     }

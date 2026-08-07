@@ -315,11 +315,10 @@ describe('signInExistingEmail — forced sign-in-to-existing path', () => {
   });
 });
 
-// The OAuth path is dark in production until NEXT_PUBLIC_AUTH_PROVIDERS
-// is set (AuthModal gates the buttons), but the call itself must be
-// correct NOW so flipping the flag is config-only. The azure provider
-// needs `scopes: 'email'` — Entra multi-tenant apps don't assert email
-// by default, and the school auto-detect (Phase A2) depends on it.
+// Google OAuth remains part of the release. Microsoft school OAuth is
+// source-frozen and must fail closed in this helper too — hiding its
+// AuthModal button is not enough because callers can invoke the helper
+// directly.
 //
 // Branching matrix mirrors signInOrLinkEmail: an ANON session must take
 // linkIdentity (attaches the OAuth identity to the current anonymous
@@ -351,20 +350,17 @@ describe('signInWithOAuthProvider', () => {
     expect(mockLinkIdentity).not.toHaveBeenCalled();
   });
 
-  it('no session + azure → signInWithOAuth with scopes:"email"', async () => {
-    mockGetSession.mockResolvedValueOnce(noSession());
-    mockSignInWithOAuth.mockResolvedValueOnce({
-      data: { provider: 'azure', url: 'https://login.microsoftonline.com/x' },
-      error: null,
-    });
-
+  it('direct azure call is rejected before reading a session or starting OAuth', async () => {
     const result = await signInWithOAuthProvider('azure', REDIRECT);
 
-    expect(result.ok).toBe(true);
-    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
-      provider: 'azure',
-      options: { redirectTo: REDIRECT, scopes: 'email' },
+    expect(result).toEqual({
+      ok: false,
+      reason: 'feature-disabled',
+      message: 'Microsoft school sign-in is not available in this release.',
     });
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockSignInWithOAuth).not.toHaveBeenCalled();
+    expect(mockLinkIdentity).not.toHaveBeenCalled();
   });
 
   it('permanent session → plain signInWithOAuth (sign-in, not link)', async () => {
@@ -397,29 +393,23 @@ describe('signInWithOAuthProvider', () => {
     expect(mockSignInWithOAuth).not.toHaveBeenCalled();
   });
 
-  it('anon session + azure → linkIdentity with scopes:"email"', async () => {
-    mockGetSession.mockResolvedValueOnce(anonSession());
-    mockLinkIdentity.mockResolvedValueOnce({
-      data: { provider: 'azure', url: 'https://login.microsoftonline.com/x' },
-      error: null,
-    });
-
+  it('direct azure call cannot link an anonymous session', async () => {
     const result = await signInWithOAuthProvider('azure', REDIRECT);
 
-    expect(result.ok).toBe(true);
-    expect(mockLinkIdentity).toHaveBeenCalledWith({
-      provider: 'azure',
-      options: { redirectTo: REDIRECT, scopes: 'email' },
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('feature-disabled');
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockLinkIdentity).not.toHaveBeenCalled();
+    expect(mockSignInWithOAuth).not.toHaveBeenCalled();
   });
 
   it('anon session → stashes the provider for the callback conflict fallback', async () => {
     mockGetSession.mockResolvedValueOnce(anonSession());
     mockLinkIdentity.mockResolvedValueOnce({ data: {}, error: null });
 
-    await signInWithOAuthProvider('azure', REDIRECT);
+    await signInWithOAuthProvider('google', REDIRECT);
 
-    expect(sessionStorage.getItem('ofe_oauth_link_provider')).toBe('azure');
+    expect(sessionStorage.getItem('ofe_oauth_link_provider')).toBe('google');
   });
 
   it('maps linkIdentity error code identity_already_exists → identity-taken', async () => {
@@ -506,15 +496,14 @@ describe('signInExistingOAuth — forced sign-in-to-existing path', () => {
     expect(mockLinkIdentity).not.toHaveBeenCalled();
   });
 
-  it('azure → scopes:"email" (school auto-detect needs the email claim)', async () => {
-    mockSignInWithOAuth.mockResolvedValueOnce({ data: {}, error: null });
+  it('direct azure recovery call is rejected before OAuth', async () => {
+    const result = await signInExistingOAuth('azure', REDIRECT);
 
-    await signInExistingOAuth('azure', REDIRECT);
-
-    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
-      provider: 'azure',
-      options: { redirectTo: REDIRECT, scopes: 'email' },
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('feature-disabled');
+    expect(mockSignInWithOAuth).not.toHaveBeenCalled();
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockLinkIdentity).not.toHaveBeenCalled();
   });
 
   it('maps errors through mapAuthError', async () => {

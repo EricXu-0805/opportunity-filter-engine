@@ -352,7 +352,8 @@ class TestScrapeLayer:
         from bs4 import BeautifulSoup
         listing = ('<div class="c"><a class="n" href="/people/ada">Ada Q. Lovelace</a>'
                    '<span class="t">Professor</span></div>')
-        profile = ('<p class="card-block__text"><strong>Research Areas:</strong><br>'
+        profile = ('<h1>Ada Q. Lovelace</h1>'
+                   '<p class="card-block__text"><strong>Research Areas:</strong><br>'
                    'Machine Learning; Computer Vision; Robotics</p>')
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
@@ -400,7 +401,8 @@ class TestScrapeLayer:
         Cloudflare wall as the listing), lifting the email + research-areas the
         listing omits — and never falls back to a plain fetch_soup."""
         from bs4 import BeautifulSoup
-        profile = ('<div class="field--name-field-ps-people-email">'
+        profile = ('<h1>Naveen Verma</h1>'
+                   '<div class="field--name-field-ps-people-email">'
                    '<a href="mailto:nverma@princeton.edu">nverma@princeton.edu</a></div>'
                    '<div class="field--name-field-research-areas">'
                    '<div class="field__item">Computing &amp; Networking</div>'
@@ -502,6 +504,82 @@ class TestScrapeLayer:
         # no username in the URL -> no call, empty
         assert fg._fetch_digitalmeasures("https://x.edu/profile/", {"client": "c"}) == ""
 
+    @pytest.mark.parametrize(
+        ("identity_records", "expected_name", "expected_research", "verified"),
+        [
+            (
+                ["<strong>Ada Lovelace</strong><br>Professor"],
+                "Ada Lovelace",
+                "Machine Learning",
+                True,
+            ),
+            (["Grace Hopper"], "Ada Lovelace", "", False),
+            (
+                [
+                    "Grace Hopper",
+                    "Ada Lovelace Distinguished Professor of Computing",
+                ],
+                "Ada Lovelace",
+                "",
+                False,
+            ),
+            (
+                ["Grace Hopper — Ada Lovelace Distinguished Professor"],
+                "Ada Lovelace",
+                "",
+                False,
+            ),
+            (
+                ["John Smith, Professor, University of Texas at Austin"],
+                "Austin Smith",
+                "",
+                False,
+            ),
+        ],
+    )
+    def test_digitalmeasures_enrich_requires_matching_report_identity(
+        self,
+        monkeypatch,
+        identity_records,
+        expected_name,
+        expected_research,
+        verified,
+    ):
+        payload = {"items": [
+            {
+                "id": "personalDetails1",
+                "data": {
+                    "records": [
+                        {"value": value}
+                        for value in identity_records
+                    ],
+                },
+            },
+            {"heading": {"value": "Research Expertise"}},
+            {"data": {"records": [{"value": "Machine Learning"}]}},
+        ]}
+
+        class Resp:
+            def json(self):
+                return payload
+
+        monkeypatch.setattr("requests.get", lambda *a, **k: Resp())
+
+        _pos, research, items, email, fetched = fg._enrich_profile(
+            "https://x.edu/profile/?username=ada",
+            {"digitalmeasures": {
+                "client": "c",
+                "report": "r",
+                "heading": "Research Expertise",
+            }},
+            expected_name=expected_name,
+        )
+
+        assert research == expected_research
+        assert items == []
+        assert email is None
+        assert fetched is verified
+
     def test_research_join_does_not_override_existing_areas(self, monkeypatch):
         """The join only fills genuine blanks — a spec that already carries its
         own research_areas is left untouched."""
@@ -530,7 +608,8 @@ class TestScrapeLayer:
         from bs4 import BeautifulSoup
         listing = ('<div class="c"><a class="n" href="/people/ada">Ada Q. Lovelace</a>'
                    '<span class="t">Professor</span></div>')
-        profile = ('<div class="views-field views-field-term-node-tid"><span class="field-content">'
+        profile = ('<h1>Ada Q. Lovelace</h1>'
+                   '<div class="views-field views-field-term-node-tid"><span class="field-content">'
                    '<a href="/fields/cm">Condensed Matter</a>'
                    '<a href="/fields/ac">Astrophysics, Cosmology &amp; Gravitation</a>'
                    '<a href="/fields/cm">Condensed Matter</a>'      # dup → folded
@@ -583,7 +662,8 @@ class TestScrapeLayer:
         dropped and the faculty wrongly stays broad)."""
         from bs4 import BeautifulSoup
         listing = ('<div class="c"><a class="n" href="/people/ada">Ada Lovelace</a></div>')
-        profile = ('<p class="dept-resarea-p">Advanced Manufacturing<br>'
+        profile = ('<h1>Ada Lovelace</h1>'
+                   '<p class="dept-resarea-p">Advanced Manufacturing<br>'
                    'Robotics and Intelligent Systems<br>Thermal Fluids</p>')
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
@@ -627,7 +707,8 @@ class TestScrapeLayer:
         into separate research keywords."""
         from bs4 import BeautifulSoup
         listing = '<ul><li><a class="t" href="/people/ada">Ada Lovelace</a></li></ul>'
-        profile = ('<a href="https://profiles.stanford.edu/41654">View Full '
+        profile = ('<h1>Ada Lovelace</h1>'
+                   '<a href="https://profiles.stanford.edu/41654">View Full '
                    'Stanford Profile</a><p>prose bio only here</p>')
         monkeypatch.setattr(
             "src.collectors.ucb_common.fetch_soup",
@@ -1171,7 +1252,7 @@ class TestWordPressApiSource:
         ]
         monkeypatch.setattr(fg, "_wp_get_json",
                             lambda url, **_kw: records if "page=1" in url else [])
-        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich:
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enrich, **_kwargs:
                             ("Associate Professor", "Cognitive Psychology", [], None, True)
                             if "ada" in url else ("Lecturer", "", [], None, True))
         dept = {"short": "PSYCH", "api": {
@@ -1756,10 +1837,12 @@ class TestProfileCoreFieldEnrich:
         from bs4 import BeautifulSoup
         profiles = {
             "https://x.edu/people/faculty/ada.html": (
+                "<h1>Ada Prof</h1>"
                 "<header class='hd'><p class='subhead'>Professor</p></header>"
                 "<article class='ct'><li class='email'>"
                 "<a href='mailto:ada@x.edu'>e</a></li></article>"),
             "https://x.edu/people/faculty/lee.html": (
+                "<h1>Lee Lect</h1>"
                 "<header class='hd'><p class='subhead'>Senior Continuing Lecturer"
                 "</p></header><article class='ct'><li class='email'>"
                 "<a href='mailto:lee@x.edu'>e</a></li></article>"),
@@ -2688,7 +2771,7 @@ class TestIdentityProvenance:
         assert "email_source" not in survivor["metadata"]
 
     def test_profile_enrich_stamps_scope_and_email_source(self, monkeypatch):
-        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr:
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr, **_kwargs:
                             ("", "robotics", [], "ada@x.edu", True))
         people = [{"name": "Ada", "url": "https://x.edu/p/ada"}]
         out = fg._apply_profile_enrich(
@@ -2698,7 +2781,7 @@ class TestIdentityProvenance:
         assert out[0]["_verification_scope"] == "profile"
 
     def test_profile_enrich_failed_fetch_stamps_nothing(self, monkeypatch):
-        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr:
+        monkeypatch.setattr(fg, "_enrich_profile", lambda url, enr, **_kwargs:
                             ("", "", [], None, False))
         people = [{"name": "Ada", "url": "https://x.edu/p/ada",
                    "email": "kept@x.edu"}]
@@ -2707,3 +2790,156 @@ class TestIdentityProvenance:
         assert out[0]["email"] == "kept@x.edu"
         assert "_verification_scope" not in out[0]
         assert "_email_source" not in out[0]
+
+    def test_http_200_denial_page_is_not_profile_verification(
+        self,
+        monkeypatch,
+    ):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+
+        denial = BeautifulSoup(
+            "<html><title>Access denied</title>"
+            "<body>Please enable JavaScript and verify you are human.</body></html>",
+            "html.parser",
+        )
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: denial)
+
+        result = fg._enrich_profile(
+            "https://x.edu/p/ada",
+            {"email_selector": ".email"},
+            expected_name="Ada Lovelace",
+        )
+
+        assert result == ("", "", [], None, False)
+
+    def test_long_login_overlay_invalidates_all_profile_fields_and_ttl(
+        self,
+        monkeypatch,
+    ):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+
+        filler = "substantive faculty biography " * 100
+        page = BeautifulSoup(
+            "<html><h1>Ada Lovelace</h1>"
+            "<div class='position'>Professor</div>"
+            '<a class="email" href="mailto:ada@x.edu">ada@x.edu</a>'
+            "<div class='research'>Robotics</div>"
+            f"<p>{filler}</p>"
+            "<div class='overlay'>"
+            "JavaScript is required to view this page"
+            "</div></html>",
+            "html.parser",
+        )
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: page)
+
+        result = fg._enrich_profile(
+            "https://x.edu/p/ada",
+            {
+                "title_selector": ".position",
+                "email_selector": ".email",
+                "research_selector": ".research",
+            },
+            expected_name="Ada Lovelace",
+        )
+
+        assert len(page.get_text(" ", strip=True)) > 1200
+        assert result == ("", "", [], None, False)
+
+    def test_decorated_wrong_identity_invalidates_all_profile_fields_and_ttl(
+        self,
+        monkeypatch,
+    ):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+
+        suffix = (
+            "Distinguished Chair in Computational Science, Electrical Systems, "
+            "Applied Mathematics, Biomedical Innovation, and Public Policy, "
+            "Department of Advanced Interdisciplinary Engineering"
+        )
+        page = BeautifulSoup(
+            "<html><title>Ada Lovelace | Faculty</title>"
+            f"<h1>Grace Hopper | {suffix}</h1>"
+            "<div class='position'>Professor</div>"
+            '<a class="email" href="mailto:grace@x.edu">grace@x.edu</a>'
+            "<div class='research'>Compilers</div></html>",
+            "html.parser",
+        )
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: page)
+
+        result = fg._enrich_profile(
+            "https://x.edu/p/ada",
+            {
+                "title_selector": ".position",
+                "email_selector": ".email",
+                "research_selector": ".research",
+            },
+            expected_name="Ada Lovelace",
+        )
+
+        assert len(page.h1.get_text(" ", strip=True)) > 80
+        assert result == ("", "", [], None, False)
+
+    @pytest.mark.parametrize(
+        "html",
+        [
+            (
+                "<html><title>Authentication required</title>"
+                "<h1>Sign in</h1><p>Sign in to view Ada Lovelace</p>"
+                '<a class="email" href="mailto:support@x.edu">support</a>'
+                "</html>"
+            ),
+            (
+                "<html><h1>Grace Hopper</h1>"
+                '<a class="email" href="mailto:grace@x.edu">grace@x.edu</a>'
+                "</html>"
+            ),
+        ],
+    )
+    def test_wrong_identity_invalidates_extracted_profile_fields(
+        self,
+        monkeypatch,
+        html,
+    ):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+
+        page = BeautifulSoup(html, "html.parser")
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: page)
+
+        result = fg._enrich_profile(
+            "https://x.edu/p/ada",
+            {"email_selector": ".email"},
+            expected_name="Ada Lovelace",
+        )
+
+        assert result == ("", "", [], None, False)
+
+    def test_structured_matching_identity_can_verify_profile(
+        self,
+        monkeypatch,
+    ):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import ucb_common
+
+        page = BeautifulSoup(
+            "<html><h1>Ada Lovelace</h1>"
+            '<a class="email" href="mailto:ada@x.edu">ada@x.edu</a></html>',
+            "html.parser",
+        )
+        monkeypatch.setattr(ucb_common, "fetch_soup", lambda *_a, **_k: page)
+
+        result = fg._enrich_profile(
+            "https://x.edu/p/ada",
+            {"email_selector": ".email"},
+            expected_name="Ada Lovelace",
+        )
+
+        assert result == ("", "", [], "ada@x.edu", True)

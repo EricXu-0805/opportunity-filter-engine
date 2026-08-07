@@ -40,7 +40,10 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
+from urllib.parse import unquote
+from xml.etree import ElementTree
 
+from .atomic_json import atomic_write_json
 from .ucb_common import PROCESSED_FILE
 
 logger = logging.getLogger(__name__)
@@ -48,9 +51,33 @@ logger = logging.getLogger(__name__)
 SOURCE = "ucsb_urca_projects"
 SITEMAP_INDEX = "https://ucsb.my.site.com/urca/s/sitemap.xml"
 PORTAL = "https://ucsb.my.site.com/urca/s/urad"
-_LOC_RE = re.compile(
-    r"<loc>(https://ucsb\.my\.site\.com/urca/s/funding-program/([A-Za-z0-9]+)/([^<]+))</loc>"
+_RECORD_URL_RE = re.compile(
+    r"(https://ucsb\.my\.site\.com/urca/s/funding-program/"
+    r"([A-Za-z0-9]+)/([^?#]+))(?:[?#].*)?"
 )
+_REQUIRED_FUNDING_SITEMAPS = frozenset(
+    {
+        (
+            "https://ucsb.my.site.com/urca/s/"
+            "sitemap-outfunds__funding_program__c-1.xml"
+        ),
+        (
+            "https://ucsb.my.site.com/urca/s/"
+            "sitemap-outfunds__funding_program__c-weekly.xml"
+        ),
+    }
+)
+_KNOWN_NON_TARGET_SITEMAPS = frozenset(
+    {
+        "https://ucsb.my.site.com/urca/s/sitemap-view-1.xml",
+        "https://ucsb.my.site.com/urca/s/sitemap-listview-1.xml",
+    }
+)
+# A single sitemap snapshot is not enough evidence to explain a sharp seasonal
+# contraction.  Keep the threshold deliberately conservative until the refresh
+# pipeline has a durable, consecutive-snapshot confirmation ledger.
+_SHRINK_GUARD_MIN_BASELINE = 2
+_MIN_SNAPSHOT_RETENTION_RATIO = 0.80
 # Administrative / non-project entries that share the funding_program object.
 _ADMIN_SLUG_RE = re.compile(
     r"course-scholarship|scholarship$|urca-grants|^urca-|faculty-research-assistant"
@@ -65,6 +92,10 @@ KEYWORD_BANK = [
     "chemistry", "physics", "materials", "climate", "sustainability", "biochemistry",
     "molecular biology", "psychology", "economics", "engineering", "astrophysics",
 ]
+
+
+class UnsafeUrcaSnapshotError(RuntimeError):
+    """Raised before writing when one snapshot could retire trusted history."""
 
 
 def _title_from_slug(slug: str) -> str:
@@ -97,22 +128,144 @@ def scrape_projects() -> list[dict]:
     the administrative entries, and returns one raw dict per project (id, url,
     title). Degrades to ``[]`` on any fetch failure.
     """
+    records, _evidence = scrape_projects_with_evidence()
+    return records
+
+
+def _parse_sitemap(text: str) -> tuple[str | None, list[str], bool]:
+    try:
+        root = ElementTree.fromstring(text)
+    except ElementTree.ParseError:
+        return None, [], False
+    root_name = root.tag.rsplit("}", 1)[-1].casefold()
+    expected_entry = {
+        "urlset": "url",
+        "sitemapindex": "sitemap",
+    }.get(root_name)
+    if expected_entry is None:
+        return root_name, [], False
+
+    locations: list[str] = []
+    shape_valid = True
+    for entry in list(root):
+        if entry.tag.rsplit("}", 1)[-1].casefold() != expected_entry:
+            shape_valid = False
+            continue
+        locs = [
+            (child.text or "").strip()
+            for child in list(entry)
+            if child.tag.rsplit("}", 1)[-1].casefold() == "loc"
+        ]
+        if len(locs) != 1 or not locs[0]:
+            shape_valid = False
+            continue
+        locations.append(locs[0])
+    return root_name, locations, shape_valid
+
+
+def scrape_projects_with_evidence() -> tuple[list[dict], dict]:
+    """Return raw projects plus fail-closed sitemap evidence.
+
+    A network failure, HTML error page, malformed XML, missing child sitemap,
+    or unexpected sitemap-index shape is never a complete snapshot. A single
+    structurally valid but empty response is also insufficient to confirm a
+    legitimate empty season; that requires a future consecutive-snapshot
+    evidence mechanism.
+    """
+
     index = _fetch_text(SITEMAP_INDEX)
-    if not index:
-        return []
-    subs = re.findall(r"<loc>([^<]*funding_program__c[^<]*)</loc>", index, re.I)
-    if not subs:  # some deployments inline the records in the index itself
+    index_root, index_locations, index_shape_valid = (
+        _parse_sitemap(index) if index else (None, [], False)
+    )
+    if index_root not in {"urlset", "sitemapindex"} or not index_shape_valid:
+        return [], {
+            "sitemap_complete": False,
+            "sitemap_structure_complete": False,
+            "sitemaps_expected": 1,
+            "sitemaps_loaded": 0,
+            "empty_confirmed": False,
+        }
+    unexpected_locations: list[str] = []
+    missing_locations: list[str] = []
+    if index_root == "sitemapindex":
+        subs = [
+            location
+            for location in index_locations
+            if location in _REQUIRED_FUNDING_SITEMAPS
+        ]
+        unexpected_locations.extend(
+            location
+            for location in index_locations
+            if location not in subs
+            and location not in _KNOWN_NON_TARGET_SITEMAPS
+        )
+        missing_locations = sorted(
+            _REQUIRED_FUNDING_SITEMAPS - set(subs)
+        )
+    else:
         subs = []
+    if index_root == "sitemapindex" and (
+        missing_locations or unexpected_locations
+    ):
+        return [], {
+            "sitemap_complete": False,
+            "sitemap_structure_complete": False,
+            "sitemaps_expected": len(_REQUIRED_FUNDING_SITEMAPS),
+            "sitemaps_loaded": 0,
+            "locations_seen": len(index_locations),
+            "recognized_locations": 0,
+            "unexpected_location_count": len(unexpected_locations),
+            "unexpected_location_samples": unexpected_locations[:5],
+            "missing_sitemap_count": len(missing_locations),
+            "missing_sitemap_samples": missing_locations[:5],
+            "empty_confirmed": False,
+        }
+    pages = subs or [SITEMAP_INDEX]
     raw: list[dict] = []
     seen: set[str] = set()
-    for sub in subs or [SITEMAP_INDEX]:
+    loaded = 0
+    complete = True
+    locations_seen = 0
+    recognized_locations = 0
+    for sub in pages:
         xml = _fetch_text(sub) if sub != SITEMAP_INDEX else index
-        for url, sid, slug in _LOC_RE.findall(xml):
+        root_name, locations, shape_valid = _parse_sitemap(xml)
+        if root_name != "urlset" or not shape_valid:
+            complete = False
+            continue
+        loaded += 1
+        locations_seen += len(locations)
+        for location in locations:
+            match = _RECORD_URL_RE.fullmatch(location)
+            if match is None:
+                unexpected_locations.append(location)
+                continue
+            url, sid, encoded_slug = match.groups()
+            slug = unquote(encoded_slug)
+            recognized_locations += 1
             if sid in seen or _ADMIN_SLUG_RE.search(slug):
                 continue
             seen.add(sid)
             raw.append({"id": sid, "url": url, "title": _title_from_slug(slug), "slug": slug})
-    return raw
+    complete = (
+        complete
+        and loaded == len(pages)
+        and not unexpected_locations
+    )
+    snapshot_complete = complete and bool(raw)
+    return raw, {
+        # Structural completeness is useful diagnostic evidence, but it does
+        # not authorize publishing or retiring a zero-record snapshot.
+        "sitemap_complete": snapshot_complete,
+        "sitemap_structure_complete": complete,
+        "sitemaps_expected": len(pages),
+        "sitemaps_loaded": loaded,
+        "locations_seen": locations_seen,
+        "recognized_locations": recognized_locations,
+        "unexpected_location_count": len(unexpected_locations),
+        "unexpected_location_samples": unexpected_locations[:5],
+        "empty_confirmed": False,
+    }
 
 
 def _keywords(text: str) -> list[str]:
@@ -200,15 +353,66 @@ def fetch_and_normalize() -> list[dict]:
     return [normalize_project(r) for r in scrape_projects()]
 
 
-def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
-    """Upsert by id. Never overwrites the corpus with an empty scrape."""
-    if not PROCESSED_FILE.exists():
-        return (0, 0)
+def fetch_and_normalize_with_evidence() -> tuple[list[dict], dict]:
+    raw, evidence = scrape_projects_with_evidence()
+    return [normalize_project(record) for record in raw], evidence
+
+
+def merge_snapshot_into_processed(
+    new_opps: list[dict],
+    *,
+    snapshot_complete: bool,
+) -> tuple[int, int, int]:
+    """Upsert a safe URCA snapshot and retire rows absent from it.
+
+    Empty snapshots and sharp one-run contractions fail before any mutation.
+    They may become publishable only after a durable consecutive-snapshot
+    confirmation mechanism exists.
+    """
     if not new_opps:
+        if snapshot_complete:
+            raise UnsafeUrcaSnapshotError(
+                "refusing complete zero-record URCA snapshot without "
+                "consecutive-snapshot evidence"
+            )
         logger.info("URCA projects: 0 scraped — leaving corpus untouched")
-        return (0, 0)
+        return (0, 0, 0)
+    if not PROCESSED_FILE.exists():
+        return (0, 0, 0)
     with PROCESSED_FILE.open("r", encoding="utf-8") as f:
         existing = json.load(f)
+    if snapshot_complete:
+        existing_active_ids = {
+            opp.get("id")
+            for opp in existing
+            if (
+                opp.get("source") == SOURCE
+                and opp.get("id")
+                and (opp.get("metadata") or {}).get("is_active") is not False
+            )
+        }
+        incoming_active_ids = {
+            opp.get("id")
+            for opp in new_opps
+            if (
+                opp.get("source") == SOURCE
+                and opp.get("id")
+                and (opp.get("metadata") or {}).get("is_active") is not False
+            )
+        }
+        retained_active_ids = existing_active_ids & incoming_active_ids
+        if (
+            len(existing_active_ids) >= _SHRINK_GUARD_MIN_BASELINE
+            and len(retained_active_ids) / len(existing_active_ids)
+            < _MIN_SNAPSHOT_RETENTION_RATIO
+        ):
+            raise UnsafeUrcaSnapshotError(
+                "refusing sharp URCA identity churn without "
+                "consecutive-snapshot evidence: "
+                f"{len(retained_active_ids)}/{len(existing_active_ids)} "
+                f"previous active IDs remain, below "
+                f"{_MIN_SNAPSHOT_RETENTION_RATIO:.0%}"
+            )
     index = {o.get("id"): o for o in existing if o.get("id")}
     added = updated = 0
     for opp in new_opps:
@@ -221,9 +425,35 @@ def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
             existing.append(opp)
             index[opp["id"]] = opp
             added += 1
-    with PROCESSED_FILE.open("w", encoding="utf-8") as f:
-        json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
-    return (added, updated)
+    deactivated = 0
+    if snapshot_complete:
+        active_ids = {opp["id"] for opp in new_opps}
+        deactivated_at = datetime.now(UTC).replace(tzinfo=None).isoformat()
+        for opp in existing:
+            if (
+                opp.get("source") != SOURCE
+                or opp.get("id") in active_ids
+                or (opp.get("metadata") or {}).get("is_active") is False
+            ):
+                continue
+            metadata = opp.setdefault("metadata", {})
+            metadata["is_active"] = False
+            metadata["deactivated_at"] = deactivated_at
+            metadata["deactivation_reason"] = (
+                "absent_from_complete_urca_sitemap"
+            )
+            deactivated += 1
+    atomic_write_json(PROCESSED_FILE, existing)
+    return (added, updated, deactivated)
+
+
+def merge_into_processed(new_opps: list[dict]) -> tuple[int, int]:
+    """Compatibility upsert; without evidence, never retire absent records."""
+    added, updated, _deactivated = merge_snapshot_into_processed(
+        new_opps,
+        snapshot_complete=False,
+    )
+    return added, updated
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronDown, EyeOff, GraduationCap, SlidersHorizontal } from 'lucide-react';
 import { FilterSelect } from './FilterSelect';
 import { MinScoreFilter } from './MinScoreFilter';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type TFunc } from './types';
 
 export interface FilterRailProps {
@@ -27,6 +28,15 @@ export interface FilterRailProps {
    *  client-side facets above). Default off — home school first; national
    *  and summer programs always show regardless. */
   includeCrossSchool: boolean;
+  /** True when this page cannot pair the displayed value with the snapshot
+   *  a click would write against. Disabled beats guessing: the alternative is
+   *  sending a flip the person made against values they were not shown. */
+  crossSchoolDisabled: boolean;
+  /** The last flip did not reach storage. Shown, never swallowed: a toggle
+   *  that snaps back with no explanation reads as a broken control, and one
+   *  that stays flipped is a lie about what was saved. */
+  crossSchoolFailed: boolean;
+  onCrossSchoolRetry: () => void;
   onIncludeCrossSchoolChange: (next: boolean) => void;
   t: TFunc;
 }
@@ -51,6 +61,9 @@ export function FilterRail({
   sourceOptions,
   scopeOptions,
   includeCrossSchool,
+  crossSchoolDisabled,
+  crossSchoolFailed,
+  onCrossSchoolRetry,
   onIncludeCrossSchoolChange,
   t,
 }: FilterRailProps) {
@@ -131,20 +144,35 @@ export function FilterRail({
             options={scopeOptions}
           />
         )}
-        <button
-          type="button"
-          onClick={() => onIncludeCrossSchoolChange(!includeCrossSchool)}
-          aria-pressed={includeCrossSchool}
-          title={t('results.filters.crossSchoolHint')}
-          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${
-            includeCrossSchool
-              ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-          }`}
-        >
-          <GraduationCap className="w-3 h-3" />
-          {t('results.filters.crossSchool')}
-        </button>
+        {RELEASE_SCOPE.crossSchoolMatching && (
+          <button
+            type="button"
+            onClick={() => onIncludeCrossSchoolChange(!includeCrossSchool)}
+            disabled={crossSchoolDisabled}
+            aria-pressed={includeCrossSchool}
+            title={t('results.filters.crossSchoolHint')}
+            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              includeCrossSchool
+                ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+            }`}
+          >
+            <GraduationCap className="w-3 h-3" />
+            {t('results.filters.crossSchool')}
+          </button>
+        )}
+        {RELEASE_SCOPE.crossSchoolMatching && crossSchoolFailed && (
+          <span data-testid="cross-school-failed" className="inline-flex items-center gap-1 text-[12px] text-red-600">
+            {t('results.filters.crossSchoolFailed')}
+            <button
+              type="button"
+              onClick={onCrossSchoolRetry}
+              className="underline font-medium"
+            >
+              {t('common.retry')}
+            </button>
+          </span>
+        )}
         <FilterSelect
           value={filters.onCampus}
           onChange={(v) => onFiltersChange({ ...filters, onCampus: v as Filters['onCampus'] })}

@@ -49,6 +49,17 @@ STAT_CONFIG = {
             "div.field--name-field-research-areas-ref .field__item",
         ],
     },
+    # First reviewed profile-proof producer. These selectors describe one
+    # Statistics person page only; other departments remain legacy until their
+    # own template and adversarial fixtures are reviewed.
+    "profile_contact": {
+        "container_selector": "article.node--type-faculty",
+        "identity_selector": "h3.page--title",
+        "contact_selector": "div.field--name-field-email",
+        "nested_person_selector": (
+            "article.node--type-faculty, .related-person, aside"
+        ),
+    },
 }
 
 

@@ -11,7 +11,7 @@
  * matchers (R70-F lesson).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
   const stableT = (key: string, vars?: Record<string, string | number>) => {
@@ -35,6 +35,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import TailorModal from './TailorModal';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { ProfileData, TailorResponse } from '@/lib/types';
 
 // R71-G word-diff splits bullet text into per-word <span>/<ins>/<del>
@@ -59,13 +60,24 @@ function makeProfile(overrides: Partial<ProfileData> = {}): ProfileData {
   };
 }
 
+const OWNER = 'owner-1';
+const OWNER2 = 'owner-2';
+
 const baseProps = {
   isOpen: true,
   onClose: vi.fn(),
   opportunityId: 'opp-123',
   opportunityTitle: 'Some research opportunity',
+  ownerReady: true,
+  ownerScopeKey: OWNER,
 };
 
+// Owner-scoped draft key (C1-R2B) — replaces the pre-scoping
+// 'ofe_tailor_draft_opp-123' format used throughout this file's existing
+// persistence assertions.
+const DRAFT_KEY = `ofe_tailor_draft_${OWNER}:opp-123`;
+const DRAFT_KEY_OWNER2 = `ofe_tailor_draft_${OWNER2}:opp-123`;
+const LEGACY_DRAFT_KEY = 'ofe_tailor_draft_opp-123';
 
 /** W13: drafts are stored as {t, s} envelopes (text + resume sig); legacy
  *  plain strings still load. Tests assert on the TEXT. */
@@ -78,6 +90,7 @@ function storedDraftText(key: string): string | null {
   } catch { /* legacy */ }
   return raw;
 }
+
 
 describe('TailorModal', () => {
   beforeEach(() => {
@@ -215,7 +228,7 @@ describe('TailorModal', () => {
        should hydrate from it rather than the (empty) heuristic
        prefill. The "Restored" chip is the visible affordance. */
     window.localStorage.setItem(
-      'ofe_tailor_draft_opp-123',
+      DRAFT_KEY,
       'previously saved bullet 1\npreviously saved bullet 2',
     );
 
@@ -237,19 +250,19 @@ describe('TailorModal', () => {
     fireEvent.change(textarea, { target: { value: 'newly typed bullet' } });
 
     await waitFor(() => {
-      expect(storedDraftText('ofe_tailor_draft_opp-123')).toBe('newly typed bullet');
+      expect(storedDraftText(DRAFT_KEY)).toBe('newly typed bullet');
     });
   });
 
   it('R71-F: clear-draft button wipes the textarea + storage slot', async () => {
-    window.localStorage.setItem('ofe_tailor_draft_opp-123', 'kept across reload');
+    window.localStorage.setItem(DRAFT_KEY, 'kept across reload');
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
     fireEvent.click(screen.getByRole('button', { name: /tailor\.clearDraftAria/ }));
 
     const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
     expect(textarea.value).toBe('');
-    expect(window.localStorage.getItem('ofe_tailor_draft_opp-123')).toBeNull();
+    expect(storedDraftText(DRAFT_KEY)).toBeNull();
     // Chip disappears once cleared.
     expect(screen.queryByText('tailor.draftRestored')).toBeNull();
   });
@@ -501,7 +514,7 @@ describe('TailorModal', () => {
       expect(textarea.value).toBe('Dark bullet one with no glyph\nDark bullet two with no glyph');
     });
     // Promoted draft is persisted so it survives a close/reopen.
-    expect(storedDraftText('ofe_tailor_draft_opp-123')).toBe(
+    expect(storedDraftText(DRAFT_KEY)).toBe(
       'Dark bullet one with no glyph\nDark bullet two with no glyph',
     );
   });
@@ -545,7 +558,7 @@ describe('TailorModal', () => {
     // Draft now holds the tailored text, one bullet per line.
     expect(textarea.value).toBe('Rewritten bullet one\nRewritten bullet two');
     // Storage persisted the promoted draft too.
-    expect(storedDraftText('ofe_tailor_draft_opp-123')).toBe(
+    expect(storedDraftText(DRAFT_KEY)).toBe(
       'Rewritten bullet one\nRewritten bullet two',
     );
     // Result panel resets — CTA flips back to generate, promote button gone.
@@ -701,6 +714,1047 @@ describe('TailorModal', () => {
     expect(screen.queryByRole('button', { name: /tailor\.editBulletAria/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /tailor\.rejectBulletAria/ })).toBeNull();
   });
+
+  // Nested (not sibling) describe blocks below — they must share the outer
+  // beforeEach (vi.resetAllMocks + localStorage.clear + the getTailorStatus
+  // default) or every mocked call inside them silently returns undefined.
+  describe('C1-R2B: session lifecycle epoch (close invalidates in-flight work even with no reopen follow-up)', () => {
+    it('N1 (Generate) pending, then close and reopen WITHOUT ever issuing N2: N1 resolving late must not apply — loading is false in the reopened modal, and no stale result ever appears', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+
+      // Close.
+      rerender(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
+      // Reopen — deliberately no second Generate.
+      rerender(<TailorModal {...baseProps} isOpen profile={makeProfile()} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // fresh open, not loading
+
+      // N1 finally resolves, late.
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE N1 result', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // still not loading — N1's finally didn't re-flip it
+      expect(screen.queryByText(fullText('STALE N1 result'))).toBeNull(); // N1's result never appeared
+      expect(screen.queryByText('tailor.methodAi')).toBeNull();
+    });
+
+    it('N1 (Generate) pending, close, reopen, THEN N2 is issued and resolves first: N1 resolving even later must not overwrite N2\'s result or its loading state', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      let resolveN2: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      rerender(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
+      rerender(<TailorModal {...baseProps} isOpen profile={makeProfile()} />);
+
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN2 = r; }));
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet two' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+
+      // N2 resolves first — the modal's actual current result.
+      await act(async () => {
+        resolveN2?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'N2 real result', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+      await waitFor(() => expect(screen.getAllByText(fullText('N2 real result')).length).toBeGreaterThanOrEqual(1));
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+
+      // N1 (superseded twice over — by the close AND by N2) finally resolves, even later.
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE N1 result', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      // N2's result is still the only thing showing — untouched by N1.
+      expect(screen.getAllByText(fullText('N2 real result')).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(fullText('STALE N1 result'))).toBeNull();
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // N1's finally didn't re-flip loading
+    });
+
+    it('Extract analog: N1 pending, close, reopen WITHOUT a replacement extract: N1 resolving late must not write stale bullets into the reopened draft or into storage', async () => {
+      let resolveN1: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      const { rerender } = render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.extracting')).toBeTruthy();
+
+      rerender(<TailorModal {...baseProps} isOpen={false} profile={profile} />);
+      rerender(<TailorModal {...baseProps} isOpen profile={profile} />);
+      expect(screen.queryByText('tailor.extracting')).toBeNull(); // fresh open, not extracting
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      const freshValue = textarea.value; // whatever the reopened modal legitimately shows
+
+      await act(async () => {
+        resolveN1?.({ method: 'ai', bullets: ['STALE extracted bullet'] });
+      });
+
+      expect(textarea.value).toBe(freshValue); // untouched by N1's late result
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extracted bullet');
+    });
+
+    // C1-R2B red-team correction: an earlier version of these tests clicked
+    // close and THEN manually re-rendered with isOpen=false/true BEFORE
+    // resolving N1 — since isOpen genuinely changing on ITS OWN already
+    // invalidates via the useLayoutEffect, that shape passes even with
+    // invalidateAndClose deleted (reverted to a bare onClick={onClose}),
+    // proving nothing about invalidateAndClose specifically. Each test
+    // below resolves N1 IMMEDIATELY after the close action — with isOpen
+    // still `true` in the component's own props the whole time (no
+    // rerender at all) — so ONLY a synchronous ref bump inside the close
+    // handler itself (not a later prop round-trip) can save it. Verified
+    // against a reverted (bare `onClose`) implementation: all three fail.
+    it('the X button: click, then resolve N1 IMMEDIATELY (isOpen never actually changes) — invalidateAndClose\'s own synchronous bump is what drops it', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.closeAria/ }));
+      expect(baseProps.onClose).toHaveBeenCalled();
+
+      // No rerender — isOpen is still `true` in this instance's own props.
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai', warnings: [],
+          tailored_bullets: [{ text: 'STALE N1 via X button', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE N1 via X button'))).toBeNull();
+    });
+
+    it('the backdrop click: same immediate-resolve proof', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { container } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      const backdrop = container.querySelector('.backdrop-blur-sm')!;
+      fireEvent.click(backdrop);
+      expect(baseProps.onClose).toHaveBeenCalled();
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai', warnings: [],
+          tailored_bullets: [{ text: 'STALE N1 via backdrop', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE N1 via backdrop'))).toBeNull();
+    });
+
+    it('Escape: same immediate-resolve proof', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(baseProps.onClose).toHaveBeenCalled();
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai', warnings: [],
+          tailored_bullets: [{ text: 'STALE N1 via Escape', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE N1 via Escape'))).toBeNull();
+    });
+
+    it('a REAL close via the X button, followed by a genuine reopen: N1 resolving late is STILL dropped (both the immediate synchronous bump AND the eventual prop round-trip protect it)', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.closeAria/ }));
+      expect(baseProps.onClose).toHaveBeenCalled();
+
+      // Parent reflects the close, then a reopen — mirrors what onClose
+      // actually causes in the real MatchCard/OpportunityDetail wiring.
+      rerender(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
+      rerender(<TailorModal {...baseProps} isOpen profile={makeProfile()} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai', warnings: [],
+          tailored_bullets: [{ text: 'STALE N1 via real close+reopen', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE N1 via real close+reopen'))).toBeNull();
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+    });
+
+    // Tail1-3: the three tests above prove invalidateAndClose's synchronous
+    // bump for a pending GENERATE (mockTailorResume). Extract
+    // (mockExtractResumeBullets) shares the same close handler, but nothing
+    // exercised the "close, then resolve immediately with isOpen never
+    // actually changing" shape for it specifically — the "Extract analog"
+    // test above (~line 786) only covers close-THEN-reopen via rerender,
+    // which (per the correction comment above these Generate tests) proves
+    // nothing about invalidateAndClose's OWN synchronous bump, since a real
+    // isOpen flip alone already invalidates via the layout effect.
+    // Assertion style mirrors the three Generate tests above exactly: only
+    // "the stale result never leaks" is checked, not that `extracting`
+    // itself clears — with isOpen genuinely never changing (onClose here is
+    // a bare spy, matching production's real modal-stays-mounted-renders-
+    // null architecture: `if (!isOpen) return null;`), nothing else would
+    // ever re-render this instance to observe a cleared spinner, and
+    // nothing user-visible depends on it while the modal renders null
+    // anyway. What actually matters — and what invalidateAndClose actually
+    // protects — is that the stale extract never overwrites the draft.
+    it('Extract via the X button: click, then resolve IMMEDIATELY (isOpen never actually changes) — invalidateAndClose\'s own synchronous bump is what drops it', async () => {
+      let resolveExtract: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveExtract = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.closeAria/ }));
+      expect(baseProps.onClose).toHaveBeenCalled();
+
+      // No rerender — isOpen is still `true` in this instance's own props.
+      await act(async () => {
+        resolveExtract?.({ method: 'ai', bullets: ['STALE extract via X button'] });
+      });
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea.value).not.toBe('STALE extract via X button');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extract via X button');
+    });
+
+    it('Extract via the backdrop click: same immediate-resolve proof', async () => {
+      let resolveExtract: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveExtract = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      const { container } = render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+
+      const backdrop = container.querySelector('.backdrop-blur-sm')!;
+      fireEvent.click(backdrop);
+      expect(baseProps.onClose).toHaveBeenCalled();
+
+      await act(async () => {
+        resolveExtract?.({ method: 'ai', bullets: ['STALE extract via backdrop'] });
+      });
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea.value).not.toBe('STALE extract via backdrop');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extract via backdrop');
+    });
+
+    it('Extract via Escape: same immediate-resolve proof', async () => {
+      let resolveExtract: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveExtract = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(baseProps.onClose).toHaveBeenCalled();
+
+      await act(async () => {
+        resolveExtract?.({ method: 'ai', bullets: ['STALE extract via Escape'] });
+      });
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea.value).not.toBe('STALE extract via Escape');
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE extract via Escape');
+    });
+  });
+
+  describe('C1-R2B: genuine same-session double-request races (N1 and N2 genuinely overlap in flight — resolving N1 FIRST, while N2 is still pending, must not disturb N2)', () => {
+    // These reuse the two mechanisms the component itself already relies
+    // on to legitimately re-enable a CTA while an older promise is still
+    // unsettled underneath: (Generate) a real close+reopen, whose
+    // open-effect clears `loading`; (Extract) a manual draft edit, which
+    // invalidates the pending extract in place. Both leave the OLDER
+    // promise genuinely unresolved. The key difference from the lifecycle
+    // tests above is ORDER: those resolve N2 first (so `loading` is
+    // already false by the time N1's stale settle arrives — a broken
+    // finally guard wouldn't be observable there, since it would just set
+    // an already-false flag to false again). Here N1 settles FIRST, while
+    // N2 is still genuinely pending, so a broken guard is directly visible
+    // as N2's spinner disappearing or N1's stale content leaking through.
+    it('Generate: N1 pending, close+reopen re-enables the button, N2 starts, and N1 settles WHILE N2 is still pending — N2\'s spinner must survive untouched, and N1 must never leak into resp-gated UI (including parts not hidden behind the loading spinner)', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      let resolveN2: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      rerender(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
+      rerender(<TailorModal {...baseProps} isOpen profile={makeProfile()} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // N1's promise is STILL unsettled underneath
+
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN2 = r; }));
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet two' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('tailor.generating')).toBeTruthy(); // N2 now pending, N1 STILL unsettled
+
+      // N1 settles FIRST — the opposite order from the lifecycle tests
+      // above — so `loading` is still legitimately true right now.
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE N1 while N2 pending', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+      // N2's spinner must be untouched by N1's stale settle...
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+      // ...and N1 must not leak into the footer buttons, which are NOT
+      // gated behind `loading` (unlike the bullet list) — a weaker
+      // assertion here would pass even with the guard deleted, since N2's
+      // own later resolve unconditionally overwrites `resp` and would mask
+      // a transient leak by the time the test could otherwise observe it.
+      expect(screen.queryByText('tailor.methodAi')).toBeNull();
+      expect(screen.queryByRole('button', { name: /tailor\.useAsOriginals/ })).toBeNull();
+
+      await act(async () => {
+        resolveN2?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'N2 genuine result', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+      await waitFor(() => expect(screen.getAllByText(fullText('N2 genuine result')).length).toBeGreaterThanOrEqual(1));
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+      expect(screen.queryByText(fullText('STALE N1 while N2 pending'))).toBeNull();
+    });
+
+    it('Generate: same close+reopen race but N1 REJECTS while N2 is still pending — must not paint an error or clear N2\'s spinner, and must not block N2\'s eventual result from rendering', async () => {
+      let rejectN1: ((e: Error) => void) | undefined;
+      let resolveN2: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((_, rej) => { rejectN1 = rej; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      rerender(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
+      rerender(<TailorModal {...baseProps} isOpen profile={makeProfile()} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN2 = r; }));
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet two' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+
+      await act(async () => {
+        rejectN1?.(new Error('STALE N1 failure'));
+      });
+      expect(screen.getByText('tailor.generating')).toBeTruthy(); // N2 spinner untouched by N1's stale rejection
+
+      // N2 resolves normally — if N1's catch block had painted `error`
+      // (guard removed), that error state would survive N2's own success
+      // path (which only ever calls setResp, never clears error) and
+      // permanently block the result view, since the render tree treats
+      // `!loading && error` as taking priority over the bullet list.
+      await act(async () => {
+        resolveN2?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'N2 genuine result after stale reject', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+      await waitFor(() =>
+        expect(screen.getAllByText(fullText('N2 genuine result after stale reject')).length).toBeGreaterThanOrEqual(1),
+      );
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+      expect(screen.queryByText(/STALE N1 failure/)).toBeNull();
+      expect(screen.queryByRole('button', { name: /tailor\.tryAgain/ })).toBeNull();
+    });
+
+    it('Extract: N1 pending, a manual edit invalidates it (re-enabling the button) and N2 starts while N1 is still genuinely unsettled — N1 settling late must not touch N2\'s extracting state or the textarea, and N2\'s own result must still land correctly', async () => {
+      let resolveN1: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      let resolveN2: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.extracting')).toBeTruthy();
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      fireEvent.change(textarea, { target: { value: 'manual edit invalidates N1' } });
+      expect(screen.queryByText('tailor.extracting')).toBeNull(); // N1 invalidated in place, button live again — N1's promise is STILL unsettled
+
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveN2 = r; }));
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('tailor.extracting')).toBeTruthy(); // N2 now pending
+
+      // N1 — genuinely still in flight this whole time — resolves now, late.
+      await act(async () => {
+        resolveN1?.({ method: 'ai', bullets: ['STALE N1 bullet while N2 pending'] });
+      });
+      // The textarea is always rendered (never gated behind `extracting`),
+      // so this is a direct, ungated proof N1's stale write never landed.
+      expect(textarea.value).toBe('manual edit invalidates N1');
+      expect(screen.getByText('tailor.extracting')).toBeTruthy(); // N2's spinner untouched by N1's stale settle
+
+      await act(async () => {
+        resolveN2?.({ method: 'ai', bullets: ['N2 genuine extracted bullet'] });
+      });
+      await waitFor(() => expect(textarea.value).toBe('N2 genuine extracted bullet'));
+      expect(screen.queryByText('tailor.extracting')).toBeNull();
+      expect(storedDraftText(DRAFT_KEY)).toBe('N2 genuine extracted bullet');
+    });
+  });
+
+  describe('C1-R2B: profile CONTENT changing mid-flight is itself a staleness bug — `profile` is a direct input to both tailorResume() and the extract heuristic, so a result computed against the OLD profile must never land after the modal has moved on to a NEW one, even with no second request ever issued', () => {
+    // Root-cause note: the reset-on-open effect keyed off `heuristicPrefill`
+    // (derived from profile.resume_text alone) already happened to reset
+    // `loading`/`extracting` whenever resume_text specifically changed — but
+    // sessionEpochRef never tracked profile at all, and OTHER profile
+    // fields (major, college, skills, ...) are equally part of what
+    // tailorResume() sends to the backend. A change to any of those fields
+    // left both the reset effect AND stillCurrent() blind, so a Generate/
+    // Extract already in flight could still land its OLD-profile result
+    // into a modal now showing different profile context. Each pair below
+    // varies a field OTHER than resume_text (so heuristicPrefill itself
+    // does NOT move) to isolate exactly that gap.
+    it('Generate: profile content changes (major CS -> ECE, resume_text unchanged) while N1 is pending and NO N2 is ever issued — the stale Generate must be invalidated: loading recovers immediately, and N1\'s late settle must not land a result computed against the old profile', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const profileA = makeProfile({ major: 'CS' });
+      const { rerender } = render(<TailorModal {...baseProps} profile={profileA} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+
+      const profileB = makeProfile({ major: 'ECE' }); // resume_text ('') is identical to profileA's
+      rerender(<TailorModal {...baseProps} profile={profileB} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // the stale Generate is invalidated the moment the profile context moves
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE result computed against the OLD profile', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE result computed against the OLD profile'))).toBeNull();
+      expect(screen.queryByText('tailor.methodAi')).toBeNull();
+      expect(screen.queryByRole('button', { name: /tailor\.useAsOriginals/ })).toBeNull();
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // no re-flip from N1's guarded finally
+    });
+
+    it('Generate: same profile-content-change race but N1 REJECTS late — must not paint a stale error either', async () => {
+      let rejectN1: ((e: Error) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((_, rej) => { rejectN1 = rej; }));
+
+      const profileA = makeProfile({ major: 'CS' });
+      const { rerender } = render(<TailorModal {...baseProps} profile={profileA} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      const profileB = makeProfile({ major: 'ECE' });
+      rerender(<TailorModal {...baseProps} profile={profileB} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+
+      await act(async () => {
+        rejectN1?.(new Error('STALE rejection computed against the OLD profile'));
+      });
+
+      expect(screen.queryByText(/STALE rejection computed against the OLD profile/)).toBeNull();
+      expect(screen.queryByRole('button', { name: /tailor\.tryAgain/ })).toBeNull();
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+    });
+
+    it('Extract: profile content changes (major CS -> ECE, resume_text unchanged) while N1 is pending and NO N2 is ever issued — the stale Extract must be invalidated: extracting recovers immediately, and N1\'s late settle must not write a bullet computed against the old profile into the draft or storage', async () => {
+      let resolveN1: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const sharedResumeText = 'Research Assistant\nDid a bunch of things';
+      const profileA = makeProfile({ major: 'CS', resume_text: sharedResumeText });
+      const { rerender } = render(<TailorModal {...baseProps} profile={profileA} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.extracting')).toBeTruthy();
+
+      const profileB = makeProfile({ major: 'ECE', resume_text: sharedResumeText }); // heuristicPrefill is IDENTICAL — only `major` moved
+      rerender(<TailorModal {...baseProps} profile={profileB} />);
+      expect(screen.queryByText('tailor.extracting')).toBeNull(); // the stale Extract is invalidated even though heuristicPrefill never changed
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      const freshValue = textarea.value;
+
+      await act(async () => {
+        resolveN1?.({ method: 'ai', bullets: ['STALE bullet computed against the OLD profile'] });
+      });
+
+      expect(textarea.value).toBe(freshValue); // untouched by N1's late, profile-stale result
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE bullet computed against the OLD profile');
+    });
+
+    it('a same-content profile re-render (a brand NEW object, identical field values — e.g. a parent re-fetch that resolves to the same data) must NOT invalidate an in-flight Generate: this is not a real context change', async () => {
+      let resolveN: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      // A fresh object, but every field matches makeProfile()'s defaults —
+      // fingerprinting must compare CONTENT, not object identity.
+      rerender(<TailorModal {...baseProps} profile={makeProfile()} />);
+      expect(screen.getByText('tailor.generating')).toBeTruthy(); // still pending, untouched by the no-op re-render
+
+      await act(async () => {
+        resolveN?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'still valid despite same-content rerender', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      await waitFor(() =>
+        expect(screen.getAllByText(fullText('still valid despite same-content rerender')).length).toBeGreaterThanOrEqual(1),
+      );
+      expect(screen.getByText('tailor.methodAi')).toBeTruthy();
+    });
+
+    it('a same-content profile re-render with a DIFFERENT property insertion order (same fields, reversed) must NOT invalidate an in-flight Generate — the fingerprint must be canonical (key-order-independent), not a naive JSON.stringify', async () => {
+      let resolveN: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN = r; }));
+
+      const profile = makeProfile();
+      const { rerender } = render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      // Exact same key/value pairs as `profile`, but with property
+      // insertion order reversed — e.g. what a backend re-fetch or a merge
+      // step could plausibly produce for semantically-identical data. A
+      // naive `JSON.stringify(profile)` fingerprint is order-sensitive and
+      // would treat this as a genuine content change.
+      const reordered = Object.fromEntries(Object.entries(profile).reverse()) as ProfileData;
+      rerender(<TailorModal {...baseProps} profile={reordered} />);
+      expect(screen.getByText('tailor.generating')).toBeTruthy(); // still pending, untouched by the reorder
+
+      await act(async () => {
+        resolveN?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'valid despite reordered-content rerender', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      await waitFor(() =>
+        expect(screen.getAllByText(fullText('valid despite reordered-content rerender')).length).toBeGreaterThanOrEqual(1),
+      );
+      expect(screen.getByText('tailor.methodAi')).toBeTruthy();
+    });
+
+    // Tail3: the existing tests in this describe only ever vary `major` or
+    // `resume_text` — the two fields tailorResume()/the extract heuristic
+    // directly consume. canonicalFingerprint is supposed to hash the WHOLE
+    // profile (see its call site: `canonicalFingerprint(profile)`, not some
+    // hand-picked subset), so a regression that narrowed it to just
+    // `{major, resume_text}` would pass every test above and still silently
+    // let a stale Generate/Extract survive a skills/research_interests
+    // change. `skills` is additionally a NESTED array-of-objects — proving
+    // this invalidates also exercises canonicalFingerprint's recursion into
+    // array elements, not just its top-level key handling.
+    it('Generate: skills/research_interests change (major & resume_text held constant) while N1 is pending — the fingerprint must react to every field, including nested ones, not just major/resume_text', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const profileA = makeProfile({
+        major: 'CS',
+        resume_text: '',
+        research_interests: 'machine learning',
+        skills: [{ name: 'Python', level: 'experienced' }],
+      });
+      const { rerender } = render(<TailorModal {...baseProps} profile={profileA} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+
+      const profileB = makeProfile({
+        major: 'CS', // unchanged
+        resume_text: '', // unchanged
+        research_interests: 'computer vision', // changed
+        skills: [{ name: 'Rust', level: 'beginner' }], // changed, and nested inside an array
+      });
+      rerender(<TailorModal {...baseProps} profile={profileB} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // invalidated even though major/resume_text never moved
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE result computed against the OLD skills/interests', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE result computed against the OLD skills/interests'))).toBeNull();
+      expect(screen.queryByText('tailor.methodAi')).toBeNull();
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+    });
+  });
+
+  describe('C1-R2B: ownerScopeKey switching mid-flight (no unmount) invalidates a pending Generate/Extract the same way a profile-content change does', () => {
+    it('Generate: ownerScopeKey switches from U1 to U2 while N1 is pending, isOpen never flips false — loading recovers immediately, and N1\'s late result must never render into U2\'s session', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+
+      rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // the stale Generate is invalidated the moment the owner scope moves
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE result computed under the OLD owner', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE result computed under the OLD owner'))).toBeNull();
+      expect(screen.queryByText('tailor.methodAi')).toBeNull();
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // no re-flip from N1's guarded finally
+    });
+
+    it('Extract: ownerScopeKey switches from U1 to U2 while N1 is pending, isOpen never flips false — extracting recovers immediately, and N1\'s late bullets must never be written under EITHER owner\'s key', async () => {
+      let resolveN1: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      const { rerender } = render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.extracting')).toBeTruthy();
+
+      const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
+      rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={profile} />);
+      expect(screen.queryByText('tailor.extracting')).toBeNull(); // invalidated the moment the owner scope moves
+
+      await act(async () => {
+        resolveN1?.({ method: 'ai', bullets: ['STALE bullet computed under the OLD owner'] });
+      });
+
+      const badCalls = setItemSpy.mock.calls.filter(([, value]) => value === 'STALE bullet computed under the OLD owner');
+      expect(badCalls).toEqual([]);
+      expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE bullet computed under the OLD owner');
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).not.toBe('STALE bullet computed under the OLD owner');
+    });
+  });
+
+  describe('C1-R2B: ownerReady dropping mid-flight (no owner switch, no close) invalidates a pending Generate the same way — a background load hiccup, not just an identity switch, must supersede in-flight work', () => {
+    it('Generate: ownerReady flips true->false while N1 is pending, ownerScopeKey/opportunityId/isOpen all UNCHANGED — loading recovers immediately, and N1\'s late result must never render', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet one' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(screen.getByText('tailor.generating')).toBeTruthy();
+
+      rerender(<TailorModal {...baseProps} ownerReady={false} profile={makeProfile()} />);
+      expect(screen.queryByText('tailor.generating')).toBeNull(); // invalidated the moment readiness drops, with no other prop changing
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE result computed while owner briefly went not-ready', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      expect(screen.queryByText(fullText('STALE result computed while owner briefly went not-ready'))).toBeNull();
+      expect(screen.queryByText('tailor.methodAi')).toBeNull();
+      expect(screen.queryByText('tailor.generating')).toBeNull();
+    });
+  });
+
+  describe('C1-R2B: combined identity-switch privacy proof (a REAL unmount, mirroring MatchList\'s remount-on-identity-change) and same-uid preservation', () => {
+    it('deferred Extract crossing a real U1->U2 unmount: U1 starts an extract, the instance unmounts (a real identity switch), U1\'s extract resolves LATE — a fresh U2 instance for the SAME opportunity stays completely clean', async () => {
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER);
+      let resolveExtract: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveExtract = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      const { unmount } = render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+
+      // The real identity switch: MatchList's identityGeneration-keyed
+      // Fragment tears this whole subtree down.
+      unmount();
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER2);
+
+      // U1's extract finally resolves, AFTER the unmount.
+      await act(async () => {
+        resolveExtract?.({ method: 'ai', bullets: ['STALE U1 extracted bullet'] });
+      });
+
+      // A fresh U2 instance opens the SAME opportunity.
+      render(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={profile} />);
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea.value).toBe(''); // no trace of U1's stale extract — clean
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
+    });
+
+    it('deferred Extract crossing a real U1->U2 unmount, WITH an explicit post-unmount identity sweep of U1\'s key (mirrors identity-owner.ts\'s real USER_SCOPED_PREFIXES cleanup): U1\'s stale extract resolving AFTER the sweep must not resurrect the just-cleaned key', async () => {
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER);
+      let resolveExtract: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveExtract = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      const { unmount } = render(<TailorModal {...baseProps} profile={profile} />);
+      // U1 has a real draft of their own, saved under their scoped key,
+      // BEFORE ever touching Extract — this is what the real sweep has
+      // something to clean up.
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+        target: { value: 'U1 own draft before extracting' },
+      });
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('U1 own draft before extracting'));
+
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+
+      // The real identity switch: MatchList's identityGeneration-keyed
+      // Fragment tears this whole subtree down...
+      unmount();
+      // ...and identity-owner.ts's own USER_SCOPED_PREFIXES sweep runs on a
+      // real owner switch, explicitly removing every key under U1's scope
+      // (this component's own doc comments call this out as the mechanism
+      // that eventually cleans up an owner-scoped key — it is simulated
+      // here directly rather than by importing that module, since this is
+      // TailorModal's own storage-write contract under test, not the
+      // sweep's matching logic).
+      window.localStorage.removeItem(DRAFT_KEY);
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER2);
+
+      // U1's extract finally resolves, AFTER both the unmount AND the sweep.
+      await act(async () => {
+        resolveExtract?.({ method: 'ai', bullets: ['STALE bullet that must not resurrect the swept key'] });
+      });
+
+      // The swept key must stay swept — a mount-awareness regression would
+      // have this stale `saveDraft` call recreate it with stale content,
+      // silently undoing the sweep's own cleanup.
+      expect(storedDraftText(DRAFT_KEY)).toBeNull();
+      // And it must never have landed under U2's key either — the closure
+      // captured ctx.ownerScopeKey as OWNER at call time, not whatever
+      // ownerScopeKey happens to be live when the promise settles.
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
+    });
+
+    it('deferred Generate crossing a real U1->U2 unmount: U1\'s stale AI result must never appear for a fresh U2 instance on the SAME opportunity', async () => {
+      let resolveN1: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN1 = r; }));
+
+      const { unmount } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'U1 bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      unmount(); // real identity switch — the whole subtree is torn down
+
+      await act(async () => {
+        resolveN1?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'STALE U1 generate result', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      // A fresh U2 instance, same opportunity.
+      render(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+      expect(screen.queryByText(fullText('STALE U1 generate result'))).toBeNull();
+      expect(screen.queryByText('tailor.methodAi')).toBeNull();
+      expect(screen.getByText('tailor.noBulletsYet')).toBeTruthy(); // U2's genuinely fresh, empty state
+    });
+
+    it('a same-uid re-observation (isOpen/opportunityId/ownerScopeKey/ownerReady all UNCHANGED — e.g. TOKEN_REFRESHED bubbling down) must NOT invalidate an in-flight Generate: it resolves and applies normally', async () => {
+      let resolveN: ((v: TailorResponse) => void) | undefined;
+      mockTailorResume.mockReturnValueOnce(new Promise((r) => { resolveN = r; }));
+
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+
+      // A benign re-render with every identity-relevant prop value IDENTICAL
+      // — mirrors a same-uid auth re-observation propagating down as a
+      // same-value prop update, not a real transition.
+      rerender(<TailorModal {...baseProps} profile={makeProfile()} />);
+      expect(screen.getByText('tailor.generating')).toBeTruthy(); // still pending, untouched
+
+      await act(async () => {
+        resolveN?.({
+          method: 'ai',
+          warnings: [],
+          tailored_bullets: [{ text: 'still valid result', source_evidence: 'x', source_index: 0 }],
+        });
+      });
+
+      await waitFor(() => expect(screen.getAllByText(fullText('still valid result')).length).toBeGreaterThanOrEqual(1));
+      expect(screen.getByText('tailor.methodAi')).toBeTruthy();
+    });
+  });
+
+  describe('C1-R2B: a manual draft edit invalidates a pending Extract (latest user intent wins)', () => {
+    it('Extract pending, user types a manual edit, THEN Extract resolves: the manual text wins in both the textarea and storage', async () => {
+      let resolveExtract: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveExtract = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(screen.getByText('tailor.extracting')).toBeTruthy(); // spinner showing
+      fireEvent.change(textarea, { target: { value: 'my own fresher typing' } });
+
+      // The spinner/button recovers IMMEDIATELY on the manual edit itself —
+      // not only once the (now-invalidated) extract eventually resolves.
+      // Without the synchronous setExtracting(false) at the edit site, the
+      // invalidated extract's own guarded finally correctly skips clearing
+      // it (stillCurrent() is false), which would otherwise leave this
+      // stuck true forever.
+      expect(screen.queryByText('tailor.extracting')).toBeNull();
+      expect(screen.getByRole('button', { name: /tailor\.extractFromResume/ })).not.toBeDisabled();
+
+      await act(async () => {
+        resolveExtract?.({ method: 'ai', bullets: ['stale extracted bullet'] });
+      });
+
+      expect(textarea.value).toBe('my own fresher typing'); // manual intent wins
+      expect(screen.queryByText('tailor.extracting')).toBeNull(); // still recovered after the late resolve
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('my own fresher typing'));
+    });
+
+    it('Extract pending, user clicks "Clear draft", THEN Extract resolves: the cleared (empty) draft is not resurrected', async () => {
+      window.localStorage.setItem(DRAFT_KEY, 'a previously saved draft');
+      let resolveExtract: ((v: { method: string; bullets: string[] }) => void) | undefined;
+      mockExtractResumeBullets.mockReturnValueOnce(new Promise((r) => { resolveExtract = r; }));
+
+      const profile = makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' });
+      render(<TailorModal {...baseProps} profile={profile} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+      await waitFor(() => expect(mockExtractResumeBullets).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.clearDraftAria/ }));
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea.value).toBe('');
+
+      await act(async () => {
+        resolveExtract?.({ method: 'ai', bullets: ['stale extracted bullet'] });
+      });
+
+      expect(textarea.value).toBe(''); // still cleared — extract's stale result did not resurrect it
+      expect(storedDraftText(DRAFT_KEY)).toBeNull();
+    });
+  });
+
+  describe('C1-R2B: legacy (pre-owner-scoping) drafts are NEVER read, shown, or migrated — not even with a matching LOCAL_IDENTITY_OWNER marker', () => {
+    it('a legacy opp-only draft is never surfaced, even when the marker matches ownerScopeKey exactly — matching a marker is not unforgeable proof of ownership (multi-tab/delayed-write residual risk), so it is never trusted', async () => {
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER);
+      window.localStorage.setItem(LEGACY_DRAFT_KEY, 'legacy content — must never surface');
+
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea.value).toBe(''); // heuristic prefill is empty — legacy content never read
+      expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe('legacy content — must never surface'); // untouched — never migrated, never deleted
+      expect(storedDraftText(DRAFT_KEY)).toBeNull(); // never written to the scoped key either
+    });
+
+    it('a DELAYED legacy write — a stale U1 tab writing the old opp-only key AFTER the LOCAL_IDENTITY_OWNER marker has already moved to U2 — is never shown or migrated to U2', async () => {
+      // The marker already reflects U2 (the current, confirmed owner)...
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER2);
+      // ...but a stale U1 browser tab, unaware of the switch, only now gets
+      // around to writing the pre-scoping legacy key. A marker-match check
+      // alone cannot distinguish this from a genuinely-U2 write — which is
+      // exactly why this component never attempts that check at all.
+      window.localStorage.setItem(LEGACY_DRAFT_KEY, 'U1 content written AFTER U2 took over');
+
+      render(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea.value).toBe(''); // U1's delayed write never surfaces for U2
+      expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe('U1 content written AFTER U2 took over'); // left exactly as-is
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull(); // never claimed into U2's scoped key
+    });
+
+    it('a null ownerScopeKey never persists anything — the draft is ephemeral (in-memory only)', async () => {
+      render(<TailorModal {...baseProps} ownerScopeKey={null} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+        target: { value: 'typed while unresolved' },
+      });
+
+      await waitFor(() => {
+        // No key under the tailor-draft prefix was ever created.
+        for (let i = 0; i < window.localStorage.length; i += 1) {
+          const key = window.localStorage.key(i);
+          expect(key?.startsWith('ofe_tailor_draft_')).toBe(false);
+        }
+      });
+    });
+
+    it('U1 and U2 opening the SAME opportunity never see each other\'s draft', async () => {
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER);
+      const { unmount } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+        target: { value: 'owner-1 private bullets' },
+      });
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('owner-1 private bullets'));
+      unmount();
+
+      // U2 — a different owner, same opportunity, a genuinely fresh instance
+      // (mirrors the real remount-on-identity-change wiring in MatchList).
+      window.localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, OWNER2);
+      render(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+      const textarea2 = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      expect(textarea2.value).toBe(''); // U1's draft never surfaces for U2
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
+      // U1's own draft is still exactly where U1 left it.
+      expect(storedDraftText(DRAFT_KEY)).toBe('owner-1 private bullets');
+    });
+  });
+
+  describe('C1-R2B: ownerScopeKey changing on an ALREADY-OPEN modal (isOpen never flips false) must never leak a draft cross-owner', () => {
+    it('U1 types a private draft; ownerScopeKey switches straight to U2 with the modal staying open the entire time — U1\'s text must NEVER be written under U2\'s key at ANY point (not just in the final settled state), and the UI must end up showing U2\'s own draft', async () => {
+      const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />); // U1, isOpen=true throughout
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      fireEvent.change(textarea, { target: { value: 'U1 PRIVATE draft' } });
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft'));
+
+      // U2's own draft already exists in storage — proves the UI ends up
+      // showing U2's real content, not merely "not U1's".
+      window.localStorage.setItem(DRAFT_KEY_OWNER2, 'U2 own draft');
+
+      // Spy on the FULL call history of setItem/removeItem — a final-state
+      // check alone is not enough here: React's act()-wrapped rerender
+      // flushes the reset effect's cascading setDraft() synchronously
+      // BEFORE returning control to this test, so a transient wrong write
+      // from the FIRST effect-flush pass would already be silently
+      // overwritten by a correct one from the SECOND pass by the time any
+      // post-rerender assertion runs — self-healing in a way that would
+      // mask exactly the race this test exists to catch. Recording every
+      // call is the only way to prove the wrong write never happened at
+      // all, not merely that it didn't survive.
+      const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
+
+      // The owner switches — isOpen is NEVER flipped false here, unlike
+      // MatchList's remount-by-key wiring. This is the exact race the
+      // lastPersistedContextRef guard exists for: the reset effect and the
+      // persist effect both fire in this SAME commit, and the persist
+      // effect's `draft` closure is still "U1 PRIVATE draft" at the moment
+      // it runs.
+      rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+
+      // The definitive assertion: across EVERY setItem call made during
+      // this whole rerender (including any cascading follow-up renders),
+      // U2's key was never once paired with U1's text.
+      const badCalls = setItemSpy.mock.calls.filter(
+        ([key, value]) => key === DRAFT_KEY_OWNER2 && value === 'U1 PRIVATE draft',
+      );
+      expect(badCalls).toEqual([]);
+      // U1's own key was also never touched by U2's arrival, at any point.
+      const u1KeyTouched = setItemSpy.mock.calls.some(([key]) => key === DRAFT_KEY);
+      expect(u1KeyTouched).toBe(false);
+
+      // Final settled state: U1's key untouched, U2 sees U2's own draft.
+      expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft');
+      await waitFor(() => expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('U2 own draft'));
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBe('U2 own draft');
+    });
+
+    it('same scenario but U2 has NO existing draft — U2 sees the heuristic prefill (or empty), and setItem is NEVER called with U2\'s key paired with U1\'s text at any point', async () => {
+      const profile = makeProfile();
+      const { rerender } = render(<TailorModal {...baseProps} profile={profile} />);
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+      fireEvent.change(textarea, { target: { value: 'another U1 secret' } });
+      await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('another U1 secret'));
+
+      const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
+      rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={profile} />);
+
+      const badCalls = setItemSpy.mock.calls.filter(
+        ([key, value]) => key === DRAFT_KEY_OWNER2 && value === 'another U1 secret',
+      );
+      expect(badCalls).toEqual([]);
+
+      await waitFor(() => expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue(''));
+      expect(storedDraftText(DRAFT_KEY_OWNER2)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY)).toBe('another U1 secret'); // U1's own draft untouched
+    });
+  });
 });
 
 describe('W13 target isolation + draft staleness', () => {
@@ -745,8 +1799,11 @@ describe('W13 target isolation + draft staleness', () => {
   });
 
   it('flags a restored draft whose resume sig no longer matches', async () => {
+    // Owner-scoped key: the branch's privacy contract never reads the
+    // legacy unscoped slot (see the C1-R2B suite above), so W13's staleness
+    // flag applies to drafts in the CURRENT owner's namespace.
     window.localStorage.setItem(
-      'ofe_tailor_draft_opp-123',
+      DRAFT_KEY,
       JSON.stringify({ t: 'old bullet draft', s: 'sig-of-old-resume' }),
     );
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'a brand new resume text' })} />);
@@ -754,7 +1811,7 @@ describe('W13 target isolation + draft staleness', () => {
   });
 
   it('makes no staleness claim for legacy plain-string drafts', async () => {
-    window.localStorage.setItem('ofe_tailor_draft_opp-123', 'legacy draft line');
+    window.localStorage.setItem(DRAFT_KEY, 'legacy draft line');
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'whatever text' })} />);
     expect(screen.getByText('tailor.draftRestored')).toBeTruthy();
     expect(screen.queryByTestId('tailor-stale-draft')).toBeNull();
