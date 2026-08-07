@@ -3026,3 +3026,86 @@ class TestRenderBudget:
         soup = _render_soup("https://example.edu/dir", expect_selector=".card")
         assert soup is None
         assert len(calls) == 3
+
+
+class TestSourceBudget:
+    """Cooperative per-source wall-clock budget. #712's run budget only stops
+    STARTING sources — a source that started just under the deadline still ran
+    unbounded into the CI job's 300-minute hard kill (ucsd's 4.5h, 2026-08-07).
+    Under ``source_budget`` the engine checks the clock at loop boundaries
+    (departments, listing pages, profile hops) and returns a partial harvest."""
+
+    def _school(self, departments):
+        return {"school_slug": "x", "source": "x_faculty",
+                "organization": "X University", "id_prefix": "x",
+                "location": "Somewhere", "departments": departments}
+
+    def _dept(self, short, names):
+        return {"short": short, "name": f"Department of {short}", "majors": [],
+                "faculty": [fg.faculty(n, title="Professor",
+                                       url=f"https://x.edu/{n.split()[0].lower()}")
+                            for n in names]}
+
+    def test_no_budget_is_no_behavior_change(self):
+        school = self._school([self._dept("AA", ["Ann Alpha"]),
+                               self._dept("BB", ["Ben Beta"])])
+        with fg.source_budget(None) as budget:
+            recs = fg.fetch_and_normalize(school, deep=False)
+        assert {r["pi_name"] for r in recs} == {"Ann Alpha", "Ben Beta"}
+        assert budget.exhausted is False
+        assert budget.skipped_departments == 0
+
+    def test_expired_budget_skips_departments_and_flags(self):
+        school = self._school([self._dept("AA", ["Ann Alpha"]),
+                               self._dept("BB", ["Ben Beta"])])
+        with fg.source_budget(0) as budget:
+            recs = fg.fetch_and_normalize(school, deep=False)
+        assert recs == []
+        assert budget.exhausted is True
+        assert budget.skipped_departments == 2
+
+    def test_mid_flight_expiry_keeps_completed_departments(self, monkeypatch):
+        """The clock running out inside department 1's scrape must not discard
+        department 1's records — only the un-started tail is skipped."""
+        def slow_scrape(dept):
+            fg._ACTIVE_BUDGET.deadline = 0.0  # monotonic() is always past this
+            return [fg.faculty("Cy Gamma", title="Professor",
+                               url="https://x.edu/cy")]
+
+        monkeypatch.setattr(fg, "_scrape_directory", slow_scrape)
+        dept1 = {"short": "AA", "name": "Department of AA", "majors": [],
+                 "scrape": {"url": "https://x.edu/f",
+                            "selectors": {"card": "div.c", "name": ".n"}}}
+        school = self._school([dept1, self._dept("BB", ["Ben Beta"])])
+        with fg.source_budget(3600) as budget:
+            recs = fg.fetch_and_normalize(school, deep=True)
+        assert {r["pi_name"] for r in recs} == {"Cy Gamma"}
+        assert budget.exhausted is True
+        assert budget.skipped_departments == 1
+
+    def test_outside_context_manager_nothing_is_budgeted(self):
+        school = self._school([self._dept("AA", ["Ann Alpha"])])
+        recs = fg.fetch_and_normalize(school, deep=False)
+        assert len(recs) == 1
+
+    def test_profile_enrich_stops_at_expired_budget(self, monkeypatch):
+        """Mid-enrichment expiry keeps the un-enriched tail as listing-level
+        records (the merge's richer-guard protects previously committed
+        fields) instead of fetching profiles past the deadline."""
+        enriched: list[str] = []
+
+        def fake_enrich(url, enr, *, expected_name=None):
+            enriched.append(url)
+            fg._ACTIVE_BUDGET.deadline = 0.0
+            return ("Professor", "robotics", [], None, True)
+
+        monkeypatch.setattr(fg, "_enrich_profile", fake_enrich)
+        people = [fg.faculty("Ann Alpha", url="https://x.edu/a"),
+                  fg.faculty("Ben Beta", url="https://x.edu/b")]
+        with fg.source_budget(3600) as budget:
+            out = fg._apply_profile_enrich(
+                people, {"always": True, "research_re": "x"},
+            )
+        assert enriched == ["https://x.edu/a"]
+        assert len(out) == 2, "the un-enriched tail must survive"
+        assert budget.exhausted is True

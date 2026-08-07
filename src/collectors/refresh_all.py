@@ -21,6 +21,7 @@ from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate
 from src.normalizers.school_audience import SOURCE_DEFAULTS, apply_school_audience
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
+from . import faculty_graph
 from .atomic_json import atomic_write_json, atomic_write_text
 from .campus_graph import (
     RECURSIVE,
@@ -583,7 +584,9 @@ def refresh_all(
         time.monotonic() + time_budget_minutes * 60
         if time_budget_minutes is not None else None
     )
-    summary["time_budget"] = {"budget_minutes": time_budget_minutes, "deferred": 0}
+    summary["time_budget"] = {
+        "budget_minutes": time_budget_minutes, "deferred": 0, "partial": 0,
+    }
 
     def defer(source_name: str) -> bool:
         if deadline is None or time.monotonic() < deadline:
@@ -592,6 +595,15 @@ def refresh_all(
         summary["time_budget"]["deferred"] += 1
         logger.warning("%s deferred: run time budget exhausted", source_name)
         return True
+
+    def budget_seconds_remaining() -> float | None:
+        # Feeds faculty_graph.source_budget so a source STARTED under the
+        # deadline still stops AT the deadline (partial harvest) instead of
+        # running unbounded into the CI job's hard kill — defer() alone left
+        # that hole open (ucsd's 4.5h, 2026-08-07).
+        if deadline is None:
+            return None
+        return max(0.0, deadline - time.monotonic())
 
     # 1. OUR RSS feed
     if selected("uiuc"):
@@ -1171,14 +1183,37 @@ def refresh_all(
             logger.info("=" * 50)
             logger.info(f"Collecting from {source_name}...")
             try:
-                new_opps = fetch_fn()
+                # These sources all harvest via the faculty_graph engine, which
+                # checks this budget at its loop boundaries: a source mid-flight
+                # at the run deadline returns its partial harvest. The partial
+                # still merges (upsert-only; richer-guard protects committed
+                # enrichment) but reports partial_deadline — never "ok" — so
+                # deactivate_stale_faculty cannot read the unvisited
+                # departments' absence as staleness.
+                with faculty_graph.source_budget(
+                    budget_seconds_remaining()
+                ) as source_clock:
+                    new_opps = fetch_fn()
                 added, updated = merge_fn(new_opps)
-                summary["sources"][source_name] = {
+                info = {
                     "fetched": len(new_opps),
                     "new": added,
                     "updated": updated,
                     "status": "ok",
                 }
+                if source_clock.exhausted:
+                    info["status"] = "partial_deadline"
+                    info["skipped_departments"] = (
+                        source_clock.skipped_departments
+                    )
+                    summary["time_budget"]["partial"] += 1
+                    logger.warning(
+                        "%s truncated at the run time budget: %d record(s) "
+                        "kept, %d department(s) skipped",
+                        source_name, len(new_opps),
+                        source_clock.skipped_departments,
+                    )
+                summary["sources"][source_name] = info
                 summary["total_new"] += added
                 summary["total_updated"] += updated
                 logger.info(f"{source_name}: {len(new_opps)} fetched, {added} new, {updated} updated")
@@ -1583,6 +1618,12 @@ def print_summary(summary: dict) -> None:
                     print(f"    {label}: {info[key]}")
             if "deep" in info:
                 print(f"    Deep:    {info['deep']}")
+        elif status == "deferred_deadline":
+            print(f"  {source}: DEFERRED - run time budget exhausted before start")
+        elif status == "partial_deadline":
+            print(f"  {source}: PARTIAL - truncated at the run time budget "
+                  f"({info.get('fetched', 0)} fetched, "
+                  f"{info.get('skipped_departments', 0)} department(s) skipped)")
         else:
             print(f"  {source}: ERROR - {info.get('error', 'unknown')}")
         print()
