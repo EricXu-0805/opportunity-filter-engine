@@ -512,6 +512,32 @@ def _update_professor_tracking(
         summary["sources"]["professor_tracking"] = {"status": "error", "error": str(e)}
 
 
+def validate_shard_selection(
+    schools: set[str] | frozenset[str] | None,
+    *,
+    national: bool = False,
+) -> None:
+    """Raise ValueError for a shard request refresh_all would refuse.
+
+    One function so the runtime check and the workflow-contract test share
+    the same rules — the 2026-08-08 dispatch crashed 15 minutes in because
+    the workflow's Saturday shard string still listed ucd after the engine
+    adopted the ucd singleton rule, and nothing pinned the two together.
+    """
+    if national and schools is not None:
+        raise ValueError("national and school shards are mutually exclusive")
+    if schools is not None:
+        if not schools:
+            raise ValueError("schools shard must name at least one school slug")
+        if "ucd" in schools and len(schools) != 1:
+            raise ValueError("ucd must run as an isolated single-school shard")
+        known = {school for school, _ in SOURCE_DEFAULTS.values() if school}
+        unknown = set(schools) - known
+        if unknown:
+            raise ValueError(
+                f"unknown school slug(s): {sorted(unknown)}; known: {sorted(known)}")
+
+
 def refresh_all(
     deep: bool = True,
     schools: set[str] | None = None,
@@ -535,18 +561,7 @@ def refresh_all(
 
     Returns a summary dict with counts per source and totals.
     """
-    if national and schools is not None:
-        raise ValueError("national and school shards are mutually exclusive")
-    if schools is not None:
-        if not schools:
-            raise ValueError("schools shard must name at least one school slug")
-        if "ucd" in schools and len(schools) != 1:
-            raise ValueError("ucd must run as an isolated single-school shard")
-        known = {school for school, _ in SOURCE_DEFAULTS.values() if school}
-        unknown = set(schools) - known
-        if unknown:
-            raise ValueError(
-                f"unknown school slug(s): {sorted(unknown)}; known: {sorted(known)}")
+    validate_shard_selection(schools, national=national)
     sharded = national or schools is not None
 
     def selected(school: str | None) -> bool:
