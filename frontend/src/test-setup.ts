@@ -60,20 +60,22 @@ function installWebLocks(): void {
 
 if (typeof window !== 'undefined') {
   installWebLocks();
-  const needsLocal = !window.localStorage || typeof window.localStorage.setItem !== 'function';
-  const needsSession = !window.sessionStorage || typeof window.sessionStorage.setItem !== 'function';
-  if (needsLocal) {
-    Object.defineProperty(window, 'localStorage', {
-      value: makeMemoryStorage(),
-      configurable: true,
-    });
-  }
-  if (needsSession) {
-    Object.defineProperty(window, 'sessionStorage', {
-      value: makeMemoryStorage(),
-      configurable: true,
-    });
-  }
+  // ALWAYS the memory storage, never jsdom's own. jsdom Storage instances
+  // route own-property definition through their named-properties proxy, so
+  // vi.spyOn(window.localStorage, 'setItem') stores the mock as a storage
+  // ITEM named "setItem" while the real method keeps running — a spy that
+  // silently intercepts nothing. Whether that happens depends on the
+  // jsdom/Node pairing (it did on CI's Node 24 and not on a local Node 25),
+  // which made the write-verification suites pass or fail by runtime
+  // version. A plain object storage is deterministically spyable everywhere.
+  Object.defineProperty(window, 'localStorage', {
+    value: makeMemoryStorage(),
+    configurable: true,
+  });
+  Object.defineProperty(window, 'sessionStorage', {
+    value: makeMemoryStorage(),
+    configurable: true,
+  });
 }
 
 beforeEach(() => {
