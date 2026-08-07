@@ -3222,7 +3222,10 @@ describe('useProfileForm — the résumé really is gone from what a reload read
     await act(async () => { fireEvent.click(screen.getByTestId('remove-resume')); });
     expect(held, 'the removal went out').toHaveLength(1);
     await act(async () => { held[0](answer(commitProfilePatch.mock.calls[0][0])); });
-    expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed');
+    // waitFor, not a bare read: the released response settles through an
+    // await chain whose micro/macrotask split differs by runtime — a slower
+    // CI reads 'saving' one beat before the failure commits.
+    await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed'));
 
     await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
     expect(held, 'the retry re-sent it').toHaveLength(2);
