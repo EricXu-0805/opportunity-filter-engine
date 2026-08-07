@@ -92,6 +92,7 @@ export interface UseAdminDataResult {
   fetchAll: (tok: string) => Promise<void>;
   handleSubmitToken: (e: React.FormEvent) => void;
   handleLock: () => void;
+  adminDisabled: boolean;
   handleTriggerRefresh: (mode: 'quick' | 'deep') => Promise<void>;
   handleConfirmOrder: (id: string) => Promise<void>;
 }
@@ -117,6 +118,10 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
 
   // Ticket workflow state
   const [ticketFilters, setTicketFilters] = useState<TicketFilters>(DEFAULT_TICKET_FILTERS);
+  // The backend has no ADMIN_TOKEN configured: the console is switched off
+  // entirely, which is different from one pane erroring. Kept as explicit
+  // state rather than sniffing the error string.
+  const [adminDisabled, setAdminDisabled] = useState(false);
   const [ticketLoadError, setTicketLoadError] = useState<string | null>(null);
   const [ticketDetails, setTicketDetails] = useState<Record<string, TicketDetail | undefined>>({});
   const [ticketDetailLoading, setTicketDetailLoading] = useState<Record<string, boolean>>({});
@@ -209,6 +214,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
         surfaceAuthFailure();
         return;
       }
+      setAdminDisabled(main.status === 503);
       if (main.status === 503) {
         setError('Admin endpoints disabled — ADMIN_TOKEN not set on backend');
         setData(null);
@@ -544,6 +550,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     fetchAll,
     handleSubmitToken,
     handleLock,
+    adminDisabled,
     handleTriggerRefresh,
     handleConfirmOrder,
   };

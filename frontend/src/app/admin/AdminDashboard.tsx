@@ -48,6 +48,7 @@ export function AdminDashboard({
   onActorChange,
   loading,
   error,
+  adminDisabled,
   activeFieldFilter,
   setActiveFieldFilter,
   triggerStatus,
@@ -73,6 +74,7 @@ export function AdminDashboard({
   onActorChange: (v: string) => void;
   loading: boolean;
   error: string | null;
+  adminDisabled: boolean;
   activeFieldFilter: FieldKey | null;
   setActiveFieldFilter: (v: FieldKey | null) => void;
   triggerStatus: TriggerStatus;
@@ -101,13 +103,17 @@ export function AdminDashboard({
             <p className="mt-2 text-[14px] text-gray-500">{t('admin.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Refresh is not gated on the data-quality pane: when that pane is
-                the thing that failed, retrying it is exactly what the operator
-                needs the button for. */}
+            {/* Refresh is not gated on the data-quality pane: when that pane
+                is the thing that failed, retrying it is exactly what the
+                operator needs the button for. It IS hidden when the console
+                is disabled backend-side (503) — a control whose every call
+                can only 503 is a dead control, not a retry. */}
+            {!adminDisabled && (
             <button type="button" onClick={onRefresh} disabled={loading} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               {t('admin.refresh')}
             </button>
+            )}
             <div className="flex flex-col">
               <label className="flex items-center gap-1.5 text-[12px] text-gray-500">
                 {t('admin.actor.label')}

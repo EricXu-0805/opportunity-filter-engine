@@ -336,12 +336,18 @@ describe('W15: a disabled console is one condition, not many failures', () => {
     expect(banners).toHaveLength(1);
     expect(screen.queryByText('admin.ops.loadFailed')).not.toBeInTheDocument();
     expect(screen.queryByText('admin.tickets.loadFailed')).not.toBeInTheDocument();
+    // A Refresh whose every call can only 503 is a dead control, not a
+    // retry — it stays hidden while the console is switched off backend-side
+    // (Lock remains, so the operator can still leave).
+    expect(screen.queryByText('admin.refresh')).not.toBeInTheDocument();
   });
 
   it('still reports a genuine per-section failure', async () => {
     // A 500 on one section is a real, section-scoped outage and must show.
     feedbackListStatus = { status: 500, error: 'inbox exploded' };
     await mount();
+    // ...and Refresh stays available, because retrying is what it is for.
+    expect(screen.getByText('admin.refresh')).toBeInTheDocument();
     // This file's t() mock returns the bare key, so assert on that; the
     // interpolated reason is covered by FeedbackSection.test.tsx.
     expect(await screen.findByText('admin.tickets.loadFailed')).toBeInTheDocument();

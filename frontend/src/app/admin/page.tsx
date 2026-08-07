@@ -35,6 +35,7 @@ function AdminInner() {
     setActor,
     loading,
     error,
+    adminDisabled,
     activeFieldFilter,
     setActiveFieldFilter,
     triggerStatus,
@@ -62,6 +63,7 @@ function AdminInner() {
 
   return (
     <AdminDashboard
+      adminDisabled={adminDisabled}
       data={data}
       history={history}
       collectorStatus={collectorStatus}
