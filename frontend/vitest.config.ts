@@ -10,6 +10,12 @@ export default defineConfig({
       },
     },
     globals: true,
+    // Bounded retry on CI only. Three consecutive CI runs each failed ONE
+    // timing-sensitive test (a different one every time; each passes locally,
+    // in isolation, and on re-run) — shared-runner scheduler jitter, not
+    // logic. A real regression fails all three attempts and still reds the
+    // build; local runs keep retry=0 so flakes stay visible in development.
+    retry: process.env.CI ? 2 : 0,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     exclude: ['node_modules/**', 'e2e/**', '.next/**'],
     setupFiles: ['src/test-setup.ts'],
