@@ -319,3 +319,31 @@ describe('useAdminData wiring', () => {
     });
   });
 });
+
+describe('W15: a disabled console is one condition, not many failures', () => {
+  it('states the 503 once instead of repeating it in every section', async () => {
+    // ADMIN_TOKEN unset => every admin call 503s. An E2E strict-mode
+    // violation caught the old behavior: the login banner's text matched
+    // three elements because each section echoed the same raw detail.
+    adminFetchMock.mockImplementation(async (path: string, _tok: string, init?: RequestInit) => {
+      calls.push({ path, init });
+      return { status: 503, error: 'Admin endpoints disabled (ADMIN_TOKEN unset)' };
+    });
+
+    render(<AdminPage />);
+
+    const banners = await screen.findAllByText(/Admin endpoints disabled/i);
+    expect(banners).toHaveLength(1);
+    expect(screen.queryByText('admin.ops.loadFailed')).not.toBeInTheDocument();
+    expect(screen.queryByText('admin.tickets.loadFailed')).not.toBeInTheDocument();
+  });
+
+  it('still reports a genuine per-section failure', async () => {
+    // A 500 on one section is a real, section-scoped outage and must show.
+    feedbackListStatus = { status: 500, error: 'inbox exploded' };
+    await mount();
+    // This file's t() mock returns the bare key, so assert on that; the
+    // interpolated reason is covered by FeedbackSection.test.tsx.
+    expect(await screen.findByText('admin.tickets.loadFailed')).toBeInTheDocument();
+  });
+});

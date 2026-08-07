@@ -153,13 +153,19 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setActorState(setAdminActor(value));
   }, []);
 
+  // A 503 is a GLOBAL condition (ADMIN_TOKEN unset on the backend), not a
+  // per-section read failure. The dashboard already states it once; repeating
+  // it inside every section is noise that reads like three separate outages.
+  const sectionError = (res: { status: number; error?: string }) =>
+    res.status === 503 ? null : (res.error ?? null);
+
   const fetchTickets = useCallback(async (tok: string, filters: TicketFilters) => {
     const res = await adminFetch<FeedbackInbox>(ticketQuery(filters), tok);
     if (res.status === 401) { surfaceAuthFailure(); return; }
     if (res.error) {
       // Do not blank the inbox on a transient read failure — the section says
       // "could not load" instead of silently looking like an empty queue.
-      setTicketLoadError(res.error);
+      setTicketLoadError(sectionError(res));
       return;
     }
     setTicketLoadError(null);
@@ -171,7 +177,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     if (res.status === 401) { surfaceAuthFailure(); return; }
     setOpsLoaded(true);
     if (res.error) {
-      setOpsError(res.error);
+      setOpsError(sectionError(res));
       setOpsIncidents([]);
       setOpsRollup({});
       return;
@@ -220,11 +226,11 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setCollectorStatus(collector.data ?? null);
       setCollectorHistory(collectorHist.data?.entries ?? []);
       setSavedSearchHealth(ssHealth.data ?? null);
-      setTicketLoadError(fbInbox.error ?? null);
+      setTicketLoadError(sectionError(fbInbox));
       if (!fbInbox.error) setFeedbackInbox(fbInbox.data ?? null);
       setOrdersInbox(ordInbox.data ?? null);
       setOpsLoaded(true);
-      setOpsError(opsRes.error ?? null);
+      setOpsError(sectionError(opsRes));
       setOpsIncidents(opsRes.data?.incidents ?? []);
       setOpsRollup(opsRes.data?.rollup ?? {});
     } finally {

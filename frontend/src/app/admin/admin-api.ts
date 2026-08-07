@@ -54,8 +54,23 @@ export async function adminFetch<T>(
       },
     });
     if (!res.ok) {
+      // Surface a short, human-readable reason — never the raw response body.
+      // FastAPI returns {"detail": "..."} and dumping it verbatim into a
+      // section banner both reads like a stack trace and duplicates text the
+      // login banner already shows (it made the E2E login assertion
+      // ambiguous). Prefer `detail`, cap it, and fall back to the status.
       const text = await res.text().catch(() => '');
-      return { status: res.status, error: text || `HTTP ${res.status}` };
+      let reason = '';
+      if (text) {
+        try {
+          const parsed = JSON.parse(text) as { detail?: unknown };
+          if (typeof parsed.detail === 'string') reason = parsed.detail;
+        } catch {
+          reason = text;
+        }
+      }
+      reason = reason.replace(/\s+/g, ' ').trim().slice(0, 120);
+      return { status: res.status, error: reason || `HTTP ${res.status}` };
     }
     return { status: res.status, data: (await res.json()) as T };
   } catch (e) {
