@@ -911,3 +911,36 @@ def test_post_merge_pass_stamps_school_audience(monkeypatch, tmp_path):
     assert (saved["man-1"]["school"], saved["man-1"]["audience"]) == ("mit", "open")
     # ...and untagged manual records fall back to the conservative default.
     assert (saved["man-2"]["school"], saved["man-2"]["audience"]) == (None, "unknown")
+
+
+def test_time_budget_defers_unstarted_sources(monkeypatch, tmp_path):
+    """A run whose wall-clock budget is exhausted must stop STARTING sources
+    (status ``deferred_deadline``, fetch never called) instead of letting the
+    CI job timeout kill the whole run mid-write — 2026-08-07's scheduled
+    refresh hit the 300-minute cap inside jhu_faculty and published nothing,
+    losing even the schools that had already completed."""
+    _stub_all_collectors(monkeypatch, tmp_path)
+    called: list[str] = []
+    monkeypatch.setattr(
+        refresh_all, "fetch_jhu_faculty", lambda *a, **k: called.append("jhu") or [],
+    )
+
+    summary = refresh_all.refresh_all(deep=True, time_budget_minutes=0)
+
+    info = summary["sources"].get("jhu_faculty")
+    assert info is not None, "budget-deferred source must still appear in the ledger"
+    assert info["status"] == "deferred_deadline"
+    assert called == [], "an expired budget must not start the fetch at all"
+    # A deferral is not a failure: nothing may look 'ok' for the deferred
+    # source, and the summary must surface that the run was budget-cut.
+    assert summary["time_budget"]["deferred"] >= 1
+
+
+def test_no_time_budget_means_no_deferrals(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    summary = refresh_all.refresh_all(deep=True)
+    deferred = {
+        n for n, i in summary["sources"].items()
+        if i.get("status") == "deferred_deadline"
+    }
+    assert deferred == set()

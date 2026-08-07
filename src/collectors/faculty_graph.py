@@ -60,6 +60,7 @@ import html
 import logging
 import os
 import re
+import time
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
@@ -1057,7 +1058,8 @@ def _is_cf_interstitial(soup) -> bool:
 
 def _render_soup(url: str, timeout_ms: int = 60000,
                  wait_until: str = "domcontentloaded", settle_ms: int = 3500,
-                 expect_selector: str | None = None):
+                 expect_selector: str | None = None,
+                 total_budget_s: float = 240.0):
     """Fetch a URL through a headless-Chromium browser and return a BeautifulSoup.
 
     The escape hatch for directories a plain ``requests`` GET can't read: pages
@@ -1088,8 +1090,19 @@ def _render_soup(url: str, timeout_ms: int = 60000,
     # render "succeeds" only when it yields a non-challenge page that actually has
     # the caller's ``expect_selector`` cards — capturing the interstitial or an
     # un-hydrated grid forces another attempt rather than returning empty.
+    # Per-URL wall-clock cap across ALL attempts: a directory whose challenge
+    # never clears otherwise eats 3 full goto+settle+selector rounds (~11 min
+    # observed on carey.jhu.edu, 2026-08-07) — attempt 1 always runs, retries
+    # only while budget remains.
+    render_deadline = time.monotonic() + total_budget_s
     soup = None
     for attempt in (1, 2, 3):
+        if attempt > 1 and time.monotonic() >= render_deadline:
+            logger.warning(
+                "faculty_graph: render budget (%.0fs) exhausted for %s after "
+                "attempt %d; giving up", total_budget_s, url, attempt - 1,
+            )
+            break
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
