@@ -12,6 +12,18 @@
 --   * ambiguous review decisions stay ambiguous
 --   * every handling step leaves an audit event
 
+-- Table privileges the harness does not grant by default. Real Supabase gives
+-- `authenticated` blanket DML on public tables and lets RLS do the filtering;
+-- the ephemeral test database does not, so the role-switching scenarios below
+-- would fail on GRANTs rather than on the policies they mean to exercise.
+-- Same preamble as orders_rls_test.sql. Note feedback_events is granted too —
+-- scenario 3 proves a client reads ZERO audit rows, which is only meaningful
+-- if the failure would have been RLS rather than a missing privilege.
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.feedback TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.feedback_events TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ops_incidents TO authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Scenario 1: ticket lifecycle + audit + no-silent-close
 -- ---------------------------------------------------------------------------
@@ -321,6 +333,19 @@ BEGIN
   -- Unacknowledged notification failures stay actionable.
   PERFORM 1 FROM ops_incidents WHERE id = iid AND status = 'open' AND failure_state = 'failed';
   IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL o7: notification incident not actionable'; END IF;
+
+  -- Operator-only containment: the queue is RLS-enabled with NO policies, so
+  -- a signed-in client sees nothing even though the role holds table
+  -- privileges (granted at the top of this file) — the block is the policy
+  -- set, not a missing GRANT.
+  DECLARE n int;
+  BEGIN
+    SET LOCAL ROLE authenticated;
+    PERFORM set_config('test.uid', 'eeee5555-5555-4555-8555-555555555555', true);
+    SELECT count(*) INTO n FROM ops_incidents;
+    IF n <> 0 THEN RAISE EXCEPTION 'TEST FAIL o7: client read % ops incidents', n; END IF;
+    RESET ROLE;
+  END;
 
   RAISE WARNING 'PASS scenario 7 (no silent closes in the ops queue)';
 END $$;
