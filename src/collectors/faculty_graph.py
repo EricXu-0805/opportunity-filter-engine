@@ -62,6 +62,7 @@ import os
 import re
 import time
 from collections import Counter, defaultdict
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
@@ -86,6 +87,62 @@ _DESC_CAP = 1500
 # paid once), ON for the deliberate one-shot enrichment run that generates the
 # data. Set OFE_ENRICH_PROFILES=1 to enable the per-profile pass.
 _PROFILE_ENRICH = os.environ.get("OFE_ENRICH_PROFILES") == "1"
+
+
+class SourceBudget:
+    """State for one :func:`source_budget` window (see there for semantics)."""
+
+    def __init__(self, deadline: float | None):
+        self.deadline = deadline
+        self.exhausted = False
+        self.skipped_departments = 0
+
+
+_NO_BUDGET = SourceBudget(None)
+_ACTIVE_BUDGET = _NO_BUDGET
+
+
+@contextmanager
+def source_budget(seconds: float | None):
+    """Bound one source's harvest to ``seconds`` of wall clock, cooperatively.
+
+    refresh_all's run budget only stops STARTING sources — a source already
+    mid-flight when the deadline passed still ran unbounded into the CI job's
+    300-minute hard kill (ucsd's 4.5h on 2026-08-07), which dies mid-write and
+    publishes nothing. Wrapping the fetch in this window makes the engine check
+    the clock at its loop boundaries (departments, listing pages, profile
+    hops) and return the partial harvest instead; overshoot past the deadline
+    is at most one page fetch. ``None`` means no limit.
+
+    The yielded budget's ``exhausted`` flag means data was actually truncated
+    (a check fired), so the caller must report the source as partial — never
+    "ok", or stale-retirement would treat the unvisited departments' absence
+    as truth. A fetch that completes fully under an expired clock stays
+    complete: no check fired, ``exhausted`` stays False.
+    """
+    global _ACTIVE_BUDGET
+    budget = SourceBudget(
+        time.monotonic() + seconds if seconds is not None else None
+    )
+    prev = _ACTIVE_BUDGET
+    _ACTIVE_BUDGET = budget
+    try:
+        yield budget
+    finally:
+        _ACTIVE_BUDGET = prev
+
+
+def _source_budget_spent() -> bool:
+    budget = _ACTIVE_BUDGET
+    if budget.deadline is None or time.monotonic() < budget.deadline:
+        return False
+    if not budget.exhausted:
+        budget.exhausted = True
+        logger.warning(
+            "faculty_graph: source wall-clock budget exhausted; "
+            "returning a partial harvest"
+        )
+    return True
 
 
 def faculty(
@@ -1167,6 +1224,8 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
                 page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
                 seen: set[str] = set()
                 for pg in range(1, max_pages + 1):
+                    if _source_budget_spent():
+                        break
                     target = url if pg == 1 else f"{url}#q=&alpha=&{param}={pg}"
                     page.goto(target, wait_until="domcontentloaded", timeout=timeout_ms)
                     page.wait_for_timeout(3500 if pg == 1 else 2500)
@@ -1309,6 +1368,8 @@ def _scrape_directory(dept: dict) -> list[dict]:
             # paginated department; buys back silently-missing faculty.
             barren = 0
             for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
+                if _source_budget_spent():
+                    break
                 next_url = _paginated_url(base, pg, param) if path_mode else (
                     f"{base}{'&' if '?' in base else '?'}{param}={vpre}{pg}")
                 s2 = fetch(next_url) or fetch(next_url)
@@ -1329,6 +1390,8 @@ def _scrape_directory(dept: dict) -> list[dict]:
             # teaching faculty — merged under this department's short/name (dedup
             # on name+url). Each hit is throttled like the base fetch so a
             # multi-page department stays under a burst-rate WAF's threshold.
+            if _source_budget_spent():
+                break
             if cfg.get("pre_delay"):
                 import time
                 time.sleep(cfg["pre_delay"])
@@ -1633,6 +1696,10 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     throttle = enr.get("throttle", 0.0)
     tpl = enr.get("url_template")
     for p in people:
+        if _source_budget_spent():
+            # The un-enriched tail still ships as listing-level records; the
+            # merge's richer-guard keeps previously committed profile fields.
+            break
         target = p.get("url") or ""
         if tpl:
             local = (p.get("email") or "").split("@")[0]
@@ -1851,6 +1918,8 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
     records: list[dict] = []
     query = cfg.get("query", "")
     for pg in range(1, 13):
+        if _source_budget_spent():
+            break
         page_url = f"{base}/wp-json/wp/v2/{cfg['post_type']}?per_page=100&page={pg}{query}"
         data = _wp_get_json(page_url, ua=ua) if ua else _wp_get_json(page_url)
         if not isinstance(data, list) or not data:
@@ -3600,6 +3669,8 @@ def _fetch_sitemap_directory(dept: dict) -> list[dict]:
     throttle = cfg.get("throttle", 0.0)
     specs: list[dict] = []
     for u in urls:
+        if _source_budget_spent():
+            break
         soup = (_render_soup(u, expect_selector=name_sel, settle_ms=settle)
                 if prof_render else fetch_soup(u))
         if soup is None:
@@ -3664,6 +3735,11 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     for dept in school.get("departments", []):
+        if _source_budget_spent():
+            # Skip-and-count (not break) so the caller's evidence shows how
+            # much of the school the truncation cost.
+            _ACTIVE_BUDGET.skipped_departments += 1
+            continue
         # Copies, not the config dicts themselves: the provenance tag (and the
         # profile-enrich pass) mutate specs, and curated seeds are shared
         # module-level config.

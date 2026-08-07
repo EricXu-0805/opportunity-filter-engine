@@ -140,9 +140,12 @@ jobs:
             fi
             # 260-minute source budget under the job's 300-minute hard timeout:
             # once spent, refresh_all stops STARTING sources (they report
-            # deferred_deadline) so completed schools still merge and publish.
-            # The 2026-08-07 run hit the hard cap mid-source and published
-            # nothing, losing even the 4.5h of ucsd work that had finished.
+            # deferred_deadline) and the faculty_graph engine cuts the source
+            # already mid-flight at the deadline (partial harvest, reported
+            # partial_deadline — stale retirement skips both) so completed
+            # schools still merge and publish. The 2026-08-07 run hit the hard
+            # cap mid-source and published nothing, losing even the 4.5h of
+            # ucsd work that had finished.
             python -m src.collectors.refresh_all --time-budget-minutes 260 $ARGS
           else
             echo "Running QUICK refresh (shard: ${SHARD:-full})"

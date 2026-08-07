@@ -944,3 +944,60 @@ def test_no_time_budget_means_no_deferrals(monkeypatch, tmp_path):
         if i.get("status") == "deferred_deadline"
     }
     assert deferred == set()
+
+
+def test_budget_cut_mid_source_merges_partial_and_reports_partial_deadline(
+    monkeypatch, tmp_path,
+):
+    """A source mid-flight when the run deadline passes must return its partial
+    harvest, merge it, and report ``partial_deadline`` — never "ok" (so
+    deactivate_stale_faculty cannot retire the unvisited departments' records)
+    and never unbounded (the started-just-under-the-wire hole in the #712
+    budget: the job's 300-minute hard kill would publish nothing)."""
+    from src.collectors import faculty_graph
+
+    _stub_all_collectors(monkeypatch, tmp_path)
+
+    def fake_jhu(*a, **k):
+        budget = faculty_graph._ACTIVE_BUDGET
+        assert budget.deadline is not None, (
+            "refresh_all must arm the engine's source budget around the fetch"
+        )
+        budget.deadline = 0.0  # the clock runs out inside this source...
+        assert faculty_graph._source_budget_spent()  # ...and a check fires
+        return [{"id": "jhu-1"}]
+
+    monkeypatch.setattr(refresh_all, "fetch_jhu_faculty", fake_jhu)
+
+    summary = refresh_all.refresh_all(
+        deep=True, schools={"jhu"}, time_budget_minutes=60,
+    )
+
+    info = summary["sources"]["jhu_faculty"]
+    assert info["status"] == "partial_deadline"
+    assert info["fetched"] == 1, "the partial harvest must still merge"
+    assert summary["time_budget"]["partial"] >= 1
+    # A truncated source is not a pipeline failure — the shard still publishes.
+    assert refresh_all.refresh_run_ok(summary) is True
+
+
+def test_complete_fetch_under_expired_clock_stays_ok(monkeypatch, tmp_path):
+    """``partial_deadline`` means data was truncated, not that time ran out:
+    a fetch that completed fully (no engine check fired) reports "ok" even if
+    the deadline passed while it ran — its data is complete and stale
+    retirement for it remains sound."""
+    from src.collectors import faculty_graph
+
+    _stub_all_collectors(monkeypatch, tmp_path)
+
+    def fake_jhu(*a, **k):
+        faculty_graph._ACTIVE_BUDGET.deadline = 0.0  # expires, no check fires
+        return [{"id": "jhu-1"}]
+
+    monkeypatch.setattr(refresh_all, "fetch_jhu_faculty", fake_jhu)
+
+    summary = refresh_all.refresh_all(
+        deep=True, schools={"jhu"}, time_budget_minutes=60,
+    )
+    assert summary["sources"]["jhu_faculty"]["status"] == "ok"
+    assert summary["time_budget"].get("partial", 0) == 0
