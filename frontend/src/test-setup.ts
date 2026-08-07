@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
+import { configure } from '@testing-library/react';
+
+// waitFor's 1s default is calibrated to a warm laptop, not a cold shared CI
+// runner — the debounce-and-settle suites (1.5s autosave timers + held
+// promises) intermittently outlive it there and fail with the PREVIOUS
+// state ('saving' where 'cloud-failed' is a beat away). 5s changes nothing
+// on a fast machine (waitFor returns the moment the condition passes) and
+// absorbs runner jitter on a slow one.
+configure({ asyncUtilTimeout: 5000 });
+
 import { cleanup } from '@testing-library/react';
 
 function makeMemoryStorage(): Storage {
