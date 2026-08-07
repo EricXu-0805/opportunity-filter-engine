@@ -224,6 +224,14 @@ jobs:
           # main and replay the freshly scraped data on top, so the PR is conflict-free.
           cp data/processed/opportunities.json /tmp/refresh-opportunities.json
           cp data/processed/collector_status.json /tmp/refresh-collector_status.json
+          # W15: the rolling history ledger is the ONLY record of a failure that
+          # yesterday's snapshot no longer shows (each run rewrites the snapshot
+          # and only for its own shard). It was never stashed or committed, so
+          # the runner's copy died at the rebase below and the committed file
+          # froze — the admin freshness chart was reading a fossil.
+          if [ -f data/processed/collector_status_history.jsonl ]; then
+            cp data/processed/collector_status_history.jsonl /tmp/refresh-collector_history.jsonl
+          fi
           # Professor tracking ledger (W8): best-effort artifact — refresh_all
           # writes it unless tracking errored, so guard the copies.
           if [ -f data/processed/professor_tracking.json ]; then
@@ -242,6 +250,9 @@ jobs:
             git checkout -f -B "$BRANCH" FETCH_HEAD
             cp /tmp/refresh-opportunities.json data/processed/opportunities.json
             cp /tmp/refresh-collector_status.json data/processed/collector_status.json
+            if [ -f /tmp/refresh-collector_history.jsonl ]; then
+              cp /tmp/refresh-collector_history.jsonl data/processed/collector_status_history.jsonl
+            fi
             if [ -f /tmp/refresh-professor_tracking.json ]; then
               cp /tmp/refresh-professor_tracking.json data/processed/professor_tracking.json
             fi
@@ -260,6 +271,9 @@ jobs:
             python3 scripts/shard_corpus.py split
 
             git add data/processed/shards data/processed/collector_status.json
+            if [ -f data/processed/collector_status_history.jsonl ]; then
+              git add data/processed/collector_status_history.jsonl
+            fi
             if [ -f data/processed/professor_tracking.json ]; then
               git add data/processed/professor_tracking.json
             fi

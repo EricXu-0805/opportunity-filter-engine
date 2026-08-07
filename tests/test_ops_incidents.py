@@ -1,0 +1,1155 @@
+"""W15 operational-incident boundary — backend contract locks.
+
+The invariants this file exists to defend, all of them things the system got
+wrong before migration 027 gave operational failures one durable home:
+
+    detection            -> never decides (no status/assignment/resolution)
+    a later good run     -> closes a collector failure, NEVER a drift alert
+    resolve / suppress   -> requires a recorded decision, no silent closes
+    reopen               -> clears the old verdict rather than inheriting it
+    every mutation       -> an audit row with the real prior value + an actor
+    retry                -> records an ATTEMPT; never delivery, never a fix
+    a missing artifact   -> a reported skip, never a 500 from the monitor
+
+Supabase is stubbed exactly as tests/test_backend_api.py stubs it for the
+admin routes: swap ``ops.httpx.AsyncClient`` for a recorder that answers
+PostgREST-shaped requests from in-test fixtures. Nothing here touches a real
+project, and no test asserts on a value the route did not have to compute.
+"""
+
+from __future__ import annotations
+
+import json
+
+from fastapi.testclient import TestClient
+
+from backend.main import app
+from backend.routes import ops as ops_mod
+
+client = TestClient(app)
+
+INCIDENT_ID = "11111111-2222-3333-4444-555555555555"
+
+
+def _incident(**overrides) -> dict:
+    row = {
+        "id": INCIDENT_ID,
+        "kind": "collector_failure",
+        "dedup_key": "collector_failure:uiuc_faculty",
+        "scope": "uiuc_faculty",
+        "entity_type": None,
+        "entity_id": None,
+        "field": None,
+        "title": "Collector 'uiuc_faculty' failed",
+        "summary": "403 Forbidden",
+        "detail": {"error": "403 Forbidden"},
+        "priority": "normal",
+        "status": "open",
+        "failure_state": "blocked",
+        "assigned_to": None,
+        "occurrence_count": 3,
+        "attempt_count": 0,
+        "last_attempt_at": None,
+        "resolution": None,
+        "resolution_note": None,
+        "resolved_by": None,
+        "resolved_at": None,
+    }
+    row.update(overrides)
+    return row
+
+
+class _Resp:
+    def __init__(self, data, status_code: int = 200):
+        self._data = data
+        self.status_code = status_code
+        self.text = ""
+
+    def json(self):
+        return self._data
+
+    def raise_for_status(self):
+        return None
+
+
+def _install_supabase(
+    monkeypatch,
+    *,
+    incidents=None,
+    events=None,
+    open_rows=None,
+    rpc_result=True,
+    calls=None,
+    patch_status: int = 200,
+    patched=None,
+):
+    """Stub ops.httpx.AsyncClient with a PostgREST-shaped recorder.
+
+    ``calls`` collects every outbound request as
+    ``{"method", "url", "params", "json"}`` so a test can assert on the exact
+    filter, patch body, audit row, or RPC payload the route produced — the
+    only way to prove a detector wrote through the RPC rather than touching
+    the table directly.
+    """
+    incidents = [] if incidents is None else incidents
+    events = [] if events is None else events
+
+    def _record(entry):
+        if calls is not None:
+            calls.append(entry)
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, params=None, headers=None, **kwargs):
+            _record({"method": "GET", "url": url, "params": params or {}})
+            if "ops_incident_events" in url:
+                return _Resp(events)
+            if "ops_incidents" in url:
+                if (params or {}).get("select") in ("kind,priority", "dedup_key"):
+                    return _Resp(open_rows if open_rows is not None else incidents)
+                return _Resp(incidents)
+            return _Resp([])
+
+        async def post(self, url, json=None, headers=None, **kwargs):
+            _record({"method": "POST", "url": url, "json": json})
+            if "/rpc/" in url:
+                return _Resp(rpc_result)
+            return _Resp([], status_code=201)
+
+        async def patch(self, url, params=None, headers=None, json=None, **kwargs):
+            _record({"method": "PATCH", "url": url, "params": params or {}, "json": json})
+            if patched is not None:
+                patched.append(json)
+            base = incidents[0] if incidents else _incident()
+            return _Resp([{**base, **(json or {})}], status_code=patch_status)
+
+    monkeypatch.setattr(ops_mod.httpx, "AsyncClient", _Client)
+
+
+def _admin_env(monkeypatch):
+    monkeypatch.setenv("ADMIN_TOKEN", "admin-ok")
+    monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+
+
+def _hdr(**extra):
+    return {"X-Admin-Token": "admin-ok", **extra}
+
+
+def _rpcs(calls, fn: str) -> list[dict]:
+    return [c["json"] for c in calls if c["method"] == "POST" and c["url"].endswith(f"/rpc/{fn}")]
+
+
+def _events(calls) -> list[dict]:
+    rows: list[dict] = []
+    for c in calls:
+        if c["method"] == "POST" and c["url"].endswith("ops_incident_events"):
+            rows.extend(c["json"])
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Auth + configuration gates
+# ---------------------------------------------------------------------------
+
+class TestOpsAuthGates:
+    """The queue holds every operational failure in the product: no token, no
+    access, and no route may fall back to an unauthenticated read."""
+
+    def test_list_503_when_admin_token_unset(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        assert client.get("/api/admin/ops/incidents").status_code == 503
+
+    def test_list_401_when_wrong_token(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "admin-ok")
+        r = client.get("/api/admin/ops/incidents", headers={"X-Admin-Token": "nope"})
+        assert r.status_code == 401
+
+    def test_detail_and_mutations_are_gated(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "admin-ok")
+        bad = {"X-Admin-Token": "nope"}
+        assert client.get(f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=bad).status_code == 401
+        assert client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=bad, json={"priority": "high"}
+        ).status_code == 401
+        assert client.post(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}/retry", headers=bad
+        ).status_code == 401
+
+    def test_503_when_supabase_unconfigured(self, monkeypatch):
+        # An empty queue would read as "nothing to do" — the exact silent
+        # emptiness this feature removes. Fail loudly instead.
+        monkeypatch.setenv("ADMIN_TOKEN", "admin-ok")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        r = client.get("/api/admin/ops/incidents", headers=_hdr())
+        assert r.status_code == 503
+        assert "not configured" in r.json()["detail"]
+
+    def test_scan_503_without_cron_secret(self, monkeypatch):
+        monkeypatch.delenv("CRON_SECRET", raising=False)
+        assert client.post("/api/cron/ops-scan").status_code == 503
+
+    def test_scan_401_with_wrong_secret(self, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "cron-ok")
+        r = client.post("/api/cron/ops-scan", headers={"Authorization": "Bearer wrong"})
+        assert r.status_code == 401
+        assert client.post("/api/cron/ops-scan").status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /admin/ops/incidents
+# ---------------------------------------------------------------------------
+
+class TestIncidentList:
+    def test_unfiltered_default_returns_every_status(self, monkeypatch):
+        """No filter means NO filter.
+
+        The console's "Any status" option sends neither ``status`` nor
+        ``unresolved_only``; if the route quietly dropped closed incidents,
+        that option would show a queue with rows missing and no indication
+        any were withheld.
+        """
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[_incident()], calls=calls)
+
+        r = client.get("/api/admin/ops/incidents", headers=_hdr())
+        assert r.status_code == 200
+        listing = next(c for c in calls if c["method"] == "GET" and c["params"].get("select") == "*")
+        assert "status" not in listing["params"]
+        assert r.json()["filters"]["excluded_statuses"] == []
+
+    def test_unresolved_only_excludes_closed_incidents(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[_incident()], calls=calls)
+
+        r = client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"unresolved_only": "true"},
+        )
+        assert r.status_code == 200
+        listing = next(c for c in calls if c["method"] == "GET" and c["params"].get("select") == "*")
+        # "Outstanding" is two excluded values, not one selected one.
+        assert listing["params"]["status"] == "not.in.(resolved,suppressed)"
+        body = r.json()
+        assert body["filters"]["unresolved_only"] is True
+        assert body["filters"]["excluded_statuses"] == ["resolved", "suppressed"]
+
+    def test_unresolved_only_with_explicit_status_is_a_400(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[])
+        # Contradictory filters resolve to an error, never to whichever the
+        # implementation happens to apply last.
+        r = client.get(
+            "/api/admin/ops/incidents", headers=_hdr(),
+            params={"unresolved_only": "true", "status": "resolved"},
+        )
+        assert r.status_code == 400
+
+    def test_filters_are_passed_through(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[], calls=calls)
+
+        r = client.get(
+            "/api/admin/ops/incidents",
+            headers=_hdr(),
+            params={
+                "kind": "data_drift", "status": "acknowledged", "priority": "high",
+                "assigned_to": "ana", "scope": "uiuc_faculty", "limit": 10,
+            },
+        )
+        assert r.status_code == 200
+        p = next(c for c in calls if c["method"] == "GET" and c["params"].get("select") == "*")["params"]
+        assert p["kind"] == "eq.data_drift"
+        assert p["status"] == "eq.acknowledged"
+        assert p["priority"] == "eq.high"
+        assert p["assigned_to"] == "eq.ana"
+        assert p["scope"] == "eq.uiuc_faculty"
+        assert p["limit"] == "10"
+
+    def test_unknown_enum_is_400_not_500(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch)
+        for params in ({"kind": "nope"}, {"status": "nope"}, {"priority": "nope"}):
+            r = client.get("/api/admin/ops/incidents", headers=_hdr(), params=params)
+            assert r.status_code == 400
+
+    def test_limit_is_bounded(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch)
+        assert client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"limit": 500}
+        ).status_code == 422
+        assert client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"limit": 0}
+        ).status_code == 422
+
+    def test_rollup_counts_open_work_per_kind(self, monkeypatch):
+        _admin_env(monkeypatch)
+        open_rows = [
+            {"kind": "collector_failure", "priority": "high"},
+            {"kind": "collector_failure", "priority": "normal"},
+            {"kind": "data_drift", "priority": "high"},
+            {"kind": "notification_failure", "priority": "low"},
+        ]
+        _install_supabase(monkeypatch, incidents=[_incident()], open_rows=open_rows)
+
+        body = client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"kind": "collector_failure"}
+        ).json()
+        rollup = body["rollup"]
+        # The rollup ignores the caller's filter on purpose: narrowing to one
+        # kind must never hide that another kind is on fire.
+        assert rollup["open_by_kind"] == {
+            "collector_failure": 2, "data_drift": 1,
+            "notification_failure": 1, "manual_review": 0,
+        }
+        assert rollup["open_total"] == 4
+        assert rollup["truncated"] is False
+
+
+class TestIncidentDetail:
+    def test_returns_incident_with_its_events(self, monkeypatch):
+        _admin_env(monkeypatch)
+        events = [
+            {"action": "detected", "actor": "detector", "to_value": "blocked"},
+            {"action": "assigned", "actor": "ana", "to_value": "ana"},
+        ]
+        _install_supabase(monkeypatch, incidents=[_incident()], events=events)
+
+        body = client.get(f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr()).json()
+        assert body["incident"]["dedup_key"] == "collector_failure:uiuc_faculty"
+        assert body["event_count"] == 2
+        assert [e["action"] for e in body["events"]] == ["detected", "assigned"]
+
+    def test_404_for_unknown_incident(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[])
+        r = client.get(f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr())
+        assert r.status_code == 404
+
+    def test_400_for_non_uuid(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch)
+        assert client.get("/api/admin/ops/incidents/not-a-uuid", headers=_hdr()).status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# PATCH /admin/ops/incidents/{id}
+# ---------------------------------------------------------------------------
+
+class TestIncidentMutation:
+    def test_assign_writes_event_with_real_prior_value_and_actor(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch, incidents=[_incident(assigned_to="ana")], calls=calls,
+        )
+
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}",
+            headers=_hdr(**{"X-Admin-Actor": "bo"}),
+            json={"assigned_to": "cleo"},
+        )
+        assert r.status_code == 200
+        assert r.json()["changed"] == ["assigned_to"]
+        (event,) = _events(calls)
+        assert event["action"] == "assigned"
+        # from_value is read from the row, not echoed from the request.
+        assert event["from_value"] == "ana"
+        assert event["to_value"] == "cleo"
+        assert event["actor"] == "bo"
+
+    def test_unassign_and_default_actor(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[_incident(assigned_to="ana")], calls=calls)
+
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json={"assigned_to": "  "},
+        )
+        assert r.status_code == 200
+        (event,) = _events(calls)
+        assert event["action"] == "unassigned"
+        assert event["actor"] == "operator"
+
+    def test_actor_cannot_claim_the_detector_identity(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[_incident()], calls=calls)
+
+        client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}",
+            headers=_hdr(**{"X-Admin-Actor": "Detector"}),
+            json={"priority": "urgent"},
+        )
+        (event,) = _events(calls)
+        # 'detector' is what the RPCs write for machine sightings; a human
+        # decision must not be able to wear that label.
+        assert event["actor"] == "operator"
+
+    def test_priority_change_is_logged(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        patched: list = []
+        _install_supabase(monkeypatch, incidents=[_incident()], calls=calls, patched=patched)
+
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json={"priority": "urgent"},
+        )
+        assert r.status_code == 200
+        assert patched[0]["priority"] == "urgent"
+        (event,) = _events(calls)
+        assert (event["action"], event["from_value"], event["to_value"]) == (
+            "priority_changed", "normal", "urgent",
+        )
+
+    def test_status_change_is_logged(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[_incident()], calls=calls)
+
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(),
+            json={"status": "investigating"},
+        )
+        assert r.status_code == 200
+        (event,) = _events(calls)
+        assert (event["action"], event["from_value"], event["to_value"]) == (
+            "status_changed", "open", "investigating",
+        )
+
+    def test_resolve_without_resolution_is_400_and_writes_nothing(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[_incident()], calls=calls)
+
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json={"status": "resolved"},
+        )
+        assert r.status_code == 400
+        assert "resolution is required" in r.json()["detail"]
+        # No silent close: the row was never touched.
+        assert [c for c in calls if c["method"] == "PATCH"] == []
+
+    def test_suppress_without_resolution_is_400(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[_incident()])
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json={"status": "suppressed"},
+        )
+        assert r.status_code == 400
+
+    def test_resolve_with_decision_stamps_and_logs(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        patched: list = []
+        _install_supabase(monkeypatch, incidents=[_incident()], calls=calls, patched=patched)
+
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}",
+            headers=_hdr(**{"X-Admin-Actor": "ana"}),
+            json={
+                "status": "resolved", "resolution": "legitimate_change",
+                "resolution_note": "department really did shrink",
+            },
+        )
+        assert r.status_code == 200
+        body = patched[0]
+        assert body["status"] == "resolved"
+        assert body["resolution"] == "legitimate_change"
+        assert body["resolution_note"] == "department really did shrink"
+        assert body["resolved_by"] == "ana"
+        assert body["resolved_at"]
+        (event,) = _events(calls)
+        assert event["action"] == "resolved"
+        assert event["note"] == "legitimate_change"
+
+    def test_reopen_clears_the_previous_decision(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        patched: list = []
+        resolved = _incident(
+            status="resolved", resolution="wont_fix", resolution_note="ignore",
+            resolved_by="ana", resolved_at="2026-08-01T00:00:00+00:00",
+        )
+        _install_supabase(monkeypatch, incidents=[resolved], calls=calls, patched=patched)
+
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json={"status": "open"},
+        )
+        assert r.status_code == 200
+        body = patched[0]
+        # A reopened incident must not inherit the verdict on its old life.
+        assert body["resolution"] is None
+        assert body["resolution_note"] is None
+        assert body["resolved_by"] is None
+        assert body["resolved_at"] is None
+        (event,) = _events(calls)
+        assert (event["action"], event["from_value"], event["to_value"]) == (
+            "reopened", "resolved", "open",
+        )
+
+    def test_reopen_refuses_a_simultaneous_resolution(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[_incident(status="resolved", resolution="fixed")])
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(),
+            json={"status": "open", "resolution": "duplicate"},
+        )
+        assert r.status_code == 400
+
+    def test_resolution_without_terminal_status_is_400(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[_incident()])
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(),
+            json={"resolution": "fixed"},
+        )
+        assert r.status_code == 400
+
+    def test_unknown_enum_values_are_400_not_500(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[_incident()])
+        for payload in (
+            {"status": "closed"},            # feedback's vocabulary, not this one
+            {"priority": "critical"},
+            {"status": "resolved", "resolution": "solved"},
+        ):
+            r = client.patch(
+                f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json=payload,
+            )
+            assert r.status_code == 400, payload
+
+    def test_noop_patch_writes_nothing(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, incidents=[_incident(priority="normal")], calls=calls)
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json={"priority": "normal"},
+        )
+        assert r.status_code == 200
+        assert r.json()["changed"] == []
+        assert [c for c in calls if c["method"] in ("PATCH", "POST")] == []
+
+    def test_404_for_unknown_incident(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[])
+        r = client.patch(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}", headers=_hdr(), json={"priority": "high"},
+        )
+        assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# POST /admin/ops/incidents/{id}/retry
+# ---------------------------------------------------------------------------
+
+class TestIncidentRetry:
+    def test_retry_records_an_attempt_and_investigating_status(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        patched: list = []
+        _install_supabase(
+            monkeypatch,
+            incidents=[_incident(kind="notification_failure", attempt_count=2)],
+            calls=calls, patched=patched,
+        )
+
+        r = client.post(
+            f"/api/admin/ops/incidents/{INCIDENT_ID}/retry",
+            headers=_hdr(**{"X-Admin-Actor": "ana"}),
+        )
+        assert r.status_code == 200
+        body = patched[0]
+        assert body["attempt_count"] == 3
+        assert body["last_attempt_at"]
+        assert body["status"] == "investigating"
+        (event,) = _events(calls)
+        assert event["action"] == "retried"
+        assert event["actor"] == "ana"
+
+    def test_retry_never_resolves_or_claims_delivery(self, monkeypatch):
+        _admin_env(monkeypatch)
+        calls: list = []
+        patched: list = []
+        _install_supabase(
+            monkeypatch,
+            incidents=[_incident(kind="notification_failure", status="investigating")],
+            calls=calls, patched=patched,
+        )
+
+        r = client.post(f"/api/admin/ops/incidents/{INCIDENT_ID}/retry", headers=_hdr())
+        assert r.status_code == 200
+        body = r.json()
+        # An attempt is not an outcome.
+        assert body["delivery_claimed"] is False
+        assert body["resolved"] is False
+        assert body["incident"]["status"] != "resolved"
+        assert body["incident"]["resolution"] is None
+        written = patched[0]
+        assert "resolution" not in written
+        assert "resolved_at" not in written
+        assert "last_success_at" not in written
+        # failure_state is detector evidence; an operator retry cannot flip it
+        # to 'recovered'.
+        assert "failure_state" not in written
+        # An already-triaged incident keeps its status.
+        assert "status" not in written
+        # Nothing was sent: the only outbound writes are the bookkeeping PATCH
+        # and its audit row.
+        assert _rpcs(calls, "record_ops_recovery") == []
+
+    def test_retry_rejected_for_non_retryable_kinds(self, monkeypatch):
+        _admin_env(monkeypatch)
+        for kind in ("data_drift", "manual_review"):
+            _install_supabase(monkeypatch, incidents=[_incident(kind=kind)])
+            r = client.post(f"/api/admin/ops/incidents/{INCIDENT_ID}/retry", headers=_hdr())
+            assert r.status_code == 400, kind
+
+    def test_retry_rejected_on_a_closed_incident(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(
+            monkeypatch,
+            incidents=[_incident(status="resolved", resolution="fixed")],
+        )
+        r = client.post(f"/api/admin/ops/incidents/{INCIDENT_ID}/retry", headers=_hdr())
+        assert r.status_code == 409
+
+    def test_retry_404_for_unknown_incident(self, monkeypatch):
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[])
+        r = client.post(f"/api/admin/ops/incidents/{INCIDENT_ID}/retry", headers=_hdr())
+        assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# POST /api/cron/ops-scan — the detector
+# ---------------------------------------------------------------------------
+
+def _scan_env(monkeypatch):
+    monkeypatch.setenv("CRON_SECRET", "cron-ok")
+    monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+
+
+def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None, tracking=None):
+    """Point the detector at tmp artifacts; omit one to simulate it missing."""
+    status_path = tmp_path / "collector_status.json"
+    history_path = tmp_path / "collector_status_history.jsonl"
+    tracking_path = tmp_path / "professor_tracking.json"
+    if snapshot is not None:
+        status_path.write_text(json.dumps(snapshot), encoding="utf-8")
+    if history is not None:
+        history_path.write_text(
+            "".join(json.dumps(e) + "\n" for e in history), encoding="utf-8"
+        )
+    if tracking is not None:
+        tracking_path.write_text(json.dumps(tracking), encoding="utf-8")
+    monkeypatch.setattr(ops_mod, "_COLLECTOR_STATUS_PATH", status_path)
+    monkeypatch.setattr(ops_mod, "_COLLECTOR_HISTORY_PATH", history_path)
+    monkeypatch.setattr(ops_mod, "_TRACKING_PATH", tracking_path)
+
+
+def _run_scan():
+    return client.post("/api/cron/ops-scan", headers={"Authorization": "Bearer cron-ok"})
+
+
+class TestOpsScanCollectors:
+    def test_errored_source_opens_an_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "2026-08-07T03:00:00+00:00",
+            "sources": {
+                "uiuc_faculty": {"status": "error", "error": "403 Forbidden (WAF)", "fetched": 0},
+            },
+        })
+
+        r = _run_scan()
+        assert r.status_code == 200
+        (payload,) = _rpcs(calls, "record_ops_incident")
+        assert payload["p_kind"] == "collector_failure"
+        assert payload["p_dedup_key"] == "collector_failure:uiuc_faculty"
+        assert payload["p_scope"] == "uiuc_faculty"
+        assert payload["p_failure_state"] == "blocked"
+        assert payload["p_detail"]["error"] == "403 Forbidden (WAF)"
+        assert payload["p_detail"]["run_timestamp"] == "2026-08-07T03:00:00+00:00"
+        assert r.json()["opened"] == 1
+
+    def test_failure_state_classification_and_truncation(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {
+                "a_blocked": {"status": "error", "error": "Cloudflare challenge page"},
+                "b_timeout": {"status": "error", "error": "Read timed out after 30s"},
+                "c_other": {"status": "error", "error": "x" * 900},
+            },
+        })
+        _run_scan()
+
+        by_key = {p["p_dedup_key"]: p for p in _rpcs(calls, "record_ops_incident")}
+        assert by_key["collector_failure:a_blocked"]["p_failure_state"] == "blocked"
+        assert by_key["collector_failure:b_timeout"]["p_failure_state"] == "timed_out"
+        other = by_key["collector_failure:c_other"]
+        assert other["p_failure_state"] == "failed"
+        # Evidence is bounded: an incident payload is not a log sink.
+        assert len(other["p_detail"]["error"]) <= 300
+
+    def test_ok_source_records_a_verified_recovery(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch, open_rows=[{"dedup_key": "collector_failure:uiuc_faculty"}], calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"uiuc_faculty": {"status": "ok", "fetched": 120}},
+        })
+
+        r = _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_recovery")
+        assert payload["p_dedup_key"] == "collector_failure:uiuc_faculty"
+        assert payload["p_auto_resolve"] is True
+        assert payload["p_note"] == "verified successful run"
+        assert r.json()["recovered"] == 1
+        assert _rpcs(calls, "record_ops_incident") == []
+
+    def test_healthy_source_without_an_incident_makes_no_rpc_call(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t", "sources": {"fine": {"status": "ok", "fetched": 10}},
+        })
+        _run_scan()
+        assert _rpcs(calls, "record_ops_recovery") == []
+        assert _rpcs(calls, "record_ops_incident") == []
+
+    def test_fatal_error_is_surfaced_as_an_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t", "fatal_error": "MemoryError during assembly", "sources": {},
+        })
+        _run_scan()
+
+        (payload,) = _rpcs(calls, "record_ops_incident")
+        assert payload["p_dedup_key"] == "collector_failure:refresh_run"
+        assert payload["p_priority"] == "urgent"
+        assert "MemoryError" in payload["p_detail"]["error"]
+
+
+class TestOpsScanDrift:
+    def test_large_fetched_drop_opens_a_high_priority_drift_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            snapshot={
+                "timestamp": "2026-08-07T03:00:00+00:00",
+                "sources": {"purdue": {"status": "ok", "fetched": 40}},
+            },
+            history=[
+                {"t": "2026-08-06T03:00:00+00:00", "sources": {"purdue": {"fetched": 200}}},
+                # The current run appends its own row; comparing against it
+                # would always show zero change.
+                {"t": "2026-08-07T03:00:00+00:00", "sources": {"purdue": {"fetched": 40}}},
+            ],
+        )
+
+        r = _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_incident")
+        assert payload["p_kind"] == "data_drift"
+        assert payload["p_dedup_key"] == "data_drift:purdue:fetched"
+        assert payload["p_priority"] == "high"
+        detail = payload["p_detail"]
+        assert detail["metric"] == "fetched"
+        assert detail["previous"] == 200
+        assert detail["current"] == 40
+        assert detail["threshold_pct"] == -30.0
+        assert r.json()["detectors"]["data_drift"]["drifted"] == 1
+
+    def test_small_or_shallow_drops_are_ignored(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            snapshot={"timestamp": "now", "sources": {
+                # 50% down but only 6 records: a tiny department wobbling.
+                "tiny": {"status": "ok", "fetched": 6},
+                # 100 records down but only 20%: within normal churn.
+                "shallow": {"status": "ok", "fetched": 400},
+            }},
+            history=[{"t": "before", "sources": {
+                "tiny": {"fetched": 12}, "shallow": {"fetched": 500},
+            }}],
+        )
+        _run_scan()
+        assert _rpcs(calls, "record_ops_incident") == []
+
+    def test_recovered_counts_never_auto_resolve_a_drift_alert(self, monkeypatch, tmp_path):
+        """A later successful run must NOT suppress a drift alert (027 §17).
+
+        The source below runs green and its count is back to normal — the very
+        situation that would silently clear the alert if drift recoveries were
+        auto-resolved. The only recovery permitted here is the collector-level
+        one; the drift dedup_key must be left for a human.
+        """
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[
+            {"dedup_key": "collector_failure:purdue"},
+            {"dedup_key": "data_drift:purdue:fetched"},
+        ], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            snapshot={"timestamp": "now", "sources": {"purdue": {"status": "ok", "fetched": 200}}},
+            history=[{"t": "before", "sources": {"purdue": {"fetched": 40}}}],
+        )
+        _run_scan()
+
+        recoveries = _rpcs(calls, "record_ops_recovery")
+        assert [r["p_dedup_key"] for r in recoveries] == ["collector_failure:purdue"]
+        assert all(r["p_auto_resolve"] is True for r in recoveries)
+        assert not any("data_drift" in r["p_dedup_key"] for r in recoveries)
+
+
+class TestOpsScanProfessorTracking:
+    def test_not_release_ready_opens_an_incident_with_failing_reasons(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, tracking={
+            "schema_version": 2,
+            "profiles": {},
+            "release": {
+                "release_ready": False,
+                "freshness_pct": 81.2,
+                "fully_stale_school_count": 2,
+                "fully_stale_schools": ["ucsd", "unc"],
+                "computed_at": "2026-08-06T11:02:08+00:00",
+                "checks": {
+                    "schema_v2": True, "events_valid": True,
+                    "freshness_min_pct": False, "no_fully_stale_school": False,
+                    "refresh_ok": True,
+                },
+            },
+        })
+
+        _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_incident")
+        assert payload["p_kind"] == "data_drift"
+        assert payload["p_dedup_key"] == "data_drift:professor_tracking:release_ready"
+        assert payload["p_detail"]["failing_checks"] == [
+            "freshness_min_pct", "no_fully_stale_school",
+        ]
+        assert payload["p_detail"]["freshness_pct"] == 81.2
+
+    def test_release_ready_again_needs_human_confirmation(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{"dedup_key": "data_drift:professor_tracking:release_ready"}],
+            calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path, tracking={
+            "schema_version": 2,
+            "release": {"release_ready": True, "checks": {"schema_v2": True}},
+        })
+
+        _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_recovery")
+        assert payload["p_dedup_key"] == "data_drift:professor_tracking:release_ready"
+        # Evidence, not a verdict: a passing gate does not vouch for what
+        # shipped while it was failing.
+        assert payload["p_auto_resolve"] is False
+
+
+class TestOpsScanResilience:
+    def test_missing_artifacts_are_reported_not_fatal(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path)  # nothing on disk at all
+
+        r = _run_scan()
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["opened"] == 0
+        detectors = {s["detector"] for s in body["skipped"]}
+        assert detectors == {"collector_failure", "data_drift", "professor_tracking"}
+        assert _rpcs(calls, "record_ops_incident") == []
+
+    def test_corrupt_snapshot_is_skipped_not_a_500(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        _install_supabase(monkeypatch, open_rows=[])
+        _write_artifacts(monkeypatch, tmp_path)
+        (tmp_path / "collector_status.json").write_text("{not json", encoding="utf-8")
+
+        r = _run_scan()
+        assert r.status_code == 200
+        reasons = {s["detector"]: s["reason"] for s in r.json()["skipped"]}
+        assert "unreadable" in reasons["collector_failure"]
+
+    def test_missing_history_skips_only_drift(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t", "sources": {"x": {"status": "error", "error": "boom"}},
+        })
+
+        body = _run_scan().json()
+        # The collector detector still did its job.
+        assert len(_rpcs(calls, "record_ops_incident")) == 1
+        assert any(s["detector"] == "data_drift" for s in body["skipped"])
+
+    def test_rpc_failure_is_counted_not_raised(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+
+        class _Broken:
+            def __init__(self, *a, **k):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+            async def get(self, *a, **k):
+                return _Resp([])
+
+            async def post(self, *a, **k):
+                return _Resp({"message": "permission denied"}, status_code=403)
+
+        monkeypatch.setattr(ops_mod.httpx, "AsyncClient", _Broken)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t", "sources": {"x": {"status": "error", "error": "boom"}},
+        })
+
+        r = _run_scan()
+        assert r.status_code == 200
+        body = r.json()
+        assert body["opened"] == 0  # nothing was actually recorded
+        assert body["errors"] and body["errors"][0]["status"] == 403
+
+    def test_scan_skips_without_supabase_env(self, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "cron-ok")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        r = _run_scan()
+        assert r.status_code == 200
+        assert r.json()["status"] == "skipped"
+
+
+# ---------------------------------------------------------------------------
+# The reminders cron feeds the same queue (backend/routes/push.py)
+# ---------------------------------------------------------------------------
+
+_DUE = {
+    "device_id": "dev-1", "opportunity_id": "opp-42",
+    "remind_at": "2026-08-01", "interaction_type": "applied", "notes": "",
+}
+_SUB = {
+    "device_id": "dev-1",
+    # A push endpoint is a bearer-capability URL: it must never reach the
+    # incident payload.
+    "endpoint": "https://push.example.test/wpush/v2/SECRET-CAPABILITY-TOKEN",
+    "p256dh": "k", "auth": "a",
+}
+
+
+def _install_cron_stubs(monkeypatch, *, webpush_impl=None, open_keys=(), calls=None,
+                        rpc_raises=False):
+    import httpx
+    import pywebpush
+
+    from backend.routes import push as push_mod
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, params=None, headers=None, **kwargs):
+            if "/auth/v1/admin/users/" in url:
+                return _Resp({}, status_code=404)
+            if "ops_incidents" in url:
+                return _Resp([{"dedup_key": k} for k in open_keys])
+            if "push_subscriptions" in url:
+                return _Resp([_SUB])
+            return _Resp([_DUE])
+
+        async def post(self, url, json=None, headers=None, **kwargs):
+            if rpc_raises:
+                raise RuntimeError("supabase unreachable")
+            if calls is not None:
+                calls.append({"url": url, "json": json})
+            return _Resp(True)
+
+        async def patch(self, url, **kwargs):
+            return _Resp({}, status_code=204)
+
+        async def delete(self, url, **kwargs):
+            return _Resp({}, status_code=204)
+
+    async def _passthrough(**kwargs):
+        return kwargs["webpush_func"](
+            subscription_info=kwargs["subscription_info"], data=kwargs["data"],
+            vapid_private_key=kwargs["vapid_private_key"], vapid_claims=kwargs["vapid_claims"],
+        )
+
+    monkeypatch.setenv("CRON_SECRET", "cron-ok")
+    monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "priv")
+    monkeypatch.setenv("VAPID_PUBLIC_KEY", "pub")
+    monkeypatch.setenv("VAPID_SUBJECT", "mailto:ops@example.com")
+    monkeypatch.delenv("RESEND_API_KEY", raising=False)
+    monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+    monkeypatch.setattr(pywebpush, "webpush", webpush_impl or (lambda **kw: None))
+    monkeypatch.setattr(push_mod, "send_webpush_safely", _passthrough)
+
+
+def _run_reminders():
+    return client.get("/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"})
+
+
+class TestReminderCronIncidents:
+    """A failed reminder used to live only in this run's response counter."""
+
+    def test_provider_rejection_records_an_incident_without_secrets(self, monkeypatch):
+        from pywebpush import WebPushException
+
+        class _Rejected:
+            status_code = 500
+
+        def _boom(**kwargs):
+            raise WebPushException("rejected", response=_Rejected())
+
+        calls: list = []
+        _install_cron_stubs(monkeypatch, webpush_impl=_boom, calls=calls)
+
+        body = _run_reminders().json()
+        assert body["failed"] == 1
+        assert body["incidents_recorded"] == 1
+        assert body["incident_errors"] == 0
+
+        (rpc,) = (c["json"] for c in calls if c["url"].endswith("/rpc/record_ops_incident"))
+        assert rpc["p_kind"] == "notification_failure"
+        assert rpc["p_dedup_key"] == "notification_failure:dev-1:opp-42"
+        # The provider's status was read and discarded before W15; it is the
+        # most useful triage field there is.
+        assert rpc["p_detail"]["provider_status"] == 500
+        assert rpc["p_detail"]["error_category"] == "provider_error"
+        # No capability URL, no message body, anywhere in the payload.
+        serialized = json.dumps(rpc)
+        assert "SECRET-CAPABILITY-TOKEN" not in serialized
+        assert "wpush" not in serialized
+        assert "Reminder due" not in serialized
+        assert len(rpc["p_detail"]["endpoint_fingerprint"]) == 16
+
+    def test_timeout_and_blocked_endpoint_carry_their_failure_state(self, monkeypatch):
+        from backend.lib.safe_webpush import WebPushDeliveryTimeout
+        from backend.routes import push as push_mod
+
+        calls: list = []
+        _install_cron_stubs(monkeypatch, calls=calls)
+
+        async def _timeout(**_kwargs):
+            raise WebPushDeliveryTimeout("deadline exceeded")
+
+        monkeypatch.setattr(push_mod, "send_webpush_safely", _timeout)
+        assert _run_reminders().json()["failed"] == 1
+        (rpc,) = (c["json"] for c in calls if c["url"].endswith("/rpc/record_ops_incident"))
+        assert rpc["p_failure_state"] == "timed_out"
+        assert rpc["p_detail"]["error_category"] == "delivery_timeout"
+
+    def test_delivery_recovers_an_open_incident(self, monkeypatch):
+        calls: list = []
+        _install_cron_stubs(
+            monkeypatch, calls=calls, open_keys=("notification_failure:dev-1:opp-42",),
+        )
+
+        body = _run_reminders().json()
+        assert body["sent"] == 1
+        assert body["incidents_recovered"] == 1
+        (rpc,) = (c["json"] for c in calls if c["url"].endswith("/rpc/record_ops_recovery"))
+        assert rpc["p_dedup_key"] == "notification_failure:dev-1:opp-42"
+        # The evidence IS the outcome here: the notification was delivered.
+        assert rpc["p_auto_resolve"] is True
+
+    def test_healthy_run_without_history_makes_no_rpc_calls(self, monkeypatch):
+        calls: list = []
+        _install_cron_stubs(monkeypatch, calls=calls)
+        body = _run_reminders().json()
+        assert body["sent"] == 1
+        assert calls == []  # nothing failed and nothing was open to recover
+
+    def test_incident_write_failure_never_breaks_the_cron(self, monkeypatch):
+        from pywebpush import WebPushException
+
+        def _boom(**kwargs):
+            raise WebPushException("rejected")
+
+        _install_cron_stubs(monkeypatch, webpush_impl=_boom, rpc_raises=True)
+
+        r = _run_reminders()
+        assert r.status_code == 200
+        body = r.json()
+        # The run's own counters stay authoritative and the batch completes.
+        assert body["status"] == "ok"
+        assert body["failed"] == 1
+        assert body["incidents_recorded"] == 0
+        assert body["incident_errors"] == 1
+
+
+class TestReleaseBlockReader:
+    def test_tail_read_finds_the_block_in_a_large_artifact(self, tmp_path):
+        """The real artifact is ~30 MB; the reader must not parse all of it."""
+        path = tmp_path / "professor_tracking.json"
+        filler = {f"prof:{i}": {"school": "x" * 200} for i in range(2000)}
+        path.write_text(
+            json.dumps({"schema_version": 2, "profiles": filler,
+                        "release": {"release_ready": True, "checks": {"schema_v2": True}}}),
+            encoding="utf-8",
+        )
+        assert path.stat().st_size > ops_mod._TRACKING_TAIL_BYTES
+
+        block, err = ops_mod._read_release_block(path)
+        assert err is None
+        assert block["release_ready"] is True
+
+    def test_absent_block_reports_instead_of_guessing(self, tmp_path):
+        path = tmp_path / "professor_tracking.json"
+        path.write_text(json.dumps({"schema_version": 1, "profiles": {}}), encoding="utf-8")
+        block, err = ops_mod._read_release_block(path)
+        assert block is None
+        assert "release block" in err

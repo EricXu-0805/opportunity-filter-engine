@@ -29,6 +29,10 @@ function AdminInner() {
     savedSearchHealth,
     feedbackInbox,
     ordersInbox,
+    tickets,
+    ops,
+    actor,
+    setActor,
     loading,
     error,
     activeFieldFilter,
@@ -66,6 +70,10 @@ function AdminInner() {
       savedSearchHealth={savedSearchHealth}
       feedbackInbox={feedbackInbox}
       ordersInbox={ordersInbox}
+      tickets={tickets}
+      ops={ops}
+      actor={actor}
+      onActorChange={setActor}
       loading={loading}
       error={error}
       activeFieldFilter={activeFieldFilter}
