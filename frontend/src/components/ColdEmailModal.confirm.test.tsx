@@ -24,7 +24,7 @@
  * means here exactly what it means in the browser.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
   const stableT = (key: string, vars?: Record<string, string | number>) => {
@@ -638,5 +638,69 @@ describe('ColdEmailModal — evidence honesty (grounding)', () => {
     await act(async () => { show(true, 'opp-B'); });
     await openedOn('opp-B');
     expect(screen.queryByTestId('grounding-notice')).toBeNull();
+  });
+});
+
+describe('ColdEmailModal — source freshness', () => {
+  /** The backend has always computed `source_freshness` ("the UI must not
+   *  present the draft as current outreach") and nothing read it, so a draft
+   *  to a professor whose record was retired looked exactly like a draft to a
+   *  currently-listed one. 311 faculty records in the corpus are inactive and
+   *  still carry a contact_email. */
+  it('warns when the source record was retired', async () => {
+    mockGetVariants.mockImplementation(async (_p: unknown, oppId: string) => ({
+      variants: [variantFor(oppId)],
+      source_freshness: 'inactive',
+    }));
+    renderModal();
+    await openedOn('opp-A');
+    expect(screen.getByTestId('freshness-notice')).toBeInTheDocument();
+    expect(screen.getByText('coldEmail.sourceInactiveTitle')).toBeInTheDocument();
+  });
+
+  it('nudges re-verification when the record is past the TTL', async () => {
+    mockGetVariants.mockImplementation(async (_p: unknown, oppId: string) => ({
+      variants: [variantFor(oppId)],
+      source_freshness: 'stale',
+    }));
+    renderModal();
+    await openedOn('opp-A');
+    expect(screen.getByTestId('freshness-notice')).toBeInTheDocument();
+    expect(screen.getByText('coldEmail.sourceStaleTitle')).toBeInTheDocument();
+  });
+
+  it('stays silent for a fresh record, an unknown one, and older responses', async () => {
+    for (const value of ['fresh', 'unknown', undefined]) {
+      mockGetVariants.mockImplementation(async (_p: unknown, oppId: string) => ({
+        variants: [variantFor(oppId)],
+        ...(value === undefined ? {} : { source_freshness: value }),
+      }));
+      const { show } = renderModal();
+      await openedOn('opp-A');
+      expect(
+        screen.queryByTestId('freshness-notice'),
+        `source_freshness=${String(value)} must not warn`,
+      ).toBeNull();
+      await act(async () => { show(false, 'opp-A'); });
+      cleanup();
+    }
+  });
+
+  it('does not carry one opportunity’s warning onto the next', async () => {
+    mockGetVariants.mockImplementation(async (_p: unknown, oppId: string) => ({
+      variants: [variantFor(oppId)],
+      source_freshness: oppId === 'opp-A' ? 'inactive' : 'fresh',
+    }));
+    const { show } = renderModal();
+    await openedOn('opp-A');
+    expect(screen.getByTestId('freshness-notice')).toBeInTheDocument();
+
+    await act(async () => { show(false, 'opp-A'); });
+    await act(async () => { show(true, 'opp-B'); });
+    await openedOn('opp-B');
+    expect(
+      screen.queryByTestId('freshness-notice'),
+      'a retired A must not make a live B look retired',
+    ).toBeNull();
   });
 });
