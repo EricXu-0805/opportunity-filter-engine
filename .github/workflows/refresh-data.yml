@@ -126,11 +126,14 @@ jobs:
             # degrades to None when it is absent — which looks exactly like an
             # unreachable directory, so a missing browser silently collects
             # nothing while the source still reports "ok". This used to be a
-            # hardcoded alternation here and drifted: 11 render-mode schools
-            # (asu, brown, casewestern, colostate, drexel, indiana, lsu, rpi,
-            # uky, unl, utdallas — 44 departments) were never listed, so their
-            # render departments never collected on any scheduled run. Ask the
-            # school configs instead.
+            # hardcoded alternation here, and 11 render-mode schools (asu,
+            # brown, casewestern, colostate, drexel, indiana, lsu, rpi, uky,
+            # unl, utdallas) were missing from it. They collected anyway, but
+            # only by luck: the install is per-RUN, and every shard happened
+            # to contain at least one listed school. One school moving days —
+            # or a shard-table edit like the one above — and their departments
+            # go quiet with no signal. Ask the school configs instead, so the
+            # answer is right by construction rather than by coincidence.
             if [[ "$(python3 scripts/refresh_rotation.py \
                      --schools "$SHARD" --allow-full --needs-browser)" == "true" ]]; then
               pip install playwright

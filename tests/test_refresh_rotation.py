@@ -98,11 +98,13 @@ def test_target_shards_are_bounded_to_the_authorized_selection():
 
 class TestBrowserDetection:
     """The workflow installs Chromium only when the shard needs it. That list
-    used to be a hardcoded alternation in refresh-data.yml and drifted: 11
-    render-mode schools were never in it, so on every scheduled run their
-    render departments silently collected nothing (_render_soup lazy-imports
-    Playwright and degrades to None, which is indistinguishable from an
-    unreachable directory, while the source still reports "ok")."""
+    used to be a hardcoded alternation in refresh-data.yml missing 11
+    render-mode schools; they collected anyway only because the install is
+    per-RUN and every shard happened to contain a listed school. Nothing
+    enforced that coincidence, and the failure it guards is silent:
+    _render_soup lazy-imports Playwright and degrades to None, which is
+    indistinguishable from an unreachable directory, while the source still
+    reports "ok". Derived from the configs, it cannot drift."""
 
     def test_every_render_config_is_detected(self):
         import importlib

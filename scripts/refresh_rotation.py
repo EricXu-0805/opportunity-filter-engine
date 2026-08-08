@@ -190,14 +190,15 @@ def _config_needs_browser(school: dict) -> bool:
 def browser_schools() -> frozenset[str]:
     """Slugs whose collectors need headless Chromium, derived from the configs.
 
-    The workflow used to carry this as a hardcoded alternation, and it drifted:
-    11 render-mode schools (asu, brown, casewestern, colostate, drexel,
-    indiana, lsu, rpi, uky, unl, utdallas — 44 departments, 1,350 committed
-    records) were never in it, so on every scheduled run their render
-    departments silently collected nothing. faculty_graph's ``_render_soup``
-    lazy-imports Playwright and degrades to None when it is absent, which
-    looks identical to an unreachable directory, and the source still reports
-    "ok" on whatever its other departments returned.
+    The workflow used to carry this as a hardcoded alternation, and 11
+    render-mode schools (asu, brown, casewestern, colostate, drexel, indiana,
+    lsu, rpi, uky, unl, utdallas) were missing from it. They collected anyway,
+    but only by luck: the install is per-RUN, and every shard happened to
+    contain at least one listed school. Nothing enforced that. A school moving
+    days, or an edit to the shard table, and those departments go quiet with
+    no signal — ``_render_soup`` lazy-imports Playwright and degrades to None
+    when it is absent, which looks identical to an unreachable directory, and
+    the source still reports "ok" on whatever its other departments returned.
     """
     import importlib
     import pkgutil
