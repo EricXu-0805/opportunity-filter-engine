@@ -61,6 +61,13 @@ _REQUIRED_FUNDING_SITEMAPS = frozenset(
             "https://ucsb.my.site.com/urca/s/"
             "sitemap-outfunds__funding_program__c-1.xml"
         ),
+    }
+)
+# Salesforce lists the weekly delta only while it has recent changes to
+# report; the ``-1`` enumeration above is always the full record set. Demand
+# the delta and every quiet week reads as schema drift.
+_OPTIONAL_FUNDING_SITEMAPS = frozenset(
+    {
         (
             "https://ucsb.my.site.com/urca/s/"
             "sitemap-outfunds__funding_program__c-weekly.xml"
@@ -192,6 +199,7 @@ def scrape_projects_with_evidence() -> tuple[list[dict], dict]:
             location
             for location in index_locations
             if location in _REQUIRED_FUNDING_SITEMAPS
+            or location in _OPTIONAL_FUNDING_SITEMAPS
         ]
         unexpected_locations.extend(
             location
