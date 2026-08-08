@@ -329,8 +329,11 @@ jobs:
 
       # The refresh failed silently 7 runs in a row (6/25–7/02) before anyone
       # noticed — cron failures send no notification by default.
+      # `failure()` alone still left one hole: hitting timeout-minutes cancels
+      # the job rather than failing it, so the 5-hour timeouts on 08-01, 08-03
+      # and 08-07 alerted nobody either.
       - name: Alert operator on failure
-        if: failure()
+        if: failure() || cancelled()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}

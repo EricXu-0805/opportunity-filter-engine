@@ -181,3 +181,20 @@ class TestWorkflowWiring:
                 validate_shard_selection(None, national=True)
                 continue
             validate_shard_selection(set(shard.split(",")))
+
+    def test_refresh_workflow_alerts_when_the_job_is_cancelled(self):
+        """Exceeding timeout-minutes cancels the job; it does not fail it.
+
+        `if: failure()` therefore skipped the operator alert on 2026-08-01,
+        08-03 and 08-07 — three five-hour runs that produced nothing and
+        told nobody. Only `cancelled()` covers that path.
+        """
+        job = next(iter(self._workflow("refresh-data.yml")["jobs"].values()))
+        alert = next(
+            step
+            for step in job["steps"]
+            if "Alert operator" in str(step.get("name", ""))
+        )
+        condition = str(alert.get("if", ""))
+        assert "failure()" in condition
+        assert "cancelled()" in condition
