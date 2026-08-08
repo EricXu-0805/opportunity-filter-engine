@@ -11,8 +11,16 @@ name: Refresh Opportunity Data
 #   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh | ~60-105 min | ~110-185 min |
 #   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse | ~65-115 min | ~120-200 min |
 #   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl | ~80-125 min | ~130-205 min |
-#   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas,ucd | ~60-105 min | ~115-200 min |
+#   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas | ~60-105 min | ~115-200 min |
 #   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
+#
+# ucd is NOT in the rotation: the engine requires it as an isolated
+# single-school shard (its WAF-degraded evidence must not ride a multi-school
+# publication), and hosted-runner scrapes of UC Davis are Cloudflare-blocked
+# anyway — its corpus rides carry-forward. Refresh it deliberately with a
+# manual dispatch (schools=ucd, deep=true), ideally from a residential IP
+# via a local run. test_ops_plumbing pins every shard line below to the
+# engine's shard validation so this table can't drift into a crash again.
 #
 # First-week column = the monthly per-profile enrichment (OFE_ENRICH_PROFILES)
 # now runs on each school's OWN shard day in the first week of the month.
@@ -85,7 +93,7 @@ jobs:
               3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh" ;;
               4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse" ;;
               5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl" ;;
-              6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas,ucd" ;;
+              6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas" ;;
               7) SHARD="national" ;;
             esac
             echo "shard=$SHARD" >> $GITHUB_OUTPUT
