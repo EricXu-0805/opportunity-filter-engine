@@ -127,6 +127,20 @@ _HUMANITIES_KEYWORDS = frozenset({
 })
 
 
+_SHORT_ENTRY_PATTERNS: dict[str, re.Pattern[str]] = {}
+
+
+def _entry_pattern(kw: str) -> re.Pattern[str]:
+    if kw not in _SHORT_ENTRY_PATTERNS:
+        if kw == "bio":
+            _SHORT_ENTRY_PATTERNS[kw] = re.compile(r"(?<!\w)bio")
+        else:
+            _SHORT_ENTRY_PATTERNS[kw] = re.compile(
+                r"(?<!\w)" + re.escape(kw) + r"(?!\w)"
+            )
+    return _SHORT_ENTRY_PATTERNS[kw]
+
+
 def _detect_lab_type(opportunity: dict) -> LabType:
     """Classify an opportunity as wet / dry / humanities lab.
 
@@ -146,7 +160,31 @@ def _detect_lab_type(opportunity: dict) -> LabType:
         if not text:
             return 0
         lower = text.lower()
-        return sum(1 for kw in vocab if kw in lower)
+        # Longest entry first, blanking each match: nested entries must not
+        # stack on one span — "mathematical biology" is ONE wet signal, not
+        # two ("biology" + "bio"), and "microbiology" is one, not three.
+        # The stacking systematically inflated wet scores (that vocabulary
+        # is nesting-heavy) and routed theory groups to bench-technique
+        # guidance (faculty-ece-817eb026, observed live 2026-08-07).
+        hits = 0
+        for kw in sorted(vocab, key=lambda k: (-len(k), k)):
+            if len(kw) <= 4:
+                # Short entries only count as standalone words: bare
+                # substrings turn person/school names into phantom signals —
+                # "law" and "aws" both live inside "Lawson", "irb" inside
+                # "Anirban", and every University of Delaware record carried
+                # a humanities point. "bio" alone keeps prefix rights
+                # ("biophysics", "bioengineering" are real wet signals not in
+                # the vocabulary as words) but must not fire mid-word
+                # ("autobiographical").
+                pattern = _entry_pattern(kw)
+                if pattern.search(lower):
+                    hits += 1
+                    lower = pattern.sub("\x00", lower)
+            elif kw in lower:
+                hits += 1
+                lower = lower.replace(kw, "\x00")
+        return hits
 
     # Compose signal corpora with descending weight.
     department = (opportunity.get("department") or "").lower()
