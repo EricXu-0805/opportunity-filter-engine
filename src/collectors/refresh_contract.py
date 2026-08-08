@@ -293,7 +293,6 @@ def evaluate_refresh_summary(
                 )
             elif (
                 attempted <= 0
-                or loaded <= 0
                 or sources_expected <= 0
                 or seed_pages_expected <= 0
                 or loaded > attempted
@@ -312,22 +311,31 @@ def evaluate_refresh_summary(
                 # behind an unreachable seed are preserved untouched. Vetoing
                 # the release added no protection and took the whole shard
                 # down with one third-party bot wall.
-                if sources_loaded != sources_expected:
+                if loaded == 0:
                     warnings.append(
-                        f"deep source {key} crawled {sources_loaded}/"
-                        f"{sources_expected} configured crawl sources; the "
-                        "unreached ones keep their previous records"
+                        f"deep source {key} loaded no live page at all "
+                        f"(0/{seed_pages_expected} seed pages, "
+                        f"0/{sources_expected} crawl sources); its records "
+                        "keep the previous run's verification and this run "
+                        "cannot claim to have seen the school"
                     )
-                if (
-                    seed_pages_loaded != seed_pages_expected
-                    or seed_pages_failed != 0
-                ):
-                    warnings.append(
-                        f"deep source {key} loaded "
-                        f"{seed_pages_loaded}/{seed_pages_expected} configured "
-                        f"seed pages ({seed_pages_failed} failed); those "
-                        "sources kept their previous records"
-                    )
+                else:
+                    if sources_loaded != sources_expected:
+                        warnings.append(
+                            f"deep source {key} crawled {sources_loaded}/"
+                            f"{sources_expected} configured crawl sources; the "
+                            "unreached ones keep their previous records"
+                        )
+                    if (
+                        seed_pages_loaded != seed_pages_expected
+                        or seed_pages_failed != 0
+                    ):
+                        warnings.append(
+                            f"deep source {key} loaded "
+                            f"{seed_pages_loaded}/{seed_pages_expected} "
+                            f"configured seed pages ({seed_pages_failed} "
+                            "failed); those sources kept their previous records"
+                        )
             crawl_errors = info.get("crawl_errors")
             if crawl_errors:
                 warnings.append(

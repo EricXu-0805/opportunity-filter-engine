@@ -127,10 +127,25 @@ def test_quick_faculty_only_school_cannot_report_vacuous_success():
     assert any("no mandatory producer" in reason for reason in verdict["reasons"])
 
 
-def test_deep_campus_graph_total_live_outage_blocks_seed_only_success():
-    graph = _graph_ok()
+def test_deep_campus_graph_total_live_outage_is_degraded_not_blocked():
+    """Measured umich, 2026-08-08: 0/9 seeds, 0 live pages, 6/6 sources dark.
+
+    Every Michigan campus_graph seed host answers the Cloudflare managed
+    challenge, so this school's crawl cannot come back non-empty again. Its
+    12 seed records still emit from config with seed_page_verified=False,
+    and merge_into_processed hands them back their previous status,
+    is_active and last_verified — the corpus keeps saying exactly what it
+    said before. Blocking here withheld fifteen other schools' fresh data
+    for three weeks and changed nothing about Michigan's.
+    """
+    graph = _graph_ok(fetched=12)
+    graph["crawl_sources_expected"] = 6
     graph["crawl_sources_loaded"] = 0
+    graph["live_pages_attempted"] = 9
     graph["live_pages_loaded"] = 0
+    graph["seed_pages_expected"] = 9
+    graph["seed_pages_loaded"] = 0
+    graph["seed_pages_failed"] = 9
 
     verdict = evaluate_refresh_summary(
         _summary(
@@ -145,8 +160,9 @@ def test_deep_campus_graph_total_live_outage_blocks_seed_only_success():
         deep=True,
     )
 
-    assert verdict["ready"] is False
-    assert any("live-crawl" in reason for reason in verdict["reasons"])
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert any("loaded no live page at all" in w for w in verdict["warnings"])
 
 
 def test_deep_campus_graph_partial_configured_seed_fetch_is_degraded_only():
