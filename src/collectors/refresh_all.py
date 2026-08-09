@@ -1741,6 +1741,8 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as e:
         logger.warning("print_summary failed (non-fatal): %s", e)
     release = summary.get("release") or {}
+    for warning in release.get("warnings") or ():
+        logger.warning("REFRESH RELEASE DEGRADED: %s", warning)
     if release.get("ready") is not True:
         for reason in release.get("reasons") or ["release contract did not pass"]:
             logger.error("REFRESH RELEASE BLOCKED: %s", reason)

@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 from src.evidence import stamp_inferred
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 
-from .ucb_common import _is_person_name
+from .ucb_common import _ca_bundle, _is_person_name
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +222,9 @@ def _is_likely_real_email(email: str) -> bool:
 
 def _fetch_soup(url: str) -> BeautifulSoup | None:
     try:
-        resp = requests.get(url, timeout=12, headers=HEADERS)
+        resp = requests.get(
+            url, timeout=12, headers=HEADERS, verify=_ca_bundle()
+        )
         resp.raise_for_status()
         return BeautifulSoup(resp.text, "html.parser")
     except Exception as e:
