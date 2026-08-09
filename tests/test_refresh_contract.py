@@ -828,3 +828,116 @@ def test_a_budget_stop_is_a_keyed_degradation():
     assert {
         (d["kind"], d["source"], d["detail"]) for d in verdict["degradations"]
     } == {("time_budget", "uw_faculty", "partial_deadline")}
+
+
+def test_one_broken_school_no_longer_withholds_the_others():
+    """2026-08-08: UCSB's sitemap errored and fifteen schools lost their run.
+
+    Publication is per shard file, so the verdict is too. The broken school
+    keeps its previously committed shard; the rest publish.
+    """
+    graph = _graph_ok(fetched=20)
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"ucsb", "umich", "caltech"},
+            {
+                "campus_graph:ucsb": graph,
+                "campus_graph:umich": _graph_ok(fetched=12),
+                "campus_graph:caltech": _graph_ok(fetched=31),
+                "ucsb_faculty": _ok(300),
+                "umich_faculty": _ok(1420),
+                "caltech_faculty": _ok(469),
+                "ucsb_urca_projects": {
+                    "status": "error",
+                    "error": "URCA sitemap evidence is incomplete",
+                },
+            },
+        ),
+        schools={"ucsb", "umich", "caltech"},
+        national=False,
+        deep=True,
+    )
+
+    assert verdict["ready"] is False
+    assert verdict["publishable"] == ["caltech", "umich"]
+    assert verdict["by_unit"]["ucsb"]["ready"] is False
+    assert any(
+        "ucsb_urca_projects" in reason
+        for reason in verdict["by_unit"]["ucsb"]["reasons"]
+    )
+    assert verdict["by_unit"]["umich"]["reasons"] == []
+    assert verdict["structural_reasons"] == []
+
+
+def test_a_structural_failure_publishes_nothing():
+    """A shard that does not match the request invalidates every unit.
+
+    Per-school publication is only safe while the summary can be trusted to
+    describe the run that produced it.
+    """
+    summary = _summary(
+        {"uw", "wisc"},
+        {
+            "campus_graph:uw": _graph_ok(),
+            "campus_graph:wisc": _graph_ok(),
+            "uw_faculty": _ok(100),
+            "wisc_faculty": _ok(100),
+        },
+    )
+    summary["shard"] = {"schools": ["uw"], "national": False}
+
+    verdict = evaluate_refresh_summary(
+        summary, schools={"uw", "wisc"}, national=False, deep=True
+    )
+
+    assert verdict["ready"] is False
+    assert verdict["publishable"] == []
+    assert verdict["structural_reasons"]
+    assert all(not v["ready"] for v in verdict["by_unit"].values())
+
+
+def test_a_clean_shard_publishes_every_unit_it_targeted():
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw", "wisc"},
+            {
+                "campus_graph:uw": _graph_ok(),
+                "campus_graph:wisc": _graph_ok(),
+                "uw_faculty": _ok(100),
+                "wisc_faculty": _ok(100),
+                "deactivate_stale_faculty": {
+                    "status": "ok",
+                    "skipped_partial_scrape": [],
+                },
+            },
+        ),
+        schools={"uw", "wisc"},
+        national=False,
+        deep=True,
+    )
+
+    assert verdict["ready"] is True
+    assert verdict["publishable"] == ["uw", "wisc"]
+
+
+def test_a_broken_national_source_withholds_only_national():
+    verdict = evaluate_refresh_summary(
+        _summary(
+            None,
+            {
+                key: (
+                    {"status": "error", "error": "NSF API 500"}
+                    if key == "nsf_reu" else _ok(3)
+                )
+                for key in NATIONAL_SOURCES
+            },
+            national=True,
+        ),
+        schools=None,
+        national=True,
+        deep=True,
+    )
+
+    assert verdict["ready"] is False
+    assert verdict["publishable"] == []
+    assert verdict["by_unit"]["national"]["ready"] is False

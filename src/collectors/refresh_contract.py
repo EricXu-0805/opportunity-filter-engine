@@ -21,6 +21,10 @@ from src.normalizers.school_audience import SOURCE_DEFAULTS
 
 from .schools import SCHOOL_CONFIGS
 
+# The shard file that holds every record not owned by one school. It is a
+# publication unit exactly like a school is, so a broken nsf_reu withholds
+# national and nothing else.
+NATIONAL_SHARD = "national"
 NATIONAL_SOURCES = frozenset(
     {"uiuc_sro", "nsf_reu", "simplify_internships"}
 )
@@ -163,10 +167,23 @@ def evaluate_refresh_summary(
     # same facts keyed so the operator queue can open one incident per gap,
     # dedupe it across runs, and close it when a later run does not repeat it.
     degradations: list[dict] = []
+    # Publication is per school on disk (one shard file each) but the verdict
+    # used to be per run, so one school's broken source withheld every other
+    # school's fresh data. Attribute each reason to the publication unit it
+    # actually describes; anything structural stays unattributed and blocks
+    # the lot, because then nothing in the summary can be trusted.
+    unit_reasons: dict[str, list[str]] = {}
 
     def degrade(kind: str, source: str, detail: str, message: str) -> None:
         warnings.append(message)
         degradations.append({"kind": kind, "source": source, "detail": detail})
+
+    def block(text: str, unit: str | None = None) -> None:
+        reasons.append(text)
+        if unit:
+            unit_reasons.setdefault(unit, []).append(text)
+
+
     if national and schools is not None:
         policies: dict[str, SourcePolicy] = {}
         targets = frozenset()
@@ -175,16 +192,32 @@ def evaluate_refresh_summary(
         policies = expected_sources(schools, national=national, deep=deep)
         targets = _target_schools(schools, national=national)
         if "ucd" in targets and not deep:
-            reasons.append(
+            block(
                 "UC Davis publication requires deep mode so ucd_faculty "
-                "cannot be skipped"
+                "cannot be skipped",
+                "ucd",
             )
         for target in sorted(targets):
             if not any(policy.school == target for policy in policies.values()):
-                reasons.append(
+                block(
                     f"requested school {target} has no mandatory producer "
-                    f"for {'deep' if deep else 'quick'} mode"
+                    f"for {'deep' if deep else 'quick'} mode",
+                    target,
                 )
+
+    def unit_of(key: str) -> str | None:
+        """Which shard file a source's failure actually affects."""
+        if key in NATIONAL_SOURCES:
+            return NATIONAL_SHARD
+        policy = policies.get(key)
+        if policy is not None and policy.school:
+            return policy.school
+        if key.startswith("campus_graph:"):
+            return key.split(":", 1)[1]
+        entry = SOURCE_DEFAULTS.get(key)
+        if entry and entry[0]:
+            return entry[0]
+        return None
 
     if not isinstance(summary, dict):
         return {
@@ -193,6 +226,9 @@ def evaluate_refresh_summary(
             "reasons": ["refresh summary is not an object"],
             "warnings": [],
             "degradations": [],
+            "structural_reasons": ["refresh summary is not an object"],
+            "by_unit": {},
+            "publishable": [],
             "expected": sorted(policies),
             "observed": [],
             "policies": [asdict(policy) for policy in policies.values()],
@@ -229,9 +265,12 @@ def evaluate_refresh_summary(
         if key == "professor_tracking" and not require_tracking:
             continue
         if not isinstance(info, dict):
-            reasons.append(f"source {key} summary is not an object")
+            block(f"source {key} summary is not an object", unit_of(key))
         elif info.get("status") == "error":
-            reasons.append(f"source {key} reported error: {info.get('error', 'unknown')}")
+            block(
+                f"source {key} reported error: {info.get('error', 'unknown')}",
+                unit_of(key),
+            )
         elif any(
             count_key in info
             for count_key in ("raw_fetched", "emitted", "rejected")
@@ -246,24 +285,26 @@ def evaluate_refresh_summary(
                 or value < 0
                 for value in counts.values()
             ):
-                reasons.append(
+                block(
                     f"source {key} has incomplete or invalid "
-                    "raw_fetched/emitted/rejected counts"
+                    "raw_fetched/emitted/rejected counts",
+                    unit_of(key),
                 )
             elif counts["raw_fetched"] != (
                 counts["emitted"] + counts["rejected"]
             ):
-                reasons.append(
+                block(
                     f"source {key} count reconciliation failed: "
                     f"raw_fetched={counts['raw_fetched']}, "
                     f"emitted={counts['emitted']}, "
-                    f"rejected={counts['rejected']}"
+                    f"rejected={counts['rejected']}",
+                    unit_of(key),
                 )
 
     for key, policy in policies.items():
         info = sources.get(key)
         if not isinstance(info, dict):
-            reasons.append(f"required source missing: {key}")
+            block(f"required source missing: {key}", unit_of(key))
             continue
         if info.get("status") in RELEASABLE_INCOMPLETE_STATUSES:
             degrade(
@@ -278,9 +319,10 @@ def evaluate_refresh_summary(
         if info.get("status") != "ok":
             # The generic error pass above supplies details for status=error.
             if info.get("status") != "error":
-                reasons.append(
+                block(
                     f"required source {key} has non-success status: "
-                    f"{info.get('status', 'missing')}"
+                    f"{info.get('status', 'missing')}",
+                    unit_of(key),
                 )
             continue
 
@@ -296,9 +338,11 @@ def evaluate_refresh_summary(
             "fetched"
         )
         if not isinstance(fetched, int) or isinstance(fetched, bool) or fetched < 0:
-            reasons.append(f"required source {key} has no valid emitted count")
+            block(
+                f"required source {key} has no valid emitted count", unit_of(key)
+            )
         elif fetched == 0:
-            reasons.append(f"required source {key} emitted zero records")
+            block(f"required source {key} emitted zero records", unit_of(key))
 
         if deep and (key == "ucb_campus" or key.startswith("campus_graph:")):
             attempted = info.get("live_pages_attempted")
@@ -323,8 +367,9 @@ def evaluate_refresh_summary(
                 or value < 0
                 for value in evidence_counts
             ):
-                reasons.append(
-                    f"required deep source {key} lacks valid live-crawl evidence"
+                block(
+                    f"required deep source {key} lacks valid live-crawl evidence",
+                    unit_of(key),
                 )
             elif (
                 attempted <= 0
@@ -335,9 +380,10 @@ def evaluate_refresh_summary(
                 or seed_pages_loaded + seed_pages_failed
                 != seed_pages_expected
             ):
-                reasons.append(
+                block(
                     f"required deep source {key} has inconsistent live-crawl "
-                    "coverage evidence"
+                    "coverage evidence",
+                    unit_of(key),
                 )
             else:
                 # A host we could not reach costs coverage, never accuracy:
@@ -400,15 +446,17 @@ def evaluate_refresh_summary(
 
     uiuc = sources.get("uiuc_faculty")
     if isinstance(uiuc, dict) and uiuc.get("empty_departments"):
-        reasons.append(
+        block(
             "uiuc_faculty reported empty departments: "
-            f"{sorted(uiuc['empty_departments'])}"
+            f"{sorted(uiuc['empty_departments'])}",
+            "uiuc",
         )
     if "uiuc_faculty" in policies and isinstance(uiuc, dict):
         if uiuc.get("stale_deactivation_authorized") is not False:
-            reasons.append(
+            block(
                 "uiuc_faculty must disable stale deactivation until "
-                "component-level baselines are available"
+                "component-level baselines are available",
+                "uiuc",
             )
         else:
             warnings.append(
@@ -431,8 +479,9 @@ def evaluate_refresh_summary(
             or isinstance(unexpected, bool)
             or unexpected != 0
         ):
-            reasons.append(
-                "ucsb_urca_projects lacks complete sitemap evidence"
+            block(
+                "ucsb_urca_projects lacks complete sitemap evidence",
+                unit_of("ucsb_urca_projects"),
             )
 
     stale = sources.get("deactivate_stale_faculty")
@@ -449,9 +498,12 @@ def evaluate_refresh_summary(
                 & set(stale.get("skipped_partial_scrape") or ())
             )
             if partial:
-                reasons.append(
-                    f"required faculty sources were partial: {partial}"
-                )
+                text = f"required faculty sources were partial: {partial}"
+                reasons.append(text)
+                for source_key in partial:
+                    unit = unit_of(source_key)
+                    if unit:
+                        unit_reasons.setdefault(unit, []).append(text)
             missing_unit_ledger = sorted(
                 expected_faculty
                 & set(stale.get("skipped_missing_unit_ledger") or ())
@@ -466,9 +518,10 @@ def evaluate_refresh_summary(
                 and "uiuc_faculty"
                 not in set(stale.get("deactivation_not_authorized") or ())
             ):
-                reasons.append(
+                block(
                     "deactivate_stale_faculty did not preserve the UIUC "
-                    "safety hold"
+                    "safety hold",
+                    "uiuc",
                 )
 
     tracking = sources.get("professor_tracking")
@@ -500,6 +553,25 @@ def evaluate_refresh_summary(
             )
 
     ready = not reasons
+    attributed = {text for texts in unit_reasons.values() for text in texts}
+    # A reason nobody could pin to a shard describes the run itself — a shard
+    # that does not match the request, a summary that is not an object, a
+    # fatal error. Publishing anything on that evidence would be a guess.
+    structural = [text for text in reasons if text not in attributed]
+
+    units = set(unit_reasons)
+    if not (national and schools is not None):
+        units |= set(targets)
+        if national or schools is None:
+            units.add(NATIONAL_SHARD)
+    by_unit = {
+        unit: {
+            "ready": not structural and not unit_reasons.get(unit),
+            "reasons": list(unit_reasons.get(unit, ())),
+        }
+        for unit in sorted(units)
+    }
+
     return {
         "ready": ready,
         "status": "ready" if ready and not warnings else (
@@ -508,6 +580,13 @@ def evaluate_refresh_summary(
         "reasons": reasons,
         "warnings": warnings,
         "degradations": degradations,
+        "structural_reasons": structural,
+        "by_unit": by_unit,
+        # Exactly the shard files this run has earned the right to overwrite.
+        # Everything absent keeps whatever the last good run committed.
+        "publishable": sorted(
+            unit for unit, verdict in by_unit.items() if verdict["ready"]
+        ),
         "expected": sorted(policies),
         "observed": sorted(sources),
         "policies": [asdict(policy) for policy in policies.values()],
