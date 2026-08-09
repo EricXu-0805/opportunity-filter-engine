@@ -159,6 +159,14 @@ def evaluate_refresh_summary(
 
     reasons: list[str] = []
     warnings: list[str] = []
+    # Warnings are prose for a human reading a run log. Degradations are the
+    # same facts keyed so the operator queue can open one incident per gap,
+    # dedupe it across runs, and close it when a later run does not repeat it.
+    degradations: list[dict] = []
+
+    def degrade(kind: str, source: str, detail: str, message: str) -> None:
+        warnings.append(message)
+        degradations.append({"kind": kind, "source": source, "detail": detail})
     if national and schools is not None:
         policies: dict[str, SourcePolicy] = {}
         targets = frozenset()
@@ -184,6 +192,7 @@ def evaluate_refresh_summary(
             "status": "blocked",
             "reasons": ["refresh summary is not an object"],
             "warnings": [],
+            "degradations": [],
             "expected": sorted(policies),
             "observed": [],
             "policies": [asdict(policy) for policy in policies.values()],
@@ -257,10 +266,13 @@ def evaluate_refresh_summary(
             reasons.append(f"required source missing: {key}")
             continue
         if info.get("status") in RELEASABLE_INCOMPLETE_STATUSES:
-            warnings.append(
+            degrade(
+                "time_budget",
+                key,
+                str(info["status"]),
                 f"required source {key} stopped at the run time budget "
                 f"({info['status']}); its school keeps the previous refresh's "
-                "records and stale retirement skips it"
+                "records and stale retirement skips it",
             )
             continue
         if info.get("status") != "ok":
@@ -335,35 +347,49 @@ def evaluate_refresh_summary(
                 # the release added no protection and took the whole shard
                 # down with one third-party bot wall.
                 if loaded == 0:
-                    warnings.append(
+                    degrade(
+                        "dark_crawl",
+                        key,
+                        f"0/{seed_pages_expected} seed pages, "
+                        f"0/{sources_expected} crawl sources",
                         f"deep source {key} loaded no live page at all "
                         f"(0/{seed_pages_expected} seed pages, "
                         f"0/{sources_expected} crawl sources); its records "
                         "keep the previous run's verification and this run "
-                        "cannot claim to have seen the school"
+                        "cannot claim to have seen the school",
                     )
                 else:
                     if sources_loaded != sources_expected:
-                        warnings.append(
+                        degrade(
+                            "crawl_sources_unreached",
+                            key,
+                            f"{sources_loaded}/{sources_expected}",
                             f"deep source {key} crawled {sources_loaded}/"
                             f"{sources_expected} configured crawl sources; the "
-                            "unreached ones keep their previous records"
+                            "unreached ones keep their previous records",
                         )
                     if (
                         seed_pages_loaded != seed_pages_expected
                         or seed_pages_failed != 0
                     ):
-                        warnings.append(
+                        degrade(
+                            "seed_pages_unreached",
+                            key,
+                            f"{seed_pages_loaded}/{seed_pages_expected}, "
+                            f"{seed_pages_failed} failed",
                             f"deep source {key} loaded "
                             f"{seed_pages_loaded}/{seed_pages_expected} "
                             f"configured seed pages ({seed_pages_failed} "
-                            "failed); those sources kept their previous records"
+                            "failed); those sources kept their previous records",
                         )
             crawl_errors = info.get("crawl_errors")
             if crawl_errors:
-                warnings.append(
+                degrade(
+                    "crawl_errors",
+                    key,
+                    "; ".join(sorted(crawl_errors))[:400],
                     f"deep source {key} reported crawl errors: "
-                    f"{sorted(crawl_errors)}"
+                    f"{sorted(crawl_errors)}",
                 )
             degraded_page_errors = info.get("degraded_page_errors")
             if degraded_page_errors:
@@ -481,6 +507,7 @@ def evaluate_refresh_summary(
         ),
         "reasons": reasons,
         "warnings": warnings,
+        "degradations": degradations,
         "expected": sorted(policies),
         "observed": sorted(sources),
         "policies": [asdict(policy) for policy in policies.values()],
