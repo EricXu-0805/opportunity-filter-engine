@@ -298,6 +298,12 @@ jobs:
             # run is authorized to replace.
             TARGETS=$(python3 scripts/refresh_rotation.py \
               --schools "$SHARD" --allow-full --targets)
+            # ...and publishable_shards answers which of those it earned. The
+            # verdict is per shard file now, so a school whose source errored
+            # keeps its previously committed data while its siblings publish —
+            # on 2026-08-08 one broken UCSB sitemap withheld fifteen schools'
+            # entire refresh. This only ever narrows the authorized set.
+            TARGETS=$(python3 scripts/publishable_shards.py --authorized "$TARGETS")
             python3 scripts/shard_corpus.py split --only-shards "$TARGETS"
 
             git add data/processed/shards data/processed/collector_status.json

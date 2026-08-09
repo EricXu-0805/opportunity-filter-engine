@@ -82,3 +82,21 @@ class TestCli:
         assert r.returncode != 0
         assert "publishes none" in r.stderr
         assert r.stdout.strip() == ""
+
+
+class TestWorkflowWiring:
+    def test_the_split_step_narrows_targets_by_the_verdict(self):
+        """Authorization and entitlement are different questions.
+
+        refresh_rotation --targets says which shards the run may replace;
+        without this second call the split writes all of them regardless of
+        whether their verdict earned it.
+        """
+        text = (_REPO / ".github/workflows/refresh-data.yml").read_text()
+
+        assert "publishable_shards.py --authorized" in text
+        # The narrowed value, not the raw authorization, is what reaches split.
+        narrow = text.index("publishable_shards.py --authorized")
+        split = text.index("shard_corpus.py split --only-shards")
+        rotation = text.index("refresh_rotation.py \\\n              --schools")
+        assert rotation < narrow < split
