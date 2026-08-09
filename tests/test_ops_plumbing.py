@@ -142,8 +142,25 @@ class TestWorkflowWiring:
     def _workflow(self, name: str) -> dict:
         return yaml.safe_load((_REPO / ".github/workflows" / name).read_text())
 
+    def test_ops_scan_detector_is_actually_scheduled(self):
+        """W15 built the detector and nothing called it.
+
+        /api/cron/ops-scan turns each refresh's artifacts into durable
+        operator incidents (_scan_collectors + _scan_drift). With no scheduler
+        pointed at it, collector_failure and data_drift incidents were never
+        created, so the admin operations queue rendered an all-clear while
+        collectors were failing — only notification_failure rows, written
+        inline by the reminders cron, ever appeared.
+        """
+        workflow = self._workflow("ops-scan.yml")
+        # YAML 1.1 parses the bare key `on` as the boolean True.
+        assert workflow[True]["schedule"], "the detector needs a schedule"
+        job = next(iter(workflow["jobs"].values()))
+        steps = " ".join(str(step.get("run", "")) for step in job["steps"])
+        assert "/api/cron/ops-scan" in steps
+
     def test_cron_workflows_check_their_response_bodies(self):
-        for name in ("daily-reminders.yml", "saved-searches-refresh.yml"):
+        for name in ("daily-reminders.yml", "saved-searches-refresh.yml", "ops-scan.yml"):
             text = (_REPO / ".github/workflows" / name).read_text()
             assert "check_cron_response.py" in text, name
             # The checker is a repo file: the job must have a working copy.

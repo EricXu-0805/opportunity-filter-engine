@@ -28,7 +28,14 @@ const incident = (over: Partial<OpsIncident> = {}): OpsIncident => ({
 
 const ops = (over: Partial<OpsWorkflow> = {}): OpsWorkflow => ({
   incidents: [incident()],
-  rollup: { collector_failure: 2, data_drift: 3, notification_failure: 1, manual_review: 5 },
+  // The payload shape /admin/ops/incidents actually returns. A flat
+  // kind-to-count fixture is what let the badge bug pass its own test.
+  rollup: {
+    open_by_kind: { collector_failure: 2, data_drift: 3, notification_failure: 1, manual_review: 5 },
+    open_by_priority: { high: 4, normal: 7 },
+    open_total: 11,
+    truncated: false,
+  },
   loaded: true,
   error: null,
   filters: { kind: '', status: 'unresolved' },

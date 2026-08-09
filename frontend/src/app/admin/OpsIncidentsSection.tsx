@@ -455,7 +455,11 @@ function IncidentRow({ incident, ops, t }: { incident: OpsIncident; ops: OpsWork
 }
 
 function KindTabs({ ops, t }: { ops: OpsWorkflow; t: TFunc }) {
-  const total = OPS_KINDS.reduce((sum, k) => sum + (ops.rollup[k] ?? 0), 0);
+  const byKind = ops.rollup.open_by_kind ?? {};
+  // open_total counts every open row; the per-kind sum only counts the kinds
+  // this UI knows about. Prefer the server's total so a kind added backend-first
+  // is not silently dropped from the "All" badge.
+  const total = ops.rollup.open_total ?? OPS_KINDS.reduce((sum, k) => sum + (byKind[k] ?? 0), 0);
   const tab = (key: OpsIncidentKind | '', label: string, count: number) => {
     const active = ops.filters.kind === key;
     return (
@@ -477,7 +481,7 @@ function KindTabs({ ops, t }: { ops: OpsWorkflow; t: TFunc }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {tab('', t('admin.ops.kindAll'), total)}
-      {OPS_KINDS.map((k) => tab(k, t(`admin.ops.kind.${k}`), ops.rollup[k] ?? 0))}
+      {OPS_KINDS.map((k) => tab(k, t(`admin.ops.kind.${k}`), byKind[k] ?? 0))}
     </div>
   );
 }
