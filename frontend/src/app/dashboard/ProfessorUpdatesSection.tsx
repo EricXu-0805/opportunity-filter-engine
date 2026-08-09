@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   ExternalLink,
@@ -13,10 +13,13 @@ import Link from 'next/link';
 import { useT } from '@/i18n/client';
 import { getProfessorUpdates } from '@/lib/api';
 import {
+  getAuthState,
   getProfessorUpdateReads,
   listProfessorFollows,
   markProfessorUpdatesRead,
+  onAuthChange,
 } from '@/lib/supabase';
+import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
 import type { ProfessorUpdateEvent } from '@/lib/types';
 
 type LoadStatus = 'loading' | 'ready' | 'error';
@@ -67,14 +70,25 @@ export function ProfessorUpdatesSection() {
     reads: new Map(),
   });
   const [marking, setMarking] = useState(false);
+  const [markError, setMarkError] = useState(false);
+  // Identity generation: every observed account transition orphans work that
+  // was already in flight and refetches under the new uid. Without this the
+  // section kept rendering Account A's follow feed after a cross-tab switch
+  // while the rest of the dashboard cleared — and markAllRead then wrote A's
+  // event ids as B's read cursors under B's JWT. Mirrors the scheme the
+  // tracker/favorites surfaces already use.
+  const generationRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
+    let lastIdentity: string | null | undefined;
+    let liveEventSeen = false;
 
-    async function load() {
+    async function load(generation: number) {
+      const fresh = () => !cancelled && generation === generationRef.current;
       try {
         const follows = await listProfessorFollows();
-        if (cancelled) return;
+        if (!fresh()) return;
         if (follows.length === 0) {
           setState({
             status: 'ready',
@@ -89,7 +103,7 @@ export function ProfessorUpdatesSection() {
           getProfessorUpdates(follows.map((f) => f.professorId)),
           getProfessorUpdateReads(),
         ]);
-        if (cancelled) return;
+        if (!fresh()) return;
         setState({
           status: 'ready',
           followCount: follows.length,
@@ -98,7 +112,7 @@ export function ProfessorUpdatesSection() {
           reads,
         });
       } catch {
-        if (!cancelled) {
+        if (fresh()) {
           setState({
             status: 'error',
             followCount: 0,
@@ -110,8 +124,44 @@ export function ProfessorUpdatesSection() {
       }
     }
 
-    void load();
-    return () => { cancelled = true; };
+    function resetForIdentity() {
+      const generation = (generationRef.current += 1);
+      setMarking(false);
+      setMarkError(false);
+      setState({
+        status: 'loading',
+        followCount: 0,
+        available: true,
+        events: [],
+        reads: new Map(),
+      });
+      void load(generation);
+    }
+
+    function applyIdentity(identity: string | null) {
+      // TOKEN_REFRESHED re-reports the same uid; only a real transition resets.
+      if (identity === lastIdentity) return;
+      lastIdentity = identity;
+      resetForIdentity();
+    }
+
+    getAuthState().then((authState) => {
+      if (cancelled || liveEventSeen) return;
+      applyIdentity(authState.user?.id ?? null);
+    }).catch(() => {
+      if (cancelled || liveEventSeen) return;
+      applyIdentity(null);
+    });
+    const unsubscribe = onAuthChange((authState) => {
+      if (cancelled) return;
+      liveEventSeen = true;
+      applyIdentity(authState.user?.id ?? null);
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      generationRef.current += 1; // orphan any work still in flight
+    };
   }, []);
 
   const unread = unreadEventIds(state.events, state.reads);
@@ -119,6 +169,13 @@ export function ProfessorUpdatesSection() {
   async function markAllRead() {
     if (marking || unread.size === 0) return;
     setMarking(true);
+    setMarkError(false);
+    // The cursors below are derived from the events CURRENTLY on screen. If
+    // the account changed while this ran, writing them would persist the
+    // previous account's event ids under the new account's identity — the
+    // owner token is what makes that impossible.
+    const owner = captureOwnerToken();
+    const generation = generationRef.current;
     // Newest fetched event per professor becomes the cursor.
     const newestByProfessor = new Map<string, string>();
     for (const event of state.events) {
@@ -131,14 +188,22 @@ export function ProfessorUpdatesSection() {
       lastReadEventId,
     }));
     try {
+      if (!isTokenOwnerStillCurrent(owner)) return;
       await markProfessorUpdatesRead(entries);
+      // Re-check AFTER the await: an account switch mid-write must not paint
+      // the previous account's read state onto the new one.
+      if (!isTokenOwnerStillCurrent(owner) || generation !== generationRef.current) return;
       setState((prev) => {
         const reads = new Map(prev.reads);
         for (const entry of entries) reads.set(entry.professorId, entry.lastReadEventId);
         return { ...prev, reads };
       });
+    } catch {
+      // A failed write previously produced an unhandled rejection and left the
+      // badge unexplained; report it instead of silently doing nothing.
+      if (generation === generationRef.current) setMarkError(true);
     } finally {
-      setMarking(false);
+      if (generation === generationRef.current) setMarking(false);
     }
   }
 
@@ -173,6 +238,11 @@ export function ProfessorUpdatesSection() {
           </button>
         )}
       </div>
+      {markError && (
+        <p role="alert" className="mb-2 text-[12px] text-amber-700" data-testid="mark-read-failed">
+          {t('dashboard.professorUpdates.markAllReadFailed')}
+        </p>
+      )}
       <SectionContent
         state={state}
         unread={unread}

@@ -5,11 +5,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockGetFavorites = vi.fn();
 const mockGetInteractionsFull = vi.fn();
-const mockGetOpportunitiesByIds = vi.fn();
+const mockGetShortlistOpportunities = vi.fn();
+const mockGetStats = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   getFavorites: () => mockGetFavorites(),
@@ -20,7 +21,8 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  getOpportunitiesByIds: (...args: unknown[]) => mockGetOpportunitiesByIds(...args),
+  getShortlistOpportunities: (...args: unknown[]) => mockGetShortlistOpportunities(...args),
+  getStats: (...args: unknown[]) => mockGetStats(...args),
 }));
 
 vi.mock('@/components/PushToggle', () => ({
@@ -56,10 +58,37 @@ function isoDateIn(days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** An ISO timestamp `hours` in the past — for the freshness thresholds. */
+function isoHoursAgo(hours: number): string {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+}
+
+/** The batch fetch's fail-closed shape: what resolved, and what did not. */
+function shortlist(
+  opportunities: Record<string, unknown>[],
+  unavailableIds: string[] = [],
+) {
+  return { opportunities, unavailableIds };
+}
+
+/** Never resolves — leaves the page pinned in its loading state. */
+function pending<T>(): Promise<T> {
+  return new Promise<T>(() => {});
+}
+
+/** The four tracker-fed funnel tiles (saved-summary is fed separately). */
+const FUNNEL_CARDS = [
+  'applied-summary',
+  'replied-summary',
+  'interviewing-summary',
+  'rejected-summary',
+] as const;
+
 beforeEach(() => {
   mockGetFavorites.mockResolvedValue(new Set());
   mockGetInteractionsFull.mockResolvedValue(new Map());
-  mockGetOpportunitiesByIds.mockResolvedValue([]);
+  mockGetShortlistOpportunities.mockResolvedValue(shortlist([]));
+  mockGetStats.mockResolvedValue({ last_updated_at: isoHoursAgo(2) });
 });
 
 afterEach(() => {
@@ -76,7 +105,7 @@ describe('DashboardPage — personal metrics', () => {
       ['opp-c', { type: 'replied' }],
       ['opp-d', { type: 'interviewing' }],
     ]));
-    mockGetOpportunitiesByIds.mockResolvedValue([]);
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([]));
 
     render(<DashboardPage />);
 
@@ -94,7 +123,7 @@ describe('DashboardPage — personal metrics', () => {
   it('lists upcoming favorite deadlines with estimate/verify labels, soonest first', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['exact', 'estimated', 'unknown-precision']));
     mockGetInteractionsFull.mockResolvedValue(new Map());
-    mockGetOpportunitiesByIds.mockResolvedValue([
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
       {
         id: 'estimated',
         title: 'Estimated Deadline Lab',
@@ -115,7 +144,7 @@ describe('DashboardPage — personal metrics', () => {
         organization: 'Org C',
         deadline: isoDateIn(9),
       },
-    ]);
+    ]));
 
     render(<DashboardPage />);
 
@@ -137,10 +166,10 @@ describe('DashboardPage — personal metrics', () => {
 
   it('never lets a non-favorite record leak into the saved-deadline list', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
-    mockGetOpportunitiesByIds.mockResolvedValue([
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
       { id: 'fav-1', title: 'My Favorite', deadline: isoDateIn(4), deadline_is_estimate: false },
       { id: 'intruder', title: 'Global Record', deadline: isoDateIn(2), deadline_is_estimate: false },
-    ]);
+    ]));
 
     render(<DashboardPage />);
 
@@ -155,9 +184,9 @@ describe('DashboardPage — personal metrics', () => {
     mockGetInteractionsFull.mockResolvedValue(new Map([
       ['opp-a', { type: 'applied', notes: 'emailed PI', remind_at: isoDateIn(2) }],
     ]));
-    mockGetOpportunitiesByIds.mockResolvedValue([
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
       { id: 'opp-a', title: 'Tracked Lab', organization: 'Org', opportunity_type: 'research' },
-    ]);
+    ]));
 
     render(<DashboardPage />);
 
@@ -186,9 +215,9 @@ describe('DashboardPage — honest empty and error states', () => {
 
   it('distinguishes "saved but no deadlines" from "nothing saved"', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
-    mockGetOpportunitiesByIds.mockResolvedValue([
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
       { id: 'fav-1', title: 'Rolling Lab' },
-    ]);
+    ]));
 
     render(<DashboardPage />);
 
@@ -214,16 +243,25 @@ describe('DashboardPage — honest empty and error states', () => {
     expect(screen.getAllByText('dashboard.trackerSection.errorTitle').length).toBeGreaterThan(0);
     expect(screen.getByText('dashboard.reminders.errorTitle')).toBeInTheDocument();
     expect(screen.queryByText('dashboard.deadlines.noSavesTitle')).toBeNull();
-    // Every metric fed by the failed loads reads '—', never a confident 0.
-    expect(screen.getByTestId('saved-summary')).toHaveTextContent('—');
-    expect(screen.getAllByText('—')).toHaveLength(5);
+    // W16: every metric fed by a failed load says so explicitly — not a
+    // confident 0, and no longer the same em-dash a still-loading or a
+    // genuinely-unknown tile would render.
+    for (const id of FUNNEL_CARDS) {
+      const card = screen.getByTestId(id);
+      expect(card).toHaveAttribute('data-state', 'error');
+      expect(card).toHaveTextContent('dashboard.summary.unavailable');
+      expect(card.textContent).not.toContain('—');
+      expect(card.textContent).not.toContain('0');
+    }
+    expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'error');
+    expect(screen.queryAllByText('—')).toHaveLength(0);
     // The sync-status banner is mounted so a local-only outage is visible.
     expect(screen.getByTestId('storage-status-banner')).toBeInTheDocument();
   });
 
-  it('keeps funnel stat cards at "—" (not zero) when only the tracker load fails', async () => {
+  it('keeps funnel stat cards out of a fabricated zero when only the tracker load fails', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
-    mockGetOpportunitiesByIds.mockResolvedValue([]);
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([]));
     mockGetInteractionsFull.mockRejectedValue(new Error('interactions-load-failed: outage'));
 
     render(<DashboardPage />);
@@ -232,9 +270,15 @@ describe('DashboardPage — honest empty and error states', () => {
       expect(screen.getAllByText('dashboard.trackerSection.errorTitle').length).toBeGreaterThan(0);
     });
     // Saved is real (1); the four funnel cards fed by getInteractionsFull
-    // must show '—', not fabricated zeros.
-    expect(screen.getByTestId('saved-summary')).toHaveTextContent('1');
-    expect(screen.getAllByText('—')).toHaveLength(4);
+    // must show the error affordance, never fabricated zeros.
+    const savedCard = screen.getByTestId('saved-summary');
+    expect(savedCard).toHaveAttribute('data-state', 'ready');
+    expect(savedCard).toHaveTextContent('1');
+    for (const id of FUNNEL_CARDS) {
+      const card = screen.getByTestId(id);
+      expect(card).toHaveAttribute('data-state', 'error');
+      expect(card.textContent).not.toContain('0');
+    }
     expect(screen.getByText('dashboard.reminders.errorTitle')).toBeInTheDocument();
   });
 
@@ -243,7 +287,7 @@ describe('DashboardPage — honest empty and error states', () => {
     mockGetInteractionsFull.mockResolvedValue(new Map([
       ['opp-a', { type: 'applied', remind_at: isoDateIn(1) }],
     ]));
-    mockGetOpportunitiesByIds.mockRejectedValue(new Error('batch endpoint down'));
+    mockGetShortlistOpportunities.mockRejectedValue(new Error('batch endpoint down'));
 
     render(<DashboardPage />);
 
@@ -254,5 +298,201 @@ describe('DashboardPage — honest empty and error states', () => {
     // (label appears on the stat card and the tracked-row chip).
     expect(screen.getAllByText('tracker.status.applied').length).toBeGreaterThan(1);
     expect(screen.getByText('dashboard.reminders.tomorrow')).toBeInTheDocument();
+  });
+});
+
+/*
+ * W16 — the stat tiles used to collapse loading, error, and unknown into one
+ * em-dash, so "we're still fetching" was indistinguishable from "the request
+ * failed". Each state must now render distinctly, and a REAL zero must keep
+ * rendering as 0 (the point of W14, and the easiest thing to regress).
+ */
+describe('DashboardPage — stat tile state vocabulary', () => {
+  it('renders a skeleton while loading — never an em-dash and never a zero', async () => {
+    mockGetFavorites.mockReturnValue(pending<Set<string>>());
+    mockGetInteractionsFull.mockReturnValue(pending<Map<string, unknown>>());
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'loading');
+    });
+    expect(screen.getByTestId('saved-summary-skeleton')).toBeInTheDocument();
+    for (const id of ['saved-summary', ...FUNNEL_CARDS]) {
+      const card = screen.getByTestId(id);
+      expect(card).toHaveAttribute('data-state', 'loading');
+      expect(card.textContent).not.toContain('—');
+      expect(card.textContent).not.toContain('0');
+    }
+  });
+
+  it('renders a real zero as 0, not as an absence', async () => {
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([['opp-a', { type: 'applied' }]]));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([{ id: 'opp-a', title: 'Lab' }]));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'ready');
+    });
+    // Zero saves and zero rejections are FACTS here — both render as 0.
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('0');
+    expect(screen.getByTestId('rejected-summary')).toHaveTextContent('0');
+    expect(screen.getByTestId('applied-summary')).toHaveTextContent('1');
+    expect(screen.queryAllByText('—')).toHaveLength(0);
+  });
+
+  it('offers a retry from the error state that re-runs the loads', async () => {
+    mockGetFavorites.mockRejectedValueOnce(new Error('offline'));
+    mockGetInteractionsFull.mockRejectedValueOnce(new Error('interactions-load-failed'));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'error');
+    });
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
+    mockGetInteractionsFull.mockResolvedValue(new Map());
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([]));
+
+    fireEvent.click(screen.getAllByText('common.retry')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-summary')).toHaveTextContent('1');
+    });
+  });
+});
+
+/*
+ * W16 — favorited/tracked ids the corpus cannot resolve used to be filtered
+ * out with no count and no note, so a missing record was indistinguishable
+ * from one the student never saved. /favorites (unavailableCount) and
+ * /tracker (unavailableItems) already report them; the dashboard now does too.
+ */
+describe('DashboardPage — unresolvable saved and tracked ids', () => {
+  it('reports saved deadlines that could not be loaded instead of dropping them', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'gone-1', 'gone-2']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist(
+      [{ id: 'fav-1', title: 'Live Lab', deadline: isoDateIn(3), deadline_is_estimate: false }],
+      ['gone-1', 'gone-2'],
+    ));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Live Lab')).toBeInTheDocument();
+    });
+    expect(screen.getByText('dashboard.unavailable.saved {"count":2}')).toBeInTheDocument();
+    // The saved count is the student's real total — unchanged by a failed
+    // corpus lookup.
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('3');
+  });
+
+  it('never claims "no deadlines" when every saved id was unresolvable', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['gone-1']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([], ['gone-1']));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('dashboard.unavailable.saved {"count":1}')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('dashboard.deadlines.emptyTitle')).toBeNull();
+    expect(screen.queryByText('dashboard.deadlines.noSavesTitle')).toBeNull();
+  });
+
+  it('reports tracked rows whose opportunity could not be loaded', async () => {
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['opp-a', { type: 'applied' }],
+      ['gone-1', { type: 'replied', remind_at: isoDateIn(1) }],
+    ]));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist(
+      [{ id: 'opp-a', title: 'Tracked Lab' }],
+      ['gone-1'],
+    ));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tracked Lab')).toBeInTheDocument();
+    });
+    // Once for the tracker list, once for the reminder row that points at
+    // the same unresolvable record.
+    expect(screen.getAllByText('dashboard.unavailable.tracked {"count":1}').length).toBeGreaterThan(0);
+    // The student's own statuses are untouched by the failed lookup.
+    expect(screen.getByTestId('applied-summary')).toHaveTextContent('1');
+    expect(screen.getByTestId('replied-summary')).toHaveTextContent('1');
+  });
+
+  it('shows no unavailable note when everything resolved', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      { id: 'fav-1', title: 'Live Lab', deadline: isoDateIn(3), deadline_is_estimate: false },
+    ]));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Live Lab')).toBeInTheDocument();
+    });
+    expect(screen.queryAllByTestId('dashboard-unavailable-note')).toHaveLength(0);
+  });
+});
+
+/*
+ * W16 — the corpus freshness line. `last_updated_at` was null in production
+ * until the backend read the committed collector snapshot, so the one rule
+ * that matters here: null/failed must render as UNKNOWN, never as fresh.
+ * Thresholds mirror admin/FreshnessBanner.tsx (warn >= 72h, stale >= 96h).
+ */
+describe('DashboardPage — corpus freshness line', () => {
+  async function freshnessState(): Promise<string | null> {
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('corpus-freshness')).not.toHaveAttribute('data-state', 'loading');
+    });
+    return screen.getByTestId('corpus-freshness').getAttribute('data-state');
+  }
+
+  it('renders fresh below the 72h warn boundary', async () => {
+    mockGetStats.mockResolvedValue({ last_updated_at: isoHoursAgo(71) });
+    expect(await freshnessState()).toBe('fresh');
+    expect(screen.getByText(/dashboard\.freshness\.updated/)).toBeInTheDocument();
+  });
+
+  it('renders warn at 72h and stale at 96h — the admin banner boundaries', async () => {
+    mockGetStats.mockResolvedValue({ last_updated_at: isoHoursAgo(72.5) });
+    expect(await freshnessState()).toBe('warn');
+    expect(screen.getByText('dashboard.freshness.warnNote')).toBeInTheDocument();
+    cleanup();
+
+    mockGetStats.mockResolvedValue({ last_updated_at: isoHoursAgo(96.5) });
+    expect(await freshnessState()).toBe('stale');
+    expect(screen.getByText('dashboard.freshness.staleNote')).toBeInTheDocument();
+  });
+
+  it('renders an explicit unknown when the backend has no timestamp', async () => {
+    mockGetStats.mockResolvedValue({ last_updated_at: null });
+    expect(await freshnessState()).toBe('unknown');
+    expect(screen.getByText('dashboard.freshness.unknown')).toBeInTheDocument();
+    // Never a freshness claim we do not have.
+    expect(screen.queryByText(/dashboard\.freshness\.updated/)).toBeNull();
+  });
+
+  it('renders unknown (not fresh) when the stats request fails', async () => {
+    mockGetStats.mockRejectedValue(new Error('stats down'));
+    expect(await freshnessState()).toBe('unknown');
+    expect(screen.getByText('dashboard.freshness.unknown')).toBeInTheDocument();
+  });
+
+  it('shows a checking state while the stats request is in flight', async () => {
+    mockGetStats.mockReturnValue(pending<{ last_updated_at: string | null }>());
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('corpus-freshness')).toHaveAttribute('data-state', 'loading');
+    });
+    expect(screen.getByText('dashboard.freshness.checking')).toBeInTheDocument();
   });
 });

@@ -114,7 +114,10 @@ def _install_stubs(monkeypatch, *, interactions, subscriptions, gets=None,
     monkeypatch.setattr(pywebpush, "webpush", webpush_impl or _default_webpush)
 
     async def _pass_through(*, subscription_info, data, vapid_private_key,
-                            vapid_claims, webpush_func):
+                            vapid_claims, webpush_func, **_transport):
+        # ``**_transport`` absorbs the delivery-shaping kwargs the route now
+        # hands the real dispatcher (ttl + the RFC 8030 Topic header); they are
+        # pinned by tests/test_notification_idempotency.py.
         return webpush_func(
             subscription_info=subscription_info, data=data,
             vapid_private_key=vapid_private_key, vapid_claims=vapid_claims,
