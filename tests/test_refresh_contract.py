@@ -127,10 +127,25 @@ def test_quick_faculty_only_school_cannot_report_vacuous_success():
     assert any("no mandatory producer" in reason for reason in verdict["reasons"])
 
 
-def test_deep_campus_graph_total_live_outage_blocks_seed_only_success():
-    graph = _graph_ok()
+def test_deep_campus_graph_total_live_outage_is_degraded_not_blocked():
+    """Measured umich, 2026-08-08: 0/9 seeds, 0 live pages, 6/6 sources dark.
+
+    Every Michigan campus_graph seed host answers the Cloudflare managed
+    challenge, so this school's crawl cannot come back non-empty again. Its
+    12 seed records still emit from config with seed_page_verified=False,
+    and merge_into_processed hands them back their previous status,
+    is_active and last_verified — the corpus keeps saying exactly what it
+    said before. Blocking here withheld fifteen other schools' fresh data
+    for three weeks and changed nothing about Michigan's.
+    """
+    graph = _graph_ok(fetched=12)
+    graph["crawl_sources_expected"] = 6
     graph["crawl_sources_loaded"] = 0
+    graph["live_pages_attempted"] = 9
     graph["live_pages_loaded"] = 0
+    graph["seed_pages_expected"] = 9
+    graph["seed_pages_loaded"] = 0
+    graph["seed_pages_failed"] = 9
 
     verdict = evaluate_refresh_summary(
         _summary(
@@ -145,11 +160,21 @@ def test_deep_campus_graph_total_live_outage_blocks_seed_only_success():
         deep=True,
     )
 
-    assert verdict["ready"] is False
-    assert any("live-crawl" in reason for reason in verdict["reasons"])
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert any("loaded no live page at all" in w for w in verdict["warnings"])
 
 
-def test_deep_campus_graph_partial_configured_seed_fetch_fails_closed():
+def test_deep_campus_graph_partial_configured_seed_fetch_is_degraded_only():
+    """An unreachable seed costs coverage; it cannot corrupt what we keep.
+
+    campus_graph only lets ``merge_into_processed`` retire discoveries for
+    sources whose crawl came back ``crawl_complete``, so a failed seed
+    already preserves every prior record. Vetoing the release on top of
+    that bought no safety and cost the Saturday shard three weeks of
+    publication when Michigan put its UROP pages behind a Cloudflare
+    challenge (observed 2026-08-08, run 31243355936).
+    """
     graph = _graph_ok(
         live_pages_attempted=3,
         live_pages_loaded=2,
@@ -172,8 +197,73 @@ def test_deep_campus_graph_partial_configured_seed_fetch_fails_closed():
         deep=True,
     )
 
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert any("2/3 configured seed pages" in w for w in verdict["warnings"])
+    assert any("seed fetch failed" in w for w in verdict["warnings"])
+
+
+def test_deep_campus_graph_wholly_unreachable_source_is_degraded_only():
+    """The exact Saturday shape: one source blocked, the rest crawled.
+
+    Georgia Tech's bioresearch source timed out while its siblings loaded,
+    so ``crawl_sources_loaded`` fell short of expected. That mismatch was
+    filed under "inconsistent evidence" — an arithmetic contradiction —
+    when it is just an unreached host.
+    """
+    graph = _graph_ok(
+        crawl_sources_expected=3,
+        crawl_sources_loaded=2,
+        live_pages_attempted=4,
+        live_pages_loaded=3,
+        seed_pages_expected=3,
+        seed_pages_loaded=2,
+        seed_pages_failed=1,
+        crawl_errors=["gt_lab: crawl failed: read timeout"],
+    )
+
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw"},
+            {
+                "campus_graph:uw": graph,
+                "uw_faculty": _ok(100),
+            },
+        ),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+
+    assert verdict["ready"] is True
+    assert any("2/3 configured crawl sources" in w for w in verdict["warnings"])
+
+
+def test_deep_campus_graph_seed_arithmetic_contradiction_still_blocks():
+    """Unreachable is tolerated; evidence that cannot be true is not."""
+    graph = _graph_ok(
+        seed_pages_expected=3,
+        seed_pages_loaded=1,
+        seed_pages_failed=1,
+    )
+
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw"},
+            {
+                "campus_graph:uw": graph,
+                "uw_faculty": _ok(100),
+            },
+        ),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+
     assert verdict["ready"] is False
-    assert any("2/3 configured seed pages" in reason for reason in verdict["reasons"])
+    assert any(
+        "inconsistent live-crawl" in reason for reason in verdict["reasons"]
+    )
 
 
 def test_deep_campus_graph_recursive_page_failure_is_degraded_only():
