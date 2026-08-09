@@ -1083,6 +1083,102 @@ async def _scan_drift(rec: _Recorder, summary: dict, payload: dict | None) -> No
     }
 
 
+_DEGRADATION_TITLES = {
+    "dark_crawl": "loaded no live page at all",
+    "crawl_sources_unreached": "could not reach every crawl source",
+    "seed_pages_unreached": "could not load every configured seed page",
+    "crawl_errors": "reported crawl errors",
+    "time_budget": "stopped at the run time budget",
+}
+
+
+async def _scan_release_degradation(
+    rec: _Recorder, summary: dict, payload: dict | None
+) -> None:
+    """release.degradations -> one tracked incident per coverage gap.
+
+    The release contract stopped vetoing publication over a host it could
+    not reach, because refusing to publish protected nothing — the merge
+    layers already preserve everything behind an incomplete crawl. What that
+    left behind was a gap visible only as prose in a run log. These are the
+    same facts, keyed, so a school that has gone dark stays on the operator's
+    queue until someone looks at it.
+
+    Recovery needs the source to have actually run clean: a Monday shard
+    says nothing about Michigan, so absence alone never closes an incident.
+    """
+    if not isinstance(payload, dict):
+        summary["skipped"].append({
+            "detector": "release_degradation",
+            "reason": "no collector snapshot",
+        })
+        return
+
+    release = payload.get("release")
+    if not isinstance(release, dict) or "degradations" not in release:
+        summary["skipped"].append({
+            "detector": "release_degradation",
+            "reason": "snapshot predates release.degradations",
+        })
+        return
+
+    degradations = release.get("degradations")
+    degradations = degradations if isinstance(degradations, list) else []
+    sources = payload.get("sources")
+    sources = sources if isinstance(sources, dict) else {}
+    run_ts = payload.get("timestamp")
+
+    seen_keys: set[str] = set()
+    for item in degradations:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind") or "unknown")
+        source = str(item.get("source") or "unknown")
+        dedup_key = f"collector_failure:degraded:{kind}:{source}"
+        seen_keys.add(dedup_key)
+        summary["scanned"] += 1
+        await rec.record(
+            kind="collector_failure",
+            dedup_key=dedup_key,
+            title=f"'{source}' {_DEGRADATION_TITLES.get(kind, kind)}",
+            summary=_truncate(str(item.get("detail") or kind), 200),
+            detail={
+                "degradation": kind,
+                "detail": _truncate(str(item.get("detail") or "")),
+                "run_timestamp": run_ts,
+                "published": release.get("ready") is True,
+            },
+            scope=source,
+            priority="high" if kind == "dark_crawl" else "normal",
+        )
+
+    recovered = 0
+    prefix = "collector_failure:degraded:"
+    for dedup_key in summary["_open_keys"]:
+        if not dedup_key.startswith(prefix) or dedup_key in seen_keys:
+            continue
+        # kind never contains a colon; source does ("campus_graph:umich").
+        _kind, _, source = dedup_key[len(prefix):].partition(":")
+        info = sources.get(source)
+        if not isinstance(info, dict) or info.get("status") != "ok":
+            # Out of this run's shard, or it failed outright. Either way this
+            # run is not evidence the gap closed.
+            continue
+        recovered += 1
+        await rec.recover(
+            dedup_key,
+            auto_resolve=True,
+            note="a later run exercised this source with no degradation",
+        )
+
+    summary["detectors"]["release_degradation"] = {
+        "degradations": len(degradations),
+        "recovered": recovered,
+        "release_ready": release.get("ready"),
+        "run_timestamp": run_ts,
+    }
+
+
 async def _scan_professor_tracking(rec: _Recorder, summary: dict) -> None:
     """professor_tracking.json release gate -> data_drift incident."""
     block, err = _read_release_block(_TRACKING_PATH)
@@ -1196,6 +1292,15 @@ async def ops_scan(authorization: str | None = Header(default=None)):
         except Exception as e:
             logger.exception("ops-scan: data_drift detector crashed")
             summary["errors"].append({"detector": "data_drift", "error": _truncate(f"{type(e).__name__}: {e}", 120)})
+
+        try:
+            await _scan_release_degradation(rec, summary, payload)
+        except Exception as e:
+            logger.exception("ops-scan: release_degradation detector crashed")
+            summary["errors"].append({
+                "detector": "release_degradation",
+                "error": _truncate(f"{type(e).__name__}: {e}", 120),
+            })
 
         try:
             await _scan_professor_tracking(rec, summary)
