@@ -18,6 +18,22 @@ from .schools import SCHOOL_CONFIGS
 NATIONAL_SOURCES = frozenset(
     {"uiuc_sro", "nsf_reu", "simplify_internships"}
 )
+
+# Statuses that mean "this source ran out of the run's wall-clock budget",
+# not "this source failed". The budget (#712, #714) exists so a run that
+# overruns still publishes the schools that finished, instead of being killed
+# mid-write by the job timeout and publishing nothing. Blocking on them here
+# defeats that entirely — refresh_all exits 2 and the workflow discards the
+# whole run, which is the loss the budget was written to prevent.
+#
+# Publishing is safe because neither status can produce a false retirement:
+# a deferred source wrote nothing (its school keeps the previous refresh's
+# records) and a truncated source merged its partial harvest upsert-only
+# behind the richer-guard, while deactivate_stale_faculty considers ONLY
+# sources reporting "ok". The run is degraded, and says so.
+RELEASABLE_INCOMPLETE_STATUSES = frozenset(
+    {"deferred_deadline", "partial_deadline"}
+)
 _ALWAYS_SPECIAL: dict[str, frozenset[str]] = {
     "uiuc": frozenset(
         {
@@ -233,6 +249,13 @@ def evaluate_refresh_summary(
         info = sources.get(key)
         if not isinstance(info, dict):
             reasons.append(f"required source missing: {key}")
+            continue
+        if info.get("status") in RELEASABLE_INCOMPLETE_STATUSES:
+            warnings.append(
+                f"required source {key} stopped at the run time budget "
+                f"({info['status']}); its school keeps the previous refresh's "
+                "records and stale retirement skips it"
+            )
             continue
         if info.get("status") != "ok":
             # The generic error pass above supplies details for status=error.
