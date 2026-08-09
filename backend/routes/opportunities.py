@@ -5,7 +5,7 @@ import logging
 import time
 from collections import Counter
 from collections.abc import Iterator
-from datetime import UTC, date, timedelta
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, field_validator
 from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, run_blocking
 from backend.lib.contact_visibility import STATUS_REVEALED, contact_email_status
+from backend.lib.corpus_freshness import corpus_last_updated_at
 from backend.lib.llm import (
     chat_completion,
     chat_completion_stream,
@@ -391,14 +392,14 @@ async def get_stats():
     paid_total = sum(1 for o in opportunities if o.get("paid") in ("yes", "stipend"))
     intl_total = sum(1 for o in opportunities if o.get("eligibility", {}).get("international_friendly") == "yes")
 
-    from datetime import datetime
-    from pathlib import Path
-    data_path = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
-    last_updated_at = None
-    if data_path.exists():
-        last_updated_at = datetime.fromtimestamp(
-            data_path.stat().st_mtime, tz=UTC
-        ).isoformat()
+    # W16: this used to stat the GITIGNORED work file opportunities.json —
+    # render.yaml never assembles it, so in production the value was always
+    # null and the only user-facing freshness signal rendered nothing at all.
+    # Byte-for-byte the bug W15 fixed for the admin stale-data alert; both
+    # surfaces now read the one shared helper (committed collector snapshot →
+    # work file → newest shard), which returns None only when the age is
+    # genuinely unknown — callers must render that as unknown, not as fresh.
+    last_updated_at = corpus_last_updated_at()
 
     result = _public_payload({
         "total": len(opportunities),

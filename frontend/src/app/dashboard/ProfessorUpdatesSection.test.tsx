@@ -14,11 +14,27 @@ const mockListProfessorFollows = vi.fn();
 const mockGetProfessorUpdateReads = vi.fn();
 const mockMarkProfessorUpdatesRead = vi.fn();
 const mockGetProfessorUpdates = vi.fn();
+const mockGetAuthState = vi.fn();
+// Auth listeners registered by the component; tests drive account switches
+// by invoking these directly.
+let authListeners: ((s: { user: { id: string } | null }) => void)[] = [];
+// Owner-token validity is what blocks a cross-account write; tests flip it.
+let ownerStillCurrent = true;
 
 vi.mock('@/lib/supabase', () => ({
   listProfessorFollows: (...args: unknown[]) => mockListProfessorFollows(...args),
   getProfessorUpdateReads: (...args: unknown[]) => mockGetProfessorUpdateReads(...args),
   markProfessorUpdatesRead: (...args: unknown[]) => mockMarkProfessorUpdatesRead(...args),
+  getAuthState: (...args: unknown[]) => mockGetAuthState(...args),
+  onAuthChange: (cb: (s: { user: { id: string } | null }) => void) => {
+    authListeners.push(cb);
+    return () => { authListeners = authListeners.filter((l) => l !== cb); };
+  },
+}));
+
+vi.mock('@/lib/identity-owner', () => ({
+  captureOwnerToken: () => ({ uid: 'tok', epoch: 1, generation: 1 }),
+  isTokenOwnerStillCurrent: () => ownerStillCurrent,
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -68,6 +84,9 @@ beforeEach(() => {
   mockGetProfessorUpdates.mockReset().mockResolvedValue({
     available: true, events: [], requested: 0, has_more: false,
   });
+  mockGetAuthState.mockReset().mockResolvedValue({ user: { id: 'user-a' } });
+  authListeners = [];
+  ownerStillCurrent = true;
 });
 
 afterEach(() => cleanup());
@@ -205,5 +224,61 @@ describe('ProfessorUpdatesSection', () => {
     expect(
       screen.queryByText('dashboard.professorUpdates.emptyTitle'),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('account isolation (W16)', () => {
+  const EVENT = event('1', PROF_A, '2026-08-01T00:00:00+00:00');
+
+  it('refetches under the new identity when the account switches', async () => {
+    mockListProfessorFollows.mockResolvedValue([{ professorId: PROF_A }]);
+    mockGetProfessorUpdates.mockResolvedValue({
+      available: true, events: [EVENT], requested: 1, has_more: false,
+    });
+
+    render(<ProfessorUpdatesSection />);
+    await waitFor(() => expect(mockListProfessorFollows).toHaveBeenCalledTimes(1));
+
+    // Account B signs in in another tab.
+    mockListProfessorFollows.mockResolvedValue([]);
+    authListeners.forEach((cb) => cb({ user: { id: 'user-b' } }));
+
+    // The section must re-resolve under B rather than keep rendering A's feed.
+    await waitFor(() => expect(mockListProfessorFollows).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByText(/professorUpdates\.emptyTitle/)).toBeInTheDocument(),
+    );
+  });
+
+  it('never writes the previous account read cursors after a switch', async () => {
+    mockListProfessorFollows.mockResolvedValue([{ professorId: PROF_A }]);
+    mockGetProfessorUpdates.mockResolvedValue({
+      available: true, events: [EVENT], requested: 1, has_more: false,
+    });
+
+    render(<ProfessorUpdatesSection />);
+    const button = await screen.findByText(/professorUpdates\.markAllRead/);
+
+    // The account changes between render and the click: the owner token the
+    // write captured is no longer current, so the cursor write must not fire.
+    ownerStillCurrent = false;
+    fireEvent.click(button);
+
+    await waitFor(() => expect(mockMarkProfessorUpdatesRead).not.toHaveBeenCalled());
+  });
+
+  it('reports a failed mark-read instead of silently leaving the badge', async () => {
+    mockListProfessorFollows.mockResolvedValue([{ professorId: PROF_A }]);
+    mockGetProfessorUpdates.mockResolvedValue({
+      available: true, events: [EVENT], requested: 1, has_more: false,
+    });
+    mockMarkProfessorUpdatesRead.mockRejectedValue(new Error('rls denied'));
+
+    render(<ProfessorUpdatesSection />);
+    fireEvent.click(await screen.findByText(/professorUpdates\.markAllRead/));
+
+    expect(await screen.findByTestId('mark-read-failed')).toBeInTheDocument();
+    // and it must NOT claim the events were read
+    expect(screen.getByText(/professorUpdates\.unread/)).toBeInTheDocument();
   });
 });

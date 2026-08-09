@@ -9,7 +9,10 @@ and bound the synchronous ``pywebpush`` call outside the event-loop thread.
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import ipaddress
+import re
 import socket
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
@@ -26,6 +29,21 @@ MAX_PUSH_ENDPOINT_BYTES = 2048
 WEBPUSH_CONNECT_TIMEOUT_SECONDS = 3.0
 WEBPUSH_READ_TIMEOUT_SECONDS = 5.0
 WEBPUSH_TOTAL_TIMEOUT_SECONDS = 10.0
+
+# RFC 8030 §5.2 TTL: how long the push service may hold an undelivered
+# message.  pywebpush's own default is 0 — "deliver only if the device is
+# connected right now, otherwise drop it" — which silently loses reminders for
+# a phone that is asleep.  A day matches the cadence of the reminders cron: the
+# message is either delivered before the next nightly run or it is replaced by
+# it (see the Topic below), so nothing lingers longer than one reminder cycle.
+WEBPUSH_DEFAULT_TTL_SECONDS = 86_400
+
+# RFC 8030 §5.4: a Topic is "no more than 32 characters from the URL and
+# filename-safe Base 64 alphabet" (A–Z a–z 0–9 - _).  Longer or otherwise
+# illegal values are a 400 from the push service, so the value is derived, not
+# passed through.
+PUSH_TOPIC_MAX_LENGTH = 32
+_PUSH_TOPIC_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 # Keep blocking DNS + requests work out of FastAPI's event-loop thread.  The
 # pool is intentionally bounded: a provider outage cannot create unbounded
@@ -235,6 +253,30 @@ class _NoRedirectSession(requests.Session):
         return super().request(method, url, *args, **kwargs)
 
 
+def derive_push_topic(identity: str) -> str:
+    """Deterministic RFC 8030 ``Topic`` for one logical notification.
+
+    A push service keeps at most ONE pending message per (subscription, topic)
+    pair: a second message with the same topic REPLACES the undelivered first
+    one.  That is the only idempotency primitive Web Push offers, and it is the
+    one that closes the "the send timed out, so we sent it again tomorrow"
+    window — the duplicate collapses at the push service instead of arriving as
+    a second notification.  (The service-worker ``tag`` in the payload only
+    helps once both have been *delivered* and the first is still on screen.)
+
+    ``identity`` is the caller's natural key (e.g. ``reminder-<opportunity>``).
+    It is hashed rather than used directly because the spec caps a Topic at 32
+    characters of URL-safe base64 while natural keys are longer and can contain
+    characters outside that alphabet.  SHA-256 truncated to 32 base64 chars
+    keeps 192 bits — collision risk is nil, and identical input always yields
+    identical output, which is exactly what a retry needs.
+    """
+
+    digest = hashlib.sha256(identity.encode("utf-8")).digest()
+    topic = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    return topic[:PUSH_TOPIC_MAX_LENGTH]
+
+
 def _perform_webpush(
     *,
     endpoint: ValidatedPushEndpoint,
@@ -243,6 +285,8 @@ def _perform_webpush(
     data: str,
     vapid_private_key: str,
     vapid_claims: Mapping[str, str | int],
+    ttl: int,
+    headers: Mapping[str, str] | None,
 ) -> Any:
     # pywebpush uses requests synchronously.  Never inherit HTTP(S)_PROXY from
     # the process: a proxy can invalidate direct-destination SSRF checks.  TLS
@@ -256,7 +300,29 @@ def _perform_webpush(
             vapid_claims=dict(vapid_claims),
             timeout=(WEBPUSH_CONNECT_TIMEOUT_SECONDS, WEBPUSH_READ_TIMEOUT_SECONDS),
             requests_session=session,
+            # Verified against the pinned pywebpush (>=2.0,<3; 2.3.0 installed):
+            # `webpush(..., ttl: int = 0, headers: Optional[Dict] = None)`, both
+            # folded into the POST it makes.  Its own TTL default is 0 —
+            # "deliver now or drop" — which is why this is passed explicitly.
+            ttl=ttl,
+            headers=dict(headers) if headers else None,
         )
+
+
+def _validated_headers(headers: Mapping[str, str] | None) -> Mapping[str, str] | None:
+    """Fail closed on a Topic this module would not have produced itself.
+
+    A malformed Topic is a 400 from the push service — i.e. a silently
+    undelivered reminder — so an illegal value is rejected here, loudly, rather
+    than shipped.
+    """
+
+    if not headers:
+        return None
+    topic = headers.get("Topic")
+    if topic is not None and not _PUSH_TOPIC_RE.match(topic):
+        raise ValueError("Topic must be <=32 URL-safe base64 characters (RFC 8030 §5.4)")
+    return headers
 
 
 async def send_webpush_safely(
@@ -268,10 +334,19 @@ async def send_webpush_safely(
     webpush_func: WebPushCallable,
     resolver: Resolver | None = None,
     total_timeout: float = WEBPUSH_TOTAL_TIMEOUT_SECONDS,
+    ttl: int = WEBPUSH_DEFAULT_TTL_SECONDS,
+    headers: Mapping[str, str] | None = None,
 ) -> Any:
-    """Validate and deliver one push within an end-to-end wall-clock budget."""
+    """Validate and deliver one push within an end-to-end wall-clock budget.
+
+    ``headers`` carries the RFC 8030 request headers the push service acts on —
+    in practice ``{"Topic": derive_push_topic(...)}``, which makes a repeat of
+    the same logical notification replace the pending one instead of stacking
+    on top of it.  ``ttl`` bounds how long the service may hold it.
+    """
 
     endpoint = subscription_info.get("endpoint")
+    request_headers = _validated_headers(headers)
     loop = asyncio.get_running_loop()
 
     async def operation() -> Any:
@@ -291,6 +366,8 @@ async def send_webpush_safely(
                 data=data,
                 vapid_private_key=vapid_private_key,
                 vapid_claims=vapid_claims,
+                ttl=ttl,
+                headers=request_headers,
             ),
         )
 

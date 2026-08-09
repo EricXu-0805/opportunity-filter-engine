@@ -11,6 +11,7 @@ Rate-limit: 3 emails per IP per hour (enforced in backend/main.py).
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -128,8 +129,60 @@ def _resend_configured() -> tuple[str, str]:
     return api_key, from_addr
 
 
+# ---------------------------------------------------------------------------
+# Provider-side idempotency (W16)
+# ---------------------------------------------------------------------------
+# Every automated send in this codebase can be retried: the reminder cron
+# re-runs nightly, the digest cron re-runs after a transport failure. Without a
+# key, a retry after an AMBIGUOUS failure (the request timed out but Resend had
+# already accepted it) is a second email in the user's inbox. Resend dedupes on
+# the `Idempotency-Key` header, so the key must be derived from what the send
+# IS — never freshly generated per attempt, or it defeats its own purpose.
+#
+# Resend retains a key for 24 hours, which is the natural window for both
+# callers: a same-day retry dedupes, and a legitimately-different send (the
+# next day's reminder, next week's digest) is a different key anyway.
+
+def build_idempotency_key(scope: str, *parts: str) -> str:
+    """Stable per-logical-send key: ``<scope>-<sha256(parts)[:32]>``.
+
+    Deterministic in its inputs (same send -> same key on every attempt),
+    bounded well under Resend's 256-character limit however long the natural
+    identifiers are, and hashed so device/opportunity/search identifiers do not
+    end up in a third party's request logs.
+    """
+
+    material = "|".join(str(part) for part in parts)
+    return f"{scope}-{hashlib.sha256(material.encode('utf-8')).hexdigest()[:32]}"
+
+
+def classify_send_failure(exc: BaseException) -> str:
+    """``"ambiguous"`` when the send may already have been accepted.
+
+    The distinction an operator actually needs: "this definitely did not go
+    out" (safe to describe as a failure, retry is a first attempt) versus "this
+    may or may not have gone out" (a retry may be a duplicate at the user, and
+    only the Idempotency-Key keeps it from being one).
+    """
+
+    if isinstance(exc, HTTPException):
+        # We got an answer from Resend (or refused before sending, e.g. the
+        # recipient quota). A 5xx is the one answer that is NOT conclusive:
+        # the request reached the provider and its fate is unknown.
+        upstream = getattr(exc, "upstream_status", None)
+        return "ambiguous" if isinstance(upstream, int) and upstream >= 500 else "definitive"
+    if isinstance(exc, httpx.ConnectError | httpx.ConnectTimeout):
+        # No connection was ever established: nothing was sent, definitively.
+        return "definitive"
+    # Read/write/pool timeouts and protocol errors all happen after the request
+    # has been put on the wire. Anything unrecognised is treated the same way:
+    # assuming a send did NOT happen is the assumption that duplicates mail.
+    return "ambiguous"
+
+
 async def _send_via_resend(*, api_key: str, from_addr: str, to: str,
-                            subject: str, html: str, text: str) -> None:
+                            subject: str, html: str, text: str,
+                            idempotency_key: str | None = None) -> None:
     payload = {
         "from": from_addr,
         "to": [to],
@@ -141,11 +194,21 @@ async def _send_via_resend(*, api_key: str, from_addr: str, to: str,
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
+    if idempotency_key:
+        # Retry-safety for the automated senders; the user-facing endpoints
+        # (send-matches/send-favorites) pass none, because a second click there
+        # is a second deliberate request, not a retry.
+        headers["Idempotency-Key"] = idempotency_key
     async with httpx.AsyncClient(timeout=10.0, trust_env=False, follow_redirects=False) as client:
         resp = await client.post(RESEND_API_URL, json=payload, headers=headers)
     if resp.status_code >= 400:
         logger.warning("Resend returned %s: %s", resp.status_code, resp.text[:300])
-        raise HTTPException(status_code=502, detail="Email delivery failed")
+        failure = HTTPException(status_code=502, detail="Email delivery failed")
+        # Preserve the provider's own status: it is what separates a definitive
+        # rejection (4xx) from an ambiguous outcome (5xx) for callers that must
+        # decide whether a retry risks duplicating a delivered message.
+        failure.upstream_status = resp.status_code
+        raise failure
 
 
 def _html_escape(s: str) -> str:

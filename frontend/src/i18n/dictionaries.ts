@@ -4142,9 +4142,27 @@ export const en = {
     summary: {
       title: 'Your activity',
       saved: 'Saved',
+      unavailable: 'Unavailable',
     },
     saved: {
       errorTitle: "Couldn't load your saved opportunities.",
+    },
+    unavailable: {
+      saved: "{count} saved opportunities couldn't be loaded — they are still saved, just not available right now.",
+      tracked: "{count} tracked opportunities couldn't be loaded — your statuses, notes, and reminders are safe.",
+      body: 'Nothing was removed. Try again in a moment.',
+    },
+    freshness: {
+      label: 'Opportunity data',
+      checking: 'Checking when the data was last updated…',
+      updated: 'updated {age}',
+      unknown: 'last update time unknown',
+      warnNote: 'a refresh may be overdue',
+      staleNote: 'this data may be out of date',
+      justNow: 'just now',
+      minutesAgo: '{n} minutes ago',
+      hoursAgo: '{n} hours ago',
+      daysAgo: '{n} days ago',
     },
     deadlines: {
       title: 'Saved deadlines',
@@ -4195,6 +4213,7 @@ export const en = {
       unread: '{count} unread',
       unreadDot: 'Unread update',
       markAllRead: 'Mark all as read',
+      markAllReadFailed: "Couldn't save — these stay marked unread.",
       emptyTitle: 'You are not following any professors yet',
       emptyBody: 'Open a faculty opportunity page and turn on "Follow this professor" to see verified updates here.',
       emptyCta: 'Browse opportunities',
@@ -8496,9 +8515,27 @@ export const zh = {
     summary: {
       title: '你的动态',
       saved: '已收藏',
+      unavailable: '暂不可用',
     },
     saved: {
       errorTitle: '无法加载你的收藏。',
+    },
+    unavailable: {
+      saved: '有 {count} 个收藏的机会无法加载——它们仍在你的收藏里，只是暂时取不到详情。',
+      tracked: '有 {count} 个跟踪中的机会无法加载——你的状态、备注和提醒都还在。',
+      body: '没有任何内容被删除。请稍后重试。',
+    },
+    freshness: {
+      label: '机会数据',
+      checking: '正在检查数据的更新时间…',
+      updated: '更新于{age}',
+      unknown: '最后更新时间未知',
+      warnNote: '可能已超过刷新周期',
+      staleNote: '数据可能已过时',
+      justNow: '刚刚',
+      minutesAgo: '{n} 分钟前',
+      hoursAgo: '{n} 小时前',
+      daysAgo: '{n} 天前',
     },
     deadlines: {
       title: '收藏的截止日期',
@@ -8549,6 +8586,7 @@ export const zh = {
       unread: '{count} 条未读',
       unreadDot: '未读更新',
       markAllRead: '全部标为已读',
+      markAllReadFailed: '保存失败——这些仍标记为未读。',
       emptyTitle: '你还没有关注任何教授',
       emptyBody: '在教授的机会详情页打开"关注这位教授"，经核实的更新会显示在这里。',
       emptyCta: '去浏览机会',

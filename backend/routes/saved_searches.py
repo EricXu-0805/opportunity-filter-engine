@@ -40,8 +40,10 @@ from backend.routes.email import (
     _restore_signing_secret,
     _send_via_resend,
     _validate_email,
+    build_idempotency_key,
+    classify_send_failure,
 )
-from backend.routes.push import _required_env, _verify_cron_secret
+from backend.routes.push import _IncidentSink, _required_env, _verify_cron_secret
 from src.saved_searches.filter import matching_ids
 
 router = APIRouter()
@@ -75,6 +77,33 @@ DIGEST_UNSUB_TTL_DAYS = 365
 _UUID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
+
+# ---------------------------------------------------------------------------
+# W16: digest sends are idempotent, their failures are classified and durable
+# ---------------------------------------------------------------------------
+# The digest's throttle is a post-send stamp (last_digest_sent_at). If the send
+# raises, the stamp never happens and the next nightly run re-sends the whole
+# digest — correct when the send definitively failed, a duplicate email when it
+# only LOOKED like it failed (a read timeout after Resend accepted it).
+#
+#  * Every send now carries an Idempotency-Key derived from (search, day), so a
+#    same-day retry is collapsed by the provider rather than delivered twice.
+#    Resend retains a key for ~24h, which is exactly the window a same-day
+#    retry needs; a legitimate next-week digest is a different key by
+#    construction (the 7-day throttle guarantees the dates differ).
+#  * Failures are classified ambiguous vs definitive in the error string, so an
+#    operator reading the cron response can tell "this did not go out" from
+#    "this may have gone out" without guessing from an exception name.
+#  * Failures also land in the ops_incidents queue via the same _IncidentSink
+#    the reminders cron uses (W15 gave push.py durable incident records; the
+#    digest had none). Best-effort throughout: recording never breaks the cron.
+#
+# Residual, deliberately not hidden: an ambiguous failure still retries on the
+# NEXT night, which is outside the provider's 24h key window — so a duplicate
+# remains possible there. Stamping last_digest_sent_at on ambiguity would trade
+# that for silently skipping a week's digest that never arrived; for an opt-in
+# weekly summary, the visible-and-recorded duplicate is the better failure.
+_DIGEST_INCIDENT_SCOPE = "digest_cron"
 
 
 def _sign_digest_unsub(search_id: str, ts: int) -> str:
@@ -369,12 +398,24 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     }
 
     now = datetime.now(UTC)
+    # The idempotency window for a digest send. The throttle guarantees at most
+    # one digest per search per 7 days, so a day is unambiguous: two sends that
+    # share (search, day) are the same logical send retried, never two digests.
+    digest_window = now.date().isoformat()
     sent = 0
     throttled = 0
     skipped = 0
+    ambiguous = 0
     errors: list[str] = []
 
     async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
+        incidents = _IncidentSink(
+            client,
+            supabase_url,
+            headers,
+            scope=_DIGEST_INCIDENT_SCOPE,
+            entity_type="saved_search",
+        )
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
@@ -388,9 +429,15 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         )
         list_resp.raise_for_status()
         rows = list_resp.json()
+        if rows:
+            # One read of the live queue, and only when there is something to
+            # send — a night with no opted-in rows costs nothing extra.
+            await incidents.load_open_keys()
 
         for row in rows:
             sid = str(row.get("id", "?"))
+            digest_key = f"notification_failure:digest:{sid}"
+            stamp_key = f"notification_failure:digest:bookkeeping:{sid}"
             try:
                 stored_new_ids = row.get("new_match_ids") or []
                 new_ids = [
@@ -443,10 +490,79 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     row.get("name") or "Saved search", items, unsubscribe_url,
                     overflow=overflow,
                 )
-                await _send_via_resend(
-                    api_key=api_key, from_addr=from_addr, to=to_email,
-                    subject=subject, html=html, text=text,
-                )
+                # Same key on every attempt at this search's digest today —
+                # that is the whole point. A freshly generated key per attempt
+                # would make the provider treat a retry as a new email.
+                idempotency_key = build_idempotency_key("digest", sid, digest_window)
+                try:
+                    await _send_via_resend(
+                        api_key=api_key, from_addr=from_addr, to=to_email,
+                        subject=subject, html=html, text=text,
+                        idempotency_key=idempotency_key,
+                    )
+                except Exception as send_exc:  # noqa: BLE001 — classified below
+                    # The blanket per-row handler used to swallow this as just
+                    # another row error. An operator needs to know WHICH kind
+                    # of failure it was: a definitive one delivered nothing, an
+                    # ambiguous one may already be in the recipient's inbox.
+                    outcome = classify_send_failure(send_exc)
+                    is_ambiguous = outcome == "ambiguous"
+                    if is_ambiguous:
+                        ambiguous += 1
+                    errors.append(
+                        f"{sid}: digest send "
+                        + (
+                            "AMBIGUOUS (may have been delivered) "
+                            if is_ambiguous
+                            else "FAILED (definitively not delivered) "
+                        )
+                        + f"{type(send_exc).__name__} — not stamped, retries next run"
+                        + (
+                            f"; same-day retry reuses Idempotency-Key {idempotency_key}"
+                            if is_ambiguous else ""
+                        )
+                    )
+                    logger.warning(
+                        "digest cron: send %s for %s (%s)",
+                        outcome, sid, type(send_exc).__name__,
+                    )
+                    await incidents.record(
+                        digest_key,
+                        title=(
+                            "Saved-search digest outcome unknown"
+                            if is_ambiguous else "Saved-search digest send failed"
+                        ),
+                        summary=(
+                            "the transport failed after the request was sent; the "
+                            "provider may already have accepted the digest"
+                            if is_ambiguous
+                            else "the provider did not accept the digest"
+                        ),
+                        detail={
+                            "error_category": "digest_send_failed",
+                            "outcome": outcome,
+                            "may_have_been_delivered": is_ambiguous,
+                            # Deriving from (search, day), never per attempt.
+                            "idempotency_key": idempotency_key,
+                            "stamped": False,
+                            "consequence": "digest re-sends on the next nightly run",
+                            # Type only: an exception message can carry the
+                            # recipient address or the provider's payload.
+                            "exception_type": type(send_exc).__name__,
+                            "http_status": getattr(send_exc, "status_code", None),
+                        },
+                        # failure_state is the OBSERVATION (and migration 031
+                        # allows only five values); whether the outcome is
+                        # ambiguous is a separate fact, recorded in the detail.
+                        failure_state=(
+                            "timed_out"
+                            if isinstance(send_exc, httpx.TimeoutException)
+                            else "failed"
+                        ),
+                        entity_id=sid,
+                    )
+                    continue
+                await incidents.recover(digest_key, "digest accepted by the provider")
                 # The provider accepted the send; this stamp is what prevents
                 # a duplicate digest tomorrow (throttle keys off
                 # last_digest_sent_at). Retry once on failure and record a
@@ -470,16 +586,60 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                         f"{sid}: digest SENT but stamp failed twice "
                         f"({patch_resp.status_code}) — will duplicate next run"
                     )
+                    await incidents.record(
+                        stamp_key,
+                        title="Saved-search digest bookkeeping write failed",
+                        summary="last_digest_sent_at stamp failed twice; the digest will duplicate",
+                        detail={
+                            "stage": "last_digest_sent_at_stamp",
+                            "error_category": "bookkeeping_write_failed",
+                            "http_status": patch_resp.status_code,
+                            "attempts": 2,
+                            "consequence": "digest re-sends until the stamp succeeds",
+                            "provider_accepted": True,
+                        },
+                        # 'partial': the digest WAS accepted, only the record
+                        # of it failed.
+                        failure_state="partial",
+                        entity_id=sid,
+                    )
+                else:
+                    await incidents.recover(
+                        stamp_key, "last_digest_sent_at stamped after acceptance"
+                    )
                 sent += 1
             except Exception as e:  # noqa: BLE001 — keep cron iterating
                 errors.append(f"{sid}: {type(e).__name__}: {e}")
+                await incidents.record(
+                    digest_key,
+                    title="Saved-search digest row failed with an unexpected error",
+                    summary="row isolated; remaining digests continued",
+                    detail={
+                        "error_category": "row_exception",
+                        # Type only — the message can carry the recipient
+                        # address or a provider payload.
+                        "exception_type": type(e).__name__,
+                    },
+                    failure_state="failed",
+                    entity_id=sid,
+                )
 
     return {
         "status": "ok" if not errors else "partial",
+        # `sent` counts provider ACCEPTANCES, not inbox arrivals.
         "sent": sent,
         "throttled": throttled,
         "skipped": skipped,
+        # Sends whose outcome is unknown: not stamped, so they retry — and may
+        # therefore duplicate if the original did land (see the W16 note above).
+        "ambiguous": ambiguous,
         "errors": errors[:10],
+        # W16 ops-queue bookkeeping, mirroring the reminders cron. Non-zero
+        # incident_errors means failures that did NOT reach the operator queue;
+        # `errors` above stays the source of truth for this run.
+        "incidents_recorded": incidents.recorded,
+        "incidents_recovered": incidents.recovered,
+        "incident_errors": incidents.errors,
         "timestamp": datetime.now(UTC).isoformat(),
     }
 

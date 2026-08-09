@@ -29,6 +29,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.data_loader import load_opportunities
+from backend.lib.corpus_freshness import corpus_last_updated_at as _opportunities_mtime
 from backend.routes.email import _enforce_recipient_quota, _html_escape, _send_via_resend
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
@@ -50,43 +51,10 @@ _CACHE_TTL_SECONDS = 300
 _cache: dict = {"snapshot": None, "built_at": 0.0}
 
 
-def _opportunities_mtime() -> str | None:
-    """When the corpus was last refreshed, as an ISO timestamp.
-
-    W15 fix: this used to stat ``opportunities.json`` — a GITIGNORED work file
-    that render.yaml never assembles, so in production the path never existed,
-    the function always returned None, and the stale-data alert (the primary
-    "the cron died" detector) could never fire. The authoritative signal is the
-    committed collector snapshot's own run timestamp; the shard directory mtime
-    is the deploy-time fallback.
-    """
-    base = Path(__file__).resolve().parents[2] / "data" / "processed"
-    snapshot = base / "collector_status.json"
-    if snapshot.exists():
-        try:
-            with snapshot.open("r", encoding="utf-8") as f:
-                ts = json.load(f).get("timestamp")
-            if isinstance(ts, str) and ts:
-                # Stored naive-UTC by write_status; normalize so the caller's
-                # arithmetic against an aware "now" cannot raise.
-                parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                if parsed.tzinfo is None:
-                    parsed = parsed.replace(tzinfo=UTC)
-                return parsed.isoformat()
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            pass
-    work_file = base / "opportunities.json"
-    if work_file.exists():
-        return datetime.fromtimestamp(work_file.stat().st_mtime, tz=UTC).isoformat()
-    shards = base / "shards"
-    if shards.is_dir():
-        try:
-            newest = max((p.stat().st_mtime for p in shards.glob("*.json")), default=None)
-        except OSError:
-            newest = None
-        if newest:
-            return datetime.fromtimestamp(newest, tz=UTC).isoformat()
-    return None
+# The corpus-freshness reader (W15's fix for the gitignored work file) now
+# lives in backend/lib/corpus_freshness.py, shared with the public stats
+# endpoint so the two surfaces cannot report different ages; imported above
+# under its original name because this module and its tests call it.
 
 _UNSORTED_SENTINELS = frozenset({"unsorted", "uncategorized", "misc"})
 
