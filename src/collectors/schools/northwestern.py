@@ -475,7 +475,7 @@ SCHOOL: dict = {
                 "https://www.mccormick.northwestern.edu/biomedical/academics/undergraduate/research-opportunities/summer-research-awards.html",
                 "https://baker.northwestern.edu/grants/summer-grants.html",
                 "https://baker.northwestern.edu/grants/academic-year-grants.html",
-                "https://www.tgs.northwestern.edu/success/recruitment/summer-research-opportunity-program/",
+                "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/index.html",
                 "https://www.cancer.northwestern.edu/research/education-training/summer-research/index.html",
             ],
             "crawl": STATIC,
@@ -483,7 +483,7 @@ SCHOOL: dict = {
                 program(
                     "nu_srop",
                     "Northwestern Summer Research Opportunity Program (SROP)",
-                    "https://www.tgs.northwestern.edu/success/recruitment/summer-research-opportunity-program/",
+                    "https://www.tgs.northwestern.edu/success/thoughtful-recruitment/summer-research-opportunity-program/index.html",
                     "Northwestern's flagship eight-week summer research experience for "
                     "sophomores and juniors from across the U.S., in ANY field — social "
                     "sciences, humanities, physical/chemical/biological sciences, math, and "
