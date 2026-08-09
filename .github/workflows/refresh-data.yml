@@ -283,14 +283,22 @@ jobs:
             # shards (scripts/shard_corpus.py) — each shard sits far below GitHub's
             # 100 MB blob limit and grows independently, so onboarding more schools
             # can't outgrow a single file again. split() prunes description_raw
-            # duplicates (lossless). It is UPSERT-ONLY (no --prune): this run's work
-            # file is assembled from its run-start checkout and omits any school
-            # onboarded to main after the run began, so pruning "absent" shards here
-            # would delete freshly-landed schools (how #614 wiped Yale, #630 the
-            # Wave-3 six). Upsert-only writes only the schools we actually scraped
-            # and leaves every other on-disk shard (from the FETCH_HEAD rebase onto
-            # latest main) untouched.
-            python3 scripts/shard_corpus.py split
+            # duplicates (lossless). No --prune: this run's work file is assembled
+            # from its run-start checkout and omits any school onboarded to main
+            # after the run began, so pruning "absent" shards would delete
+            # freshly-landed schools (how #614 wiped Yale, #630 the Wave-3 six).
+            #
+            # --only-shards is the other half of that guarantee, and it was
+            # missing. A bare split writes EVERY school in the work file, so the
+            # ~100 schools this run never scraped were rewritten from run-start
+            # data — silently reverting any change that landed on main during the
+            # 1-5h scrape (an engine cleanup, a keyword backfill, another wave's
+            # records), with no conflict and a PR title naming only this shard.
+            # refresh_rotation --targets answers exactly which committed shards a
+            # run is authorized to replace.
+            TARGETS=$(python3 scripts/refresh_rotation.py \
+              --schools "$SHARD" --allow-full --targets)
+            python3 scripts/shard_corpus.py split --only-shards "$TARGETS"
 
             git add data/processed/shards data/processed/collector_status.json
             if [ -f data/processed/collector_status_history.jsonl ]; then
