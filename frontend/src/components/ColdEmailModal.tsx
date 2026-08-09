@@ -236,6 +236,15 @@ export default function ColdEmailModal({
   // generic, and presenting one as tailored would be a lie. Absent field
   // (older cached responses) ⇒ 'specific', the pre-existing behaviour.
   const [grounding, setGrounding] = useState<'specific' | 'no_target_data'>('specific');
+  // How current the corpus record behind this draft is. The backend has
+  // always computed and shipped it ("the UI must not present the draft as
+  // current outreach" — _source_freshness) and nothing read it, so a draft to
+  // a professor whose record was retired looked identical to one to a
+  // currently-listed professor. Default 'unknown' shows nothing: an older
+  // cached response without the field must not manufacture a warning OR a
+  // false all-clear.
+  const [freshness, setFreshness] =
+    useState<'fresh' | 'stale' | 'inactive' | 'unknown'>('unknown');
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   // Copying/opening a draft only REVEALS the follow-up strip — it is not
@@ -319,6 +328,7 @@ export default function ColdEmailModal({
         statusOf(data.recipient_status, data.variants[0]?.recipient_email ?? ''),
       );
       setGrounding(data.grounding ?? 'specific');
+      setFreshness(data.source_freshness ?? 'unknown');
       // W12: variants regenerate on every open, so their corpus_version is
       // the "current" mark that decides whether a cached AI draft survives.
       if (data.corpus_version) corpusVersionRef.current = data.corpus_version;
@@ -1000,6 +1010,36 @@ export default function ColdEmailModal({
                     )}
                   </div>
                   <div>
+                    {/* Above the grounding notice: whether the person still
+                        holds this post outranks how well-tailored the draft
+                        is. 'inactive' is red because the record was actually
+                        retired (departed faculty, expired posting); 'stale' is
+                        amber because it is only past the re-verification TTL. */}
+                    {(freshness === 'inactive' || freshness === 'stale') && (
+                      <div
+                        className={`mb-3 rounded-lg border px-3 py-2 ${
+                          freshness === 'inactive'
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-amber-50 border-amber-200'
+                        }`}
+                        data-testid="freshness-notice"
+                      >
+                        <p className={`text-[12px] font-medium ${
+                          freshness === 'inactive' ? 'text-red-800' : 'text-amber-800'
+                        }`}>
+                          {freshness === 'inactive'
+                            ? t('coldEmail.sourceInactiveTitle')
+                            : t('coldEmail.sourceStaleTitle')}
+                        </p>
+                        <p className={`mt-0.5 text-[12px] leading-snug ${
+                          freshness === 'inactive' ? 'text-red-700' : 'text-amber-700'
+                        }`}>
+                          {freshness === 'inactive'
+                            ? t('coldEmail.sourceInactiveBody')
+                            : t('coldEmail.sourceStaleBody')}
+                        </p>
+                      </div>
+                    )}
                     {grounding === 'no_target_data' && (
                       /* Evidence honesty: nothing in this record could
                          personalize a draft, so say so instead of letting a
