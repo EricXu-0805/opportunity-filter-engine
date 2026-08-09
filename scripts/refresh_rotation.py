@@ -167,6 +167,73 @@ def normalize_publication_unit(raw: str) -> str:
     )
 
 
+# uiuc drives headless Chromium outside the faculty_graph engine
+# (uiuc_js_faculty recovers the 4 ACES departments from Drupal Views AJAX),
+# so it cannot be detected by inspecting school configs.
+_BROWSER_SCHOOLS_OUTSIDE_ENGINE = frozenset({"uiuc"})
+
+
+def _config_needs_browser(school: dict) -> bool:
+    for dept in school.get("departments", []):
+        for block in ("scrape", "api", "ajax", "json_dir", "sitemap"):
+            cfg = dept.get(block)
+            if not isinstance(cfg, dict):
+                continue
+            if cfg.get("render"):
+                return True
+            enrich = cfg.get("profile_enrich")
+            if isinstance(enrich, dict) and enrich.get("render"):
+                return True
+    return False
+
+
+def browser_schools() -> frozenset[str]:
+    """Slugs whose collectors need headless Chromium, derived from the configs.
+
+    The workflow used to carry this as a hardcoded alternation, and 11
+    render-mode schools (asu, brown, casewestern, colostate, drexel, indiana,
+    lsu, rpi, uky, unl, utdallas) were missing from it. They collected anyway,
+    but only by luck: the install is per-RUN, and every shard happened to
+    contain at least one listed school. Nothing enforced that. A school moving
+    days, or an edit to the shard table, and those departments go quiet with
+    no signal — ``_render_soup`` lazy-imports Playwright and degrades to None
+    when it is absent, which looks identical to an unreachable directory, and
+    the source still reports "ok" on whatever its other departments returned.
+    """
+    import importlib
+    import pkgutil
+
+    import src.collectors.schools as schools_pkg
+
+    needed = set(_BROWSER_SCHOOLS_OUTSIDE_ENGINE)
+    for module in pkgutil.iter_modules(schools_pkg.__path__):
+        if not module.name.endswith("_faculty"):
+            continue
+        try:
+            loaded = importlib.import_module(
+                f"src.collectors.schools.{module.name}"
+            )
+        except Exception:  # noqa: BLE001 — a broken config must not break scheduling
+            continue
+        config = getattr(loaded, "SCHOOL", None)
+        if isinstance(config, dict) and _config_needs_browser(config):
+            slug = config.get("school_slug")
+            if slug:
+                needed.add(slug)
+    return frozenset(needed)
+
+
+def shard_needs_browser(shard: str) -> bool:
+    """True when any school this run will scrape needs headless Chromium."""
+
+    normalized = normalize_requested_shard(shard, allow_full=True)
+    if normalized == NATIONAL_SHARD:
+        return False
+    if normalized == "":
+        return True
+    return bool(set(normalized.split(",")) & browser_schools())
+
+
 def target_shards(shard: str) -> tuple[str, ...]:
     """Return the exact committed shard names a run is authorized to replace."""
 
@@ -199,6 +266,11 @@ def main() -> int:
         help="Select the isolated batch registered for --day",
     )
     parser.add_argument(
+        "--needs-browser",
+        action="store_true",
+        help="Print true/false: does the selected shard need headless Chromium",
+    )
+    parser.add_argument(
         "--publication-unit",
         action="store_true",
         help="Require a bounded canonical publication unit for --schools",
@@ -222,7 +294,10 @@ def main() -> int:
                     args.schools or "",
                     allow_full=args.allow_full,
                 )
-        print(",".join(target_shards(shard)) if args.targets else shard)
+        if args.needs_browser:
+            print("true" if shard_needs_browser(shard) else "false")
+        else:
+            print(",".join(target_shards(shard)) if args.targets else shard)
     except ValueError as exc:
         parser.error(str(exc))
     return 0
