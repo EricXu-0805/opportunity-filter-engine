@@ -85,6 +85,31 @@ def _data_as_of(data: list[dict]) -> date:
     return max(seen) if seen else date.today()
 
 
+def _is_past_deadline_leak(opp: dict, as_of: date) -> bool:
+    """True iff this record is one deactivate_past should have retired.
+
+    Mirrors the normalizer's deliberate skips, because a gate that demands
+    what the normalizer refuses to do can never be satisfied — it just kills
+    the refresh run:
+
+      * ``is_rolling`` — an always-open posting whose deadline field is a
+        cycle date, not a closing date;
+      * ``deadline_is_estimate`` — W11 truthfulness: an nsf_reu deadline
+        derived from the award start date is a labeled guess, so a passed
+        estimate must not hard-flip is_active (the UI likewise renders past
+        estimates as carrying no urgency rather than as 'passed').
+
+    Shared by the snapshot gate and the contract test below so the rule can't
+    drift from the normalizer again.
+    """
+    if opp.get("is_rolling") or opp.get("deadline_is_estimate"):
+        return False
+    dt = _parse_iso(opp.get("deadline"))
+    if not dt or dt >= as_of:
+        return False
+    return opp.get("metadata", {}).get("is_active") is not False
+
+
 class TestR70ADataQuality:
     def test_every_record_has_description_clean(self):
         """R70-A backfilled 25 program_overview records that previously
@@ -259,12 +284,7 @@ class TestR70ADataQuality:
         """
         data = _load_data()
         as_of = _data_as_of(data)
-        leaks = []
-        for o in data:
-            dt = _parse_iso(o.get("deadline"))
-            if dt and dt < as_of:
-                if o.get("metadata", {}).get("is_active") is not False:
-                    leaks.append(o.get("id"))
+        leaks = [o.get("id") for o in data if _is_past_deadline_leak(o, as_of)]
         assert len(leaks) <= PAST_DEADLINE_LEAK_TOLERANCE, (
             f"{len(leaks)} records past-deadline as of {as_of} still "
             f"is_active=True (tolerance: {PAST_DEADLINE_LEAK_TOLERANCE}). "
@@ -656,6 +676,47 @@ class TestDeactivatePastLogic:
         assert counts["already_inactive"] == 1
         assert counts["newly_deactivated"] == 0
         assert opp["metadata"]["deactivated_at"] == "2025-12-01"
+
+    def test_estimated_deadline_is_skipped(self):
+        """W11 truthfulness: an nsf_reu deadline derived from the award start
+        date is a labeled guess, so a passed estimate must not hard-flip
+        is_active — the UI already renders past estimates as carrying no
+        urgency rather than as 'passed'."""
+        opp = {"id": "x", "deadline": "2026-01-01", "deadline_is_estimate": True}
+        counts = self._run([opp])
+        assert opp.get("metadata", {}).get("is_active") is not False
+        assert counts["skipped_estimate"] == 1
+
+    def test_snapshot_gate_agrees_with_the_deactivator(self):
+        """The snapshot leak rule and the normalizer must classify identically.
+
+        They drifted: W11 (#702) taught deactivate_past to skip estimated
+        deadlines, but the snapshot gate above kept the pre-W11 rule at zero
+        tolerance — so the moment an estimate's projected date passes, a gate
+        the normalizer provably cannot satisfy kills the whole refresh run
+        (2026-08-02, 139 nsf_reu records; three more come due 2027-02-15).
+        """
+        past, future = "2026-01-01", "2026-12-31"
+        shapes = [
+            {"id": "hard-past", "deadline": past},
+            {"id": "hard-future", "deadline": future},
+            {"id": "estimate-past", "deadline": past, "deadline_is_estimate": True},
+            {"id": "estimate-future", "deadline": future, "deadline_is_estimate": True},
+            {"id": "rolling-past", "deadline": past, "is_rolling": True},
+            {"id": "no-deadline", "deadline": None},
+            {"id": "unparseable", "deadline": "sometime next spring"},
+        ]
+        self._run(shapes)
+        unsatisfiable = [
+            opp["id"]
+            for opp in shapes
+            if _is_past_deadline_leak(opp, self.REF)
+            and opp.get("metadata", {}).get("is_active") is not False
+        ]
+        assert not unsatisfiable, (
+            "the snapshot gate flags records deactivate_past deliberately "
+            f"leaves active, so no refresh can ever satisfy it: {unsatisfiable}"
+        )
 
 
 class TestSchoolAudience:
