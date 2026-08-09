@@ -4,6 +4,12 @@ Collectors stay isolated: one source may fail without preventing sibling
 collectors from finishing and writing diagnostics. Publication is stricter.
 This module evaluates the completed summary and makes missing, empty, errored,
 or partial target sources a structured fail-closed verdict.
+
+The line it draws is between accuracy and coverage. Evidence that cannot be
+true, a source that reported an error, and a source that emitted nothing all
+block: they mean what we would publish may be wrong. A host we simply could
+not reach only costs coverage — the merge layers already refuse to retire
+records behind an incomplete crawl — so it degrades the verdict instead.
 """
 
 from __future__ import annotations
@@ -17,6 +23,22 @@ from .schools import SCHOOL_CONFIGS
 
 NATIONAL_SOURCES = frozenset(
     {"uiuc_sro", "nsf_reu", "simplify_internships"}
+)
+
+# Statuses that mean "this source ran out of the run's wall-clock budget",
+# not "this source failed". The budget (#712, #714) exists so a run that
+# overruns still publishes the schools that finished, instead of being killed
+# mid-write by the job timeout and publishing nothing. Blocking on them here
+# defeats that entirely — refresh_all exits 2 and the workflow discards the
+# whole run, which is the loss the budget was written to prevent.
+#
+# Publishing is safe because neither status can produce a false retirement:
+# a deferred source wrote nothing (its school keeps the previous refresh's
+# records) and a truncated source merged its partial harvest upsert-only
+# behind the richer-guard, while deactivate_stale_faculty considers ONLY
+# sources reporting "ok". The run is degraded, and says so.
+RELEASABLE_INCOMPLETE_STATUSES = frozenset(
+    {"deferred_deadline", "partial_deadline"}
 )
 _ALWAYS_SPECIAL: dict[str, frozenset[str]] = {
     "uiuc": frozenset(
@@ -234,6 +256,13 @@ def evaluate_refresh_summary(
         if not isinstance(info, dict):
             reasons.append(f"required source missing: {key}")
             continue
+        if info.get("status") in RELEASABLE_INCOMPLETE_STATUSES:
+            warnings.append(
+                f"required source {key} stopped at the run time budget "
+                f"({info['status']}); its school keeps the previous refresh's "
+                "records and stale retirement skips it"
+            )
+            continue
         if info.get("status") != "ok":
             # The generic error pass above supplies details for status=error.
             if info.get("status") != "error":
@@ -287,9 +316,7 @@ def evaluate_refresh_summary(
                 )
             elif (
                 attempted <= 0
-                or loaded <= 0
                 or sources_expected <= 0
-                or sources_loaded != sources_expected
                 or seed_pages_expected <= 0
                 or loaded > attempted
                 or seed_pages_loaded > loaded
@@ -300,19 +327,42 @@ def evaluate_refresh_summary(
                     f"required deep source {key} has inconsistent live-crawl "
                     "coverage evidence"
                 )
-            elif (
-                seed_pages_loaded != seed_pages_expected
-                or seed_pages_failed != 0
-            ):
-                reasons.append(
-                    f"required deep source {key} loaded "
-                    f"{seed_pages_loaded}/{seed_pages_expected} configured "
-                    f"seed pages ({seed_pages_failed} failed)"
-                )
+            else:
+                # A host we could not reach costs coverage, never accuracy:
+                # campus_graph.merge_into_processed retires discoveries only
+                # for sources whose crawl came back complete, so the records
+                # behind an unreachable seed are preserved untouched. Vetoing
+                # the release added no protection and took the whole shard
+                # down with one third-party bot wall.
+                if loaded == 0:
+                    warnings.append(
+                        f"deep source {key} loaded no live page at all "
+                        f"(0/{seed_pages_expected} seed pages, "
+                        f"0/{sources_expected} crawl sources); its records "
+                        "keep the previous run's verification and this run "
+                        "cannot claim to have seen the school"
+                    )
+                else:
+                    if sources_loaded != sources_expected:
+                        warnings.append(
+                            f"deep source {key} crawled {sources_loaded}/"
+                            f"{sources_expected} configured crawl sources; the "
+                            "unreached ones keep their previous records"
+                        )
+                    if (
+                        seed_pages_loaded != seed_pages_expected
+                        or seed_pages_failed != 0
+                    ):
+                        warnings.append(
+                            f"deep source {key} loaded "
+                            f"{seed_pages_loaded}/{seed_pages_expected} "
+                            f"configured seed pages ({seed_pages_failed} "
+                            "failed); those sources kept their previous records"
+                        )
             crawl_errors = info.get("crawl_errors")
             if crawl_errors:
-                reasons.append(
-                    f"required deep source {key} reported crawl errors: "
+                warnings.append(
+                    f"deep source {key} reported crawl errors: "
                     f"{sorted(crawl_errors)}"
                 )
             degraded_page_errors = info.get("degraded_page_errors")

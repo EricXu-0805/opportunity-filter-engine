@@ -127,10 +127,25 @@ def test_quick_faculty_only_school_cannot_report_vacuous_success():
     assert any("no mandatory producer" in reason for reason in verdict["reasons"])
 
 
-def test_deep_campus_graph_total_live_outage_blocks_seed_only_success():
-    graph = _graph_ok()
+def test_deep_campus_graph_total_live_outage_is_degraded_not_blocked():
+    """Measured umich, 2026-08-08: 0/9 seeds, 0 live pages, 6/6 sources dark.
+
+    Every Michigan campus_graph seed host answers the Cloudflare managed
+    challenge, so this school's crawl cannot come back non-empty again. Its
+    12 seed records still emit from config with seed_page_verified=False,
+    and merge_into_processed hands them back their previous status,
+    is_active and last_verified — the corpus keeps saying exactly what it
+    said before. Blocking here withheld fifteen other schools' fresh data
+    for three weeks and changed nothing about Michigan's.
+    """
+    graph = _graph_ok(fetched=12)
+    graph["crawl_sources_expected"] = 6
     graph["crawl_sources_loaded"] = 0
+    graph["live_pages_attempted"] = 9
     graph["live_pages_loaded"] = 0
+    graph["seed_pages_expected"] = 9
+    graph["seed_pages_loaded"] = 0
+    graph["seed_pages_failed"] = 9
 
     verdict = evaluate_refresh_summary(
         _summary(
@@ -145,11 +160,21 @@ def test_deep_campus_graph_total_live_outage_blocks_seed_only_success():
         deep=True,
     )
 
-    assert verdict["ready"] is False
-    assert any("live-crawl" in reason for reason in verdict["reasons"])
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert any("loaded no live page at all" in w for w in verdict["warnings"])
 
 
-def test_deep_campus_graph_partial_configured_seed_fetch_fails_closed():
+def test_deep_campus_graph_partial_configured_seed_fetch_is_degraded_only():
+    """An unreachable seed costs coverage; it cannot corrupt what we keep.
+
+    campus_graph only lets ``merge_into_processed`` retire discoveries for
+    sources whose crawl came back ``crawl_complete``, so a failed seed
+    already preserves every prior record. Vetoing the release on top of
+    that bought no safety and cost the Saturday shard three weeks of
+    publication when Michigan put its UROP pages behind a Cloudflare
+    challenge (observed 2026-08-08, run 31243355936).
+    """
     graph = _graph_ok(
         live_pages_attempted=3,
         live_pages_loaded=2,
@@ -172,8 +197,73 @@ def test_deep_campus_graph_partial_configured_seed_fetch_fails_closed():
         deep=True,
     )
 
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert any("2/3 configured seed pages" in w for w in verdict["warnings"])
+    assert any("seed fetch failed" in w for w in verdict["warnings"])
+
+
+def test_deep_campus_graph_wholly_unreachable_source_is_degraded_only():
+    """The exact Saturday shape: one source blocked, the rest crawled.
+
+    Georgia Tech's bioresearch source timed out while its siblings loaded,
+    so ``crawl_sources_loaded`` fell short of expected. That mismatch was
+    filed under "inconsistent evidence" — an arithmetic contradiction —
+    when it is just an unreached host.
+    """
+    graph = _graph_ok(
+        crawl_sources_expected=3,
+        crawl_sources_loaded=2,
+        live_pages_attempted=4,
+        live_pages_loaded=3,
+        seed_pages_expected=3,
+        seed_pages_loaded=2,
+        seed_pages_failed=1,
+        crawl_errors=["gt_lab: crawl failed: read timeout"],
+    )
+
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw"},
+            {
+                "campus_graph:uw": graph,
+                "uw_faculty": _ok(100),
+            },
+        ),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+
+    assert verdict["ready"] is True
+    assert any("2/3 configured crawl sources" in w for w in verdict["warnings"])
+
+
+def test_deep_campus_graph_seed_arithmetic_contradiction_still_blocks():
+    """Unreachable is tolerated; evidence that cannot be true is not."""
+    graph = _graph_ok(
+        seed_pages_expected=3,
+        seed_pages_loaded=1,
+        seed_pages_failed=1,
+    )
+
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw"},
+            {
+                "campus_graph:uw": graph,
+                "uw_faculty": _ok(100),
+            },
+        ),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+
     assert verdict["ready"] is False
-    assert any("2/3 configured seed pages" in reason for reason in verdict["reasons"])
+    assert any(
+        "inconsistent live-crawl" in reason for reason in verdict["reasons"]
+    )
 
 
 def test_deep_campus_graph_recursive_page_failure_is_degraded_only():
@@ -551,3 +641,104 @@ def test_local_only_tracking_failure_cannot_block_opportunity_artifact():
     assert verdict["ready"] is True
     assert verdict["status"] == "degraded"
     assert any("local-only" in warning for warning in verdict["warnings"])
+
+
+def test_budget_deferred_source_is_degraded_not_blocked():
+    """A source the run's wall-clock budget never started must not block the
+    schools that DID finish from publishing — that is the entire point of the
+    budget (#712). The contract predates those statuses and rejected anything
+    that was not exactly "ok", so refresh_all exited 2 and the workflow threw
+    away the whole run: the precise loss the budget was added to prevent.
+
+    Safe to publish: a deferred source wrote nothing, so its school keeps the
+    records from its previous refresh, and deactivate_stale_faculty only
+    considers sources reporting "ok" — it provably cannot retire them.
+    """
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw"},
+            {
+                "campus_graph:uw": _graph_ok(),
+                "uw_faculty": {"status": "deferred_deadline"},
+            },
+        ),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert any("time budget" in warning for warning in verdict["warnings"])
+
+
+def test_budget_truncated_source_is_degraded_not_blocked():
+    """Same for a source cut mid-flight (#714): its partial harvest merged
+    (upsert-only, richer-guard), and stale retirement skips it, so the shard
+    publishes what it has rather than losing every school in the run."""
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw"},
+            {
+                "campus_graph:uw": _graph_ok(),
+                "uw_faculty": {
+                    "status": "partial_deadline",
+                    "fetched": 40,
+                    "skipped_departments": 12,
+                },
+            },
+        ),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert any("time budget" in warning for warning in verdict["warnings"])
+
+
+def test_budget_status_does_not_excuse_an_empty_completed_source():
+    """The budget exemption must not become a way to publish nothing: a source
+    that reports "ok" with zero records still blocks."""
+    verdict = evaluate_refresh_summary(
+        _summary(
+            {"uw"},
+            {
+                "campus_graph:uw": _graph_ok(),
+                "uw_faculty": _ok(0),
+            },
+        ),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+
+    assert verdict["ready"] is False
+    assert any("emitted zero records" in reason for reason in verdict["reasons"])
+
+
+def test_every_budget_status_the_engine_emits_is_known_to_the_contract():
+    """Pin the producer's status vocabulary to the contract's. refresh_all
+    grew two statuses (#712, #714) that the contract had never heard of, and
+    nothing failed until a real run hit the budget. A new status added to
+    refresh_all without a decision here must fail this test instead.
+    """
+    import re
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src" / "collectors" / "refresh_all.py"
+    ).read_text(encoding="utf-8")
+    emitted = set(re.findall(r'"status": "([a-z_]+)"', source))
+    emitted |= set(re.findall(r'\["status"\] = "([a-z_]+)"', source))
+
+    from src.collectors.refresh_contract import RELEASABLE_INCOMPLETE_STATUSES
+
+    known = {"ok", "error"} | RELEASABLE_INCOMPLETE_STATUSES
+    assert emitted <= known, (
+        f"refresh_all emits status(es) the release contract has never been "
+        f"told how to judge: {sorted(emitted - known)}. Decide explicitly: "
+        f"blocking, or releasable-with-warning."
+    )
