@@ -10,8 +10,10 @@ the topical-keyword mapping, output shape, and id stability.
 from __future__ import annotations
 
 import os
+import re
 import sys
 
+import pytest
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -129,19 +131,37 @@ def test_output_shape_with_email():
     assert opp["eligibility"]["work_auth_notes"] == PMB_CONFIG["work_auth_notes"]
 
 
-def test_position_title_label_never_leaks_into_normalized_record():
-    """Regression for the 2026-07-28 scheduled DQ failure (45 PMB rows)."""
+@pytest.mark.parametrize(
+    "scraped",
+    [
+        # What pmb.berkeley.edu actually serves, read live on 2026-08-08.
+        "Job title: Associate Professor",
+        "Position title: Associate Professor",
+        "Title: Associate Professor",
+    ],
+)
+def test_scraped_title_label_never_leaks_into_normalized_record(scraped):
+    """Regression for the 2026-07-28 scheduled DQ failure (45 PMB rows).
+
+    The first fix guessed the label. Open Berkeley renders this field as
+    "Job title:", so the cleaner kept missing it, the description kept
+    reading "Research opportunity with Job title: Professor …", and the
+    Tuesday shard has not published since 2026-07-21.
+    """
 
     person = {
         "name": "Benjamin Blackman",
         "url": "https://pmb.berkeley.edu/people/benjamin-blackman",
-        "title": "Position title: Associate Professor",
+        "title": scraped,
     }
     opp = normalize_faculty(person, PMB_CONFIG)
 
     assert opp["metadata"]["faculty_title"] == "Associate Professor"
-    assert "Position title:" not in opp["description_clean"]
-    assert "Position title:" not in opp["eligibility"]["eligibility_text_raw"]
+    for text in (
+        opp["description_clean"],
+        opp["eligibility"]["eligibility_text_raw"],
+    ):
+        assert not re.search(r"\btitle\s*:", text, re.IGNORECASE), text
 
 
 def test_known_record_id_is_byte_stable():

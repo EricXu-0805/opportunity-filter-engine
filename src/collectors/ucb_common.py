@@ -810,7 +810,10 @@ def scrape_open_berkeley_faculty(soup: BeautifulSoup, config: dict) -> list[dict
 _OPENBERKELEY_EMAIL_SEL = "div.field-name-field-openberkeley-person-email"
 _OPENBERKELEY_TITLE_SEL = "div.field-name-field-openberkeley-person-title"
 _SCRAPED_TITLE_LABEL_RE = re.compile(
-    r"^\s*(?:position\s+)?title\s*:\s*",
+    # Open Berkeley labels this field differently per template — "Job title:"
+    # on the person page, "Position title:" and bare "Title:" elsewhere — so
+    # match any single-word qualifier rather than the two we happened to see.
+    r"^\s*(?:[A-Za-z]+\s+)?title\s*:\s*",
     re.IGNORECASE,
 )
 

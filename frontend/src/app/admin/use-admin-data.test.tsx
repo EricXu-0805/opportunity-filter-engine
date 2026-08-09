@@ -110,7 +110,16 @@ function install() {
         status: 200,
         data: {
           incidents,
-          rollup: { collector_failure: 1, data_drift: 2, notification_failure: 0, manual_review: 4 },
+          // Mirrors the endpoint's real payload (counts nested under
+          // open_by_kind), not the flat map the UI used to assume.
+          rollup: {
+            open_by_kind: {
+              collector_failure: 1, data_drift: 2, notification_failure: 0, manual_review: 4,
+            },
+            open_by_priority: { high: 3, normal: 4 },
+            open_total: 7,
+            truncated: false,
+          },
         },
       };
     }

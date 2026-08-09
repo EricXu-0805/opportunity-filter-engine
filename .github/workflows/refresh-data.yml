@@ -1,29 +1,25 @@
 name: Refresh Opportunity Data
 
 # Daily per-school shard rotation (UTC day → shard). Every scheduled run is a
-# DEEP run for its shard — each shard's weekly run IS its deep run. Balanced
-# by faculty counts + which scrapes visit profile pages weekly:
+# DEEP run for its shard — each shard's weekly run IS its deep run.
 #
-#   | Day | Shard                             | Weekly est. | First-week est. |
-#   |-----|-----------------------------------|-------------|-----------------|
-#   | Mon | uiuc,rutgers,ncsu,asu,ucr,uiowa,iastate,buffalo,fsu,bc,emory,tufts,stevens (+ Experts monthly, +Chromium) | ~120-190 min | ~150-230 min |
-#   | Tue | ucb,mit,usc,umn,tamu,psu,msu,utah,uconn,usf,georgetown,nyu,uva,njit,wpi | ~115-175 min | ~150-225 min |
-#   | Wed | uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh | ~60-105 min | ~110-185 min |
-#   | Thu | utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse | ~65-115 min | ~120-200 min |
-#   | Fri | stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl | ~80-125 min | ~130-205 min |
-#   | Sat | gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas | ~60-105 min | ~115-200 min |
-#   | Sun | national (SRO deep+NSF+Simplify)  | ~30-60 min  | —               |
+# The day→schools table is NOT here: it lives in scripts/refresh_rotation.py
+# (WEEKLY_ROTATION), whose validate_rotation() proves it covers every
+# registered school exactly once. It used to be duplicated in this file and
+# drifted — 25 schools were registered, collected, and shipped while sitting
+# in no shard arm, so they were never re-scraped after onboarding. Rough
+# weekly cost per day is 60-190 min, worst case Monday (uiuc + the monthly
+# per-profile enrichment pass + Chromium).
 #
-# ucd is NOT in the rotation: the engine requires it as an isolated
-# single-school shard (its WAF-degraded evidence must not ride a multi-school
-# publication), and hosted-runner scrapes of UC Davis are Cloudflare-blocked
-# anyway — its corpus rides carry-forward. Refresh it deliberately with a
-# manual dispatch (schools=ucd, deep=true), ideally from a residential IP
-# via a local run. test_ops_plumbing pins every shard line below to the
-# engine's shard validation so this table can't drift into a crash again.
+# ucd runs alone, as ISOLATED_WEEKLY_SHARDS: the engine refuses it inside a
+# multi-school shard (its WAF-degraded evidence must not ride a multi-school
+# publication) and hosted-runner scrapes of UC Davis are Cloudflare-blocked
+# anyway, so its corpus rides carry-forward. Nothing schedules that isolated
+# batch yet — refresh it with a manual dispatch (schools=ucd, deep=true),
+# ideally from a residential IP.
 #
-# First-week column = the monthly per-profile enrichment (OFE_ENRICH_PROFILES)
-# now runs on each school's OWN shard day in the first week of the month.
+# First-week = the monthly per-profile enrichment (OFE_ENRICH_PROFILES) runs
+# on each school's OWN shard day in the first week of the month.
 on:
   schedule:
     - cron: '0 6 * * *'    # daily 6am UTC — that day's shard, deep
@@ -83,21 +79,24 @@ jobs:
 
       - name: Determine shard
         id: shard
+        # Delegated to scripts/refresh_rotation.py, which validate_rotation()
+        # proves is an exact partition of every registered school. This table
+        # used to be hardcoded here and drifted: 25 schools (every liberal-arts
+        # college plus UNC) were registered, collected, and shipped, but sat in
+        # no shard arm, so they were NEVER re-scraped after onboarding — their
+        # faculty froze at that day's snapshot. --day also keeps ucd out of the
+        # Saturday shard (it lives in ISOLATED_WEEKLY_SHARDS; the engine
+        # requires it to run alone), and --schools validates an untrusted
+        # dispatch value instead of interpolating it into the shell.
         run: |
+          set -euo pipefail
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "shard=${{ inputs.schools }}" >> $GITHUB_OUTPUT
+            SHARD=$(python3 scripts/refresh_rotation.py \
+              --schools "${{ inputs.schools }}" --allow-full)
           else
-            case "$(date -u +%u)" in
-              1) SHARD="uiuc,rutgers,ncsu,asu,ucr,uiowa,iastate,buffalo,fsu,bc,emory,tufts,stevens" ;;
-              2) SHARD="ucb,mit,usc,umn,tamu,psu,msu,utah,uconn,usf,georgetown,nyu,uva,njit,wpi" ;;
-              3) SHARD="uw,wisc,purdue,duke,dartmouth,harvard,rochester,yale,umd,bu,rpi,indiana,drexel,uky,lehigh" ;;
-              4) SHARD="utexas,ucla,boulder,cornell,brown,rice,vanderbilt,nd,vt,arizona,pitt,houston,udel,uga,oregonstate,syracuse" ;;
-              5) SHARD="stanford,ucsd,princeton,jhu,northwestern,columbia,uf,washu,ucsc,cmu,ucf,miami,clemson,cincinnati,unl" ;;
-              6) SHARD="gatech,uchicago,uci,ucsb,umich,upenn,caltech,osu,umass,neu,sbu,casewestern,colostate,utk,lsu,utdallas" ;;
-              7) SHARD="national" ;;
-            esac
-            echo "shard=$SHARD" >> $GITHUB_OUTPUT
+            SHARD=$(python3 scripts/refresh_rotation.py --day "$(date -u +%u)")
           fi
+          echo "shard=$SHARD" >> $GITHUB_OUTPUT
 
       - name: Determine scrape mode
         id: mode
@@ -121,15 +120,22 @@ jobs:
           fi
           if [[ "${{ steps.mode.outputs.deep }}" == "true" ]]; then
             echo "Running DEEP refresh (shard: ${SHARD:-full})"
-            # Several schools render client-side / behind Cloudflare and need a
-            # headless browser: uiuc (ACES Drupal Views AJAX) plus the render-mode
-            # faculty configs for umich, princeton, uchicago, uci, ucsd, duke
-            # (Pratt), jhu (Whiting .entity/.zn sites), and northwestern (School of
-            # Communication article listings). Playwright isn't in requirements.txt
-            # (the collectors lazy-import it; tests mock it), so install it + Chromium
-            # whenever the run is a full refresh OR its shard includes any render-using
-            # school — otherwise those schools' render departments silently collect nothing.
-            if [[ -z "$SHARD" || ",$SHARD," =~ ,(uiuc|umich|princeton|uchicago|uci|ucd|ucsd|duke|jhu|northwestern|upenn|cornell|columbia|vanderbilt|uva|hamilton|haverford), ]]; then
+            # Schools that render client-side / sit behind Cloudflare need a
+            # headless browser. Playwright isn't in requirements.txt (the
+            # collectors lazy-import it; tests mock it) and _render_soup
+            # degrades to None when it is absent — which looks exactly like an
+            # unreachable directory, so a missing browser silently collects
+            # nothing while the source still reports "ok". This used to be a
+            # hardcoded alternation here, and 11 render-mode schools (asu,
+            # brown, casewestern, colostate, drexel, indiana, lsu, rpi, uky,
+            # unl, utdallas) were missing from it. They collected anyway, but
+            # only by luck: the install is per-RUN, and every shard happened
+            # to contain at least one listed school. One school moving days —
+            # or a shard-table edit like the one above — and their departments
+            # go quiet with no signal. Ask the school configs instead, so the
+            # answer is right by construction rather than by coincidence.
+            if [[ "$(python3 scripts/refresh_rotation.py \
+                     --schools "$SHARD" --allow-full --needs-browser)" == "true" ]]; then
               pip install playwright
               python -m playwright install --with-deps chromium
             fi
@@ -277,14 +283,22 @@ jobs:
             # shards (scripts/shard_corpus.py) — each shard sits far below GitHub's
             # 100 MB blob limit and grows independently, so onboarding more schools
             # can't outgrow a single file again. split() prunes description_raw
-            # duplicates (lossless). It is UPSERT-ONLY (no --prune): this run's work
-            # file is assembled from its run-start checkout and omits any school
-            # onboarded to main after the run began, so pruning "absent" shards here
-            # would delete freshly-landed schools (how #614 wiped Yale, #630 the
-            # Wave-3 six). Upsert-only writes only the schools we actually scraped
-            # and leaves every other on-disk shard (from the FETCH_HEAD rebase onto
-            # latest main) untouched.
-            python3 scripts/shard_corpus.py split
+            # duplicates (lossless). No --prune: this run's work file is assembled
+            # from its run-start checkout and omits any school onboarded to main
+            # after the run began, so pruning "absent" shards would delete
+            # freshly-landed schools (how #614 wiped Yale, #630 the Wave-3 six).
+            #
+            # --only-shards is the other half of that guarantee, and it was
+            # missing. A bare split writes EVERY school in the work file, so the
+            # ~100 schools this run never scraped were rewritten from run-start
+            # data — silently reverting any change that landed on main during the
+            # 1-5h scrape (an engine cleanup, a keyword backfill, another wave's
+            # records), with no conflict and a PR title naming only this shard.
+            # refresh_rotation --targets answers exactly which committed shards a
+            # run is authorized to replace.
+            TARGETS=$(python3 scripts/refresh_rotation.py \
+              --schools "$SHARD" --allow-full --targets)
+            python3 scripts/shard_corpus.py split --only-shards "$TARGETS"
 
             git add data/processed/shards data/processed/collector_status.json
             if [ -f data/processed/collector_status_history.jsonl ]; then

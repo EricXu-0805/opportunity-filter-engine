@@ -14,6 +14,7 @@ the PI-enrichment / deactivation block). What's locked in:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from datetime import date, timedelta
@@ -724,6 +725,42 @@ def test_cli_returns_two_after_writing_blocked_diagnostics(monkeypatch):
 
     assert refresh_all.main(["--schools", "uw"]) == 2
     assert written == [summary]
+
+
+def test_cli_reports_degraded_coverage_on_a_published_run(monkeypatch, caplog):
+    """A tolerated gap that nobody prints is indistinguishable from none.
+
+    Unreachable seed pages no longer veto the release, so the run log is
+    where an operator learns a host went dark.
+    """
+    summary = {
+        "timestamp": "2026-08-08T00:00:00",
+        "sources": {},
+        "total_new": 0,
+        "total_updated": 0,
+        "total_in_file": 1,
+        "release": {
+            "ready": True,
+            "warnings": [
+                "deep source campus_graph:umich loaded 3/12 configured "
+                "seed pages (9 failed); those sources kept their previous "
+                "records"
+            ],
+            "reasons": [],
+        },
+    }
+    monkeypatch.setattr(refresh_all, "refresh_all", lambda **_kwargs: summary)
+    monkeypatch.setattr(refresh_all, "write_status", lambda _summary: None)
+    monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
+
+    with caplog.at_level(logging.WARNING):
+        assert refresh_all.main(["--schools", "umich"]) == 0
+
+    assert any(
+        "REFRESH RELEASE DEGRADED" in record.message
+        and "campus_graph:umich" in record.message
+        for record in caplog.records
+    )
 
 
 def test_refresh_summary_preserves_trusted_run_provenance(

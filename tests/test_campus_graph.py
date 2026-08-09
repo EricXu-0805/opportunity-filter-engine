@@ -716,3 +716,27 @@ class TestBoulder:
         bd = cg.source_breakdown(recs)
         assert bd["total"] == len(recs)
         assert sum(bd["by_source_type"].values()) == len(recs)
+
+
+def test_seed_fetch_completes_the_incommon_chain(monkeypatch):
+    """Three seeds fail verification on certifi alone and load with the bundle.
+
+    Measured 2026-08-08: urfm.psu.edu, www.science.smith.edu and
+    labcit.ligo.caltech.edu each raise CERTIFICATE_VERIFY_FAILED against
+    certifi's roots and return 200 once the InCommon intermediates are
+    appended. campus_graph called requests.get without them.
+    """
+    import requests
+
+    from src.collectors.ucb_common import _ca_bundle
+
+    seen: dict = {}
+
+    def fake_get(url, **kwargs):
+        seen.update(kwargs)
+        raise RuntimeError("stop after capturing the request")
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    cg._fetch("https://urfm.psu.edu/research-home")
+
+    assert seen.get("verify") == _ca_bundle()

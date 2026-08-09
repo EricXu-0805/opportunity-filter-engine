@@ -403,7 +403,18 @@ export interface OpsIncidentDetail {
   events: OpsIncidentEvent[];
 }
 
-export type OpsRollup = Partial<Record<OpsIncidentKind, number>>;
+/** The rollup the endpoint actually sends. It was typed (and indexed) as a
+ *  flat kind->count map, so every per-kind badge read `undefined` and the tabs
+ *  showed 0 with real incidents open. Both sides' tests passed because their
+ *  fixtures encoded the flat guess rather than the payload. */
+export interface OpsRollup {
+  open_by_kind?: Partial<Record<OpsIncidentKind, number>>;
+  open_by_priority?: Partial<Record<Priority, number>>;
+  open_total?: number;
+  /** The rollup reads a capped number of rows; true means the counts are a
+   *  floor, not the true total. */
+  truncated?: boolean;
+}
 
 export interface OpsIncidentsResponse {
   incidents?: OpsIncident[];

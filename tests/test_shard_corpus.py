@@ -191,3 +191,32 @@ def test_record_school_slug_cannot_escape_shards_directory(tmp_path):
         split(wf, sd)
 
     assert not (tmp_path / "escape.json").exists()
+
+
+def test_publication_workflow_splits_only_authorized_shards():
+    """The workflow must actually USE target-only split.
+
+    test_target_only_split_never_replays_stale_non_target_over_new_main above
+    proves the capability; this proves it is wired. A bare `split` rewrites
+    every school in the work file, so the ~100 schools a shard run never
+    scraped were republished from run-start data — silently reverting anything
+    that landed on main during the 1-5h scrape, with no conflict and a PR
+    title naming only this shard.
+    """
+    from pathlib import Path
+
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github" / "workflows" / "refresh-data.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "shard_corpus.py split --only-shards" in workflow, (
+        "the publication split must be bounded to this run's authorized shards"
+    )
+    assert "refresh_rotation.py \\\n              --schools \"$SHARD\" --allow-full --targets" in workflow or (
+        "--allow-full --targets" in workflow
+    ), "the authorized shard list must come from refresh_rotation --targets"
+    # A bare `split` anywhere in the publication path would defeat the bound.
+    assert "shard_corpus.py split\n" not in workflow, (
+        "an unbounded split would rewrite every school from run-start data"
+    )
