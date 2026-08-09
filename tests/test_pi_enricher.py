@@ -108,3 +108,25 @@ def test_enrich_respects_scrape_budget(monkeypatch):
     assert len(fetched) == 2
     assert stats["scraped"] == 2
     assert stats["skipped_budget"] == 1
+
+
+def test_profile_fetch_completes_the_incommon_chain(monkeypatch):
+    """Georgia Tech's department sites omit their InCommon intermediate.
+
+    ucb_common.fetch_soup has repaired that chain for months; this enricher
+    calls requests.get itself and inherited certifi's default, so every one
+    of those hosts failed verification. The 2026-08-08 run logged 210 such
+    failures across arch/planning/id/music/ic/bc/cse.gatech.edu alone.
+    """
+    from src.collectors.ucb_common import _ca_bundle
+
+    seen: dict = {}
+
+    def fake_get(url, **kwargs):
+        seen.update(kwargs)
+        raise RuntimeError("stop after capturing the request")
+
+    monkeypatch.setattr(pi_enricher.requests, "get", fake_get)
+    pi_enricher._fetch_soup("https://arch.gatech.edu/people/someone")
+
+    assert seen.get("verify") == _ca_bundle()

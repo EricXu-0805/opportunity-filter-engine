@@ -94,3 +94,70 @@ def test_target_shards_are_bounded_to_the_authorized_selection():
     full = target_shards("")
     assert set(full) == {*registered_school_slugs(), NATIONAL_SHARD}
     assert len(full) == len(registered_school_slugs()) + 1
+
+
+class TestBrowserDetection:
+    """The workflow installs Chromium only when the shard needs it. That list
+    used to be a hardcoded alternation in refresh-data.yml missing 11
+    render-mode schools; they collected anyway only because the install is
+    per-RUN and every shard happened to contain a listed school. Nothing
+    enforced that coincidence, and the failure it guards is silent:
+    _render_soup lazy-imports Playwright and degrades to None, which is
+    indistinguishable from an unreachable directory, while the source still
+    reports "ok". Derived from the configs, it cannot drift."""
+
+    def test_every_render_config_is_detected(self):
+        import importlib
+        import pkgutil
+
+        import src.collectors.schools as schools_pkg
+        from scripts.refresh_rotation import browser_schools
+
+        detected = browser_schools()
+        for module in pkgutil.iter_modules(schools_pkg.__path__):
+            if not module.name.endswith("_faculty"):
+                continue
+            config = getattr(
+                importlib.import_module(f"src.collectors.schools.{module.name}"),
+                "SCHOOL", None,
+            )
+            if not isinstance(config, dict):
+                continue
+            renders = any(
+                isinstance(block, dict)
+                and (
+                    block.get("render")
+                    or (isinstance(block.get("profile_enrich"), dict)
+                        and block["profile_enrich"].get("render"))
+                )
+                for dept in config.get("departments", [])
+                for block in dept.values()
+            )
+            if renders:
+                assert config["school_slug"] in detected, (
+                    f"{config['school_slug']} renders but the workflow would "
+                    "not install Chromium for its shard — its render "
+                    "departments would silently collect nothing"
+                )
+
+    def test_uiuc_is_detected_despite_having_no_render_config(self):
+        # uiuc_js_faculty drives Playwright directly (ACES Drupal Views AJAX),
+        # outside the faculty_graph engine, so config inspection cannot see it.
+        from scripts.refresh_rotation import browser_schools
+
+        assert "uiuc" in browser_schools()
+
+    def test_national_day_skips_the_browser_install(self):
+        from scripts.refresh_rotation import shard_needs_browser
+
+        assert shard_needs_browser("national") is False
+
+    def test_full_refresh_installs_the_browser(self):
+        from scripts.refresh_rotation import shard_needs_browser
+
+        assert shard_needs_browser("") is True
+
+    def test_browserless_single_school_skips_the_install(self):
+        from scripts.refresh_rotation import shard_needs_browser
+
+        assert shard_needs_browser("wisc") is False

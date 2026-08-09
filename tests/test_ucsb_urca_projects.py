@@ -176,7 +176,7 @@ class TestSitemapParse:
 
     def test_missing_known_funding_child_is_incomplete(self, monkeypatch):
         index = LIVE_INDEX_FIXTURE.replace(
-            f"  <sitemap><loc>{FUNDING_WEEKLY}</loc></sitemap>\n",
+            f"  <sitemap><loc>{FUNDING_CURRENT}</loc></sitemap>\n",
             "",
         )
         monkeypatch.setattr(
@@ -189,8 +189,37 @@ class TestSitemapParse:
 
         assert records == []
         assert evidence["sitemap_complete"] is False
-        assert evidence["sitemaps_expected"] == 2
+        assert evidence["sitemaps_expected"] == 1
         assert evidence["missing_sitemap_count"] == 1
+
+    def test_absent_weekly_delta_is_a_complete_snapshot(self, monkeypatch):
+        """Salesforce publishes the weekly delta only when it has one.
+
+        Observed live on 2026-08-08: the URCA index listed the full
+        ``-1`` enumeration plus the two view sitemaps, and
+        ``-weekly.xml`` 404ed. Requiring the delta made every snapshot
+        incomplete, which errored the source and blocked the whole
+        Saturday shard's publication for three weeks.
+        """
+        index = LIVE_INDEX_FIXTURE.replace(
+            f"  <sitemap><loc>{FUNDING_WEEKLY}</loc></sitemap>\n",
+            "",
+        )
+        pages = {
+            u.SITEMAP_INDEX: index,
+            FUNDING_CURRENT: """<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+              <url><loc>https://ucsb.my.site.com/urca/s/funding-program/a0W4/evolution-of-california-land-snails</loc></url>
+            </urlset>""",
+        }
+        monkeypatch.setattr(u, "_fetch_text", pages.get)
+
+        records, evidence = u.scrape_projects_with_evidence()
+
+        assert [record["id"] for record in records] == ["a0W4"]
+        assert evidence["sitemap_complete"] is True
+        assert evidence["sitemaps_expected"] == 1
+        assert evidence["sitemaps_loaded"] == 1
+        assert evidence["unexpected_location_count"] == 0
 
 
 class TestNormalize:

@@ -327,7 +327,14 @@ def _fetch(url: str):
         logger.warning("campus_graph: HTTP deps unavailable (%s); seed-only", e)
         return None
     try:
-        resp = requests.get(url, timeout=_CRAWL_TIMEOUT, headers=HEADERS)
+        from .ucb_common import _ca_bundle
+
+        resp = requests.get(
+            url,
+            timeout=_CRAWL_TIMEOUT,
+            headers=HEADERS,
+            verify=_ca_bundle(),
+        )
         resp.raise_for_status()
         return BeautifulSoup(resp.content, "html.parser")
     except Exception as e:  # noqa: BLE001
