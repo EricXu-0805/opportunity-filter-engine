@@ -157,27 +157,53 @@ class TestWorkflowWiring:
         assert text.count("refresh-collector_history.jsonl") >= 2
         assert "git add data/processed/collector_status_history.jsonl" in text
 
-    def test_refresh_workflow_shards_pass_engine_validation(self):
-        """Every scheduled shard string must be one refresh_all accepts.
+    def test_refresh_workflow_selects_shards_from_the_canonical_rotation(self):
+        """The scheduler must delegate day->shard to scripts/refresh_rotation.
 
-        The engine's shard rules (known slugs, the ucd singleton) and the
-        workflow's day-of-week shard table live in different files; when the
-        ucd singleton rule landed, the Saturday line still said ",ucd" and
-        every Saturday run crashed 15 minutes in (observed 2026-08-08),
-        costing all 17 schools their weekly refresh. This pins the two
-        together at CI time.
+        Two failures came from this file carrying its own copy of the table:
+        the ucd singleton rule landed while the Saturday line still said
+        ",ucd" (every Saturday run crashed 15 min in, 2026-08-08), and 25
+        registered schools sat in no shard arm at all, so they were never
+        re-scraped after onboarding. refresh_rotation.validate_rotation()
+        proves the canonical table is an exact partition of the registrations;
+        this pins the workflow to it instead of to a duplicate.
         """
-        import re
+        text = (_REPO / ".github/workflows/refresh-data.yml").read_text()
+        assert "refresh_rotation.py --day" in text, (
+            "the scheduled path must ask refresh_rotation for the day's shard"
+        )
+        assert 'SHARD="uiuc' not in text, (
+            "the day->shard table must not be duplicated back into the workflow"
+        )
+
+    def test_every_scheduled_shard_passes_engine_validation(self):
+        """What the rotation hands the workflow must be what the engine takes.
+
+        Runs the real CLI for all seven UTC weekdays plus the isolated batch
+        and feeds each result to refresh_all's own validator — so a rotation
+        edit that violates an engine rule (unknown slug, the ucd singleton)
+        fails here rather than at 06:00 UTC.
+        """
+        import subprocess
+        import sys
 
         from src.collectors.refresh_all import validate_shard_selection
 
-        text = (_REPO / ".github/workflows/refresh-data.yml").read_text()
-        # Only the case-arm assignments (`1) SHARD="..." ;;`), not the
-        # `SHARD="${{ ... }}"` interpolations in the run steps.
-        shards = re.findall(r'\d\)\s+SHARD="([^"]+)"', text)
-        assert len(shards) == 7, "expected exactly one shard line per weekday"
-        for shard in shards:
+        script = _REPO / "scripts" / "refresh_rotation.py"
+
+        def shard_for(*args: str) -> str:
+            out = subprocess.run(
+                [sys.executable, str(script), *args],
+                capture_output=True, text=True, cwd=_REPO,
+            )
+            assert out.returncode == 0, f"{args}: {out.stderr}"
+            return out.stdout.strip()
+
+        for day in range(1, 8):
+            shard = shard_for("--day", str(day))
+            assert shard, f"day {day} produced an empty shard"
             if shard == "national":
                 validate_shard_selection(None, national=True)
-                continue
-            validate_shard_selection(set(shard.split(",")))
+            else:
+                validate_shard_selection(set(shard.split(",")))
+        validate_shard_selection(set(shard_for("--day", "6", "--isolated").split(",")))
