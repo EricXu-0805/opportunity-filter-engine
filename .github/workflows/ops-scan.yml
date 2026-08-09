@@ -1,0 +1,53 @@
+name: ops-scan
+
+# W15 built the detector that turns each refresh's artifacts into durable
+# operator incidents (/api/cron/ops-scan -> _scan_collectors + _scan_drift),
+# and nothing ever called it. So collector_failure and data_drift incidents
+# were never created: the admin operations queue rendered an all-clear while
+# collectors failed, and only notification_failure rows — written inline by
+# the reminders cron — ever appeared.
+#
+# 07:30 UTC: after the 06:00 UTC data refresh has had time to publish its
+# collector_status.json, so the scan reads that run's evidence rather than
+# yesterday's. The refresh's own alert email covers a hard crash; this covers
+# the quieter cases (a source that reported an error, a fetched count that
+# collapsed) that no email is sent for.
+on:
+  schedule:
+    - cron: '30 7 * * *'
+  workflow_dispatch:
+
+# The scan upserts by dedup_key and is idempotent, but two concurrent runs
+# would still race the same rows for no benefit.
+concurrency:
+  group: ops-scan
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # check_cron_response.py is a repo file, so this job needs a working copy.
+      - uses: actions/checkout@v6
+
+      - name: Fire ops-scan cron
+        run: |
+          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "BACKEND_URL or CRON_SECRET secret not set — skipping"
+            exit 0
+          fi
+          # The endpoint deliberately never 500s (a monitor that pages on its
+          # own failure is one more thing to monitor), so it reports trouble in
+          # the body: `errors` is a list of RPC failures that left a real
+          # problem unrecorded. curl -sf cannot see those; the checker reads
+          # that list and fails the step. A missing-Supabase-env run reports
+          # status=skipped, which the checker correctly treats as not a failure.
+          curl -sfSL -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.BACKEND_URL }}/api/cron/ops-scan" \
+            | tee /dev/stderr \
+            | python3 scripts/check_cron_response.py
