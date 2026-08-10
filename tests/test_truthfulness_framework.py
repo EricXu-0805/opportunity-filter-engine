@@ -259,10 +259,21 @@ def _write_samples_dir(tmp_path, review_result="verified_correct", n=8):
 
 
 def _run_report(tmp_path, samples_dir):
+    """Run `report` and assert the exit code MATCHES the printed decision.
+
+    The exit code used to be a hardcoded 0, so the GO/NO-GO decision it exists
+    to produce could not gate anything: a NO-GO printed its banner and then
+    told the caller everything was fine. Every report test now re-checks that
+    contract for free.
+    """
     out = tmp_path / "report.json"
     rc = main(["report", "--samples", str(samples_dir), "--out", str(out)])
-    assert rc == 0  # report never crashes; the decision carries the gate
-    return _load(out)
+    report = _load(out)
+    expected = 0 if report["truthfulness_approved"] else 1
+    assert rc == expected, (
+        f"decision {report['decision']} must exit {expected}, got {rc}"
+    )
+    return report
 
 
 def test_report_all_pending_is_no_go(tmp_path):
@@ -316,3 +327,36 @@ def test_report_under_eight_samples_is_incomplete(tmp_path):
     assert report["truthfulness_approved"] is False
     assert all(c["sample_count"] == 5 and not c["complete"]
                for c in report["categories"].values())
+
+
+# ------------------------------------------------------------- exit contract
+
+def test_report_exit_code_carries_the_decision(tmp_path, capsys):
+    """NO-GO must exit 1; GO must exit 0 — and both must print the summary.
+
+    `run_report` returned 0 unconditionally, which made the fail-closed gate
+    decorative: `truthfulness_audit.py report` inside a CI step or a `&&` chain
+    reported success while the report on disk said NO-GO. The human summary is
+    still printed before the non-zero exit, so a blocked release stays
+    diagnosable rather than merely broken.
+    """
+    out = tmp_path / "report.json"
+
+    no_go = _write_samples_dir(tmp_path, review_result="pending")
+    assert main(["report", "--samples", str(no_go), "--out", str(out)]) == 1
+    printed = capsys.readouterr().out
+    assert "TRUTHFULNESS DECISION: NO-GO" in printed
+    assert "category" in printed, "the per-category table must still print"
+    assert _load(out)["decision"] == "NO-GO", "the report must still be written"
+
+    go = _write_samples_dir(tmp_path, review_result="verified_correct")
+    assert main(["report", "--samples", str(go), "--out", str(out)]) == 0
+    assert "TRUTHFULNESS DECISION: GO" in capsys.readouterr().out
+
+
+def test_sample_still_exits_zero(tmp_path):
+    """Drawing samples has no verdict to report — only `report` gates."""
+    corpus = _write_corpus(tmp_path)
+    assert main(["sample", "--corpus", str(corpus),
+                 "--out", str(tmp_path / "s"), "--seed", "7",
+                 "--per-category", "4"]) == 0

@@ -8,6 +8,7 @@ import OnboardingIntro from '@/components/OnboardingIntro';
 import SchoolConfirmGate from '@/components/SchoolConfirmGate';
 import Header from '@/components/Header';
 import { AuthModalProvider } from '@/lib/auth-modal-context';
+import { releaseShaAttribute } from '@/lib/build-info';
 import { SITE_URL } from '@/lib/site';
 import { getServerLocale } from '@/i18n/server';
 import { LanguageProvider } from '@/i18n/client';
@@ -82,7 +83,11 @@ export default async function RootLayout({
   const builtByLabel = locale === 'zh' ? '由 Guoyi (Eric) Xu 打造' : 'Built by Guoyi (Eric) Xu';
 
   return (
-    <html lang={locale} className={inter.variable}>
+    // data-release-sha makes the deployed commit readable from production
+    // HTML (`curl -s https://… | grep data-release-sha`) with no API call and
+    // no UI change. "unknown" when the build supplied no SHA — never a
+    // fabricated one.
+    <html lang={locale} className={inter.variable} data-release-sha={releaseShaAttribute}>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <LanguageProvider initialLocale={locale}>
           {/* AuthModalProvider must wrap everything that calls

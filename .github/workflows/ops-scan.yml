@@ -34,12 +34,30 @@ jobs:
       # check_cron_response.py is a repo file, so this job needs a working copy.
       - uses: actions/checkout@v6
 
+      # This used to `exit 0` when a secret was unset, which is the worst place
+      # for that: the scan is the thing that notices collectors failing, so a
+      # rotated CRON_SECRET would silently disable the detector AND leave the
+      # operations queue rendering an all-clear — two layers of quiet at once.
+      # A missing required secret now fails the job so the alert below fires.
+      # OPERATOR_EMAIL/RESEND_API_KEY stay optional: they configure the alert
+      # itself (see there).
+      - name: Require the secrets this cron runs on
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          missing=""
+          for name in BACKEND_URL CRON_SECRET; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::missing required secret(s):$missing — the ops scan cannot run, so collector_failure and data_drift incidents will not be created. Failing the job so the operator alert fires instead of reporting a green no-op."
+            exit 1
+          fi
+          echo "required secrets present"
+
       - name: Fire ops-scan cron
         run: |
-          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "BACKEND_URL or CRON_SECRET secret not set — skipping"
-            exit 0
-          fi
           # The endpoint deliberately never 500s (a monitor that pages on its
           # own failure is one more thing to monitor), so it reports trouble in
           # the body: `errors` is a list of RPC failures that left a real
@@ -51,3 +69,39 @@ jobs:
             "${{ secrets.BACKEND_URL }}/api/cron/ops-scan" \
             | tee /dev/stderr \
             | python3 scripts/check_cron_response.py
+
+      # This job had NO alert step at all: the one workflow whose entire purpose
+      # is to notice trouble (it creates the collector_failure and data_drift
+      # incidents) told nobody when it died — and its silence looks exactly like
+      # "no incidents", which is the all-clear the operations queue then renders.
+      # Same operator alert as daily-reminders.yml / refresh-data.yml, and
+      # `cancelled()` too: exceeding timeout-minutes cancels rather than fails,
+      # so bare `failure()` misses a hung run.
+      - name: Alert operator on failure
+        if: failure() || cancelled()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          # Optional-by-design: these configure the alert itself, so failing on
+          # them would only relocate the silence. The job's own failure is
+          # already recorded in the Actions run either way.
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "::warning::RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            exit 0
+          fi
+          # `|| true` keeps a failed send from overwriting the real failure with
+          # an alerting failure. The honest cost: alert DELIVERY is unverified —
+          # a rejected Resend call (bad key, suspended domain, rate limit) makes
+          # this step look like it notified someone when it did not. Verifying
+          # delivery needs a check on the send result that cannot itself mask
+          # the original failure (e.g. record it in the run summary).
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
+              \"to\": [\"$OPERATOR_EMAIL\"],
+              \"subject\": \"JoinALab: ops-scan cron FAILED\",
+              \"text\": \"The daily ops scan failed.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nNo collector_failure or data_drift incidents were created from the last refresh's artifacts, so the admin operations queue is showing an all-clear it has not earned.\"
+            }" || true

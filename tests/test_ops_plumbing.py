@@ -119,15 +119,38 @@ class TestCronResponseChecker:
         assert "status=partial" in r.stdout
 
     def test_skipped_run_is_not_a_failure(self):
+        # The endpoints return this deliberately when their env is unconfigured.
+        # A no-op it announced is not the silence this checker is about.
         assert self._run({"status": "skipped", "reason": "push env not configured"}).returncode == 0
 
-    def test_non_json_body_warns_but_passes(self):
-        r = subprocess.run(
+    def _raw(self, body: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
             [sys.executable, str(_CHECKER)],
-            input="<html>502</html>", capture_output=True, text=True,
+            input=body, capture_output=True, text=True,
         )
-        assert r.returncode == 0
-        assert "::warning::" in r.stdout
+
+    def test_non_json_body_fails_the_step(self):
+        """An HTML error page is proof the cron did NOT run.
+
+        This used to `::warning::` and exit 0 — so a proxy 502, a Render cold
+        start, or an auth redirect produced a green run with no alert, which is
+        precisely the state the checker exists to detect.
+        """
+        r = self._raw("<html>502 Bad Gateway</html>")
+        assert r.returncode == 1
+        assert "::error::" in r.stdout
+
+    def test_empty_body_fails_the_step(self):
+        r = self._raw("")
+        assert r.returncode == 1
+        assert "::error::" in r.stdout
+
+    def test_non_object_json_fails_the_step(self):
+        # Valid JSON, but it carries none of the status/counter fields a healthy
+        # run reports — so it cannot be checked, and unverifiable is not clean.
+        r = self._raw("[]")
+        assert r.returncode == 1
+        assert "::error::" in r.stdout
 
     def test_check_reports_every_signal(self):
         problems = _checker.check(

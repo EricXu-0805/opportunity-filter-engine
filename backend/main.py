@@ -21,6 +21,7 @@ try:
 except ImportError:
     pass
 
+from backend.lib.build_info import BUILD_VERSION, health_build_fields
 from backend.lib.observability import init_sentry
 from backend.lib.release_scope import ReleaseFeature, feature_enabled
 
@@ -42,6 +43,7 @@ from backend.routes import (
     orders,
     professors,
     push,
+    readiness,
     responsiveness,
     resume,
     roadmap,
@@ -50,7 +52,11 @@ from backend.routes import (
 )
 from backend.routes import email as email_routes
 
-API_VERSION = "2.7.0"
+# The declared API contract version, re-exported from backend.lib.build_info
+# so the version string and the build-provenance fields have one home. This
+# name and value are unchanged for existing consumers; it identifies the API
+# shape, NOT the deployed code — that is /api/health's release_sha.
+API_VERSION = BUILD_VERSION
 
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 
@@ -96,6 +102,14 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     # admin dashboard's polling) generates. Longest-prefix matching scopes it to
     # every /api/admin/* route, mutations included.
     "/api/admin": (30, 60),
+    # Readiness is an INFRA probe: it must not share the per-IP DEFAULT (60,60)
+    # bucket with user traffic, in either direction. A monitor polling every few
+    # seconds would otherwise burn the quota that ordinary reads from the same
+    # egress IP draw on, and a burst of user traffic would throttle the probe
+    # into reporting an outage that is really a rate limit. The endpoint is cheap
+    # (module globals plus one already-cached corpus stat; no artifact read on
+    # the unauthenticated path), so a generous ceiling is still a real ceiling.
+    "/api/ready": (120, 60),
 }
 DEFAULT_RATE = (60, 60)
 DEFAULT_RATE_KEY = "__default__"
@@ -287,7 +301,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
         )
         path = request.url.path
-        if path == "/api/admin" or path.startswith("/api/admin/"):
+        if (
+            path == "/api/admin"
+            or path.startswith("/api/admin/")
+            # /api/ready for a different reason than PII: a cached readiness
+            # answer is actively dangerous. An intermediary replaying a stored
+            # "ready" would keep an instance with a dead corpus in rotation, and
+            # replaying a stored 503 would keep a recovered one out. Its
+            # authenticated tier is also token-varied, which no shared cache
+            # keys on.
+            or path == "/api/ready"
+        ):
             # Admin responses can contain student email addresses, feedback
             # text, order rows, and internal notes. The X-Admin-Token custom
             # header is not a cache boundary any shared HTTP cache understands,
@@ -564,8 +588,22 @@ app.include_router(saved_searches.router, prefix="/api", tags=["saved-searches"]
 app.include_router(orders.router, prefix="/api", tags=["orders"])
 app.include_router(professors.router, prefix="/api", tags=["professors"])
 app.include_router(ops.router, prefix="/api", tags=["ops"])
+app.include_router(readiness.router, prefix="/api", tags=["readiness"])
 
 
+# LIVENESS, unchanged and deliberately unconditional: "this process is answering
+# HTTP". Three consumers depend on exactly this shape and on it never failing for
+# a data reason — the frontend's wakeBackend, playwright.config's webServer gate,
+# and test_async_route_isolation (which asserts it answers while a blocking call
+# holds the bounded executor). READINESS — corpus loaded, matcher artifacts bound
+# to the current generation, refresh not stale — is /api/ready, which returns 503
+# when any of that is false. Do not merge the two.
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "version": API_VERSION}
+    # "status" and "version" are load-bearing for three existing consumers
+    # (frontend wakeBackend, the Playwright webServer readiness gate, and
+    # tests/test_async_route_isolation) — their shape stays exactly as it was.
+    # The added keys answer "what SHA is actually serving this?", which
+    # API_VERSION never could: it is a hand-maintained string. Build metadata
+    # only (commit, host label, process start) — no secrets, no env inventory.
+    return {"status": "ok", "version": API_VERSION, **health_build_fields()}

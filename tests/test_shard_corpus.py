@@ -1,10 +1,15 @@
-"""Offline tests for scripts/shard_corpus.py — the split shrink guard.
+"""Offline tests for scripts/shard_corpus.py — the split shrink guard and the
+assemble floor.
 
 Locks in the safeguard that a flaked re-scrape (Cloudflare/AWS-WAF/render
 failing on CI's IP, or an assemble-skip on a stale work file) can never clobber
 an established school's committed shard: if a school's new shard would drop
 below SHRINK_KEEP_RATIO of the already-committed shard (>= SHRINK_GUARD_FLOOR
 records), the prior shard is kept untouched.
+
+And the other direction: `assemble` must refuse to write a near-empty work
+file, because CI's data-quality suite SKIPS when the work file is absent and
+an empty one passes vacuously — see TestAssembleFloor.
 """
 
 from __future__ import annotations
@@ -19,7 +24,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from shard_corpus import split
+from shard_corpus import MIN_ASSEMBLED_RECORDS, assemble, split
 
 
 def _recs(school: str, n: int) -> list[dict]:
@@ -191,6 +196,87 @@ def test_record_school_slug_cannot_escape_shards_directory(tmp_path):
         split(wf, sd)
 
     assert not (tmp_path / "escape.json").exists()
+
+
+class TestAssembleFloor:
+    """An empty assemble used to exit 0, which silently disarmed CI.
+
+    `assemble` wrote `[]` and returned success whenever data/processed/shards/
+    was empty, missing, or simply not checked out. Downstream, 53 data-quality
+    tests skip when the work file is absent (tests/test_opportunity_data_quality
+    .py:48 and friends) and pass trivially on an empty one — so pytest exited 0
+    with the corpus gate proving nothing. The floor turns that into a failure.
+    """
+
+    def _shards(self, tmp_path: Path, counts: dict[str, int]) -> Path:
+        sd = tmp_path / "shards"
+        sd.mkdir()
+        for slug, n in counts.items():
+            (sd / f"{slug}.json").write_text(json.dumps(_recs(slug, n)),
+                                             encoding="utf-8")
+        return sd
+
+    def test_empty_shards_directory_is_refused(self, tmp_path):
+        wf = tmp_path / "work.json"
+        sd = self._shards(tmp_path, {})
+        with pytest.raises(ValueError, match="floor"):
+            assemble(wf, sd)
+        # And nothing is written: a truncated work file would be read by the
+        # very steps this is protecting.
+        assert not wf.exists()
+
+    def test_missing_shards_directory_is_refused(self, tmp_path):
+        wf = tmp_path / "work.json"
+        with pytest.raises(ValueError, match="floor"):
+            assemble(wf, tmp_path / "does-not-exist")
+        assert not wf.exists()
+
+    def test_tiny_corpus_is_refused(self, tmp_path):
+        wf = tmp_path / "work.json"
+        sd = self._shards(tmp_path, {"mit": 5})
+        with pytest.raises(ValueError, match="5 records"):
+            assemble(wf, sd)
+        assert not wf.exists()
+
+    def test_real_sized_corpus_assembles(self, tmp_path):
+        wf = tmp_path / "work.json"
+        sd = self._shards(tmp_path, {"mit": MIN_ASSEMBLED_RECORDS, "yale": 1})
+        assert assemble(wf, sd) == MIN_ASSEMBLED_RECORDS + 1
+        assert len(json.loads(wf.read_text(encoding="utf-8"))) == \
+            MIN_ASSEMBLED_RECORDS + 1
+
+    def test_allow_empty_is_the_bootstrap_escape_hatch(self, tmp_path):
+        wf = tmp_path / "work.json"
+        sd = self._shards(tmp_path, {})
+        assert assemble(wf, sd, allow_empty=True) == 0
+        assert json.loads(wf.read_text(encoding="utf-8")) == []
+
+    def test_floor_is_far_below_the_real_corpus(self):
+        # It catches catastrophe (no shards / wrong cwd), not attrition — the
+        # committed corpus is ~132k records. A floor of 0 would be no floor.
+        assert 1000 <= MIN_ASSEMBLED_RECORDS <= 10_000
+
+    def test_cli_exits_non_zero_below_the_floor(self, tmp_path, monkeypatch, capsys):
+        """The CI step only gates if the exit code is non-zero.
+
+        assemble raising is useless on its own — `main` has to translate that
+        into a failing process, and print why, or the workflow step still
+        reports success.
+        """
+        import shard_corpus
+
+        empty = tmp_path / "shards"
+        empty.mkdir()
+        work = tmp_path / "opportunities.json"
+        monkeypatch.setattr(shard_corpus, "WORK_FILE", work)
+        monkeypatch.setattr(shard_corpus, "SHARDS_DIR", empty)
+
+        assert shard_corpus.main(["assemble"]) == 1
+        assert "::error::" in capsys.readouterr().err
+        assert not work.exists()
+
+        assert shard_corpus.main(["assemble", "--allow-empty"]) == 0
+        assert work.exists()
 
 
 def test_publication_workflow_splits_only_authorized_shards():

@@ -1,0 +1,180 @@
+{
+  "release_sha": "3015981e54f525eb105a28b925b83cf15f53171a",
+  "generated_at": "2026-08-10T05:20:56.251624+00:00",
+  "gate_version": "release-gate-v1",
+  "gates": [
+    {
+      "gate": "release_sha",
+      "status": "PASS",
+      "detail": "resolves to a commit in this repository",
+      "evidence": {
+        "release_sha": "3015981e54f525eb105a28b925b83cf15f53171a"
+      }
+    },
+    {
+      "gate": "worktree",
+      "status": "PASS",
+      "detail": "clean worktree at the release sha",
+      "evidence": {
+        "head": "3015981e54f525eb105a28b925b83cf15f53171a"
+      }
+    },
+    {
+      "gate": "corpus",
+      "status": "PASS",
+      "detail": "131998 records across 117 shards",
+      "evidence": {
+        "records": 131998,
+        "shards": 117
+      }
+    },
+    {
+      "gate": "tracking_release_ready",
+      "status": "FAIL",
+      "detail": "strict artifact contract not satisfied (stored release_ready=True, failing/absent checks: check set incomplete)",
+      "evidence": {
+        "stored_release_ready": true,
+        "failing": []
+      }
+    },
+    {
+      "gate": "truthfulness",
+      "status": "PASS",
+      "detail": "GO, 9.9d old",
+      "evidence": {
+        "decision": "GO",
+        "generated_at": "2026-07-31T07:16:42.625488+00:00",
+        "age_days": 9.919602146435185
+      }
+    },
+    {
+      "gate": "open_incidents",
+      "status": "UNVERIFIED",
+      "detail": "no incident rollup supplied (GET /api/admin/ops/incidents?unresolved_only=true)",
+      "evidence": null
+    },
+    {
+      "gate": "flag_parity",
+      "status": "FAIL",
+      "detail": "flag drift \u2014 backend-only: none, frontend-only (ungated server-side): ['concierge_pay_qr', 'microsoft_school_auth']",
+      "evidence": {
+        "backend_only": [],
+        "frontend_only": [
+          "concierge_pay_qr",
+          "microsoft_school_auth"
+        ]
+      }
+    },
+    {
+      "gate": "ci:Backend (lint + pytest)",
+      "status": "UNVERIFIED",
+      "detail": "no CI evidence supplied",
+      "evidence": null
+    },
+    {
+      "gate": "ci:Frontend (typecheck + build)",
+      "status": "UNVERIFIED",
+      "detail": "no CI evidence supplied",
+      "evidence": null
+    },
+    {
+      "gate": "ci:Migrations (Flow B merge + CLI replay)",
+      "status": "UNVERIFIED",
+      "detail": "no CI evidence supplied",
+      "evidence": null
+    },
+    {
+      "gate": "ci:E2E (Playwright)",
+      "status": "UNVERIFIED",
+      "detail": "no CI evidence supplied",
+      "evidence": null
+    },
+    {
+      "gate": "render_canary",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "vercel_canary",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "supabase_canary",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "backup",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "restore",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "dead_man",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "api_ready",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "promotion",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "rollback",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    },
+    {
+      "gate": "scheduler",
+      "status": "UNVERIFIED",
+      "detail": "no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+      "evidence": null
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 2,
+    "unverified": 15,
+    "skipped": 0,
+    "not_run": 0
+  },
+  "blocking_reasons": [
+    "tracking_release_ready: strict artifact contract not satisfied (stored release_ready=True, failing/absent checks: check set incomplete)",
+    "open_incidents: no incident rollup supplied (GET /api/admin/ops/incidents?unresolved_only=true)",
+    "flag_parity: flag drift \u2014 backend-only: none, frontend-only (ungated server-side): ['concierge_pay_qr', 'microsoft_school_auth']",
+    "ci:Backend (lint + pytest): no CI evidence supplied",
+    "ci:Frontend (typecheck + build): no CI evidence supplied",
+    "ci:Migrations (Flow B merge + CLI replay): no CI evidence supplied",
+    "ci:E2E (Playwright): no CI evidence supplied",
+    "render_canary: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "vercel_canary: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "supabase_canary: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "backup: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "restore: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "dead_man: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "api_ready: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "promotion: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "rollback: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed",
+    "scheduler: no evidence supplied; this gate cannot be verified from inside the repository and must not be assumed"
+  ],
+  "final_decision": "NO-GO"
+}

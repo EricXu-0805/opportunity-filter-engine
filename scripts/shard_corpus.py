@@ -24,7 +24,9 @@ scheduled refresh omits ``--prune`` so a partial run can't delete a school it
 simply didn't scrape — the failure mode that wiped Yale (#614) and the Wave-3
 six (#630) off main.
 ``assemble`` is a no-op when the work file already exists unless --force — so a
-straggler run that produced a fresher work file is never clobbered.
+straggler run that produced a fresher work file is never clobbered — and it
+FAILS rather than writing a near-empty work file (see MIN_ASSEMBLED_RECORDS),
+because a silently empty corpus turns the data-quality test gate green.
 
 Runtime readers that can't rely on an assemble step (the deployed backend,
 frontend prebuild) fall back to reading the shards directory directly.
@@ -197,14 +199,45 @@ def load_shards(shards_dir: Path = SHARDS_DIR) -> list[dict]:
     return records
 
 
+# An assemble that yields (almost) nothing is never legitimate outside a
+# deliberate bootstrap: the committed shards hold ~132k records, and the
+# smallest plausible real corpus is orders of magnitude above this floor. It
+# used to write `[]` and exit 0 when data/processed/shards/ was empty, absent,
+# or simply not checked out — and that silence propagated: 53 data-quality
+# tests SKIP when the work file is missing (tests/test_opportunity_data_quality
+# .py:48 and friends) and a ~0-record work file skips or trivially passes them
+# too, so pytest exits 0 with the data-quality gate vacuously green. The floor
+# sits far below the true count on purpose: it catches catastrophe (no shards,
+# wrong cwd, a truncated checkout), not attrition — per-school regressions are
+# the shrink guard's job, above.
+MIN_ASSEMBLED_RECORDS = 1000
+
+
 def assemble(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
-             force: bool = False) -> int:
+             force: bool = False, allow_empty: bool = False,
+             min_records: int = MIN_ASSEMBLED_RECORDS) -> int:
     """Shards -> work file. Skips when the work file already exists (a fresher
     in-flight corpus must never be clobbered by a stale checkout) unless force.
-    Returns the record count written (or -1 when skipped)."""
+    Returns the record count written (or -1 when skipped).
+
+    Raises ValueError when the shards yield fewer than ``min_records`` records
+    and ``allow_empty`` is False — before writing anything, so a broken
+    checkout cannot leave a truncated work file behind for later steps to read.
+    ``allow_empty`` is the escape hatch for a legitimate bootstrap (first
+    school, a scratch corpus built from one shard, a fixture directory).
+    """
     if work_file.exists() and not force:
         return -1
     records = load_shards(shards_dir)
+    if not allow_empty and len(records) < min_records:
+        raise ValueError(
+            f"assemble refused: {shards_dir} yielded {len(records)} records, "
+            f"below the {min_records}-record floor (the committed corpus is "
+            f"~132k). An empty/short assemble silently disables the "
+            f"data-quality gate, so this fails instead of writing "
+            f"{work_file.name}. Check that the shards directory was checked "
+            f"out; pass --allow-empty for a deliberate bootstrap."
+        )
     atomic_write_json(work_file, records, indent=None, separators=(",", ":"))
     return len(records)
 
@@ -220,6 +253,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     assemble_parser = subparsers.add_parser("assemble")
     assemble_parser.add_argument("--force", action="store_true")
+    assemble_parser.add_argument(
+        "--allow-empty",
+        action="store_true",
+        help=f"skip the {MIN_ASSEMBLED_RECORDS}-record floor (bootstrap only)",
+    )
     args = parser.parse_args(argv)
 
     if args.command == "split":
@@ -244,7 +282,15 @@ def main(argv: list[str] | None = None) -> int:
               f"({', '.join(f'{s}:{n}' for s, n in counts.items())})")
         return 0
     if args.command == "assemble":
-        n = assemble(force=args.force)
+        try:
+            # Paths passed explicitly (not left to the defaults, which bind at
+            # def time) so a test can point the CLI at a fixture directory.
+            n = assemble(WORK_FILE, SHARDS_DIR,
+                         force=args.force, allow_empty=args.allow_empty)
+        except ValueError as exc:
+            # Non-zero, so the CI step that runs this actually gates.
+            print(f"::error::{exc}", file=sys.stderr)
+            return 1
         print("assemble: work file already present — skipped (use --force to rebuild)"
               if n < 0 else f"assemble: {n} records -> {WORK_FILE.name}")
         return 0

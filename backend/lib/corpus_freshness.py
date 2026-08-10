@@ -21,15 +21,82 @@ surface cannot drift apart again. Order of trust:
 
 Returns None only when none of the three exist. None means "unknown" and
 callers must render it as such — never as "fresh" and never as a zero age.
+
+This module also owns the WARN/STALE hour boundaries every surface compares
+that timestamp against — see ``corpus_freshness_thresholds`` below.
 """
 
 from __future__ import annotations
 
 import json
+import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
+
+# --- how old is "old" -------------------------------------------------------
+# ONE definition of the freshness boundary. There were three, and the one that
+# actually pages a human was the loosest:
+#
+#   docs/integrity_hardening_report.md    warn >= 72h,  stale >= 96h
+#   frontend admin FreshnessBanner        warn >= 72h,  stale >= 96h
+#   backend admin _HEALTH_THRESHOLDS      warn >= 96h,  alert >= 192h
+#
+# The refresh cron runs twice a week, so 96h is already one missed run and 192h
+# is two: the backend's alert fired a full extra cycle after the docs and the
+# admin UI both claimed the data was stale, and an operator reading the banner
+# had no way to know the alert disagreed. The documented 72/96 pair wins;
+# backend/routes/admin.py and backend/routes/readiness.py now both import these
+# names, so the next change to the boundary lands in exactly one place.
+_DEFAULT_WARN_HOURS = 72.0
+_DEFAULT_STALE_HOURS = 96.0
+
+
+def _hours_from_env(var: str, default: float) -> float:
+    """A positive float from ``var``, or ``default`` when unset/unusable.
+
+    Never returns 0 or a negative: a typo must not silently mark every corpus
+    stale (or, with a negative stale bound, silently mark none of them fresh).
+    """
+    raw = os.environ.get(var)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        value = 0.0
+    if value <= 0:
+        logger.warning("Ignoring invalid %s=%r; using %g hours", var, raw, default)
+        return default
+    return value
+
+
+def corpus_freshness_thresholds() -> tuple[float, float]:
+    """``(warn_hours, stale_hours)``, re-read from the environment per call.
+
+    Read per call rather than cached so a boundary can be retuned on a running
+    instance (``OFE_CORPUS_WARN_HOURS`` / ``OFE_CORPUS_STALE_HOURS``) without a
+    redeploy — which matters most during the exact incident where the cron is
+    late and someone has to decide whether the API stays in rotation.
+
+    ``warn`` is clamped to ``stale`` because the reverse ordering is incoherent:
+    a corpus past the stale bound but short of a larger warn bound would be
+    reported "fresh" by the same call that considers it stale.
+    """
+    warn = _hours_from_env("OFE_CORPUS_WARN_HOURS", _DEFAULT_WARN_HOURS)
+    stale = _hours_from_env("OFE_CORPUS_STALE_HOURS", _DEFAULT_STALE_HOURS)
+    return min(warn, stale), stale
+
+
+# Import-time snapshot, for the callers that build static config at module scope
+# (admin.py's _HEALTH_THRESHOLDS table). Anything evaluating freshness per
+# request should call corpus_freshness_thresholds() instead so an env override
+# takes effect without a restart.
+CORPUS_FRESHNESS_WARN_HOURS, CORPUS_FRESHNESS_STALE_HOURS = corpus_freshness_thresholds()
 
 
 def corpus_last_updated_at(processed_dir: Path | None = None) -> str | None:
