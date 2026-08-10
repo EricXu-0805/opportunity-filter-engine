@@ -130,6 +130,28 @@ Fifteen gates are `UNVERIFIED` — distinct from FAIL on purpose. Both block, bu
 `UNVERIFIED` means "no evidence either way", which tells an operator this needs
 infrastructure access rather than a code fix.
 
+## First real finding: the honest audit immediately surfaced 3 CVEs
+
+Moving `pip-audit` out of the required job and letting it fail honestly paid
+off on the very first run. It reports:
+
+```
+cryptography 48.0.1  PYSEC-2026-3552  fix: 50.0.0
+cryptography 48.0.1  PYSEC-2026-3553  fix: 49.0.0
+cryptography 48.0.1  PYSEC-2026-3554  fix: 49.0.0
+```
+
+These were present before this change and silently ignored by
+`continue-on-error: true`. `cryptography` is not incidental here — it backs
+VAPID signing for web push.
+
+The advisory job is deliberately **non-required**, so this does not block the
+merge of the gate itself; a new upstream CVE should not freeze unrelated
+releases. But it **is** a blocker for an actual production release, and it is
+recorded as one below. The remediation is a major-version dependency bump
+(48 → 49/50) that deserves its own reviewed change with the full suite run
+against it, not a drive-by edit inside a release-gate PR.
+
 ## Remaining blockers to a GO
 
 **Requires infrastructure access (cannot be produced from this repo):**
@@ -139,8 +161,9 @@ and `dead_man` — the last requires provisioning an external monitor and testin
 its alert path, which is the only structural fix for the "workflow itself
 stopped" failure mode that has already bitten this project twice.
 
-**Requires a code or data change:** the two FAILs above; the `conftest.py`
-feature-flag scope; migration idempotency for the three bare-DDL migrations;
+**Requires a code or data change:** the two FAILs above; the three
+`cryptography` CVEs (PYSEC-2026-3552/3553/3554, fix 49.0.0+); the
+`conftest.py` feature-flag scope; migration idempotency for the three bare-DDL migrations;
 the stale migration-history contract; and reconciling what is actually applied
 to production.
 
