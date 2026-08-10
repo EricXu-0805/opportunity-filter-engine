@@ -27,12 +27,42 @@ jobs:
       # (previously a pure curl with no working copy) needs a checkout.
       - uses: actions/checkout@v6
 
+      # Every step here used to `exit 0` when its secret was unset: the run
+      # went green, the `if: failure()` alert never fired, and a rotated
+      # CRON_SECRET or a renamed BACKEND_URL became an invisible nightly no-op
+      # — the same silence that let the refresh pipeline die for 7 runs. A
+      # secret this cron needs to do its job is now a hard failure, up front,
+      # so the alert path below actually fires.
+      #
+      # OPERATOR_EMAIL is deliberately NOT required: the alert step is its only
+      # consumer, and making the alert's own address fatal would just relocate
+      # the silence. RESEND_API_KEY *is* required — the health-check and digest
+      # steps deliver through it — which means that when RESEND_API_KEY is the
+      # missing secret, this job fails visibly in Actions but cannot send the
+      # alert email. That is the honest failure mode for a missing mailer, not
+      # a reason to report success.
+      #
+      # If one of these is ever intentionally unconfigured, delete the step
+      # that depends on it rather than restoring a silent skip.
+      - name: Require the secrets this cron runs on
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          missing=""
+          for name in BACKEND_URL CRON_SECRET ADMIN_TOKEN RESEND_API_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::missing required secret(s):$missing — the reminders cron cannot send reminders, run the health check, or deliver digests. Failing the job so the operator alert fires instead of reporting a green no-op."
+            exit 1
+          fi
+          echo "required secrets present"
+
       - name: Fire reminder cron
         run: |
-          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "BACKEND_URL or CRON_SECRET secret not set — skipping"
-            exit 0
-          fi
           # W15: a 200 with failures inside is still a failure — the body
           # carries the W14 bookkeeping counters and the digest's partial
           # status, which `curl -sf` cannot see. Piping through the checker
@@ -44,13 +74,18 @@ jobs:
             | python3 scripts/check_cron_response.py
 
       - name: Data-quality health check
-        if: env.ADMIN_TOKEN != '' && env.RESEND_API_KEY != ''
+        # No `if: env.ADMIN_TOKEN != ''` guard any more — the preflight step
+        # above already failed the job if it was unset, so a skip here could
+        # only ever have been a lie about having run.
+        #
+        # Residual (pre-existing, out of scope for this pass): the `|| exit 0`
+        # on the curls below still swallows a live 4xx/5xx from the admin
+        # endpoint — a present-but-revoked ADMIN_TOKEN passes quietly.
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
         run: |
-          if [ -z "${{ secrets.BACKEND_URL }}" ]; then exit 0; fi
           BODY=$(curl -sf -H "X-Admin-Token: $ADMIN_TOKEN" \
                  "${{ secrets.BACKEND_URL }}/api/admin/health-check") || exit 0
           OK=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ok', True))")
@@ -82,13 +117,17 @@ jobs:
       - name: New-feedback digest
         # The feedback table is INSERT-only under RLS (operators read it via
         # the admin endpoint) — without this, feedback lands invisibly.
-        if: env.ADMIN_TOKEN != '' && env.RESEND_API_KEY != ''
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
         run: |
-          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "$OPERATOR_EMAIL" ]; then exit 0; fi
+          # OPERATOR_EMAIL is the optional one (there is no one to mail); the
+          # required secrets were proven present by the preflight step.
+          if [ -z "$OPERATOR_EMAIL" ]; then
+            echo "OPERATOR_EMAIL not set — no digest recipient, nothing to send"
+            exit 0
+          fi
           BODY=$(curl -sf -H "X-Admin-Token: $ADMIN_TOKEN" \
                  "${{ secrets.BACKEND_URL }}/api/admin/feedback?since_hours=25&limit=50") || exit 0
           COUNT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
@@ -123,13 +162,17 @@ jobs:
       - name: New-orders digest
         # Orders a user claimed as paid sit in awaiting_confirm until the
         # operator confirms on /admin — without this, claims land invisibly.
-        if: env.ADMIN_TOKEN != '' && env.RESEND_API_KEY != ''
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
         run: |
-          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "$OPERATOR_EMAIL" ]; then exit 0; fi
+          # OPERATOR_EMAIL is the optional one (there is no one to mail); the
+          # required secrets were proven present by the preflight step.
+          if [ -z "$OPERATOR_EMAIL" ]; then
+            echo "OPERATOR_EMAIL not set — no digest recipient, nothing to send"
+            exit 0
+          fi
           BODY=$(curl -sf -H "X-Admin-Token: $ADMIN_TOKEN" \
                  "${{ secrets.BACKEND_URL }}/api/admin/orders?status=awaiting_confirm&since_hours=25&limit=50") || exit 0
           COUNT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
@@ -155,17 +198,26 @@ jobs:
 
       # Cron failures send no notification by default — the data-refresh
       # pipeline once failed 7 runs in a row before anyone noticed. Same
-      # operator alert as refresh-data.yml.
+      # operator alert as refresh-data.yml, including `cancelled()`: blowing
+      # past timeout-minutes CANCELS a job rather than failing it, so bare
+      # `failure()` stayed silent on exactly the runs that hung (refresh-data
+      # lost three five-hour runs that way).
       - name: Alert operator on failure
-        if: failure()
+        if: failure() || cancelled()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
         run: |
+          # Optional-by-design: these configure the alert itself, so failing on
+          # them would only relocate the silence. The job's own failure is
+          # already recorded in the Actions run either way.
           if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
-            echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            echo "::warning::RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
             exit 0
           fi
+          # `|| true` keeps a failed send from masking the real failure — at the
+          # cost of leaving alert DELIVERY unverified (a rejected Resend call
+          # looks identical to a delivered one from here).
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \

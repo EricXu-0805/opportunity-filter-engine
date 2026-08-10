@@ -29,6 +29,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.data_loader import load_opportunities
+from backend.lib.corpus_freshness import (
+    CORPUS_FRESHNESS_STALE_HOURS,
+    CORPUS_FRESHNESS_WARN_HOURS,
+)
 from backend.lib.corpus_freshness import corpus_last_updated_at as _opportunities_mtime
 from backend.routes.email import _enforce_recipient_quota, _html_escape, _send_via_resend
 from backend.routes.push import _required_env
@@ -395,8 +399,14 @@ async def collector_status_history(
 
 
 _HEALTH_THRESHOLDS = {
-    "data_age_warn_hours": 96,
-    "data_age_alert_hours": 192,
+    # Imported, not literal: these used to be a local 96/192 while the docs and
+    # the admin dashboard's own FreshnessBanner both said 72/96, so the alert
+    # that pages an operator fired a full extra cron cycle after the UI had
+    # already turned red. backend/lib/corpus_freshness now owns the boundary for
+    # this surface, /api/ready, and the frontend banner alike. The keys keep
+    # their warn/alert names because the alert-level logic below reads them.
+    "data_age_warn_hours": CORPUS_FRESHNESS_WARN_HOURS,
+    "data_age_alert_hours": CORPUS_FRESHNESS_STALE_HOURS,
     "metric_pct_jump": 50.0,
     "metric_min_delta": 30,
     # Render instance has 2 GB; the corpus + TF-IDF fit grow with every school,

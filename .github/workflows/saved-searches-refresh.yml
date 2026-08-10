@@ -27,12 +27,29 @@ jobs:
       # (previously a pure curl with no working copy) needs a checkout.
       - uses: actions/checkout@v6
 
+      # Both steps below used to `exit 0` when a secret was unset: the run went
+      # green, the `if: failure()` alert never fired, and a rotated CRON_SECRET
+      # or a renamed BACKEND_URL became an invisible nightly no-op. The secrets
+      # this cron cannot work without are now a hard failure, up front, so the
+      # alert path below actually fires. OPERATOR_EMAIL stays optional — the
+      # alert step is its only consumer (see there).
+      - name: Require the secrets this cron runs on
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          missing=""
+          for name in BACKEND_URL CRON_SECRET; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::missing required secret(s):$missing — saved-search alerts and digests cannot be refreshed or delivered. Failing the job so the operator alert fires instead of reporting a green no-op."
+            exit 1
+          fi
+          echo "required secrets present"
+
       - name: Fire saved-searches cron
         run: |
-          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "BACKEND_URL or CRON_SECRET secret not set — skipping"
-            exit 0
-          fi
           # W15: a 200 with failures inside is still a failure — the body
           # carries the W14 bookkeeping counters and the digest's partial
           # status, which `curl -sf` cannot see. Piping through the checker
@@ -44,10 +61,6 @@ jobs:
             | python3 scripts/check_cron_response.py
       - name: Fire saved-searches digest
         run: |
-          if [ -z "${{ secrets.BACKEND_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "BACKEND_URL or CRON_SECRET secret not set — skipping"
-            exit 0
-          fi
           # W15: a 200 with failures inside is still a failure — the body
           # carries the W14 bookkeeping counters and the digest's partial
           # status, which `curl -sf` cannot see. Piping through the checker
@@ -60,15 +73,20 @@ jobs:
 
       # Cron failures send no notification by default — the data-refresh
       # pipeline once failed 7 runs in a row before anyone noticed. Same
-      # operator alert as refresh-data.yml.
+      # operator alert as refresh-data.yml, including `cancelled()`: blowing
+      # past timeout-minutes CANCELS a job rather than failing it, so bare
+      # `failure()` stayed silent on exactly the runs that hung.
       - name: Alert operator on failure
-        if: failure()
+        if: failure() || cancelled()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
         run: |
+          # Optional-by-design: these configure the alert itself, so failing on
+          # them would only relocate the silence. The job's own failure is
+          # already recorded in the Actions run either way.
           if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
-            echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            echo "::warning::RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
             exit 0
           fi
           curl -sf -X POST https://api.resend.com/emails \

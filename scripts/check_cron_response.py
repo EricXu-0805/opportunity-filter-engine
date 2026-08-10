@@ -11,6 +11,15 @@ reachable only in Render's stdout. The workflow went green and the
 Reads the JSON body on stdin. Exit 1 — failing the step, which triggers the
 existing operator-alert job — when any failure signal is present.
 
+An UNREADABLE body is itself a failure signal. This used to `::warning::` and
+exit 0 on an empty body, on a non-JSON body (a proxy's HTML 502/503 page, a
+Render cold-start error page, an auth redirect), and on JSON that wasn't an
+object — i.e. exactly the responses that prove the cron did not run — so the
+workflow went green and nobody was alerted. A healthy cron returns a JSON
+object; anything else fails the step. The one benign case is an explicit
+`{"status": "skipped"}`, which the endpoints return when their env is not
+configured: that is a deliberate no-op, not a broken run.
+
 Usage:  curl ... | python3 scripts/check_cron_response.py
 """
 from __future__ import annotations
@@ -44,15 +53,20 @@ def check(payload: dict) -> list[str]:
 def main() -> int:
     raw = sys.stdin.read().strip()
     if not raw:
-        print("::warning::empty cron response body — cannot check for silent failures")
-        return 0
+        print("::error::empty cron response body — the endpoint returned nothing, "
+              "so this run cannot be shown to have done its work")
+        return 1
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError:
-        print("::warning::cron response was not JSON — cannot check for silent failures")
-        return 0
+        print("::error::cron response was not JSON (likely an HTML error page "
+              "from a proxy, a cold start, or an auth redirect): "
+              f"{raw[:200]!r}")
+        return 1
     if not isinstance(payload, dict):
-        return 0
+        print("::error::cron response JSON was not an object, so it carries none "
+              f"of the status/counter fields a healthy run reports: {raw[:200]!r}")
+        return 1
 
     # A skipped run (missing env) is not a failure.
     if payload.get("status") == "skipped":

@@ -11,7 +11,9 @@ aggregate report gates "truthfulness approval" FAIL-CLOSED.
     sample   draw deterministic per-category samples (risk quotas + random)
              -> data/audits/samples/<category>.json  (reviewer fills verdicts)
     report   aggregate reviewed samples -> data/audits/truthfulness_report.json
-             + GO / NO-GO decision (missing category or any pending => NO-GO)
+             + GO / NO-GO decision (missing category or any pending => NO-GO).
+             Exits 1 on NO-GO so the decision can gate a release; `sample`
+             always exits 0.
 
 The corpus work file (data/processed/opportunities.json) is gitignored; if it
 is absent, assemble it first:  python scripts/shard_corpus.py assemble
@@ -603,7 +605,13 @@ def run_report(samples_dir: Path, out_path: Path) -> int:
     print(banner)
     print("=" * len(banner))
     print(f"report written to {out_path}")
-    return 0
+    # The exit code CARRIES the decision. This used to return 0 unconditionally,
+    # which made the whole fail-closed gate above advisory: a NO-GO printed its
+    # banner and then told every caller (a CI step, a release script, any `&&`
+    # chain) that all was well. The human summary and the JSON report are still
+    # written first, so a NO-GO stays diagnosable rather than just non-zero.
+    # `sample` still exits 0 — drawing samples has no verdict to report.
+    return 0 if approved else 1
 
 
 # --------------------------------------------------------------------- CLI ---
