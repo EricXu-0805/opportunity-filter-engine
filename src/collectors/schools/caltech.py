@@ -99,7 +99,7 @@ SCHOOL: dict = {
                 "https://sfp.caltech.edu/undergraduate-research/programs/off-campus-surf",
                 "https://sfp.caltech.edu/undergraduate-research/programs/exchange_programs",
                 "https://sfp.caltech.edu/undergraduate-research/programs/academic_year_opps",
-                "https://deans.caltech.edu/Grants_Funding/gwhfund",
+                "https://deans.caltech.edu/awards_funding/gwhfund",
             ],
             "crawl": STATIC,
             "programs": [
@@ -205,7 +205,7 @@ SCHOOL: dict = {
                 program(
                     "housner_fund",
                     "George W. Housner Student Discovery Fund — Caltech",
-                    "https://deans.caltech.edu/Grants_Funding/gwhfund",
+                    "https://deans.caltech.edu/awards_funding/gwhfund",
                     "Endowed fund (from earthquake-engineering pioneer George W. "
                     "Housner) that finances undergraduate scholarly activity outside "
                     "the SURF award structure: independent research projects (including "

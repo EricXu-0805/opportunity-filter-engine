@@ -1038,3 +1038,82 @@ def test_complete_fetch_under_expired_clock_stays_ok(monkeypatch, tmp_path):
     )
     assert summary["sources"]["jhu_faculty"]["status"] == "ok"
     assert summary["time_budget"].get("partial", 0) == 0
+
+
+def test_cli_publishes_the_ready_units_when_one_school_is_blocked(
+    monkeypatch, caplog
+):
+    """Exit 2 withholds everything; a per-school block must not do that.
+
+    On 2026-08-08 one broken UCSB sitemap discarded 2h42m of collection for
+    fifteen schools with nothing wrong with them.
+    """
+    summary = {
+        "timestamp": "2026-08-08T06:12:00",
+        "sources": {},
+        "total_new": 0,
+        "total_updated": 0,
+        "total_in_file": 1,
+        "release": {
+            "ready": False,
+            "reasons": ["source ucsb_urca_projects reported error: x"],
+            "warnings": [],
+            "publishable": ["caltech", "umich"],
+            "by_unit": {
+                "caltech": {"ready": True, "reasons": []},
+                "ucsb": {"ready": False, "reasons": ["…"]},
+                "umich": {"ready": True, "reasons": []},
+            },
+        },
+    }
+    monkeypatch.setattr(refresh_all, "refresh_all", lambda **_kwargs: summary)
+    monkeypatch.setattr(refresh_all, "write_status", lambda _summary: None)
+    monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
+
+    with caplog.at_level(logging.ERROR):
+        assert refresh_all.main(["--schools", "ucsb,umich,caltech"]) == 0
+
+    assert any(
+        "PARTIAL RELEASE" in r.message and "ucsb" in r.message
+        for r in caplog.records
+    )
+
+
+def test_cli_still_returns_two_when_nothing_is_publishable(monkeypatch):
+    summary = {
+        "timestamp": "t",
+        "sources": {},
+        "total_new": 0,
+        "total_updated": 0,
+        "total_in_file": 1,
+        "release": {
+            "ready": False,
+            "reasons": ["summary shard does not match request"],
+            "publishable": [],
+            "by_unit": {"uw": {"ready": False, "reasons": ["…"]}},
+        },
+    }
+    monkeypatch.setattr(refresh_all, "refresh_all", lambda **_kwargs: summary)
+    monkeypatch.setattr(refresh_all, "write_status", lambda _summary: None)
+    monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
+
+    assert refresh_all.main(["--schools", "uw"]) == 2
+
+
+def test_cli_returns_two_for_a_verdict_that_predates_per_unit_publication(
+    monkeypatch,
+):
+    """An older artifact has no publishable list; withhold, do not guess."""
+    summary = {
+        "timestamp": "t",
+        "sources": {},
+        "total_new": 0,
+        "total_updated": 0,
+        "total_in_file": 1,
+        "release": {"ready": False, "reasons": ["required source missing: x"]},
+    }
+    monkeypatch.setattr(refresh_all, "refresh_all", lambda **_kwargs: summary)
+    monkeypatch.setattr(refresh_all, "write_status", lambda _summary: None)
+    monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
+
+    assert refresh_all.main(["--schools", "uw"]) == 2

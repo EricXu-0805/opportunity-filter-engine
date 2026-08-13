@@ -755,6 +755,138 @@ class TestOpsScanCollectors:
         assert "MemoryError" in payload["p_detail"]["error"]
 
 
+class TestOpsScanReleaseDegradation:
+    """#725 stopped an unreachable host from vetoing publication. This is what
+    replaced the veto: the gap becomes a tracked incident instead of one line
+    in a run log nobody reads."""
+
+    def test_a_dark_school_opens_a_high_priority_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "2026-08-08T06:12:00+00:00",
+            "sources": {"campus_graph:umich": {"status": "ok", "fetched": 12}},
+            "release": {
+                "ready": True,
+                "degradations": [{
+                    "kind": "dark_crawl",
+                    "source": "campus_graph:umich",
+                    "detail": "0/9 seed pages, 0/6 crawl sources",
+                }],
+            },
+        })
+
+        r = _run_scan()
+        assert r.status_code == 200
+        (payload,) = _rpcs(calls, "record_ops_incident")
+        assert payload["p_kind"] == "collector_failure"
+        assert payload["p_dedup_key"] == (
+            "collector_failure:degraded:dark_crawl:campus_graph:umich"
+        )
+        assert payload["p_scope"] == "campus_graph:umich"
+        assert payload["p_priority"] == "high"
+        assert payload["p_detail"]["published"] is True
+        assert "0/9 seed pages" in payload["p_detail"]["detail"]
+
+    def test_lesser_gaps_open_at_normal_priority(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"campus_graph:caltech": {"status": "ok", "fetched": 31}},
+            "release": {"ready": True, "degradations": [
+                {"kind": "seed_pages_unreached", "source": "campus_graph:caltech",
+                 "detail": "15/17, 2 failed"},
+                {"kind": "crawl_errors", "source": "campus_graph:caltech",
+                 "detail": "seed fetch failed"},
+            ]},
+        })
+
+        _run_scan()
+        opened = _rpcs(calls, "record_ops_incident")
+        assert {p["p_dedup_key"] for p in opened} == {
+            "collector_failure:degraded:seed_pages_unreached:campus_graph:caltech",
+            "collector_failure:degraded:crawl_errors:campus_graph:caltech",
+        }
+        assert {p["p_priority"] for p in opened} == {"normal"}
+
+    def test_a_clean_run_of_that_source_closes_it(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, calls=calls, open_rows=[
+            {"dedup_key": "collector_failure:degraded:dark_crawl:campus_graph:umich"},
+        ])
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"campus_graph:umich": {"status": "ok", "fetched": 40}},
+            "release": {"ready": True, "degradations": []},
+        })
+
+        r = _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_recovery")
+        assert payload["p_dedup_key"] == (
+            "collector_failure:degraded:dark_crawl:campus_graph:umich"
+        )
+        assert payload["p_auto_resolve"] is True
+        assert r.json()["recovered"] == 1
+
+    def test_a_shard_that_never_touched_the_source_closes_nothing(
+        self, monkeypatch, tmp_path
+    ):
+        """THE rotation trap: Monday's run says nothing about Michigan.
+
+        Absence from a shard is not evidence of recovery, and treating it as
+        such would silently clear every school's incident once a week.
+        """
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, calls=calls, open_rows=[
+            {"dedup_key": "collector_failure:degraded:dark_crawl:campus_graph:umich"},
+        ])
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"campus_graph:uiuc": {"status": "ok", "fetched": 40}},
+            "release": {"ready": True, "degradations": []},
+        })
+
+        _run_scan()
+        assert _rpcs(calls, "record_ops_recovery") == []
+
+    def test_a_source_that_ran_and_failed_closes_nothing(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, calls=calls, open_rows=[
+            {"dedup_key": "collector_failure:degraded:dark_crawl:campus_graph:umich"},
+        ])
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"campus_graph:umich": {"status": "error", "error": "boom"}},
+            "release": {"ready": False, "degradations": []},
+        })
+
+        _run_scan()
+        assert _rpcs(calls, "record_ops_recovery") == []
+
+    def test_a_snapshot_predating_the_field_is_skipped_not_guessed_at(
+        self, monkeypatch, tmp_path
+    ):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"campus_graph:umich": {"status": "ok", "fetched": 12}},
+            "release": {"ready": True, "warnings": ["something"]},
+        })
+
+        r = _run_scan()
+        skipped = {s["detector"] for s in r.json()["skipped"]}
+        assert "release_degradation" in skipped
+        assert _rpcs(calls, "record_ops_incident") == []
+
+
 class TestOpsScanDrift:
     def test_large_fetched_drop_opens_a_high_priority_drift_incident(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
@@ -897,7 +1029,12 @@ class TestOpsScanResilience:
         assert body["status"] == "ok"
         assert body["opened"] == 0
         detectors = {s["detector"] for s in body["skipped"]}
-        assert detectors == {"collector_failure", "data_drift", "professor_tracking"}
+        assert detectors == {
+            "collector_failure",
+            "data_drift",
+            "release_degradation",
+            "professor_tracking",
+        }
         assert _rpcs(calls, "record_ops_incident") == []
 
     def test_corrupt_snapshot_is_skipped_not_a_500(self, monkeypatch, tmp_path):

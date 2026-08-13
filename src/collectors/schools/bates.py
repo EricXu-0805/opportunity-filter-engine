@@ -36,7 +36,10 @@ SCHOOL: dict = {
             "seeds": [
                 f"{_SR}/",
                 f"{_SR}/summer/",
-                f"{_SR}/summer-grants-summary/",
+                # Bates retired the /summer-grants-summary/ index (404 since at
+                # least 2026-08); the individual grant pages under it survive
+                # and are listed below. This is its successor index.
+                f"{_SR}/summer-funded-opportunities/",
                 "https://www.bates.edu/academics/research-opportunities/",
             ],
             "programs": [

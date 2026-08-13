@@ -1746,7 +1746,25 @@ def main(argv: list[str] | None = None) -> int:
     if release.get("ready") is not True:
         for reason in release.get("reasons") or ["release contract did not pass"]:
             logger.error("REFRESH RELEASE BLOCKED: %s", reason)
-        return 2
+        # Publication is per shard file. One school's broken source is not a
+        # reason to withhold the others' fresh data — on 2026-08-08 a single
+        # UCSB sitemap error discarded 2h42m of work for fifteen schools that
+        # had nothing wrong with them. Exit 2 only when nothing at all is
+        # publishable, which includes every structural failure.
+        publishable = release.get("publishable")
+        if not isinstance(publishable, list) or not publishable:
+            return 2
+        blocked = sorted(
+            unit
+            for unit, verdict in (release.get("by_unit") or {}).items()
+            if not (verdict or {}).get("ready")
+        )
+        logger.error(
+            "PARTIAL RELEASE: publishing %d unit(s); %d withheld (%s)",
+            len(publishable),
+            len(blocked),
+            ", ".join(blocked) or "none",
+        )
     print(f"\nCompleted in {elapsed:.1f}s")
     return 0
 

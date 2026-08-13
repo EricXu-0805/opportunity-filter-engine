@@ -34,7 +34,7 @@ SCHOOL: dict = {
             "crawl": STATIC,
             "seeds": [
                 _HUB,
-                "https://urop.mit.edu/urop-for-wellesley-college-students/",
+                "https://urop.mit.edu/deadlines/audience/wellesley-students/",
             ],
             "programs": [
                 program(
@@ -191,7 +191,7 @@ SCHOOL: dict = {
                 program(
                     "wellesley_mit_urop",
                     "MIT UROP for Wellesley Students",
-                    "https://urop.mit.edu/urop-for-wellesley-college-students/",
+                    "https://urop.mit.edu/deadlines/audience/wellesley-students/",
                     "Wellesley students cross-registered at MIT can apply to "
                     "MIT's Undergraduate Research Opportunities Program to work "
                     "with MIT faculty and researchers on real-world research "

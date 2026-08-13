@@ -33,7 +33,9 @@ SCHOOL: dict = {
             "crawl": STATIC,
             "seeds": [
                 "https://cuse.nd.edu/",
-                "https://kellogg.nd.edu/opportunities/undergraduate-students/",
+                # The /undergraduate-students/ index is gone; its child program
+                # pages survive and this parent still links to every one.
+                "https://kellogg.nd.edu/opportunities/",
                 "https://energy.nd.edu/opportunities/student-research-fellowships/",
             ],
             "programs": [
