@@ -63,10 +63,12 @@ describe('Header', () => {
     expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('does not advertise dormant Fellowships or Roadmap routes', () => {
+  it('advertises the accepted Fellowships and Roadmap routes', () => {
+    // The nav builds itself from RELEASE_SCOPE; a link the route 404s is the
+    // failure this guards, in whichever direction the switch sits.
     render(<Header />);
-    expect(screen.queryByText('nav.fellowships')).not.toBeInTheDocument();
-    expect(screen.queryByText('nav.roadmap')).not.toBeInTheDocument();
+    expect(screen.getAllByText('nav.fellowships').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('nav.roadmap').length).toBeGreaterThan(0);
   });
 
   it('exposes a hamburger toggle that is initially collapsed', () => {

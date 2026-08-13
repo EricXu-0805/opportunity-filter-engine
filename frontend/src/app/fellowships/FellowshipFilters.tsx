@@ -15,6 +15,16 @@ interface FellowshipFiltersProps {
   onChange: (next: FellowshipFiltersState) => void;
   totalCount: number;
   filteredCount: number;
+  /**
+   * Whether any loaded record could satisfy the "upcoming" pill.
+   *
+   * It requires `deadline_is_estimate === false` — a confirmed future date, not
+   * a guess. Only nsf_reu ever writes that field and no NSF shard is in the
+   * published corpus, so the pill matched 0 of 1,406 records: a control whose
+   * every click returned an empty page. Rendering it on the evidence instead of
+   * unconditionally means it comes back by itself when real deadlines land.
+   */
+  hasConfirmedDeadlines: boolean;
 }
 
 export default function FellowshipFilters({
@@ -22,6 +32,7 @@ export default function FellowshipFilters({
   onChange,
   totalCount,
   filteredCount,
+  hasConfirmedDeadlines,
 }: FellowshipFiltersProps) {
   const { t } = useT();
   const isClean = JSON.stringify(filters) === JSON.stringify(DEFAULT_FELLOWSHIP_FILTERS);
@@ -77,7 +88,9 @@ export default function FellowshipFilters({
       </FilterGroup>
 
       <FilterGroup label={t('fellowships.deadline')} last>
-        {(['', 'upcoming', 'rolling'] as DeadlineFilter[]).map((deadline) => (
+        {((hasConfirmedDeadlines
+          ? ['', 'upcoming', 'rolling']
+          : ['', 'rolling']) as DeadlineFilter[]).map((deadline) => (
           <FilterPill
             key={deadline || 'any'}
             active={filters.deadline === deadline}

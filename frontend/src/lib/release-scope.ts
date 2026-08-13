@@ -7,15 +7,25 @@
  * acceptance PR for that feature.
  */
 export const RELEASE_SCOPE = Object.freeze({
-  matchAiRefine: false,
-  crossSchoolMatching: false,
-  compare: false,
-  resumeRenovate: false,
-  fellowships: false,
-  roadmap: false,
-  askAi: false,
-  professorSignals: false,
+  matchAiRefine: true,
+  crossSchoolMatching: true,
+  compare: true,
+  resumeRenovate: true,
+  fellowships: true,
+  roadmap: true,
+  askAi: true,
+  professorSignals: true,
+  // Still closed, and for a reason that is not about this codebase: Azure
+  // publisher verification requires a verified legal entity, which does not
+  // exist yet. Opening it shows students an "unverified publisher" consent
+  // screen — worse for a product selling trust than one fewer sign-in button,
+  // and Google sign-in is live.
   microsoftSchoolAuth: false,
+  // Still closed because the flag is not the missing part. frontend/src/lib/
+  // pricing.ts and public/pay/*.png do not exist on main (they live on the
+  // unmerged feat/payments-concierge), and migration 026 dropped the orders
+  // RLS policies and revoked anon/authenticated access — so flipping this
+  // alone yields an API that answers and a database that refuses.
   payments: false,
   conciergePayQr: false,
 } as const);
@@ -23,8 +33,13 @@ export const RELEASE_SCOPE = Object.freeze({
 // Included in every server-side cached discovery URL. Bump whenever the public
 // record-visibility contract changes so a new Vercel deployment cannot reuse
 // an older deployment's Data Cache entries.
+//
+// Bumped here because fellowships changes exactly that: opportunity_visible_in_release
+// stopped filtering `fellowship` records out of every public surface, so a
+// cached discovery response minted under the old contract is missing rows the
+// new one publishes.
 export const PUBLIC_RELEASE_CACHE_VERSION =
-  'mvp-route-freeze-v2-contact-trust-v1';
+  'mvp-scope-open-v1-contact-trust-v1';
 
 /**
  * Remove preferences for feature families that are outside the public release.

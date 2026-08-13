@@ -49,12 +49,23 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof Opportunity
 }
 
 describe('OpportunityHeader MVP release surface', () => {
-  it('keeps Tailor while hiding unaccepted Renovate and professor signals', () => {
+  it('shows the professor signal now that professorSignals is accepted', () => {
     renderHeader();
 
     expect(screen.getByText('card.tailorResume')).toBeInTheDocument();
+    expect(screen.getByText('unaccepted-professor-signal')).toBeInTheDocument();
+  });
+
+  it('shows Renovate only when the parent supplies its handler', () => {
+    // resumeRenovate is accepted, but this component does not read the flag —
+    // OpportunityDetail does, and expresses the decision by passing (or not
+    // passing) onOpenRenovationModal. Keeping that split tested means the flag
+    // has exactly one reader per surface.
+    renderHeader();
     expect(screen.queryByText('card.renovateResume')).not.toBeInTheDocument();
-    expect(screen.queryByText('unaccepted-professor-signal')).not.toBeInTheDocument();
+
+    renderHeader({ onOpenRenovationModal: noop });
+    expect(screen.getByText('card.renovateResume')).toBeInTheDocument();
   });
 });
 

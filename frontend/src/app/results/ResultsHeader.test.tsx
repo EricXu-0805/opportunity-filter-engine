@@ -36,9 +36,9 @@ function renderHeader(fieldRelevantCount: number) {
 }
 
 describe('ResultsHeader strong-match header', () => {
-  it('does not render the dormant AI refine toggle', () => {
+  it('renders the AI refine toggle now that the feature is accepted', () => {
     renderHeader(0);
-    expect(screen.queryByTestId('semantic-toggle')).not.toBeInTheDocument();
+    expect(screen.getByTestId('semantic-toggle')).toBeInTheDocument();
   });
 
   it('uses the singular variant for exactly one strong match', () => {
