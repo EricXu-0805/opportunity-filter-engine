@@ -300,6 +300,18 @@ jobs:
               --schools "$SHARD" --allow-full --targets)
             python3 scripts/shard_corpus.py split --only-shards "$TARGETS"
 
+            # ...and the cost of that guarantee, paid here. Deadlines pass on
+            # the calendar's schedule, not the rotation's: the work-file pass
+            # above retires every past-deadline record, but the split persists
+            # only $TARGETS, so a record in one of the ~100 other shards has its
+            # retirement computed and dropped. The next CI run reassembles from
+            # shards, the record is active again, and the zero-tolerance
+            # data-quality gate kills the refresh — which is what
+            # handshake-56d6cdae (uiuc, deadline 08-06) did to the day-4 run on
+            # 2026-08-13. Retire-only and field-scoped, reading each shard from
+            # the freshly fetched main, so it cannot revert a concurrent merge.
+            python3 -m src.normalizers.deactivate_past --shards --save
+
             git add data/processed/shards data/processed/collector_status.json
             if [ -f data/processed/collector_status_history.jsonl ]; then
               git add data/processed/collector_status_history.jsonl

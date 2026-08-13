@@ -239,56 +239,8 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 14
 
-  # Advisory only — deliberately NOT one of the required checks (required:
-  # Backend, Frontend, Migrations, E2E). Dependency audits are driven by
-  # upstream advisory publication, not by this diff: a CVE disclosed against a
-  # transitive dep at 3am must not block an unrelated release, and pinning the
-  # audit to "warn" inside a required job was the dishonest alternative (a
-  # `continue-on-error` step reads as a gate in the checks list while being
-  # incapable of failing anything).
-  #
-  # So: these steps DO fail — this job goes red and is visible on the PR — and
-  # merging is a human decision rather than a silently-swallowed warning. If an
-  # audit finding ever must block, move that step into a required job WITHOUT
-  # continue-on-error; do not re-add an ignored-failure step to one.
-  security-advisory:
-    name: Security advisory (non-blocking)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - name: Install pip-audit
-        run: pip install pip-audit==2.7.3
-
-      - name: Dependency audit (pip-audit)
-        # The --ignore-vuln exception is carried over verbatim from the commit
-        # that introduced this audit (19327a7, "add ruff lint + dependency
-        # audit gates"), which recorded no rationale for it anywhere in the
-        # repo. It is preserved rather than re-litigated because this change is
-        # about WHERE the audit runs, not which findings are accepted — but it
-        # is an undocumented exception, so the next person to touch it should
-        # confirm the advisory still applies and write down why it is accepted.
-        run: pip-audit --requirement requirements.txt --strict --ignore-vuln GHSA-4xh5-x5gv-qwph
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        # `npm audit` resolves against the installed tree; --ignore-scripts
-        # keeps an audit job from running package lifecycle scripts.
-        run: npm ci --ignore-scripts
-        working-directory: frontend
-
-      - name: Dependency audit (npm)
-        run: npm audit --omit=dev --audit-level=high
-        working-directory: frontend
+  # The dependency audits moved to .github/workflows/security-advisory.yml,
+  # which runs on pull_request only. They stayed non-required either way; what
+  # changed is that they no longer attach a check run to a main commit, because
+  # Render's `autoDeployTrigger: checksPass` waits on EVERY check and a red
+  # advisory therefore froze backend deploys. See that file's header.

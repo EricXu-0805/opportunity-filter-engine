@@ -18,7 +18,11 @@ python-dotenv==1.2.2
 # because it isn't installed in dev/CI by default and we don't want
 # pip-resolve to fail when a future patch ships).
 pywebpush>=2.0.0,<3.0.0
-cryptography==48.0.1
+# 48.0.1 carried PYSEC-2026-3552 (fix 50.0.0) and -3553/-3554 (fix 49.0.0).
+# This package backs VAPID signing, so the advisories are not incidental here.
+# 50.0.0 satisfies every transitive floor in this tree: pywebpush >=47,
+# py-vapid >=46, http-ece >=2.5.
+cryptography==50.0.0
 
 # Data collection (used by scrapers + GitHub Action refresh-data.yml)
 feedparser==6.0.12

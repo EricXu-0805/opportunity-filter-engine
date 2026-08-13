@@ -719,6 +719,101 @@ class TestDeactivatePastLogic:
         )
 
 
+class TestDeactivatePastShardPass:
+    """The work-file pass alone cannot satisfy the zero-tolerance gate.
+
+    A refresh publishes only the shards its rotation authorized (#722), so a
+    record that crosses its deadline in one of the other ~100 shards has its
+    retirement computed against the work file and then discarded. The next CI
+    run reassembles the corpus from shards and the record is active again —
+    which is exactly how handshake-56d6cdae (uiuc, deadline 2026-08-06) failed
+    the gate on a day-4 run and killed the 2026-08-13 refresh.
+    """
+
+    REF = date(2026, 6, 1)
+
+    def _shard(self, tmp_path, name, records):
+        shards = tmp_path / "shards"
+        shards.mkdir(exist_ok=True)
+        # Committed shards are minified; the pass must round-trip that.
+        (shards / f"{name}.json").write_text(
+            json.dumps(records, separators=(",", ":")), encoding="utf-8",
+        )
+        return shards
+
+    def test_retires_a_record_in_a_shard_this_run_never_scraped(self, tmp_path):
+        from src.normalizers.deactivate_past import deactivate_past_in_shards
+
+        shards = self._shard(tmp_path, "uiuc", [
+            {"id": "stranded", "deadline": "2026-05-01",
+             "metadata": {"is_active": True}},
+        ])
+        changed = deactivate_past_in_shards(shards, self.REF, save=True)
+
+        assert changed["uiuc"]["newly_deactivated"] == 1
+        written = json.loads((shards / "uiuc.json").read_text(encoding="utf-8"))
+        assert written[0]["metadata"]["is_active"] is False
+        assert written[0]["metadata"]["deactivation_reason"] == "deadline_passed"
+        # Minified, or the next split diffs every line of a 5 MB shard.
+        assert (shards / "uiuc.json").read_text(encoding="utf-8").startswith('[{"id"')
+
+    def test_leaves_untouched_shards_byte_identical(self, tmp_path):
+        """It must be safe on shards the run had no authority over.
+
+        Rewriting one from the run's in-memory corpus is what #722 forbade; the
+        guarantee here is narrower and mechanical — nothing to retire, nothing
+        written.
+        """
+        from src.normalizers.deactivate_past import deactivate_past_in_shards
+
+        shards = self._shard(tmp_path, "ucb", [
+            {"id": "future", "deadline": "2026-12-31", "metadata": {"is_active": True}},
+            {"id": "rolling", "deadline": "2026-01-01", "is_rolling": True,
+             "metadata": {"is_active": True}},
+            {"id": "already", "deadline": "2026-01-01",
+             "metadata": {"is_active": False, "deactivated_at": "2026-01-02"}},
+        ])
+        before = (shards / "ucb.json").read_bytes()
+        changed = deactivate_past_in_shards(shards, self.REF, save=True)
+
+        assert changed == {}
+        assert (shards / "ucb.json").read_bytes() == before
+
+    def test_dry_run_reports_without_writing(self, tmp_path):
+        from src.normalizers.deactivate_past import deactivate_past_in_shards
+
+        shards = self._shard(tmp_path, "mit", [
+            {"id": "stranded", "deadline": "2026-05-01",
+             "metadata": {"is_active": True}},
+        ])
+        before = (shards / "mit.json").read_bytes()
+        changed = deactivate_past_in_shards(shards, self.REF, save=False)
+
+        assert changed["mit"]["newly_deactivated"] == 1
+        assert (shards / "mit.json").read_bytes() == before
+
+    def test_the_publication_path_actually_runs_it(self):
+        """Wiring, not capability — the recurring shape of this repo's bugs.
+
+        deactivate_past has been implemented and unit-tested since R70-C; what
+        was missing was anything calling it on the committed representation.
+        """
+        workflow = (
+            Path(__file__).resolve().parents[1]
+            / ".github" / "workflows" / "refresh-data.yml"
+        ).read_text(encoding="utf-8")
+        split_at = workflow.index("shard_corpus.py split --only-shards")
+        pass_at = workflow.find("deactivate_past --shards --save")
+        assert pass_at != -1, (
+            "the shard pass is not in the publication path, so retirements "
+            "outside this run's rotation are still discarded"
+        )
+        assert pass_at > split_at, (
+            "the pass must run AFTER the split, or the split overwrites the "
+            "authorized shards from the work file and re-strands the rest"
+        )
+
+
 class TestSchoolAudience:
     """Multi-university Phase 1 (PR #187): every record carries top-level
     `school` (host-school slug, None = national) + `audience`
