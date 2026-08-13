@@ -135,22 +135,21 @@ describe('getMatches', () => {
     expect(body.exploring).toBe(true);
   });
 
-  it('fails closed when a stale profile opts into unreleased cross-school matching', async () => {
+  it('sends accepted preferences through instead of stripping them', async () => {
+    // Both families normalizeProfileForRelease guards are accepted now, so it
+    // is a pass-through here. The enforced boundary is the server's
+    // (_normalized_profile, tests/test_release_scope.py) — this one only stops
+    // a stale local profile from re-showing a selector.
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
-    await getMatches(makeProfile({ include_cross_school: true }));
+    await getMatches(makeProfile({
+      include_cross_school: true,
+      seeking_types: ['research', 'fellowship'],
+    }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.include_cross_school).toBe(false);
-  });
-
-  it('removes the dormant fellowship preference before matching', async () => {
-    fetchMock.mockResolvedValue(
-      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
-    );
-    await getMatches(makeProfile({ seeking_types: ['research', 'fellowship'] }));
-    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.seeking_type).toEqual(['research']);
+    expect(body.include_cross_school).toBe(true);
+    expect(body.seeking_type).toEqual(['research', 'fellowship']);
   });
 
   it('maps scholar_url into the request and defaults it to "" when absent', async () => {
@@ -204,7 +203,7 @@ describe('getMatches', () => {
     expect(body.school).toBe('UC Berkeley');
   });
 
-  it('forces deterministic matching while AI refine is outside the release', async () => {
+  it('passes the caller AI-refine choice through now that it is accepted', async () => {
     // Fresh Response per call — this test fetches twice, and a shared
     // mockResolvedValue Response throws "Body has already been read" on the
     // second res.json() (CI Node enforces single-use bodies).
@@ -212,7 +211,9 @@ describe('getMatches', () => {
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile(), { llm: true });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=false');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=true');
+    // Still explicit rather than omitted: llm=false is what keeps a stored
+    // preference on the server side from deciding for the caller.
     await getMatches(makeProfile(), { llm: false });
     expect(fetchMock.mock.calls[1][0]).toBe('/api/matches?llm=false');
   });

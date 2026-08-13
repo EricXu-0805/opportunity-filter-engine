@@ -15,7 +15,10 @@ vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
 import OnboardingIntro from './OnboardingIntro';
 import { enterLocalOnlyMode } from '@/lib/identity-owner';
 
-const SLIDE_COUNT = 6;
+// welcome, generate, favorites, compare, tracker, dashboard, roadmap, school —
+// the compare and roadmap slides are conditional on RELEASE_SCOPE, and both
+// features are accepted now.
+const SLIDE_COUNT = 8;
 
 beforeEach(() => {
   localStorage.clear();
@@ -73,15 +76,15 @@ describe('OnboardingIntro', () => {
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
   });
 
-  it('does not advertise dormant Compare or Roadmap slides', async () => {
+  it('includes the Compare and Roadmap slides now that both are accepted', async () => {
+    // The walkthrough is where a new student learns what the product does, so
+    // an accepted feature missing from it is the same defect as a dead link.
     render(<OnboardingIntro />);
     await waitFor(() => screen.getByTestId('onboarding-intro'));
     expect(screen.getByText(`1 / ${SLIDE_COUNT}`)).toBeInTheDocument();
-    expect(screen.queryByText('onboarding.compareTitle')).not.toBeInTheDocument();
-    expect(screen.queryByText('onboarding.roadmapTitle')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('onboarding-primary'));
     expect(screen.getByText('onboarding.exResearch')).toBeInTheDocument();
-    expect(screen.queryByText('onboarding.exFellowship')).not.toBeInTheDocument();
+    expect(screen.getByText('onboarding.exFellowship')).toBeInTheDocument();
   });
 
   it('pages through to the end and completes via the school gate (default UIUC: seen + tracked + persisted)', async () => {

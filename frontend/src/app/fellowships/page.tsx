@@ -29,6 +29,12 @@ export default function FellowshipsPage() {
 
   const visible = filtered.slice(0, visibleCount);
   const hasFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FELLOWSHIP_FILTERS);
+  // Evidence for the "upcoming" pill: it demands a confirmed (non-estimated)
+  // date, which nothing in the published corpus carries today.
+  const hasConfirmedDeadlines = useMemo(
+    () => opportunities.some((o) => o.deadline_is_estimate === false && !!o.deadline),
+    [opportunities],
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
@@ -62,6 +68,7 @@ export default function FellowshipsPage() {
         onChange={(next) => { setFilters(next); setVisibleCount(PAGE_SIZE); }}
         totalCount={opportunities.length}
         filteredCount={filtered.length}
+        hasConfirmedDeadlines={hasConfirmedDeadlines}
       />
 
       {loading && (

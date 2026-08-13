@@ -50,21 +50,39 @@ test.describe('/resources page', () => {
   });
 });
 
-test.describe('dormant release routes', () => {
+test.describe('accepted release routes', () => {
+  // These three returned 404 by design while the MVP route freeze held. They
+  // are accepted now, so the assertion inverts: a route that renders is the
+  // contract, and a 404 here means a switch closed without anyone updating the
+  // surface that advertises it.
   for (const path of ['/fellowships', '/roadmap', '/compare?ids=one,two']) {
-    test(`${path} fails closed with 404`, async ({ page }) => {
+    test(`${path} renders instead of failing closed`, async ({ page }) => {
       const response = await page.goto(path);
-      expect(response?.status()).toBe(404);
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     });
   }
 
-  test('home and header do not advertise dormant product areas', async ({ page }) => {
+  test('the header advertises the accepted product areas', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('link', { name: /^Fellowships$|^Funding$/ })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /^Roadmap$/ })).toHaveCount(0);
-    await expect(page.getByTestId('featured-fellowships')).toHaveCount(0);
-    await expect(page.getByText(/^Fellowship$/)).toHaveCount(0);
+    await openMobileNavIfVisible(page);
+    await expect(
+      page.getByRole('link', { name: /^Fellowships$|^Funding$/ }).first(),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Roadmap$/ }).first()).toBeVisible();
   });
+});
+
+test.describe('still-dormant release routes', () => {
+  // payments stays closed: pricing.ts and the QR assets are not on main, and
+  // migration 026 revoked the orders grants, so an API that answered here would
+  // meet a database that refuses.
+  for (const path of ['/api/orders/not-an-order/mark-paid-claimed', '/api/admin/orders']) {
+    test(`${path} still fails closed`, async ({ request }) => {
+      const response = await request.fetch(path, { method: 'GET', failOnStatusCode: false });
+      expect(response.status()).toBe(404);
+    });
+  }
 });
 
 test.describe('cross-route navigation from header', () => {

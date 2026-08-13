@@ -177,9 +177,9 @@ describe('FilterRail — discovery-scope facet', () => {
 });
 
 describe('FilterRail — cross-school toggle', () => {
-  it('stays hidden while cross-school matching is outside the MVP', () => {
+  it('offers the cross-school toggle now that the facet is accepted', () => {
     renderRail();
-    expect(screen.queryByRole('button', { name: /crossSchool$/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /crossSchool$/ })).toBeInTheDocument();
   });
 });
 

@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from backend import main as main_module
+from backend.lib import release_scope as release_scope_module
 from backend.lib.release_scope import (
     RELEASE_SCOPE,
     feature_enabled,
@@ -30,15 +31,87 @@ RELEASE_CONTRACT_TESTS = True
 
 client = TestClient(app)
 
+@pytest.fixture
+def scope_closed(monkeypatch):
+    """Drive the gate from an explicitly closed feature.
+
+    Every assertion below is about what the release gate DOES to a feature that
+    has not been accepted — routes 404 before the handler, hidden records never
+    reach ranking, discovery, cold email, saved searches or reminders. That is a
+    property of the gate, not of which features happen to be closed this week,
+    and reading the live table made all of it evaporate the moment a feature
+    shipped. (Same defect as the release-gate test in #736: a test pinning a
+    state instead of a behaviour.)
+
+    `payments` is closed today and these paths still guard it, but the point is
+    that the next feature to ship closed inherits the identical protection
+    without anyone rewriting this file.
+    """
+    monkeypatch.setattr(main_module, "feature_enabled", lambda _feature: False)
+    monkeypatch.setattr(matches_module, "feature_enabled", lambda _feature: False)
+    monkeypatch.setattr(
+        release_scope_module, "feature_enabled", lambda _feature: False,
+    )
+
+
+
+
+ACCEPTED_FEATURES = frozenset({
+    "match_ai_refine",
+    "cross_school_matching",
+    "compare",
+    "fellowships",
+    "resume_renovate",
+    "roadmap",
+    "ask_ai",
+    "professor_signals",
+})
+UNACCEPTED_FEATURES = frozenset({"payments"})
+
+
+def test_the_release_table_is_exactly_what_was_accepted():
+    """The table itself, stated once, so a flip is never a silent side effect.
+
+    Every other test in this file asks what the gate DOES; this one is the only
+    place that records WHICH features are through it. Flipping a switch without
+    editing this list fails here, which is the review the module docstring in
+    backend/lib/release_scope.py asks for.
+    """
+    assert set(RELEASE_SCOPE) == ACCEPTED_FEATURES | UNACCEPTED_FEATURES
+    assert {f for f, v in RELEASE_SCOPE.items() if v} == ACCEPTED_FEATURES
+    assert {f for f, v in RELEASE_SCOPE.items() if not v} == UNACCEPTED_FEATURES
+
 
 def test_unaccepted_server_features_fail_closed(monkeypatch):
+    """A runtime variable can disable an accepted feature, never promote one."""
     monkeypatch.setenv("OFE_PAYMENTS_ENABLED", "true")
 
-    assert all(value is False for value in RELEASE_SCOPE.values())
-    assert feature_enabled("payments") is False
+    for feature in UNACCEPTED_FEATURES:
+        assert RELEASE_SCOPE[feature] is False
+        assert feature_enabled(feature) is False
 
 
-def test_cross_school_profile_flag_fails_closed_at_match_boundary():
+def test_an_accepted_feature_still_has_its_runtime_kill_switch(monkeypatch):
+    """Acceptance is not the same as "always on".
+
+    payments carries OFE_PAYMENTS_ENABLED so an incident can turn it off
+    without a deploy. Proven against a feature that IS accepted, so the
+    mechanism is exercised rather than short-circuited by the source flag.
+    """
+    from types import MappingProxyType
+
+    from backend.lib import release_scope as rs
+
+    monkeypatch.setattr(
+        rs, "RELEASE_SCOPE", MappingProxyType({**rs.RELEASE_SCOPE, "payments": True}),
+    )
+    monkeypatch.setenv("OFE_PAYMENTS_ENABLED", "")
+    assert rs.feature_enabled("payments") is False
+    monkeypatch.setenv("OFE_PAYMENTS_ENABLED", "1")
+    assert rs.feature_enabled("payments") is True
+
+
+def test_cross_school_profile_flag_fails_closed_at_match_boundary(scope_closed):
     profile = ProfileRequest(
         home_school="uiuc",
         include_cross_school=True,
@@ -46,11 +119,13 @@ def test_cross_school_profile_flag_fails_closed_at_match_boundary():
 
     normalized = matches_module._normalized_profile(profile)
 
+    # The boundary strips the preference rather than trusting the UI to hide the
+    # selector: a profile saved while the feature was open still arrives with
+    # the flag set after it closes again.
     assert normalized["include_cross_school"] is False
-    assert feature_enabled("cross_school_matching") is False
 
 
-def test_unaccepted_routes_return_404_before_any_handler():
+def test_unaccepted_routes_return_404_before_any_handler(scope_closed):
     requests = [
         ("POST", "/api/roadmap"),
         ("POST", "/api/matches/opp-1/gaps"),
@@ -76,7 +151,7 @@ def test_unaccepted_routes_return_404_before_any_handler():
     assert trailing_slash.json() == {"detail": "Not found"}
 
 
-def test_frozen_routes_bypass_rate_buckets_but_keep_security_headers(monkeypatch):
+def test_frozen_routes_bypass_rate_buckets_but_keep_security_headers(scope_closed, monkeypatch):
     monkeypatch.setattr(main_module, "RATE_LIMIT_DISABLED", False)
     main_module._rate_buckets.clear()
     main_module._global_buckets.clear()
@@ -92,7 +167,7 @@ def test_frozen_routes_bypass_rate_buckets_but_keep_security_headers(monkeypatch
         main_module._global_buckets.clear()
 
 
-def test_match_ai_query_is_not_billable_while_refine_is_unaccepted():
+def test_match_ai_query_is_not_billable_while_refine_is_unaccepted(scope_closed):
     request = Request(
         {
             "type": "http",
@@ -104,7 +179,7 @@ def test_match_ai_query_is_not_billable_while_refine_is_unaccepted():
     assert main_module._billable_class(request, "/api/matches") is None
 
 
-def test_hidden_professor_signals_never_reach_match_ranking(monkeypatch):
+def test_hidden_professor_signals_never_reach_match_ranking(scope_closed, monkeypatch):
     async def forbidden_signals_map():
         raise AssertionError("hidden professor signals were fetched")
 
@@ -112,7 +187,7 @@ def test_hidden_professor_signals_never_reach_match_ranking(monkeypatch):
     assert asyncio.run(matches_module._responsiveness_for_matching()) is None
 
 
-def test_hidden_fellowship_preference_is_removed_server_side():
+def test_hidden_fellowship_preference_is_removed_server_side(scope_closed):
     profile = ProfileRequest(seeking_type=["fellowship"])
     normalized = matches_module._normalized_profile(profile)
     assert normalized["seeking_type"] == ["research", "summer_program"]
@@ -159,7 +234,7 @@ def _fellowship_release_corpus() -> list[dict]:
     ]
 
 
-def test_hidden_fellowship_records_never_enter_match_ranking(monkeypatch):
+def test_hidden_fellowship_records_never_enter_match_ranking(scope_closed, monkeypatch):
     corpus = _fellowship_release_corpus()
     lookup = {opportunity["id"]: opportunity for opportunity in corpus}
     ranked_ids: list[str] = []
@@ -232,7 +307,7 @@ def test_hidden_fellowship_records_never_enter_match_ranking(monkeypatch):
     assert returned_ids == {"regular-research", "regular-research-peer"}
 
 
-def test_hidden_fellowship_records_never_leave_discovery_apis(monkeypatch):
+def test_hidden_fellowship_records_never_leave_discovery_apis(scope_closed, monkeypatch):
     corpus = _fellowship_release_corpus()
     lookup = {opportunity["id"]: opportunity for opportunity in corpus}
     monkeypatch.setattr(opportunities_module, "load_opportunities", lambda: corpus)
@@ -290,15 +365,13 @@ def test_hidden_fellowship_records_never_leave_discovery_apis(monkeypatch):
     assert coverage["counts"]["uiuc"] == 2
 
 
-def test_release_record_gate_checks_canonical_and_legacy_type_fields():
+def test_release_record_gate_checks_canonical_and_legacy_type_fields(scope_closed):
     assert opportunity_visible_in_release({"opportunity_type": "research"})
     assert not opportunity_visible_in_release({"opportunity_type": "fellowship"})
     assert not opportunity_visible_in_release({"type": " Fellowship "})
 
 
-def test_hidden_fellowship_id_is_rejected_by_tailor_and_all_cold_email_paths(
-    monkeypatch,
-):
+def test_hidden_fellowship_id_is_rejected_by_tailor_and_all_cold_email_paths(scope_closed, monkeypatch,):
     hidden = next(
         opportunity
         for opportunity in _fellowship_release_corpus()
@@ -348,9 +421,7 @@ def test_hidden_fellowship_id_is_rejected_by_tailor_and_all_cold_email_paths(
     assert refine_response.status_code == 404
 
 
-def test_hidden_fellowship_id_is_rejected_by_dormant_target_consumers(
-    monkeypatch,
-):
+def test_hidden_fellowship_id_is_rejected_by_dormant_target_consumers(scope_closed, monkeypatch,):
     hidden = next(
         opportunity
         for opportunity in _fellowship_release_corpus()
@@ -381,9 +452,7 @@ def test_hidden_fellowship_id_is_rejected_by_dormant_target_consumers(
     assert roadmap["unresolved_targets"] == 1
 
 
-def test_hidden_fellowship_id_is_rejected_if_ask_ai_is_later_enabled(
-    monkeypatch,
-):
+def test_hidden_fellowship_id_is_rejected_if_ask_ai_is_later_enabled(scope_closed, monkeypatch,):
     hidden = next(
         opportunity
         for opportunity in _fellowship_release_corpus()
@@ -463,7 +532,7 @@ def _install_saved_search_release_stubs(monkeypatch, *, rows, patches, sends):
         monkeypatch.setenv(name, value)
 
 
-def test_saved_search_refresh_never_writes_hidden_fellowship_ids(monkeypatch):
+def test_saved_search_refresh_never_writes_hidden_fellowship_ids(scope_closed, monkeypatch):
     corpus = _fellowship_release_corpus()
     hidden_id = "fellowship-major-match"
     stale_visible_id = "regular-record-temporarily-missing"
@@ -507,9 +576,7 @@ def test_saved_search_refresh_never_writes_hidden_fellowship_ids(monkeypatch):
     assert sends == []
 
 
-def test_saved_search_digest_cleans_hidden_pending_id_without_sending(
-    monkeypatch,
-):
+def test_saved_search_digest_cleans_hidden_pending_id_without_sending(scope_closed, monkeypatch,):
     corpus = _fellowship_release_corpus()
     hidden = next(
         opportunity
@@ -550,7 +617,7 @@ def test_saved_search_digest_cleans_hidden_pending_id_without_sending(
     assert patches[0]["json"] == {"new_match_ids": []}
 
 
-def test_hidden_fellowship_reminder_is_kept_but_never_sent(monkeypatch):
+def test_hidden_fellowship_reminder_is_kept_but_never_sent(scope_closed, monkeypatch):
     hidden = next(
         opportunity
         for opportunity in _fellowship_release_corpus()

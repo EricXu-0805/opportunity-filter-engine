@@ -485,15 +485,19 @@ describe('useProfileForm — prefill from URL', () => {
     await waitFor(() => expect(screen.getByTestId('seeking').textContent).toBe(''));
   });
 
-  it('removes a stale fellowship preference from a stored profile', async () => {
+  // These two asserted the preference was stripped while fellowships was
+  // dormant. It is accepted now, so a stored or shared profile keeps it — which
+  // is the point of normalizeProfileForRelease being derived from the switch
+  // rather than hardcoded: the ingress path re-arms by itself if it closes.
+  it('keeps an accepted fellowship preference from a stored profile', async () => {
     mockLoadProfile = () => Promise.resolve(cloudRow({ seeking_types: ['research', 'fellowship'] }));
     render(<Wrapped />);
     await waitFor(() =>
-      expect(screen.getByTestId('seeking').textContent).toBe('research'),
+      expect(screen.getByTestId('seeking').textContent).toBe('research,fellowship'),
     );
   });
 
-  it('removes a stale fellowship preference from a shared profile', async () => {
+  it('keeps an accepted fellowship preference from a shared profile', async () => {
     const share = encodeProfile({
       ...DEFAULT_PROFILE,
       seeking_types: ['internship', 'fellowship'],
@@ -501,7 +505,7 @@ describe('useProfileForm — prefill from URL', () => {
     searchRef.current = `share=${share}`;
     render(<Wrapped />);
     await waitFor(() =>
-      expect(screen.getByTestId('seeking').textContent).toBe('internship'),
+      expect(screen.getByTestId('seeking').textContent).toBe('internship,fellowship'),
     );
   });
 });

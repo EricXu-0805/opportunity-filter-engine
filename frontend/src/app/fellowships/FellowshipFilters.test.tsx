@@ -15,6 +15,7 @@ describe('FellowshipFilters', () => {
         onChange={vi.fn()}
         totalCount={20}
         filteredCount={20}
+        hasConfirmedDeadlines={false}
       />,
     );
 
@@ -28,6 +29,40 @@ describe('FellowshipFilters', () => {
     expect(screen.queryByText('fellowships.year')).not.toBeInTheDocument();
   });
 
+  it('hides the upcoming pill when nothing in the set carries a confirmed date', () => {
+    // It requires deadline_is_estimate === false and matched 0 of 1,406
+    // records, so every click returned an empty page. Driven by the data, not
+    // deleted: it returns on its own when real deadlines land.
+    render(
+      <FellowshipFilters
+        filters={DEFAULT_FELLOWSHIP_FILTERS}
+        onChange={vi.fn()}
+        totalCount={20}
+        filteredCount={20}
+        hasConfirmedDeadlines={false}
+      />,
+    );
+
+    expect(screen.getByText('fellowships.deadlineOptions.rolling')).toBeInTheDocument();
+    expect(
+      screen.queryByText('fellowships.deadlineOptions.upcoming'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the upcoming pill once a confirmed date exists', () => {
+    render(
+      <FellowshipFilters
+        filters={DEFAULT_FELLOWSHIP_FILTERS}
+        onChange={vi.fn()}
+        totalCount={20}
+        filteredCount={20}
+        hasConfirmedDeadlines
+      />,
+    );
+
+    expect(screen.getByText('fellowships.deadlineOptions.upcoming')).toBeInTheDocument();
+  });
+
   it('emits an exact type filter selection', () => {
     const onChange = vi.fn();
     render(
@@ -36,6 +71,7 @@ describe('FellowshipFilters', () => {
         onChange={onChange}
         totalCount={20}
         filteredCount={20}
+        hasConfirmedDeadlines={false}
       />,
     );
 

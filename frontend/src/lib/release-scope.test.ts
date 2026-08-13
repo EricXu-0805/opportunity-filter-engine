@@ -4,16 +4,24 @@ import { describe, expect, it } from 'vitest';
 import { normalizeProfileForRelease, RELEASE_SCOPE } from './release-scope';
 
 describe('MVP public release scope', () => {
-  it('fails closed for every unaccepted MTP or external-dependency feature', () => {
+  it('is exactly the accepted table, so a flip is never a side effect', () => {
+    // The three still-closed switches are closed for reasons outside this
+    // codebase, not because the feature is unfinished:
+    //   microsoftSchoolAuth — Azure publisher verification needs a verified
+    //     legal entity, and without it students see an "unverified publisher"
+    //     consent screen. Google sign-in is live.
+    //   payments / conciergePayQr — pricing.ts and public/pay/*.png are not on
+    //     main, and migration 026 dropped the orders RLS policies and revoked
+    //     anon/authenticated access. The flag is not the missing part.
     expect(RELEASE_SCOPE).toEqual({
-      matchAiRefine: false,
-      crossSchoolMatching: false,
-      compare: false,
-      resumeRenovate: false,
-      fellowships: false,
-      roadmap: false,
-      askAi: false,
-      professorSignals: false,
+      matchAiRefine: true,
+      crossSchoolMatching: true,
+      compare: true,
+      resumeRenovate: true,
+      fellowships: true,
+      roadmap: true,
+      askAi: true,
+      professorSignals: true,
       microsoftSchoolAuth: false,
       payments: false,
       conciergePayQr: false,
@@ -44,26 +52,26 @@ describe('MVP public release scope', () => {
     expect(publicClientSource).not.toContain('amountCents: 4900');
   });
 
-  it('removes stale Fellowship preferences at profile boundaries', () => {
+  it('passes accepted preferences through untouched', () => {
+    // Both families this function guards — fellowships and cross-school
+    // matching — are accepted now, so it is a no-op by construction and there
+    // is nothing left for it to strip. It re-arms on its own the moment either
+    // switch closes, which is why the stripping stays in the source rather than
+    // being deleted as dead code.
+    //
+    // The enforced boundary is the server's, not this one: a client that never
+    // ran this still cannot smuggle a hidden preference past
+    // matches._normalized_profile (tests/test_release_scope.py). This function
+    // only keeps a stale local profile from re-showing a selector.
     expect(
       normalizeProfileForRelease({
         seeking_types: ['research', 'fellowship'],
-        major: 'Computer Science',
-      }),
-    ).toEqual({
-      seeking_types: ['research'],
-      major: 'Computer Science',
-    });
-  });
-
-  it('removes stale cross-school matching preferences at profile boundaries', () => {
-    expect(
-      normalizeProfileForRelease({
         include_cross_school: true,
         major: 'Computer Science',
       }),
     ).toEqual({
-      include_cross_school: false,
+      seeking_types: ['research', 'fellowship'],
+      include_cross_school: true,
       major: 'Computer Science',
     });
   });
