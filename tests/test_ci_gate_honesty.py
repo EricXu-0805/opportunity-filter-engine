@@ -41,6 +41,7 @@ ADVISORY_CI_JOB = "security-advisory"
 # "required". While the advisory job ran on push-to-main, one red audit stopped
 # backend deploys entirely (four days on da18e7b).
 ADVISORY_WORKFLOW = "security-advisory.yml"
+RELEASE_GATE_WORKFLOW = "release-gate.yml"
 CI_WORKFLOWS = ("ci.yml", ADVISORY_WORKFLOW)
 
 # Endpoint-calling crons: without these secrets the run does nothing at all, so
@@ -159,6 +160,36 @@ def test_advisory_workflow_never_attaches_a_check_to_a_main_commit():
         "a scheduled run attaches its check to the newest main commit — same "
         "failure mode by another route"
     )
+
+
+def test_the_release_gate_runs_but_can_never_freeze_a_deploy():
+    """The gate is wired now, and wired so it cannot repeat #736.
+
+    scripts/release_gate.py went unwired from #733 until 2026-08-14, so the
+    committed ledger described a SHA that no longer existed on main. Wiring it
+    is worth doing and worth doing carefully: NO-GO is its EXPECTED answer until
+    an operator gathers the infrastructure evidence, so a version of this that
+    ran automatically would sit permanently red on main and stop Render exactly
+    as the advisory audit did.
+    """
+    triggers = _triggers(RELEASE_GATE_WORKFLOW)
+    assert set(triggers) == {"workflow_dispatch"}, (
+        "the release gate answers NO-GO by design; any trigger that fires "
+        "without a human puts a permanent red check on main, and Render's "
+        "checksPass reads that as 'do not deploy'"
+    )
+
+    steps = _steps(RELEASE_GATE_WORKFLOW)
+    runs = " ".join(str(s.get("run", "")) for s in steps)
+    assert "scripts/release_gate.py" in runs, "the gate is not actually invoked"
+    # It must surface its own exit code. truthfulness_audit.py used to decide
+    # NO-GO and return 0, which is how a verdict stops being a verdict.
+    assert any(
+        "exit" in str(s.get("run", "")) and "gate" in str(s.get("id", "") or s.get("run", ""))
+        for s in steps
+    ), "the gate's NO-GO exit code is swallowed instead of failing the job"
+    for step in steps:
+        assert not step.get("continue-on-error"), step.get("name")
 
 
 def test_dependency_audits_live_in_a_non_required_advisory_job():

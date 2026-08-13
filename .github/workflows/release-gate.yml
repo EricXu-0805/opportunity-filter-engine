@@ -1,0 +1,127 @@
+name: Release gate
+
+# scripts/release_gate.py has existed since #733 and nothing has ever called it.
+# The committed ledger (data/releases/CURRENT.json) is therefore a snapshot of
+# whatever a human last ran by hand — it was four days and five merges stale by
+# 2026-08-14, describing a SHA that no longer existed on main. A gate whose
+# verdict nobody regenerates is a gate nobody consults.
+#
+# This collects the half of the evidence a workflow can actually produce — the
+# four required CI conclusions for the exact SHA being considered — runs the
+# gate, and publishes the ledger as an artifact. The other eleven gates need
+# infrastructure access and stay UNVERIFIED, which is the honest answer and
+# blocks by design (docs/RELEASE.md §"UNVERIFIED is not FAIL, both block").
+#
+# WHY workflow_dispatch ONLY, and why that matters here of all places:
+# Render's autoDeployTrigger: checksPass waits for EVERY check run on a commit
+# and counts only success/neutral/skipped as passing. A workflow that runs
+# automatically on main and fails — which this one WILL, because NO-GO is the
+# expected answer until an operator has gathered infrastructure evidence —
+# would stop backend deploys exactly the way the advisory audit did for four
+# days (#736). Requiring a human to dispatch it keeps that impossible by
+# accident. Dispatching it against `main` still places a failing check on that
+# commit, so dispatch it against the release candidate you intend to promote.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: 'Full 40-hex commit SHA to evaluate (defaults to the checked-out ref)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+jobs:
+  gate:
+    name: Evidence in, GO/NO-GO out
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # The gate refuses a SHA it cannot resolve with `git cat-file`, and
+          # its worktree check compares HEAD against the release SHA.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Resolve the SHA under evaluation
+        id: sha
+        run: |
+          set -euo pipefail
+          SHA="${{ inputs.release_sha }}"
+          [ -n "$SHA" ] || SHA="$(git rev-parse HEAD)"
+          if ! [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::release_sha must be a full 40-hex commit, got '$SHA'"
+            exit 1
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble corpus work file from shards
+        # The corpus gate counts committed shard records; assemble also enforces
+        # the minimum-record floor, so a checkout with an empty shards directory
+        # fails here rather than passing the gate vacuously.
+        run: python scripts/shard_corpus.py assemble
+
+      - name: Collect CI evidence for that exact SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # check_ci_evidence refuses evidence whose head_sha differs from the
+          # release SHA, so the API query is keyed on the SHA rather than on a
+          # branch — a green run on a neighbouring commit proves nothing.
+          gh api "repos/${{ github.repository }}/commits/${{ steps.sha.outputs.sha }}/check-runs" \
+            --paginate --jq '{
+              head_sha: "${{ steps.sha.outputs.sha }}",
+              checks: [.check_runs[] | {name: .name, conclusion: (.conclusion // "PENDING" | ascii_upcase)}]
+            }' > /tmp/ci-evidence.json
+          echo '{"ci": '"$(cat /tmp/ci-evidence.json)"'}' > /tmp/evidence.json
+          python -c "import json;d=json.load(open('/tmp/evidence.json'));print('collected', len(d['ci']['checks']), 'check runs')"
+
+      - name: Run the gate
+        id: gate
+        run: |
+          set +e
+          python scripts/release_gate.py \
+            --release-sha "${{ steps.sha.outputs.sha }}" \
+            --evidence /tmp/evidence.json \
+            --out "data/releases/${{ steps.sha.outputs.sha }}.json" \
+            | tee /tmp/gate.txt
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the verdict
+        if: always()
+        run: |
+          {
+            echo '## Release gate'
+            echo
+            echo "SHA \`${{ steps.sha.outputs.sha }}\`"
+            echo
+            echo '```'
+            cat /tmp/gate.txt 2>/dev/null || echo '(the gate produced no output)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the ledger
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-ledger-${{ steps.sha.outputs.sha }}
+          path: data/releases/${{ steps.sha.outputs.sha }}.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Fail on NO-GO
+        # The gate's own exit code, surfaced. A gate that reports NO-GO and then
+        # exits 0 is the defect truthfulness_audit.py had before #733.
+        run: exit ${{ steps.gate.outputs.exit }}
