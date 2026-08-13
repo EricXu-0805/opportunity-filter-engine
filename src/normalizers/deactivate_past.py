@@ -7,9 +7,16 @@ deadlines or no deadline are left alone.
 Also records `metadata.deactivated_at` (UTC ISO date) the first time we mark
 something inactive, so the admin dashboard can surface freshly-expired entries.
 
+Two targets, because the corpus has two representations. The work file is what
+the pipeline reads; the per-school shards are what git stores. A run only
+publishes the shards it was authorized to replace, so the work-file pass alone
+leaves retirements stranded in every other shard — see
+:func:`deactivate_past_in_shards`.
+
 Usage:
     python3 -m src.normalizers.deactivate_past --dry-run
     python3 -m src.normalizers.deactivate_past --save
+    python3 -m src.normalizers.deactivate_past --shards --save
 """
 
 from __future__ import annotations
@@ -20,9 +27,13 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from src.collectors.atomic_json import atomic_write_json
+
 from .deadlines import parse_to_date as _parse_deadline
 
-DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "opportunities.json"
+_PROCESSED = Path(__file__).resolve().parents[2] / "data" / "processed"
+DEFAULT_PATH = _PROCESSED / "opportunities.json"
+DEFAULT_SHARDS_DIR = _PROCESSED / "shards"
 
 
 def deactivate_past(opps: list[dict], today: date | None = None) -> dict:
@@ -81,12 +92,73 @@ def deactivate_past(opps: list[dict], today: date | None = None) -> dict:
     return counts
 
 
+def deactivate_past_in_shards(
+    shards_dir: Path | None = None,
+    today: date | None = None,
+    *,
+    save: bool = False,
+) -> dict:
+    """Apply the same rule to every committed shard file.
+
+    This exists because the corpus has two representations and only one of them
+    is committed. ``deactivate_past`` runs corpus-wide over the work file, but
+    the publication split writes back only the shards the run was authorized to
+    replace (#722, so a partial scrape can't revert a school it never
+    touched). A record that crosses its deadline while its shard is not in that
+    day's rotation therefore has its retirement computed and then thrown away:
+    CI reassembles the corpus from shards and the record is active again. That
+    is not hypothetical — ``handshake-56d6cdae`` (uiuc, deadline 2026-08-06)
+    failed the zero-tolerance gate on 2026-08-13, a day-4 run that does not
+    include uiuc, and killed the whole refresh.
+
+    Running over shards this run never scraped is safe: the decision is a pure
+    function of ``(deadline, today)``, it only ever retires (never revives), and
+    it writes only ``metadata.is_active`` / ``deactivated_at`` /
+    ``deactivation_reason`` on records it retires. A change that landed on main
+    during the scrape survives, because the shard is read from disk here rather
+    than rewritten from the run's in-memory corpus.
+
+    Returns ``{shard: counts}`` for shards that had something to retire.
+    """
+    shards_dir = shards_dir or DEFAULT_SHARDS_DIR
+    changed: dict[str, dict] = {}
+    for path in sorted(shards_dir.glob("*.json")):
+        with path.open("r", encoding="utf-8") as f:
+            records = json.load(f)
+        counts = deactivate_past(records, today)
+        if not counts["newly_deactivated"]:
+            continue
+        changed[path.stem] = counts
+        if save:
+            # Shards are committed minified (scripts/shard_corpus.py split);
+            # pretty-printing here would rewrite every line of the file.
+            atomic_write_json(path, records, indent=None, separators=(",", ":"))
+    return changed
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--path", type=Path, default=DEFAULT_PATH)
     parser.add_argument("--save", action="store_true", help="Write changes back to file")
     parser.add_argument("--dry-run", action="store_true", help="Show counts without writing")
+    parser.add_argument(
+        "--shards",
+        action="store_true",
+        help="Operate on the committed per-school shards instead of the work file",
+    )
     args = parser.parse_args()
+
+    if args.shards:
+        changed = deactivate_past_in_shards(
+            save=args.save and not args.dry_run,
+        )
+        total = sum(c["newly_deactivated"] for c in changed.values())
+        print(f"Shard pass: {total} record(s) retired across {len(changed)} shard(s)")
+        for shard, counts in sorted(changed.items()):
+            print(f"  {shard:<20s} {counts['newly_deactivated']:>4d}")
+        if not (args.save and not args.dry_run):
+            print("\n(dry-run — pass --save to persist)")
+        return 0
 
     if not args.path.exists():
         print(f"ERROR: file not found: {args.path}", file=sys.stderr)

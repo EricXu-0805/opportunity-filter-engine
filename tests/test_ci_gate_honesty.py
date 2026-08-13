@@ -35,6 +35,13 @@ sys.path.insert(0, str(_REPO / "scripts"))
 # required job needs a step whose failure is ignored.
 REQUIRED_CI_JOBS = ("backend", "frontend", "migrations", "e2e")
 ADVISORY_CI_JOB = "security-advisory"
+# The advisory audits live in their own workflow rather than in ci.yml, because
+# Render's `autoDeployTrigger: checksPass` waits on EVERY check run of a commit
+# and counts only success/neutral/skipped as passing — it has no notion of
+# "required". While the advisory job ran on push-to-main, one red audit stopped
+# backend deploys entirely (four days on da18e7b).
+ADVISORY_WORKFLOW = "security-advisory.yml"
+CI_WORKFLOWS = ("ci.yml", ADVISORY_WORKFLOW)
 
 # Endpoint-calling crons: without these secrets the run does nothing at all, so
 # "unset" must fail rather than pass. (RESEND_API_KEY/OPERATOR_EMAIL configure
@@ -50,6 +57,19 @@ def _workflow(name: str) -> dict:
 
 def _jobs(name: str) -> dict:
     return _workflow(name)["jobs"]
+
+
+def _triggers(name: str) -> dict:
+    """A workflow's `on:` block.
+
+    YAML 1.1 resolves the bare key `on` to the boolean True, so PyYAML stores
+    the trigger map under True, not "on". Read both so this keeps working if
+    the file is ever written as `"on":`.
+    """
+    wf = _workflow(name)
+    block = wf.get(True, wf.get("on"))
+    assert isinstance(block, dict), f"{name}: unreadable `on:` block"
+    return block
 
 
 def _steps(workflow_name: str) -> list[dict]:
@@ -115,6 +135,32 @@ def test_no_required_job_contains_a_step_whose_failure_is_ignored():
     )
 
 
+def test_advisory_workflow_never_attaches_a_check_to_a_main_commit():
+    """A red audit must not be able to stop a deploy.
+
+    Render waits for every check run on the commit, so an advisory job running
+    on push-to-main is a deploy gate no matter what branch protection says.
+    That is not theory: three cryptography advisories turned this job red on
+    da18e7b and the backend stopped deploying for four days while Vercel — which
+    does not wait for checks — shipped the new frontend against it.
+
+    `pull_request` keeps full coverage (every change reaches main through a PR,
+    including the daily data-refresh PR) while leaving the squash-merge commit
+    with only the four required checks. `schedule` would undo this: a scheduled
+    run attaches its check to the newest default-branch commit.
+    """
+    triggers = _triggers(ADVISORY_WORKFLOW)
+    assert "pull_request" in triggers, "the audits must still run on every PR"
+    assert "push" not in triggers, (
+        "push-to-main puts an advisory check on a main commit, which Render's "
+        "checksPass treats as a deploy gate"
+    )
+    assert "schedule" not in triggers, (
+        "a scheduled run attaches its check to the newest main commit — same "
+        "failure mode by another route"
+    )
+
+
 def test_dependency_audits_live_in_a_non_required_advisory_job():
     """Moved, not deleted — and not silenced either.
 
@@ -123,10 +169,10 @@ def test_dependency_audits_live_in_a_non_required_advisory_job():
     honestly inside a job that is not a required check, instead of being
     swallowed inside one that is.
     """
-    jobs = _jobs("ci.yml")
+    jobs = _jobs(ADVISORY_WORKFLOW)
     assert ADVISORY_CI_JOB in jobs, "the advisory audit job is gone"
-    assert ADVISORY_CI_JOB not in REQUIRED_CI_JOBS, (
-        "the advisory job must not be a required check"
+    assert ADVISORY_CI_JOB not in _jobs("ci.yml"), (
+        "the advisory job must not be back in the workflow that runs on main"
     )
 
     advisory = jobs[ADVISORY_CI_JOB]
@@ -144,8 +190,9 @@ def test_dependency_audits_live_in_a_non_required_advisory_job():
     assert not any(s.get("continue-on-error") for s in advisory["steps"])
 
     # And the audits must not have been left behind in a required job too.
+    ci_jobs = _jobs("ci.yml")
     for job_id in REQUIRED_CI_JOBS:
-        job_runs = " ".join(str(s.get("run", "")) for s in jobs[job_id]["steps"])
+        job_runs = " ".join(str(s.get("run", "")) for s in ci_jobs[job_id]["steps"])
         assert "pip-audit " not in job_runs, job_id
         assert "npm audit " not in job_runs, job_id
 
@@ -161,12 +208,13 @@ def test_frontend_lint_cannot_be_deleted_into_a_pass():
     assert str(lint.get("run", "")).strip() == "npm run lint"
     # Nowhere in CI (comments excluded — the parsed `run` bodies only), so it
     # cannot creep back into another npm invocation either.
-    for job_id, job in _jobs("ci.yml").items():
-        for step in job["steps"]:
-            assert "--if-present" not in str(step.get("run", "")), (
-                f"{job_id}: --if-present makes a deleted npm script "
-                "indistinguishable from a pass"
-            )
+    for workflow in CI_WORKFLOWS:
+        for job_id, job in _jobs(workflow).items():
+            for step in job["steps"]:
+                assert "--if-present" not in str(step.get("run", "")), (
+                    f"{workflow}:{job_id}: --if-present makes a deleted npm "
+                    "script indistinguishable from a pass"
+                )
 
 
 def test_corpus_assemble_is_a_gating_step():

@@ -209,13 +209,75 @@ class TestArtifactGates:
         monkeypatch.setattr(gate, "_REPO", tmp_path)
         assert gate.check_truthfulness()["status"] == gate.UNVERIFIED
 
-    def test_tracking_strict_contract_is_reported_not_the_raw_boolean(self):
-        # The committed artifact carries release_ready: true but an older,
-        # smaller check set, so the strict contract must refuse it.
+    def _write_tracking(self, tmp_path, monkeypatch, release: dict) -> None:
+        path = tmp_path / "data" / "processed"
+        path.mkdir(parents=True)
+        (path / "professor_tracking.json").write_text(json.dumps({
+            "schema_version": 2, "profiles": {}, "events": [], "release": release,
+        }))
+        monkeypatch.setattr(gate, "_REPO", tmp_path)
+
+    def test_tracking_strict_contract_is_reported_not_the_raw_boolean(
+        self, monkeypatch, tmp_path,
+    ):
+        """A stored ``release_ready: true`` must not become the verdict.
+
+        Written against a synthetic artifact rather than the committed one on
+        purpose. The original version of this test asserted
+        ``stored_release_ready is True`` against whatever
+        data/processed/professor_tracking.json happened to contain — which was
+        an accident of that artifact predating four of the nine checks. The
+        moment a refresh regenerated it under the current contract the stored
+        boolean flipped to false, `assert False is True` failed, and every
+        subsequent data-refresh PR went red (08-10, and #735). The gate was
+        behaving correctly the entire time; the test was pinning a data state.
+        """
+        self._write_tracking(tmp_path, monkeypatch, {
+            "release_ready": True,
+            # The pre-coverage check set: a naive gate that trusted the stored
+            # boolean would call this ready.
+            "checks": {
+                "schema_v2": True, "events_valid": True,
+                "freshness_min_pct": True, "no_fully_stale_school": True,
+                "refresh_ok": True,
+            },
+        })
         got = gate.check_tracking_release_ready()
-        assert got["status"] in (gate.PASS, gate.FAIL, gate.UNVERIFIED)
-        if got["status"] == gate.FAIL:
-            assert got["evidence"]["stored_release_ready"] is True
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["stored_release_ready"] is True
+
+    def test_tracking_gate_does_not_require_a_true_stored_boolean_to_report(
+        self, monkeypatch, tmp_path,
+    ):
+        """The other direction: an honestly-false artifact still reports FAIL.
+
+        This is the state a real refresh produces today (tracking covers 54 of
+        117 schools), so the gate has to survive it rather than crash or pass.
+        """
+        self._write_tracking(tmp_path, monkeypatch, {
+            "release_ready": False,
+            "checks": {
+                "schema_v2": True, "events_valid": True,
+                "freshness_min_pct": True, "no_fully_stale_school": True,
+                "all_active_schools_tracked": False,
+                "active_professor_denominator_present": True,
+                "active_professor_coverage_min_pct": False,
+                "all_active_professors_identifiable": True,
+                "refresh_ok": True,
+            },
+        })
+        got = gate.check_tracking_release_ready()
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["stored_release_ready"] is False
+        assert set(got["evidence"]["failing"]) == {
+            "all_active_schools_tracked", "active_professor_coverage_min_pct",
+        }
+
+    def test_tracking_gate_evaluates_the_committed_artifact_without_error(self):
+        """Smoke: whatever is committed, the gate returns a verdict."""
+        assert gate.check_tracking_release_ready()["status"] in (
+            gate.PASS, gate.FAIL, gate.UNVERIFIED,
+        )
 
 
 class TestIncidentGate:
