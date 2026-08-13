@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff } from 'lucide-react';
 import { getPushStatus, subscribeToPush, unsubscribeFromPush, isPushSupported, type PushStatus } from '@/lib/push';
+import { useT } from '@/i18n/client';
 
 export default function PushToggle() {
+  const { t } = useT();
   const [status, setStatus] = useState<PushStatus | 'loading'>('loading');
   const [busy, setBusy] = useState(false);
 
@@ -54,7 +56,7 @@ export default function PushToggle() {
       aria-pressed={subscribed}
     >
       {subscribed ? <Bell className="w-3 h-3" aria-hidden="true" /> : <BellOff className="w-3 h-3" aria-hidden="true" />}
-      <span>{subscribed ? 'Notifications on' : 'Enable notifications'}</span>
+      <span>{subscribed ? t('dashboard.push.on') : t('dashboard.push.enable')}</span>
     </button>
   );
 }

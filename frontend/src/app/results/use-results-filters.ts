@@ -102,6 +102,7 @@ export function useResultsFilters({
     }
     if (filters.deadline) {
       results = results.filter((m) => {
+        if (filters.deadline === 'rolling') return m.opportunity.is_rolling === true;
         const d = daysUntil(m.opportunity.deadline);
         if (filters.deadline === 'passed') return d !== null && d < 0;
         if (d === null || d < 0) return false;

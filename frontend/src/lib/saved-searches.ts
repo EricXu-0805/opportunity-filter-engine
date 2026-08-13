@@ -1,11 +1,12 @@
 import { getDeviceId, supabase } from './supabase';
+import type { DeadlineFilterValue } from './types';
 
 export interface SavedSearchFilters {
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
   source: string;
   onCampus: '' | 'yes' | 'no';
-  deadline: '' | '7' | '14' | '30' | 'passed';
+  deadline: DeadlineFilterValue;
   minScore: number;
   // Optional: rows saved before the discovery-scope facet shipped lack it.
   // Like minScore, scope is enforced client-side only — the cron-side

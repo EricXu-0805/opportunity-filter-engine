@@ -11,7 +11,7 @@ logic across these dimensions:
   - filters.intl in {'', 'yes', 'no'}
   - filters.source in {'', '<source-name>'}
   - filters.onCampus in {'', 'yes', 'no'}
-  - filters.deadline in {'', '7', '14', '30', 'passed'}
+  - filters.deadline in {'', 'rolling', '7', '14', '30', 'passed'}
   - query text search across title/organization/keywords/description
 
 Deliberately omitted: filters.minScore. Scoring requires the user's
@@ -25,7 +25,7 @@ Filter input shape (from saved_searches.filters_json):
     "intl": "" | "yes" | "no",
     "source": str,
     "onCampus": "" | "yes" | "no",
-    "deadline": "" | "7" | "14" | "30" | "passed",
+    "deadline": "" | "rolling" | "7" | "14" | "30" | "passed",
     "minScore": int   (ignored here)
   }
 """
@@ -85,10 +85,16 @@ def _matches_on_campus(opp_on_campus: bool | None, want: str) -> bool:
     return True
 
 
-def _matches_deadline(opp_deadline: str | None, want: str) -> bool:
+def _matches_deadline(opp: dict, want: str) -> bool:
     if not want:
         return True
-    d = days_until(opp_deadline)
+    # 'rolling' reads a different field, so it takes the whole record. Note the
+    # fallthrough below returns True for an unrecognised value: before this
+    # branch existed, a saved search carrying deadline='rolling' matched every
+    # record instead of the rolling ones. Any future value must land here too.
+    if want == "rolling":
+        return opp.get("is_rolling") is True
+    d = days_until(opp.get("deadline"))
     if want == "passed":
         return d is not None and d < 0
     try:
@@ -128,7 +134,7 @@ def match_filter(opp: dict, filters: dict) -> bool:
         and _matches_intl(eligibility, filters.get("intl", ""))
         and _matches_source(opp.get("source"), filters.get("source", ""))
         and _matches_on_campus(opp.get("on_campus"), filters.get("onCampus", ""))
-        and _matches_deadline(opp.get("deadline"), filters.get("deadline", ""))
+        and _matches_deadline(opp, filters.get("deadline", ""))
     )
 
 

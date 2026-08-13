@@ -147,10 +147,13 @@ def _normalize_program(
         "contact_email": None,
         "url": program["url"],
         "location": "Berkeley, CA",
-        # Berkeley is external to this product's UIUC users; the ranker's
-        # on-campus work-auth boost must not apply, so on_campus=False (matches
-        # the existing ucb_urap / faculty convention).
-        "on_campus": False,
+        # Derived, not hardcoded: EMIT_OPEN rows are genuinely external listings
+        # that merely surfaced on a Berkeley page (school=None), while campus
+        # and lab rows are Berkeley's own. The old blanket False encoded
+        # "external to this product's UIUC users", which stopped being a fact
+        # about the record once the product served 117 schools; whose campus it
+        # is, is the ranker's question (school vs profile.home_school).
+        "on_campus": school is not None,
         "remote_option": "unknown",
         "opportunity_type": program.get("opportunity_type", "research"),
         "paid": program.get("paid", "unknown"),
@@ -232,7 +235,7 @@ def _normalize_discovered(source: dict, title: str, url: str, snippet: str) -> d
         "contact_email": None,
         "url": url,
         "location": "Berkeley, CA",
-        "on_campus": False,
+        "on_campus": school is not None,
         "remote_option": "unknown",
         "opportunity_type": "research",
         "paid": "unknown",

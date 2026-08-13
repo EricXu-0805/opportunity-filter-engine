@@ -148,7 +148,11 @@ class MatchViewState(BaseModel):
     intl: Literal["", "yes", "no"] = ""
     source: str = Field(default="", max_length=100)
     on_campus: Literal["", "yes", "no"] = ""
-    deadline: Literal["", "7", "14", "30", "passed"] = ""
+    # Keep in lockstep with lib/types.DeadlineFilterValue on the client and
+    # with src/saved_searches/filter.py in the digest cron: a value the client
+    # can send but this Literal rejects is a 422 on the whole match view, not a
+    # degraded filter.
+    deadline: Literal["", "rolling", "7", "14", "30", "passed"] = ""
     min_score: int = Field(default=0, ge=0, le=100)
     scope: Literal["", "campus", "open"] = ""
     sort_by: Literal["score", "deadline", "newest"] = "score"

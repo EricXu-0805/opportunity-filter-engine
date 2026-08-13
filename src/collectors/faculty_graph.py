@@ -569,9 +569,21 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "contact_email": email,
         "url": profile_url,
         "location": school["location"],
-        # External to this product's home users (matches the ucb_* convention);
-        # multi-school scoping rides on school/audience, not on_campus.
-        "on_campus": False,
+        # A professor's lab IS on their university's campus. This said False
+        # from the single-school era, when "on campus" meant "on the UIUC
+        # campus, the only one we served" — a meaning that stopped being true
+        # at 117 schools and left the field asserting something plainly false
+        # about 122,203 records.
+        #
+        # Whose campus it is stays a separate question, and the ranker already
+        # answers it: score_upside grants the F-1 "no work authorization
+        # concerns" advantage only when opportunity.school == profile.home_school
+        # (see the withhold branch there, and TestForeignCampusWorkAuthBonus). With
+        # this field forced False, that advantage was unreachable for every
+        # school except UIUC — the one collector that always said True — so the
+        # product's central promise to its central audience was dead for 116 of
+        # its 117 campuses.
+        "on_campus": True,
         "remote_option": "unknown",
         "opportunity_type": "research",
         "paid": paid,

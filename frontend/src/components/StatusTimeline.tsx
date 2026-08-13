@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getStatusChanges, type InteractionType, type StatusChange } from '@/lib/supabase';
+import { formatAgo } from '@/lib/humanize-time';
 import { useT } from '@/i18n/client';
 
 const STATUS_COLORS: Record<string, { dot: string; pill: string }> = {
@@ -11,18 +12,6 @@ const STATUS_COLORS: Record<string, { dot: string; pill: string }> = {
   rejected: { dot: 'bg-gray-400', pill: 'bg-gray-100 text-gray-600' },
   dismissed: { dot: 'bg-gray-300', pill: 'bg-gray-50 text-gray-400' },
 };
-
-function formatRelativeAge(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 0 || Number.isNaN(ms)) return '';
-  const sec = Math.floor(ms / 1000);
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.floor(hr / 24)}d ago`;
-}
 
 interface Props {
   opportunityId: string;
@@ -67,7 +56,7 @@ export default function StatusTimeline({ opportunityId, fallbackType, fallbackUp
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${colors.pill}`}>
                 {fallbackLabel}
               </span>
-              <span className="text-gray-400">· {formatRelativeAge(row.at)}</span>
+              <span className="text-gray-400">· {formatAgo(row.at, t)}</span>
             </li>
           );
         })}

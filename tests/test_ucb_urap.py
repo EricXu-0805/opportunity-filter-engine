@@ -48,7 +48,7 @@ def test_normalized_record_has_berkeley_schema():
     assert opp["is_rolling"] is True
     # Berkeley is external to this product's UIUC users — no on-campus boost,
     # and matriculation-gated admission means no unconditional "yes".
-    assert opp["on_campus"] is False
+    assert opp["on_campus"] is True
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["metadata"]["is_active"] is True
     # Canonical metadata keys per #168 (first_seen/scraped_at are forbidden).

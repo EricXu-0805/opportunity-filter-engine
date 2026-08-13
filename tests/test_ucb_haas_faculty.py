@@ -141,7 +141,7 @@ def test_lite_output_shape_no_email():
     assert opp["contact_email"] is None
     assert opp["metadata"]["confidence_score"] == 0.5
     assert opp["eligibility"]["majors"] == HAAS_CONFIG["majors"]
-    assert opp["on_campus"] is False
+    assert opp["on_campus"] is True
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["eligibility"]["work_auth_notes"] == HAAS_CONFIG["work_auth_notes"]
 

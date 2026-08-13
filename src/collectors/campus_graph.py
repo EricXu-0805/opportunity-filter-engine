@@ -199,7 +199,11 @@ def _normalize_program(
         "contact_email": None,
         "url": program_spec["url"],
         "location": school["location"],
-        "on_campus": False,
+        # Derived from the emit bucket, not hardcoded: "open" rows are external
+        # listings that merely surfaced on a campus page (school_slug None),
+        # everything else is this school's own program. The blanket False dated
+        # from the single-school era and made the field assert something untrue.
+        "on_campus": school_slug is not None,
         "remote_option": "unknown",
         "opportunity_type": program_spec.get("opportunity_type", "research"),
         "paid": program_spec.get("paid", "unknown"),
@@ -278,7 +282,7 @@ def _normalize_discovered(school: dict, source: dict, title: str, url: str, snip
         "contact_email": None,
         "url": url,
         "location": school["location"],
-        "on_campus": False,
+        "on_campus": school_slug is not None,
         "remote_option": "unknown",
         "opportunity_type": "research",
         "paid": "unknown",

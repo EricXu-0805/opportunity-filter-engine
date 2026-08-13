@@ -3,11 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
-    t: (key: string) => {
+    // Echoes the key plus its vars. The component no longer formats ages
+    // itself — it hands (bucket, count) to the dictionary — so the assertions
+    // below check exactly that, rather than a hardcoded English rendering
+    // which is what this component used to produce for every locale.
+    t: (key: string, vars?: Record<string, string | number>) => {
       if (key.startsWith('detail.tracker.statusLabels.')) {
         return `Label:${key.split('.').pop()}`;
       }
-      return key;
+      return vars ? `${key}(${Object.values(vars).join(',')})` : key;
     },
   }),
 }));
@@ -54,7 +58,7 @@ describe('StatusTimeline', () => {
       />,
     );
     await waitFor(() => expect(screen.getByText('Label:applied')).toBeInTheDocument());
-    expect(screen.getByText(/30m ago/)).toBeInTheDocument();
+    expect(screen.getByText(/common\.ago\.minutes\(30\)/)).toBeInTheDocument();
   });
 
   it('renders a chronological list when history returns multiple changes', async () => {
@@ -86,7 +90,7 @@ describe('StatusTimeline', () => {
         fallbackUpdatedAt={isoAgo(0)}
       />,
     );
-    await waitFor(() => expect(screen.getByText(/5m ago/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/common\.ago\.minutes\(5\)/)).toBeInTheDocument());
   });
 
   it('formats hour ages', async () => {
@@ -100,7 +104,7 @@ describe('StatusTimeline', () => {
         fallbackUpdatedAt={isoAgo(0)}
       />,
     );
-    await waitFor(() => expect(screen.getByText(/3h ago/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/common\.ago\.hours\(3\)/)).toBeInTheDocument());
   });
 
   it('formats day ages', async () => {
@@ -114,7 +118,7 @@ describe('StatusTimeline', () => {
         fallbackUpdatedAt={isoAgo(0)}
       />,
     );
-    await waitFor(() => expect(screen.getByText(/2d ago/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/common\.ago\.days\(2\)/)).toBeInTheDocument());
   });
 
   it('applies the correct dot colours for each status', async () => {
@@ -188,7 +192,7 @@ describe('StatusTimeline', () => {
     );
     await waitFor(() => expect(screen.getByText('Label:applied')).toBeInTheDocument());
     const ageSpans = Array.from(container.querySelectorAll('span'))
-      .filter((s) => /\d+[smhd] ago/.test(s.textContent ?? ''));
+      .filter((s) => /common\.ago\./.test(s.textContent ?? ''));
     expect(ageSpans.length).toBe(0);
   });
 });

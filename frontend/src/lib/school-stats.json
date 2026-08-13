@@ -4,7 +4,7 @@
     "national": 4041
   },
   "arizona": {
-    "campus": 1472,
+    "campus": 1476,
     "national": 4041
   },
   "asu": {
@@ -24,7 +24,7 @@
     "national": 4041
   },
   "boulder": {
-    "campus": 1597,
+    "campus": 1599,
     "national": 4041
   },
   "bowdoin": {
@@ -32,7 +32,7 @@
     "national": 4041
   },
   "brown": {
-    "campus": 1159,
+    "campus": 1162,
     "national": 4041
   },
   "brynmawr": {
@@ -60,7 +60,7 @@
     "national": 4041
   },
   "cincinnati": {
-    "campus": 1029,
+    "campus": 1050,
     "national": 4041
   },
   "clemson": {
@@ -72,7 +72,7 @@
     "national": 4041
   },
   "cmu": {
-    "campus": 903,
+    "campus": 908,
     "national": 4041
   },
   "colby": {
@@ -92,7 +92,7 @@
     "national": 4041
   },
   "columbia": {
-    "campus": 1070,
+    "campus": 1075,
     "national": 4041
   },
   "cornell": {
@@ -148,7 +148,7 @@
     "national": 4041
   },
   "houston": {
-    "campus": 1024,
+    "campus": 1034,
     "national": 4041
   },
   "iastate": {
@@ -160,7 +160,7 @@
     "national": 4041
   },
   "jhu": {
-    "campus": 4590,
+    "campus": 4592,
     "national": 4041
   },
   "kenyon": {
@@ -192,7 +192,7 @@
     "national": 4041
   },
   "msu": {
-    "campus": 967,
+    "campus": 965,
     "national": 4041
   },
   "ncsu": {
@@ -200,7 +200,7 @@
     "national": 4041
   },
   "nd": {
-    "campus": 1258,
+    "campus": 1268,
     "national": 4041
   },
   "neu": {
@@ -212,11 +212,11 @@
     "national": 4041
   },
   "northwestern": {
-    "campus": 2802,
+    "campus": 2804,
     "national": 4041
   },
   "nyu": {
-    "campus": 2177,
+    "campus": 1798,
     "national": 4041
   },
   "oregonstate": {
@@ -228,7 +228,7 @@
     "national": 4041
   },
   "pitt": {
-    "campus": 1103,
+    "campus": 1124,
     "national": 4041
   },
   "pomona": {
@@ -236,7 +236,7 @@
     "national": 4041
   },
   "princeton": {
-    "campus": 623,
+    "campus": 625,
     "national": 4041
   },
   "psu": {
@@ -248,7 +248,7 @@
     "national": 4041
   },
   "rice": {
-    "campus": 982,
+    "campus": 983,
     "national": 4041
   },
   "rochester": {
@@ -284,7 +284,7 @@
     "national": 4041
   },
   "syracuse": {
-    "campus": 832,
+    "campus": 833,
     "national": 4041
   },
   "tamu": {
@@ -304,7 +304,7 @@
     "national": 4041
   },
   "ucf": {
-    "campus": 796,
+    "campus": 797,
     "national": 4041
   },
   "uchicago": {
@@ -316,7 +316,7 @@
     "national": 4041
   },
   "ucla": {
-    "campus": 2035,
+    "campus": 2074,
     "national": 4041
   },
   "uconn": {
@@ -332,23 +332,23 @@
     "national": 4041
   },
   "ucsc": {
-    "campus": 737,
+    "campus": 739,
     "national": 4041
   },
   "ucsd": {
-    "campus": 1481,
+    "campus": 1502,
     "national": 4041
   },
   "udel": {
-    "campus": 1002,
+    "campus": 1004,
     "national": 4041
   },
   "uf": {
-    "campus": 1971,
+    "campus": 1974,
     "national": 4041
   },
   "uga": {
-    "campus": 2058,
+    "campus": 2121,
     "national": 4041
   },
   "uiowa": {
@@ -364,7 +364,7 @@
     "national": 4041
   },
   "umass": {
-    "campus": 1559,
+    "campus": 1584,
     "national": 4041
   },
   "umd": {
@@ -384,7 +384,7 @@
     "national": 4041
   },
   "unl": {
-    "campus": 1156,
+    "campus": 1161,
     "national": 4041
   },
   "upenn": {
@@ -408,7 +408,7 @@
     "national": 4041
   },
   "utexas": {
-    "campus": 2194,
+    "campus": 2241,
     "national": 4041
   },
   "utk": {
@@ -416,7 +416,7 @@
     "national": 4041
   },
   "uva": {
-    "campus": 1186,
+    "campus": 1158,
     "national": 4041
   },
   "uw": {
@@ -424,7 +424,7 @@
     "national": 4041
   },
   "vanderbilt": {
-    "campus": 1130,
+    "campus": 1144,
     "national": 4041
   },
   "vassar": {
@@ -432,11 +432,11 @@
     "national": 4041
   },
   "vt": {
-    "campus": 1719,
+    "campus": 1853,
     "national": 4041
   },
   "washu": {
-    "campus": 1099,
+    "campus": 1104,
     "national": 4041
   },
   "wellesley": {
@@ -460,7 +460,7 @@
     "national": 4041
   },
   "yale": {
-    "campus": 1276,
+    "campus": 1281,
     "national": 4041
   }
 }

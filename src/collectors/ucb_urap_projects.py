@@ -295,7 +295,9 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
         "contact_email": None,
         "url": raw["url"],
         "location": "Berkeley, CA",
-        "on_campus": False,
+        # A URAP project runs in a Berkeley lab; school (ucb) carries whose
+        # campus it is, and the ranker compares that to profile.home_school.
+        "on_campus": True,
         "remote_option": "unknown",
         "opportunity_type": "research",
         # URAP is for academic credit, not pay (per the program overview).

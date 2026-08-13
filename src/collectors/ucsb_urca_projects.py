@@ -307,7 +307,9 @@ def normalize_project(raw: dict) -> dict:
         "contact_email": None,
         "url": raw["url"],
         "location": "Santa Barbara, CA",
-        "on_campus": False,
+        # A URCA project runs in a UCSB lab; school (ucsb) carries whose campus
+        # it is, and the ranker compares that to profile.home_school.
+        "on_campus": True,
         "remote_option": "unknown",
         "opportunity_type": "research",
         "paid": "unknown",

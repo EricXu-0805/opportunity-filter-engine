@@ -1,3 +1,16 @@
+// ── Filter values shared across surfaces ─────────────────────────────
+/**
+ * The deadline facet's accepted values.
+ *
+ * Declared once because it had three independent copies (results filters,
+ * saved searches, filter presets) plus a fourth in Python
+ * (src/saved_searches/filter.py, which the digest cron evaluates
+ * server-side). Adding 'rolling' to one of them is how a saved search ends up
+ * matching every record: that Python matcher falls through to `return True`
+ * for a value it does not recognise.
+ */
+export type DeadlineFilterValue = '' | 'rolling' | '7' | '14' | '30' | 'passed';
+
 // ── Skill Proficiency ────────────────────────────────────────────────
 export type SkillLevel = 'beginner' | 'experienced' | 'expert';
 

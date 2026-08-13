@@ -101,6 +101,40 @@ describe('useResultsFilters — filter-aware tab counts', () => {
   });
 });
 
+describe('useResultsFilters — the deadline facet on a rolling corpus', () => {
+  // Every record in RESULTS has deadline: null, which is the corpus's normal
+  // shape: 98.7% rolling, 0.6% with any deadline at all. So the four dated
+  // options are four ways to reach an empty page, and 'rolling' is the only
+  // one that can answer for a professor's lab.
+  it('a dated option finds nothing when no match carries a deadline', () => {
+    expect(run({ activeTab: 'all', filters: { deadline: '30' } }).filtered).toHaveLength(0);
+  });
+
+  it('rolling selects on is_rolling, independent of the deadline field', () => {
+    const rolling = { ...DATA, results: DATA.results.map((r, i) => ({
+      ...r,
+      opportunity: { ...r.opportunity, is_rolling: i % 2 === 0 },
+    })) };
+    const out = renderHook(() =>
+      useResultsFilters({
+        data: rolling as MatchesResponse,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS, deadline: 'rolling' },
+        favs: new Set<string>(),
+        sortBy: 'score',
+        interactions: new Map(),
+        showDismissed: true,
+        page: 1,
+        pageSize: 50,
+        homeSchool: 'ucb',
+      }),
+    ).result.current;
+    // 5 non-low_fit rows, of which the even indices (0, 2, 4) are rolling.
+    expect(out.filtered.map((m) => m.opportunity.id)).toEqual(['fac-1', 'prog-1', 'prog-3']);
+  });
+});
+
 describe('useResultsFilters — canonical consistency guards', () => {
   it('minScore filters on the DISPLAYED (rounded) score', () => {
     // A 79.6 renders as "80%" on the card, so it must survive minScore=80 —

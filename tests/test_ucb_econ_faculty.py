@@ -119,7 +119,7 @@ def test_output_shape_matches_other_faculty_collectors():
     assert opp["contact_email"] == "backus@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
     assert opp["eligibility"]["majors"] == ECON_CONFIG["majors"]
-    assert opp["on_campus"] is False
+    assert opp["on_campus"] is True
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["eligibility"]["work_auth_notes"] == ECON_CONFIG["work_auth_notes"]
 

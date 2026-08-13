@@ -106,9 +106,12 @@ def _to_normalized(r: RawOpportunity) -> dict:
         "paid": "no",
         "deadline": None,
         "is_rolling": True if is_overview else False,
-        # Berkeley program — external to this product's UIUC users, so the
-        # ranker must not apply the on-campus work-authorization boost.
-        "on_campus": False,
+        # URAP is Berkeley's own undergraduate research program, on Berkeley's
+        # campus. This said False when "on campus" meant "on the UIUC campus"
+        # — whose campus it is now rides on school (SOURCE_DEFAULTS: ucb) and
+        # the ranker compares that against profile.home_school before granting
+        # the F-1 work-authorization advantage.
+        "on_campus": True,
         "contact_email": contact_email,
         "eligibility": {
             "majors": [],

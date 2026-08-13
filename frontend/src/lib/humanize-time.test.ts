@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { humanizeTime } from './humanize-time';
+import { formatAgo, humanizeTime } from './humanize-time';
 
 const NOW = new Date('2026-05-24T18:00:00.000Z');
 
@@ -96,5 +96,38 @@ describe('humanizeTime', () => {
       const result = humanizeTime('2026-05-01T12:34:56.789Z', NOW);
       expect(result).toEqual({ kind: 'date', iso: '2026-05-01' });
     });
+  });
+});
+
+describe('formatAgo', () => {
+  // Every string comes from the dictionary. The point of the helper is that a
+  // caller cannot accidentally ship English, which is exactly what the two
+  // private copies in home-utils and StatusTimeline did.
+  const t = (path: string, vars?: Record<string, string | number>) =>
+    vars ? `${path}:${JSON.stringify(vars)}` : path;
+
+  it('renders sub-minute ages through the dictionary', () => {
+    expect(formatAgo(isoMinusMs(5_000), t, NOW)).toBe('common.ago.justNow');
+  });
+
+  it('passes the count through for minutes, hours and days', () => {
+    expect(formatAgo(isoMinusMs(5 * 60_000), t, NOW)).toBe('common.ago.minutes:{"n":5}');
+    expect(formatAgo(isoMinusMs(3 * 3_600_000), t, NOW)).toBe('common.ago.hours:{"n":3}');
+    expect(formatAgo(isoMinusMs(2 * 86_400_000), t, NOW)).toBe('common.ago.days:{"n":2}');
+  });
+
+  it('falls back to the date bucket past a week', () => {
+    const old = isoMinusMs(30 * 86_400_000);
+    expect(formatAgo(old, t, NOW)).toBe(`common.ago.onDate:{"date":"${old.slice(0, 10)}"}`);
+  });
+
+  it('returns an empty string rather than a key for unusable input', () => {
+    expect(formatAgo('not-a-date', t, NOW)).toBe('');
+    expect(formatAgo(null, t, NOW)).toBe('');
+    expect(formatAgo(undefined, t, NOW)).toBe('');
+  });
+
+  it('collapses a future timestamp to just-now instead of rendering "in 3h"', () => {
+    expect(formatAgo(isoMinusMs(-5_000), t, NOW)).toBe('common.ago.justNow');
   });
 });
