@@ -1,0 +1,58 @@
+name: campus-seed-health
+
+# Configured seed URLs rot silently. Five of them 404'd for weeks before
+# anyone looked, and the only place it showed was one line among hundreds in
+# a refresh log. This asks the question on its own schedule, so a dead page
+# arrives as mail rather than as a mystery gap in the corpus.
+#
+# Sunday 12:00 UTC — after the national refresh has finished and well clear
+# of every school shard, so a burst of probes cannot compete with a live
+# crawl for the same hosts.
+on:
+  schedule:
+    - cron: '0 12 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: campus-seed-health
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Probe every configured campus seed
+        run: python3 scripts/check_campus_seeds.py
+
+      - name: Alert operator on a dead seed page
+        if: failure() || cancelled()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            exit 0
+          fi
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
+              \"to\": [\"$OPERATOR_EMAIL\"],
+              \"subject\": \"JoinALab: a configured campus seed page is gone\",
+              \"text\": \"At least one seed URL in schools/*.py now returns 404 or 410. The crawl still runs; it just no longer finds whatever that page used to link to.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe step output lists each dead URL with its school. Bot walls and timeouts are reported there too but never fail this check.\"
+            }" || true
