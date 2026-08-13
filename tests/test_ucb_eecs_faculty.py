@@ -183,7 +183,7 @@ def test_placeholder_directory_email_is_treated_as_no_email():
 def test_external_campus_semantics():
     abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
     opp = normalize_faculty(abbeel, EECS_CONFIG)
-    assert opp["on_campus"] is False
+    assert opp["on_campus"] is True
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert "no work authorization required" not in opp["eligibility"]["work_auth_notes"]
 

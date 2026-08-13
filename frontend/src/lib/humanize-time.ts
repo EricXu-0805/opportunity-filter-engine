@@ -34,3 +34,36 @@ export function humanizeTime(
   // for last_run_at — see backend/cron/saved_searches.py.
   return { kind: 'date', iso: iso.slice(0, 10) };
 }
+
+type AgoTFunc = (path: string, vars?: Record<string, string | number>) => string;
+
+/**
+ * The rendered, translated form — the half that kept getting reimplemented.
+ *
+ * humanizeTime deliberately returns a shape rather than a string so the caller
+ * can translate it, but two components (the home page's live-database card and
+ * the tracker timeline) each grew their own private `formatRelativeAge` that
+ * returned hardcoded English instead. Both sat directly after a translated
+ * label, so a zh reader saw "数据更新于 3h ago". Returns '' for an unusable
+ * timestamp, matching what those callers already did.
+ */
+export function formatAgo(
+  iso: string | null | undefined,
+  t: AgoTFunc,
+  now: Date = new Date(),
+): string {
+  const result = humanizeTime(iso, now);
+  if (!result) return '';
+  switch (result.kind) {
+    case 'just-now':
+      return t('common.ago.justNow');
+    case 'minutes':
+      return t('common.ago.minutes', { n: result.n });
+    case 'hours':
+      return t('common.ago.hours', { n: result.n });
+    case 'days':
+      return t('common.ago.days', { n: result.n });
+    case 'date':
+      return t('common.ago.onDate', { date: result.iso });
+  }
+}

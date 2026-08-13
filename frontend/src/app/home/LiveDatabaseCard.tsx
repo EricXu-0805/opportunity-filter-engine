@@ -2,7 +2,7 @@
 
 import { Sparkles } from 'lucide-react';
 import Card from '@/components/Card';
-import { formatRelativeAge } from './home-utils';
+import { formatAgo } from '@/lib/humanize-time';
 import type { TFunc } from './types';
 
 export function LiveDatabaseCard({
@@ -26,7 +26,7 @@ export function LiveDatabaseCard({
       <p className="text-sm text-indigo-200 mt-1">{t('home.cards.liveDatabaseHint')}</p>
       {lastUpdated && (
         <p className="text-[11px] text-indigo-200/70 mt-1.5">
-          {t('home.cards.updatedPrefix')} {formatRelativeAge(lastUpdated)}
+          {t('home.cards.updatedPrefix')} {formatAgo(lastUpdated, t)}
         </p>
       )}
     </Card>

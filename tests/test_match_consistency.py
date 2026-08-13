@@ -819,6 +819,46 @@ class TestServerMatchView:
         ]
         assert scope_available is True
 
+    def test_rolling_deadline_selects_on_is_rolling_not_deadline(self):
+        """The facet's only value most of this corpus can answer.
+
+        98.7% of records are rolling and 0.6% carry a deadline at all, so every
+        other value on this control returns an empty page for a typical match
+        list. 'rolling' reads a different field, which is exactly why it has to
+        be wired in five places at once — this one, the schema Literal that
+        would otherwise 422 the whole view request, the client filter, the URL
+        allowlist, and the digest cron's own matcher.
+        """
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        results = [
+            MatchResult(
+                opportunity_id="rolling-lab", eligibility_score=80,
+                readiness_score=80, upside_score=80, final_score=79.5,
+                bucket="good_match", reasons_fit=[], reasons_gap=[], next_steps=[],
+            ),
+            MatchResult(
+                opportunity_id="dated-program", eligibility_score=80,
+                readiness_score=80, upside_score=80, final_score=79.4,
+                bucket="good_match", reasons_fit=[], reasons_gap=[], next_steps=[],
+            ),
+        ]
+        opportunities = {
+            # No deadline at all — the shape of a professor's lab.
+            "rolling-lab": {**_opp("rolling-lab"), "is_rolling": True, "deadline": None},
+            # A real closing date, and explicitly not rolling.
+            "dated-program": {
+                **_opp("dated-program"), "is_rolling": False, "deadline": "2026-08-01",
+            },
+        }
+        view = MatchViewState(tab="all", deadline="rolling", today="2026-07-31")
+
+        filtered, _counts, _facets, _scope = m_module._apply_match_view(
+            results, opportunities, view, "uiuc",
+        )
+        assert [r.opportunity_id for r in filtered] == ["rolling-lab"]
+
 
 class TestUnknownPolicy:
     """null / missing key / empty string / unknown enum must produce identical

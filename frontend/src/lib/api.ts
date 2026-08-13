@@ -14,6 +14,7 @@ import type {
   RenovateResponse,
   BulletOptimizeResponse,
   ProfessorUpdatesResponse,
+  DeadlineFilterValue,
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
@@ -273,7 +274,7 @@ export interface MatchViewRequestState {
   intl: '' | 'yes' | 'no';
   source: string;
   on_campus: '' | 'yes' | 'no';
-  deadline: '' | '7' | '14' | '30' | 'passed';
+  deadline: DeadlineFilterValue;
   min_score: number;
   scope: '' | 'campus' | 'open';
   sort_by: 'score' | 'deadline' | 'newest';

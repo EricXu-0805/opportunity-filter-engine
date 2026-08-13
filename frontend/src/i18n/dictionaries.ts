@@ -5,6 +5,16 @@ export const DEFAULT_LOCALE: Locale = 'en';
 export const en = {
   common: {
     appName: 'JoinALab',
+    // Shared relative-time copy. Three components used to carry their own
+    // hardcoded English ('just now', '3h ago') and rendered it straight after a
+    // translated label, so a zh reader got half a sentence in each language.
+    ago: {
+      justNow: 'just now',
+      minutes: '{n}m ago',
+      hours: '{n}h ago',
+      days: '{n}d ago',
+      onDate: '{date}',
+    },
     loading: 'Loading...',
     retry: 'Retry',
     back: 'Back',
@@ -2874,6 +2884,7 @@ export const en = {
       locYes: 'On campus',
       locNo: 'Off campus / Remote',
       deadlineAll: 'Any deadline',
+      deadlineRolling: 'Rolling — apply anytime',
       deadline7: 'Due in 7 days',
       deadline14: 'Due in 14 days',
       deadline30: 'Due in 30 days',
@@ -2902,6 +2913,9 @@ export const en = {
     empty: {
       withFilters: 'No matches with these filters.',
       withFiltersHint: 'Try broadening your search or removing some filters.',
+      noDeadlines: 'None of your matches have a set deadline.',
+      noDeadlinesHint: 'Most research positions take inquiries year-round rather than closing on a date — so filtering by deadline finds nothing here.',
+      showRolling: 'Show the ones open now',
       clearAll: 'Clear all filters',
       starred: 'No starred opportunities yet.',
       starredHint: 'Click the star icon on any match to save it here.',
@@ -3422,7 +3436,7 @@ export const en = {
     switched: 'Switched to "{label}" variant.',
     editing: 'Editing...',
     doneLlm: 'Done! Email updated with AI.',
-    doneFallback: 'Applied edit. (Set OPENAI_API_KEY for full AI editing)',
+    doneFallback: 'Applied a basic edit — AI editing is unavailable right now.',
     refineFabrication: 'The AI edit tried to add a skill that is not in your profile, so a safe edit was applied instead. Add it to your profile first if you have it.',
     editFailed: 'Failed to edit. Try a quick action instead.',
     openGmailTitle: 'Open in Gmail',
@@ -3457,7 +3471,7 @@ export const en = {
     stageCritiquing: 'Self-reviewing…',
     stageRevising: 'Revising details…',
     aiGenerated: 'AI-personalized version ready. Switch back to a template variant anytime.',
-    aiFallback: 'No AI provider configured — fell back to the template version. Set OPENAI_API_KEY (or Gemini / OpenRouter) to unlock AI.',
+    aiFallback: 'AI drafting is unavailable right now — showing the template version, which is still yours to edit and send.',
     aiFallbackFabrication: 'The AI draft added details we couldn\'t verify in your profile, so we kept the safe template version instead.',
     aiFallbackGeneric: 'AI couldn\'t produce a usable draft — showing the template version.',
     templateFallbackBadge: 'Template (not AI)',
@@ -4139,6 +4153,10 @@ export const en = {
     subtitle: 'Your saved opportunities, deadlines, and application progress.',
     loading: 'Loading…',
     unknownTarget: 'Unknown opportunity',
+    push: {
+      on: 'Notifications on',
+      enable: 'Enable notifications',
+    },
     summary: {
       title: 'Your activity',
       saved: 'Saved',
@@ -4385,6 +4403,13 @@ export const en = {
 export const zh = {
   common: {
     appName: 'JoinALab',
+    ago: {
+      justNow: '刚刚',
+      minutes: '{n} 分钟前',
+      hours: '{n} 小时前',
+      days: '{n} 天前',
+      onDate: '{date}',
+    },
     loading: '加载中...',
     retry: '重试',
     back: '返回',
@@ -7252,6 +7277,7 @@ export const zh = {
       locYes: '校内',
       locNo: '校外 / 远程',
       deadlineAll: '任意截止日期',
+      deadlineRolling: '常年开放 —— 随时可申请',
       deadline7: '7 天内截止',
       deadline14: '14 天内截止',
       deadline30: '30 天内截止',
@@ -7280,6 +7306,9 @@ export const zh = {
     empty: {
       withFilters: '当前筛选无匹配。',
       withFiltersHint: '试着放宽搜索或移除一些筛选。',
+      noDeadlines: '你的匹配里没有任何一条设了截止日期。',
+      noDeadlinesHint: '科研岗位大多常年接受联系，而不是到某一天关闭 —— 所以按截止日期筛这里筛不出东西。',
+      showRolling: '看现在就开放的',
       clearAll: '清除所有筛选',
       starred: '还没有收藏的机会。',
       starredHint: '点击卡片上的星标来保存。',
@@ -7795,7 +7824,7 @@ export const zh = {
     switched: '已切换到"{label}"版本。',
     editing: '编辑中...',
     doneLlm: '完成！已用 AI 更新邮件。',
-    doneFallback: '已应用编辑。（设置 OPENAI_API_KEY 可启用完整 AI 编辑）',
+    doneFallback: '已应用基础编辑 —— AI 编辑当前不可用。',
     refineFabrication: 'AI 改写时想加入你档案里没有的技能，已改为应用安全编辑。如果你确实具备，请先加到档案里。',
     editFailed: '编辑失败。请尝试快捷操作。',
     openGmailTitle: '在 Gmail 中打开',
@@ -7830,7 +7859,7 @@ export const zh = {
     stageCritiquing: '自检草稿中…',
     stageRevising: '按发现精修中…',
     aiGenerated: 'AI 个性化版本已就绪。随时可切回模板版本。',
-    aiFallback: '未配置 AI 提供者 —— 已退回模板版本。设置 OPENAI_API_KEY(或 Gemini / OpenRouter)以启用 AI。',
+    aiFallback: 'AI 起草当前不可用 —— 显示的是模板版本，你仍可以直接改完发出。',
     aiFallbackFabrication: 'AI 草稿写出了你资料中无法验证的内容,因此保留了更安全的模板版本。',
     aiFallbackGeneric: 'AI 无法生成可用草稿 —— 显示模板版本。',
     templateFallbackBadge: '模板(非 AI)',
@@ -8512,6 +8541,10 @@ export const zh = {
     subtitle: '你的收藏、截止日期与申请进度。',
     loading: '加载中…',
     unknownTarget: '未知机会',
+    push: {
+      on: '通知已开启',
+      enable: '开启通知',
+    },
     summary: {
       title: '你的动态',
       saved: '已收藏',

@@ -1149,10 +1149,17 @@ def score_upside(
     if opportunity.get("on_campus") and profile.get("international_student"):
         # The F-1 "no work-authorization concerns" advantage only holds on the
         # student's OWN campus. Withhold it only when we KNOW the campus is a
-        # different school (a foreign campus stamped on_campus=True — a future
-        # multi-school data error). Missing home_school or national/legacy
-        # (school=None) records keep the original behavior — an F-1 can't work on
-        # another school's campus, but we never penalize on incomplete data.
+        # different school. Missing home_school or national/legacy (school=None)
+        # records keep the original behavior — an F-1 can't work on another
+        # school's campus, but we never penalize on incomplete data.
+        #
+        # "on_campus=True on a foreign campus" was described here as a future
+        # multi-school data error. It is now the normal shape of the corpus:
+        # every school's own faculty and programs carry on_campus=True, and this
+        # comparison is the only thing separating "your campus" from "a campus".
+        # Until that flip the collectors forced False everywhere except UIUC, so
+        # this branch — the product's central claim to international students —
+        # was unreachable at 116 of 117 schools.
         opp_school = opportunity.get("school")
         home_school = profile.get("home_school")
         if opp_school is None or not home_school or opp_school == home_school:

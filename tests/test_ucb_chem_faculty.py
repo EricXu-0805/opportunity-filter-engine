@@ -126,7 +126,7 @@ def test_normalize_produces_chem_record_with_keywords():
     assert "organic chemistry" in opp["keywords"]
     assert "catalysis" in opp["keywords"]
     # external campus, same as the other UCB collectors.
-    assert opp["on_campus"] is False
+    assert opp["on_campus"] is True
     assert opp["eligibility"]["international_friendly"] == "unknown"
 
 

@@ -160,6 +160,25 @@ class TestMatchFilterDeadline:
         today = date.today().isoformat()
         assert match_filter(_opp(deadline=today), f) is True
 
+    def test_rolling_selects_rolling_records_only(self):
+        """The value the digest cron would otherwise wave through.
+
+        'rolling' reads is_rolling, not deadline, so the int(want) fallthrough
+        below it raised ValueError and returned True — a saved search for
+        "open now" silently matched every record in the corpus, and the digest
+        emailed the user the whole database as "new matches".
+        """
+        f = {**EMPTY_FILTERS, "deadline": "rolling"}
+        assert match_filter(_opp(is_rolling=True), f) is True
+        assert match_filter(_opp(is_rolling=False), f) is False
+        assert match_filter(_opp(), f) is False  # field absent entirely
+
+    def test_rolling_ignores_the_deadline_field(self):
+        f = {**EMPTY_FILTERS, "deadline": "rolling"}
+        past = (date.today() - timedelta(days=30)).isoformat()
+        assert match_filter(_opp(is_rolling=True, deadline=past), f) is True
+        assert match_filter(_opp(is_rolling=True, deadline=None), f) is True
+
 
 class TestMatchFilterCombinations:
     def test_all_filters_must_pass_aand_logic(self):

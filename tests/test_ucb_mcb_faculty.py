@@ -148,7 +148,7 @@ def test_lite_output_shape_no_email():
     assert opp["metadata"]["confidence_score"] == 0.5
     assert opp["metadata"]["research_areas_raw"]
     assert opp["eligibility"]["majors"] == MCB_CONFIG["majors"]
-    assert opp["on_campus"] is False
+    assert opp["on_campus"] is True
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["eligibility"]["work_auth_notes"] == MCB_CONFIG["work_auth_notes"]
 

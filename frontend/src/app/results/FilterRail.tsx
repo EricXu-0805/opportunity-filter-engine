@@ -181,7 +181,7 @@ export function FilterRail({
         <FilterSelect
           value={filters.deadline}
           onChange={(v) => onFiltersChange({ ...filters, deadline: v as Filters['deadline'] })}
-          options={[['', t('results.filters.deadlineAll')], ['7', t('results.filters.deadline7')], ['14', t('results.filters.deadline14')], ['30', t('results.filters.deadline30')], ['passed', t('results.filters.deadlinePassed')]]}
+          options={[['', t('results.filters.deadlineAll')], ['rolling', t('results.filters.deadlineRolling')], ['7', t('results.filters.deadline7')], ['14', t('results.filters.deadline14')], ['30', t('results.filters.deadline30')], ['passed', t('results.filters.deadlinePassed')]]}
         />
         <FilterSelect
           value={sortBy}

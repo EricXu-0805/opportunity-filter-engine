@@ -1,13 +1,14 @@
 import { STORAGE_KEYS } from './storage-keys';
 import { readLocalStorageJSON, writeLocalStorageJSON } from './use-local-storage-json';
 import type { OwnerToken } from './identity-owner';
+import type { DeadlineFilterValue } from './types';
 
 export interface FilterPresetFilters {
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
   source: string;
   onCampus: '' | 'yes' | 'no';
-  deadline: '' | '7' | '14' | '30' | 'passed';
+  deadline: DeadlineFilterValue;
   minScore: number;
   // Optional: presets saved before the discovery-scope facet shipped lack it.
   scope?: '' | 'campus' | 'open';

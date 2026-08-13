@@ -1763,7 +1763,9 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "contact_email": email or None,
         "url": profile_url,
         "location": "Berkeley, CA",
-        "on_campus": False,
+        # A professor's lab is on their university's campus — see the same note
+        # in faculty_graph. school (ucb) carries whose campus it is.
+        "on_campus": True,
         "remote_option": "unknown",
         "opportunity_type": "research",
         "paid": paid,

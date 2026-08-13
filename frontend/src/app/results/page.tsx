@@ -807,8 +807,14 @@ function ResultsContent() {
           {filteredTotal === 0 ? (
             <EmptyState
               hasFilters={activeFilterCount > 0 || !!debouncedQuery.trim()}
+              deadlineFilterFoundNothing={
+                !!filters.deadline
+                && filters.deadline !== 'rolling'
+                && !(data.results ?? []).some((m) => !!m.opportunity.deadline)
+              }
               tab={activeTab}
               onClearFilters={handleClearAll}
+              onShowRolling={() => setFilters({ ...filters, deadline: 'rolling' })}
               t={t}
             />
           ) : (

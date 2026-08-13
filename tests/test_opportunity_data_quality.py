@@ -814,6 +814,71 @@ class TestDeactivatePastShardPass:
         )
 
 
+class TestOnCampusMeansOnACampus:
+    """`on_campus` describes the record, not the reader.
+
+    It used to mean "on the UIUC campus" — the only campus the product served —
+    and every collector added after that inherited the literal `False` rather
+    than the intent, right through 117 schools. So a Berkeley professor's lab
+    said it was not on a campus, and the ranker's F-1 "no work authorization
+    concerns" advantage (score_upside, gated on on_campus AND
+    opportunity.school == profile.home_school) was unreachable everywhere
+    except UIUC. Whose campus it is has its own field and its own comparison;
+    this one is about the place.
+
+    The contract lives here rather than in the ~40 per-department collector
+    tests that each assert their own copy of it.
+    """
+
+    # The one school-scoped source that legitimately lists off-campus employers:
+    # a UIUC Handshake posting can be at a company across the country, and the
+    # collector already decides per posting from the posting's own city.
+    SELF_COMPUTED_SOURCES = {"handshake"}
+
+    def test_no_faculty_record_claims_to_be_off_campus(self):
+        offenders = [
+            (o.get("source"), o.get("id"))
+            for o in _load_data()
+            if o.get("source_type") == "faculty_research"
+            and o.get("on_campus") is not True
+        ]
+        assert not offenders, (
+            f"{len(offenders)} faculty records say they are not on a campus; "
+            f"a professor's lab is on their university's campus. "
+            f"First 3: {offenders[:3]}"
+        )
+
+    def test_school_scoped_records_are_on_that_schools_campus(self):
+        offenders = [
+            (o.get("source"), o.get("id"))
+            for o in _load_data()
+            if o.get("school") is not None
+            and o.get("source") not in self.SELF_COMPUTED_SOURCES
+            and o.get("on_campus") is not True
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records are hosted by a school but claim to be "
+            f"off-campus. Either the collector inherited the old UIUC-only "
+            f"meaning, or the source belongs in SELF_COMPUTED_SOURCES with a "
+            f"reason. First 3: {offenders[:3]}"
+        )
+
+    def test_the_exception_is_still_earning_its_exception(self):
+        """A blanket exception that never differs is just an untested rule."""
+        values = {
+            o.get("on_campus")
+            for o in _load_data()
+            if o.get("source") in self.SELF_COMPUTED_SOURCES
+        }
+        if not values:
+            pytest.skip("no records from the self-computing sources in this corpus")
+        assert values == {True, False}, (
+            "handshake is exempted because it decides per posting; if every "
+            "one of its records now agrees, drop the exception instead of "
+            "carrying an unused special case"
+        )
+
+
 class TestSchoolAudience:
     """Multi-university Phase 1 (PR #187): every record carries top-level
     `school` (host-school slug, None = national) + `audience`

@@ -1093,7 +1093,13 @@ def _apply_match_view(
             continue
         if view.on_campus == "no" and opportunity.get("on_campus"):
             continue
-        if view.deadline:
+        if view.deadline == "rolling":
+            # Reads a different field than every other value on this facet, and
+            # is the only one most of the corpus can answer: 98.7% of records
+            # are rolling, 0.6% carry a deadline at all.
+            if opportunity.get("is_rolling") is not True:
+                continue
+        elif view.deadline:
             days = _calendar_days_until(opportunity.get("deadline"), today)
             if view.deadline == "passed":
                 if days is None or days >= 0:

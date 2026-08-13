@@ -51,7 +51,7 @@ export function readInitialFiltersFromUrl(
       onCampus: allow(searchParams.get('loc'), ['', 'yes', 'no'], ''),
       deadline: allow(
         searchParams.get('dl'),
-        ['', '7', '14', '30', 'passed'],
+        ['', 'rolling', '7', '14', '30', 'passed'],
         '',
       ),
       minScore,

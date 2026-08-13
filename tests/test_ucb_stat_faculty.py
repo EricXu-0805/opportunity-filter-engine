@@ -94,7 +94,7 @@ def test_normalize_produces_lite_berkeley_record():
     assert opp["eligibility"]["majors"] == STAT_CONFIG["majors"]
     # External campus: not on the product's UIUC campus, and work-auth /
     # international-friendliness can't be verified from the directory.
-    assert opp["on_campus"] is False
+    assert opp["on_campus"] is True
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["eligibility"]["work_auth_notes"] == STAT_CONFIG["work_auth_notes"]
 

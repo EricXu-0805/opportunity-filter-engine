@@ -6,7 +6,7 @@
 
 import { Filter, Zap, Target, TrendingUp, Star } from 'lucide-react';
 import type { ScopeValue } from '@/lib/discovery-scope';
-import type { ProfileData } from '@/lib/types';
+import type { DeadlineFilterValue, ProfileData } from '@/lib/types';
 
 export type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
 
@@ -21,7 +21,11 @@ export interface Filters {
   // un-filterable; equality-matched in use-results-filters, so a plain string.
   source: string;
   onCampus: '' | 'yes' | 'no';
-  deadline: '' | '7' | '14' | '30' | 'passed';
+  // 'rolling' exists because it is the only value this axis can offer most of
+  // the corpus: 98.7% of records are rolling and 0.6% carry a deadline at all
+  // (a professor's lab has no closing date). Without it the whole control was
+  // four ways to get an empty page.
+  deadline: DeadlineFilterValue;
   minScore: number;
   // Discovery scope (PR #187): '' = everything the backend returned,
   // 'campus' = home-school records only, 'open' = open/unknown audience.
