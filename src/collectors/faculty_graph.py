@@ -1839,12 +1839,16 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     headless browser instead of a plain GET — for schools whose profile pages
     sit behind the same bot wall as the listing (Princeton dept subdomains,
     umich), where the listing omits the email/research the profile carries.
+    ``profile_url_re`` refuses any target the pattern does not match, for
+    rosters that link to professors' own websites rather than to the
+    university's profile pages.
     """
     if not enr or not (_PROFILE_ENRICH or enr.get("always")):
         return people
     import time
     throttle = enr.get("throttle", 0.0)
     tpl = enr.get("url_template")
+    url_re = enr.get("profile_url_re")
     for p in people:
         if _source_budget_spent():
             # The un-enriched tail still ships as listing-level records; the
@@ -1857,6 +1861,15 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
                 continue
             target = tpl.format(email_local=local)
         if not target:
+            continue
+        if url_re and not re.match(url_re, target):
+            # Not every "profile link" is a profile. 18 of 65 links in UConn
+            # CSE's roster point at the professor's OWN site (derekaguiar.com,
+            # a github.io page), and the identity gate cannot catch that — a
+            # person's homepage obviously carries their name. Whatever such a
+            # page says is that person's self-description on their own domain,
+            # not the university's roster, and its markup is arbitrary. Scoping
+            # the fetch is the only guard that holds.
             continue
         want_research = not p.get("research_areas") and not p.get("keywords")
         want_email = bool(enr.get("email_selector")) and not p.get("email")
