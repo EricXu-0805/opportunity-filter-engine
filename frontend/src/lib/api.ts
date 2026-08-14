@@ -31,13 +31,44 @@ export class ApiError extends Error {
     public readonly retryable: boolean,
     public readonly requestId?: string,
     public readonly detail?: unknown,
+    /** Server-stated wait before retrying, from `Retry-After`. */
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-type RequestOptions = RequestInit & { timeoutMs?: number };
+type RequestOptions = RequestInit & {
+  timeoutMs?: number;
+  /**
+   * Extra attempts for a server-declared retryable failure. Opt-in per call,
+   * because "retryable" describes the SERVER's state, not whether repeating
+   * this particular request is safe — a cold-email send must never replay.
+   */
+  retries?: number;
+};
+
+// A server that says "retry in 5s" and a client that gives up immediately is
+// the same failure twice. Cap the honoured delay so a bad header cannot park
+// the page, and cap the total so a genuinely down backend still fails fast.
+const MAX_RETRY_DELAY_MS = 8_000;
+const DEFAULT_RETRY_DELAY_MS = 1_500;
+
+function retryDelayMs(error: ApiError, attempt: number): number {
+  if (typeof error.retryAfterMs === 'number' && error.retryAfterMs >= 0) {
+    return Math.min(error.retryAfterMs, MAX_RETRY_DELAY_MS);
+  }
+  return Math.min(DEFAULT_RETRY_DELAY_MS * 2 ** attempt, MAX_RETRY_DELAY_MS);
+}
+
+function parseRetryAfter(header: string | null | undefined): number | undefined {
+  if (!header) return undefined;
+  const seconds = Number(header.trim());
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const at = Date.parse(header);
+  return Number.isNaN(at) ? undefined : Math.max(0, at - Date.now());
+}
 
 function safeHttpMessage(status: number): string {
   if (status === 429 || status === 503) {
@@ -96,10 +127,29 @@ async function apiErrorFromResponse(res: Response): Promise<ApiError> {
     envelope.retryable === true || res.status >= 500 || res.status === 429,
     res.headers?.get?.('x-request-id') ?? undefined,
     fastApiDetail,
+    parseRetryAfter(res.headers?.get?.('retry-after')),
   );
 }
 
 async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {
+  const { retries = 0, ...rest } = options;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await requestOnce<T>(url, rest);
+    } catch (error) {
+      const retryable = error instanceof ApiError && error.retryable;
+      if (!retryable || attempt >= retries || rest.signal?.aborted) throw error;
+      await new Promise((resolve) => {
+        setTimeout(resolve, retryDelayMs(error, attempt));
+      });
+    }
+  }
+}
+
+async function requestOnce<T>(
+  url: string,
+  options: Omit<RequestOptions, 'retries'> = {},
+): Promise<T> {
   const {
     timeoutMs = 60_000,
     signal: callerSignal,
@@ -264,6 +314,12 @@ export async function getMatches(
     body: JSON.stringify(toProfileRequest(profile)),
     signal: options.signal,
     timeoutMs: 70_000,
+    // Matching computes a snapshot; it writes nothing, so replaying it is safe.
+    // The backend has always answered MATCH_BUSY / MATCH_TIMEOUT with
+    // retryable:true and Retry-After:5 — nothing consumed either, so a student
+    // whose first click landed while the single match worker was occupied saw
+    // an error page for a condition that clears in seconds.
+    retries: 2,
   });
 }
 
@@ -305,6 +361,7 @@ export async function getMatchView(
     }),
     signal: options.signal,
     timeoutMs: 70_000,
+    retries: 2,
   });
 }
 

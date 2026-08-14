@@ -560,11 +560,16 @@ class TestSnapshotPagination:
 
         monkeypatch.setattr(m_module, "rank_visible_universe", blocked_rank)
         m_module._match_snapshots.clear()
+        # Derived from the constants, not pinned to a literal: the queue depth
+        # is a tuning number (raised to 8 once an uncached snapshot was measured
+        # at 6.4s against the live corpus), while "capacity is bounded and the
+        # overflow is a retryable 503" is the contract worth keeping.
+        capacity = m_module._MATCH_MAX_WORKERS + m_module._MATCH_MAX_PENDING
         profiles = [
             m_module._normalized_profile(
-                ProfileRequest(**_profile(coursework=[f"CS {course}"]))
+                ProfileRequest(**_profile(coursework=[f"CS {101 + n}"]))
             )
-            for course in (101, 102, 103, 104)
+            for n in range(capacity + 1)
         ]
 
         async def exercise_capacity():
@@ -572,13 +577,17 @@ class TestSnapshotPagination:
                 asyncio.create_task(
                     m_module._get_or_compute_snapshot(profile, False)
                 )
-                for profile in profiles[:3]
+                for profile in profiles[:capacity]
             ]
             await asyncio.sleep(0.05)
             with pytest.raises(HTTPException) as error:
-                await m_module._get_or_compute_snapshot(profiles[3], False)
+                await m_module._get_or_compute_snapshot(profiles[capacity], False)
             assert error.value.status_code == 503
             assert error.value.detail["code"] == "MATCH_BUSY"
+            # The client is told this clears on its own — the browser now acts
+            # on it (frontend/src/lib/api.ts honours Retry-After).
+            assert error.value.detail["retryable"] is True
+            assert error.value.headers["Retry-After"] == "5"
             release.set()
             await asyncio.gather(*pending)
 
