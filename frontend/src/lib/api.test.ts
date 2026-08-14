@@ -875,3 +875,71 @@ describe('the match request built from a profile whose résumé was removed', ()
     expect(body.research_interests_text).toBe('robotics and controls');
   });
 });
+
+describe('retryable server errors are retried, not shown', () => {
+  function matchBusy(): Response {
+    return new Response(
+      JSON.stringify({
+        detail: {
+          code: 'MATCH_BUSY',
+          message: 'Matching is busy. Please retry shortly.',
+          retryable: true,
+        },
+      }),
+      { status: 503, headers: { 'retry-after': '0', 'content-type': 'application/json' } },
+    );
+  }
+
+  const emptyMatches = {
+    total: 0,
+    high_priority: 0,
+    good_match: 0,
+    reach: 0,
+    low_fit: 0,
+    results: [],
+    opportunities: [],
+  };
+
+  it('recovers a match view from the exact 503 -> 504 pair seen in production', async () => {
+    fetchMock
+      .mockResolvedValueOnce(matchBusy())
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({
+          detail: {
+            code: 'MATCH_TIMEOUT',
+            message: 'Matching took too long. Please retry.',
+            retryable: true,
+          },
+        }),
+        { status: 504, headers: { 'retry-after': '0', 'content-type': 'application/json' } },
+      ))
+      .mockResolvedValueOnce(okJson(emptyMatches));
+
+    await expect(getMatchView(makeProfile(), {
+      tab: 'all', search_query: '', paid: '', intl: '', source: '', on_campus: '',
+      deadline: '', min_score: 0, scope: '', sort_by: 'score', show_dismissed: false,
+      favorite_ids: [], dismissed_ids: [], today: '2026-08-14',
+    })).resolves.toMatchObject({ total: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('gives up and surfaces the last error rather than retrying forever', async () => {
+    fetchMock.mockResolvedValue(matchBusy());
+    await expect(getMatches(makeProfile())).rejects.toThrow(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not retry a client error, which repeating cannot fix', async () => {
+    fetchMock.mockResolvedValue(badResponse(422, JSON.stringify({ detail: 'bad' })));
+    await expect(getMatches(makeProfile())).rejects.toThrow(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves endpoints that must not replay on a single attempt', async () => {
+    // A cold email is a side effect. "Retryable" describes the server, not
+    // whether sending twice is acceptable.
+    fetchMock.mockResolvedValue(badResponse(503, ''));
+    await expect(sendMatchesEmail('a@b.edu', [])).rejects.toThrow(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

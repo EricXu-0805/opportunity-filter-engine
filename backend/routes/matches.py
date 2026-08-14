@@ -454,7 +454,13 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
 _SNAPSHOT_TTL_SECONDS = int(os.environ.get("OFE_MATCH_SNAPSHOT_TTL", "600"))
 _SNAPSHOT_MAX_ENTRIES = int(os.environ.get("OFE_MATCH_SNAPSHOT_MAX", "8"))
 _MATCH_MAX_WORKERS = 1
-_MATCH_MAX_PENDING = 2
+# Waiting costs a connection; computing costs ~300MB of ranked corpus, so the
+# worker count stays at one and the QUEUE is what absorbs concurrency. Measured
+# 2026-08-14 against the live 132k-record corpus: an uncached snapshot takes
+# 6.4s. Eight waiters therefore drain in ~51s, inside the 60s request timeout,
+# where the previous depth of two turned the third simultaneous visitor into an
+# instant 503 for a condition that clears in seconds.
+_MATCH_MAX_PENDING = 8
 try:
     _match_timeout_config = float(os.environ.get("OFE_MATCH_TIMEOUT_SECONDS", "60"))
 except (TypeError, ValueError):
