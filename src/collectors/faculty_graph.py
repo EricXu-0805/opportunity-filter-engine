@@ -1523,6 +1523,32 @@ _LABEL_SECTION_WORDS = frozenset({
     "profile", "about", "resources", "links", "media", "affiliations",
 })
 
+# Words that only ever qualify a section heading. "Selected Publications" is
+# the next heading down the page, not a research area — the single-word check
+# let it through and it shipped as one professor's keyword at Arizona
+# (1 of 4,032 values harvested 2026-08-14, but it scales with every school
+# this pattern is pointed at next).
+_LABEL_HEADING_QUALIFIERS = frozenset({
+    "selected", "recent", "current", "featured", "representative", "key",
+    "notable", "sample", "my", "and", "&",
+})
+
+
+def _is_section_heading(body: str) -> bool:
+    """True when the block is the page's next heading rather than content.
+
+    Bounded to four words so a real area list ("Algorithms, Cybersecurity,
+    Privacy") can never be mistaken for one, and every word must be a section
+    word or a qualifier — "Education Policy" stays content because "policy"
+    is neither.
+    """
+    words = re.findall(r"[a-z]+", body.lower())
+    if not words or len(words) > 4:
+        return False
+    return any(w in _LABEL_SECTION_WORDS for w in words) and all(
+        w in _LABEL_SECTION_WORDS or w in _LABEL_HEADING_QUALIFIERS for w in words
+    )
+
 
 _NAV_ROLES = {"menu", "menuitem", "menubar", "navigation"}
 
@@ -1599,7 +1625,7 @@ def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
             items = _clean_selector_items(block, sub)
             if len(items) >= 2:
                 return (items, "")
-        if body.lower().strip(" .:") in _LABEL_SECTION_WORDS:
+        if _is_section_heading(body):
             continue  # a later label on the same page may still be the real one
         return ([], body)
     return ([], "")

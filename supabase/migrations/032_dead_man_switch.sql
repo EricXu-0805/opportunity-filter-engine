@@ -221,7 +221,7 @@ VALUES
    'Daily corpus refresh (06:00 UTC). If this stops, every opportunity on the site quietly ages out.',
    86400, 21600, 'urgent'),
   ('ops_scan',
-   'Daily operational detector (07:30 UTC). If this stops, collector failures and data drift stop being filed.',
+   'Daily operational detector (11:00 UTC). If this stops, collector failures and data drift stop being filed.',
    86400, 21600, 'high'),
   ('daily_reminders',
    'Daily follow-up reminder send (23:00 UTC). If this stops, users silently stop being nudged about outreach they scheduled.',

@@ -3246,3 +3246,21 @@ class TestResearchByLabel:
         })
         assert out[0]["keywords"] == ["Nuclear Physics", "Astrophysics"]
         assert out[0]["research_areas"] == ""
+    def test_the_next_heading_down_the_page_is_not_a_research_area(self):
+        """Live at economics.uconn.edu/person/talia-bar/: the block after the
+        label is the page's own "Selected Publications" heading. The old
+        single-word guard let it through and it shipped as an Arizona
+        professor's keyword."""
+        assert self._by_label(
+            "<h1>Talia Bar</h1>"
+            "<h3>Research Interests</h3><div><h3>Selected Publications</h3></div>"
+        ) == ([], "")
+
+    def test_a_real_area_that_contains_a_section_word_survives(self):
+        """"Education policy" is research; "Education" alone is a heading. The
+        guard must not be a word blacklist."""
+        assert self._by_label(
+            "<h1>Ada Reyes</h1>"
+            "<h3>Research Interests</h3><p>Education policy</p>"
+        ) == ([], "Education policy")
+

@@ -200,6 +200,17 @@ def _rpcs(calls, fn: str) -> list[dict]:
     return [c["json"] for c in calls if c["method"] == "POST" and c["url"].endswith(f"/rpc/{fn}")]
 
 
+def _incident_for(calls, dedup_key: str) -> dict:
+    """The one recorded incident with this dedup_key.
+
+    Tests used to unpack the whole list, which meant every new detector broke
+    every unrelated scan assertion — twice in one day. Name what you mean.
+    """
+    (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                  if p["p_dedup_key"] == dedup_key)
+    return payload
+
+
 def _events(calls) -> list[dict]:
     rows: list[dict] = []
     for c in calls:
@@ -731,14 +742,12 @@ class TestOpsScanCollectors:
 
         r = _run_scan()
         assert r.status_code == 200
-        (payload,) = _rpcs(calls, "record_ops_incident")
+        payload = _incident_for(calls, "collector_failure:uiuc_faculty")
         assert payload["p_kind"] == "collector_failure"
-        assert payload["p_dedup_key"] == "collector_failure:uiuc_faculty"
         assert payload["p_scope"] == "uiuc_faculty"
         assert payload["p_failure_state"] == "blocked"
         assert payload["p_detail"]["error"] == "403 Forbidden (WAF)"
         assert payload["p_detail"]["run_timestamp"] == "2026-08-07T03:00:00+00:00"
-        assert r.json()["opened"] == 1
 
     def test_failure_state_classification_and_truncation(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
@@ -831,11 +840,9 @@ class TestOpsScanReleaseDegradation:
 
         r = _run_scan()
         assert r.status_code == 200
-        (payload,) = _rpcs(calls, "record_ops_incident")
+        payload = _incident_for(
+            calls, "collector_failure:degraded:dark_crawl:campus_graph:umich")
         assert payload["p_kind"] == "collector_failure"
-        assert payload["p_dedup_key"] == (
-            "collector_failure:degraded:dark_crawl:campus_graph:umich"
-        )
         assert payload["p_scope"] == "campus_graph:umich"
         assert payload["p_priority"] == "high"
         assert payload["p_detail"]["published"] is True
@@ -959,9 +966,8 @@ class TestOpsScanDrift:
         )
 
         r = _run_scan()
-        (payload,) = _rpcs(calls, "record_ops_incident")
+        payload = _incident_for(calls, "data_drift:purdue:fetched")
         assert payload["p_kind"] == "data_drift"
-        assert payload["p_dedup_key"] == "data_drift:purdue:fetched"
         assert payload["p_priority"] == "high"
         detail = payload["p_detail"]
         assert detail["metric"] == "fetched"
@@ -1401,6 +1407,71 @@ _POSTED_NAME_RE = re.compile(r'\\?"name\\?"\s*:\s*\\?"([a-z0-9_]+)\\?"')
 
 def _posted_names(steps: list[dict]) -> list[str]:
     return _POSTED_NAME_RE.findall(" ".join(str(s.get("run", "")) for s in steps))
+
+
+class TestTheScanKnowsHowOldItsEvidenceIs:
+    """The 07:30 scan read yesterday's snapshot for weeks and reported clean.
+
+    The refresh publishes through an auto-merged PR, so the artifact reaches
+    main hours after the run starts; a detector reading its own checkout was
+    always judging the previous day. Retiming the cron narrows the window.
+    Only this makes the miss visible when the retiming is wrong again.
+    """
+
+    STALE_KEY = "collector_failure:ops_scan:stale_snapshot"
+
+    def _scan_with_snapshot_age(self, monkeypatch, tmp_path, hours, calls, open_rows=None):
+        _scan_env(monkeypatch)
+        _install_supabase(monkeypatch, open_rows=open_rows or [], calls=calls)
+        ts = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": ts,
+            "sources": {"uiuc_faculty": {"status": "ok", "fetched": 10}},
+        })
+        return _run_scan()
+
+    def test_a_days_old_snapshot_is_fine(self, monkeypatch, tmp_path):
+        calls: list = []
+        r = self._scan_with_snapshot_age(monkeypatch, tmp_path, 5, calls)
+        det = r.json()["detectors"]["collector_failure"]
+        assert det["snapshot_stale"] is False
+        assert 4.5 <= det["snapshot_age_hours"] <= 5.5
+        assert [p for p in _rpcs(calls, "record_ops_incident")
+                if p["p_dedup_key"] == self.STALE_KEY] == []
+
+    def test_a_two_day_old_snapshot_opens_an_incident(self, monkeypatch, tmp_path):
+        calls: list = []
+        r = self._scan_with_snapshot_age(monkeypatch, tmp_path, 48, calls)
+        assert r.json()["detectors"]["collector_failure"]["snapshot_stale"] is True
+        payload = _incident_for(calls, self.STALE_KEY)
+        assert payload["p_priority"] == "high"
+        assert payload["p_scope"] == "ops_scan"
+        assert payload["p_detail"]["snapshot_age_hours"] >= 47
+
+    def test_a_fresh_snapshot_closes_the_open_one(self, monkeypatch, tmp_path):
+        """A timestamp is complete evidence, so this recovery auto-resolves."""
+        calls: list = []
+        self._scan_with_snapshot_age(monkeypatch, tmp_path, 2, calls,
+                                     open_rows=[{"dedup_key": self.STALE_KEY}])
+        (payload,) = (p for p in _rpcs(calls, "record_ops_recovery")
+                      if p["p_dedup_key"] == self.STALE_KEY)
+        assert payload["p_auto_resolve"] is True
+
+    def test_an_unparseable_timestamp_reports_unknown_rather_than_fine(
+            self, monkeypatch, tmp_path):
+        """Most fixtures carry timestamp "t". Unknown age must not read as
+        fresh, and must not invent an incident either."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t", "sources": {"x": {"status": "ok", "fetched": 1}},
+        })
+        det = _run_scan().json()["detectors"]["collector_failure"]
+        assert det["snapshot_stale"] is None
+        assert det["snapshot_age_hours"] is None
+        assert [p for p in _rpcs(calls, "record_ops_incident")
+                if p["p_dedup_key"] == self.STALE_KEY] == []
 
 
 class TestTheRegistryMatchesTheSchedulers:

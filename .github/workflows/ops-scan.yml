@@ -7,14 +7,25 @@ name: ops-scan
 # collectors failed, and only notification_failure rows — written inline by
 # the reminders cron — ever appeared.
 #
-# 07:30 UTC: after the 06:00 UTC data refresh has had time to publish its
-# collector_status.json, so the scan reads that run's evidence rather than
-# yesterday's. The refresh's own alert email covers a hard crash; this covers
-# the quieter cases (a source that reported an error, a fetched count that
-# collapsed) that no email is sent for.
+# The refresh's own alert email covers a hard crash; this covers the quieter
+# cases (a source that reported an error, a fetched count that collapsed) that
+# no email is sent for.
+#
+# 11:00 UTC, not 07:30. The old time assumed the 06:00 refresh had "had time
+# to publish its collector_status.json" by then, and that stopped being true
+# when publication moved to an auto-merged PR: the scan reads the artifact
+# from its own checkout of main, and the artifact only lands there after the
+# scrape (up to 3h) plus the PR's full CI (~20 min). Measured 2026-08-14 —
+# the 07:30 scan read YESTERDAY's snapshot (13 sources) and opened one
+# incident; a 12:19 run over the same day's real snapshot (51 sources) opened
+# ten, every degraded jhu, princeton and stanford source among them.
+#
+# 11:00 is a floor, not a guarantee, so the scan also measures the snapshot's
+# age and files an incident when it is judging stale evidence. Retiming alone
+# would just move the day this is wrong again.
 on:
   schedule:
-    - cron: '30 7 * * *'
+    - cron: '0 11 * * *'
   workflow_dispatch:
 
 # The scan upserts by dedup_key and is idempotent, but two concurrent runs
