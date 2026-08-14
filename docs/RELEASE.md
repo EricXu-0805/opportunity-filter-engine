@@ -117,10 +117,20 @@ never queued a deploy, because a manually dispatched `refresh` was still
 `in_progress` against that commit. `Deploys` showed `0656768` Live and no
 pending build.
 
-So during every daily refresh window (06:00 UTC, up to five hours) a merge to
-main does not reach the backend, and if that refresh **fails**, it never does
-until someone re-runs it green. Vercel is unaffected; it deploys fails-open,
-which is how the front and back ends drift apart.
+The block is **per commit, and a later clean commit skips over it**. Measured
+the same afternoon: `c549ffb` stayed undeployed with its `refresh` check still
+running, and when `6c57d30` merged behind it with only the four CI checks,
+Render deployed that instead — carrying `c549ffb`'s code with it. `c549ffb`
+never got a deploy of its own and never needed one.
+
+So the exposure is narrower than "merges during the refresh window are lost",
+and it is worse where it lands: **the last merge before a quiet period.** If
+nothing merges after it, nothing carries it, and it waits for the refresh to
+finish — or forever, if the refresh fails. That is precisely the #733 shape:
+the four-day freeze happened because nothing merged behind the stuck commit.
+
+Vercel is unaffected; it deploys fails-open, which is how the front and back
+ends drift apart in the meantime.
 
 Check before concluding a deploy is stuck:
 
