@@ -849,6 +849,23 @@ class _Recorder:
 _SWEEP_HEARTBEAT = "ops_dead_man_sweep"
 
 
+# PostgREST's two "that object is not in the schema cache" codes: PGRST202
+# for an undefined routine, PGRST205 for an undefined table or view. Both mean
+# migration 032 has not been applied here. Matching the codes rather than the
+# bare 404 keeps a genuine not-found loud.
+_SCHEMA_MISSING_CODES = frozenset({"PGRST202", "PGRST205"})
+
+
+def _schema_object_missing(resp) -> bool:
+    if getattr(resp, "status_code", None) != 404:
+        return False
+    try:
+        body = resp.json()
+    except Exception:
+        return False
+    return isinstance(body, dict) and str(body.get("code", "")).upper() in _SCHEMA_MISSING_CODES
+
+
 def _parse_ts(value: object) -> datetime | None:
     """Parse a PostgREST timestamptz. Returns None rather than raising."""
     if not isinstance(value, str) or not value.strip():
@@ -872,7 +889,13 @@ async def _scan_dead_man(rec: _Recorder, summary: dict, client, base: str, heade
             },
             headers=headers,
         )
-        rows = resp.json() if resp.status_code < 400 else None
+        # The view being absent is the same fact as the row being absent —
+        # migration 032 has not reached this database — so it takes the same
+        # path below rather than a quiet skip. The check-in route's one
+        # tolerant answer is only defensible because this fires.
+        rows = [] if _schema_object_missing(resp) else (
+            resp.json() if resp.status_code < 400 else None
+        )
     except Exception as e:
         summary["skipped"].append({
             "detector": "dead_man",
@@ -1471,6 +1494,15 @@ async def cron_heartbeat(body: HeartbeatIn, authorization: str | None = Header(d
     * A storage failure is 502, not a swallowed warning. If the check-in did
       not land, the caller has to see it now; the alternative is a workflow
       that reports success while the sweep counts it as dead in six hours.
+
+    And exactly one deliberate quiet, which is not the same thing: if
+    migration 032 has not been applied yet, the RPC does not exist and this
+    returns 200 ``not_installed``. That state is real and it is already
+    reported — ``_scan_dead_man`` files an urgent incident for it every day,
+    and it is a fact about the monitor, not about the job being monitored.
+    Failing here on top of that adds no information and costs a three-hour
+    data refresh over a check-in. Anything else the storage says is still a
+    502.
     """
     _verify_cron_secret(authorization)
     name = _clean_label(body.name, 120)
@@ -1491,6 +1523,15 @@ async def cron_heartbeat(body: HeartbeatIn, authorization: str | None = Header(d
                 status_code=502,
                 detail=f"heartbeat storage unreachable ({type(e).__name__})",
             ) from e
+        if _schema_object_missing(resp):
+            logger.warning("heartbeat: record_ops_heartbeat absent (migration 032 unapplied)")
+            return {
+                "status": "not_installed",
+                "heartbeat": name,
+                "detail": "migration 032 has not been applied to this database; "
+                          "ops-scan reports this as an urgent incident",
+                "checked_at": _now_iso(),
+            }
         if resp.status_code >= 400:
             logger.error("heartbeat: storage rejected %s (%s)", name, resp.status_code)
             raise HTTPException(
