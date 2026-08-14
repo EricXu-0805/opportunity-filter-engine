@@ -89,15 +89,23 @@ _PAGINATE = {"param": "page", "start": 1, "max": 16}
 _EMAIL_ENRICH = {
     "email_selector": "span.spamspan, a[data-mail-to], a[href^='mailto:']",
     "email_drop": r"^[^@]*$|department@|info@",
+    # Research lives on the profile in one of three clean atomic-chip shapes,
+    # combined so every family gets it: the /research/research-areas/ taxonomy
+    # links (Engineering/CICS/person-theme colleges), the teaser subsites'
+    # "Research Areas" tag-cloud, and the "RESEARCH INTERESTS/AREAS" list-items.
+    # Each yields nothing where absent (safe); the Sociology delimited-<p> line
+    # is deliberately NOT included (prose-leak risk on a shared enrich).
+    "research_items_selector": (
+        "a[href*='/research/research-areas/'], "
+        "h2:-soup-contains('Research Areas') + div.link-list div.tag, "
+        "h2:-soup-contains('RESEARCH INTERESTS') + ul.list-items li, "
+        "h2:-soup-contains('RESEARCH AREAS') + ul.list-items li"),
     "throttle": 0.2,
 }
 
-# Clean research-area taxonomy chips on Engineering and CICS profile pages
-# (verified: page-wide selector yields ONLY the person's areas, no nav links).
-_AREA_CHIP_ENRICH = {
-    **_EMAIL_ENRICH,
-    "research_items_selector": "a[href*='/research/research-areas/']",
-}
+# Back-compat alias — the research chips now live on the shared enrich, so the
+# Engineering/CICS "area chip" enrich is just the base enrich.
+_AREA_CHIP_ENRICH = _EMAIL_ENRICH
 
 
 def _person(short: str, name: str, majors: list[str], college: str,

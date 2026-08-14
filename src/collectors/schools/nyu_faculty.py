@@ -161,7 +161,15 @@ def _tandon(short: str, name: str, majors: list[str], slug: str) -> dict:
     url = f"{_TANDON_BASE}/{slug}/people"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
             "scrape": {"url": url, "selectors": _TANDON_SELECTORS,
-                       "ladder_filter": _LADDER}}
+                       "ladder_filter": _LADDER,
+                       # Each Tandon profile has a "field-research-interests"
+                       # Drupal field of atomic <div class=field__item> areas;
+                       # env-gated research-only per-profile pass.
+                       "profile_enrich": {
+                           "research_items_selector":
+                               "div.field--name-field-research-interests .field__item",
+                           "throttle": 0.2,
+                       }}}
 
 
 # ---- Arts & Science modern "faculty directory bio" component ---------------
@@ -247,6 +255,9 @@ _AS_BOOK_SEL = {
     "link": "a[href*='/faculty/'], a[href*='/directory']",
     "title": "div.book-box__author",
     "email": "a[href^='mailto:']",
+    # The book-box card carries a "Research Interests:" delimited line, like the
+    # columns families — reuse the shared regex (zero-fetch listing win).
+    "research_re_text": _AS_RESEARCH_RE,
 }
 
 # Family 2 — "columns" grid with an <h2 class=theme__head--medium> name and an
@@ -476,7 +487,11 @@ SCHOOL: dict = {
          "scrape": {"url": "https://www.stern.nyu.edu/faculty",
                     "selectors": _STERN_SEL,
                     "paginate": {"param": "page", "start": 1, "max": 26},
-                    "ladder_filter": _LADDER}},
+                    "ladder_filter": _LADDER,
+                    # Profile "Research Interests" section is a <ul><li> chip list.
+                    "profile_enrich": {
+                        "research_items_selector": "#section-research-interests li",
+                        "throttle": 0.2}}},
         # ---- Wagner Graduate School of Public Service ---------------------
         {"short": "WAG",
          "name": "Robert F. Wagner Graduate School of Public Service",
@@ -488,7 +503,12 @@ SCHOOL: dict = {
                     "paginate": {"param": "page", "start": 1, "max": 15},
                     "ladder_filter": {"require": _KEEP,
                                       "drop": r"emerit|adjunct|visiting"},
-                    "profile_enrich": _AS_ENRICH}},
+                    # Profile carries a "faculty-expertise" chip field; rides the
+                    # email pass.
+                    "profile_enrich": {
+                        **_AS_ENRICH,
+                        "research_items_selector":
+                            "div.field--name-field-faculty-expertise .field__item"}}},
         # ---- Silver School of Social Work (core faculty; search-gated) ----
         {"short": "SILVER", "name": "Silver School of Social Work",
          "majors": ["Social Work"],
