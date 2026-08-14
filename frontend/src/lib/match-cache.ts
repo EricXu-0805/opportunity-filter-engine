@@ -108,6 +108,7 @@ interface MatchCacheShape {
   view_counts?: MatchesResponse['view_counts'];
   source_facets?: MatchesResponse['source_facets'];
   scope_available?: boolean;
+  deadline_facets?: MatchesResponse['deadline_facets'];
   view_id?: string;
 }
 
@@ -290,6 +291,7 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       view_counts: data.view_counts,
       source_facets: data.source_facets,
       scope_available: data.scope_available,
+      deadline_facets: data.deadline_facets,
       view_id: data.view_id,
     };
     const wrote = writeUserScopedRaw(KEY, JSON.stringify(payload), token);
@@ -343,6 +345,7 @@ export function readMatchCache(hash: string, semantic: boolean): MatchesResponse
     view_counts: c.view_counts,
     source_facets: c.source_facets,
     scope_available: c.scope_available,
+    deadline_facets: c.deadline_facets,
     view_id: c.view_id,
   };
 }

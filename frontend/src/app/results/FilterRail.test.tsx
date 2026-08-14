@@ -17,6 +17,7 @@ function renderRail(overrides: {
   showDismissed?: boolean;
   dismissedCount?: number;
   sourceOptions?: Array<[string, string]>;
+  deadlineOptions?: Array<[string, string]>;
   scopeOptions?: Array<[string, string]>;
   includeCrossSchool?: boolean;
 } = {}) {
@@ -35,6 +36,7 @@ function renderRail(overrides: {
       dismissedCount={overrides.dismissedCount ?? 0}
       activeFilterCount={overrides.activeFilterCount ?? 0}
       sourceOptions={overrides.sourceOptions ?? [['', 'All sources'], ['uiuc_faculty', 'UIUC Faculty']]}
+      deadlineOptions={overrides.deadlineOptions ?? [['', 'Any deadline'], ['rolling', 'Rolling']]}
       scopeOptions={overrides.scopeOptions ?? []}
       includeCrossSchool={overrides.includeCrossSchool ?? false}
       crossSchoolDisabled={false}

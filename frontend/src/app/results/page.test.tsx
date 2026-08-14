@@ -64,8 +64,14 @@ const TEST_OPPORTUNITY = vi.hoisted(() => ({
   metadata: { is_active: true, confidence_score: 1 },
 }));
 
+// Overridden per-test by the deadline-facet block below; the default response
+// carries no deadline_facets, which is also the shape an older backend sends.
+const mockGetMatchView = vi.fn();
 vi.mock('@/lib/api', () => ({
-  getMatchView: vi.fn().mockResolvedValue({
+  getMatchView: (...args: unknown[]) => mockGetMatchView(...args),
+}));
+
+const MATCH_VIEW_RESPONSE = {
     total: 1, high_priority: 1, good_match: 0, reach: 0, low_fit: 0,
     results: [{
       opportunity_id: TEST_OPPORTUNITY.id,
@@ -79,8 +85,7 @@ vi.mock('@/lib/api', () => ({
     view_counts: { all: 1, high_priority: 1, good_match: 0, reach: 0, starred: 0 },
     view_id: 'view-wiring-1',
     result_set_id: 'set-wiring-1',
-  }),
-}));
+};
 
 vi.mock('@/lib/saved-searches', () => ({
   listSavedSearchDigests: vi.fn().mockResolvedValue(null),
@@ -182,6 +187,8 @@ beforeEach(() => {
   lastMatchListProps = null;
   mockUseResultsInteractions.mockReset();
   mockUseResultsInteractions.mockReturnValue(baseInteractions());
+  mockGetMatchView.mockReset();
+  mockGetMatchView.mockResolvedValue(MATCH_VIEW_RESPONSE);
 });
 
 describe('ResultsPage -> MatchList: ownerReady/identityGeneration/ownerScopeKey caller-wiring (Tail4)', () => {
@@ -226,5 +233,50 @@ describe('ResultsPage -> MatchList: ownerReady/identityGeneration/ownerScopeKey 
     await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
 
     expect(lastMatchListProps?.ownerReady).toBe(false);
+  });
+});
+
+/*
+ * The deadline facet is the one control on this rail that could only ever
+ * return an empty page. Measured on the published corpus 2026-08-14: 789 of
+ * 132,524 records carry a deadline and 786 of those are already past, so
+ * "within 7 / 14 / 30 days" matched exactly zero records each. The chips now
+ * render from server-side counts, and this covers the hop page.tsx owns —
+ * response field in, option list out.
+ */
+describe('ResultsPage -> FilterRail: deadline chips render on evidence', () => {
+  async function deadlineValues() {
+    render(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+    const selects = screen.getAllByRole('combobox');
+    const rail = selects.find((element) =>
+      Array.from(element.querySelectorAll('option')).some(
+        (option) => option.getAttribute('value') === 'rolling',
+      ),
+    );
+    expect(rail).toBeDefined();
+    return Array.from(rail!.querySelectorAll('option')).map((o) => o.getAttribute('value'));
+  }
+
+  it('offers only the two values the corpus can answer when nothing has a live date', async () => {
+    mockGetMatchView.mockResolvedValue({
+      ...MATCH_VIEW_RESPONSE,
+      deadline_facets: { '7': 0, '14': 0, '30': 0, passed: 0 },
+    });
+    expect(await deadlineValues()).toEqual(['', 'rolling']);
+  });
+
+  it('offers exactly the windows the server counted rows for', async () => {
+    mockGetMatchView.mockResolvedValue({
+      ...MATCH_VIEW_RESPONSE,
+      deadline_facets: { '7': 0, '14': 0, '30': 2, passed: 786 },
+    });
+    expect(await deadlineValues()).toEqual(['', 'rolling', '30', 'passed']);
+  });
+
+  it('hides the chips when the backend sends no counts at all', async () => {
+    // An older deployment, or a cache entry minted before the field existed.
+    // No evidence is not evidence of rows.
+    expect(await deadlineValues()).toEqual(['', 'rolling']);
   });
 });

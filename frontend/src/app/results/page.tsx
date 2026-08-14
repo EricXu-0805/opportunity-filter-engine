@@ -296,6 +296,32 @@ function ResultsContent() {
     ),
   ], [data?.source_facets, t]);
 
+  // Same rule as sourceOptions, applied to the one facet that was ignoring it.
+  // "Rolling" reads is_rolling and answers for 98.7% of the corpus, so it is
+  // always offered; every other value reads `deadline`, which 786 of 789
+  // records had already let expire — so on 2026-08-14 the three day-windows
+  // returned zero rows each and "passed" returned 786. Render each chip only
+  // when the server counted something it would return.
+  const deadlineOptions = useMemo<Array<[string, string]>>(() => {
+    const facets = data?.deadline_facets ?? {};
+    const label = (value: string) =>
+      t(`results.filters.deadline${value === 'passed' ? 'Passed' : value}`);
+    const options: Array<[string, string]> = [
+      ['', t('results.filters.deadlineAll')],
+      ['rolling', t('results.filters.deadlineRolling')],
+      ...(['7', '14', '30', 'passed'] as const)
+        .filter((value) => (facets[value] ?? 0) > 0)
+        .map((value) => [value, label(value)] as [string, string]),
+    ];
+    // A value can outlive its rows — shared URLs and saved presets both carry
+    // one. Dropping it from the list would leave the select showing a filter
+    // the person cannot see or clear, and an empty page with no explanation.
+    if (filters.deadline && !options.some(([value]) => value === filters.deadline)) {
+      options.push([filters.deadline, label(filters.deadline)]);
+    }
+    return options;
+  }, [data?.deadline_facets, filters.deadline, t]);
+
   const homeSchoolEntry = bySlug(homeSchool);
   const hasCampusCoverage = homeSchoolEntry?.coverage.campusOpportunities !== 'pending';
   const scopeOptions = useMemo<Array<[string, string]>>(() => {
@@ -763,6 +789,7 @@ function ResultsContent() {
             dismissedCount={dismissedCount}
             activeFilterCount={activeFilterCount}
             sourceOptions={sourceOptions}
+            deadlineOptions={deadlineOptions}
             scopeOptions={scopeOptions}
             includeCrossSchool={includeCrossSchool}
             crossSchoolDisabled={!view || crossSchoolBusy}
