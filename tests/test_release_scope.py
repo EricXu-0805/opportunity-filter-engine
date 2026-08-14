@@ -66,7 +66,11 @@ ACCEPTED_FEATURES = frozenset({
     "ask_ai",
     "professor_signals",
 })
-UNACCEPTED_FEATURES = frozenset({"payments"})
+UNACCEPTED_FEATURES = frozenset({
+    "payments",
+    "microsoft_school_auth",
+    "concierge_pay_qr",
+})
 
 
 def test_the_release_table_is_exactly_what_was_accepted():
@@ -109,6 +113,85 @@ def test_an_accepted_feature_still_has_its_runtime_kill_switch(monkeypatch):
     assert rs.feature_enabled("payments") is False
     monkeypatch.setenv("OFE_PAYMENTS_ENABLED", "1")
     assert rs.feature_enabled("payments") is True
+
+
+class TestUnacceptedSignInDoorsAreRefusedServerSide:
+    """Hiding the Microsoft button never closed the Microsoft door.
+
+    The azure provider is enabled on the Supabase project and reachable at
+    /auth/v1/authorize?provider=azure without touching this app's UI — one real
+    third-party account was created that way. So the flag has to be enforced
+    where the session is spent, not only where the button is drawn.
+    """
+
+    def test_a_session_minted_through_an_unaccepted_provider_is_refused(self):
+        from backend.lib.release_scope import session_provider_accepted
+
+        assert session_provider_accepted(
+            {"id": "u1", "app_metadata": {"provider": "azure"}}
+        ) is False
+
+    def test_accepted_providers_and_shapes_without_one_still_pass(self):
+        from backend.lib.release_scope import session_provider_accepted
+
+        for user in (
+            {"id": "u1", "app_metadata": {"provider": "google"}},
+            {"id": "u1", "app_metadata": {"provider": "email"}},
+            {"id": "u1", "app_metadata": {}},
+            {"id": "u1"},
+        ):
+            assert session_provider_accepted(user) is True
+
+    def test_the_refusal_follows_the_flag_rather_than_the_provider_name(
+        self, monkeypatch,
+    ):
+        """Accepting microsoft_school_auth is the only thing that opens it."""
+        from types import MappingProxyType
+
+        from backend.lib import release_scope as rs
+
+        monkeypatch.setattr(
+            rs, "RELEASE_SCOPE",
+            MappingProxyType({**rs.RELEASE_SCOPE, "microsoft_school_auth": True}),
+        )
+        assert rs.session_provider_accepted(
+            {"id": "u1", "app_metadata": {"provider": "azure"}}
+        ) is True
+
+
+class TestTheQrChannelIsGatedWhereOrdersAreMinted:
+    """concierge_pay_qr has its own prerequisite: a confirmed receiving account.
+
+    Switching `payments` on first must not start minting manual orders against
+    an account nobody has confirmed, so the gate lives on the channel and not
+    only on the route.
+    """
+
+    def test_manual_orders_are_refused_while_the_qr_is_unaccepted(self):
+        import pytest as _pytest
+
+        from backend.lib import payments
+
+        with _pytest.raises(NotImplementedError, match="concierge_pay_qr"):
+            payments.create_order(
+                "manual", device_id="d", package="single_email", amount_cents=990,
+            )
+
+    def test_accepting_the_qr_lets_the_manual_channel_work(self, monkeypatch):
+        from types import MappingProxyType
+
+        from backend.lib import payments
+        from backend.lib import release_scope as rs
+
+        monkeypatch.setattr(
+            rs, "RELEASE_SCOPE",
+            MappingProxyType({**rs.RELEASE_SCOPE, "concierge_pay_qr": True}),
+        )
+        row = payments.create_order(
+            "manual", device_id="d", package="single_email", amount_cents=990,
+        )
+        assert row["status"] == "pending"
+        assert row["channel"] == "manual"
 
 
 def test_cross_school_profile_flag_fails_closed_at_match_boundary(scope_closed):

@@ -13,12 +13,15 @@ import os
 
 import httpx
 
+from backend.lib.release_scope import session_provider_accepted
+
 
 async def authenticated_uid(authorization: str | None) -> str | None:
     """The caller's Supabase uid, or ``None`` for anything but a signed-in account.
 
     ``None`` covers: missing/malformed header, expired or invalid token,
-    Supabase env unconfigured, GoTrue unreachable, and — critically —
+    Supabase env unconfigured, GoTrue unreachable, a session minted through a
+    sign-in provider this release has not accepted, and — critically —
     ANONYMOUS sessions: every guest holds a real token from
     ``signInAnonymously``, so ``is_anonymous`` is what separates a guest from
     a signed-in account.
@@ -47,6 +50,8 @@ async def authenticated_uid(authorization: str | None) -> str | None:
     except ValueError:
         return None
     if not isinstance(user, dict) or user.get("is_anonymous"):
+        return None
+    if not session_provider_accepted(user):
         return None
     uid = user.get("id")
     return str(uid) if uid else None

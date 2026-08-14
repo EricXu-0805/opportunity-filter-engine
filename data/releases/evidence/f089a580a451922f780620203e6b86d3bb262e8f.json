@@ -1,0 +1,72 @@
+{
+  "_readme": [
+    "Operator-gathered evidence for one frozen release SHA, in the shape",
+    "scripts/release_gate.py consumes: one key per gate, each carrying the",
+    "release_sha it is bound to. Keys are ABSENT for gates nobody has proven —",
+    "an absent key reads as UNVERIFIED, which blocks. Never add a key with",
+    "status PASS to make the verdict nicer; the gate's whole value is that it",
+    "reports what was actually checked.",
+    "",
+    "This file necessarily lands in a commit LATER than the SHA it describes:",
+    "a deploy cannot be observed before it exists. The release-gate workflow",
+    "therefore reads it from the default branch while its worktree stays at the",
+    "release SHA, so check_worktree_clean still compares like for like.",
+    "",
+    "Gathered 2026-08-14 by Guoyi (Eric) Xu's operator session. Gates with no",
+    "key below and why, so the omissions are legible rather than silent:",
+    "  restore   — never drilled. Supabase 'Restore to new project' exists and",
+    "              is one click, but it provisions a NEW billed project, so it",
+    "              waits on the owner. docs/DISASTER_RECOVERY.md §3.",
+    "  dead_man  — nothing watches whether the schedulers themselves stopped.",
+    "              GitHub Actions cannot be its own dead man.",
+    "  scheduler — 4 of 5 scheduled workflows have run green on schedule for 4+",
+    "              consecutive days, but refresh-data's last SCHEDULED run",
+    "              (2026-08-13 06:26 UTC) still failed; only the 19:26 manual",
+    "              dispatch succeeded. The 2026-08-14 06:00 UTC run is the proof.",
+    "  promotion — representative flows not yet walked by an operator on this SHA.",
+    "  rollback  — the target is identified and SHA-verifiable (Render offers",
+    "              Rollback on f5fe398; Vercel marks its previous production",
+    "              deploys isRollbackCandidate), but no rollback was performed,",
+    "              and an untested rollback is an assumption."
+  ],
+
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "f089a580a451922f780620203e6b86d3bb262e8f",
+    "detail": "GET /api/ready -> 200 {\"ready\":true,\"reasons\":[],\"warnings\":[]} at 2026-08-14T00:03:51Z, release_sha f089a580, api_version 2.7.0. All five readiness checks pass; the same endpoint returned 404 before #736 and {\"ready\":false,\"reasons\":[\"corpus_stale\"]} before #738/#739 landed, so it is discriminating rather than always-green."
+  },
+
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "f089a580a451922f780620203e6b86d3bb262e8f",
+    "detail": "Render web service srv-d7dle2l8nd3s73dtmv5g (plan Pro, Virginia), branch main, commit f089a58, status Live, auto-deploy finished 2026-08-13T21:47:38Z in 1m54s. Confirmed from the running process rather than the panel: GET /api/health reports environment \"render\" and release_sha f089a580..., which build_info derives from RENDER_GIT_COMMIT."
+  },
+
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "f089a580a451922f780620203e6b86d3bb262e8f",
+    "detail": "Vercel deployment dpl_GrZj1KMCD6Js52Cvm1A8A8eHY8kM, target production, state READY, githubCommitSha f089a580a451922f780620203e6b86d3bb262e8f. Confirmed against the served origin: https://joinalab.com/ carries the same 40-hex SHA, so frontend and backend are the same release rather than the split brain of 2026-08-10..13."
+  },
+
+  "supabase_canary": {
+    "status": "PASS",
+    "release_sha": "f089a580a451922f780620203e6b86d3bb262e8f",
+    "detail": "Project mjpirkyduibkakvlbdko (opportunity-engine, us-west-2) ACTIVE_HEALTHY on Postgres 17.6.1.104; authenticated round-trip queries served. Migration ledger reconciled: supabase_migrations.schema_migrations holds 33 rows and every one of the 33 files in supabase/migrations is among them (012/013/014 are recorded under `supabase db push` timestamp versions rather than their numeric prefixes, which is what made the ledger look 3-of-33). 030's feedback_events and 031's ops_incidents both exist. Security advisors: 0 ERROR, WARNs are the intended deny-all tables (orders after 026, ops_*, merge_*) plus anonymous-session policies this product uses by design."
+  },
+
+  "open_incidents": {
+    "release_sha": "f089a580a451922f780620203e6b86d3bb262e8f",
+    "detail": "Counted directly against the production table rather than through GET /api/admin/ops/incidents, because the count is what the endpoint reads: select count(*) filter (where resolved_at is null) from public.ops_incidents -> 0 open, 0 rows total. The table was created by migration 031 on 2026-08-07 and nothing has written to it, so this is 'no incidents recorded' as much as 'no incidents open'.",
+    "rollup": {
+      "open_total": 0,
+      "truncated": false,
+      "open_by_kind": {}
+    }
+  },
+
+  "backup": {
+    "status": "PASS",
+    "release_sha": "f089a580a451922f780620203e6b86d3bb262e8f",
+    "detail": "Recovery point 2026-08-13T07:30:41Z, PHYSICAL, COMPLETED, project mjpirkyduibkakvlbdko (production), owner Guoyi (Eric) Xu. Supabase Pro daily physical backups, 7 retained and all COMPLETED (2026-08-07 .. 2026-08-13). Two limits are part of this evidence, not footnotes to it: PITR is a paid add-on and is NOT enabled, so the recovery granularity is daily and the worst-case RPO is ~24h; and Storage objects are excluded from database backups, which today means the single 21.9 KB object in the private tracker-attachments bucket is not covered by anything."
+  }
+}

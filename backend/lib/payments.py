@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from backend.lib.release_scope import feature_enabled
+
 CHANNELS = ("manual", "wechat", "alipay", "stripe")
 
 # The authoritative price catalog. The browser mirrors these values for display
@@ -36,6 +38,15 @@ def _require_manual(channel: str) -> None:
         raise ValueError(f"unknown payment channel: {channel}")
     if channel != "manual":
         raise NotImplementedError(_UNIMPLEMENTED.format(channel))
+    # The manual channel IS the QR: the student pays by scanning a static code.
+    # That code names a receiving account, so this stays gated separately from
+    # `payments` — switching payments on first must not start minting orders
+    # against an account nobody has confirmed.
+    if not feature_enabled("concierge_pay_qr"):
+        raise NotImplementedError(
+            "the manual channel is the scan-a-QR flow, and concierge_pay_qr is "
+            "not accepted for this release"
+        )
 
 
 def create_order(

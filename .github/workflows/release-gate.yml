@@ -88,6 +88,23 @@ jobs:
           echo '{"ci": '"$(cat /tmp/ci-evidence.json)"'}' > /tmp/evidence.json
           python -c "import json;d=json.load(open('/tmp/evidence.json'));print('collected', len(d['ci']['checks']), 'check runs')"
 
+      - name: Collect operator evidence for that exact SHA
+        # Read from the default branch, not from the checkout. Evidence about a
+        # deploy cannot exist in the commit being deployed — it is gathered
+        # afterwards — but check_worktree_clean requires HEAD to equal the
+        # release SHA, so the worktree has to stay put while this one file comes
+        # from the branch tip. No file is the normal case and means UNVERIFIED.
+        run: |
+          set -euo pipefail
+          EVIDENCE="data/releases/evidence/${{ steps.sha.outputs.sha }}.json"
+          git fetch --depth=1 origin "${{ github.event.repository.default_branch }}"
+          if git show "FETCH_HEAD:$EVIDENCE" > /tmp/operator-evidence.json 2>/dev/null; then
+            python -c "import json;d=json.load(open('/tmp/operator-evidence.json'));print('operator evidence for', sorted(k for k in d if not k.startswith('_')))"
+          else
+            echo "no operator evidence at $EVIDENCE — external gates stay UNVERIFIED"
+            echo '{}' > /tmp/operator-evidence.json
+          fi
+
       - name: Run the gate
         id: gate
         run: |
@@ -95,6 +112,7 @@ jobs:
           python scripts/release_gate.py \
             --release-sha "${{ steps.sha.outputs.sha }}" \
             --evidence /tmp/evidence.json \
+            --evidence /tmp/operator-evidence.json \
             --out "data/releases/${{ steps.sha.outputs.sha }}.json" \
             | tee /tmp/gate.txt
           echo "exit=$?" >> "$GITHUB_OUTPUT"
