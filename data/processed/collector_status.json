@@ -1,55 +1,21 @@
 {
-  "duration_seconds": 5028.4,
+  "duration_seconds": 1641.5,
   "release": {
     "by_unit": {
-      "arizona": {
-        "ready": true,
-        "reasons": []
-      },
-      "bu": {
-        "ready": true,
-        "reasons": []
-      },
       "uconn": {
-        "ready": true,
-        "reasons": []
-      },
-      "uva": {
         "ready": true,
         "reasons": []
       }
     },
-    "degradations": [
-      {
-        "detail": "0/2 seed pages, 0/1 crawl sources",
-        "kind": "dark_crawl",
-        "source": "campus_graph:uva"
-      },
-      {
-        "detail": "uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/; uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/our-opportunities/grants",
-        "kind": "crawl_errors",
-        "source": "campus_graph:uva"
-      }
-    ],
+    "degradations": [],
     "expected": [
-      "arizona_faculty",
-      "bu_faculty",
-      "campus_graph:arizona",
-      "campus_graph:bu",
       "campus_graph:uconn",
-      "campus_graph:uva",
-      "uconn_faculty",
-      "uva_faculty"
+      "uconn_faculty"
     ],
     "observed": [
-      "arizona_faculty",
       "auto_tagger",
-      "bu_faculty",
       "campus_discovery_quarantine",
-      "campus_graph:arizona",
-      "campus_graph:bu",
       "campus_graph:uconn",
-      "campus_graph:uva",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
@@ -58,34 +24,9 @@
       "pi_enricher",
       "professor_tracking",
       "school_audience",
-      "uconn_faculty",
-      "uva_faculty"
+      "uconn_faculty"
     ],
     "policies": [
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "arizona",
-        "summary_key": "arizona_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "bu",
-        "summary_key": "bu_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "arizona",
-        "summary_key": "campus_graph:arizona"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "bu",
-        "summary_key": "campus_graph:bu"
-      },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
@@ -95,36 +36,19 @@
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "uva",
-        "summary_key": "campus_graph:uva"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
         "school": "uconn",
         "summary_key": "uconn_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "uva",
-        "summary_key": "uva_faculty"
       }
     ],
     "publishable": [
-      "arizona",
-      "bu",
-      "uconn",
-      "uva"
+      "uconn"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
-      "deep source campus_graph:uva loaded no live page at all (0/2 seed pages, 0/1 crawl sources); its records keep the previous run's verification and this run cannot claim to have seen the school",
-      "deep source campus_graph:uva reported crawl errors: ['uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/', 'uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/our-opportunities/grants']",
-      "faculty stale retirement is held pending per-unit lineage: ['arizona_faculty', 'bu_faculty', 'uconn_faculty', 'uva_faculty']",
+      "faculty stale retirement is held pending per-unit lineage: ['uconn_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -132,79 +56,23 @@
     "deep": true,
     "national": false,
     "schools": [
-      "arizona",
-      "bu",
-      "uconn",
-      "uva"
+      "uconn"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "arizona",
-      "bu",
-      "uconn",
-      "uva"
+      "uconn"
     ]
   },
   "sources": {
-    "arizona_faculty": {
-      "fetched": 1454,
-      "new": 3,
-      "status": "ok",
-      "updated": 1451
-    },
     "auto_tagger": {
-      "rule_based_tagged": 13,
+      "rule_based_tagged": 0,
       "status": "ok"
-    },
-    "bu_faculty": {
-      "fetched": 1813,
-      "new": 85,
-      "status": "ok",
-      "updated": 1728
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
-    },
-    "campus_graph:arizona": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 4,
-      "live_pages_loaded": 4,
-      "new": 0,
-      "seed_pages_expected": 4,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 4,
-      "seed_records": 5,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:bu": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 6,
-      "live_pages_attempted": 4,
-      "live_pages_loaded": 4,
-      "new": 0,
-      "seed_pages_expected": 4,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 4,
-      "seed_records": 6,
-      "status": "ok",
-      "updated": 6
     },
     "campus_graph:uconn": {
       "complete_recursive_sources": [],
@@ -225,33 +93,11 @@
       "status": "ok",
       "updated": 6
     },
-    "campus_graph:uva": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [
-        "uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/",
-        "uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/our-opportunities/grants"
-      ],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 0,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 9,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 0,
-      "new": 0,
-      "seed_pages_expected": 2,
-      "seed_pages_failed": 2,
-      "seed_pages_loaded": 0,
-      "seed_records": 9,
-      "status": "ok",
-      "updated": 9
-    },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 131015,
+      "skipped_rolling": 130889,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
@@ -259,28 +105,19 @@
       "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
-        "arizona_faculty",
-        "bu_faculty",
-        "uconn_faculty",
-        "uva_faculty"
+        "uconn_faculty"
       ],
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 141,
-      "keywords_cleaned": 7,
+      "duplicates_removed": 15,
+      "keywords_cleaned": 1,
       "removed_by_school": {
-        "arizona": 15,
-        "bu": 75,
-        "uconn": 16,
-        "uva": 35
+        "uconn": 15
       },
       "retitled": 0,
-      "shared_inbox_nulled": {
-        "bu": 4,
-        "uva": 2
-      },
+      "shared_inbox_nulled": {},
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
@@ -294,11 +131,11 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 5560,
-      "enriched": 94,
-      "nulled_unit_inboxes": 6,
-      "renulled_shared_emails": 13,
-      "scraped": 583,
+      "already_had": 1152,
+      "enriched": 22,
+      "nulled_unit_inboxes": 4,
+      "renulled_shared_emails": 10,
+      "scraped": 30,
       "skipped_budget": 0,
       "status": "ok"
     },
@@ -307,10 +144,10 @@
       "events": 7092,
       "freshness_pct": 27.84,
       "fully_stale_school_count": 57,
-      "missing_profile_count": 90659,
+      "missing_profile_count": 90658,
       "missing_school_count": 57,
       "new_events": 0,
-      "profiles": 35015,
+      "profiles": 35016,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -320,7 +157,7 @@
       "by_source": {
         "amherst_faculty": 265,
         "amherst_research_programs": 9,
-        "arizona_faculty": 1474,
+        "arizona_faculty": 1459,
         "arizona_research_programs": 5,
         "asu_faculty": 2428,
         "asu_research_programs": 6,
@@ -339,7 +176,7 @@
         "brown_research_programs": 4,
         "brynmawr_faculty": 151,
         "brynmawr_research_programs": 8,
-        "bu_faculty": 1900,
+        "bu_faculty": 1825,
         "bu_research_programs": 6,
         "buffalo_faculty": 838,
         "buffalo_research_programs": 6,
@@ -557,7 +394,7 @@
         "ucla_faculty": 2040,
         "ucla_labs": 2,
         "ucla_research_programs": 32,
-        "uconn_faculty": 1179,
+        "uconn_faculty": 1178,
         "uconn_research_programs": 6,
         "ucr_faculty": 1148,
         "ucr_research_programs": 6,
@@ -619,7 +456,7 @@
         "utexas_research_programs": 35,
         "utk_faculty": 1024,
         "utk_research_programs": 5,
-        "uva_faculty": 1590,
+        "uva_faculty": 1555,
         "uva_research_programs": 9,
         "uw_external_research": 1,
         "uw_faculty": 2212,
@@ -649,19 +486,13 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 132665
+      "tagged": 132539
     },
     "uconn_faculty": {
       "fetched": 1172,
-      "new": 20,
+      "new": 15,
       "status": "ok",
-      "updated": 1152
-    },
-    "uva_faculty": {
-      "fetched": 1532,
-      "new": 441,
-      "status": "ok",
-      "updated": 1091
+      "updated": 1157
     }
   },
   "time_budget": {
@@ -669,8 +500,8 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-08-14T10:40:01.677906",
+  "timestamp": "2026-08-14T14:31:26.174747",
   "total_in_file": 132524,
-  "total_new": 549,
-  "total_updated": 5448
+  "total_new": 15,
+  "total_updated": 1163
 }

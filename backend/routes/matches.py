@@ -1056,6 +1056,7 @@ def _apply_match_view(
     dict[str, int],
     list[dict[str, str | int]],
     bool,
+    dict[str, int],
 ]:
     """Apply the former browser predicates to the complete snapshot exactly."""
     favorite_ids = set(view.favorite_ids)
@@ -1069,6 +1070,16 @@ def _apply_match_view(
 
     source_counts: dict[str, int] = {}
     scope_available = False
+    # How many records each deadline value on the facet would actually return,
+    # counted over the whole snapshot rather than the 50-card page, and against
+    # the caller's `today` so the answer is the one the click would get.
+    #
+    # Measured 2026-08-14 on the published corpus: 789 of 132,524 records carry
+    # a deadline at all and 786 of those are already past, so "within 7/14/30
+    # days" returned exactly zero — three chips that could only ever produce an
+    # empty page. Sending the counts lets the rail render on the evidence, and
+    # bring the chips back by itself the day real summer-program deadlines land.
+    deadline_counts = {"7": 0, "14": 0, "30": 0, "passed": 0}
     base: list[MatchResult] = []
     for result in results:
         opportunity = opportunities_by_id.get(result.opportunity_id, {})
@@ -1077,6 +1088,14 @@ def _apply_match_view(
             source_counts[source] = source_counts.get(source, 0) + 1
         if "school" in opportunity or "audience" in opportunity:
             scope_available = True
+        days_left = _calendar_days_until(opportunity.get("deadline"), today)
+        if days_left is not None:
+            if days_left < 0:
+                deadline_counts["passed"] += 1
+            else:
+                for window in (7, 14, 30):
+                    if days_left <= window:
+                        deadline_counts[str(window)] += 1
 
         if not view.show_dismissed and result.opportunity_id in dismissed_ids:
             continue
@@ -1200,7 +1219,7 @@ def _apply_match_view(
             reverse=True,
         )
     ]
-    return filtered, view_counts, source_facets, scope_available
+    return filtered, view_counts, source_facets, scope_available, deadline_counts
 
 
 @router.post("/matches", response_model=MatchesResponse)
@@ -1344,7 +1363,13 @@ async def get_match_view(request: MatchViewRequest):
                 },
             )
 
-    filtered, view_counts, source_facets, scope_available = _apply_match_view(
+    (
+        filtered,
+        view_counts,
+        source_facets,
+        scope_available,
+        deadline_facets,
+    ) = _apply_match_view(
         snap.visible,
         opportunities_by_id,
         request.view,
@@ -1381,6 +1406,7 @@ async def get_match_view(request: MatchViewRequest):
         view_counts=view_counts,
         source_facets=source_facets,
         scope_available=scope_available,
+        deadline_facets=deadline_facets,
         view_id=view_id,
     )
 
