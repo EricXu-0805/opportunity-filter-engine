@@ -128,7 +128,11 @@ jobs:
             --evidence /tmp/operator-evidence.json \
             --out "data/releases/${{ steps.sha.outputs.sha }}.json" \
             | tee /tmp/gate.txt
-          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          # PIPESTATUS[0], not $?. After a pipeline `$?` is the LAST command's
+          # status — tee's, which is 0 whether the gate said GO or NO-GO. The
+          # first dispatch of this workflow (run 31830880902) printed
+          # "DECISION: NO-GO" and finished green because of exactly that.
+          echo "exit=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Publish the verdict
         if: always()
