@@ -138,6 +138,11 @@ _TEASER_ENRICH = {
     # (Psychology, Political Science, …); depts without it yield nothing (mixed).
     "research_items_selector": (".field-field_research_areas a, "
                                 ".field-field_research_interesdt > div:nth-of-type(2) div"),
+    # Fallback for the departments without that taxonomy — the engine only
+    # consults the label when the selector came back empty. Measured over 96
+    # live profiles: selector + label together land keywords on 24%, across 14
+    # departments (the selector alone reached 3).
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
     "throttle": 0.2,
 }
 
@@ -167,6 +172,7 @@ _ENG_SEL = {
 _ENG_ENRICH = {
     "email_selector": "a[href^='mailto:']",
     "email_drop": _EMAIL_DROP,
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
     "throttle": 0.2,
 }
 

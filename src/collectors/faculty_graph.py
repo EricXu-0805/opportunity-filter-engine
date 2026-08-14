@@ -1441,6 +1441,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
 #       "profile_enrich": {                        # optional per-profile pass
 #         "position_re": r"...Professor|Lecturer...",  # sets title (emeriti auto-drop)
 #         "research_re": r"Primary Area:?\s*([...]{4,40}?)\s*(?:Home|Email|$)",
+#         "research_label_re": r"^research interests?:?$",  # anchor on the LABEL
 #         "require_professor": True,               # drop known non-professor ranks
 #       },
 #     }
@@ -1491,6 +1492,117 @@ def _clean_selector_items(soup, selector: str) -> list[str]:
         if len(out) >= _RESEARCH_ITEMS_CAP:
             break
     return out
+
+
+# The labels every one of the four recon schools used, and nothing looser. A
+# bare "Expertise" or "Interests" also matches a JHU tab sitting next to a degree
+# list, which is how an extractor starts inventing research areas out of CVs —
+# schools that genuinely label the block that way opt in themselves.
+RESEARCH_LABEL_RE = (
+    r"^\s*(research\s+(interests?|areas?|focus|foci|topics?|specializations?)"
+    r"|areas?\s+of\s+(expertise|research)"
+    r"|scholarly\s+interests?)\s*[:：]?\s*$"
+)
+
+_LABEL_MAX_CHARS = 40
+_LABEL_BLOCK_MAX_CHARS = 700
+# A block that reads like a CV or a nav rail is not a research-areas block. Kept
+# deliberately short: over-rejecting silently drops real areas, and every term
+# still has to clear the DQ junk gate downstream.
+_LABEL_REJECT_RE = re.compile(
+    r"\b(ph\.?\s?d\.?|curriculum vitae|google scholar|office hours"
+    r"|courses? taught)\b", re.I)
+# On a tabbed or accordion profile the label is a tab header, so "the block that
+# follows it" is the NEXT TAB'S HEADER — one bare word. Measured live: uconn BME
+# yielded "Projects" four times, arizona "Teaching", uva "Education". A block
+# that is nothing but a section word is a section word.
+_LABEL_SECTION_WORDS = frozenset({
+    "projects", "teaching", "education", "publications", "publication",
+    "courses", "biography", "bio", "overview", "awards", "honors", "service",
+    "news", "students", "contact", "cv", "grants", "funding", "background",
+    "profile", "about", "resources", "links", "media", "affiliations",
+})
+
+
+_NAV_ROLES = {"menu", "menuitem", "menubar", "navigation"}
+
+
+def _in_navigation(el) -> bool:
+    """Whether an element belongs to site chrome rather than to this person.
+
+    A department's own nav bar can carry a "Research Areas" menu whose dropdown
+    lists the department's areas — found live on every UVA Psychology profile,
+    where it would have stamped the same six areas onto every professor in the
+    department. A shared menu is the most dangerous false positive this
+    extractor has: it is confident, uniform, and wrong.
+
+    Kept to ``<nav>`` and the ARIA menu roles on purpose. A first attempt also
+    rejected ``<header>`` and any nav-ish class name and took BU from 22% of
+    profiles to 9%, because a person's own bio block sits under plenty of
+    innocent wrappers. Over-rejecting here is invisible; this is the narrow
+    version that removes the menus and nothing else.
+    """
+    for node in (el, *el.parents):
+        if getattr(node, "name", None) == "nav":
+            return True
+        get = getattr(node, "get", None)
+        if get is not None and str(get("role") or "").strip().lower() in _NAV_ROLES:
+            return True
+    return False
+
+
+def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
+    """Research areas found by their LABEL rather than by a container selector.
+
+    Recon across 391 live profiles at bu / arizona / uconn / uva found no CSS
+    container in common — every department runs its own theme, and the most
+    frequent shape was a bare ``<p>`` after a heading, which is not a selector
+    anyone can write. What they do share is the words: "Research Interests",
+    "Research Areas", "Areas of Expertise". So anchor on the label element and
+    take the block that follows it.
+
+    Returns ``(items, prose)``: a list when the block is a real list (``li``/
+    ``a`` elements, each an atomic area), prose otherwise for the caller's
+    comma/semicolon splitter. Yield is roughly a third of profiles, which is the
+    honest number — the rest keep research in free prose that no rule can bound.
+    """
+    try:
+        label_re = re.compile(pattern, re.I)
+    except re.error:
+        return ([], "")
+    for el in soup.find_all(True):
+        if el.name in ("script", "style", "title"):
+            continue
+        text = el.get_text(" ", strip=True)
+        if not text or len(text) > _LABEL_MAX_CHARS or not label_re.match(text):
+            continue
+        if _in_navigation(el):
+            continue
+        # The label has to BE a label. Without this, a wrapper whose whole text
+        # happens to be "Research Interests" matches and its "next sibling" is
+        # the following page section.
+        if el.find(True) is not None and len(list(el.children)) > 2:
+            continue
+        block = el.find_next_sibling()
+        if block is None and el.parent is not None:
+            block = el.parent.find_next_sibling()
+        if block is None:
+            continue
+        body = re.sub(r"\s+", " ", block.get_text(" ", strip=True)).strip()
+        if not (3 <= len(body) <= _LABEL_BLOCK_MAX_CHARS):
+            continue
+        if _LABEL_REJECT_RE.search(body):
+            continue
+        for sub in ("li", "a"):
+            if len(block.find_all(sub)) < 2:
+                continue
+            items = _clean_selector_items(block, sub)
+            if len(items) >= 2:
+                return (items, "")
+        if body.lower().strip(" .:") in _LABEL_SECTION_WORDS:
+            continue  # a later label on the same page may still be the real one
+        return ([], body)
+    return ([], "")
 
 
 def _wp_text(raw: str) -> str:
@@ -1839,6 +1951,8 @@ def _enrich_profile(
             # The block often embeds its own heading ("Research Summary
             # Geochemical investigations…") — strip the label, keep the prose.
             kw = re.sub(r"^research\s+(summary|interests?|areas?)\s*:?\s*", "", kw, flags=re.I)
+    if not items and not kw and enrich.get("research_label_re"):
+        items, kw = _research_by_label(soup, enrich["research_label_re"])
     if not kw and enrich.get("research_html_re"):
         # Sites that keep research areas in a labelled HTML block (e.g. GT's
         # "<strong>Research Areas:</strong> A; B; C</p>") need the markup, not the
