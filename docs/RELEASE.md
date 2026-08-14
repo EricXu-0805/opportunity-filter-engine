@@ -46,6 +46,14 @@ Evidence files are JSON keyed by gate name; every external gate must carry a
 `release_sha` so it can be bound to the release. Evidence for a different SHA
 is a FAIL, not a pass.
 
+Operator-gathered evidence lives at `data/releases/evidence/<sha>.json` and the
+release-gate workflow reads it **from the default branch**, not from the
+checkout. That is not a shortcut: evidence about a deploy cannot exist inside
+the commit being deployed, while `check_worktree_clean` requires HEAD to equal
+the release SHA. Omit a gate's key rather than inventing one — an absent key
+reads as UNVERIFIED and blocks, which is the answer that keeps the gate worth
+consulting.
+
 `UNVERIFIED` is deliberately distinct from `FAIL`: both block, but the first
 means "we have no evidence either way" and the second means "we have evidence
 of a problem". Collapsing them would hide which gates need infrastructure
@@ -111,11 +119,15 @@ SHA and confirm the previously-passing gates still pass.
   is the only module proving the real production surface. Narrowing that
   fixture is tracked separately; until then, "CI green" is weaker evidence
   about production behavior than it appears.
-- **Migration application to production is manual** (dashboard SQL editor) and
-  the applied-migration ledger is unreliable: production's
-  `supabase_migrations.schema_migrations` holds 3 rows of 33, `RUNBOOK.md`
-  lists 6, and the history-contract test pins 29. No source of truth exists
-  for what production actually has.
+- **Migration application to production is manual** (dashboard SQL editor), so
+  nothing forces the applied set to match the committed set. The ledger itself
+  is no longer the problem: checked on 2026-08-14, production's
+  `supabase_migrations.schema_migrations` holds **33 rows and covers all 33
+  committed migrations**. It read as "3 of 33" because three of them (012, 013,
+  014) were applied with `supabase db push` and are recorded under timestamp
+  versions (`20260611111920` etc.) rather than their numeric prefixes — a
+  naming difference that a count of matching prefixes reports as a gap.
+  Reconcile by name, not by version string.
 - **`/api/ready` is not wired to `render.yaml`'s `healthCheckPath`** on
   purpose. It gates on corpus freshness, and at the time of writing the corpus
   sat at 94h against a 96h stale bound — pointing the instance probe at it

@@ -22,11 +22,13 @@ def _enable_legacy_feature_implementation_tests(monkeypatch, request):
         return
 
     from backend import main as main_module
+    from backend.lib import payments as payments_module
     from backend.lib import release_scope as release_scope_module
     from backend.routes import matches as matches_module
 
     monkeypatch.setattr(main_module, "feature_enabled", lambda _feature: True)
     monkeypatch.setattr(matches_module, "feature_enabled", lambda _feature: True)
+    monkeypatch.setattr(payments_module, "feature_enabled", lambda _feature: True)
     monkeypatch.setattr(
         release_scope_module,
         "feature_enabled",

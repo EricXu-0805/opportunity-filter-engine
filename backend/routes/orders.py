@@ -22,6 +22,7 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from backend.lib import payments
+from backend.lib.release_scope import session_provider_accepted
 from backend.routes.admin import _authenticate
 from backend.routes.push import _required_env
 
@@ -63,7 +64,10 @@ async def _caller_uid(
     )
     if resp.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    uid = (resp.json() or {}).get("id")
+    user = resp.json() or {}
+    if not session_provider_accepted(user):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    uid = user.get("id")
     if not uid:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return str(uid)

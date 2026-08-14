@@ -1,32 +1,41 @@
 # Disaster recovery: backup and restore
 
-> **Current status: NOT VERIFIED — this is a release blocker.**
+> **Current status: backups exist and are recorded; recovery is still
+> UNVERIFIED — that half is the release blocker.**
 >
 > ```
 > backup exists  !=  recovery verified
 > ```
 >
-> No automated backup exists in this repository, and no restore has ever been
-> tested. `scripts/release_gate.py` reports both `backup` and `restore` as
-> `UNVERIFIED`, which keeps the release at NO-GO. That is the correct state
-> until the drill below is performed and its result recorded here.
+> `scripts/release_gate.py` now reports `backup` as PASS against the recovery
+> point recorded below, and `restore` as `UNVERIFIED`, which keeps the release
+> at NO-GO on its own. That is the correct state until the drill in §2 is
+> performed and its result recorded in §3.
 
 ## What exists today
 
-- **No automated backup.** No `pg_dump`, `pg_restore`, PITR configuration,
-  snapshot job, or retention policy appears in any workflow, `Makefile`
-  target, or script. (The `retention-days: 14` in `ci.yml` is the Playwright
-  report artifact, not data.)
-- **No restore procedure**, documented or automated.
-- The only backup-adjacent text in the repo is inside a manual, approval-gated
-  plan (`supabase/MIGRATION_REPAIR.md`) which says: *"Confirm backup/PITR
-  status in the Supabase dashboard first; record the recovery point. Stop if
-  recoverability is unknown."* That instruction is itself an admission that
-  recoverability is not established in-repo.
-- Whether Supabase daily backups or point-in-time recovery are enabled on the
-  project **cannot be determined from this repository**, and the recorded plan
-  tier in `RUNBOOK.md` is stale. This must be checked in the dashboard by an
-  operator.
+Checked in the Supabase dashboard on 2026-08-14. Earlier revisions of this
+document said no backup existed anywhere; that was true of the repository and
+false of the project, which is exactly the gap this section now closes.
+
+- **Daily physical backups, on the Pro plan.** Project
+  `mjpirkyduibkakvlbdko`, seven retained (2026-08-07 .. 2026-08-13), each
+  `PHYSICAL` / `COMPLETED`, taken around 07:2x–07:3x UTC. Nothing in this
+  repository creates them and nothing here would notice if they stopped.
+- **Point-in-time recovery is NOT enabled.** It is a paid add-on and the
+  dashboard offers it rather than showing a window. Consequences that follow
+  from that, not from anything in this repo: recovery granularity is one day,
+  so the worst-case RPO is ~24h, and a bad migration applied at 09:00 UTC
+  costs everything written since ~07:30 UTC.
+- **Storage objects are excluded** from database backups — the database holds
+  only their metadata. Today that is one 21.9 KB object in the private
+  `tracker-attachments` bucket (migration 008), so the exposure is small, but
+  it grows with every attachment a student uploads and nothing else covers it.
+- **Restore has a first-class path**: the dashboard's *Restore to new project*
+  (BETA) restores any of the seven points into a **separate** project, which is
+  precisely the non-destructive drill §2 requires. It provisions a new billed
+  project, so it is the owner's call to run rather than a routine action.
+- **No restore has ever been performed.** See §3 — the table is still empty.
 - Application-level recovery is separately incomplete: whole-document
   renovation snapshots are retained but have no restore UI.
 
@@ -38,19 +47,23 @@ migration. That makes this gate load-bearing rather than a formality.
 
 ### 1. Establish and record the backup
 
-Record in the table below, from the Supabase dashboard:
+Record the recovery point in the release's evidence file
+(`data/releases/evidence/<sha>.json`, key `backup`), from the Supabase
+dashboard: identifier / recovery point, timestamp (UTC), environment
+(production project ref), scope (which schemas/tables; whether storage objects
+are included), retention window, and owner (who can perform a restore).
 
-- backup identifier / recovery point
-- timestamp (UTC)
-- environment (production project ref)
-- scope (which schemas/tables; whether storage objects are included)
-- retention window
-- owner (who can perform a restore)
+Done for f089a580: recovery point **2026-08-13T07:30:41Z**, PHYSICAL,
+COMPLETED, project `mjpirkyduibkakvlbdko`, 7-day rolling retention, database
+only (no Storage objects), owner Guoyi (Eric) Xu.
 
 ### 2. Prove recovery, do not assume it
 
-Restore the recorded point into a **scratch** project or a local cluster —
-never over production — and verify all four:
+Use *Database → Backups → Restore to new project* on the recorded point. It
+restores into a **separate**, newly provisioned project — never over
+production, which is what makes it safe to drill — and that new project is
+billed, so run it deliberately and delete it when the drill is done. Verify all
+four:
 
 1. **Application starts** against the restored database.
 2. **Schema works**: the migration set matches expectations; run
