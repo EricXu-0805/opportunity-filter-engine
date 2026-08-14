@@ -1147,14 +1147,85 @@ async def _scan_collectors(rec: _Recorder, summary: dict) -> dict | None:
                     dedup_key, auto_resolve=True, note="verified successful run",
                 )
 
+    age = _snapshot_age(run_ts)
     summary["detectors"]["collector_failure"] = {
         "sources": len(sources),
         "errored": errored,
         "ok": ok_sources,
         "fatal_error": bool(fatal),
         "run_timestamp": run_ts,
+        **age,
     }
+    await _report_snapshot_age(rec, summary, age, run_ts, len(sources))
     return payload
+
+
+# How old the snapshot may be before scanning it is scanning yesterday.
+# The refresh runs daily at 06:00 UTC, so anything past ~a day and a half
+# means this scan did not see the most recent run at all.
+_SNAPSHOT_STALE_HOURS = 36.0
+
+
+def _snapshot_age(run_ts: object) -> dict:
+    """Report how old the evidence is, and say so when it is too old.
+
+    The detector reads ``collector_status.json`` from its own checkout, and
+    that file only reaches main when the refresh's auto-merged PR lands —
+    hours after the refresh starts. On 2026-08-14 the 07:30 scan read
+    YESTERDAY's snapshot (13 sources) and reported one finding, while a
+    12:19 run over the same day's real snapshot (51 sources) opened ten:
+    every degraded jhu, princeton and stanford source. A scan that reads
+    stale evidence does not report less confidently, it reports clean.
+
+    Retiming the cron narrows the window; only this makes the miss visible
+    when the retiming is wrong again.
+    """
+    parsed = _parse_ts(run_ts)
+    if parsed is None:
+        return {"snapshot_age_hours": None, "snapshot_stale": None}
+    age = (datetime.now(UTC) - parsed).total_seconds() / 3600.0
+    return {
+        "snapshot_age_hours": round(age, 1),
+        "snapshot_stale": age > _SNAPSHOT_STALE_HOURS,
+    }
+
+
+_STALE_SNAPSHOT_KEY = "collector_failure:ops_scan:stale_snapshot"
+
+
+async def _report_snapshot_age(
+    rec: _Recorder, summary: dict, age: dict, run_ts: object, sources: int
+) -> None:
+    """Make "this scan judged yesterday" durable, not just printed.
+
+    It goes in ops_incidents rather than the response body because the
+    response is read once by a workflow step and thrown away, while the whole
+    point is that nobody was watching. Recovery auto-resolves: a fresh
+    timestamp is complete evidence, unlike drift.
+    """
+    if age.get("snapshot_stale") is not True:
+        if _STALE_SNAPSHOT_KEY in summary["_open_keys"]:
+            await rec.recover(
+                _STALE_SNAPSHOT_KEY, auto_resolve=True,
+                note=f"snapshot is {age.get('snapshot_age_hours')}h old",
+            )
+        return
+    summary["scanned"] += 1
+    await rec.record(
+        kind="collector_failure", dedup_key=_STALE_SNAPSHOT_KEY,
+        title="Ops scan is reading a stale collector snapshot",
+        summary=(f"collector_status.json is {age['snapshot_age_hours']}h old "
+                 f"({sources} sources). This scan judged an earlier run, so a "
+                 "clean result here says nothing about the most recent one."),
+        detail={
+            "run_timestamp": run_ts,
+            "sources_in_snapshot": sources,
+            "detected_by": "ops-scan",
+            **age,
+            "stale_after_hours": _SNAPSHOT_STALE_HOURS,
+        },
+        scope="ops_scan", priority="high", failure_state="partial",
+    )
 
 
 async def _scan_drift(rec: _Recorder, summary: dict, payload: dict | None) -> None:
