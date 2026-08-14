@@ -98,12 +98,28 @@ _FACULTY_GATE = {
 }
 
 
+# Arizona's listings already carry the email, so this school had no per-profile
+# pass at all — and therefore no research signal outside CS (34 of 1,471 records).
+# The profiles do carry it, under a label rather than in any shared container:
+# quickstart writes "Research Interests", SBS writes "Research Areas", and the
+# Drupal faculty-interests field is labelled just "Interests", which is why that
+# one is added here rather than to the shared pattern. Measured over 93 live
+# profiles: 35% land keywords, across 21 departments — the best of the four
+# schools recon'd. No ``always``, so it runs in the monthly OFE_ENRICH_PROFILES
+# window rather than adding 1,471 fetches to every weekly shard run.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
+        r"|scholarly\s+interests?)", r"|scholarly\s+interests?|interests)"),
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared az_quickstart person-card component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SELECTORS,
-                   "field_filter": _FACULTY_GATE},
+                   "field_filter": _FACULTY_GATE, "profile_enrich": _ENRICH},
     }
 
 

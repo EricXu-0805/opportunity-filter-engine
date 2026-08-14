@@ -95,6 +95,14 @@ _ENRICH = {
     "always": True,
     "email_selector": '.person-email a[href^="mailto:"]',
     "email_drop": r"^[^@]*$",
+    # Free: this pass already has the page open for the email. UConn adds two
+    # labels the shared pattern deliberately omits — "Expertise" (Educational
+    # Leadership's theme) and "Research Summary" (Molecular & Cell Biology's) —
+    # both verified to head real area blocks here. Measured over 98 live
+    # profiles: 29% land keywords, across 15 departments.
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
+        r"|scholarly\s+interests?)", r"|scholarly\s+interests?|expertise"
+                                    r"|research\s+summary)"),
     "throttle": 0.15,
 }
 
