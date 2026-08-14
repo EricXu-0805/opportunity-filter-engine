@@ -3109,3 +3109,140 @@ class TestSourceBudget:
         assert enriched == ["https://x.edu/a"]
         assert len(out) == 2, "the un-enriched tail must survive"
         assert budget.exhausted is True
+
+
+class TestResearchByLabel:
+    """The label-anchored research extractor, against markup captured live.
+
+    Recon over 391 profiles at bu / arizona / uconn / uva found no CSS container
+    in common — 30+ departments per school, one theme each, and the commonest
+    shape was a bare ``<p>`` after a heading. The label is the only thing they
+    share. Every fixture below is real markup from a real profile, named in its
+    docstring, because a fixture someone typed from memory is how this repo has
+    twice proven a selector that does not exist.
+    """
+
+    def _by_label(self, html, pattern=None):
+        from bs4 import BeautifulSoup
+
+        from src.collectors import faculty_graph as fg
+        return fg._research_by_label(
+            BeautifulSoup(html, "html.parser"),
+            pattern or fg.RESEARCH_LABEL_RE,
+        )
+
+    def test_a_prose_block_after_the_label_is_returned_as_prose(self):
+        """bu.edu/anthrop/profile/christopher-schmitt — <h3> then <p><i><span>."""
+        items, prose = self._by_label(
+            '<div class="profile-single-bio"><h3>Areas of Expertise</h3>'
+            '<p><i><span>Mechanistic and adaptive aspects of developmental '
+            'variation in primates; genetics and genomics; behavioral ecology'
+            '</span></i></p></div>')
+        assert items == []
+        assert prose.startswith("Mechanistic and adaptive aspects")
+        assert "behavioral ecology" in prose
+
+    def test_a_list_block_becomes_atomic_items(self):
+        """animalscience.uconn.edu/person/abhinav-upadhyay — <h3> then <ul><li>."""
+        items, prose = self._by_label(
+            "<div><h3>Research Interests</h3><ul>"
+            "<li>Reducing pathogen survival in poultry gut</li>"
+            "<li>Inactivation of pathogens in food products</li>"
+            "<li>Improving preharvest and postharvest poultry safety</li>"
+            "</ul></div>")
+        assert prose == ""
+        assert "Reducing pathogen survival in poultry gut" in items
+        assert len(items) == 3
+
+    def test_a_departments_nav_menu_is_not_a_professors_research(self):
+        """psychology.as.virginia.edu — the superfish menu carries a "Research
+        Areas" item whose dropdown lists the DEPARTMENT's areas. Without this
+        guard every professor in the department gets the same six keywords:
+        confident, uniform, and wrong."""
+        items, prose = self._by_label(
+            '<nav><a role="menuitem" class="sf-depth-2 menuparent" '
+            'href="/research-areas">Research Areas</a>'
+            '<ul role="menu">'
+            '<li><a href="/development-lifespan">Development in the Lifespan</a></li>'
+            '<li><a href="/quant">Quantitative Methods &amp; Data Science</a></li>'
+            '<li><a href="/social">Social Determinants of Health</a></li>'
+            "</ul></nav>")
+        assert (items, prose) == ([], "")
+
+    def test_a_tab_header_whose_neighbour_is_another_tab_header_is_refused(self):
+        """uconn BME and arizona ChemE: on a tabbed profile the label is a tab
+        and its next sibling is the NEXT TAB'S name. "Projects" was extracted as
+        a research area four times before this."""
+        items, prose = self._by_label(
+            '<div class="tabs"><h4>Research Interests</h4><h4>Projects</h4></div>')
+        assert (items, prose) == ([], "")
+
+    def test_a_later_label_still_wins_after_a_refused_one(self):
+        assert self._by_label(
+            '<div><h4>Research Interests</h4><h4>Publications</h4></div>'
+            "<div><h4>Research Areas</h4><p>Coastal geomorphology</p></div>",
+        ) == ([], "Coastal geomorphology")
+
+    def test_a_cv_block_is_not_a_research_block(self):
+        assert self._by_label(
+            "<div><h3>Research Interests</h3>"
+            "<div>Ph.D. Princeton University 2012, M.A. Johns Hopkins 2005</div>"
+            "</div>") == ([], "")
+
+    def test_the_shared_pattern_refuses_a_bare_expertise_label(self):
+        """A JHU profile labels a tab "Expertise" next to a degree list. Schools
+        whose theme genuinely uses the bare word opt in per school."""
+        html = "<div><h3>Expertise</h3><p>Causal inference</p></div>"
+        assert self._by_label(html) == ([], "")
+        from src.collectors import faculty_graph as fg
+        opted_in = fg.RESEARCH_LABEL_RE.replace(
+            r"|scholarly\s+interests?)", r"|scholarly\s+interests?|expertise)")
+        assert self._by_label(html, opted_in) == ([], "Causal inference")
+
+    def test_profile_enrich_wires_the_label_path_into_keywords(self, monkeypatch):
+        """ece.engineering.arizona.edu/faculty-staff/faculty/xiaolong-ma.
+
+        The fixture carries the person's name because _enrich_profile refuses a
+        page whose identity does not match — a 200 from a WAF is still a 200.
+        """
+        from bs4 import BeautifulSoup
+
+        from src.collectors import faculty_graph as fg
+        profile = ('<h1>Xiaolong Ma</h1>'
+                   '<h3 class="field-label">Research Interests</h3>'
+                   '<div class="field-research-interests"><p>Machine learning, '
+                   "computer vision, scalable AI systems, trustworthy AI</p></div>")
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url, **_kw: BeautifulSoup(profile, "html.parser"))
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        people = [{"name": "Xiaolong Ma", "title": "Assistant Professor",
+                   "url": "https://ece.engineering.arizona.edu/x", "email": None,
+                   "research_areas": "", "keywords": []}]
+        out = fg._apply_profile_enrich(
+            people, {"research_label_re": fg.RESEARCH_LABEL_RE})
+        assert "Machine learning" in out[0]["research_areas"]
+        assert "trustworthy AI" in out[0]["research_areas"]
+
+    def test_a_configured_selector_still_wins_over_the_label(self, monkeypatch):
+        """The label is a fallback. uva keeps its taxonomy selector in front of
+        it, and a curated taxonomy term beats a block found by its heading."""
+        from bs4 import BeautifulSoup
+
+        from src.collectors import faculty_graph as fg
+        profile = ('<h1>Ada Prof</h1>'
+                   '<div class="field-field_research_areas">'
+                   '<a href="/a">Nuclear Physics</a><a href="/b">Astrophysics</a>'
+                   "</div>"
+                   "<h3>Research Interests</h3><p>everything and anything</p>")
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url, **_kw: BeautifulSoup(profile, "html.parser"))
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        people = [{"name": "Ada Prof", "title": "Professor",
+                   "url": "https://psychology.as.virginia.edu/people/ada",
+                   "email": None, "research_areas": "", "keywords": []}]
+        out = fg._apply_profile_enrich(people, {
+            "research_items_selector": ".field-field_research_areas a",
+            "research_label_re": fg.RESEARCH_LABEL_RE,
+        })
+        assert out[0]["keywords"] == ["Nuclear Physics", "Astrophysics"]
+        assert out[0]["research_areas"] == ""

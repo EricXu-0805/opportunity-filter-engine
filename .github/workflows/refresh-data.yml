@@ -36,6 +36,12 @@ on:
         required: false
         default: ''
         type: string
+      enrich_profiles:
+        description: 'Run the per-profile enrichment pass regardless of the day of month (expensive)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
 
 env:
   # Surface Node 24 breakage now, on our schedule, ahead of GitHub's
@@ -148,8 +154,14 @@ jobs:
             # carry-forward keeps recovered fields, so already-enriched profiles
             # are skipped on later runs. Each school gets its monthly pass on
             # its own shard day in the first week of the month.
-            if [[ "$SHARD" != "national" ]] && [ "$(date -u +%d)" -le 07 ]; then
-              echo "First week of the month — enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
+            # The dispatch input exists because the calendar gate alone made a
+            # config change wait for the next first-of-month: a school whose
+            # profile_enrich block gained a field could not be harvested (or
+            # even checked) for up to four weeks.
+            if [[ "$SHARD" != "national" ]] \
+               && { [ "$(date -u +%d)" -le 07 ] \
+                    || [[ "${{ inputs.enrich_profiles }}" == "true" ]]; }; then
+              echo "Enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
               export OFE_ENRICH_PROFILES=1
             fi
             # 260-minute source budget under the job's 300-minute hard timeout:

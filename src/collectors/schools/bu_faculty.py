@@ -78,6 +78,11 @@ _BP_SELECTORS = {
 _BP_ENRICH = {
     "email_selector": ".profile-details-email a[href^='mailto:']",
     "email_drop": r"^[^@]*$|^(?:info|admissions|questions|contact|webmaster|psgs|askcs)@",
+    # This pass already fetches the page for the email, so research costs nothing
+    # extra. There is no container to select — 35 departments, 35 themes, and the
+    # commonest shape is a bare <p> — but they all write the same label. Measured
+    # over 104 live profiles: 22% land keywords, across 11 departments.
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
     "throttle": 0.2,
 }
 
