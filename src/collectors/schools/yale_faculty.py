@@ -100,11 +100,21 @@ _OLD_ENRICH = {
     "research_selector": (
         "div.field-name-field-field-of-study, "
         "div.field-name-field-field-s-of-interest, "
-        "div.field-name-field-specialization"
+        "div.field-name-field-specialization, "
+        "div.field-name-field-primary-field-of-interest"
     ),
     "throttle": 0.3,
     "timeout": 8,
     "max_retries": 1,
+}
+
+# DLC profiles publish research as either a "Research Interests" <ul> chip list
+# or an "Areas of Interest" delimited <p>; env-gated research-only per-profile
+# pass (chips win over the line when present).
+_DLC_ENRICH = {
+    "research_items_selector": 'h2:-soup-contains("Research Interests") + ul li',
+    "research_selector": 'h2:-soup-contains("Areas of Interest") + p',
+    "throttle": 0.3, "timeout": 8, "max_retries": 1,
 }
 
 
@@ -125,7 +135,7 @@ def _dlc(short: str, name: str, majors: list[str], host: str, path: str,
     """A department on the DLC profile-collection template. Most DLC listings
     are /people pages that mix staff in, so the rank gate defaults on."""
     url = f"https://{host}.yale.edu/{path}"
-    scrape = {"url": url, "selectors": _DLC_SELECTORS}
+    scrape = {"url": url, "selectors": _DLC_SELECTORS, "profile_enrich": _DLC_ENRICH}
     if filtered:
         scrape["field_filter"] = _FIELD_DLC
     return {"short": short, "name": name, "majors": majors,

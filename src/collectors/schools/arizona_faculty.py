@@ -100,17 +100,29 @@ _FACULTY_GATE = {
 
 # Arizona's listings already carry the email, so this school had no per-profile
 # pass at all — and therefore no research signal outside CS (34 of 1,471 records).
-# The profiles do carry it, under a label rather than in any shared container:
-# quickstart writes "Research Interests", SBS writes "Research Areas", and the
-# Drupal faculty-interests field is labelled just "Interests", which is why that
-# one is added here rather than to the shared pattern. Measured over 93 live
-# profiles: 35% land keywords, across 21 departments — the best of the four
-# schools recon'd. No ``always``, so it runs in the monthly OFE_ENRICH_PROFILES
-# window rather than adding 1,471 fetches to every weekly shard run.
+# The profiles do carry it, three different ways, and the engine tries these keys
+# in the order they are written: SBS & Humanities publish atomic "research-areas"
+# taxonomy chips, the College of Engineering a single comma/semicolon
+# "field-research-interests" line, and everything else only a label —
+# quickstart writes "Research Interests", SBS "Research Areas", and the Drupal
+# faculty-interests field just "Interests", which is why that word is added here
+# rather than to the shared pattern.
+#
+# The chips are the best of the three (already atomic, no sentence-splitting) so
+# they go first; the label matcher is last because it is the broadest and would
+# otherwise shadow them. Measured separately: chips + line reached 2% -> 13%
+# corpus-wide (#698), the label matcher 35% of 93 live profiles (#745). Neither
+# subsumes the other, and the fall-through means a profile only pays for the
+# next key when the previous one found nothing.
+#
+# No ``always``, so this runs in the monthly OFE_ENRICH_PROFILES window rather
+# than adding 1,471 fetches to every weekly shard run.
 _ENRICH = {
+    "research_items_selector": "div.field--name-field-sbs-person-research-areas .field__item",
+    "research_selector": "div.field-research-interests",
     "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
         r"|scholarly\s+interests?)", r"|scholarly\s+interests?|interests)"),
-    "throttle": 0.15,
+    "throttle": 0.2,
 }
 
 
