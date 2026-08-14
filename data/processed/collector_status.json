@@ -1,7 +1,11 @@
 {
-  "duration_seconds": 1641.5,
+  "duration_seconds": 2375.8,
   "release": {
     "by_unit": {
+      "amherst": {
+        "ready": true,
+        "reasons": []
+      },
       "uconn": {
         "ready": true,
         "reasons": []
@@ -9,12 +13,16 @@
     },
     "degradations": [],
     "expected": [
+      "amherst_faculty",
+      "campus_graph:amherst",
       "campus_graph:uconn",
       "uconn_faculty"
     ],
     "observed": [
+      "amherst_faculty",
       "auto_tagger",
       "campus_discovery_quarantine",
+      "campus_graph:amherst",
       "campus_graph:uconn",
       "deactivate_past",
       "deactivate_stale_faculty",
@@ -30,6 +38,18 @@
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
+        "school": "amherst",
+        "summary_key": "amherst_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "amherst",
+        "summary_key": "campus_graph:amherst"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
         "school": "uconn",
         "summary_key": "campus_graph:uconn"
       },
@@ -41,6 +61,7 @@
       }
     ],
     "publishable": [
+      "amherst",
       "uconn"
     ],
     "ready": true,
@@ -48,7 +69,7 @@
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
-      "faculty stale retirement is held pending per-unit lineage: ['uconn_faculty']",
+      "faculty stale retirement is held pending per-unit lineage: ['amherst_faculty', 'uconn_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -56,23 +77,50 @@
     "deep": true,
     "national": false,
     "schools": [
+      "amherst",
       "uconn"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
+      "amherst",
       "uconn"
     ]
   },
   "sources": {
+    "amherst_faculty": {
+      "fetched": 265,
+      "new": 2,
+      "status": "ok",
+      "updated": 263
+    },
     "auto_tagger": {
-      "rule_based_tagged": 0,
+      "rule_based_tagged": 3,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
+    },
+    "campus_graph:amherst": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 9,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 9,
+      "status": "ok",
+      "updated": 9
     },
     "campus_graph:uconn": {
       "complete_recursive_sources": [],
@@ -97,7 +145,7 @@
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 130889,
+      "skipped_rolling": 130881,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
@@ -105,16 +153,18 @@
       "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
+        "amherst_faculty",
         "uconn_faculty"
       ],
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 15,
-      "keywords_cleaned": 1,
+      "duplicates_removed": 6,
+      "keywords_cleaned": 18,
       "removed_by_school": {
-        "uconn": 15
+        "amherst": 1,
+        "uconn": 5
       },
       "retitled": 0,
       "shared_inbox_nulled": {},
@@ -131,23 +181,23 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 1152,
-      "enriched": 22,
+      "already_had": 1148,
+      "enriched": 16,
       "nulled_unit_inboxes": 4,
       "renulled_shared_emails": 10,
-      "scraped": 30,
+      "scraped": 300,
       "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
-      "active_profile_coverage_pct": 27.84,
+      "active_profile_coverage_pct": 28.78,
       "events": 7092,
-      "freshness_pct": 27.84,
-      "fully_stale_school_count": 57,
-      "missing_profile_count": 90658,
-      "missing_school_count": 57,
+      "freshness_pct": 28.78,
+      "fully_stale_school_count": 56,
+      "missing_profile_count": 89472,
+      "missing_school_count": 56,
       "new_events": 0,
-      "profiles": 35016,
+      "profiles": 36203,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -155,7 +205,7 @@
     },
     "school_audience": {
       "by_source": {
-        "amherst_faculty": 265,
+        "amherst_faculty": 267,
         "amherst_research_programs": 9,
         "arizona_faculty": 1459,
         "arizona_research_programs": 5,
@@ -394,7 +444,7 @@
         "ucla_faculty": 2040,
         "ucla_labs": 2,
         "ucla_research_programs": 32,
-        "uconn_faculty": 1178,
+        "uconn_faculty": 1168,
         "uconn_research_programs": 6,
         "ucr_faculty": 1148,
         "ucr_research_programs": 6,
@@ -486,13 +536,13 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 132539
+      "tagged": 132531
     },
     "uconn_faculty": {
-      "fetched": 1172,
-      "new": 15,
+      "fetched": 1157,
+      "new": 5,
       "status": "ok",
-      "updated": 1157
+      "updated": 1152
     }
   },
   "time_budget": {
@@ -500,8 +550,8 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-08-14T14:31:26.174747",
-  "total_in_file": 132524,
-  "total_new": 15,
-  "total_updated": 1163
+  "timestamp": "2026-08-14T15:59:56.059067",
+  "total_in_file": 132525,
+  "total_new": 7,
+  "total_updated": 1430
 }
