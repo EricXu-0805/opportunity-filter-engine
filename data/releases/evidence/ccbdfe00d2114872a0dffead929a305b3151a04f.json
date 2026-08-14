@@ -1,0 +1,107 @@
+{
+  "_readme": [
+    "Operator-gathered evidence for one frozen release SHA, in the shape",
+    "scripts/release_gate.py consumes: one key per gate, each carrying the",
+    "release_sha it is bound to. Keys are ABSENT for gates nobody has proven —",
+    "check_external reports a missing key as UNVERIFIED, which blocks, and that",
+    "is the honest answer. Never add a key to make a gate go green.",
+    "",
+    "ccbdfe0 is the first SHA today where Render and Vercel are running the same",
+    "commit. #745 (c549ffb) never got a deploy of its own: a dispatched refresh",
+    "held its check-run open, and ccbdfe0 carried its code up instead. See",
+    "docs/RELEASE.md section 3, 'A scheduled workflow can hold the backend deploy'.",
+    "",
+    "OMITTED ON PURPOSE, and why:",
+    "  restore  - Supabase's only restore path provisions a NEW billed project.",
+    "             That is the account owner's call, not something to spend for",
+    "             a drill without asking. Backups exist and are listed below;",
+    "             recovery from them has still never been exercised.",
+    "  dead_man - migration 032 is committed and CI-replayed but NOT applied to",
+    "             production; ops-scan confirmed it at 2026-08-14T12:19:38Z by",
+    "             opening 'Dead man's switch is not installed' (urgent). The",
+    "             design being correct is not evidence that the switch is armed.",
+    "             Apply 032, run the drill in docs/RELEASE.md section 3, then",
+    "             record the observed row values here.",
+    "  rollback - never exercised on this project. A rollback that has not been",
+    "             rehearsed is a plan, not a capability.",
+    "",
+    "open_incidents is 11 and therefore FAILS this gate. Every one is real and",
+    "none has been resolved to make the ledger prettier: 1 professor-tracking",
+    "coverage drift, 9 degraded jhu/princeton/stanford sources from the 06:25",
+    "refresh, and the not-installed dead man above."
+  ],
+
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "GET /api/ready -> 200 {\"ready\":true,\"reasons\":[],\"warnings\":[]} at 2026-08-14T12:53:55Z, release_sha ccbdfe00, api_version 2.7.0. All five readiness checks pass, including corpus freshness against the 132,524-record corpus published by run 31793029859.",
+    "checked_at": "2026-08-14T12:53:55Z"
+  },
+
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "Render web service srv-d7dle2l8nd3s73dtmv5g (Python 3, plan Pro), branch main, Live on ccbdfe0, process started 2026-08-14T12:25:48Z. GET /api/health returns release_sha == this SHA. Auto-deploy trigger is checksPass; this deploy followed the four required CI checks going green on ccbdfe0.",
+    "checked_at": "2026-08-14T12:53:55Z"
+  },
+
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "Vercel deployment dpl_CAraZRtr79BnLW5nCYZY447YqxeE, target production, state READY, githubCommitSha ccbdfe00d2114872a0dffead929a305b3151a04f, created 2026-08-14T12:22:35Z. Twelve production routes sampled over https://joinalab.com — /, /results, /favorites, /tracker, /account, /compare, /roadmap, /fellowships, /dashboard, /import, /resources, /about — all 200.",
+    "checked_at": "2026-08-14T12:55:00Z"
+  },
+
+  "supabase_canary": {
+    "status": "PASS",
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "Project mjpirkyduibkakvlbdko (opportunity-engine, us-west-2) ACTIVE_HEALTHY on Postgres 17.6. Live queries answered at 2026-08-14T12:54:41Z: 33 rows in supabase_migrations.schema_migrations (all 33 committed migrations, reconciled by name — 012/013/014 carry timestamp versions from supabase db push), 507 auth.users, ops_incidents readable through the service role. Migration 032 is NOT among the 33; see _readme.",
+    "checked_at": "2026-08-14T12:54:41Z"
+  },
+
+  "scheduler": {
+    "status": "PASS",
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "Refresh Opportunity Data closed its own loop twice today, unattended and attended. Scheduled run 31776222547 fired at 2026-08-14T06:25:18Z, scraped its rotation shard, passed the data-quality gate, opened PR #746, waited for CI and auto-merged it as 0a5caf8 (132,116 records) — the first unattended end-to-end publication since 2026-08-06, after an 8-day outage. Dispatched run 31793029859 then took the same path with the new enrich_profiles input and merged as ccbdfe0 (132,524 records), which is this release SHA. Both runs succeeded; neither needed a human between scrape and main.",
+    "evidence": {
+      "scheduled_run": 31776222547,
+      "scheduled_merged_sha": "0a5caf81262bb25c35b2483385433fdeb4553815",
+      "dispatched_run": 31793029859,
+      "dispatched_merged_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+      "days_of_prior_outage": 8
+    },
+    "checked_at": "2026-08-14T12:22:35Z"
+  },
+
+  "promotion": {
+    "status": "PASS",
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "Free-student flow exercised against production. POST /api/matches/view answered 200 for five simultaneous distinct profiles (6.78s, 6.78s, 10.93s, 11.10s, 13.94s) — the same shape that returned 503 MATCH_BUSY in 2.65s before #744. GET /api/opportunities/stats/summary returns 200 with 132,524 total / 129,761 active. The browser walk on the immediately preceding build (0656768 backend, c549ffb frontend, code-identical to this SHA except the corpus and #747/#748/#749) covered profile -> Generate -> 125,814 ranked results with per-professor cards -> Email Professor drafting a real AI cold email with its refine panel -> Tracker rendering saved items. Honest limit: that walk predates this exact SHA, and the capacity fix converts an error into a wait, not into speed — one match worker means a burst of twelve students leaves the last one waiting ~27s.",
+    "checked_at": "2026-08-14T12:56:00Z"
+  },
+
+  "backup": {
+    "status": "PASS",
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "Supabase Pro daily physical backups run on project mjpirkyduibkakvlbdko with 7 recovery points retained. Two limits are recorded rather than hidden: PITR is not enabled, so the recovery point objective is ~24h, and Storage objects are excluded from database backups. See docs/DISASTER_RECOVERY.md — the accompanying restore gate is deliberately absent, because these backups have never been restored from.",
+    "checked_at": "2026-08-14T12:54:41Z"
+  },
+
+  "open_incidents": {
+    "release_sha": "ccbdfe00d2114872a0dffead929a305b3151a04f",
+    "detail": "Counted directly against the production table rather than through GET /api/admin/ops/incidents, because the count is what that endpoint reads: select count(*) from ops_incidents where status not in ('resolved','suppressed') at 2026-08-14T12:54:41Z. This is the first day the ops-scan detector chain (cron -> endpoint -> SECURITY DEFINER RPC -> table) has produced incidents in production at all; its first was filed 2026-08-14T07:58:20Z.",
+    "rollup": {
+      "open_total": 11,
+      "by_kind": {
+        "data_drift": 1,
+        "collector_failure": 10
+      },
+      "breakdown": [
+        "data_drift:professor_tracking:release_ready (high) — freshness 24.95% against a 95% floor, 61 fully stale schools, 54 of 117 schools tracked. Known and unclosed; tracking_release_ready reports the same fact.",
+        "collector_failure:degraded:* for campus_graph:jhu (5 of 31 seed pages loaded, 26 failed), campus_graph:princeton (1 of 8), campus_graph:stanford (10 of 11) — 9 rows, all from the 06:25 refresh, all published: true.",
+        "dead_man:ops_dead_man_sweep (urgent) — migration 032 not applied to production."
+      ]
+    },
+    "checked_at": "2026-08-14T12:54:41Z"
+  }
+}
