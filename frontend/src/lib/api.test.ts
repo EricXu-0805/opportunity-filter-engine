@@ -939,7 +939,7 @@ describe('retryable server errors are retried, not shown', () => {
     // A cold email is a side effect. "Retryable" describes the server, not
     // whether sending twice is acceptable.
     fetchMock.mockResolvedValue(badResponse(503, ''));
-    await expect(sendMatchesEmail('a@b.edu', makeProfile(), [])).rejects.toThrow(ApiError);
+    await expect(sendMatchesEmail('a@b.edu', [])).rejects.toThrow(ApiError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
