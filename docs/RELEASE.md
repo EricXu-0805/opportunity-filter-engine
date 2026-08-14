@@ -40,7 +40,8 @@ would say nothing about what is actually running). `/api/health` and
 | `api_ready` | `GET /api/ready` on the deployed instance | an operator |
 | `render_canary`, `vercel_canary`, `supabase_canary` | the deployed environments | an operator |
 | `backup`, `restore` | see `docs/DISASTER_RECOVERY.md` | an operator |
-| `scheduler`, `dead_man` | cron run history + external monitor | an operator |
+| `scheduler` | cron run history | an operator |
+| `dead_man` | `ops_heartbeats` + a recorded drill (migration 032) | an operator |
 
 Evidence files are JSON keyed by gate name; every external gate must carry a
 `release_sha` so it can be bound to the release. Evidence for a different SHA
@@ -71,6 +72,36 @@ access and which need fixing.
 
 Deployment succeeding is not promotion. Each stage requires its evidence
 recorded in the ledger before the next begins.
+
+### The dead man's switch (migration 032)
+
+Every scheduled workflow POSTs `/api/cron/heartbeat` as its last step. A
+pg_cron job (`ops-dead-man-sweep`, every 10 minutes) files a `collector_failure`
+incident for any heartbeat past its deadline, and the daily `/api/cron/ops-scan`
+reads the sweep's *own* heartbeat — so pg_cron dying is caught from GitHub and
+GitHub dying is caught from Postgres. Both land in `ops_incidents`, which
+`open_incidents` already blocks on.
+
+To gather `dead_man` evidence, run a drill rather than asserting the design:
+
+```sql
+-- 1. an immediately-overdue heartbeat
+insert into ops_heartbeats (name, description, expected_interval_seconds, grace_seconds, priority)
+values ('release_drill', 'release-gate drill', 1, 0, 'low');
+-- 2. the sweep must file it
+select * from ops_dead_man_sweep();
+select status, failure_state, detail->>'overdue_seconds' from ops_incidents
+  where dedup_key = 'dead_man:release_drill';
+-- 3. check in, sweep again: the incident must close itself
+select record_ops_heartbeat('release_drill', '{"source":"drill"}'::jsonb);
+select * from ops_dead_man_sweep();
+-- 4. tear the row down; leave the incident as the record
+delete from ops_heartbeats where name = 'release_drill';
+```
+
+Record the observed row values in the evidence file. A drill that was not run
+is `UNVERIFIED`, not `PASS` — the design being correct is not evidence that
+the switch is armed.
 
 ## 4. Rollback
 

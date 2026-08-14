@@ -70,6 +70,19 @@ jobs:
             | tee /dev/stderr \
             | python3 scripts/check_cron_response.py
 
+      # Dead man's switch (migration 032). The alert below covers a scan that
+      # fails; nothing here can cover a scan that never runs. This check-in is
+      # also the half of the mutual watch that runs from GitHub — the scan
+      # itself reads the pg_cron sweep's heartbeat, so each side notices the
+      # other going quiet.
+      - name: Check in to the dead man's switch
+        run: |
+          curl -sfSL -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"ops_scan","detail":{"run_id":"${{ github.run_id }}"}}' \
+            "${{ secrets.BACKEND_URL }}/api/cron/heartbeat"
+
       # This job had NO alert step at all: the one workflow whose entire purpose
       # is to notice trouble (it creates the collector_failure and data_drift
       # incidents) told nobody when it died — and its silence looks exactly like
