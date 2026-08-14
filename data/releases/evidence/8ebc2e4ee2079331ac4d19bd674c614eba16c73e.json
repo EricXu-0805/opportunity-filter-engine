@@ -1,0 +1,115 @@
+{
+  "_readme": [
+    "Operator-gathered evidence for one frozen release SHA, in the shape",
+    "scripts/release_gate.py consumes: one key per gate, each carrying the",
+    "release_sha it is bound to. Keys are ABSENT for gates nobody has proven —",
+    "check_external reports a missing key as UNVERIFIED, which blocks, and that",
+    "is the honest answer. Never add a key to make a gate go green.",
+    "",
+    "8ebc2e4 is the first SHA carrying migration 032 as an APPLIED migration",
+    "rather than a committed file, so it is the first one the dead_man gate can",
+    "be bound to at all. The previous evidence file (ccbdfe0) omitted that key",
+    "on purpose and said why.",
+    "",
+    "OMITTED ON PURPOSE, and why:",
+    "  restore  - Supabase's only restore path provisions a NEW billed project.",
+    "             That is the account owner's call, not something to spend for",
+    "             a drill without asking. Unchanged since ccbdfe0.",
+    "  rollback - the documented one-command rollback needs a Render deploy hook",
+    "             stored as RENDER_DEPLOY_HOOK_URL. That secret does not exist,",
+    "             so the procedure in docs/DISASTER_RECOVERY.md has never been",
+    "             executed end to end and must not be claimed.",
+    "  backup   - PASSED at ccbdfe0 on a reading taken 2026-08-14T12:54Z. It is",
+    "             NOT re-verified here: this session has no tool that lists",
+    "             Supabase backups, and a property that was true six hours ago",
+    "             is not evidence about this SHA. Re-verifying means the",
+    "             project's Database > Backups page, which is Eric's console.",
+    "             The last confirmed reading stays in the ccbdfe0 file."
+  ],
+
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "GET /api/ready -> 200 {\"ready\":true,\"reasons\":[],\"warnings\":[]} at 2026-08-14T18:30:19Z, release_sha 8ebc2e4, api_version 2.7.0. All five readiness checks pass, including corpus freshness against the 132,525-record corpus published by run 31817131885."
+  },
+
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "GET /api/health returns release_sha == 8ebc2e4ee2079331ac4d19bd674c614eba16c73e, environment \"render\", started_at 2026-08-14T17:19:55Z — so the running process was built from this exact commit, not merely deployed near it. GET /api/opportunities/stats/summary answers 200 with 132,525 total / 129,762 active. Auto-deploy trigger is checksPass; this commit carried no held check-run, unlike the two earlier today.",
+    "probe": {
+      "health_release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+      "started_at": "2026-08-14T17:19:55.975658+00:00",
+      "stats": {"total": 132525, "active": 129762, "paid_total": 4701, "international_friendly_total": 3765}
+    }
+  },
+
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "Vercel deployment dpl_HwWusLWJynSYJN6fuDLScRodrv5t, target production, state READY, githubCommitSha 8ebc2e4ee2079331ac4d19bd674c614eba16c73e, created 2026-08-14T16:59:06Z, isRollbackCandidate true. Twelve production routes sampled over https://joinalab.com — /, /results, /favorites, /tracker, /account, /compare, /roadmap, /fellowships, /dashboard, /import, /resources, /about — all 200. Front and back end are on the same commit.",
+    "deployment_id": "dpl_HwWusLWJynSYJN6fuDLScRodrv5t",
+    "routes_200": 12
+  },
+
+  "supabase_canary": {
+    "status": "PASS",
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "Project mjpirkyduibkakvlbdko (opportunity-engine, us-west-2) ACTIVE_HEALTHY on Postgres 17.6.1.104. Live queries at 2026-08-14T16:50Z: 34 rows in supabase_migrations.schema_migrations — 033 committed migrations plus 0181, reconciled by name; 032 is now among them, which it was not at ccbdfe0. 508 auth.users. Security advisors show no new finding from 032: ops_heartbeats reports rls_enabled_no_policy at INFO, which is the intended operator-only posture stated in the migration and shared with ops_incidents and ops_incident_events. One pre-existing WARN worth Eric's console: auth_leaked_password_protection is disabled.",
+    "migrations": 34,
+    "auth_users": 508
+  },
+
+  "dead_man": {
+    "status": "PASS",
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "Drilled, not asserted — docs/RELEASE.md section 3. Migration 032 applied to production 2026-08-14T14:26Z; pg_cron is installed and job 'ops-dead-man-sweep' is scheduled '*/10 * * * *'. (1) Registered a heartbeat with a 1s interval and no grace. (2) The sweep filed it: dedup_key dead_man:release_drill, status open, failure_state 'blocked' (never once seen, not merely late), detail.overdue_seconds 37, detected_by ops_dead_man_sweep. (3) Checked in and swept again: the same incident went status resolved, failure_state 'recovered', 3 rows on ops_incident_events — the outage stayed on the record. (4) Dropped the drill row. Separately, record_ops_heartbeat('no_such_heartbeat') returned false and created nothing, so a typo'd workflow surfaces as a missing heartbeat rather than a new row that satisfies nothing. Both halves of the mutual watch are live: pg_cron has run the sweep 15 times with 0 failures (last 2026-08-14T16:50:00Z), and the daily ops-scan reads the sweep's own heartbeat — it reported {\"installed\":true,\"overdue\":false,\"judged_by_clock\":\"database\"} at 15:13:29Z, having reported installed:false and filed an urgent incident that same morning. That incident was auto-resolved by the first real sweep, which is the design working end to end rather than a claim about it.",
+    "drill": {
+      "migration_applied_at": "2026-08-14T14:26Z",
+      "pg_cron_schedule": "*/10 * * * *",
+      "sweep_runs": 15,
+      "sweep_failures": 0,
+      "last_sweep_at": "2026-08-14T16:50:00.085854+00:00",
+      "filed": {"dedup_key": "dead_man:release_drill", "failure_state": "blocked", "overdue_seconds": 37},
+      "recovered": {"status": "resolved", "failure_state": "recovered", "events": 3},
+      "unknown_name_rejected": true,
+      "registry": [
+        {"name": "refresh_data", "last_seen_at": "2026-08-14T15:19:12Z", "seen_count": 1},
+        {"name": "ops_scan", "last_seen_at": "2026-08-14T15:13:30Z", "seen_count": 1},
+        {"name": "ops_dead_man_sweep", "last_seen_at": "2026-08-14T16:50:00Z", "seen_count": 18},
+        {"name": "daily_reminders", "last_seen_at": null, "seen_count": 0},
+        {"name": "saved_searches_refresh", "last_seen_at": null, "seen_count": 0},
+        {"name": "campus_seed_health", "last_seen_at": null, "seen_count": 0}
+      ],
+      "overdue_now": 0,
+      "registry_note": "The three heartbeats at seen_count 0 have not come due — daily_reminders and saved_searches_refresh run at 23:00 and 23:30 UTC tonight, campus_seed_health on Sunday, and every deadline counts from registered_at with grace. Their first real check-in is still ahead; refresh_data and ops_scan have each already checked in from a live workflow, which is what proves the endpoint and the step work."
+    }
+  },
+
+  "scheduler": {
+    "status": "PASS",
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "Refresh Opportunity Data published unattended end to end three times in the 24h ending at this SHA: scheduled run 31776222547 (06:25Z, PR #746, auto-merged), dispatched run 31809827957 (14:30Z, PR #756), and dispatched run 31817131885 (15:58Z, PR #759 — the commit this SHA is). Each scraped, passed the data-quality gate, opened a PR, waited for the four required checks and merged itself. Every one of them also POSTed /api/cron/heartbeat as its last step and the check-in landed in ops_heartbeats. ops-scan run 31813379714 completed success and filed three incidents against real degradations rather than reporting a clean no-op.",
+    "runs": ["31776222547", "31809827957", "31817131885", "31813379714"]
+  },
+
+  "promotion": {
+    "status": "PASS",
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "The free-student path answers on this exact build. GET /api/ready 200 ready:true; GET /api/opportunities/stats/summary 200 with 132,525 total, 129,762 active, by_type research 127,980 / internship 3,096 / summer_program 1,261 / fellowship 183. All twelve sampled joinalab.com routes 200 against the Vercel deployment built from this same commit. Honest limit: the full browser walk (profile -> Generate -> ranked cards -> AI cold-email draft -> Tracker) was exercised earlier today on 0656768/c549ffb, not on this SHA; the changes since are a results-rail facet, a collector identity gate, and corpus data, none of which alter that path's shape — but it was not re-walked, and this key does not claim it was."
+  },
+
+  "open_incidents": {
+    "release_sha": "8ebc2e4ee2079331ac4d19bd674c614eba16c73e",
+    "detail": "Counted directly against the production table at 2026-08-14T16:50Z: select count(*) from ops_incidents where status not in ('resolved','suppressed'). Eleven of the twelve share ONE root cause, established by probe rather than inferred: the failing seeds for jhu, princeton, stanford and uva all return Cloudflare 403, three of them with cf-mitigated: challenge. Both a Shanghai residential egress and a GitHub-hosted runner are blocked on the same URLs, so this is UA/TLS fingerprinting rather than IP reputation, and campus_graph has no headless crawl strategy (static/recursive/rss/sitemap only) to answer it with. Nothing here was resolved or suppressed to shorten the list.",
+    "rollup": {
+      "open_total": 12,
+      "truncated": false,
+      "open_by_kind": {"collector_failure": 11, "data_drift": 1},
+      "root_causes": {
+        "cloudflare_fingerprint_wall": 11,
+        "professor_tracking_release_ready": 1
+      }
+    }
+  }
+}
