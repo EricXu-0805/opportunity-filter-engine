@@ -103,6 +103,38 @@ Record the observed row values in the evidence file. A drill that was not run
 is `UNVERIFIED`, not `PASS` — the design being correct is not evidence that
 the switch is armed.
 
+### A scheduled workflow can hold the backend deploy
+
+`render.yaml` sets `autoDeployTrigger: checksPass`, and Render waits for
+**every** check run on the commit — it has no notion of "required". That is
+what froze the backend for four days in August when the non-required
+`Security advisory` job went red (#733).
+
+The same mechanism has a second, quieter form: a workflow that runs *on main*
+hangs its check on main's head commit for as long as it runs. Observed
+2026-08-14 — `c549ffb` merged with all four required checks green, and Render
+never queued a deploy, because a manually dispatched `refresh` was still
+`in_progress` against that commit. `Deploys` showed `0656768` Live and no
+pending build.
+
+So during every daily refresh window (06:00 UTC, up to five hours) a merge to
+main does not reach the backend, and if that refresh **fails**, it never does
+until someone re-runs it green. Vercel is unaffected; it deploys fails-open,
+which is how the front and back ends drift apart.
+
+Check before concluding a deploy is stuck:
+
+```bash
+gh api repos/<owner>/<repo>/commits/<sha>/check-runs \
+  --jq '.check_runs[] | "\(.name): \(.status) \(.conclusion)"'
+```
+
+The structural fix is to stop letting an unrelated job decide: set
+`autoDeploy: false` and call a Render deploy hook from the CI workflow once —
+and only once — the four required jobs are green. That needs a
+`RENDER_DEPLOY_HOOK_URL` secret, so it is the operator's move, not a code
+change that can land ahead of it.
+
 ## 4. Rollback
 
 **Trigger:** `/api/ready` non-200 after deploy, deployed SHA ≠ release SHA,
