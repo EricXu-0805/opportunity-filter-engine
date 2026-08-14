@@ -580,6 +580,58 @@ class TestProfileIdentityGate:
 
         assert profile_page_matches_person(soup, "Ada Lovelace") is True
 
+    def test_a_cookie_banner_ahead_of_the_name_does_not_veto_it(self):
+        """The real UConn shape, and the reason this gate is being changed.
+
+        Every uconn.edu profile carries a consent banner whose <h1> precedes the
+        content, so the page has two: the banner and the person. The banner is
+        not a competing identity claim — it names nobody — but it used to veto,
+        and a dispatched deep refresh on 2026-08-14 visited all 1,169 uconn
+        profiles and discarded every field it extracted.
+        """
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        soup = self._soup(
+            "<html><title>Ming-Hui Chen | Department of Statistics</title>"
+            "<h1>UConn Cookie Information</h1>"
+            "<h3>Purpose of Cookies:</h3>"
+            "<h1>Ming-Hui Chen</h1>"
+            "<h2>Selected Publications</h2></html>"
+        )
+
+        assert profile_page_matches_person(soup, "Ming-Hui Chen") is True
+
+    def test_a_wrong_name_alongside_the_right_one_still_resolves_to_the_page(self):
+        """Two person-shaped headings, one of them ours: still ours.
+
+        A directory page listing somebody else would not carry OUR name in an
+        <h1> at all — it carries theirs. What this shape actually is, in the
+        wild, is a profile with a "related faculty" or "lab members" heading.
+        """
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        soup = self._soup(
+            "<html><title>Ada Lovelace | Faculty</title>"
+            "<h1>Grace Hopper</h1><h1>Ada Lovelace</h1></html>"
+        )
+
+        assert profile_page_matches_person(soup, "Ada Lovelace") is True
+
+    def test_a_wrong_name_alone_still_blocks_the_matching_title(self):
+        """The veto this reordering must not weaken, restated as a regression.
+
+        No strong node names the expected person, so the wrong-person <h1> must
+        still stop the browser title from rescuing the page.
+        """
+        from src.collectors.ucb_common import profile_page_matches_person
+
+        soup = self._soup(
+            "<html><title>Ada Lovelace | Faculty</title>"
+            "<h1>Cookie Notice</h1><h1>Grace Hopper</h1></html>"
+        )
+
+        assert profile_page_matches_person(soup, "Ada Lovelace") is False
+
 
 # --- Additive contact provenance (W7a) ---------------------------------------
 
