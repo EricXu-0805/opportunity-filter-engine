@@ -1,75 +1,205 @@
 {
-  "duration_seconds": 2375.8,
+  "duration_seconds": 9488.5,
   "release": {
     "by_unit": {
-      "amherst": {
+      "arizona": {
         "ready": true,
         "reasons": []
       },
-      "uconn": {
+      "msu": {
+        "ready": true,
+        "reasons": []
+      },
+      "nyu": {
+        "ready": true,
+        "reasons": []
+      },
+      "pitt": {
+        "ready": true,
+        "reasons": []
+      },
+      "umass": {
+        "ready": true,
+        "reasons": []
+      },
+      "uva": {
+        "ready": true,
+        "reasons": []
+      },
+      "yale": {
         "ready": true,
         "reasons": []
       }
     },
-    "degradations": [],
+    "degradations": [
+      {
+        "detail": "3/6, 3 failed",
+        "kind": "seed_pages_unreached",
+        "source": "campus_graph:nyu"
+      },
+      {
+        "detail": "nyu_ugr_hub: seed fetch failed: https://cas.nyu.edu/undergraduate-research.html; nyu_ugr_hub: seed fetch failed: https://cas.nyu.edu/undergraduate-research/deans-undergraduate-research-fund/durf-reasearch-ambassador-program.html; nyu_ugr_hub: seed fetch failed: https://www.nyu.edu/research/undergraduate-research.html",
+        "kind": "crawl_errors",
+        "source": "campus_graph:nyu"
+      },
+      {
+        "detail": "0/2 seed pages, 0/1 crawl sources",
+        "kind": "dark_crawl",
+        "source": "campus_graph:uva"
+      },
+      {
+        "detail": "uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/; uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/our-opportunities/grants",
+        "kind": "crawl_errors",
+        "source": "campus_graph:uva"
+      }
+    ],
     "expected": [
-      "amherst_faculty",
-      "campus_graph:amherst",
-      "campus_graph:uconn",
-      "uconn_faculty"
+      "arizona_faculty",
+      "campus_graph:arizona",
+      "campus_graph:msu",
+      "campus_graph:nyu",
+      "campus_graph:pitt",
+      "campus_graph:umass",
+      "campus_graph:uva",
+      "campus_graph:yale",
+      "msu_faculty",
+      "nyu_faculty",
+      "pitt_faculty",
+      "umass_faculty",
+      "uva_faculty",
+      "yale_faculty"
     ],
     "observed": [
-      "amherst_faculty",
+      "arizona_faculty",
       "auto_tagger",
       "campus_discovery_quarantine",
-      "campus_graph:amherst",
-      "campus_graph:uconn",
+      "campus_graph:arizona",
+      "campus_graph:msu",
+      "campus_graph:nyu",
+      "campus_graph:pitt",
+      "campus_graph:umass",
+      "campus_graph:uva",
+      "campus_graph:yale",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
       "faculty_joint_collapse",
       "intl_reconciliation",
+      "msu_faculty",
+      "nyu_faculty",
       "pi_enricher",
+      "pitt_faculty",
       "professor_tracking",
       "school_audience",
-      "uconn_faculty"
+      "umass_faculty",
+      "uva_faculty",
+      "yale_faculty"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "amherst",
-        "summary_key": "amherst_faculty"
+        "school": "arizona",
+        "summary_key": "arizona_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "amherst",
-        "summary_key": "campus_graph:amherst"
+        "school": "arizona",
+        "summary_key": "campus_graph:arizona"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "uconn",
-        "summary_key": "campus_graph:uconn"
+        "school": "msu",
+        "summary_key": "campus_graph:msu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "uconn",
-        "summary_key": "uconn_faculty"
+        "school": "nyu",
+        "summary_key": "campus_graph:nyu"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "pitt",
+        "summary_key": "campus_graph:pitt"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "umass",
+        "summary_key": "campus_graph:umass"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "uva",
+        "summary_key": "campus_graph:uva"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "yale",
+        "summary_key": "campus_graph:yale"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "msu",
+        "summary_key": "msu_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "nyu",
+        "summary_key": "nyu_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "pitt",
+        "summary_key": "pitt_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "umass",
+        "summary_key": "umass_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "uva",
+        "summary_key": "uva_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "yale",
+        "summary_key": "yale_faculty"
       }
     ],
     "publishable": [
-      "amherst",
-      "uconn"
+      "arizona",
+      "msu",
+      "nyu",
+      "pitt",
+      "umass",
+      "uva",
+      "yale"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
-      "faculty stale retirement is held pending per-unit lineage: ['amherst_faculty', 'uconn_faculty']",
+      "deep source campus_graph:nyu loaded 3/6 configured seed pages (3 failed); those sources kept their previous records",
+      "deep source campus_graph:nyu reported crawl errors: ['nyu_ugr_hub: seed fetch failed: https://cas.nyu.edu/undergraduate-research.html', 'nyu_ugr_hub: seed fetch failed: https://cas.nyu.edu/undergraduate-research/deans-undergraduate-research-fund/durf-reasearch-ambassador-program.html', 'nyu_ugr_hub: seed fetch failed: https://www.nyu.edu/research/undergraduate-research.html']",
+      "deep source campus_graph:uva loaded no live page at all (0/2 seed pages, 0/1 crawl sources); its records keep the previous run's verification and this run cannot claim to have seen the school",
+      "deep source campus_graph:uva reported crawl errors: ['uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/', 'uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/our-opportunities/grants']",
+      "faculty stale retirement is held pending per-unit lineage: ['arizona_faculty', 'msu_faculty', 'nyu_faculty', 'pitt_faculty', 'umass_faculty', 'uva_faculty', 'yale_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -77,33 +207,43 @@
     "deep": true,
     "national": false,
     "schools": [
-      "amherst",
-      "uconn"
+      "arizona",
+      "msu",
+      "nyu",
+      "pitt",
+      "umass",
+      "uva",
+      "yale"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "amherst",
-      "uconn"
+      "arizona",
+      "msu",
+      "nyu",
+      "pitt",
+      "umass",
+      "uva",
+      "yale"
     ]
   },
   "sources": {
-    "amherst_faculty": {
-      "fetched": 265,
-      "new": 2,
+    "arizona_faculty": {
+      "fetched": 1445,
+      "new": 24,
       "status": "ok",
-      "updated": 263
+      "updated": 1421
     },
     "auto_tagger": {
-      "rule_based_tagged": 3,
+      "rule_based_tagged": 23,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
-    "campus_graph:amherst": {
+    "campus_graph:arizona": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -111,18 +251,18 @@
       "deep": true,
       "degraded_page_errors": [],
       "discovered_records": 0,
-      "fetched": 9,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
+      "fetched": 5,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
       "new": 0,
-      "seed_pages_expected": 3,
+      "seed_pages_expected": 4,
       "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 9,
+      "seed_pages_loaded": 4,
+      "seed_records": 5,
       "status": "ok",
-      "updated": 9
+      "updated": 5
     },
-    "campus_graph:uconn": {
+    "campus_graph:msu": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -131,21 +271,123 @@
       "degraded_page_errors": [],
       "discovered_records": 0,
       "fetched": 6,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
       "new": 0,
-      "seed_pages_expected": 2,
+      "seed_pages_expected": 3,
       "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
+      "seed_pages_loaded": 3,
       "seed_records": 6,
       "status": "ok",
       "updated": 6
+    },
+    "campus_graph:nyu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "nyu_ugr_hub: seed fetch failed: https://www.nyu.edu/research/undergraduate-research.html",
+        "nyu_ugr_hub: seed fetch failed: https://cas.nyu.edu/undergraduate-research.html",
+        "nyu_ugr_hub: seed fetch failed: https://cas.nyu.edu/undergraduate-research/deans-undergraduate-research-fund/durf-reasearch-ambassador-program.html"
+      ],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 11,
+      "live_pages_attempted": 6,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 6,
+      "seed_pages_failed": 3,
+      "seed_pages_loaded": 3,
+      "seed_records": 11,
+      "status": "ok",
+      "updated": 11
+    },
+    "campus_graph:pitt": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 4,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 4,
+      "seed_records": 4,
+      "status": "ok",
+      "updated": 4
+    },
+    "campus_graph:umass": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 9,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 4,
+      "seed_records": 9,
+      "status": "ok",
+      "updated": 9
+    },
+    "campus_graph:uva": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/",
+        "uva_ugr_hub: seed fetch failed: https://undergraduateresearch.virginia.edu/our-opportunities/grants"
+      ],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 0,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 9,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 0,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 2,
+      "seed_pages_loaded": 0,
+      "seed_records": 9,
+      "status": "ok",
+      "updated": 9
+    },
+    "campus_graph:yale": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 5,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 5,
+      "status": "ok",
+      "updated": 5
     },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 130881,
+      "skipped_rolling": 131383,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
@@ -153,21 +395,33 @@
       "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
-        "amherst_faculty",
-        "uconn_faculty"
+        "arizona_faculty",
+        "msu_faculty",
+        "nyu_faculty",
+        "pitt_faculty",
+        "umass_faculty",
+        "uva_faculty",
+        "yale_faculty"
       ],
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 6,
-      "keywords_cleaned": 18,
+      "duplicates_removed": 129,
+      "keywords_cleaned": 4,
       "removed_by_school": {
-        "amherst": 1,
-        "uconn": 5
+        "arizona": 19,
+        "msu": 22,
+        "nyu": 3,
+        "pitt": 13,
+        "umass": 31,
+        "uva": 26,
+        "yale": 15
       },
       "retitled": 0,
-      "shared_inbox_nulled": {},
+      "shared_inbox_nulled": {
+        "pitt": 4
+      },
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
@@ -180,24 +434,42 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
+    "msu_faculty": {
+      "fetched": 950,
+      "new": 28,
+      "status": "ok",
+      "updated": 922
+    },
+    "nyu_faculty": {
+      "fetched": 1333,
+      "new": 354,
+      "status": "ok",
+      "updated": 979
+    },
     "pi_enricher": {
-      "already_had": 1148,
-      "enriched": 16,
-      "nulled_unit_inboxes": 4,
-      "renulled_shared_emails": 10,
-      "scraped": 300,
-      "skipped_budget": 0,
+      "already_had": 8545,
+      "enriched": 186,
+      "nulled_unit_inboxes": 5,
+      "renulled_shared_emails": 155,
+      "scraped": 1000,
+      "skipped_budget": 692,
       "status": "ok"
     },
+    "pitt_faculty": {
+      "fetched": 1115,
+      "new": 22,
+      "status": "ok",
+      "updated": 1093
+    },
     "professor_tracking": {
-      "active_profile_coverage_pct": 28.78,
-      "events": 7092,
-      "freshness_pct": 28.78,
-      "fully_stale_school_count": 56,
-      "missing_profile_count": 89472,
-      "missing_school_count": 56,
-      "new_events": 0,
-      "profiles": 36203,
+      "active_profile_coverage_pct": 30.34,
+      "events": 7937,
+      "freshness_pct": 30.34,
+      "fully_stale_school_count": 54,
+      "missing_profile_count": 87782,
+      "missing_school_count": 54,
+      "new_events": 845,
+      "profiles": 38278,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -205,9 +477,9 @@
     },
     "school_audience": {
       "by_source": {
-        "amherst_faculty": 267,
+        "amherst_faculty": 265,
         "amherst_research_programs": 9,
-        "arizona_faculty": 1459,
+        "arizona_faculty": 1483,
         "arizona_research_programs": 5,
         "asu_faculty": 2428,
         "asu_research_programs": 6,
@@ -312,7 +584,7 @@
         "middlebury_research_programs": 9,
         "mit_faculty": 1356,
         "mit_research_programs": 7,
-        "msu_faculty": 959,
+        "msu_faculty": 987,
         "msu_research_programs": 6,
         "ncsu_faculty": 2260,
         "ncsu_research_programs": 11,
@@ -326,13 +598,13 @@
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
         "nsf_reu": 709,
-        "nyu_faculty": 1787,
+        "nyu_faculty": 2141,
         "nyu_research_programs": 11,
         "oregonstate_faculty": 601,
         "oregonstate_research_programs": 4,
         "osu_faculty": 2247,
         "osu_research_programs": 8,
-        "pitt_faculty": 1120,
+        "pitt_faculty": 1142,
         "pitt_research_programs": 4,
         "pomona_faculty": 255,
         "pomona_research_programs": 8,
@@ -444,7 +716,7 @@
         "ucla_faculty": 2040,
         "ucla_labs": 2,
         "ucla_research_programs": 32,
-        "uconn_faculty": 1168,
+        "uconn_faculty": 1163,
         "uconn_research_programs": 6,
         "ucr_faculty": 1148,
         "ucr_research_programs": 6,
@@ -476,7 +748,7 @@
         "uiuc_ursa": 1,
         "uky_faculty": 747,
         "uky_research_programs": 6,
-        "umass_faculty": 1575,
+        "umass_faculty": 1593,
         "umass_research_programs": 9,
         "umd_faculty": 1299,
         "umd_research_programs": 7,
@@ -506,7 +778,7 @@
         "utexas_research_programs": 35,
         "utk_faculty": 1024,
         "utk_research_programs": 5,
-        "uva_faculty": 1555,
+        "uva_faculty": 1604,
         "uva_research_programs": 9,
         "uw_external_research": 1,
         "uw_faculty": 2212,
@@ -532,17 +804,29 @@
         "wlu_research_programs": 8,
         "wpi_faculty": 461,
         "wpi_research_programs": 4,
-        "yale_faculty": 1276,
+        "yale_faculty": 1290,
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 132531
+      "tagged": 133033
     },
-    "uconn_faculty": {
-      "fetched": 1157,
-      "new": 5,
+    "umass_faculty": {
+      "fetched": 1508,
+      "new": 18,
       "status": "ok",
-      "updated": 1152
+      "updated": 1490
+    },
+    "uva_faculty": {
+      "fetched": 1494,
+      "new": 49,
+      "status": "ok",
+      "updated": 1445
+    },
+    "yale_faculty": {
+      "fetched": 1271,
+      "new": 14,
+      "status": "ok",
+      "updated": 1257
     }
   },
   "time_budget": {
@@ -550,8 +834,8 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-08-14T15:59:56.059067",
-  "total_in_file": 132525,
-  "total_new": 7,
-  "total_updated": 1430
+  "timestamp": "2026-08-14T17:00:38.581220",
+  "total_in_file": 132904,
+  "total_new": 509,
+  "total_updated": 8656
 }
