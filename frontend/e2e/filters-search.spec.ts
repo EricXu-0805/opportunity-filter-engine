@@ -72,12 +72,28 @@ test.describe('Filters, search, sort', () => {
     expect(after).toBeLessThanOrEqual(before);
   });
 
-  test('deadline-passed opportunities hidden under 7-day filter', async ({ page }) => {
+  test('the deadline facet offers only values the corpus can answer', async ({ page }) => {
+    // Was 'deadline-passed opportunities hidden under 7-day filter', which
+    // selected value '7' and asserted only that the URL said dl=7. It never
+    // looked at the list, and on the published corpus that click returned an
+    // empty page every time: 789 of 132,524 records carry a deadline and 786
+    // of those are already past, so the 7/14/30-day windows matched zero rows
+    // each (measured 2026-08-14). The chips now come from server-side counts.
     await goToResults(page);
     await openFiltersIfCollapsed(page);
     const deadlineSelect = page.locator('select', { hasText: /Any deadline/i });
-    await deadlineSelect.selectOption({ value: '7' });
-    await expect(page).toHaveURL(/dl=7/);
+    const values = await deadlineSelect
+      .locator('option')
+      .evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
+
+    // 'rolling' reads is_rolling, which 98.7% of records answer, so it is
+    // always offered. Everything after it is conditional on the count.
+    expect(values.slice(0, 2)).toEqual(['', 'rolling']);
+
+    for (const value of values.slice(1)) {
+      await deadlineSelect.selectOption({ value });
+      await expect(page).toHaveURL(new RegExp(`dl=${value}`));
+    }
   });
 
   test('clear filters button restores state', async ({ page }) => {

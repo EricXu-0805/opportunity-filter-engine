@@ -249,6 +249,12 @@ class MatchesResponse(BaseModel):
     view_counts: dict[str, int] = Field(default_factory=dict)
     source_facets: list[dict[str, Union[str, int]]] = Field(default_factory=list)
     scope_available: bool = False
+    # How many records each deadline chip would return, keyed "7"/"14"/"30"/
+    # "passed". Empty from an older backend, which the rail reads as "no
+    # evidence" and hides the chips — the same fail-closed direction as
+    # RELEASE_SCOPE, and the safe one: a hidden live chip is a smaller lie than
+    # a shown dead one.
+    deadline_facets: dict[str, int] = Field(default_factory=dict)
     view_id: str = ""
 
 

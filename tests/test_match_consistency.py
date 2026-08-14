@@ -813,11 +813,13 @@ class TestServerMatchView:
             deadline="7",
             today="2026-07-31",
         )
-        filtered, counts, facets, scope_available = m_module._apply_match_view(
-            results,
-            opportunities,
-            view,
-            "uiuc",
+        filtered, counts, facets, scope_available, _deadlines = (
+            m_module._apply_match_view(
+                results,
+                opportunities,
+                view,
+                "uiuc",
+            )
         )
         assert [result.opportunity_id for result in filtered] == ["ml-stipend"]
         assert counts["all"] == 1
@@ -863,10 +865,49 @@ class TestServerMatchView:
         }
         view = MatchViewState(tab="all", deadline="rolling", today="2026-07-31")
 
-        filtered, _counts, _facets, _scope = m_module._apply_match_view(
+        filtered, _counts, _facets, _scope, _deadlines = m_module._apply_match_view(
             results, opportunities, view, "uiuc",
         )
         assert [r.opportunity_id for r in filtered] == ["rolling-lab"]
+
+    def test_deadline_facets_count_what_each_chip_would_return(self):
+        """The rail renders on these counts, so they must match the predicate.
+
+        A chip that is shown because the count says 1 and then returns 0 is the
+        same defect one layer along. Both sides are computed from
+        `_calendar_days_until` against the caller's `today`.
+        """
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        def _result(opportunity_id: str, score: float) -> MatchResult:
+            return MatchResult(
+                opportunity_id=opportunity_id, eligibility_score=80,
+                readiness_score=80, upside_score=80, final_score=score,
+                bucket="good_match", reasons_fit=[], reasons_gap=[], next_steps=[],
+            )
+
+        results = [_result("closes-in-3", 80.0), _result("closes-in-20", 79.0),
+                   _result("already-closed", 78.0), _result("no-date", 77.0)]
+        opportunities = {
+            "closes-in-3": {**_opp("closes-in-3"), "deadline": "2026-08-03"},
+            "closes-in-20": {**_opp("closes-in-20"), "deadline": "2026-08-20"},
+            "already-closed": {**_opp("already-closed"), "deadline": "2026-07-01"},
+            "no-date": {**_opp("no-date"), "deadline": None},
+        }
+        view = MatchViewState(tab="all", today="2026-07-31")
+
+        _f, _c, _s, _sc, deadlines = m_module._apply_match_view(
+            results, opportunities, view, "uiuc",
+        )
+        assert deadlines == {"7": 1, "14": 1, "30": 2, "passed": 1}
+
+        for window, expected in (("7", 1), ("14", 1), ("30", 2), ("passed", 1)):
+            chosen = MatchViewState(tab="all", deadline=window, today="2026-07-31")
+            rows, _c2, _f2, _s2, _d2 = m_module._apply_match_view(
+                results, opportunities, chosen, "uiuc",
+            )
+            assert len(rows) == expected, window
 
 
 class TestUnknownPolicy:

@@ -20,6 +20,10 @@ export interface FilterRailProps {
    *  results (first entry is the "All" option). Replaces a hardcoded list that
    *  omitted simplify_internships (the 2nd-largest source) and others. */
   sourceOptions: Array<[string, string]>;
+  /** Deadline facet options, derived like sourceOptions from what the server
+   *  counted rather than hardcoded. "All" and "rolling" are always present;
+   *  the day-windows and "passed" appear only when a record would come back. */
+  deadlineOptions: Array<[string, string]>;
   /** Discovery-scope facet options (PR #187), derived like sourceOptions:
    *  empty when no result carries school/audience metadata (pre-#189 cached
    *  data) so the facet hides itself rather than filtering on nothing. */
@@ -59,6 +63,7 @@ export function FilterRail({
   dismissedCount,
   activeFilterCount,
   sourceOptions,
+  deadlineOptions,
   scopeOptions,
   includeCrossSchool,
   crossSchoolDisabled,
@@ -181,7 +186,7 @@ export function FilterRail({
         <FilterSelect
           value={filters.deadline}
           onChange={(v) => onFiltersChange({ ...filters, deadline: v as Filters['deadline'] })}
-          options={[['', t('results.filters.deadlineAll')], ['rolling', t('results.filters.deadlineRolling')], ['7', t('results.filters.deadline7')], ['14', t('results.filters.deadline14')], ['30', t('results.filters.deadline30')], ['passed', t('results.filters.deadlinePassed')]]}
+          options={deadlineOptions}
         />
         <FilterSelect
           value={sortBy}
