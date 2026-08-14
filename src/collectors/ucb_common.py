@@ -272,12 +272,23 @@ def profile_page_matches_person(
         ]
         return not matches(candidate) and bool(observed)
 
-    # A strong identity node naming a different person makes the page
+    # A page that names the expected person in a strong identity node IS that
+    # person's page. Another strong node elsewhere on it does not unsay that.
+    #
+    # This check used to come second, and the veto below ran first over EVERY
+    # strong candidate — including nodes that name no person at all. UConn puts
+    # a site-wide cookie banner ahead of the content, so every one of its
+    # profile pages carries <h1>UConn Cookie Information</h1> before
+    # <h1>Ming-Hui Chen</h1>. The banner matched nobody, vetoed, and the real
+    # heading was never read: every extracted field was discarded school-wide.
+    # Measured 2026-08-14 — a dispatched deep uconn refresh visited all 1,169
+    # profiles over 23 minutes and changed nothing but last_verified.
+    if any(matches(candidate) for candidate in strong_candidates):
+        return True
+    # A strong identity node naming a different person still makes the page
     # ambiguous. Do not let a browser title or other weaker node override it.
     if any(clearly_other_person(candidate) for candidate in strong_candidates):
         return False
-    if any(matches(candidate) for candidate in strong_candidates):
-        return True
     return any(matches(candidate) for candidate in weak_candidates)
 
 # Some university hosts (several InCommon-issued .edu certs — UCLA's Physics and
