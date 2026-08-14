@@ -71,6 +71,16 @@ jobs:
             | tee /dev/stderr \
             | python3 scripts/check_cron_response.py
 
+      # Dead man's switch (migration 032): the alert below fires when this run
+      # fails, and says nothing at all when it stops running.
+      - name: Check in to the dead man's switch
+        run: |
+          curl -sfSL -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"saved_searches_refresh","detail":{"run_id":"${{ github.run_id }}"}}' \
+            "${{ secrets.BACKEND_URL }}/api/cron/heartbeat"
+
       # Cron failures send no notification by default — the data-refresh
       # pipeline once failed 7 runs in a row before anyone noticed. Same
       # operator alert as refresh-data.yml, including `cancelled()`: blowing

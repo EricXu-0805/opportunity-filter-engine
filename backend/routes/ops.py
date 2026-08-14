@@ -832,6 +832,125 @@ class _Recorder:
         }
 
 
+# ---------------------------------------------------------------------------
+# Detector: is the in-database dead man's switch itself alive?
+# ---------------------------------------------------------------------------
+# Migration 032 gives every scheduled workflow a heartbeat and has pg_cron
+# sweep them every ten minutes. That covers "GitHub stopped running things".
+# It cannot cover "pg_cron stopped running things" — a sweep that never fires
+# also never notices that it never fired. So the watch is mutual: the sweep
+# records its own heartbeat, and this detector, which runs from GitHub, is
+# what reads it. Neither side can go quiet without the other filing.
+#
+# The two directions have different resolutions on purpose: the sweep catches
+# a dead scheduler within its grace window, this catches a dead sweeper within
+# one day, because that is this cron's period and inventing a tighter claim
+# would be a number we cannot back.
+_SWEEP_HEARTBEAT = "ops_dead_man_sweep"
+
+
+def _parse_ts(value: object) -> datetime | None:
+    """Parse a PostgREST timestamptz. Returns None rather than raising."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+async def _scan_dead_man(rec: _Recorder, summary: dict, client, base: str, headers: dict) -> None:
+    dedup_key = f"dead_man:{_SWEEP_HEARTBEAT}"
+    try:
+        resp = await client.get(
+            f"{base}/rest/v1/ops_heartbeat_status",
+            params={
+                "name": f"eq.{_SWEEP_HEARTBEAT}",
+                "select": "name,description,last_seen_at,due_at,overdue,seen_count",
+                "limit": "1",
+            },
+            headers=headers,
+        )
+        rows = resp.json() if resp.status_code < 400 else None
+    except Exception as e:
+        summary["skipped"].append({
+            "detector": "dead_man",
+            "reason": _truncate(f"heartbeat read failed: {type(e).__name__}", 120),
+        })
+        return
+    if not isinstance(rows, list):
+        summary["skipped"].append({"detector": "dead_man", "reason": "heartbeat read rejected"})
+        return
+
+    summary["scanned"] += 1
+
+    # No row at all means migration 032 has not reached this database. That is
+    # not "nothing to report" — it means nothing is watching the schedulers.
+    if not rows:
+        await rec.record(
+            kind="collector_failure", dedup_key=dedup_key,
+            title="Dead man's switch is not installed",
+            summary=("ops_heartbeat_status has no row for the sweep: migration 032 has not been "
+                     "applied to this database, so no scheduler is being watched."),
+            detail={"heartbeat": _SWEEP_HEARTBEAT, "detected_by": "ops-scan"},
+            scope=_SWEEP_HEARTBEAT, priority="urgent", failure_state="blocked",
+        )
+        summary["detectors"]["dead_man"] = {"installed": False}
+        return
+
+    row = rows[0] if isinstance(rows[0], dict) else {}
+    due = _parse_ts(row.get("due_at"))
+    last_seen = _parse_ts(row.get("last_seen_at"))
+    now = datetime.now(UTC)
+
+    # The view's own verdict wins: it is the single definition of "overdue"
+    # and it is evaluated against the database's clock rather than this
+    # instance's, so a skewed Render container cannot invent or hide an
+    # outage. Falling back to our own comparison is a degradation worth
+    # naming rather than a silent equivalent.
+    clock = "database"
+    if isinstance(row.get("overdue"), bool):
+        overdue = row["overdue"]
+    else:
+        clock = "backend"
+        overdue = due is None or now > due
+
+    summary["detectors"]["dead_man"] = {
+        "installed": True,
+        "last_seen_at": row.get("last_seen_at"),
+        "due_at": row.get("due_at"),
+        "seen_count": row.get("seen_count"),
+        "overdue": overdue,
+        "judged_by_clock": clock,
+    }
+
+    if overdue:
+        late = int((now - due).total_seconds()) if due else None
+        await rec.record(
+            kind="collector_failure", dedup_key=dedup_key,
+            title="Dead man's switch has stopped sweeping",
+            summary=("pg_cron is no longer running ops_dead_man_sweep — last check-in "
+                     f"{row.get('last_seen_at') or 'never'}. Nothing is watching the "
+                     "scheduled workflows until it is rescheduled."),
+            detail={
+                "heartbeat": _SWEEP_HEARTBEAT,
+                "last_seen_at": row.get("last_seen_at"),
+                "due_at": row.get("due_at"),
+                "overdue_seconds": late,
+                "seen_count": row.get("seen_count"),
+                "detected_by": "ops-scan",
+            },
+            scope=_SWEEP_HEARTBEAT, priority="urgent",
+            failure_state="blocked" if last_seen is None else "failed",
+        )
+    elif dedup_key in summary.get("_open_keys", ()):
+        await rec.recover(
+            dedup_key, auto_resolve=True,
+            note=f"sweep heartbeat received at {row.get('last_seen_at')}",
+        )
+
+
 def _read_json(path: Path) -> tuple[Any, str | None]:
     if not path.exists():
         return None, "artifact not present"
@@ -1311,6 +1430,15 @@ async def ops_scan(authorization: str | None = Header(default=None)):
                 "error": _truncate(f"{type(e).__name__}: {e}", 120),
             })
 
+        try:
+            await _scan_dead_man(rec, summary, client, base, headers)
+        except Exception as e:
+            logger.exception("ops-scan: dead_man detector crashed")
+            summary["errors"].append({
+                "detector": "dead_man",
+                "error": _truncate(f"{type(e).__name__}: {e}", 120),
+            })
+
         summary["opened"] = rec.opened
         summary["recovered"] = rec.recovered
         summary["opened_keys"] = rec.opened_keys
@@ -1319,3 +1447,61 @@ async def ops_scan(authorization: str | None = Header(default=None)):
     summary.pop("_open_keys", None)
     summary["checked_at"] = _now_iso()
     return summary
+
+
+class HeartbeatIn(BaseModel):
+    name: str
+    detail: dict[str, Any] | None = None
+
+
+@router.post("/cron/heartbeat")
+async def cron_heartbeat(body: HeartbeatIn, authorization: str | None = Header(default=None)):
+    """A scheduled job proving it is still alive.
+
+    Called as the last step of every scheduled workflow, guarded by the same
+    CRON_SECRET as the other crons. The sweep in migration 032 turns the
+    absence of these calls into an incident; this route's only job is to make
+    the call impossible to fake and impossible to lose.
+
+    Two deliberate loudnesses:
+
+    * An unknown name is 404, not an insert. The registry is the contract —
+      a typo must fail the workflow step rather than create a fresh row that
+      nobody watches while the real heartbeat stays overdue.
+    * A storage failure is 502, not a swallowed warning. If the check-in did
+      not land, the caller has to see it now; the alternative is a workflow
+      that reports success while the sweep counts it as dead in six hours.
+    """
+    _verify_cron_secret(authorization)
+    name = _clean_label(body.name, 120)
+    if not name:
+        raise HTTPException(status_code=400, detail="heartbeat name is required")
+
+    base, headers = _supabase()
+    async with _client() as client:
+        try:
+            resp = await client.post(
+                f"{base}/rest/v1/rpc/record_ops_heartbeat",
+                headers=headers,
+                json={"p_name": name, "p_detail": body.detail or {}},
+            )
+        except Exception as e:
+            logger.exception("heartbeat: transport failure for %s", name)
+            raise HTTPException(
+                status_code=502,
+                detail=f"heartbeat storage unreachable ({type(e).__name__})",
+            ) from e
+        if resp.status_code >= 400:
+            logger.error("heartbeat: storage rejected %s (%s)", name, resp.status_code)
+            raise HTTPException(
+                status_code=502,
+                detail=f"heartbeat storage rejected the write ({resp.status_code})",
+            )
+        recorded = resp.json()
+
+    if recorded is not True:
+        raise HTTPException(
+            status_code=404,
+            detail=f"unknown heartbeat '{name}': register it in ops_heartbeats first",
+        )
+    return {"status": "ok", "heartbeat": name, "recorded_at": _now_iso()}

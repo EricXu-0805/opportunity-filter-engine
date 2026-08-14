@@ -37,6 +37,16 @@ jobs:
       - name: Probe every configured campus seed
         run: python3 scripts/check_campus_seeds.py
 
+      # Dead man's switch (migration 032): the alert below fires when a seed is
+      # dead, and says nothing at all when this probe stops running.
+      - name: Check in to the dead man's switch
+        run: |
+          curl -sfSL -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"campus_seed_health","detail":{"run_id":"${{ github.run_id }}"}}' \
+            "${{ secrets.BACKEND_URL }}/api/cron/heartbeat"
+
       - name: Alert operator on a dead seed page
         if: failure() || cancelled()
         env:

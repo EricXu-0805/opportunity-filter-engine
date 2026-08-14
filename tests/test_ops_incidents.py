@@ -10,6 +10,7 @@ wrong before migration 027 gave operational failures one durable home:
     every mutation       -> an audit row with the real prior value + an actor
     retry                -> records an ATTEMPT; never delivery, never a fix
     a missing artifact   -> a reported skip, never a 500 from the monitor
+    a silent scheduler   -> an incident, because absence has no log line
 
 Supabase is stubbed exactly as tests/test_backend_api.py stubs it for the
 admin routes: swap ``ops.httpx.AsyncClient`` for a recorder that answers
@@ -20,7 +21,12 @@ project, and no test asserts on a value the route did not have to compute.
 from __future__ import annotations
 
 import json
+import re
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
+import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 from backend.main import app
@@ -29,6 +35,34 @@ from backend.routes import ops as ops_mod
 client = TestClient(app)
 
 INCIDENT_ID = "11111111-2222-3333-4444-555555555555"
+REPO = Path(__file__).resolve().parents[1]
+
+
+def _heartbeat(name: str = "ops_dead_man_sweep", *, overdue_seconds: int | None = None,
+               never_seen: bool = False) -> dict:
+    """A heartbeat row as PostgREST would return it.
+
+    ``due_at`` is a generated column in migration 032, so the stub computes it
+    the same way the database does rather than letting a test invent a
+    deadline the schema would never produce.
+    """
+    now = datetime.now(UTC)
+    if never_seen:
+        last_seen, due = None, now - timedelta(seconds=1)
+    elif overdue_seconds is not None:
+        last_seen = now - timedelta(seconds=2400 + overdue_seconds)
+        due = last_seen + timedelta(seconds=2400)
+    else:
+        last_seen = now - timedelta(minutes=2)
+        due = last_seen + timedelta(seconds=2400)
+    return {
+        "name": name,
+        "description": "the dead-man sweep itself",
+        "last_seen_at": last_seen.isoformat() if last_seen else None,
+        "due_at": due.isoformat(),
+        "overdue": now > due,
+        "seen_count": 0 if never_seen else 144,
+    }
 
 
 def _incident(**overrides) -> dict:
@@ -82,6 +116,8 @@ def _install_supabase(
     calls=None,
     patch_status: int = 200,
     patched=None,
+    heartbeats=None,
+    rpc_status: int = 200,
 ):
     """Stub ops.httpx.AsyncClient with a PostgREST-shaped recorder.
 
@@ -93,6 +129,11 @@ def _install_supabase(
     """
     incidents = [] if incidents is None else incidents
     events = [] if events is None else events
+    # A healthy database by default: the sweep checked in two minutes ago.
+    # Every scan test runs the dead-man detector, and a stub that answered
+    # "no such row" would have them all silently asserting against an extra
+    # not-installed incident.
+    heartbeats = [_heartbeat()] if heartbeats is None else heartbeats
 
     def _record(entry):
         if calls is not None:
@@ -110,6 +151,8 @@ def _install_supabase(
 
         async def get(self, url, params=None, headers=None, **kwargs):
             _record({"method": "GET", "url": url, "params": params or {}})
+            if "ops_heartbeat" in url:
+                return _Resp(heartbeats)
             if "ops_incident_events" in url:
                 return _Resp(events)
             if "ops_incidents" in url:
@@ -121,7 +164,7 @@ def _install_supabase(
         async def post(self, url, json=None, headers=None, **kwargs):
             _record({"method": "POST", "url": url, "json": json})
             if "/rpc/" in url:
-                return _Resp(rpc_result)
+                return _Resp(rpc_result, status_code=rpc_status)
             return _Resp([], status_code=201)
 
         async def patch(self, url, params=None, headers=None, json=None, **kwargs):
@@ -1290,3 +1333,270 @@ class TestReleaseBlockReader:
         block, err = ops_mod._read_release_block(path)
         assert block is None
         assert "release block" in err
+
+
+# ---------------------------------------------------------------------------
+# The dead man's switch (migration 032)
+# ---------------------------------------------------------------------------
+# Everything above detects a job that RAN and went wrong. None of it can see a
+# job that never ran at all — the refresh was dead for 8 days in August and 18
+# days before that with no red run, no alert, and no incident, because every
+# detector we own lives inside the thing that stopped.
+#
+# The switch is mutual on purpose: pg_cron sweeps the heartbeats that GitHub
+# writes, and this scan (which runs from GitHub) reads the sweep's own
+# heartbeat. Whichever side dies, the other is the one that files. The tests
+# below lock both directions plus the registry that ties them together.
+
+SWEEP = ops_mod._SWEEP_HEARTBEAT
+SWEEP_KEY = f"dead_man:{SWEEP}"
+
+MIGRATION_032 = REPO / "supabase" / "migrations" / "032_dead_man_switch.sql"
+WORKFLOW_DIR = REPO / ".github" / "workflows"
+
+
+def _seeded_heartbeat_names() -> set[str]:
+    """Heartbeat names the migration registers, read from the migration."""
+    sql = MIGRATION_032.read_text(encoding="utf-8")
+    body = sql.split("INSERT INTO ops_heartbeats", 1)[1].split("ON CONFLICT", 1)[0]
+    return set(re.findall(r"^\s*\('([a-z0-9_]+)',", body, re.MULTILINE))
+
+
+def _scheduled_workflows() -> dict[Path, dict]:
+    """Every workflow with a `schedule:` trigger, parsed."""
+    found = {}
+    for path in sorted(WORKFLOW_DIR.glob("*.yml")):
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+        # PyYAML resolves the bare key `on` to the boolean True.
+        triggers = doc.get("on") or doc.get(True) or {}
+        if isinstance(triggers, dict) and "schedule" in triggers:
+            found[path] = doc
+    return found
+
+
+def _checkin_steps(doc: dict) -> list[dict]:
+    return [
+        step
+        for job in (doc.get("jobs") or {}).values()
+        for step in (job.get("steps") or [])
+        if "dead man" in str(step.get("name", "")).lower()
+    ]
+
+
+# The payload is a shell heredoc, so a workflow that interpolates ${{ }} into
+# it writes \"name\" while one that does not writes "name". Both are the same
+# JSON key; the drift check must not depend on which quoting a step happened
+# to need.
+_POSTED_NAME_RE = re.compile(r'\\?"name\\?"\s*:\s*\\?"([a-z0-9_]+)\\?"')
+
+
+def _posted_names(steps: list[dict]) -> list[str]:
+    return _POSTED_NAME_RE.findall(" ".join(str(s.get("run", "")) for s in steps))
+
+
+class TestTheRegistryMatchesTheSchedulers:
+    """A scheduled workflow with no heartbeat is an unwatched scheduler, which
+    is the exact hole this feature exists to close. These are static checks:
+    they hold whether or not anything is deployed."""
+
+    def test_every_scheduled_workflow_checks_in(self):
+        seeded = _seeded_heartbeat_names()
+        unwatched = []
+        for path, doc in _scheduled_workflows().items():
+            steps = _checkin_steps(doc)
+            if not steps:
+                unwatched.append(f"{path.name}: no check-in step")
+                continue
+            names = _posted_names(steps)
+            if not names:
+                unwatched.append(f"{path.name}: check-in step posts no heartbeat name")
+            for name in names:
+                if name not in seeded:
+                    unwatched.append(f"{path.name}: '{name}' is not registered in 032")
+        assert unwatched == [], (
+            "scheduled workflows the dead man cannot see: " + "; ".join(unwatched))
+
+    def test_every_registered_heartbeat_has_a_writer(self):
+        """The reverse drift: a registry row nothing writes goes overdue
+        forever and trains the operator to ignore the queue."""
+        writers = set()
+        for doc in _scheduled_workflows().values():
+            writers.update(_posted_names(_checkin_steps(doc)))
+        # The sweep writes its own; pg_cron is its writer, not a workflow.
+        orphans = _seeded_heartbeat_names() - writers - {SWEEP}
+        assert orphans == set(), f"registered but never written: {sorted(orphans)}"
+
+    def test_the_sweep_watches_itself_so_the_other_half_has_something_to_read(self):
+        assert SWEEP in _seeded_heartbeat_names()
+
+    @pytest.mark.parametrize("path", sorted(_scheduled_workflows()), ids=lambda p: p.name)
+    def test_a_check_in_never_runs_on_a_failed_job(self, path):
+        """`if: always()` would turn the switch into a rubber stamp: the job
+        would report alive on exactly the runs where it did nothing."""
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for step in _checkin_steps(doc):
+            cond = str(step.get("if", "")).lower()
+            assert "always()" not in cond and "failure()" not in cond, (
+                f"{path.name}: check-in is gated on '{cond}', so a failed run still "
+                "reports itself alive")
+
+
+class TestTheScanWatchesTheSweep:
+    """GitHub's half of the mutual watch. pg_cron going quiet is invisible from
+    inside Postgres, so this is the only thing that can report it."""
+
+    def test_a_missing_registry_row_is_urgent_not_silence(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls, heartbeats=[])
+        _write_artifacts(monkeypatch, tmp_path)
+
+        r = _run_scan()
+        assert r.status_code == 200
+        assert r.json()["detectors"]["dead_man"] == {"installed": False}
+        (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                      if p["p_dedup_key"] == SWEEP_KEY)
+        assert payload["p_priority"] == "urgent"
+        assert payload["p_failure_state"] == "blocked"
+
+    def test_a_stalled_sweep_opens_an_incident_carrying_how_late_it_is(
+            self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls,
+                          heartbeats=[_heartbeat(overdue_seconds=7200)])
+        _write_artifacts(monkeypatch, tmp_path)
+
+        r = _run_scan()
+        assert r.json()["detectors"]["dead_man"]["overdue"] is True
+        (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                      if p["p_dedup_key"] == SWEEP_KEY)
+        assert payload["p_kind"] == "collector_failure"
+        assert payload["p_priority"] == "urgent"
+        assert payload["p_failure_state"] == "failed"
+        assert 7100 <= payload["p_detail"]["overdue_seconds"] <= 7300
+
+    def test_a_sweep_that_never_once_ran_is_blocked_not_merely_late(
+            self, monkeypatch, tmp_path):
+        """Migration applied, pg_cron never armed. 'Wired up but never called'
+        is this repo's most common defect; it must not read as warming up."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls,
+                          heartbeats=[_heartbeat(never_seen=True)])
+        _write_artifacts(monkeypatch, tmp_path)
+
+        _run_scan()
+        (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                      if p["p_dedup_key"] == SWEEP_KEY)
+        assert payload["p_failure_state"] == "blocked"
+        assert payload["p_detail"]["last_seen_at"] is None
+
+    def test_a_live_sweep_files_nothing(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path)
+
+        r = _run_scan()
+        assert r.json()["detectors"]["dead_man"]["overdue"] is False
+        assert [p for p in _rpcs(calls, "record_ops_incident")
+                if p["p_dedup_key"] == SWEEP_KEY] == []
+        assert [p for p in _rpcs(calls, "record_ops_recovery")
+                if p["p_dedup_key"] == SWEEP_KEY] == []
+
+    def test_a_sweep_that_came_back_closes_its_own_incident(self, monkeypatch, tmp_path):
+        """The evidence is complete — the database timestamped the check-in —
+        so unlike drift, this recovery may auto-resolve."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[{"dedup_key": SWEEP_KEY}], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path)
+
+        _run_scan()
+        (payload,) = (p for p in _rpcs(calls, "record_ops_recovery")
+                      if p["p_dedup_key"] == SWEEP_KEY)
+        assert payload["p_auto_resolve"] is True
+
+    def test_an_unreadable_heartbeat_table_is_a_reported_skip_not_a_500(
+            self, monkeypatch, tmp_path):
+        """Same rule as every other detector: a monitor that pages on its own
+        failure is one more thing to monitor."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls, heartbeats=None)
+        _write_artifacts(monkeypatch, tmp_path)
+        monkeypatch.setattr(ops_mod, "_parse_ts", lambda _v: (_ for _ in ()).throw(RuntimeError("boom")))
+
+        r = _run_scan()
+        assert r.status_code == 200
+        assert any(e.get("detector") == "dead_man" for e in r.json()["errors"])
+
+
+    def test_the_databases_verdict_wins_over_this_instances_clock(
+            self, monkeypatch, tmp_path):
+        """`overdue` is computed by the view against the database clock. A
+        Render container with a skewed clock must not be able to invent or
+        hide an outage — and when the column is absent, the fallback says so
+        in the summary instead of passing itself off as the same thing."""
+        _scan_env(monkeypatch)
+        row = _heartbeat()
+        row.pop("overdue")
+        _install_supabase(monkeypatch, open_rows=[], heartbeats=[row])
+        _write_artifacts(monkeypatch, tmp_path)
+        assert _run_scan().json()["detectors"]["dead_man"]["judged_by_clock"] == "backend"
+
+        _install_supabase(monkeypatch, open_rows=[], heartbeats=[_heartbeat()])
+        assert _run_scan().json()["detectors"]["dead_man"]["judged_by_clock"] == "database"
+
+
+class TestCheckIn:
+    """POST /api/cron/heartbeat — the only way a scheduler proves it is alive,
+    so every way it can go wrong has to be loud."""
+
+    def _post(self, name="refresh_data", secret="cron-ok", detail=None):
+        return client.post(
+            "/api/cron/heartbeat",
+            headers={"Authorization": f"Bearer {secret}"},
+            json={"name": name, **({"detail": detail} if detail else {})},
+        )
+
+    def test_503_without_a_configured_secret(self, monkeypatch):
+        monkeypatch.delenv("CRON_SECRET", raising=False)
+        assert self._post().status_code == 503
+
+    def test_401_with_the_wrong_secret(self, monkeypatch):
+        _scan_env(monkeypatch)
+        assert self._post(secret="wrong").status_code == 401
+
+    def test_a_check_in_reaches_the_rpc_with_its_evidence(self, monkeypatch):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, calls=calls, rpc_result=True)
+
+        r = self._post(detail={"run_id": "123"})
+        assert r.status_code == 200
+        (payload,) = _rpcs(calls, "record_ops_heartbeat")
+        assert payload == {"p_name": "refresh_data", "p_detail": {"run_id": "123"}}
+
+    def test_an_unknown_name_is_a_404_not_a_new_row(self, monkeypatch):
+        """A typo in a workflow must fail that step. Inserting on demand would
+        satisfy nothing while the real heartbeat stayed overdue."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, calls=calls, rpc_result=False)
+
+        r = self._post(name="refesh_data")
+        assert r.status_code == 404
+        assert "refesh_data" in r.json()["detail"]
+        assert [c for c in calls if c["method"] == "POST" and "ops_heartbeat_status" in c["url"]] == []
+
+    def test_a_rejected_write_is_a_502_not_a_cheerful_ok(self, monkeypatch):
+        _scan_env(monkeypatch)
+        _install_supabase(monkeypatch, rpc_result=None, rpc_status=500)
+        assert self._post().status_code == 502
+
+    def test_an_empty_name_is_a_400(self, monkeypatch):
+        _scan_env(monkeypatch)
+        _install_supabase(monkeypatch)
+        assert self._post(name="   ").status_code == 400
