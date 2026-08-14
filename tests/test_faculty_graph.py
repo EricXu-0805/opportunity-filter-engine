@@ -3223,6 +3223,64 @@ class TestResearchByLabel:
         assert "Machine learning" in out[0]["research_areas"]
         assert "trustworthy AI" in out[0]["research_areas"]
 
+    def test_a_roster_link_to_the_professors_own_site_is_not_followed(
+            self, monkeypatch):
+        """18 of 65 links in UConn CSE's roster point at derekaguiar.com or a
+        github.io page. The identity gate cannot refuse those — a personal
+        homepage carries its owner's name — so profile_url_re is the guard,
+        and whatever it refuses must be left untouched rather than half-read.
+        """
+        from bs4 import BeautifulSoup
+
+        from src.collectors import faculty_graph as fg
+        fetched = []
+
+        def _fetch(url, **_kw):
+            fetched.append(url)
+            # Each page names its own owner: _enrich_profile discards a page
+            # whose identity does not match, so a shared fixture would prove
+            # nothing about the URL guard.
+            who = "Derek Aguiar" if "derekaguiar" in url else "Phillip Bradford"
+            return BeautifulSoup(
+                f"<h1>{who}</h1><h3>Research Interests</h3>"
+                "<p>Bayesian nonparametrics</p>", "html.parser")
+
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", _fetch)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        enr = {"research_label_re": fg.RESEARCH_LABEL_RE,
+               "profile_url_re": r"^https?://[a-z0-9.-]*\.uconn\.edu/"}
+        people = [
+            {"name": "Derek Aguiar", "url": "https://derekaguiar.com/",
+             "research_areas": "", "keywords": []},
+            {"name": "Phillip Bradford",
+             "url": "https://cse.uconn.edu/person/phillip-bradford/",
+             "research_areas": "", "keywords": []},
+        ]
+        out = fg._apply_profile_enrich(people, enr)
+        assert fetched == ["https://cse.uconn.edu/person/phillip-bradford/"]
+        assert not out[0]["research_areas"] and not out[0]["keywords"]
+        assert "Bayesian nonparametrics" in out[1]["research_areas"]
+
+    def test_without_the_pattern_every_target_is_still_followed(self, monkeypatch):
+        """profile_url_re is opt-in: the schools that do not set it must keep
+        fetching exactly what they fetched before."""
+        from bs4 import BeautifulSoup
+
+        from src.collectors import faculty_graph as fg
+        fetched = []
+
+        def _fetch(url, **_kw):
+            fetched.append(url)
+            return BeautifulSoup("<h1>Ada Prof</h1>", "html.parser")
+
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", _fetch)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        fg._apply_profile_enrich(
+            [{"name": "Ada Prof", "url": "https://example.org/ada",
+              "research_areas": "", "keywords": []}],
+            {"research_label_re": fg.RESEARCH_LABEL_RE})
+        assert fetched == ["https://example.org/ada"]
+
     def test_a_configured_selector_still_wins_over_the_label(self, monkeypatch):
         """The label is a fallback. uva keeps its taxonomy selector in front of
         it, and a curated taxonomy term beats a block found by its heading."""

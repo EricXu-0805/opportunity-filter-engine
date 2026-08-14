@@ -107,11 +107,41 @@ _ENRICH = {
 }
 
 
+# Research-only pass for the departments whose listing already carries the
+# email. #745 gave every UConn department the label pattern and UConn still
+# gained nothing from the 2026-08-14 harvest: only the ten _dept_pe
+# departments carry profile_enrich at all, so the other twenty-three never had
+# a profile page opened. The 29% yield measured during recon was measured over
+# profiles downloaded by hand — the pipeline was never going to visit them.
+# Ask what the pipeline actually fetches, not what a sample says.
+#
+# Re-measured 2026-08-15 on the real production path (real listing, real
+# selectors, four profiles per department): STAT 4/4, NEAG 4/4, COMM 3/4,
+# ANTH 3/4, NRE 3/4, CSE 2/4, MCB 2/4, PNB 2/4, CHEM/EEB/ECON/PHIL 1/4, and
+# zero from the engineering college directory, POLS, SOCI, GEOG, ENGL, HIST,
+# AHS. 23 of 80 overall. The zero-yield departments keep the block anyway:
+# four profiles cannot tell 0% from 15%, and the pass costs one throttled GET
+# per person that has no research yet. The harvest measures it properly.
+#
+# No ``always``: unlike the email, this IS optional depth, so it runs only
+# under OFE_ENRICH_PROFILES.
+_RESEARCH_ENRICH = {
+    "research_label_re": _ENRICH["research_label_re"],
+    # CSE links 18 of its 65 people to their own sites (derekaguiar.com, a
+    # github.io page). Those are the professor's self-description on their own
+    # domain, not UConn's roster, and the engine's identity gate cannot refuse
+    # them — a personal homepage carries its owner's name.
+    "profile_url_re": r"^https?://[a-z0-9.-]*\.uconn\.edu/",
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared person-card component, email at listing."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD},
+        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+                   "profile_enrich": _RESEARCH_ENRICH},
     }
 
 
@@ -137,7 +167,7 @@ def _table(short: str, name: str, majors: list[str], url: str,
             "name": "td.person-name a",
             "link": "td.person-name a",
             "email": 'td.person-email a[href^="mailto:"]',
-        }},
+        }, "profile_enrich": _RESEARCH_ENRICH},
     }
 
 
@@ -154,7 +184,8 @@ def _eng(short: str, name: str, majors: list[str], tag: str) -> dict:
         "short": short, "name": name, "majors": majors, "directory_url": _ENG_URL,
         "scrape": {"url": _ENG_URL,
                    "selectors": {**_SEL, "card": card},
-                   "field_filter": _FIELD},
+                   "field_filter": _FIELD,
+                   "profile_enrich": _RESEARCH_ENRICH},
     }
 
 
