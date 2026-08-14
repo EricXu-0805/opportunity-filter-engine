@@ -864,10 +864,10 @@ async def _scan_dead_man(rec: _Recorder, summary: dict, client, base: str, heade
     dedup_key = f"dead_man:{_SWEEP_HEARTBEAT}"
     try:
         resp = await client.get(
-            f"{base}/rest/v1/ops_heartbeats",
+            f"{base}/rest/v1/ops_heartbeat_status",
             params={
                 "name": f"eq.{_SWEEP_HEARTBEAT}",
-                "select": "name,description,last_seen_at,due_at,seen_count",
+                "select": "name,description,last_seen_at,due_at,overdue,seen_count",
                 "limit": "1",
             },
             headers=headers,
@@ -891,7 +891,7 @@ async def _scan_dead_man(rec: _Recorder, summary: dict, client, base: str, heade
         await rec.record(
             kind="collector_failure", dedup_key=dedup_key,
             title="Dead man's switch is not installed",
-            summary=("ops_heartbeats has no row for the sweep: migration 032 has not been "
+            summary=("ops_heartbeat_status has no row for the sweep: migration 032 has not been "
                      "applied to this database, so no scheduler is being watched."),
             detail={"heartbeat": _SWEEP_HEARTBEAT, "detected_by": "ops-scan"},
             scope=_SWEEP_HEARTBEAT, priority="urgent", failure_state="blocked",
@@ -903,7 +903,18 @@ async def _scan_dead_man(rec: _Recorder, summary: dict, client, base: str, heade
     due = _parse_ts(row.get("due_at"))
     last_seen = _parse_ts(row.get("last_seen_at"))
     now = datetime.now(UTC)
-    overdue = due is None or now > due
+
+    # The view's own verdict wins: it is the single definition of "overdue"
+    # and it is evaluated against the database's clock rather than this
+    # instance's, so a skewed Render container cannot invent or hide an
+    # outage. Falling back to our own comparison is a degradation worth
+    # naming rather than a silent equivalent.
+    clock = "database"
+    if isinstance(row.get("overdue"), bool):
+        overdue = row["overdue"]
+    else:
+        clock = "backend"
+        overdue = due is None or now > due
 
     summary["detectors"]["dead_man"] = {
         "installed": True,
@@ -911,6 +922,7 @@ async def _scan_dead_man(rec: _Recorder, summary: dict, client, base: str, heade
         "due_at": row.get("due_at"),
         "seen_count": row.get("seen_count"),
         "overdue": overdue,
+        "judged_by_clock": clock,
     }
 
     if overdue:

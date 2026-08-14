@@ -60,6 +60,7 @@ def _heartbeat(name: str = "ops_dead_man_sweep", *, overdue_seconds: int | None 
         "description": "the dead-man sweep itself",
         "last_seen_at": last_seen.isoformat() if last_seen else None,
         "due_at": due.isoformat(),
+        "overdue": now > due,
         "seen_count": 0 if never_seen else 144,
     }
 
@@ -150,7 +151,7 @@ def _install_supabase(
 
         async def get(self, url, params=None, headers=None, **kwargs):
             _record({"method": "GET", "url": url, "params": params or {}})
-            if "ops_heartbeats" in url:
+            if "ops_heartbeat" in url:
                 return _Resp(heartbeats)
             if "ops_incident_events" in url:
                 return _Resp(events)
@@ -1453,8 +1454,8 @@ class TestTheScanWatchesTheSweep:
         r = _run_scan()
         assert r.status_code == 200
         assert r.json()["detectors"]["dead_man"] == {"installed": False}
-        (payload,) = [p for p in _rpcs(calls, "record_ops_incident")
-                      if p["p_dedup_key"] == SWEEP_KEY]
+        (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                      if p["p_dedup_key"] == SWEEP_KEY)
         assert payload["p_priority"] == "urgent"
         assert payload["p_failure_state"] == "blocked"
 
@@ -1468,8 +1469,8 @@ class TestTheScanWatchesTheSweep:
 
         r = _run_scan()
         assert r.json()["detectors"]["dead_man"]["overdue"] is True
-        (payload,) = [p for p in _rpcs(calls, "record_ops_incident")
-                      if p["p_dedup_key"] == SWEEP_KEY]
+        (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                      if p["p_dedup_key"] == SWEEP_KEY)
         assert payload["p_kind"] == "collector_failure"
         assert payload["p_priority"] == "urgent"
         assert payload["p_failure_state"] == "failed"
@@ -1486,8 +1487,8 @@ class TestTheScanWatchesTheSweep:
         _write_artifacts(monkeypatch, tmp_path)
 
         _run_scan()
-        (payload,) = [p for p in _rpcs(calls, "record_ops_incident")
-                      if p["p_dedup_key"] == SWEEP_KEY]
+        (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                      if p["p_dedup_key"] == SWEEP_KEY)
         assert payload["p_failure_state"] == "blocked"
         assert payload["p_detail"]["last_seen_at"] is None
 
@@ -1513,8 +1514,8 @@ class TestTheScanWatchesTheSweep:
         _write_artifacts(monkeypatch, tmp_path)
 
         _run_scan()
-        (payload,) = [p for p in _rpcs(calls, "record_ops_recovery")
-                      if p["p_dedup_key"] == SWEEP_KEY]
+        (payload,) = (p for p in _rpcs(calls, "record_ops_recovery")
+                      if p["p_dedup_key"] == SWEEP_KEY)
         assert payload["p_auto_resolve"] is True
 
     def test_an_unreadable_heartbeat_table_is_a_reported_skip_not_a_500(
@@ -1530,6 +1531,23 @@ class TestTheScanWatchesTheSweep:
         r = _run_scan()
         assert r.status_code == 200
         assert any(e.get("detector") == "dead_man" for e in r.json()["errors"])
+
+
+    def test_the_databases_verdict_wins_over_this_instances_clock(
+            self, monkeypatch, tmp_path):
+        """`overdue` is computed by the view against the database clock. A
+        Render container with a skewed clock must not be able to invent or
+        hide an outage — and when the column is absent, the fallback says so
+        in the summary instead of passing itself off as the same thing."""
+        _scan_env(monkeypatch)
+        row = _heartbeat()
+        row.pop("overdue")
+        _install_supabase(monkeypatch, open_rows=[], heartbeats=[row])
+        _write_artifacts(monkeypatch, tmp_path)
+        assert _run_scan().json()["detectors"]["dead_man"]["judged_by_clock"] == "backend"
+
+        _install_supabase(monkeypatch, open_rows=[], heartbeats=[_heartbeat()])
+        assert _run_scan().json()["detectors"]["dead_man"]["judged_by_clock"] == "database"
 
 
 class TestCheckIn:
@@ -1571,7 +1589,7 @@ class TestCheckIn:
         r = self._post(name="refesh_data")
         assert r.status_code == 404
         assert "refesh_data" in r.json()["detail"]
-        assert [c for c in calls if c["method"] == "POST" and "ops_heartbeats" in c["url"]] == []
+        assert [c for c in calls if c["method"] == "POST" and "ops_heartbeat_status" in c["url"]] == []
 
     def test_a_rejected_write_is_a_502_not_a_cheerful_ok(self, monkeypatch):
         _scan_env(monkeypatch)

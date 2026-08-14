@@ -75,18 +75,30 @@ ALTER TABLE ops_heartbeats ENABLE ROW LEVEL SECURITY;
 -- No policies: operator-only, same posture as ops_incidents. Reached with the
 -- service-role key by the backend, and by pg_cron inside the database.
 
--- The deadline every reader agrees on, defined once. Reading it from a
--- generated column means the sweep, the API, and any ad-hoc operator query
--- cannot drift apart on what "overdue" means.
-ALTER TABLE ops_heartbeats DROP COLUMN IF EXISTS due_at;
-ALTER TABLE ops_heartbeats ADD COLUMN due_at timestamptz
-  GENERATED ALWAYS AS (
-    coalesce(last_seen_at, registered_at)
-      + make_interval(secs => expected_interval_seconds + grace_seconds)
-  ) STORED;
-
 CREATE INDEX IF NOT EXISTS ops_heartbeats_due_idx
-  ON ops_heartbeats (enabled, due_at);
+  ON ops_heartbeats (enabled, last_seen_at);
+
+-- The deadline every reader agrees on, defined once, so the sweep, the API
+-- and any ad-hoc operator query cannot drift apart on what "overdue" means.
+--
+-- A generated column would have been the obvious home for it and is not
+-- available: `timestamptz + interval` is STABLE rather than IMMUTABLE (adding
+-- days or months depends on the session time zone), and a generated column
+-- requires IMMUTABLE. A view is the honest substitute — same single
+-- definition, computed at read time.
+CREATE OR REPLACE VIEW ops_heartbeat_status
+  WITH (security_invoker = true) AS
+SELECT
+  h.*,
+  coalesce(h.last_seen_at, h.registered_at)
+    + (h.expected_interval_seconds + h.grace_seconds) * interval '1 second'
+    AS due_at,
+  now() > coalesce(h.last_seen_at, h.registered_at)
+    + (h.expected_interval_seconds + h.grace_seconds) * interval '1 second'
+    AS overdue
+FROM ops_heartbeats h;
+
+REVOKE ALL ON ops_heartbeat_status FROM PUBLIC, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Check-in
@@ -140,8 +152,8 @@ DECLARE
   hb record;
   v_overdue bigint;
 BEGIN
-  FOR hb IN SELECT * FROM ops_heartbeats WHERE enabled ORDER BY name LOOP
-    IF now() > hb.due_at THEN
+  FOR hb IN SELECT * FROM ops_heartbeat_status WHERE enabled ORDER BY name LOOP
+    IF hb.overdue THEN
       v_overdue := floor(extract(epoch FROM now() - hb.due_at))::bigint;
       PERFORM record_ops_incident(
         p_kind => 'collector_failure',
