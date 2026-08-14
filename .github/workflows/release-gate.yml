@@ -66,6 +66,17 @@ jobs:
           fi
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
+      - name: Check out the SHA under evaluation
+        # Every in-repo gate reads the checkout: the corpus count, the
+        # professor-tracking artifact, the two release-scope tables. Leaving
+        # the worktree on main's tip meant the ledger was labelled with one SHA
+        # and computed from another — and check_worktree_clean said so, FAILing
+        # with "HEAD f839085b != release sha ccbdfe00" on 2026-08-14. That FAIL
+        # was correct and unfixable from the operator's side: evidence about a
+        # deploy is committed AFTER the deploy, so the default branch has
+        # always moved on by the time anyone dispatches this.
+        run: git checkout --detach "${{ steps.sha.outputs.sha }}"
+
       - name: Assemble corpus work file from shards
         # The corpus gate counts committed shard records; assemble also enforces
         # the minimum-record floor, so a checkout with an empty shards directory
@@ -91,9 +102,11 @@ jobs:
       - name: Collect operator evidence for that exact SHA
         # Read from the default branch, not from the checkout. Evidence about a
         # deploy cannot exist in the commit being deployed — it is gathered
-        # afterwards — but check_worktree_clean requires HEAD to equal the
-        # release SHA, so the worktree has to stay put while this one file comes
-        # from the branch tip. No file is the normal case and means UNVERIFIED.
+        # afterwards — while check_worktree_clean requires HEAD to equal the
+        # release SHA. Both hold only if the worktree sits at the release SHA
+        # (step above) and this one file arrives from the branch tip, which is
+        # why it comes through `git show FETCH_HEAD:` rather than a second
+        # checkout. No file is the normal case and means UNVERIFIED.
         run: |
           set -euo pipefail
           EVIDENCE="data/releases/evidence/${{ steps.sha.outputs.sha }}.json"
