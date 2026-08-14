@@ -118,6 +118,7 @@ def _install_supabase(
     patched=None,
     heartbeats=None,
     rpc_status: int = 200,
+    schema_missing: bool = False,
 ):
     """Stub ops.httpx.AsyncClient with a PostgREST-shaped recorder.
 
@@ -134,6 +135,12 @@ def _install_supabase(
     # "no such row" would have them all silently asserting against an extra
     # not-installed incident.
     heartbeats = [_heartbeat()] if heartbeats is None else heartbeats
+    # PostgREST's answer when migration 032 has not been applied: 404 with the
+    # schema-cache code, for the view (PGRST205) and the routine (PGRST202).
+    missing_view = _Resp({"code": "PGRST205", "message": "Could not find the "
+                          "table 'public.ops_heartbeat_status' in the schema cache"}, 404)
+    missing_rpc = _Resp({"code": "PGRST202", "message": "Could not find the "
+                         "function public.record_ops_heartbeat in the schema cache"}, 404)
 
     def _record(entry):
         if calls is not None:
@@ -152,7 +159,7 @@ def _install_supabase(
         async def get(self, url, params=None, headers=None, **kwargs):
             _record({"method": "GET", "url": url, "params": params or {}})
             if "ops_heartbeat" in url:
-                return _Resp(heartbeats)
+                return missing_view if schema_missing else _Resp(heartbeats)
             if "ops_incident_events" in url:
                 return _Resp(events)
             if "ops_incidents" in url:
@@ -164,6 +171,8 @@ def _install_supabase(
         async def post(self, url, json=None, headers=None, **kwargs):
             _record({"method": "POST", "url": url, "json": json})
             if "/rpc/" in url:
+                if schema_missing and url.endswith("record_ops_heartbeat"):
+                    return missing_rpc
                 return _Resp(rpc_result, status_code=rpc_status)
             return _Resp([], status_code=201)
 
@@ -1459,6 +1468,23 @@ class TestTheScanWatchesTheSweep:
         assert payload["p_priority"] == "urgent"
         assert payload["p_failure_state"] == "blocked"
 
+    def test_an_absent_view_is_the_same_incident_as_an_absent_row(
+            self, monkeypatch, tmp_path):
+        """This is what makes the check-in route's tolerant answer honest: if
+        the view is missing the scan must still say so, loudly, every day."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls, schema_missing=True)
+        _write_artifacts(monkeypatch, tmp_path)
+
+        r = _run_scan()
+        assert r.json()["detectors"]["dead_man"] == {"installed": False}
+        (payload,) = (p for p in _rpcs(calls, "record_ops_incident")
+                      if p["p_dedup_key"] == SWEEP_KEY)
+        assert payload["p_priority"] == "urgent"
+        assert r.json()["skipped"] == [] or all(
+            s.get("detector") != "dead_man" for s in r.json()["skipped"])
+
     def test_a_stalled_sweep_opens_an_incident_carrying_how_late_it_is(
             self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
@@ -1595,6 +1621,24 @@ class TestCheckIn:
         _scan_env(monkeypatch)
         _install_supabase(monkeypatch, rpc_result=None, rpc_status=500)
         assert self._post().status_code == 502
+
+    def test_a_genuine_404_from_storage_is_still_a_502(self, monkeypatch):
+        """The not-installed answer is keyed on PostgREST's schema-cache code,
+        not on the bare status, so an ordinary 404 cannot borrow it."""
+        _scan_env(monkeypatch)
+        _install_supabase(monkeypatch, rpc_result={"message": "no"}, rpc_status=404)
+        assert self._post().status_code == 502
+
+    def test_an_unapplied_migration_reports_itself_instead_of_failing_the_job(
+            self, monkeypatch):
+        """Migration 032 not applied yet is a fact about the monitor, and
+        _scan_dead_man already files it as an urgent incident. Failing here as
+        well would cost a three-hour data refresh over a check-in."""
+        _scan_env(monkeypatch)
+        _install_supabase(monkeypatch, schema_missing=True)
+        r = self._post()
+        assert r.status_code == 200
+        assert r.json()["status"] == "not_installed"
 
     def test_an_empty_name_is_a_400(self, monkeypatch):
         _scan_env(monkeypatch)
