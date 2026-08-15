@@ -252,7 +252,7 @@ class TestSeedNormalization:
         assert cg._detect_status(text) == expected
 
     def test_deep_total_outage_is_visible_in_evidence(self, monkeypatch):
-        monkeypatch.setattr(cg, "_fetch", lambda url: None)
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: None)
 
         records, evidence = cg.fetch_and_normalize_with_evidence(
             PRINCETON,
@@ -291,7 +291,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url: _StaticSoup() if url == urls[0] else None,
+            lambda url, **_: _StaticSoup() if url == urls[0] else None,
         )
 
         records, evidence = cg.fetch_and_normalize_with_evidence(
@@ -404,7 +404,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url: seed if url == seed_url else None,
+            lambda url, **_: seed if url == seed_url else None,
         )
         _status, discovered, evidence = cg._crawl_source(school, source)
         assert discovered == []
@@ -417,7 +417,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url: seed if url == seed_url else detail,
+            lambda url, **_: seed if url == seed_url else detail,
         )
         _status, discovered, _evidence = cg._crawl_source(school, source)
         assert len(discovered) == 1
@@ -476,7 +476,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url: None if url == failed_url else _StaticSoup(),
+            lambda url, **_: None if url == failed_url else _StaticSoup(),
         )
         records, evidence = cg.fetch_and_normalize_with_evidence(
             PRINCETON,
@@ -740,3 +740,63 @@ def test_seed_fetch_completes_the_incommon_chain(monkeypatch):
     cg._fetch("https://urfm.psu.edu/research-home")
 
     assert seen.get("verify") == _ca_bundle()
+
+
+def test_render_source_goes_through_chromium_not_requests(monkeypatch):
+    """A Cloudflare-walled source must not be fetched with a plain GET.
+
+    Eleven of the twelve incidents open on 2026-08-15 were one wall: every
+    failing seed for jhu, princeton, stanford and uva returned 403, three with
+    ``cf-mitigated: challenge``, from two unrelated egresses. requests cannot
+    answer that no matter what headers it sends; a real browser can, and does
+    (measured 2026-08-15 against all four).
+    """
+    import requests
+
+    from src.collectors import faculty_graph
+
+    def fail_get(*args, **kwargs):
+        raise AssertionError("render source fetched with requests.get")
+
+    rendered: list[str] = []
+
+    def fake_render(url, **kwargs):
+        rendered.append(url)
+        return "SOUP"
+
+    monkeypatch.setattr(requests, "get", fail_get)
+    monkeypatch.setattr(faculty_graph, "_render_soup", fake_render)
+
+    assert cg._fetch("https://biox.stanford.edu/x", render=True) == "SOUP"
+    assert rendered == ["https://biox.stanford.edu/x"]
+
+
+def test_render_defaults_off_so_every_other_source_is_unchanged(monkeypatch):
+    import requests
+
+    seen: list[str] = []
+
+    def fake_get(url, **kwargs):
+        seen.append(url)
+        raise RuntimeError("stop after capturing the request")
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    cg._fetch("https://urfm.psu.edu/research-home")
+
+    assert seen == ["https://urfm.psu.edu/research-home"]
+
+
+def test_the_four_walled_sources_carry_render():
+    """Named, because the flag is the whole fix and a merge could drop it."""
+    from src.collectors.schools.jhu import SCHOOL as JHU
+    from src.collectors.schools.stanford import SCHOOL as STANFORD
+    from src.collectors.schools.uva import SCHOOL as UVA
+
+    def source(config: dict, name: str) -> dict:
+        return next(s for s in config["sources"] if s["source_name"] == name)
+
+    assert source(UVA, "uva_ugr_hub")["render"] is True
+    assert source(JHU, "jhu_announcement_campus")["render"] is True
+    assert source(PRINCETON, "princeton_career")["render"] is True
+    assert source(PRINCETON, "princeton_department_research")["render"] is True
+    assert source(STANFORD, "stanford_lab")["render"] is True
