@@ -109,10 +109,22 @@ _ENG_SEL = {
 }
 
 
+# The Drupal profile pages label a "Research Information" section and put the
+# areas under it; the listing carries none of it. Restricted to case.edu proper
+# because the other three roster families link out to department WordPress
+# subdomains and to artscidirectory.case.edu, neither of which labels anything.
+_ENG_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https://case\.edu/",
+    "throttle": 0.15,
+}
+
+
 def _eng(short: str, name: str, majors: list[str], url: str,
          field_filter: dict | None = None) -> dict:
     """A department on the shared case.edu Drupal media-card template."""
-    scrape = {"url": url, "selectors": _ENG_SEL, "ladder_filter": _LADDER}
+    scrape = {"url": url, "selectors": _ENG_SEL, "ladder_filter": _LADDER,
+              "profile_enrich": _ENG_ENRICH}
     if field_filter:
         scrape["field_filter"] = field_filter
     return {"short": short, "name": name, "majors": majors,
