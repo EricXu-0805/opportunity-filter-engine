@@ -235,6 +235,19 @@ _UNIT_NAME_RE = re.compile(
 )
 
 
+# The label path takes an <a> list as a taxonomy of areas, and on a profile
+# whose research paragraph is written as links that yields the link's own words.
+# Case Western Cognitive Science ships "Click here to find recent papers" and
+# "clicking here" as one professor's two research areas, and every gate below
+# passes them: they are multi-word, not a venue, not a prose lead-in. A link
+# telling the reader where to click is never a research area.
+_LINK_CTA_RE = re.compile(
+    r"\b(?:click(?:ing)?|tap)\s+here\b|\bhere\s+(?:to|for)\b"
+    r"|^(?:read|see|view|find|visit|download|learn)\s+more\b",
+    re.I,
+)
+
+
 def _hygiene_keyword(k: str) -> str | None:
     """Clean one keyword (curated or derived): strip wrapping quotes and edge
     punctuation, fold an internal comma to ' / ' (a comma would fragment the
@@ -261,6 +274,8 @@ def _hygiene_keyword(k: str) -> str | None:
     # corpus-wide re-clean) must enforce the SAME rule the DQ gate does, or a
     # fragment that entered via keywords survives the gate.
     if _FRAGMENT_LEADIN_RE.match(c):
+        return None
+    if _LINK_CTA_RE.search(c):
         return None
     try:
         from .uiuc_faculty import _is_junk_keyword
