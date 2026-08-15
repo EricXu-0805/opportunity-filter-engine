@@ -506,6 +506,39 @@ class TestProfileIdentityGate:
             assert len(soup.get_text(" ", strip=True)) > 1200
             assert profile_page_is_denial(soup) is True, phrase
 
+    def test_a_parenthetical_login_note_does_not_make_a_profile_a_wall(self):
+        """case.edu/weatherhead/about/faculty-and-staff-directory/qi-wu.
+
+        Weatherhead annotates one link on every faculty page as "Course
+        evaluation ratings (login required)". That matched the login-wall
+        pattern, so all 102 of its professors were discarded as walls — real
+        pages, 7,000 characters of real content, no research and no tracking
+        baseline written for any of them. A page refusing to serve you does not
+        put the refusal in parentheses.
+        """
+        from src.collectors.ucb_common import (
+            profile_page_is_denial,
+            profile_page_matches_person,
+        )
+
+        soup = self._soup(
+            "<html><h1>Qi Wu</h1><p>Course evaluation ratings "
+            "(login required) Empirical Research in Operations Management"
+            "</p></html>"
+        )
+
+        assert profile_page_is_denial(soup) is False
+        assert profile_page_matches_person(soup, "Qi Wu") is True
+
+    def test_a_wall_still_counts_when_it_sits_next_to_a_parenthetical(self):
+        """The aside is dropped, not the sentence around it."""
+        from src.collectors.ucb_common import profile_page_is_denial
+
+        assert profile_page_is_denial(self._soup(
+            "<html><h1>Just a moment</h1><p>(ray id 8f2c) "
+            "Please enable JavaScript to continue.</p></html>"
+        )) is True
+
     def test_bare_navigation_sign_in_does_not_block_a_long_profile(self):
         from src.collectors.ucb_common import profile_page_is_denial
 

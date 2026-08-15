@@ -360,7 +360,7 @@ _RESEARCH_LABEL_RE = re.compile(
     r"^\s*(?:research\s+(?:interests?|areas?|focus|topics?)"
     r"|areas?\s+of\s+(?:interest|expertise|research|specialization|study)"
     r"|fields?\s+of\s+(?:interest|study|research)"
-    r"|specializations?|expertise|interests?|keywords?)\s*[:：\-–—]\s*",
+    r"|specializations?|expertise|interests?|keywords?|topics?)\s*[:：\-–—]\s*",
     re.I,
 )
 
@@ -1599,6 +1599,42 @@ def _same_menu_list(label, block) -> bool:
     return li.parent is not None and li.parent is block.parent
 
 
+_INLINE_ITEM_MAX_CHARS = 90
+
+
+def _inline_label_items(label) -> list[str]:
+    """Areas that sit inside the label's own parent, split by <br>.
+
+    ``<p><strong>Research Interests</strong><br>Optical Imaging<br>
+    Microfabrication<br>Cell-ECM Interaction</p>`` is the shape 54 of Clemson
+    Bioengineering's 67 profiles use, and Chemical Engineering and Industrial
+    Engineering use it too. There is no block *after* the label to take — the
+    areas are the label's own siblings — so the sibling walk below skips past
+    the answer and reads whatever follows the paragraph instead.
+
+    Stops at the first element sibling. Clemson IE closes the list with a link
+    to the department's research page; that link is navigation, not an area,
+    and stopping keeps it out without a special case for it.
+    """
+    items: list[str] = []
+    for node in label.next_siblings:
+        name = getattr(node, "name", None)
+        if name is None:
+            text = re.sub(r"\s+", " ", str(node)).strip(" \t\r\n;,")
+            if text:
+                items.append(text)
+            continue
+        if name != "br":
+            break
+    if not items or sum(len(i) for i in items) > _LABEL_BLOCK_MAX_CHARS:
+        return []
+    if any(len(i) > _INLINE_ITEM_MAX_CHARS for i in items):
+        return []  # a prose paragraph that happens to open with the label
+    if any(_LABEL_REJECT_RE.search(i) or _is_section_heading(i) for i in items):
+        return []
+    return items
+
+
 _LABEL_SIBLING_LOOKAHEAD = 3
 
 
@@ -1654,6 +1690,9 @@ def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
         # the following page section.
         if el.find(True) is not None and len(list(el.children)) > 2:
             continue
+        inline = _inline_label_items(el)
+        if inline:
+            return (inline, "")
         block = _first_nonempty_sibling(el)
         if block is None and el.parent is not None:
             block = _first_nonempty_sibling(el.parent)
