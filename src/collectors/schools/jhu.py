@@ -46,6 +46,11 @@ SCHOOL: dict = {
                 "https://krieger.jhu.edu/ursca/national-programs/",
             ],
             "crawl": STATIC,
+            # hour.jhu.edu 403s a plain GET behind Cloudflare (no challenge
+            # header, so a WAF rule rather than the managed challenge — same
+            # effect). Headless clears it: measured 2026-08-15, the seed
+            # returns its real "HOUR" page.
+            "render": True,
             "programs": [
                 program(
                     "hour_hub",

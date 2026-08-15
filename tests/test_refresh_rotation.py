@@ -140,6 +140,48 @@ class TestBrowserDetection:
                     "departments would silently collect nothing"
                 )
 
+    def test_every_campus_render_source_is_detected(self):
+        """The campus half of the same guarantee.
+
+        campus_graph configs carry ``sources``, not ``departments``, and live
+        in ``<slug>.py`` rather than ``<slug>_faculty.py`` — so the scan above
+        never saw them. uva is the case that proves it matters: its faculty
+        config needs no browser, so nothing else would have put it in this set,
+        and its Cloudflare-walled UGR hub would have crawled with a plain GET
+        on every shard day and reported an unreachable page.
+        """
+        import importlib
+        import pkgutil
+
+        import src.collectors.schools as schools_pkg
+        from scripts.refresh_rotation import browser_schools
+
+        detected = browser_schools()
+        for module in pkgutil.iter_modules(schools_pkg.__path__):
+            if module.name.endswith("_faculty") or module.name.startswith("_"):
+                continue
+            config = getattr(
+                importlib.import_module(f"src.collectors.schools.{module.name}"),
+                "SCHOOL", None,
+            )
+            if not isinstance(config, dict):
+                continue
+            if any(isinstance(source, dict) and source.get("render")
+                   for source in config.get("sources", [])):
+                assert config["school_slug"] in detected, (
+                    f"{config['school_slug']} has a render campus source but "
+                    "the workflow would not install Chromium for its shard — "
+                    "the crawl would degrade to None and read as unreachable"
+                )
+
+    def test_uva_needs_the_browser_for_its_campus_source_alone(self):
+        # Named rather than left to the sweep above: uva is the school whose
+        # ONLY render config is a campus source, so it is the one a regression
+        # in the campus branch would drop out of the set.
+        from scripts.refresh_rotation import browser_schools
+
+        assert "uva" in browser_schools()
+
     def test_uiuc_is_detected_despite_having_no_render_config(self):
         # uiuc_js_faculty drives Playwright directly (ACES Drupal Views AJAX),
         # outside the faculty_graph engine, so config inspection cannot see it.

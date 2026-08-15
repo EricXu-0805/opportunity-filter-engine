@@ -163,6 +163,11 @@ SCHOOL: dict = {
             ],
             "crawl": RECURSIVE,
             "crawl_depth": 1,
+            # Both department subdomains sit behind the same Cloudflare
+            # challenge as the career site. Recursive crawl + render means each
+            # discovered page also goes through Chromium, which is why _fetch
+            # caps the per-URL render budget at 60s.
+            "render": True,
             "programs": [
                 program(
                     "molbio_surp",
@@ -204,6 +209,10 @@ SCHOOL: dict = {
             "emit": "campus",
             "seeds": ["https://careerdevelopment.princeton.edu/"],
             "crawl": STATIC,
+            # Cloudflare cf-mitigated: challenge on a plain GET. Headless
+            # clears it: measured 2026-08-15, returns "Center for Career
+            # Development".
+            "render": True,
             "programs": [
                 program(
                     "career_development",

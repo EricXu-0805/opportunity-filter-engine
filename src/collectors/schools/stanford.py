@@ -264,6 +264,10 @@ SCHOOL: dict = {
             ],
             "crawl": RECURSIVE,
             "crawl_depth": 1,
+            # biox.stanford.edu returns cf-mitigated: challenge to a plain GET.
+            # Headless clears it: measured 2026-08-15, returns "Undergraduate
+            # Research | Welcome to Bio-X".
+            "render": True,
             "programs": [
                 program(
                     "biox_usrp",
