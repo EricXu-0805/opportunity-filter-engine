@@ -1577,6 +1577,51 @@ def _in_navigation(el) -> bool:
     return False
 
 
+def _same_menu_list(label, block) -> bool:
+    """Whether label and block are two entries of one menu rather than a
+    heading and its content.
+
+    ``_in_navigation`` is deliberately narrow — <nav> and the ARIA roles only,
+    because an earlier version that also rejected nav-ish class names took bu
+    from 22% of profiles to 9%. UDel's left rail escapes it: a plain
+    ``div.leftNavigation > ul`` whose items are "Research Areas" and, next
+    along, "Make a Gift". Three of nine departments would have published that
+    phrase as a professor's research area, and it clears the DQ junk gate.
+
+    The tell is structural, not a class name: in a real labelled section the
+    content is never a sibling <li> of the label inside the same list. Reading
+    the shape rather than the styling keeps the narrowness the docstring above
+    argued for.
+    """
+    li = label if getattr(label, "name", None) == "li" else label.find_parent("li")
+    if li is None or getattr(block, "name", None) != "li":
+        return False
+    return li.parent is not None and li.parent is block.parent
+
+
+_LABEL_SIBLING_LOOKAHEAD = 3
+
+
+def _first_nonempty_sibling(el):
+    """The next sibling that actually carries text, skipping empty spacers.
+
+    Taking `find_next_sibling()` verbatim assumes the content sits immediately
+    after the label. Cincinnati's research directory puts an empty <p> between
+    them — the whole university on one shared template, 1,061 faculty — so the
+    matcher read "" and gave up on every profile. Bounded rather than unbounded:
+    three siblings is enough for a spacer or two and short enough that a label
+    with no content under it cannot reach into the next section.
+    """
+    sib = el
+    for _ in range(_LABEL_SIBLING_LOOKAHEAD):
+        sib = sib.find_next_sibling()
+        if sib is None:
+            return None
+        if sib.get_text(" ", strip=True):
+            return sib
+    return None
+
+
 def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
     """Research areas found by their LABEL rather than by a container selector.
 
@@ -1609,10 +1654,12 @@ def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
         # the following page section.
         if el.find(True) is not None and len(list(el.children)) > 2:
             continue
-        block = el.find_next_sibling()
+        block = _first_nonempty_sibling(el)
         if block is None and el.parent is not None:
-            block = el.parent.find_next_sibling()
+            block = _first_nonempty_sibling(el.parent)
         if block is None:
+            continue
+        if _same_menu_list(el, block):
             continue
         body = re.sub(r"\s+", " ", block.get_text(" ", strip=True)).strip()
         if not (3 <= len(body) <= _LABEL_BLOCK_MAX_CHARS):

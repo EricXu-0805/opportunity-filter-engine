@@ -33,6 +33,15 @@ SCHOOL: dict = {
             "source_type": PROGRAM,
             "emit": "campus",
             "crawl": STATIC,
+            # undergraduateresearch.virginia.edu sits behind Cloudflare and
+            # 403s a plain GET with cf-mitigated: challenge — both seeds, from
+            # two unrelated egresses. It loaded no live page at all on
+            # 2026-08-14 ("dark_crawl", 0/2 seeds, 0/1 crawl sources) while
+            # still publishing its curated programs, so the records shipped
+            # with no evidence anyone could still reach the pages behind them.
+            # Headless clears it: measured 2026-08-15, the seed returns "Home |
+            # Office of Citizen Scholar Development" with no challenge shell.
+            "render": True,
             "seeds": [
                 "https://undergraduateresearch.virginia.edu/",
                 "https://undergraduateresearch.virginia.edu/our-opportunities/grants",

@@ -184,6 +184,14 @@ def _config_needs_browser(school: dict) -> bool:
             enrich = cfg.get("profile_enrich")
             if isinstance(enrich, dict) and enrich.get("render"):
                 return True
+    # campus_graph configs carry `sources`, not `departments`, and a source
+    # behind Cloudflare needs Chromium for exactly the same reason a
+    # client-rendered roster does. Missing this half would reproduce the
+    # hardcoded-alternation bug one file over: the crawl degrades to None,
+    # which reads as an unreachable page, and the source still reports ok.
+    for source in school.get("sources", []):
+        if isinstance(source, dict) and source.get("render"):
+            return True
     return False
 
 
@@ -207,7 +215,10 @@ def browser_schools() -> frozenset[str]:
 
     needed = set(_BROWSER_SCHOOLS_OUTSIDE_ENGINE)
     for module in pkgutil.iter_modules(schools_pkg.__path__):
-        if not module.name.endswith("_faculty"):
+        # Both halves of a school: `<slug>_faculty` (faculty_graph departments)
+        # and `<slug>` (campus_graph sources). Scanning only the first left
+        # every Cloudflare-walled campus source without a Chromium install.
+        if module.name.startswith("_"):
             continue
         try:
             loaded = importlib.import_module(

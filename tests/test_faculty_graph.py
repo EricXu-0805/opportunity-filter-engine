@@ -3142,6 +3142,68 @@ class TestResearchByLabel:
         assert prose.startswith("Mechanistic and adaptive aspects")
         assert "behavioral ecology" in prose
 
+    def test_an_empty_spacer_between_label_and_content_is_stepped_over(self):
+        """researchdirectory.uc.edu/p/cahaymm — the whole university on one
+        template, 1,061 faculty, and the matcher read "" on every one of them.
+
+        The content is not the label's next sibling: an empty <p> sits between
+        the <header> that wraps the <h2> and the <p> that carries the areas.
+        Taking find_next_sibling() verbatim returned the spacer, whose text
+        fails the length floor, so the profile yielded nothing.
+        """
+        items, prose = self._by_label(
+            '<article class="accordion">'
+            '<header><h2>Research and Practice Interests</h2></header>'
+            '<p></p>'
+            '<p class="indent_full">Nanoelectronics, spintronics, '
+            'vacuum microelectronics.</p></article>',
+            pattern=(r"^\s*(research\s+(and\s+practice\s+interests?|interests?"
+                     r"|areas?)|areas?\s+of\s+expertise)\s*[:：]?\s*$"),
+        )
+        assert items == []
+        assert prose.startswith("Nanoelectronics, spintronics")
+
+    def test_the_lookahead_stops_before_it_reaches_the_next_section(self):
+        """A label with nothing under it must stay empty, not borrow the page.
+
+        Three siblings is enough for a spacer or two; unbounded would let a
+        heading with no content annex whatever section came next.
+        """
+        items, prose = self._by_label(
+            '<div><h3>Research Interests</h3>'
+            '<p></p><p></p><p></p>'
+            '<p>Selected Publications and other unrelated page furniture</p>'
+            '</div>')
+        assert (items, prose) == ([], "")
+
+    def test_a_nav_menu_item_does_not_become_a_research_area(self):
+        """udel.edu left rail — div.leftNavigation > ul, and the entry after
+        "Research Areas" is "Make a Gift".
+
+        _in_navigation is deliberately narrow (<nav> and ARIA roles only; a
+        broader class-name version took bu from 22% of profiles to 9%), and a
+        plain styled div escapes it. The tell is structural instead: in a real
+        labelled section the content is never a sibling <li> of the label
+        inside the same list. Three of nine udel departments would otherwise
+        have published "Make a Gift" as a professor's research area — and that
+        phrase clears the downstream DQ junk gate.
+        """
+        items, prose = self._by_label(
+            '<div class="leftNavigation"><ul>'
+            '<li><a>Research Areas</a></li>'
+            '<li><a>Make a Gift</a></li>'
+            '</ul></div>')
+        assert (items, prose) == ([], "")
+
+    def test_a_real_labelled_section_is_untouched_by_the_menu_guard(self):
+        # The guard keys on label-and-content being siblings in ONE list, not
+        # on lists in general: a heading followed by a <ul> of areas still
+        # yields its items.
+        items, _prose = self._by_label(
+            '<div><h3>Research Interests</h3><ul>'
+            '<li>Machine Learning</li><li>Computer Vision</li></ul></div>')
+        assert items == ["Machine Learning", "Computer Vision"]
+
     def test_a_list_block_becomes_atomic_items(self):
         """animalscience.uconn.edu/person/abhinav-upadhyay — <h3> then <ul><li>."""
         items, prose = self._by_label(
