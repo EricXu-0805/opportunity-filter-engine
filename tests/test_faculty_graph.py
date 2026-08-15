@@ -3142,6 +3142,40 @@ class TestResearchByLabel:
         assert prose.startswith("Mechanistic and adaptive aspects")
         assert "behavioral ecology" in prose
 
+    def test_an_empty_spacer_between_label_and_content_is_stepped_over(self):
+        """researchdirectory.uc.edu/p/cahaymm — the whole university on one
+        template, 1,061 faculty, and the matcher read "" on every one of them.
+
+        The content is not the label's next sibling: an empty <p> sits between
+        the <header> that wraps the <h2> and the <p> that carries the areas.
+        Taking find_next_sibling() verbatim returned the spacer, whose text
+        fails the length floor, so the profile yielded nothing.
+        """
+        items, prose = self._by_label(
+            '<article class="accordion">'
+            '<header><h2>Research and Practice Interests</h2></header>'
+            '<p></p>'
+            '<p class="indent_full">Nanoelectronics, spintronics, '
+            'vacuum microelectronics.</p></article>',
+            pattern=(r"^\s*(research\s+(and\s+practice\s+interests?|interests?"
+                     r"|areas?)|areas?\s+of\s+expertise)\s*[:：]?\s*$"),
+        )
+        assert items == []
+        assert prose.startswith("Nanoelectronics, spintronics")
+
+    def test_the_lookahead_stops_before_it_reaches_the_next_section(self):
+        """A label with nothing under it must stay empty, not borrow the page.
+
+        Three siblings is enough for a spacer or two; unbounded would let a
+        heading with no content annex whatever section came next.
+        """
+        items, prose = self._by_label(
+            '<div><h3>Research Interests</h3>'
+            '<p></p><p></p><p></p>'
+            '<p>Selected Publications and other unrelated page furniture</p>'
+            '</div>')
+        assert (items, prose) == ([], "")
+
     def test_a_list_block_becomes_atomic_items(self):
         """animalscience.uconn.edu/person/abhinav-upadhyay — <h3> then <ul><li>."""
         items, prose = self._by_label(

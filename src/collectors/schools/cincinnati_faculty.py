@@ -98,11 +98,33 @@ _FIELD = {
 }
 
 
+# Every _dept card links into ONE university-wide profile host
+# (researchdirectory.uc.edu/p/<netid>, enforced by the link selector above), so
+# a single enrich block covers the whole college set rather than one per skin.
+# Those profiles publish research under an <h2> "Research and Practice
+# Interests" — UC's own phrasing, which is why the variant is added here rather
+# than to the shared pattern, exactly as arizona adds its bare "Interests".
+#
+# Cincinnati had no per-profile pass at all: 1,061 faculty, 0 with any research
+# signal, and 0 tracking baselines, because a baseline needs a profile page to
+# have been fetched. Measured on the real production path after wiring, five
+# profiles per department: CS 3/5, ECE 5/5, ME 5/5, CIVIL 3/5, CHEME 2/5,
+# AERO 1/5, BME 1/5, PHYS 1/5 — 21 of 40. No ``always``, so it runs in the
+# monthly OFE_ENRICH_PROFILES window rather than adding 1,061 fetches weekly.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
+        r"^\s*(research\s+(interests?",
+        r"^\s*(research\s+(and\s+practice\s+interests?|interests?"),
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared UC contact-item people component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD},
+        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+                   "profile_enrich": _ENRICH},
     }
 
 
