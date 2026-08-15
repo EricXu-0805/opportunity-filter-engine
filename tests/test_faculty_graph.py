@@ -3176,6 +3176,34 @@ class TestResearchByLabel:
             '</div>')
         assert (items, prose) == ([], "")
 
+    def test_a_nav_menu_item_does_not_become_a_research_area(self):
+        """udel.edu left rail — div.leftNavigation > ul, and the entry after
+        "Research Areas" is "Make a Gift".
+
+        _in_navigation is deliberately narrow (<nav> and ARIA roles only; a
+        broader class-name version took bu from 22% of profiles to 9%), and a
+        plain styled div escapes it. The tell is structural instead: in a real
+        labelled section the content is never a sibling <li> of the label
+        inside the same list. Three of nine udel departments would otherwise
+        have published "Make a Gift" as a professor's research area — and that
+        phrase clears the downstream DQ junk gate.
+        """
+        items, prose = self._by_label(
+            '<div class="leftNavigation"><ul>'
+            '<li><a>Research Areas</a></li>'
+            '<li><a>Make a Gift</a></li>'
+            '</ul></div>')
+        assert (items, prose) == ([], "")
+
+    def test_a_real_labelled_section_is_untouched_by_the_menu_guard(self):
+        # The guard keys on label-and-content being siblings in ONE list, not
+        # on lists in general: a heading followed by a <ul> of areas still
+        # yields its items.
+        items, _prose = self._by_label(
+            '<div><h3>Research Interests</h3><ul>'
+            '<li>Machine Learning</li><li>Computer Vision</li></ul></div>')
+        assert items == ["Machine Learning", "Computer Vision"]
+
     def test_a_list_block_becomes_atomic_items(self):
         """animalscience.uconn.edu/person/abhinav-upadhyay — <h3> then <ul><li>."""
         items, prose = self._by_label(

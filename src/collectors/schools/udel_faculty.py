@@ -168,6 +168,24 @@ _CALLOUT_SEL = {
 }
 
 
+# UDel publishes research under a "Research Areas" / "Research Interests"
+# heading on the engineering subdomain profiles (CIS, ME, CCEE, MSEG, BME all
+# hit); the central AEM pages carry the same words only in their left-nav rail,
+# which the engine's menu guard now refuses. Measured on the real production
+# path, four profiles per department: CIS 4/4, ME 4/4, CCEE 4/4, BME 4/4,
+# MSEG 2/4, and 0/4 for ECE, CBE, PHYS, CHEM.
+#
+# Attached to every helper rather than only the ones that hit. Four samples
+# cannot tell 0% from 15%, and the visit earns a professor-tracking baseline
+# (metadata.verification_scope == "profile") whether or not research comes
+# back — udel had 999 faculty and zero of both. No ``always``, so it runs in
+# the monthly OFE_ENRICH_PROFILES window.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "throttle": 0.15,
+}
+
+
 def _aem(short: str, name: str, majors: list[str], dept_path: str) -> dict:
     """A CAS department on the shared central-udel.edu AEM "Our People" page."""
     url = (f"https://www.udel.edu/academics/colleges/cas/units/departments/"
@@ -183,6 +201,7 @@ def _aem(short: str, name: str, majors: list[str], dept_path: str) -> dict:
                 "require_present": True,
                 "include": r"Prof|Lecturer|Instructor|Chair",
             },
+            "profile_enrich": _ENRICH,
         },
     }
 
@@ -194,7 +213,8 @@ def _media(short: str, name: str, majors: list[str], college: str,
            f"{slug}/faculty/")
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _MEDIA_SEL, "ladder_filter": _TEACHING},
+        "scrape": {"url": url, "selectors": _MEDIA_SEL,
+                   "ladder_filter": _TEACHING, "profile_enrich": _ENRICH},
     }
 
 
@@ -204,14 +224,15 @@ def _callout(short: str, name: str, majors: list[str], slug: str) -> dict:
            f"{slug}/faculty-staff/")
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _CALLOUT_SEL, "ladder_filter": _TEACHING},
+        "scrape": {"url": url, "selectors": _CALLOUT_SEL,
+                   "ladder_filter": _TEACHING, "profile_enrich": _ENRICH},
     }
 
 
 def _scrape(short: str, name: str, majors: list[str], url: str, selectors: dict,
             ladder: dict | None = None) -> dict:
     """A single-page Divi/WordPress engineering directory (subdomain sites)."""
-    cfg = {"url": url, "selectors": selectors}
+    cfg = {"url": url, "selectors": selectors, "profile_enrich": _ENRICH}
     if ladder:
         cfg["ladder_filter"] = ladder
     return {"short": short, "name": name, "majors": majors,
