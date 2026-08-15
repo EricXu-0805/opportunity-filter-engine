@@ -323,7 +323,41 @@ def _normalize_discovered(school: dict, source: dict, title: str, url: str, snip
 
 # --- Crawl layer (lazy HTTP deps) ------------------------------------------
 
-def _fetch(url: str):
+def _fetch(url: str, *, render: bool = False):
+    """Fetch one crawl page, optionally through headless Chromium.
+
+    ``render`` is the escape hatch for sites behind Cloudflare's bot wall,
+    which 403s a plain GET no matter what headers it carries. Eleven of the
+    twelve incidents open on 2026-08-15 were this one wall: every failing seed
+    for jhu, princeton, stanford and uva returned 403, three of them with
+    ``cf-mitigated: challenge``. A Shanghai residential egress and a
+    GitHub-hosted runner were blocked on the same URLs, so it is UA/TLS
+    fingerprinting rather than IP reputation and no header or proxy answers it.
+
+    A real browser does. Measured 2026-08-15 against all four walls through
+    ``faculty_graph._render_soup``: every one returned its real page — "Home |
+    Office of Citizen Scholar Development", "Undergraduate Research | Welcome
+    to Bio-X", "Center for Career Development", "HOUR" — with no challenge
+    shell. The renderer is faculty_graph's rather than a second copy, so its
+    challenge detection and retry budget are shared.
+
+    Playwright is imported lazily there, so a run without Chromium installed
+    returns None and degrades exactly like an unreachable page. That is why
+    ``scripts/refresh_rotation.browser_schools`` reads campus sources too — a
+    render source in a shard whose install step skipped Chromium goes quiet
+    with no signal, which is the failure the workflow's own comment describes.
+    """
+    if render:
+        from .faculty_graph import _render_soup
+
+        # 60s rather than the 240s faculty default: these are ordinary content
+        # pages, not client-rendered card grids, and a source may walk up to
+        # _MAX_PAGES_PER_SOURCE of them inside the refresh's 260-minute budget.
+        # The four measured renders all returned well inside it.
+        soup = _render_soup(url, total_budget_s=60.0)
+        if soup is None:
+            logger.warning("campus_graph: render fetch failed for %s", url)
+        return soup
     try:
         import requests
         from bs4 import BeautifulSoup
@@ -388,6 +422,7 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
     seed_urls = set(seeds)
     depth_limit = source.get("crawl_depth", 1)
     recursive = source.get("crawl") == RECURSIVE
+    render = bool(source.get("render"))
     visited: set[str] = set()
     queue: deque[tuple[str, int]] = deque((s, 0) for s in seeds)
     discovered_urls: set[str] = set()
@@ -400,7 +435,7 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         if url in visited:
             continue
         visited.add(url)
-        soup = _fetch(url)
+        soup = _fetch(url, render=render)
         if soup is None:
             if url in seed_urls:
                 seed_page_errors.append(url)
