@@ -1577,6 +1577,29 @@ def _in_navigation(el) -> bool:
     return False
 
 
+_LABEL_SIBLING_LOOKAHEAD = 3
+
+
+def _first_nonempty_sibling(el):
+    """The next sibling that actually carries text, skipping empty spacers.
+
+    Taking `find_next_sibling()` verbatim assumes the content sits immediately
+    after the label. Cincinnati's research directory puts an empty <p> between
+    them — the whole university on one shared template, 1,061 faculty — so the
+    matcher read "" and gave up on every profile. Bounded rather than unbounded:
+    three siblings is enough for a spacer or two and short enough that a label
+    with no content under it cannot reach into the next section.
+    """
+    sib = el
+    for _ in range(_LABEL_SIBLING_LOOKAHEAD):
+        sib = sib.find_next_sibling()
+        if sib is None:
+            return None
+        if sib.get_text(" ", strip=True):
+            return sib
+    return None
+
+
 def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
     """Research areas found by their LABEL rather than by a container selector.
 
@@ -1609,9 +1632,9 @@ def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
         # the following page section.
         if el.find(True) is not None and len(list(el.children)) > 2:
             continue
-        block = el.find_next_sibling()
+        block = _first_nonempty_sibling(el)
         if block is None and el.parent is not None:
-            block = el.parent.find_next_sibling()
+            block = _first_nonempty_sibling(el.parent)
         if block is None:
             continue
         body = re.sub(r"\s+", " ", block.get_text(" ", strip=True)).strip()
