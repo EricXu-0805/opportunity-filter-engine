@@ -1577,6 +1577,28 @@ def _in_navigation(el) -> bool:
     return False
 
 
+def _same_menu_list(label, block) -> bool:
+    """Whether label and block are two entries of one menu rather than a
+    heading and its content.
+
+    ``_in_navigation`` is deliberately narrow — <nav> and the ARIA roles only,
+    because an earlier version that also rejected nav-ish class names took bu
+    from 22% of profiles to 9%. UDel's left rail escapes it: a plain
+    ``div.leftNavigation > ul`` whose items are "Research Areas" and, next
+    along, "Make a Gift". Three of nine departments would have published that
+    phrase as a professor's research area, and it clears the DQ junk gate.
+
+    The tell is structural, not a class name: in a real labelled section the
+    content is never a sibling <li> of the label inside the same list. Reading
+    the shape rather than the styling keeps the narrowness the docstring above
+    argued for.
+    """
+    li = label if getattr(label, "name", None) == "li" else label.find_parent("li")
+    if li is None or getattr(block, "name", None) != "li":
+        return False
+    return li.parent is not None and li.parent is block.parent
+
+
 _LABEL_SIBLING_LOOKAHEAD = 3
 
 
@@ -1636,6 +1658,8 @@ def _research_by_label(soup, pattern: str) -> tuple[list[str], str]:
         if block is None and el.parent is not None:
             block = _first_nonempty_sibling(el.parent)
         if block is None:
+            continue
+        if _same_menu_list(el, block):
             continue
         body = re.sub(r"\s+", " ", block.get_text(" ", strip=True)).strip()
         if not (3 <= len(body) <= _LABEL_BLOCK_MAX_CHARS):
