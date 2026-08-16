@@ -1,101 +1,127 @@
 {
-  "duration_seconds": 1741.2,
+  "duration_seconds": 740.0,
   "release": {
     "by_unit": {
-      "national": {
+      "clemson": {
         "ready": true,
         "reasons": []
       }
     },
     "degradations": [],
     "expected": [
-      "nsf_reu",
-      "simplify_internships",
-      "uiuc_sro"
+      "campus_graph:clemson",
+      "clemson_faculty"
     ],
     "observed": [
       "auto_tagger",
       "campus_discovery_quarantine",
+      "campus_graph:clemson",
+      "clemson_faculty",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
       "faculty_joint_collapse",
       "intl_reconciliation",
-      "nsf_reu",
       "pi_enricher",
       "professor_tracking",
-      "school_audience",
-      "simplify_internships",
-      "uiuc_sro"
+      "school_audience"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": null,
-        "summary_key": "nsf_reu"
+        "school": "clemson",
+        "summary_key": "campus_graph:clemson"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": null,
-        "summary_key": "simplify_internships"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": null,
-        "summary_key": "uiuc_sro"
+        "school": "clemson",
+        "summary_key": "clemson_faculty"
       }
     ],
     "publishable": [
-      "national"
+      "clemson"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
+      "faculty stale retirement is held pending per-unit lineage: ['clemson_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
   "request": {
     "deep": true,
-    "national": true,
-    "schools": null
+    "national": false,
+    "schools": [
+      "clemson"
+    ]
   },
   "shard": {
-    "national": true,
-    "schools": []
+    "national": false,
+    "schools": [
+      "clemson"
+    ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 1605,
+      "rule_based_tagged": 4,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
+    "campus_graph:clemson": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 4,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 4,
+      "status": "ok",
+      "updated": 4
+    },
+    "clemson_faculty": {
+      "fetched": 896,
+      "new": 2,
+      "status": "ok",
+      "updated": 894
+    },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 133017,
+      "skipped_rolling": 132179,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
       "deactivation_not_authorized": [],
       "kept_fresh": 0,
       "newly_deactivated": 0,
-      "skipped_missing_unit_ledger": [],
+      "skipped_missing_unit_ledger": [
+        "clemson_faculty"
+      ],
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 0,
-      "keywords_cleaned": 1,
-      "removed_by_school": {},
+      "duplicates_removed": 1,
+      "keywords_cleaned": 4,
+      "removed_by_school": {
+        "clemson": 1
+      },
       "retitled": 0,
       "shared_inbox_nulled": {},
       "shared_keyword_demoted": 0,
@@ -110,30 +136,24 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "nsf_reu": {
-      "fetched": 132,
-      "new": 40,
-      "status": "ok",
-      "updated": 92
-    },
     "pi_enricher": {
-      "already_had": 770,
-      "enriched": 257,
+      "already_had": 900,
+      "enriched": 2,
       "nulled_unit_inboxes": 0,
       "renulled_shared_emails": 0,
-      "scraped": 261,
+      "scraped": 10,
       "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
-      "active_profile_coverage_pct": 31.04,
+      "active_profile_coverage_pct": 31.6,
       "events": 8453,
-      "freshness_pct": 31.04,
-      "fully_stale_school_count": 53,
-      "missing_profile_count": 87527,
-      "missing_school_count": 53,
+      "freshness_pct": 31.6,
+      "fully_stale_school_count": 52,
+      "missing_profile_count": 86824,
+      "missing_school_count": 52,
       "new_events": 0,
-      "profiles": 39478,
+      "profiles": 40182,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -176,7 +196,7 @@
         "casewestern_research_programs": 4,
         "cincinnati_faculty": 1061,
         "cincinnati_research_programs": 4,
-        "clemson_faculty": 904,
+        "clemson_faculty": 906,
         "clemson_research_programs": 4,
         "cmc_faculty": 154,
         "cmc_research_programs": 10,
@@ -261,7 +281,7 @@
         "northwestern_faculty": 2775,
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
-        "nsf_reu": 749,
+        "nsf_reu": 709,
         "nyu_faculty": 2138,
         "nyu_research_programs": 11,
         "oregonstate_faculty": 601,
@@ -291,7 +311,7 @@
         "rutgers_research_programs": 8,
         "sbu_faculty": 895,
         "sbu_research_programs": 5,
-        "simplify_internships": 3823,
+        "simplify_internships": 2983,
         "smith_faculty": 299,
         "smith_research_programs": 6,
         "stanford_external_research": 1,
@@ -472,21 +492,7 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 134707
-    },
-    "simplify_internships": {
-      "deactivated_stale": 569,
-      "fetched": 1701,
-      "new": 840,
-      "status": "ok",
-      "updated": 861
-    },
-    "uiuc_sro": {
-      "deep": true,
-      "fetched": 278,
-      "new": 0,
-      "status": "ok",
-      "updated": 278
+      "tagged": 133829
     }
   },
   "time_budget": {
@@ -494,8 +500,8 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-08-16T06:06:14.115176",
-  "total_in_file": 134707,
-  "total_new": 880,
-  "total_updated": 1231
+  "timestamp": "2026-08-16T06:57:03.296800",
+  "total_in_file": 133828,
+  "total_new": 2,
+  "total_updated": 898
 }
