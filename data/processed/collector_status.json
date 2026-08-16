@@ -1,22 +1,21 @@
 {
-  "duration_seconds": 399.7,
+  "duration_seconds": 391.3,
   "release": {
     "by_unit": {
-      "casewestern": {
+      "stevens": {
         "ready": true,
         "reasons": []
       }
     },
     "degradations": [],
     "expected": [
-      "campus_graph:casewestern",
-      "casewestern_faculty"
+      "campus_graph:stevens",
+      "stevens_faculty"
     ],
     "observed": [
       "auto_tagger",
       "campus_discovery_quarantine",
-      "campus_graph:casewestern",
-      "casewestern_faculty",
+      "campus_graph:stevens",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
@@ -24,31 +23,32 @@
       "intl_reconciliation",
       "pi_enricher",
       "professor_tracking",
-      "school_audience"
+      "school_audience",
+      "stevens_faculty"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "casewestern",
-        "summary_key": "campus_graph:casewestern"
+        "school": "stevens",
+        "summary_key": "campus_graph:stevens"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "casewestern",
-        "summary_key": "casewestern_faculty"
+        "school": "stevens",
+        "summary_key": "stevens_faculty"
       }
     ],
     "publishable": [
-      "casewestern"
+      "stevens"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
-      "faculty stale retirement is held pending per-unit lineage: ['casewestern_faculty']",
+      "faculty stale retirement is held pending per-unit lineage: ['stevens_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -56,25 +56,25 @@
     "deep": true,
     "national": false,
     "schools": [
-      "casewestern"
+      "stevens"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "casewestern"
+      "stevens"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 1,
+      "rule_based_tagged": 0,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
-    "campus_graph:casewestern": {
+    "campus_graph:stevens": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -82,22 +82,16 @@
       "deep": true,
       "degraded_page_errors": [],
       "discovered_records": 0,
-      "fetched": 4,
+      "fetched": 5,
       "live_pages_attempted": 2,
       "live_pages_loaded": 2,
       "new": 0,
       "seed_pages_expected": 2,
       "seed_pages_failed": 0,
       "seed_pages_loaded": 2,
-      "seed_records": 4,
+      "seed_records": 5,
       "status": "ok",
-      "updated": 4
-    },
-    "casewestern_faculty": {
-      "fetched": 714,
-      "new": 0,
-      "status": "ok",
-      "updated": 714
+      "updated": 5
     },
     "deactivate_past": {
       "already_inactive": 80,
@@ -111,19 +105,17 @@
       "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
-        "casewestern_faculty"
+        "stevens_faculty"
       ],
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
       "duplicates_removed": 0,
-      "keywords_cleaned": 5,
+      "keywords_cleaned": 16,
       "removed_by_school": {},
       "retitled": 0,
-      "shared_inbox_nulled": {
-        "casewestern": 4
-      },
+      "shared_inbox_nulled": {},
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
@@ -137,23 +129,23 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 704,
-      "enriched": 15,
-      "nulled_unit_inboxes": 2,
-      "renulled_shared_emails": 9,
-      "scraped": 17,
+      "already_had": 337,
+      "enriched": 0,
+      "nulled_unit_inboxes": 0,
+      "renulled_shared_emails": 0,
+      "scraped": 5,
       "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
-      "active_profile_coverage_pct": 31.84,
+      "active_profile_coverage_pct": 32.07,
       "events": 8453,
-      "freshness_pct": 31.84,
-      "fully_stale_school_count": 51,
-      "missing_profile_count": 86519,
-      "missing_school_count": 51,
+      "freshness_pct": 32.07,
+      "fully_stale_school_count": 50,
+      "missing_profile_count": 86227,
+      "missing_school_count": 50,
       "new_events": 0,
-      "profiles": 40487,
+      "profiles": 40779,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -493,6 +485,12 @@
       },
       "status": "ok",
       "tagged": 134708
+    },
+    "stevens_faculty": {
+      "fetched": 292,
+      "new": 0,
+      "status": "ok",
+      "updated": 292
     }
   },
   "time_budget": {
@@ -500,8 +498,8 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-08-16T08:14:52.621977",
+  "timestamp": "2026-08-16T09:24:04.265330",
   "total_in_file": 134708,
   "total_new": 0,
-  "total_updated": 718
+  "total_updated": 297
 }
