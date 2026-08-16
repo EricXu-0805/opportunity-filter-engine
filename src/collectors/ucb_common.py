@@ -113,6 +113,22 @@ _PROFILE_BARE_LOGIN_RE = re.compile(
     r"\b(?:sign[\s-]?in|log[\s-]?in|login)\b",
     re.IGNORECASE,
 )
+_ASIDE_RE = re.compile(r"\([^()]{0,60}\)")
+
+
+def _without_asides(body: str) -> str:
+    """Drop short parenthetical asides before looking for a wall.
+
+    A page refusing to serve you does not put the refusal in parentheses. Case
+    Western's Weatherhead profiles annotate a link as "Course evaluation
+    ratings (login required)", which matched the login-wall pattern and threw
+    away all 102 of them — real profiles, 7,000 characters of real content, and
+    no research or tracking baseline written for any of them.
+
+    Bounded to 60 characters and to parentheses that contain no nesting, so a
+    genuine wall cannot hide inside one.
+    """
+    return _ASIDE_RE.sub(" ", body) if body else body
 _NAME_NOISE = frozenset(
     {"prof", "professor", "dr", "phd", "md", "jr", "sr", "ii", "iii"}
 )
@@ -153,7 +169,7 @@ def _profile_page_text(soup: object) -> str:
 
 
 def profile_page_is_denial(soup: object) -> bool:
-    body = _profile_page_text(soup)
+    body = _without_asides(_profile_page_text(soup))
     if (
         not body
         or _PROFILE_DENIAL_RE.search(body) is not None

@@ -775,6 +775,10 @@ class TestScrapeLayer:
         assert "machine learning" in fg._clean_keywords(
             {"research_areas": "Areas of Expertise: machine learning, robotics"}
         )
+        # clemson.edu/business/about/profiles/AKTURK opens its list "Topics:"
+        assert "Business Analytics" in fg._clean_keywords(
+            {"research_areas": "Topics: Business Analytics, Retail Operations"}
+        )
 
     def test_clean_keywords_drops_prose_and_gate_junk(self):
         """A free-text interests field (some directories store a bio there) must
@@ -3244,6 +3248,50 @@ class TestResearchByLabel:
             '<div><h4>Research Interests</h4><h4>Publications</h4></div>'
             "<div><h4>Research Areas</h4><p>Coastal geomorphology</p></div>",
         ) == ([], "Coastal geomorphology")
+
+    def test_areas_beside_the_label_are_read_instead_of_the_next_block(self):
+        """clemson.edu/cecas/departments/bioe/people/directory/gao.html — the
+        areas are the label's own siblings, split by <br>.
+
+        There is no block after the label to take, so the sibling walk runs off
+        the end of the paragraph and reads whatever section follows it. 54 of
+        Bioengineering's 67 profiles are shaped this way, and Chemical and
+        Industrial Engineering share the template.
+        """
+        items, prose = self._by_label(
+            "<p><strong>Research Interests</strong><br/>Optical Imaging<br/> "
+            "Microfabrication<br/>Cell-ECM Interaction</p>"
+            "<p>Selected Publications</p>")
+        assert items == ["Optical Imaging", "Microfabrication",
+                         "Cell-ECM Interaction"]
+        assert prose == ""
+
+    def test_a_link_closing_the_inline_list_is_not_an_area(self):
+        """clemson.edu/cecas/departments/ie/people/faculty/madathil.html ends
+        its areas with a link to the department's research page."""
+        items, _ = self._by_label(
+            '<p><strong>Research Areas</strong> <br/>Human-centered design <br/>'
+            'Human factors engineering <br/> <a href="/ie/research/">Applied '
+            'research at Clemson IE</a></p>')
+        assert items == ["Human-centered design", "Human factors engineering"]
+
+    def test_prose_opening_with_the_label_is_not_split_into_areas(self):
+        """A paragraph is not a list. The per-item length ceiling keeps the
+        inline path to what it was built for and leaves prose to the splitter
+        below it."""
+        assert self._by_label(
+            "<div><p><strong>Research Interests</strong> My research is broadly "
+            "focused on equity in STEM education through the lens of identity, "
+            "and on how students come to see themselves as mathematicians.</p>"
+            "</div>") == ([], "")
+
+    def test_a_heading_followed_by_a_block_is_unaffected(self):
+        """The inline path fires only when real text sits beside the label;
+        whitespace between a heading and its block must not trip it."""
+        assert self._by_label(
+            '<div class="content_section"><h3>Research Interests</h3>\n  '
+            '<p class="indent">Equity in STEM education.</p></div>',
+        ) == ([], "Equity in STEM education.")
 
     def test_a_cv_block_is_not_a_research_block(self):
         assert self._by_label(

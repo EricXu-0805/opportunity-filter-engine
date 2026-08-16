@@ -109,6 +109,8 @@ _CECAS_FIELD = {
 _MSE_SEL = {
     "card": "div.cell.large-3",
     "name": "p strong",
+    # The first <a> on a card is often the mailto, so pin the profile link.
+    "link": 'a[href*="/faculty/"]',
     "title": "p:nth-of-type(2)",
     "title_strip_after": r"\s*(?:\(|\d{3}|[\w.+-]+@)",
     "email": 'a[href^="mailto:"]',
@@ -162,11 +164,52 @@ _BIZ_FIELD = {
 }
 
 
+# ---- Per-profile research pass ---------------------------------------------
+# Four profile templates, one per college, none of which the listing carries any
+# research on: 904 faculty and 33 with a research signal before this pass.
+#
+# ``profile_url_re`` matters more here than at most schools. Clemson rosters mix
+# in three kinds of link that are not a Clemson profile page: the my.clemson.edu
+# directory (a hash-routed SPA that serves an empty shell to a plain GET), a few
+# professors' own sites (cecas.clemson.edu/ballato/), and — on the five
+# departments whose cards expose no per-person link at all — the department
+# index itself, which every one of their people would otherwise be "verified"
+# against.
+_CECAS_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https://www\.clemson\.edu/cecas/(?!.*index\.html).+\.html",
+    "throttle": 0.15,
+}
+_SCI_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https://www\.clemson\.edu/science/.+/profiles/",
+    "throttle": 0.15,
+}
+# CBSHS and Business title their pages after the template, not the person:
+# <h1> reads "Faculty and Staff Profile" / "Profile Information" on every one
+# of them, and CBSHS appends the name to document.title from a script a plain
+# GET never runs. Both put the person in an <h2> in the content column, so the
+# identity gate has to be pointed at it or it refuses all 123 of them.
+_CB_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https?://(www\.)?clemson\.edu/cbshs/about/profiles/",
+    "identity_selector": "div.main-col h2",
+    "throttle": 0.15,
+}
+_BIZ_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https://www\.clemson\.edu/business/about/profiles/",
+    "identity_selector": "div.main-col h2",
+    "throttle": 0.15,
+}
+
+
 def _computing(short: str, name: str, majors: list[str], url: str) -> dict:
     """School of Computing on the CECAS person-card grid."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _CARD_SEL, "field_filter": _CECAS_FIELD},
+        "scrape": {"url": url, "selectors": _CARD_SEL, "field_filter": _CECAS_FIELD,
+                   "profile_enrich": _CECAS_ENRICH},
     }
 
 
@@ -174,7 +217,8 @@ def _grid(short: str, name: str, majors: list[str], url: str) -> dict:
     """An engineering department on the CECAS cell-large-3 grid."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _GRID_SEL, "field_filter": _CECAS_FIELD},
+        "scrape": {"url": url, "selectors": _GRID_SEL, "field_filter": _CECAS_FIELD,
+                   "profile_enrich": _CECAS_ENRICH},
     }
 
 
@@ -182,7 +226,8 @@ def _mse(short: str, name: str, majors: list[str], url: str) -> dict:
     """Materials Science on its hand-built cell-large-3 card."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _MSE_SEL, "field_filter": _MSE_FIELD},
+        "scrape": {"url": url, "selectors": _MSE_SEL, "field_filter": _MSE_FIELD,
+                   "profile_enrich": _CECAS_ENRICH},
     }
 
 
@@ -192,7 +237,12 @@ def _eng_table(short: str, name: str, majors: list[str], url: str, *,
     sel = {
         "card": "tr.cell",
         "name": name_sel,
-        "link": name_sel,
+        # The name cell's <strong> carries no href, so every person in these
+        # three tables was stored pointing at the department index — 90 records
+        # whose "profile" was a roster. Civil and Automotive do link each
+        # person, one row at a time; EEES points all of its rows at one shared
+        # directory page, which has no .html suffix and so matches nothing here.
+        "link": 'td a[href$=".html"]',
         "title": title_sel,
         # A few Civil rows carry a trailing comma/space ("Amer, Omar,") that would
         # survive name_flip and leak a comma into the name; strip it pre-flip.
@@ -204,7 +254,7 @@ def _eng_table(short: str, name: str, majors: list[str], url: str, *,
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": sel, "name_flip": flip,
-                   "field_filter": field},
+                   "field_filter": field, "profile_enrich": _CECAS_ENRICH},
     }
 
 
@@ -216,7 +266,8 @@ def _science(short: str, name: str, majors: list[str], url: str,
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _SCI_SEL, "name_flip": True,
-                   "field_filter": field, "ladder_filter": _SCI_LADDER},
+                   "field_filter": field, "ladder_filter": _SCI_LADDER,
+                   "profile_enrich": _SCI_ENRICH},
     }
 
 
@@ -225,7 +276,7 @@ def _cbshs(short: str, name: str, majors: list[str], url: str) -> dict:
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _CB_SEL, "name_flip": True,
-                   "field_filter": _CB_FIELD},
+                   "field_filter": _CB_FIELD, "profile_enrich": _CB_ENRICH},
     }
 
 
@@ -233,7 +284,8 @@ def _business(short: str, name: str, majors: list[str], url: str) -> dict:
     """A Powers College of Business department on its info-column grid."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _BIZ_SEL, "field_filter": _BIZ_FIELD},
+        "scrape": {"url": url, "selectors": _BIZ_SEL, "field_filter": _BIZ_FIELD,
+                   "profile_enrich": _BIZ_ENRICH},
     }
 
 
