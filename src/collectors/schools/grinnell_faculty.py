@@ -73,6 +73,14 @@ _LADDER = {
 }
 
 
+# The listing carries no research; each person has a /user/<id> profile.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https://www\.grinnell\.edu/user/\d+",
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str) -> dict:
     """A Grinnell department on the shared /profiles/<slug>/faculty view."""
     url = f"{_BASE}/{slug}/faculty"
@@ -81,7 +89,8 @@ def _dept(short: str, name: str, majors: list[str], slug: str) -> dict:
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 

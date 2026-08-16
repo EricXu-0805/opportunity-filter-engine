@@ -80,6 +80,17 @@ _LADDER = {
 }
 
 
+# The listing carries no research. 276 of 294 people link to their own
+# /directory/<netid>/ page; the remaining 18 carry the department listing URL
+# their card sat on, which profile_url_re refuses so they are not "verified"
+# against a roster.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https://www\.carleton\.edu/directory/",
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str,
           path: str = "faculty") -> dict:
     """A Carleton department on the shared faculty-listing CMS template."""
@@ -89,7 +100,8 @@ def _dept(short: str, name: str, majors: list[str], slug: str,
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 

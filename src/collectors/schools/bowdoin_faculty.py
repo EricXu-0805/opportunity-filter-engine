@@ -52,13 +52,23 @@ _FACULTY_SECTION = {"heading": "h2", "include": r"^faculty$"}
 _LADDER = {"drop": r"emerit|adjunct|visiting|postdoc|research affiliate|teaching fellow"}
 
 
+# The listing carries no research; the profile labels it "Research Interests"
+# where the section exists at all.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"https://www\.bowdoin\.edu/profiles/faculty/",
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str) -> dict:
     """A Bowdoin department on the shared faculty-and-staff profile-card page."""
     url = f"https://www.bowdoin.edu/{slug}/faculty-and-staff/index.html"
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _CARD_SEL,
-                   "section_filter": _FACULTY_SECTION, "ladder_filter": _LADDER},
+                   "section_filter": _FACULTY_SECTION, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 

@@ -70,6 +70,17 @@ _LADDER = {
 }
 
 
+# The listing carries no research. CC titles the block "BIOGRAPHY AND
+# RESEARCH INTERESTS", a compound the shared pattern will not take.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
+        r"^\s*(research\s+(interests?",
+        r"^\s*((?:biography\s+and\s+)?research\s+(interests?"),
+    "profile_url_re": r"https://www\.coloradocollege\.edu/basics/contact/",
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str, path: str) -> dict:
     """A CC department on the shared panel-body person-card component."""
     url = f"{_BASE}/{slug}/{path}"
@@ -78,7 +89,8 @@ def _dept(short: str, name: str, majors: list[str], slug: str, path: str) -> dic
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 
