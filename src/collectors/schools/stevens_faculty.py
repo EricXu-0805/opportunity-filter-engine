@@ -88,11 +88,31 @@ _FIELD = {
 }
 
 
+# The listing carries no research at all. Each profile keeps its research
+# paragraph in a <section id="research">, which is the one stable hook on the
+# page — every class on it is a per-build hash.
+#
+# A selector rather than the label path, and deliberately. Stevens titles that
+# section with the bare word "Research", and the same bare word is the site's
+# mega-menu heading, which sits earlier in the document: opting the label
+# matcher into the bare word returned "Technology With Purpose / Research
+# Pillars / Student Research / Partner with Us" — the same four menu entries —
+# as the research areas of every professor tried. The section-title div and the
+# description div are siblings, so "div + div" takes the description without
+# the heading word riding along.
+_ENRICH = {
+    "research_selector": "section#research > div > div + div",
+    "profile_url_re": r"https://www\.stevens\.edu/profile/",
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], url: str) -> dict:
     """A department on the shared Stevens faculty-card component."""
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
-        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD},
+        "scrape": {"url": url, "selectors": _SEL, "field_filter": _FIELD,
+                   "profile_enrich": _ENRICH},
     }
 
 
