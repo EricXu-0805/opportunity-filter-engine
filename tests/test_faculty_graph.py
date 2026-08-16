@@ -780,6 +780,23 @@ class TestScrapeLayer:
             {"research_areas": "Topics: Business Analytics, Retail Operations"}
         )
 
+    def test_a_link_telling_you_where_to_click_is_not_a_research_area(self):
+        """case.edu/artsci/cognitivescience/about/faculty-and-staff/fey-parrill.
+
+        Her research paragraph is written as links, so the label path's <a>
+        taxonomy read "Click here to find recent papers" and "clicking here" as
+        her two research areas — and every other gate passed them: multi-word,
+        not a venue, not a prose lead-in.
+        """
+        assert fg._clean_keywords({"keywords": [
+            "Click here to find recent papers", "clicking here"]}) == []
+
+    def test_the_click_here_filter_leaves_real_areas_alone(self):
+        kept = ["Here and Now in Phenomenology", "Hereditary disease genetics",
+                "Learn-to-rank models", "Visitation ecology",
+                "Reading comprehension"]
+        assert fg._clean_keywords({"keywords": kept}) == kept
+
     def test_clean_keywords_drops_prose_and_gate_junk(self):
         """A free-text interests field (some directories store a bio there) must
         not ship sentence fragments or anything the DQ junk gate would reject —
