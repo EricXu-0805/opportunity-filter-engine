@@ -10,7 +10,9 @@ signal.
 Accuracy is institution-gated to avoid wrong-person matches: a candidate author
 is accepted ONLY if the target school's OpenAlex institution id appears in the
 author's affiliation history AND the author's name shares the faculty member's
-surname. Among accepted candidates the most-published one wins; if the search
+surname. Among accepted candidates the one whose publishing history is most AT
+that school wins (see ``_institution_share`` — "most works wins" handed a
+conflated record's more prolific stranger to the wrong person); if the search
 returns no institution-affiliated match, the faculty member stays broad
 ("better broad than a different person's research").
 
@@ -259,6 +261,14 @@ _DEPT_FIELDS: tuple[tuple[str, set[str]], ...] = (
                                                                "Social Sciences", "Medicine"}),
     ("socio", _SOC), ("politic", _SOC), ("anthropo", _SOC), ("communicat", _SOC),
     ("education", _SOC), ("law", _SOC), ("public", _SOC | {"Medicine"}), ("urban", _SOC | {"Engineering"}),
+    # Added once the "department" collision above stopped answering for them,
+    # each carrying enough faculty to deserve a real family rather than none:
+    # linguistics 615, animal science 368, government 318, entomology 249,
+    # kinesiology 181, pathology 124.
+    ("entomol", _LIFE), ("animal", _LIFE), ("kinesio", _HEALTH | {"Psychology"}),
+    ("patholog", _HEALTH), ("government", _SOC),
+    ("linguist", {"Arts and Humanities", "Social Sciences", "Psychology",
+                  "Computer Science"}),
     ("english", {"Arts and Humanities", "Social Sciences"}),
     ("history", {"Arts and Humanities", "Social Sciences"}),
     ("philosoph", {"Arts and Humanities", "Social Sciences"}),
@@ -274,8 +284,20 @@ _DEPT_FIELDS: tuple[tuple[str, set[str]], ...] = (
 )
 
 
+# "dep-ART-ment". The table is scanned as substrings and "art" is one of its
+# keys, so every department whose name missed every earlier key fell through to
+# Arts and Humanities on the strength of the word "Department" alone — 13,755
+# faculty corpus-wide. Music and Classics landed there by accident and were
+# fine; Entomology, Animal Science, Kinesiology and Pathology were handed a
+# field family none of their real topics belong to, so the majority-compatible
+# gate in _match_author_query rejected the correct author every time and those
+# faculty were silently never enriched. The word names the unit, never the
+# discipline, so it cannot be evidence of either.
+_DEPT_WORD_RE = re.compile(r"\bdepartments?\b")
+
+
 def _dept_fields(dept: str) -> set[str] | None:
-    d = (dept or "").lower()
+    d = _DEPT_WORD_RE.sub(" ", (dept or "").lower())
     for key, fields in _DEPT_FIELDS:
         if key in d:
             return fields
@@ -417,10 +439,37 @@ def _match_author(name: str, inst_id: str, dept: str = "") -> dict | None:
     return None
 
 
+def _institution_share(author: dict, inst_id: str) -> float:
+    """How much of this author's publishing life carries the school, by year.
+
+    Two OpenAlex authors named Elizabeth Rodrigues both list Grinnell College:
+    one has Grinnell for a single year against three at Universidade Federal do
+    Pará, the other two of its three years at Grinnell. The first is the more
+    published, so "most works wins" chose it and offered a Grinnell
+    digital-humanities scholar a materials chemist's research areas — and her
+    department, "Digital Studies Concentration", maps to no field family, so
+    the wrong-field gate never ran. Being the more prolific author is not
+    evidence of being this school's.
+
+    A ratio rather than a count, so a new hire whose only listed institution is
+    the school scores 1.0 instead of losing to a long conflated history.
+    """
+    school_years: set[int] = set()
+    all_years: set[int] = set()
+    for aff in author.get("affiliations") or []:
+        years = {y for y in (aff.get("years") or []) if isinstance(y, int)}
+        all_years |= years
+        if (aff.get("institution") or {}).get("id", "").rsplit("/", 1)[-1] == inst_id:
+            school_years |= years
+    if not all_years:
+        return 0.0
+    return len(school_years) / len(all_years)
+
+
 def _match_author_query(query: str, surname: str, inst_id: str, dept: str) -> dict | None:
     j = _get({"search": query, "per_page": 10,
               "select": "id,display_name,works_count,affiliations,topics"})
-    best, best_works = None, -1
+    best, best_rank = None, (-1.0, -1)
     for a in j.get("results", []):
         if surname not in (a.get("display_name") or "").lower():
             continue
@@ -430,9 +479,10 @@ def _match_author_query(query: str, surname: str, inst_id: str, dept: str) -> di
         }
         if inst_id not in aff_ids:
             continue
-        if (a.get("works_count") or 0) > best_works:
-            best, best_works = a, a.get("works_count") or 0
-    if best is None or best_works < _MIN_WORKS:
+        rank = (_institution_share(a, inst_id), a.get("works_count") or 0)
+        if rank > best_rank:
+            best, best_rank = a, rank
+    if best is None or best_rank[1] < _MIN_WORKS:
         return None
     topics = best.get("topics") or []
     allowed = _dept_fields(dept)
