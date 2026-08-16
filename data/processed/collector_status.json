@@ -1,22 +1,22 @@
 {
-  "duration_seconds": 740.0,
+  "duration_seconds": 399.7,
   "release": {
     "by_unit": {
-      "clemson": {
+      "casewestern": {
         "ready": true,
         "reasons": []
       }
     },
     "degradations": [],
     "expected": [
-      "campus_graph:clemson",
-      "clemson_faculty"
+      "campus_graph:casewestern",
+      "casewestern_faculty"
     ],
     "observed": [
       "auto_tagger",
       "campus_discovery_quarantine",
-      "campus_graph:clemson",
-      "clemson_faculty",
+      "campus_graph:casewestern",
+      "casewestern_faculty",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
@@ -30,25 +30,25 @@
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "clemson",
-        "summary_key": "campus_graph:clemson"
+        "school": "casewestern",
+        "summary_key": "campus_graph:casewestern"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "clemson",
-        "summary_key": "clemson_faculty"
+        "school": "casewestern",
+        "summary_key": "casewestern_faculty"
       }
     ],
     "publishable": [
-      "clemson"
+      "casewestern"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
-      "faculty stale retirement is held pending per-unit lineage: ['clemson_faculty']",
+      "faculty stale retirement is held pending per-unit lineage: ['casewestern_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -56,25 +56,25 @@
     "deep": true,
     "national": false,
     "schools": [
-      "clemson"
+      "casewestern"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "clemson"
+      "casewestern"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 4,
+      "rule_based_tagged": 1,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
-    "campus_graph:clemson": {
+    "campus_graph:casewestern": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -93,17 +93,17 @@
       "status": "ok",
       "updated": 4
     },
-    "clemson_faculty": {
-      "fetched": 896,
-      "new": 2,
+    "casewestern_faculty": {
+      "fetched": 714,
+      "new": 0,
       "status": "ok",
-      "updated": 894
+      "updated": 714
     },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 132179,
+      "skipped_rolling": 133018,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
@@ -111,19 +111,19 @@
       "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
-        "clemson_faculty"
+        "casewestern_faculty"
       ],
       "skipped_partial_scrape": [],
       "status": "ok"
     },
     "faculty_hygiene": {
-      "duplicates_removed": 1,
-      "keywords_cleaned": 4,
-      "removed_by_school": {
-        "clemson": 1
-      },
+      "duplicates_removed": 0,
+      "keywords_cleaned": 5,
+      "removed_by_school": {},
       "retitled": 0,
-      "shared_inbox_nulled": {},
+      "shared_inbox_nulled": {
+        "casewestern": 4
+      },
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
@@ -137,23 +137,23 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 900,
-      "enriched": 2,
-      "nulled_unit_inboxes": 0,
-      "renulled_shared_emails": 0,
-      "scraped": 10,
+      "already_had": 704,
+      "enriched": 15,
+      "nulled_unit_inboxes": 2,
+      "renulled_shared_emails": 9,
+      "scraped": 17,
       "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
-      "active_profile_coverage_pct": 31.6,
+      "active_profile_coverage_pct": 31.84,
       "events": 8453,
-      "freshness_pct": 31.6,
-      "fully_stale_school_count": 52,
-      "missing_profile_count": 86824,
-      "missing_school_count": 52,
+      "freshness_pct": 31.84,
+      "fully_stale_school_count": 51,
+      "missing_profile_count": 86519,
+      "missing_school_count": 51,
       "new_events": 0,
-      "profiles": 40182,
+      "profiles": 40487,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -196,7 +196,7 @@
         "casewestern_research_programs": 4,
         "cincinnati_faculty": 1061,
         "cincinnati_research_programs": 4,
-        "clemson_faculty": 906,
+        "clemson_faculty": 905,
         "clemson_research_programs": 4,
         "cmc_faculty": 154,
         "cmc_research_programs": 10,
@@ -281,7 +281,7 @@
         "northwestern_faculty": 2775,
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
-        "nsf_reu": 709,
+        "nsf_reu": 749,
         "nyu_faculty": 2138,
         "nyu_research_programs": 11,
         "oregonstate_faculty": 601,
@@ -311,7 +311,7 @@
         "rutgers_research_programs": 8,
         "sbu_faculty": 895,
         "sbu_research_programs": 5,
-        "simplify_internships": 2983,
+        "simplify_internships": 3823,
         "smith_faculty": 299,
         "smith_research_programs": 6,
         "stanford_external_research": 1,
@@ -492,7 +492,7 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 133829
+      "tagged": 134708
     }
   },
   "time_budget": {
@@ -500,8 +500,8 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-08-16T06:57:03.296800",
-  "total_in_file": 133828,
-  "total_new": 2,
-  "total_updated": 898
+  "timestamp": "2026-08-16T08:14:52.621977",
+  "total_in_file": 134708,
+  "total_new": 0,
+  "total_updated": 718
 }
